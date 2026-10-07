@@ -1,3 +1,4 @@
+import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
 import { appMessages } from '../app.copy';
 import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
@@ -10,6 +11,7 @@ import { interfaceLocaleMessages } from './interface-locale.copy';
 import { assertMessageCoverage } from './messages';
 
 export function assertFirstJourneyTranslationCoverage(): void {
+  assertMessageCoverage('profitability', profitabilityMessages);
   assertMessageCoverage('app', appMessages);
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);

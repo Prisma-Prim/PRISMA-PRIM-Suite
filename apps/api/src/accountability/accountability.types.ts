@@ -26,6 +26,8 @@ import type {
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
+  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
+  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 import type { CommercialActivityRecord } from './commercial-activity-projection.js';
 
@@ -177,6 +179,10 @@ export type CanonicalActivityEvent =
         | 'company_commercial_activity_reader_assignment.revoked'
         | 'company_opportunity_manager_assignment.granted'
         | 'company_opportunity_manager_assignment.revoked'
+        | 'company_profitability_contributor_assignment.granted'
+        | 'company_profitability_contributor_assignment.revoked'
+        | 'company_profitability_director_assignment.granted'
+        | 'company_profitability_director_assignment.revoked'
         | 'company_project_approver_assignment.granted'
         | 'company_project_approver_assignment.revoked';
       target: {
@@ -205,6 +211,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
+          | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
+          | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       };
       transitionId: string;
@@ -311,6 +319,10 @@ export interface OrdinaryActivityLogEvent {
     | 'company_commercial_activity_reader_assignment.revoked'
     | 'company_opportunity_manager_assignment.granted'
     | 'company_opportunity_manager_assignment.revoked'
+    | 'company_profitability_contributor_assignment.granted'
+    | 'company_profitability_contributor_assignment.revoked'
+    | 'company_profitability_director_assignment.granted'
+    | 'company_profitability_director_assignment.revoked'
     | 'company_project_approver_assignment.granted'
     | 'company_project_approver_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
@@ -386,6 +398,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
+          | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
+          | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }

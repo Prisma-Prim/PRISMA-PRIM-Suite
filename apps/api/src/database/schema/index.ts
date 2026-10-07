@@ -20,3 +20,4 @@ export * from './pricing-configuration.js';
 export * from './offer.js';
 
 export * from './contract.js';
+export * from './profitability-estimate.js';

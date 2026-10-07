@@ -324,6 +324,15 @@ export class CommercialIntakeService {
     return target;
   }
 
+  /** Profitability commands and reads retain the owner row and live read grant
+   * until their transaction ends, including receipt replay. */
+  async requireReadableProfitabilityOpportunity(
+    actor: ActorContext,
+    opportunityId: string,
+  ): Promise<ReadableOfferOpportunity> {
+    return this.requireReadableOfferOpportunity(actor, opportunityId, true);
+  }
+
   async updateNextAction(
     actor: ActorContext,
     opportunityId: string,

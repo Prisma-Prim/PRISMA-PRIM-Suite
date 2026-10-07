@@ -1,0 +1,128 @@
+.profitability-estimate {
+  margin-block: 1.5rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  background: #fff;
+  color: #15233b;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.profitability-estimate h3,
+.profitability-estimate h4 {
+  margin-block: 0.5rem 1rem;
+}
+.profitability-estimate button {
+  min-height: 44px;
+  border: 1px solid #b7a8df;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: #faf8ff;
+  color: #493084;
+  cursor: pointer;
+  max-width: 100%;
+  white-space: normal;
+}
+.profitability-estimate button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.profitability-estimate :is(button, input, textarea):focus-visible {
+  outline: 3px solid #6950bd;
+  outline-offset: 3px;
+}
+.profitability-fields {
+  border: 0;
+  margin: 1rem 0;
+  padding: 0;
+  min-width: 0;
+}
+.profitability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.profitability-estimate label {
+  display: block;
+  font-weight: 600;
+  margin-block: 0.5rem;
+}
+.profitability-estimate input:not([type='checkbox']),
+.profitability-estimate textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 1px solid #ccd4e2;
+  border-radius: 0.4rem;
+  padding: 0.65rem;
+  color: #15233b;
+  background: #fff;
+}
+.profitability-estimate .profitability-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  margin-block: 1.2rem;
+  font-weight: 400;
+}
+.profitability-confirmation input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+.profitability-cost {
+  padding: 1rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.5rem;
+  margin-block: 1rem;
+  min-width: 0;
+}
+.profitability-history {
+  padding-inline-start: 1.3rem;
+}
+.profitability-history li {
+  padding-block: 0.8rem;
+  border-bottom: 1px solid #e6eaf1;
+}
+.profitability-version {
+  margin-block: 1.5rem;
+  border-top: 1px solid #e6eaf1;
+  padding-top: 1rem;
+}
+.profitability-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.6rem 1rem;
+}
+.profitability-facts dt {
+  color: #53647c;
+}
+.profitability-facts dd {
+  margin: 0;
+}
+.profitability-results {
+  background: #f7f9fc;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.profitability-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-block: 1rem;
+}
+.profitability-reference {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .profitability-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .profitability-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+  .profitability-facts dd {
+    margin-bottom: 0.6rem;
+  }
+}

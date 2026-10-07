@@ -13,6 +13,7 @@ import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
+import { ProfitabilityEstimatePanel } from '../profitability-estimate/ProfitabilityEstimatePanel';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
 import { OfferPanel } from '../offer/OfferPanel';
 import {
@@ -2101,6 +2102,14 @@ function RequestDetail({
           <NextActionEditForm editor={nextAction} pending={pending} />
         ) : null}
       </section>
+      <ProfitabilityEstimatePanel
+        actor={actor}
+        identity={identity}
+        opportunityId={request.initialOpportunity.id}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onActorRevalidated={onActorRevalidated}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />
       <PricingSnapshotPanel
         key={`${clientAuthority}:${request.initialOpportunity.id}:${actor.activeCompany?.pricingUserPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.pricingUserPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.pricingUserPermissions?.join(',') ?? ''}:${actor.activeCompany?.pricingAdjustmentPermissionAssignmentId ?? 'no-adjustment-assignment'}:${actor.activeCompany?.pricingAdjustmentPermissionSetVersion ?? 'no-adjustment-version'}:${actor.activeCompany?.pricingAdjustmentPermissions?.join(',') ?? ''}`}
         actor={actor}
