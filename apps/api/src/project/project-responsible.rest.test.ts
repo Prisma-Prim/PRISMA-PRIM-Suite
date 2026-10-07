@@ -918,13 +918,29 @@ describe.skipIf(!databaseUrl)(
           revision: 3,
           responsible: null,
         });
-        expect(
-          (await responsibleEvents()).map((event) => event.metadata),
-        ).toEqual([
-          { revision: 3, before: mariaEntry, after: null },
-          { revision: 2, before: ionEntry, after: mariaEntry },
-          { revision: 1, before: null, after: ionEntry },
-        ]);
+        const events = await responsibleEvents();
+        expect(events).toHaveLength(3);
+        expect(events.map((event) => event.metadata)).toEqual(
+          expect.arrayContaining([
+            { revision: 3, before: mariaEntry, after: null },
+            { revision: 2, before: ionEntry, after: mariaEntry },
+            { revision: 1, before: null, after: ionEntry },
+          ]),
+        );
+        let previous: { occurredAt: number; id: string } | undefined;
+        for (const event of events) {
+          const occurredAt = Date.parse(string(event.occurredAt));
+          if (!Number.isFinite(occurredAt))
+            throw new Error('Expected recorded event time.');
+          const current = { occurredAt, id: string(event.id) };
+          if (previous)
+            expect(
+              previous.occurredAt > current.occurredAt ||
+                (previous.occurredAt === current.occurredAt &&
+                  previous.id > current.id),
+            ).toBe(true);
+          previous = current;
+        }
       },
     );
 

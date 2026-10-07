@@ -82,12 +82,37 @@ it('opens a recorded Contract from its Request without Offer or Client authority
     },
   };
   const paths: string[] = [];
+  let denyRepresentation = false;
+  let latestActor = actor;
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL) => {
       const path = input.toString();
       paths.push(path);
-      if (path.endsWith('/access/current-actor')) return Response.json(actor);
+      if (path.endsWith('/access/current-actor'))
+        return Response.json(latestActor);
+      if (
+        path.endsWith(
+          '/contracts/opportunities/opportunity-one/versions/version-one/representation',
+        )
+      ) {
+        if (denyRepresentation) return Response.json({}, { status: 403 });
+        return Response.json({
+          contractId: 'contract-one',
+          contractVersionId: 'version-one',
+          templateCode: 'CONTRACT_ILLUSTRATIVE',
+          templateVersion: 1,
+          clauseVersions: [
+            { code: 'CL_SUBJECT', version: 1 },
+            { code: 'CL_PRICE', version: 1 },
+            { code: 'CL_TERM', version: 1 },
+            { code: 'CL_CONDITIONS', version: 1 },
+            { code: 'CL_GENERAL', version: 1 },
+          ],
+          html: '<html lang="en"><body>Recorded Contract bytes</body></html>',
+          sha256: 'a'.repeat(64),
+        });
+      }
       if (path.endsWith('/companies')) return Response.json([company]);
       if (path.includes('/commercial-intake/requests?'))
         return Response.json({
@@ -180,4 +205,31 @@ it('opens a recorded Contract from its Request without Offer or Client authority
       (path) => path.includes('/offers/') || path.includes('/clients/'),
     ),
   ).toBe(false);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Open exact Contract document' }),
+  );
+  expect(
+    await screen.findByTitle('Illustrative Contract document'),
+  ).toHaveAttribute(
+    'srcdoc',
+    '<html lang="en"><body>Recorded Contract bytes</body></html>',
+  );
+  expect(screen.getByText('a'.repeat(64))).toBeVisible();
+  denyRepresentation = true;
+  latestActor = {
+    ...actor,
+    activeCompany: {
+      ...actor.activeCompany,
+      ...company,
+      contractPermissions: [],
+    },
+  };
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Reload exact Contract document' }),
+  );
+  await screen.findByText('Recorded request evidence');
+  expect(
+    screen.queryByTitle('Illustrative Contract document'),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText('a'.repeat(64))).not.toBeInTheDocument();
 });

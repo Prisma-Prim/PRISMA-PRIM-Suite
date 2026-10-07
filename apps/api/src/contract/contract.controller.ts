@@ -69,6 +69,23 @@ export class ContractController {
       }),
     };
   }
+  @Get('versions/:versionId/representation') async representation(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+  ) {
+    const contract = await this.contracts.read({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+    });
+    if (!contract) throw new Error('Missing exact Contract Version.');
+    return {
+      contractId: contract.id,
+      contractVersionId: contract.version.id,
+      ...contract.version.representation,
+    };
+  }
 }
 function actorFrom(request: ActorContextRequest) {
   if (!request.actorContext) throw new ForbiddenException();

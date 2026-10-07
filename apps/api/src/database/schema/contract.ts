@@ -150,6 +150,16 @@ export const contractVersions = pgTable(
     termStartsOn: date('term_starts_on'),
     termEndsOn: date('term_ends_on'),
     specialConditions: text('special_conditions'),
+    templateCode: text('template_code')
+      .default('CONTRACT_ILLUSTRATIVE')
+      .notNull(),
+    templateVersion: integer('template_version').default(1).notNull(),
+    clauseVersions: jsonb('clause_versions')
+      .$type<unknown>()
+      .default(
+        sql`'[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb`,
+      )
+      .notNull(),
     decisionState: text('decision_state').default('PENDING').notNull(),
     executionState: text('execution_state').default('NOT_EXECUTED').notNull(),
     provenance: text('provenance').default('ILLUSTRATIVE').notNull(),
@@ -230,6 +240,10 @@ export const contractVersions = pgTable(
     check(
       'contract_versions_initial_check',
       sql`${t.versionNumber} = 1 AND ${t.decisionState} = 'PENDING' AND ${t.executionState} = 'NOT_EXECUTED' AND ${t.provenance} = 'ILLUSTRATIVE'`,
+    ),
+    check(
+      'contract_versions_template_binding_check',
+      sql`${t.templateCode} = 'CONTRACT_ILLUSTRATIVE' AND ${t.templateVersion} = 1 AND ${t.clauseVersions} = '[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb`,
     ),
     check(
       'contract_versions_entity_check',

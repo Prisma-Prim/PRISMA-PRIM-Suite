@@ -300,7 +300,9 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     .click();
   await panel
     .getByLabel('Special conditions')
-    .fill('Synthetic Contract special conditions');
+    .fill(
+      'Synthetic Contract special conditions <script>globalThis.contractInjected = true</script>',
+    );
   await panel.getByLabel('Term start').fill('2026-10-01');
   await panel.getByLabel('Term end').fill('2026-12-31');
   const attempts: Array<{ body: string | null; key: string | undefined }> = [];
@@ -366,6 +368,83 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
       'contract-created-' + suffix.toLowerCase() + '.png',
     ),
   });
+  const documentButton = panel.getByRole('button', {
+    name: 'Open exact Contract document',
+  });
+  await documentButton.focus();
+  await page.keyboard.press('Enter');
+  const frame = panel.frameLocator(
+    'iframe[title="Illustrative Contract document"]',
+  );
+  await expect(
+    frame.getByRole('heading', { name: 'Illustrative Contract', exact: true }),
+  ).toBeVisible();
+  await expect(
+    frame.getByText('clauses are placeholders', { exact: false }),
+  ).toBeVisible();
+  await expect(
+    frame.getByText(
+      'Synthetic Contract special conditions <script>globalThis.contractInjected = true</script>',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(frame.locator('script')).toHaveCount(0);
+  const documentElement = panel.locator('iframe');
+  const recordedHtml = await documentElement.getAttribute('srcdoc');
+  const recordedChecksum = await panel
+    .locator('.contract-representation code')
+    .textContent();
+  expect(recordedHtml).toBeTruthy();
+  expect(recordedChecksum).toMatch(/^[a-f0-9]{64}$/u);
+  expect(
+    await frame
+      .locator('html')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  await documentElement.screenshot({
+    path: testInfo.outputPath(
+      'contract-document-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await frame.locator('footer').scrollIntoViewIfNeeded();
+  await expect(frame.locator('footer')).toContainText(
+    'CONTRACT_ILLUSTRATIVE v1 (unapproved)',
+  );
+  await expect(frame.locator('footer')).toContainText(
+    'CL_SUBJECT v1, CL_PRICE v1, CL_TERM v1, CL_CONDITIONS v1, CL_GENERAL v1',
+  );
+  await expect(frame.locator('footer')).toContainText(text(snapshot.id));
+  await documentElement.screenshot({
+    path: testInfo.outputPath(
+      'contract-document-footer-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await panel
+    .getByRole('button', { name: 'Reload exact Contract document' })
+    .click();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  await expect(panel.locator('.contract-representation code')).toHaveText(
+    recordedChecksum ?? '',
+  );
+  const currentClient = object(
+    await body(
+      await request.get(api + '/clients/' + text(client.id), {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  );
+  const correction = await request.patch(api + '/clients/' + text(client.id), {
+    headers: {
+      ...preparer,
+      'x-company-context-id': companyId,
+      'idempotency-key': 'c2-client-correction-' + suffix,
+    },
+    data: {
+      expectedVersion: currentClient.version,
+      displayName: 'Later live Client ' + suffix,
+    },
+  });
+  expect(correction.status()).toBe(200);
   await page.reload();
   await page
     .getByRole('button')
@@ -374,10 +453,25 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     })
     .click();
   await expect(
-    panel.getByText('Synthetic Contract special conditions', { exact: true }),
+    panel.getByText(
+      'Synthetic Contract special conditions <script>globalThis.contractInjected = true</script>',
+      { exact: true },
+    ),
   ).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document' })
+    .click();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  await expect(panel.locator('.contract-representation code')).toHaveText(
+    recordedChecksum ?? '',
+  );
   await page.waitForLoadState('networkidle');
-  for (const bundle of ['company-offer-preparer', 'company-offer-approver'])
+  for (const bundle of [
+    'company-offer-preparer',
+    'company-offer-approver',
+    'company-pricing-user',
+    'company-director-client',
+  ])
     expect(
       (
         await request.delete(
@@ -404,6 +498,21 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(
     panel.getByText('Illustrative reference 1 · version 1', { exact: true }),
   ).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document' })
+    .click();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  await expect(panel.locator('.contract-representation code')).toHaveText(
+    recordedChecksum ?? '',
+  );
+  await expect(
+    frame.getByText('Synthetic Contract Recipient ' + suffix, { exact: true }),
+  ).toBeVisible();
+  await documentElement.screenshot({
+    path: testInfo.outputPath(
+      'contract-document-reopened-' + suffix.toLowerCase() + '.png',
+    ),
+  });
   await expect(
     panel.getByRole('button', { name: 'Create Contract', exact: true }),
   ).toHaveCount(0);
@@ -441,6 +550,30 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   );
   expect(stored.sourceOfferVersionId).toBe(offerVersionId);
   expect(object(stored.version).pricingSnapshotId).toBe(text(snapshot.id));
+  expect(
+    (
+      await request.delete(
+        api +
+          '/company-contract-preparer-assignments/' +
+          membership +
+          '/' +
+          companyId,
+        {
+          headers: {
+            ...owner,
+            'idempotency-key': 'c2-reader-revoked-' + suffix,
+          },
+        },
+      )
+    ).status(),
+  ).toBe(200);
+  await panel
+    .getByRole('button', { name: 'Reload exact Contract document' })
+    .click();
+  await expect(panel).toHaveCount(0);
+  await expect(
+    page.locator('iframe[title="Illustrative Contract document"]'),
+  ).toHaveCount(0);
 });
 async function command({
   request,

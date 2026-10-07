@@ -1,0 +1,4 @@
+ALTER TABLE "contract_versions" ADD COLUMN "template_code" text DEFAULT 'CONTRACT_ILLUSTRATIVE' NOT NULL;--> statement-breakpoint
+ALTER TABLE "contract_versions" ADD COLUMN "template_version" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "contract_versions" ADD COLUMN "clause_versions" jsonb DEFAULT '[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "contract_versions" ADD CONSTRAINT "contract_versions_template_binding_check" CHECK ("contract_versions"."template_code" = 'CONTRACT_ILLUSTRATIVE' AND "contract_versions"."template_version" = 1 AND "contract_versions"."clause_versions" = '[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb);

@@ -221,9 +221,13 @@ function navigate(label: string) {
 }
 async function openRequest() {
   render(<App identity={deterministicBrowserIdentity()} />);
-  fireEvent.click(
-    await screen.findByRole('button', { name: /^Saved Request/u }),
-  );
+  const button = await screen.findByRole('button', {
+    name: /^Saved Request/u,
+  });
+  // Settle initial detail effects before typing into the association form.
+  await act(async () => {
+    fireEvent.click(button);
+  });
   return screen.findByRole('article', { name: detail.subject });
 }
 async function selectClient() {
