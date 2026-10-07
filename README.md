@@ -45,6 +45,9 @@ implemented product behavior.
 
 ## Local setup
 
+For production packaging and owner-managed activation, follow the single
+[Railway activation guide](docs/agents/railway-activation.md).
+
 Prerequisites: Node.js 24, pnpm 11.20.0, Docker with Compose.
 
 ```bash

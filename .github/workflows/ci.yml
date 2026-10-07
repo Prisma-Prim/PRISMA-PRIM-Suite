@@ -77,3 +77,28 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  packaging:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Validate Railway configuration without credentials
+        run: |
+          pnpm --dir .railway install --frozen-lockfile
+          pnpm --dir .railway typecheck
+          pnpm --dir .railway test
+
+      - name: Prove production image packaging
+        run: bash scripts/railway-packaging-smoke.sh
