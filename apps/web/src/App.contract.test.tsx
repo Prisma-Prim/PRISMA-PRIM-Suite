@@ -160,6 +160,7 @@ it('opens a recorded Contract from its Request without Offer or Client authority
               termStartsOn: null,
               termEndsOn: null,
               specialConditions: 'Synthetic added conditions',
+              latestQualityRun: null,
               decisionState: 'PENDING',
               executionState: 'NOT_EXECUTED',
               provenance: 'ILLUSTRATIVE',

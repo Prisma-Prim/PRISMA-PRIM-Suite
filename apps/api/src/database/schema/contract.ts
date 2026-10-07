@@ -175,6 +175,12 @@ export const contractVersions = pgTable(
       t.companyId,
       t.id,
     ),
+    uniqueIndex('contract_versions_contract_identity_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.contractId,
+      t.id,
+    ),
     uniqueIndex('contract_versions_number_unique').on(
       t.workspaceId,
       t.companyId,
@@ -282,6 +288,61 @@ export const contractReferenceCounters = pgTable(
   ],
 );
 
+export const contractQualityRuns = pgTable(
+  'contract_quality_runs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    sequence: integer('sequence').generatedAlwaysAsIdentity(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    contractId: uuid('contract_id').notNull(),
+    contractVersionId: uuid('contract_version_id').notNull(),
+    ruleSet: text('rule_set')
+      .default('CONTRACT_QUALITY_ILLUSTRATIVE')
+      .notNull(),
+    ruleSetVersion: integer('rule_set_version').default(1).notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    evaluatedAt: timestamp('evaluated_at', { withTimezone: true }).notNull(),
+    results: jsonb('results').$type<unknown>().notNull(),
+  },
+  (t) => [
+    uniqueIndex('contract_quality_runs_scope_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.contractId,
+      t.id,
+    ),
+    foreignKey({
+      name: 'contract_quality_runs_version_fk',
+      columns: [t.workspaceId, t.companyId, t.contractId, t.contractVersionId],
+      foreignColumns: [
+        contractVersions.workspaceId,
+        contractVersions.companyId,
+        contractVersions.contractId,
+        contractVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'contract_quality_runs_actor_fk',
+      columns: [
+        t.workspaceId,
+        t.actorWorkspaceMembershipId,
+        t.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'contract_quality_runs_ruleset_check',
+      sql`${t.ruleSet} = 'CONTRACT_QUALITY_ILLUSTRATIVE' AND ${t.ruleSetVersion} = 1 AND jsonb_typeof(${t.results}) = 'array'`,
+    ),
+  ],
+);
+
 export const contractCommands = pgTable(
   'contract_commands',
   {
@@ -293,6 +354,8 @@ export const contractCommands = pgTable(
     fingerprint: text('fingerprint').notNull(),
     opportunityId: uuid('opportunity_id').notNull(),
     resultContractId: uuid('result_contract_id').notNull(),
+    kind: text('kind').default('CREATE').notNull(),
+    resultQualityRunId: uuid('result_quality_run_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (t) => [
@@ -302,6 +365,25 @@ export const contractCommands = pgTable(
       t.actorWorkspaceMembershipId,
       t.idempotencyKey,
     ),
+    check(
+      'contract_commands_kind_check',
+      sql`(${t.kind} = 'CREATE' AND ${t.resultQualityRunId} IS NULL) OR (${t.kind} = 'RUN_QUALITY_CHECKS' AND ${t.resultQualityRunId} IS NOT NULL)`,
+    ),
+    foreignKey({
+      name: 'contract_commands_run_fk',
+      columns: [
+        t.workspaceId,
+        t.companyId,
+        t.resultContractId,
+        t.resultQualityRunId,
+      ],
+      foreignColumns: [
+        contractQualityRuns.workspaceId,
+        contractQualityRuns.companyId,
+        contractQualityRuns.contractId,
+        contractQualityRuns.id,
+      ],
+    }),
     foreignKey({
       name: 'contract_commands_actor_fk',
       columns: [t.workspaceId, t.actorWorkspaceMembershipId],

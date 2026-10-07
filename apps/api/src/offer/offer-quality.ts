@@ -122,7 +122,9 @@ function result(
   return { code, status: passed ? 'PASS' : severity };
 }
 
-function coherentSnapshot(snapshot: OfferQualitySnapshot | null): boolean {
+export function coherentSnapshot(
+  snapshot: OfferQualitySnapshot | null,
+): boolean {
   if (
     !snapshot ||
     !snapshot.belongsToOffer ||

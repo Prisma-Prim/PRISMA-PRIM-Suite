@@ -1,3 +1,4 @@
+import { ContractQualityPanel } from './ContractQualityPanel';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -87,12 +88,13 @@ export function ContractPanel({
   const [view, setView] = useState<View>({ kind: 'loading' }),
     [feedback, setFeedback] = useState<Feedback>(null),
     [running, setRunning] = useState(false),
+    [qualityProtected, setQualityProtected] = useState(false),
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
   const request = useRef<AbortController | undefined>(undefined),
     attempt = useRef<{ body: string; key: string } | undefined>(undefined);
-  const locked = running || feedback === 'uncertain';
+  const locked = running || feedback === 'uncertain' || qualityProtected;
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
     return handleAuthenticatedAccessRejection({
       result,
@@ -278,6 +280,8 @@ export function ContractPanel({
       {view.kind === 'ready' &&
         view.stamp === stamp &&
         view.identity === identity &&
+        view.contract.companyId === companyId &&
+        view.contract.opportunityId === opportunityId &&
         companyId && (
           <>
             <ContractSummary contract={view.contract} />
@@ -291,6 +295,22 @@ export function ContractPanel({
               onCompanyContextRejected={onCompanyContextRejected}
               onActorRevalidated={onActorRevalidated}
               onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+            />
+            <ContractQualityPanel
+              key={stamp + ':' + opportunityId + ':' + view.contract.version.id}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              versionId={view.contract.version.id}
+              termEndsOn={view.contract.version.termEndsOn}
+              initialRun={view.contract.version.latestQualityRun}
+              mayRun={Boolean(
+                context?.contractPermissions?.includes(
+                  'commercial.contract.prepare',
+                ),
+              )}
+              reject={reject}
+              onProtectionChange={setQualityProtected}
             />
           </>
         )}

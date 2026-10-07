@@ -426,6 +426,154 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(panel.locator('.contract-representation code')).toHaveText(
     recordedChecksum ?? '',
   );
+  const stored = object(
+    object(
+      await body(
+        await request.get(api + '/contracts/opportunities/' + opportunityId, {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  expect(stored.sourceOfferVersionId).toBe(offerVersionId);
+  expect(object(stored.version).pricingSnapshotId).toBe(text(snapshot.id));
+  const checks = panel.getByRole('region', {
+    name: 'Contract Quality Checks',
+    exact: true,
+  });
+  await expect(
+    checks.getByText('No Contract Quality Check run yet.'),
+  ).toBeVisible();
+  const versionId = text(object(stored.version).id);
+  const qualityPath =
+    '/contracts/opportunities/' +
+    opportunityId +
+    '/versions/' +
+    versionId +
+    '/quality-checks';
+  const qualityAttempts: Array<{
+    body: string | null;
+    key: string | undefined;
+  }> = [];
+  await page.route('**/api' + qualityPath, async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    qualityAttempts.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (qualityAttempts.length === 1) {
+      expect((await route.fetch()).status()).toBe(201);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await checks
+    .getByRole('button', {
+      name: 'Retry the same Contract Quality Checks',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    checks.getByText('Contract checks completed with warnings.'),
+  ).toBeVisible();
+  expect(qualityAttempts[1]).toEqual(qualityAttempts[0]);
+  const old = object(
+    await body(
+      await request.get(api + qualityPath, {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  );
+  if (!Array.isArray(old.items)) throw new Error('Missing run history');
+  const oldRun = object(old.items[0]);
+  await checks.screenshot({
+    path: testInfo.outputPath(
+      'contract-quality-persisted-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath(
+      'contract-quality-persisted-context-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  const clientBeforeQualityCorrection = object(
+    await body(
+      await request.get(api + '/clients/' + text(client.id), {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  );
+  const qualityCorrection = await request.patch(
+    api + '/clients/' + text(client.id),
+    {
+      headers: {
+        ...preparer,
+        'x-company-context-id': companyId,
+        'idempotency-key': 'c3-correct-' + suffix,
+      },
+      data: {
+        expectedVersion: clientBeforeQualityCorrection.version,
+        displayName: 'Corrected Contract Recipient ' + suffix,
+        taxId: 'CORRECTED-C3-' + suffix.toUpperCase(),
+        address: '2 Example Street',
+      },
+    },
+  );
+  expect(qualityCorrection.status()).toBe(200);
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  await expect(checks.getByText('WARNING', { exact: true })).toHaveCount(2);
+  const reopened = await body(
+    await request.get(api + qualityPath + '/' + text(oldRun.id), {
+      headers: { ...preparer, 'x-company-context-id': companyId },
+    }),
+  );
+  expect(reopened).toEqual(oldRun);
+  const latest = object(
+    object(
+      await body(
+        await request.get(api + '/contracts/opportunities/' + opportunityId, {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  expect({ ...object(latest.version), latestQualityRun: null }).toEqual(
+    stored.version,
+  );
+  await checks.getByRole('button', { name: 'Reopen recorded checks' }).click();
+  await checks
+    .getByRole('button', {
+      name: 'Reopen run · ' + text(oldRun.evaluatedAt),
+      exact: true,
+    })
+    .click();
+  await expect(checks.getByText('WARNING', { exact: true })).toHaveCount(1);
+  await expect(
+    checks.getByText(text(oldRun.actorWorkspaceMembershipId), { exact: true }),
+  ).toBeVisible();
+  await checks.screenshot({
+    path: testInfo.outputPath(
+      'contract-quality-old-run-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath(
+      'contract-quality-old-run-context-' + suffix.toLowerCase() + '.png',
+    ),
+  });
   const currentClient = object(
     await body(
       await request.get(api + '/clients/' + text(client.id), {
@@ -539,17 +687,6 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
       'contract-reopened-' + suffix.toLowerCase() + '.png',
     ),
   });
-  const stored = object(
-    object(
-      await body(
-        await request.get(api + '/contracts/opportunities/' + opportunityId, {
-          headers: { ...preparer, 'x-company-context-id': companyId },
-        }),
-      ),
-    ).contract,
-  );
-  expect(stored.sourceOfferVersionId).toBe(offerVersionId);
-  expect(object(stored.version).pricingSnapshotId).toBe(text(snapshot.id));
   expect(
     (
       await request.delete(

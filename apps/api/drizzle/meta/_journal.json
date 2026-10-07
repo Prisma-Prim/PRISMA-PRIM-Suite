@@ -379,6 +379,13 @@
       "when": 1791358511717,
       "tag": "0053_contract_template_binding",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1791380360258,
+      "tag": "0054_contract_quality_checks",
+      "breakpoints": true
     }
   ]
 }

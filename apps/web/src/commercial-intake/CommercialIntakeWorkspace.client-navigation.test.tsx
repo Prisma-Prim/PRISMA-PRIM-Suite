@@ -762,9 +762,10 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
 
   it('adds no list dossier when association returns only the original Client reference', async () => {
     const original = detail('request-unlinked', 'Unlinked follow-up');
+    const detailRead = deferred();
     const transport = stubRoutes({
       [`GET ${listPath}`]: [reply({ items: dossierRows() })],
-      [`GET ${detailPath('request-unlinked')}`]: [reply(original)],
+      [`GET ${detailPath('request-unlinked')}`]: [detailRead.responder],
       'GET /api/clients/search?query=Accessible': [
         reply([
           {
@@ -797,13 +798,18 @@ describe('CommercialIntakeWorkspace Client dossier navigation', () => {
     renderNavigation({ onOpenClientDossier: vi.fn() }, associationEditor);
     await waitFor(() => expect(listedSubjects()).toHaveLength(4));
     openRow('Unlinked follow-up');
+    await detailRead.settle(original);
     await screen.findByRole('heading', { name: copy.associateClient });
     changeValue(screen.getByLabelText(copy.clientSearch), 'Accessible');
+    expect(screen.getByLabelText(copy.clientSearch)).toHaveValue('Accessible');
     fireEvent.click(screen.getByRole('button', { name: copy.searchClients }));
     changeValue(
       await screen.findByLabelText(copy.existingClient),
       associationClient.id,
     );
+    expect(
+      transport.calls('GET /api/clients/search?query=Accessible'),
+    ).toHaveLength(1);
     fireEvent.click(
       screen.getByRole('button', { name: copy.confirmClientAssociation }),
     );

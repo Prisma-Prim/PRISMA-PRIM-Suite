@@ -47,3 +47,45 @@ export const contractCopy = {
   net: 'Net',
   lineTax: 'Tax',
 };
+
+export const contractQualityCopy = {
+  title: 'Contract Quality Checks',
+  empty: 'No Contract Quality Check run yet.',
+  run: 'Run Contract Quality Checks',
+  running: 'Running Contract Quality Checks…',
+  retry: 'Retry the same Contract Quality Checks',
+  uncertain:
+    'The outcome is uncertain. Retry sends the exact same command and key.',
+  denied: 'Contract Quality Check access is unavailable.',
+  unavailable: 'The Contract Version is unavailable. Reload the Contract.',
+  superseded: 'This Contract Version has been superseded. Reload the Contract.',
+  conflict:
+    'This retry conflicts with its recorded command. Reload the Contract.',
+  invalid: 'The Quality Check command was refused.',
+  error: 'Quality Check results could not be loaded. Try again.',
+  success: 'All Contract Quality Checks passed.',
+  warnings: 'Contract checks completed with warnings.',
+  errors: 'Contract checks completed with errors.',
+  evaluatedAt: 'Evaluated at (UTC)',
+  actor: 'Checking membership',
+  ruleSet: 'Rule set',
+  version: 'Exact Contract Version',
+  history: 'Reopen recorded checks',
+  next: 'Older checks',
+  reopen: 'Reopen run',
+  loading: 'Loading recorded checks…',
+};
+export const contractQualityLabels = {
+  SOURCE_COMPANY_MATCHES: 'Issuing Company matches the source',
+  PARTY_AVAILABLE: 'Named party is currently available',
+  PARTY_MATCHES_SOURCE: 'Named party matches the source',
+  PARTY_IDENTITY_MATCHES_SOURCE: 'Recorded identity matches the source',
+  PARTY_IDENTITY_CURRENT: 'Recorded identity matches current identity',
+  PARTY_TAX_ID_RECORDED: 'IDNO / tax code is recorded',
+  PRICE_MATCHES_ACCEPTED_OFFER: 'Price matches the Accepted Offer',
+  PRICING_SNAPSHOT_COHERENT: 'Pricing Snapshot trace is coherent',
+  CONDITIONS_MATCH_ACCEPTED_OFFER: 'Copied conditions match the Accepted Offer',
+  ADDED_CONDITIONS_CONFIRMED: 'Added terms and conditions need confirmation',
+  TERM_END_NOT_PASSED: 'Term end has not passed (UTC)',
+  PROVISIONAL_MARKER_PRESENT: 'Illustrative markers are present',
+};

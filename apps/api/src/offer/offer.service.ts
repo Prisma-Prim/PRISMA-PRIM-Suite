@@ -128,6 +128,56 @@ export class OfferService {
     return source;
   }
 
+  /** Inspect only immutable source facts attached to a currently readable Contract. */
+  async inspectContractQualitySource(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    contractId: string;
+  }) {
+    const companyId = await this.authorization.requireContractAccess(
+      input.actor,
+      ['commercial.contract.read'],
+      true,
+    );
+    await this.intake.requireReadableOfferOpportunity(
+      input.actor,
+      input.opportunityId,
+      false,
+    );
+    const [source] = await this.databaseContext.connection
+      .select({
+        version: offerVersions,
+        originalClientAccountId: contracts.originalClientAccountId,
+      })
+      .from(contracts)
+      .innerJoin(
+        offerVersions,
+        and(
+          eq(offerVersions.workspaceId, contracts.workspaceId),
+          eq(offerVersions.companyId, contracts.companyId),
+          eq(offerVersions.offerId, contracts.sourceOfferId),
+          eq(offerVersions.id, contracts.sourceOfferVersionId),
+        ),
+      )
+      .where(
+        and(
+          eq(contracts.workspaceId, input.actor.workspaceId),
+          eq(contracts.companyId, companyId),
+          eq(contracts.opportunityId, input.opportunityId),
+          eq(contracts.id, input.contractId),
+        ),
+      );
+    if (!source) throw new NotFoundException();
+    return {
+      companyId: source.version.companyId,
+      originalClientAccountId: source.originalClientAccountId,
+      recipient: offerRecipientCopy(source.version),
+      pricingSnapshotId: source.version.pricingSnapshotId,
+      scopeNote: source.version.scopeNote,
+      commercialConditions: source.version.commercialConditions,
+    };
+  }
+
   /** Recorded accepted source only; no pricing or live-Client projection locks. */
   async resolveAcceptedContractSource(input: {
     actor: ActorContext;

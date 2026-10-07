@@ -1,3 +1,7 @@
+import {
+  readContractQualityRun,
+  type ContractQualityRunView,
+} from './contract-quality-response';
 export interface ContractView {
   id: string;
   companyId: string;
@@ -6,6 +10,7 @@ export interface ContractView {
   sourceOffer: { illustrativeReference: number; versionNumber: number };
   illustrativeReference: number;
   version: {
+    latestQualityRun: ContractQualityRunView | null;
     id: string;
     recipient: {
       legalName: string;
@@ -72,6 +77,14 @@ export function readContract(value: unknown): ContractView {
     illustrativeReference: input.illustrativeReference,
     version: {
       id: string(version.id),
+      latestQualityRun:
+        version.latestQualityRun === null
+          ? null
+          : readContractQualityRun(
+              version.latestQualityRun,
+              string(version.id),
+              nullableDate(version.termEndsOn),
+            ),
       recipient: {
         legalName: string(recipient.legalName),
         taxId: nullableString(recipient.taxId),

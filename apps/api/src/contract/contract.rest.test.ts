@@ -80,6 +80,655 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('runs and reopens attributed checks on the exact persisted Contract Version', async () => {
+    const fixture = await acceptedOffer();
+    await grantContract(fixture, 'grant-quality');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const created = record(
+      await command({
+        path: base,
+        body: await contractPayload(fixture),
+        key: 'create-quality',
+        companyId: fixture.companyId,
+      }),
+    );
+    const versionId = stringField(record(created.version), 'id');
+    const path = base + '/versions/' + versionId + '/quality-checks';
+    const run = record(
+      await command({
+        path,
+        body: {},
+        key: 'run-quality',
+        companyId: fixture.companyId,
+      }),
+    );
+    expect(run).toMatchObject({
+      contractVersionId: versionId,
+      ruleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+      ruleSetVersion: 1,
+      actorWorkspaceMembershipId: fixture.actorMembershipId,
+      evaluatedAt: '2026-09-27T09:00:00.000Z',
+    });
+    expect(run.results).toEqual([
+      { code: 'SOURCE_COMPANY_MATCHES', status: 'PASS' },
+      { code: 'PARTY_AVAILABLE', status: 'PASS' },
+      { code: 'PARTY_MATCHES_SOURCE', status: 'PASS' },
+      { code: 'PARTY_IDENTITY_MATCHES_SOURCE', status: 'PASS' },
+      { code: 'PARTY_IDENTITY_CURRENT', status: 'PASS' },
+      { code: 'PARTY_TAX_ID_RECORDED', status: 'PASS' },
+      { code: 'PRICE_MATCHES_ACCEPTED_OFFER', status: 'PASS' },
+      { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+      { code: 'CONDITIONS_MATCH_ACCEPTED_OFFER', status: 'PASS' },
+      { code: 'ADDED_CONDITIONS_CONFIRMED', status: 'PASS' },
+      { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+    ]);
+    expect(
+      await command({
+        path,
+        body: {},
+        key: 'run-quality',
+        companyId: fixture.companyId,
+      }),
+    ).toEqual(run);
+    expect(
+      await json(
+        await request({
+          path: path + '/' + stringField(run, 'id'),
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toEqual(run);
+    const reloaded = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(record(reloaded.version).latestQualityRun).toEqual(run);
+    expect({ ...record(reloaded.version), latestQualityRun: null }).toEqual(
+      created.version,
+    );
+  });
+
+  it('preserves recorded Contract and old checks after Client correction, with bounded exact-version history', async () => {
+    const { fixture, created, base, path, versionId } = await qualityFixture();
+    const old = record(
+      await command({
+        path,
+        body: {},
+        key: 'old-run',
+        companyId: fixture.companyId,
+      }),
+    );
+    const current = record(
+      await json(
+        await request({
+          path: '/clients/' + fixture.clientId,
+          companyId: fixture.companyId,
+        }),
+      ),
+    );
+    const corrected = await request({
+      path: '/clients/' + fixture.clientId,
+      companyId: fixture.companyId,
+      init: {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'correct-after-run',
+        },
+        body: JSON.stringify({
+          expectedVersion: numberField(current, 'version'),
+          displayName: 'Corrected current party',
+          taxId: 'CORRECTED-SYNTHETIC',
+          address: '2 Example Street',
+        }),
+      },
+    });
+    expect(corrected.status).toBe(200);
+    instant = new Date('2026-10-07T09:00:00.000Z');
+    const newer = record(
+      await command({
+        path,
+        body: {},
+        key: 'new-run',
+        companyId: fixture.companyId,
+      }),
+    );
+    expect(newer.results).toContainEqual({
+      code: 'PARTY_IDENTITY_CURRENT',
+      status: 'WARNING',
+    });
+    expect(
+      await json(
+        await request({
+          path: path + '/' + stringField(old, 'id'),
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toEqual(old);
+    const after = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect({ ...record(after.version), latestQualityRun: null }).toEqual(
+      created.version,
+    );
+    expect(record(after.version).latestQualityRun).toEqual(newer);
+    expect(
+      await json(
+        await request({
+          path: path + '?limit=1',
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toEqual({ items: [newer], nextCursor: newer.id });
+    expect(
+      await json(
+        await request({
+          path: path + '?limit=1&cursor=' + stringField(newer, 'id'),
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toEqual({ items: [old], nextCursor: null });
+    for (const suffix of [
+      '?limit=0',
+      '?limit=51',
+      '?limit=1.5',
+      '?cursor=unknown',
+    ])
+      expect(
+        (await request({ path: path + suffix, companyId: fixture.companyId }))
+          .status,
+      ).toBe(400);
+    await expect(
+      pool.query(
+        'UPDATE contract_quality_runs SET evaluated_at=now() WHERE id=$1',
+        [old.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query('DELETE FROM contract_quality_runs WHERE id=$1', [old.id]),
+    ).rejects.toMatchObject({ code: '23514' });
+    expect(
+      (
+        await request({
+          path:
+            base +
+            '/versions/' +
+            fixture.snapshotId +
+            '/quality-checks/' +
+            stringField(old, 'id'),
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await request({
+          path:
+            base +
+            '/versions/' +
+            versionId +
+            '/quality-checks/' +
+            fixture.snapshotId,
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(404);
+    const counts = await pool.query<{ events: string }>(
+      'SELECT count(*)::text AS events FROM contract_events',
+    );
+    expect(counts.rows[0]?.events).toBe('2');
+  });
+  it('converges concurrent retries across restart, conflicts changed intent, and rechecks independent current authority', async () => {
+    const { fixture, path, base, created } = await qualityFixture();
+    const independentActor = record(
+      await json(
+        await request({
+          path: '/access/current-actor',
+          init: { headers: memberHeaders('contract-reader') },
+        }),
+      ),
+    );
+    for (const bundle of [
+      'company-context',
+      'company-commercial-intake',
+      'company-contract-preparer',
+    ])
+      await command({
+        path: '/' + bundle + '-assignments',
+        body: {
+          workspaceMembershipId: stringField(
+            independentActor,
+            'workspaceMembershipId',
+          ),
+          companyId: fixture.companyId,
+        },
+        key: 'independent-quality-' + bundle,
+      });
+    const send = (body: unknown, key: string) =>
+      request({
+        path,
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify(body),
+        },
+      });
+    const responses = await Promise.all([
+      send({}, 'shared-run'),
+      send({}, 'shared-run'),
+    ]);
+    expect(responses.map((r) => r.status)).toEqual([201, 201]);
+    const original = await json(responses[0]);
+    expect(await json(responses[1])).toEqual(original);
+    await harness.close();
+    harness = await createPostgresRestTestHarness({
+      databaseUrl: database.targetUrl,
+      serverClock: { now: () => new Date(instant) },
+      environment: {
+        NODE_ENV: 'test',
+        ACCESS_IDENTITY_MODE: 'test',
+        ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
+        ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
+        ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
+        ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Contract Workspace',
+      },
+    });
+    ({ origin, pool } = harness);
+    instant = new Date('2026-10-08T09:00:00.000Z');
+    expect(await json(await send({}, 'shared-run'))).toEqual(original);
+    expect(
+      (await send({ expectedContractRevision: 1 }, 'shared-run')).status,
+    ).toBe(409);
+    expect((await send({}, 'create-quality-fixture')).status).toBe(409);
+    for (const bundle of [
+      'company-offer-preparer-assignments',
+      'company-offer-approver-assignments',
+      'company-director-client-assignments',
+    ])
+      expect(
+        (
+          await request({
+            path:
+              '/' +
+              bundle +
+              '/' +
+              fixture.actorMembershipId +
+              '/' +
+              fixture.companyId,
+            init: {
+              method: 'DELETE',
+              headers: { 'idempotency-key': 'remove-' + bundle },
+            },
+          })
+        ).status,
+      ).toBe(200);
+    const independentHeaders = memberHeaders('contract-reader');
+    for (const unreadable of [
+      '/clients/' + fixture.clientId,
+      '/offers/opportunities/' + fixture.opportunityId,
+    ])
+      expect(
+        (
+          await request({
+            path: unreadable,
+            companyId: fixture.companyId,
+            init: { headers: independentHeaders },
+          })
+        ).status,
+      ).toBe(403);
+    const independent = record(
+      await json(
+        await request({
+          path,
+          companyId: fixture.companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              ...independentHeaders,
+              'content-type': 'application/json',
+              'idempotency-key': 'independent-run',
+            },
+            body: '{}',
+          },
+        }),
+      ),
+    );
+    expect(independent.results).toEqual(record(original).results);
+    const read = record(
+      record(
+        await json(
+          await request({
+            path: base,
+            companyId: fixture.companyId,
+            init: { headers: independentHeaders },
+          }),
+        ),
+      ).contract,
+    );
+    expect(read.clientReference).toBeUndefined();
+    expect(record(read.version).recipient).toEqual(
+      record(created.version).recipient,
+    );
+    expect(
+      (
+        await request({
+          path:
+            '/company-contract-preparer-assignments/' +
+            fixture.actorMembershipId +
+            '/' +
+            fixture.companyId,
+          init: {
+            method: 'DELETE',
+            headers: { 'idempotency-key': 'revoke-checker' },
+          },
+        })
+      ).status,
+    ).toBe(200);
+    const refused = await send({}, 'shared-run');
+    expect(refused.status).toBe(403);
+    expect(await json(refused)).not.toHaveProperty('results');
+    expect(
+      (
+        await request({
+          path: path + '/' + stringField(record(original), 'id'),
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(403);
+    const counts = await pool.query<{
+      runs: string;
+      receipts: string;
+      events: string;
+    }>(
+      "SELECT (SELECT count(*) FROM contract_quality_runs)::text AS runs,(SELECT count(*) FROM contract_commands WHERE kind='RUN_QUALITY_CHECKS')::text AS receipts,(SELECT count(*) FROM contract_events)::text AS events",
+    );
+    expect(counts.rows[0]).toEqual({ runs: '2', receipts: '2', events: '2' });
+  });
+  it('fences identity invalidation on a separate connection and records one coherent current observation', async () => {
+    const { fixture, path } = await qualityFixture();
+    const blocker = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const pid = (
+        await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0]?.pid;
+      if (!pid) throw new Error('Missing blocker PID');
+      await blocker.query(
+        'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      pending = request({
+        path,
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': 'fenced-run',
+          },
+          body: '{}',
+        },
+      });
+      await waitForBlocker(pid);
+      await blocker.query(
+        "UPDATE client_accounts SET display_name='Corrected while waiting' WHERE id=$1",
+        [fixture.clientId],
+      );
+      await blocker.query(
+        "UPDATE client_company_relationships SET status='archived' WHERE client_account_id=$1 AND company_id=$2",
+        [fixture.clientId, fixture.companyId],
+      );
+      await blocker.query('COMMIT');
+      const response = await pending;
+      expect(response.status).toBe(201);
+      const results = record(await json(response)).results;
+      expect(results).toContainEqual({
+        code: 'PARTY_AVAILABLE',
+        status: 'ERROR',
+      });
+      expect(results).toContainEqual({
+        code: 'PARTY_IDENTITY_CURRENT',
+        status: 'WARNING',
+      });
+      expect(results).toContainEqual({
+        code: 'PARTY_IDENTITY_MATCHES_SOURCE',
+        status: 'PASS',
+      });
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await pending;
+    }
+  });
+  it('orders revocation against the authorized run and denies its cached replay afterwards', async () => {
+    const { fixture, path } = await qualityFixture();
+    const blocker = await pool.connect();
+    let pending: Promise<Response> | undefined,
+      revoked: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const pid = (
+        await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0]?.pid;
+      if (!pid) throw new Error('Missing blocker PID');
+      await blocker.query(
+        'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      const send = () =>
+        request({
+          path,
+          companyId: fixture.companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'run-before-revoke',
+            },
+            body: '{}',
+          },
+        });
+      pending = send();
+      const commandPid = await waitForBlocker(pid);
+      revoked = request({
+        path:
+          '/company-contract-preparer-assignments/' +
+          fixture.actorMembershipId +
+          '/' +
+          fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'concurrent-check-revoke' },
+        },
+      });
+      await waitForBlocker(commandPid);
+      await blocker.query('COMMIT');
+      expect((await pending).status).toBe(201);
+      expect((await revoked).status).toBe(200);
+      expect((await send()).status).toBe(403);
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await Promise.allSettled(
+        [pending, revoked].filter((value) => value !== undefined),
+      );
+    }
+  });
+
+  it('rolls back the run and receipt if persistence or authorized response construction fails', async () => {
+    const { fixture, path } = await qualityFixture();
+    const send = () =>
+      request({
+        path,
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': 'rollback-quality',
+          },
+          body: '{}',
+        },
+      });
+    for (const failure of ['receipt', 'response']) {
+      if (failure === 'receipt')
+        await pool.query(
+          "CREATE FUNCTION fail_c3_receipt() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic receipt failure'; END; $$; CREATE TRIGGER fail_c3_receipt BEFORE INSERT ON contract_commands FOR EACH ROW EXECUTE FUNCTION fail_c3_receipt()",
+        );
+      else
+        await pool.query(
+          'DROP TRIGGER contract_quality_results_valid ON contract_quality_runs; CREATE FUNCTION fail_c3_response() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.results := \'[{"code":"UNKNOWN","status":"PASS"}]\'::jsonb; RETURN NEW; END; $$; CREATE TRIGGER fail_c3_response BEFORE INSERT ON contract_quality_runs FOR EACH ROW EXECUTE FUNCTION fail_c3_response()',
+        );
+      try {
+        const refused = await send();
+        expect(refused.status).toBe(500);
+        expect(await json(refused)).toMatchObject({
+          code: 'CONTRACT_QUALITY_UNCERTAIN',
+        });
+        const counts = await pool.query<{ runs: string; commands: string }>(
+          "SELECT (SELECT count(*) FROM contract_quality_runs)::text AS runs,(SELECT count(*) FROM contract_commands WHERE kind='RUN_QUALITY_CHECKS')::text AS commands",
+        );
+        expect(counts.rows[0]).toEqual({ runs: '0', commands: '0' });
+      } finally {
+        if (failure === 'receipt')
+          await pool.query(
+            'DROP TRIGGER fail_c3_receipt ON contract_commands; DROP FUNCTION fail_c3_receipt()',
+          );
+        else
+          await pool.query(
+            'DROP TRIGGER fail_c3_response ON contract_quality_runs; DROP FUNCTION fail_c3_response(); CREATE TRIGGER contract_quality_results_valid BEFORE INSERT ON contract_quality_runs FOR EACH ROW EXECUTE FUNCTION guard_c3_quality_results()',
+          );
+      }
+    }
+    expect((await send()).status).toBe(201);
+  });
+
+  it('upgrades the delivered 0053 baseline with persisted C1 Contract evidence and every existing permission and write-once guard intact', async () => {
+    const { fixture, created, base } = await qualityFixture();
+    const evidence = () =>
+      pool.query<{
+        contracts: unknown;
+        versions: unknown;
+        receipts: unknown;
+        permissions: unknown;
+        guards: unknown;
+      }>(`SELECT
+      (SELECT jsonb_agg(to_jsonb(c) ORDER BY c.id) FROM contracts c) AS contracts,
+      (SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id) FROM contract_versions v) AS versions,
+      (SELECT jsonb_agg(to_jsonb(r)-ARRAY['kind','result_quality_run_id'] ORDER BY r.id) FROM contract_commands r) AS receipts,
+      (SELECT jsonb_agg(to_jsonb(a) ORDER BY a.id) FROM company_role_assignments a) AS permissions,
+      (SELECT jsonb_agg(pg_get_triggerdef(t.oid) ORDER BY t.tgname) FROM pg_trigger t WHERE t.tgname IN ('contracts_immutable','contract_versions_immutable','contract_commands_immutable','contract_events_immutable')) AS guards`);
+    const before = (await evidence()).rows;
+    // Restore only C3 additions in this isolated fixture to the delivered 0053
+    // baseline; exercise the ordinary additive upgrade over real C1 rows.
+    await pool.query(`DROP TABLE contract_quality_runs CASCADE;
+      DROP FUNCTION guard_c3_quality_results();
+      ALTER TABLE contract_commands DROP COLUMN kind, DROP COLUMN result_quality_run_id;
+      DROP INDEX contract_versions_contract_identity_unique;
+      DELETE FROM drizzle.__drizzle_migrations WHERE created_at=(SELECT max(created_at) FROM drizzle.__drizzle_migrations);`);
+    await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
+    expect((await evidence()).rows).toEqual(before);
+    expect(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    ).toEqual(created);
+    await expect(
+      pool.query(
+        'UPDATE contract_versions SET special_conditions=$1 WHERE contract_id=$2',
+        ['Changed', created.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query('DELETE FROM contract_commands WHERE result_contract_id=$1', [
+        created.id,
+      ]),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+  it('keeps unknown, cross-Company, cross-Workspace and missing Opportunity authority refusals free of run metadata', async () => {
+    const { fixture, path } = await qualityFixture();
+    const old = record(
+      await command({
+        path,
+        body: {},
+        key: 'safe-run',
+        companyId: fixture.companyId,
+      }),
+    );
+    const other = await acceptedOffer({ suffix: 'other-quality' });
+    await grantContract(other, 'other-quality-grant');
+    for (const requestInput of [
+      { path: path + '/' + stringField(old, 'id'), companyId: other.companyId },
+      {
+        path: path + '/' + stringField(old, 'id'),
+        companyId: fixture.companyId,
+        init: {
+          headers: {
+            'x-workspace-context-id': '00000000-0000-4000-8000-000000000999',
+          },
+        },
+      },
+      {
+        path: path + '/------------------------------------',
+        companyId: fixture.companyId,
+      },
+    ]) {
+      const refused = await request(requestInput);
+      expect([403, 404]).toContain(refused.status);
+      const body = await json(refused);
+      expect(body).not.toHaveProperty('results');
+      expect(body).not.toHaveProperty('actorWorkspaceMembershipId');
+      expect(body).not.toHaveProperty('evaluatedAt');
+    }
+    expect(
+      (
+        await request({
+          path:
+            '/company-commercial-intake-assignments/' +
+            fixture.actorMembershipId +
+            '/' +
+            fixture.companyId,
+          init: {
+            method: 'DELETE',
+            headers: { 'idempotency-key': 'revoke-opportunity-checks' },
+          },
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await request({
+          path: path + '/' + stringField(old, 'id'),
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await request({
+          path,
+          companyId: fixture.companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'safe-run',
+            },
+            body: '{}',
+          },
+        })
+      ).status,
+    ).toBe(403);
+  });
+
   it('requires current Contract and Opportunity authority for exact bytes without Offer, Pricing or Client prerequisites', async () => {
     const fixture = await acceptedOffer();
     await grantContract(fixture, 'representation-grant');
@@ -235,166 +884,226 @@ withPostgres('First illustrative Contract REST', () => {
         });
     }
   });
-  it('upgrades actual C1 versions and receipts without changing any historic field or immutable guard', async () => {
-    if (!databaseUrl) throw new Error('Missing safe test database');
-    const journal = record(
-      JSON.parse(await readFile('drizzle/meta/_journal.json', 'utf8')),
-    );
-    if (!Array.isArray(journal.entries)) throw new Error('Invalid journal');
-    const entries = journal.entries.map(record);
-    const index = entries.findIndex(
-      (entry) => entry.tag === '0053_contract_template_binding',
-    );
-    expect(index).toBe(53);
-    expect(entries[index - 1]?.tag).toBe(
-      '0052_confirmed_cost_profitability_estimate',
-    );
-    const previous = await mkdtemp(join(tmpdir(), 'prisma-c2-upgrade-'));
-    if (
-      dirname(previous) !== resolve(tmpdir()) ||
-      !basename(previous).startsWith('prisma-c2-upgrade-')
-    )
-      throw new Error('Unsafe migration fixture path');
-    const priorDatabase = await createIsolatedPostgresTestDatabase({
-      baseDatabaseUrl: databaseUrl,
-      namePrefix: 'contract_c2_upgrade',
-    });
-    let priorHarness: PostgresRestTestHarness | undefined;
-    const original = { origin, pool };
-    try {
-      await mkdir(join(previous, 'meta'));
-      await writeFile(
-        join(previous, 'meta/_journal.json'),
-        JSON.stringify({ ...journal, entries: entries.slice(0, index) }),
+  it.each([
+    {
+      baseline: 'C1 / 0052',
+      migration: '0053_contract_template_binding',
+      index: 53,
+      previousTag: '0052_confirmed_cost_profitability_estimate',
+    },
+    {
+      baseline: 'C2 / 0053',
+      migration: '0054_contract_quality_checks',
+      index: 54,
+      previousTag: '0053_contract_template_binding',
+    },
+  ])(
+    'upgrades actual $baseline versions and receipts without changing any historic field or immutable guard',
+    async ({ migration, index: expectedIndex, previousTag }) => {
+      if (!databaseUrl) throw new Error('Missing safe test database');
+      const journal = record(
+        JSON.parse(await readFile('drizzle/meta/_journal.json', 'utf8')),
       );
-      for (const entry of entries.slice(0, index)) {
-        const tag = stringField(entry, 'tag');
-        if (!/^\d{4}_[a-z0-9_-]+$/u.test(tag))
-          throw new Error('Invalid migration tag');
-        await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
-      }
-      priorHarness = await createPostgresRestTestHarness({
-        databaseUrl: priorDatabase.targetUrl,
-        migrationsFolder: previous,
-        serverClock: { now: () => new Date(instant) },
-        environment: {
-          NODE_ENV: 'test',
-          ACCESS_IDENTITY_MODE: 'test',
-          ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
-          ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
-          ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
-          ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Contract Workspace',
-        },
+      if (!Array.isArray(journal.entries)) throw new Error('Invalid journal');
+      const entries = journal.entries.map(record);
+      const index = entries.findIndex((entry) => entry.tag === migration);
+      expect(index).toBe(expectedIndex);
+      expect(entries[index - 1]?.tag).toBe(previousTag);
+      const previous = await mkdtemp(join(tmpdir(), 'prisma-c2-upgrade-'));
+      if (
+        dirname(previous) !== resolve(tmpdir()) ||
+        !basename(previous).startsWith('prisma-c2-upgrade-')
+      )
+        throw new Error('Unsafe migration fixture path');
+      const priorDatabase = await createIsolatedPostgresTestDatabase({
+        baseDatabaseUrl: databaseUrl,
+        namePrefix: 'contract_c2_upgrade',
       });
-      ({ origin, pool } = priorHarness);
-      const fixture = await acceptedOffer();
-      await grantContract(fixture, 'historic-grant');
-      const payload = {
-        ...(await contractPayload(fixture)),
-        termStartsOn: '2026-10-01',
-        termEndsOn: '2026-12-31',
-        specialConditions: 'Historic conditions\nkept exactly',
-      };
-      // Only delivered C1 columns exist: synthesize a pre-slice persisted creation.
-      const inserted = await pool.query<{ id: string }>(
-        `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,source_offer_id,source_offer_version_id,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
+      let priorHarness: PostgresRestTestHarness | undefined;
+      const original = { origin, pool };
+      try {
+        await mkdir(join(previous, 'meta'));
+        await writeFile(
+          join(previous, 'meta/_journal.json'),
+          JSON.stringify({ ...journal, entries: entries.slice(0, index) }),
+        );
+        for (const entry of entries.slice(0, index)) {
+          const tag = stringField(entry, 'tag');
+          if (!/^\d{4}_[a-z0-9_-]+$/u.test(tag))
+            throw new Error('Invalid migration tag');
+          await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
+        }
+        priorHarness = await createPostgresRestTestHarness({
+          databaseUrl: priorDatabase.targetUrl,
+          migrationsFolder: previous,
+          serverClock: { now: () => new Date(instant) },
+          environment: {
+            NODE_ENV: 'test',
+            ACCESS_IDENTITY_MODE: 'test',
+            ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
+            ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'workspace-owner',
+            ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
+            ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Synthetic Contract Workspace',
+          },
+        });
+        ({ origin, pool } = priorHarness);
+        const fixture = await acceptedOffer();
+        await grantContract(fixture, 'historic-grant');
+        const payload = {
+          ...(await contractPayload(fixture)),
+          termStartsOn: '2026-10-01',
+          termEndsOn: '2026-12-31',
+          specialConditions: 'Historic conditions\nkept exactly',
+        };
+        // Synthesize creation using only the actual preceding schema's columns.
+        const inserted = await pool.query<{ id: string }>(
+          `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,source_offer_id,source_offer_version_id,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
         SELECT workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,offer_id,id,1,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM offer_versions WHERE id=$1 RETURNING id`,
-        [payload.acceptedOfferVersionId],
-      );
-      const contractId = inserted.rows[0]?.id;
-      if (!contractId) throw new Error('Missing historic Contract');
-      await pool.query(
-        `INSERT INTO contract_versions(workspace_id,company_id,contract_id,opportunity_id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,commercial_conditions,term_starts_on,term_ends_on,special_conditions,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
+          [payload.acceptedOfferVersionId],
+        );
+        const contractId = inserted.rows[0]?.id;
+        if (!contractId) throw new Error('Missing historic Contract');
+        await pool.query(
+          `INSERT INTO contract_versions(workspace_id,company_id,contract_id,opportunity_id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,commercial_conditions,term_starts_on,term_ends_on,special_conditions,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
         SELECT workspace_id,company_id,$2,opportunity_id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,commercial_conditions,$3,$4,$5,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM offer_versions WHERE id=$1`,
-        [
-          payload.acceptedOfferVersionId,
-          contractId,
-          payload.termStartsOn,
-          payload.termEndsOn,
-          payload.specialConditions,
-        ],
-      );
-      await pool.query(
-        `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,created_at) SELECT workspace_id,company_id,created_by_workspace_membership_id,'historic-command',$2,opportunity_id,id,created_at FROM contracts WHERE id=$1`,
-        [
-          contractId,
-          commandFingerprint({ opportunityId: fixture.opportunityId, payload }),
-        ],
-      );
-      await pool.query(
-        `INSERT INTO contract_reference_counters(workspace_id,company_id,kind,current_reference) SELECT workspace_id,company_id,kind,illustrative_reference FROM contracts WHERE id=$1`,
-        [contractId],
-      );
-      await pool.query(
-        `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata)
+          [
+            payload.acceptedOfferVersionId,
+            contractId,
+            payload.termStartsOn,
+            payload.termEndsOn,
+            payload.specialConditions,
+          ],
+        );
+        await pool.query(
+          `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,created_at) SELECT workspace_id,company_id,created_by_workspace_membership_id,'historic-command',$2,opportunity_id,id,created_at FROM contracts WHERE id=$1`,
+          [
+            contractId,
+            commandFingerprint({
+              opportunityId: fixture.opportunityId,
+              payload,
+            }),
+          ],
+        );
+        await pool.query(
+          `INSERT INTO contract_reference_counters(workspace_id,company_id,kind,current_reference) SELECT workspace_id,company_id,kind,illustrative_reference FROM contracts WHERE id=$1`,
+          [contractId],
+        );
+        await pool.query(
+          `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata)
         SELECT c.workspace_id,c.company_id,e.action,c.id,e.version_id,c.created_by_internal_user_id,c.created_by_workspace_membership_id,c.created_at,
           jsonb_build_object('contractId',c.id,'kind',c.kind,'origin',c.origin,'provenance','ILLUSTRATIVE','illustrativeReference',c.illustrative_reference,'offerVersionId',c.source_offer_version_id,'pricingSnapshotId',v.pricing_snapshot_id) || CASE WHEN e.version_id IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('contractVersionId',v.id,'versionNumber',v.version_number) END
         FROM contracts c JOIN contract_versions v ON v.contract_id=c.id
         CROSS JOIN LATERAL (VALUES ('contract.created',NULL::uuid),('contract_version.created',v.id)) e(action,version_id) WHERE c.id=$1`,
-        [contractId],
-      );
-      const evidence = () =>
-        pool.query<{
-          contracts: unknown;
-          versions: unknown;
-          commands: unknown;
-          events: unknown;
-          guards: unknown;
-        }>(`SELECT
+          [contractId],
+        );
+        const evidence = () =>
+          pool.query<{
+            contracts: unknown;
+            versions: unknown;
+            commands: unknown;
+            events: unknown;
+            guards: unknown;
+          }>(
+            `SELECT
         (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contracts c) AS contracts,
-        (SELECT jsonb_agg(to_jsonb(v)-ARRAY['template_code','template_version','clause_versions']::text[] ORDER BY id) FROM contract_versions v) AS versions,
-        (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contract_commands c) AS commands,
+        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['template_code','template_version','clause_versions']::text[] ELSE to_jsonb(v) END ORDER BY id) FROM contract_versions v) AS versions,
+        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
-        (SELECT jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid IN ('contracts'::regclass,'contract_versions'::regclass,'contract_commands'::regclass,'contract_events'::regclass,'contract_reference_counters'::regclass) AND conname <> 'contract_versions_template_binding_check') AS constraints,
-        (SELECT jsonb_agg(pg_get_triggerdef(oid) ORDER BY tgname) FROM pg_trigger WHERE tgname IN ('contracts_immutable','contract_versions_immutable','contract_commands_immutable','contract_events_immutable')) AS guards`);
-      const before = (await evidence()).rows;
-      await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
-      expect((await evidence()).rows).toEqual(before);
-      const path = '/contracts/opportunities/' + fixture.opportunityId;
-      const stored = record(
-        record(
-          await json(await request({ path, companyId: fixture.companyId })),
-        ).contract,
-      );
-      const version = record(stored.version);
-      expect(record(version.representation)).toMatchObject({
-        templateCode: 'CONTRACT_ILLUSTRATIVE',
-        templateVersion: 1,
-        clauseVersions: [
-          { code: 'CL_SUBJECT', version: 1 },
-          { code: 'CL_PRICE', version: 1 },
-          { code: 'CL_TERM', version: 1 },
-          { code: 'CL_CONDITIONS', version: 1 },
-          { code: 'CL_GENERAL', version: 1 },
-        ],
-      });
-      expect(
-        await json(await sendContract(fixture, payload, 'historic-command')),
-      ).toEqual(stored);
-      expect((await evidence()).rows).toEqual(before);
-      for (const table of [
-        'contracts',
-        'contract_versions',
-        'contract_commands',
-        'contract_events',
-      ]) {
-        const timeColumn =
-          table === 'contract_events' ? 'occurred_at' : 'created_at';
-        await expect(
-          pool.query(`UPDATE ${table} SET ${timeColumn}=${timeColumn}`),
-        ).rejects.toMatchObject({ code: '23514' });
-        await expect(pool.query(`DELETE FROM ${table}`)).rejects.toMatchObject({
-          code: '23514',
+        (SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM company_role_assignments a) AS permissions,
+        (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM activity_log_events e) AS activity,
+        (SELECT jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid IN ('contracts'::regclass,'contract_versions'::regclass,'contract_commands'::regclass,'contract_events'::regclass,'contract_reference_counters'::regclass) AND conname<>ALL($2::text[])) AS constraints,
+        (SELECT jsonb_agg(pg_get_triggerdef(oid) ORDER BY tgname) FROM pg_trigger WHERE tgname IN ('contracts_immutable','contract_versions_immutable','contract_commands_immutable','contract_events_immutable')) AS guards`,
+            [
+              index === 53,
+              [
+                ...(index === 53
+                  ? ['contract_versions_template_binding_check']
+                  : []),
+                'contract_commands_kind_check',
+                'contract_commands_run_fk',
+              ],
+            ],
+          );
+        const before = (await evidence()).rows;
+        await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
+        expect((await evidence()).rows).toEqual(before);
+        expect(
+          (
+            await pool.query<{
+              kind: string;
+              result_quality_run_id: string | null;
+            }>('SELECT kind,result_quality_run_id FROM contract_commands')
+          ).rows,
+        ).toEqual([{ kind: 'CREATE', result_quality_run_id: null }]);
+        const additions = await pool.query<{ name: string }>(
+          `SELECT conname AS name FROM pg_constraint WHERE conname IN ('contract_commands_kind_check','contract_commands_run_fk','contract_quality_runs_ruleset_check','contract_quality_runs_version_fk','contract_quality_runs_actor_fk') ORDER BY conname`,
+        );
+        expect(additions.rows).toEqual([
+          { name: 'contract_commands_kind_check' },
+          { name: 'contract_commands_run_fk' },
+          { name: 'contract_quality_runs_actor_fk' },
+          { name: 'contract_quality_runs_ruleset_check' },
+          { name: 'contract_quality_runs_version_fk' },
+        ]);
+        expect(
+          (
+            await pool.query<{ name: string }>(
+              "SELECT tgname AS name FROM pg_trigger WHERE tgname IN ('contract_quality_runs_immutable','contract_quality_results_valid') ORDER BY tgname",
+            )
+          ).rows,
+        ).toEqual([
+          { name: 'contract_quality_results_valid' },
+          { name: 'contract_quality_runs_immutable' },
+        ]);
+        const path = '/contracts/opportunities/' + fixture.opportunityId;
+        const stored = record(
+          record(
+            await json(await request({ path, companyId: fixture.companyId })),
+          ).contract,
+        );
+        const version = record(stored.version);
+        expect(record(version.representation)).toMatchObject({
+          templateCode: 'CONTRACT_ILLUSTRATIVE',
+          templateVersion: 1,
+          clauseVersions: [
+            { code: 'CL_SUBJECT', version: 1 },
+            { code: 'CL_PRICE', version: 1 },
+            { code: 'CL_TERM', version: 1 },
+            { code: 'CL_CONDITIONS', version: 1 },
+            { code: 'CL_GENERAL', version: 1 },
+          ],
         });
+        expect(
+          await json(await sendContract(fixture, payload, 'historic-command')),
+        ).toEqual(stored);
+        expect((await evidence()).rows).toEqual(before);
+        for (const table of [
+          'contracts',
+          'contract_versions',
+          'contract_commands',
+          'contract_events',
+        ]) {
+          const timeColumn =
+            table === 'contract_events' ? 'occurred_at' : 'created_at';
+          await expect(
+            pool.query(`UPDATE ${table} SET ${timeColumn}=${timeColumn}`),
+          ).rejects.toMatchObject({ code: '23514' });
+          await expect(
+            pool.query(`DELETE FROM ${table}`),
+          ).rejects.toMatchObject({
+            code: '23514',
+          });
+        }
+      } finally {
+        ({ origin, pool } = original);
+        await priorHarness?.close();
+        await priorDatabase.close();
+        await rm(previous, { recursive: true, force: true });
       }
-    } finally {
-      ({ origin, pool } = original);
-      await priorHarness?.close();
-      await priorDatabase.close();
-      await rm(previous, { recursive: true, force: true });
-    }
-  }, 60000);
+    },
+    60000,
+  );
   it('creates and reloads version one from the exact Accepted Offer without re-entry', async () => {
     const fixture = await acceptedOffer();
     await command({
@@ -1251,6 +1960,27 @@ withPostgres('First illustrative Contract REST', () => {
       ).rows[0]?.count,
     ).toBe('0');
   });
+  async function qualityFixture() {
+    const fixture = await acceptedOffer();
+    await grantContract(fixture, 'grant-quality-fixture');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const created = record(
+      await command({
+        path: base,
+        body: await contractPayload(fixture),
+        key: 'create-quality-fixture',
+        companyId: fixture.companyId,
+      }),
+    );
+    const versionId = stringField(record(created.version), 'id');
+    return {
+      fixture,
+      created,
+      base,
+      versionId,
+      path: base + '/versions/' + versionId + '/quality-checks',
+    };
+  }
   async function grantContract(fixture: PreparedOffer, key: string) {
     return command({
       path: '/company-contract-preparer-assignments',

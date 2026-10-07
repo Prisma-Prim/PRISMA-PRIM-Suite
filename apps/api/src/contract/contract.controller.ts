@@ -43,6 +43,49 @@ export class ContractController {
       }),
     };
   }
+  @Post('versions/:versionId/quality-checks') runQuality(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.contracts.runQualityChecks({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      payload,
+      idempotencyKey,
+    });
+  }
+  @Get('versions/:versionId/quality-checks') runs(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Query('limit') limit: string | undefined,
+    @Query('cursor') cursor: string | undefined,
+  ) {
+    return this.contracts.listQualityRuns({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      limit,
+      cursor,
+    });
+  }
+  @Get('versions/:versionId/quality-checks/:runId') run(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Param('runId') runId: string,
+  ) {
+    return this.contracts.readQualityRun({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      runId,
+    });
+  }
   @Get('versions') list(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,
