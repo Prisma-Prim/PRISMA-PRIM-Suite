@@ -135,8 +135,10 @@ part of the web build and are never run through `drizzle-kit push`.
 
 Enable **Wait for CI** for both GitHub-backed services and confirm the deployment
 branch is `main`. The graph requests this through `checkSuites: true`. The
-repository CI runs on pushes to `main`; its packaging job follows the complete
-quality job. No Railway token or deploy workflow is installed in GitHub.
+repository CI runs on pushes to `main`; packaging runs alongside the independent
+test families after the fast checks. The required `quality` aggregate succeeds
+only after checks, every test family, the host build and packaging succeed. No
+Railway token or deploy workflow is installed in GitHub.
 
 For initial activation, confirm `main` has not advanced past the recorded green
 SHA before applying the graph or manually triggering deployment. Confirm Wait for

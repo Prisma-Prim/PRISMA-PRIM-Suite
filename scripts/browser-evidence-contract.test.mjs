@@ -18,7 +18,7 @@ const evidenceProbeConfigUrl = new URL(
 );
 
 async function readOutputDirectory(configUrl, suite) {
-  const config = await readFile(configUrl, 'utf8');
+  const config = (await readFile(configUrl, 'utf8')).replaceAll('\r\n', '\n');
   const declaration = /^ {2}outputDir: '([^']+)',$/mu.exec(config);
   assert.ok(
     declaration,
@@ -73,17 +73,65 @@ test('both suite directories stay under the uploaded evidence root', async () =>
   }
 });
 
-test('CI uploads screenshots from every suite directory', async () => {
-  const workflow = await readFile(workflowUrl, 'utf8');
-  const uploadStep = workflow.slice(
-    workflow.indexOf('- name: Upload browser evidence'),
-    workflow.indexOf('- name: Build'),
+test('CI uploads every evidence directory independently, including after failures', async () => {
+  const workflow = (await readFile(workflowUrl, 'utf8')).replaceAll(
+    '\r\n',
+    '\n',
   );
+  for (const [step, family] of [
+    ['Upload browser evidence', 'browser'],
+    ['Upload acceptance evidence', 'acceptance'],
+  ]) {
+    const start = workflow.indexOf(`- name: ${step}\n`);
+    const end = start + workflow.slice(start).search(/\n {2}[a-z_]+:\n/u);
+    const upload = workflow.slice(start, end);
+    assert.match(
+      upload,
+      /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+    );
+    assert.ok(
+      upload.includes(
+        `name: browser-evidence-part-${family}-\${{ github.run_id }}`,
+      ),
+    );
+    assert.match(upload, /overwrite: true/u);
+    assert.doesNotMatch(upload, /github\.run_attempt/u);
+    assert.ok(
+      upload.includes(`path: apps/web/${uploadedEvidenceRoot}/\n`),
+      'upload the whole evidence root, preserving browser, acceptance and probe directory names',
+    );
+    assert.match(upload, /retention-days: 14/u);
+  }
+});
 
+test('CI merges disjoint evidence under the established PR artifact name', async () => {
+  const workflow = (await readFile(workflowUrl, 'utf8')).replaceAll(
+    '\r\n',
+    '\n',
+  );
+  const quality = workflow.slice(workflow.indexOf('\n  quality:\n'));
   assert.match(
-    uploadStep,
-    new RegExp(`apps/web/${uploadedEvidenceRoot}/\\*\\*/\\*\\.png`, 'u'),
-    'the upload glob must keep matching screenshots in both suite directories',
+    quality,
+    /name: Download complete browser evidence\n {8}if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+  );
+  assert.match(quality, /uses: actions\/download-artifact@v4/u);
+  assert.match(
+    quality,
+    /pattern: browser-evidence-part-\*-\$\{\{ github\.run_id \}\}/u,
+  );
+  assert.match(quality, /path: browser-evidence\/\n {10}merge-multiple: true/u);
+  assert.match(
+    quality,
+    /name: Upload complete browser evidence\n {8}if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+  );
+  assert.match(
+    quality,
+    /name: browser-evidence-pr-\$\{\{ github\.event\.pull_request\.number \}\}/u,
+  );
+  assert.match(quality, /overwrite: true/u);
+  assert.match(
+    quality,
+    /path: browser-evidence\/\n {10}if-no-files-found: warn\n {10}retention-days: 14/u,
   );
 });
 
@@ -93,21 +141,19 @@ test('acceptance failures retain first-attempt evidence without a retry', async 
   assert.match(config, /screenshot: 'only-on-failure'/u);
   assert.doesNotMatch(config, /retries:\s*[1-9]/u);
 
-  const workflow = await readFile(workflowUrl, 'utf8');
-  assert.match(workflow, /apps\/web\/test-results\/acceptance\/\*\*/u);
+  const workflow = (await readFile(workflowUrl, 'utf8')).replaceAll(
+    '\r\n',
+    '\n',
+  );
   assert.match(workflow, /node scripts\/verify-acceptance-evidence\.mjs/u);
   assert.match(workflow, /id: repository_tests/u);
   const probeStep = workflow.slice(
     workflow.indexOf('- name: Verify acceptance failure evidence'),
-    workflow.indexOf('- name: Upload browser evidence'),
+    workflow.indexOf('- name: Upload acceptance evidence'),
   );
   assert.match(
     probeStep,
     /if: \$\{\{ !cancelled\(\) && \(steps\.repository_tests\.outcome == 'success' \|\| steps\.repository_tests\.outcome == 'failure'\) \}\}/u,
     'the isolated evidence probe must run after a failed product test, but not after cancellation or skipped tests',
-  );
-  assert.match(
-    workflow,
-    /apps\/web\/test-results\/acceptance-evidence-probe\/\*\*/u,
   );
 });

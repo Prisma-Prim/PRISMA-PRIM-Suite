@@ -1,5 +1,13 @@
 name: Set up repository verification
-description: Install the pinned toolchain, dependencies, isolated test database, and Chromium.
+description: Install the pinned toolchain and dependencies, with optional isolated PostgreSQL and Chromium.
+
+inputs:
+  postgres:
+    description: Provision the isolated test database using POSTGRES_ADMIN_URL.
+    default: 'true'
+  chromium:
+    description: Install Chromium and its system dependencies for browser verification.
+    default: 'true'
 
 runs:
   using: composite
@@ -18,6 +26,7 @@ runs:
       run: pnpm install --frozen-lockfile
 
     - name: Provision isolated test database
+      if: ${{ inputs.postgres == 'true' }}
       shell: bash
       run: >-
         pnpm --filter @prisma-prim/api exec node --input-type=module --eval
@@ -29,5 +38,6 @@ runs:
         client.end();'
 
     - name: Install Chromium explicitly
+      if: ${{ inputs.chromium == 'true' }}
       shell: bash
       run: pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
