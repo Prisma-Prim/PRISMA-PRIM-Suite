@@ -6,6 +6,10 @@ import {
   readContractQualityRun,
   type ContractQualityRunView,
 } from './contract-quality-response';
+import {
+  readContractSignature,
+  type ContractSignatureView,
+} from './contract-signature-response';
 export interface ContractView {
   id: string;
   companyId: string;
@@ -42,7 +46,10 @@ export interface ContractView {
         lineTax: string;
       }>;
     };
-  };
+  } & (
+    | { executionState: 'NOT_EXECUTED'; signature: null }
+    | { executionState: 'EXECUTED'; signature: ContractSignatureView }
+  );
 }
 export function readContractDetail(value: unknown): ContractView | null {
   const input = record(value);
@@ -57,13 +64,14 @@ export function readContract(value: unknown): ContractView {
   if (
     input.kind !== 'CONTRACT' ||
     input.origin !== 'ACCEPTED_OFFER' ||
-    (input.revision !== 1 && input.revision !== 2) ||
+    (input.revision !== 1 && input.revision !== 2 && input.revision !== 3) ||
     input.provisional !== true ||
     version.versionNumber !== 1 ||
     (version.decisionState !== 'PENDING' &&
       version.decisionState !== 'APPROVED' &&
       version.decisionState !== 'REJECTED') ||
-    version.executionState !== 'NOT_EXECUTED' ||
+    (version.executionState !== 'NOT_EXECUTED' &&
+      version.executionState !== 'EXECUTED') ||
     version.provenance !== 'ILLUSTRATIVE' ||
     version.provisional !== true ||
     !['PRIMARY', 'ADDITIONAL'].includes(string(recipient.kind)) ||
@@ -87,11 +95,31 @@ export function readContract(value: unknown): ContractView {
       (decision !== null || input.revision !== 1)) ||
     (version.decisionState !== 'PENDING' &&
       (!decision ||
-        decision.revision !== input.revision ||
+        (version.executionState === 'NOT_EXECUTED' &&
+          decision.revision !== input.revision) ||
         version.decisionState !==
           (decision.kind === 'APPROVE' ? 'APPROVED' : 'REJECTED')))
   )
     throw new Error('Invalid Contract decision state.');
+  const execution =
+    version.executionState === 'EXECUTED'
+      ? ({
+          executionState: 'EXECUTED',
+          signature: readContractSignature(version.signature, {
+            versionId: string(version.id),
+            termEndsOn: nullableDate(version.termEndsOn),
+            approval: decision,
+          }),
+        } as const)
+      : ({ executionState: 'NOT_EXECUTED', signature: null } as const);
+  if (
+    (execution.executionState === 'EXECUTED' &&
+      (input.revision !== 3 || version.decisionState !== 'APPROVED')) ||
+    (execution.executionState === 'NOT_EXECUTED' &&
+      version.signature !== null &&
+      version.signature !== undefined)
+  )
+    throw new Error('Invalid Contract execution state.');
   return {
     id: string(input.id),
     revision: positiveInteger(input.revision),
@@ -104,6 +132,7 @@ export function readContract(value: unknown): ContractView {
     },
     illustrativeReference: input.illustrativeReference,
     version: {
+      ...execution,
       decision,
       decisionState: version.decisionState,
       id: string(version.id),

@@ -81,6 +81,637 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('records both simulated signatures on the approved exact version and reloads unchanged evidence', async () => {
+    const { fixture, created, base, versionId } = await qualityFixture();
+    await grantApprover(fixture);
+    const approval = record(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            expectedContractRevision: 1,
+            acknowledgedWarningCodes: [],
+          },
+          'signature-approval',
+        ),
+      ),
+    );
+    instant = new Date('2026-09-28T00:05:00.000Z');
+    const payload = {
+      expectedContractRevision: 2,
+      providerSignatoryLabel: '  Synthetic provider 👩🏽‍💼  ',
+      clientSignatoryLabel: 'Synthetic Client É',
+      providerSignedOn: '2026-09-27',
+      clientSignedOn: '2026-09-28',
+      note: '  Declared evidence only.  ',
+      acknowledgedWarningCodes: [],
+    };
+    const signature = record(
+      await command({
+        path: base + '/versions/' + versionId + '/signature',
+        companyId: fixture.companyId,
+        body: payload,
+        key: 'signature-exact',
+      }),
+    );
+    expect(signature).toMatchObject({
+      providerSignatoryLabel: payload.providerSignatoryLabel,
+      clientSignatoryLabel: payload.clientSignatoryLabel,
+      providerSignedOn: payload.providerSignedOn,
+      clientSignedOn: payload.clientSignedOn,
+      note: payload.note,
+      acknowledgedWarningCodes: [],
+      revision: 3,
+      evidenceKind: 'SIMULATED',
+      provenance: 'ILLUSTRATIVE',
+      provisional: true,
+      recordedAt: instant.toISOString(),
+    });
+    const reload = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(reload).toMatchObject({
+      revision: 3,
+      version: { executionState: 'EXECUTED', decision: approval, signature },
+    });
+    expect(record(reload.version).representation).toEqual(
+      record(created.version).representation,
+    );
+  });
+  it('validates exact two-party signature fields and UTC dates without leaving failed evidence', async () => {
+    const { fixture, versionId } = await approvedSignatureFixture();
+    for (const [field, value] of [
+      ['providerSignatoryLabel', ' '],
+      ['providerSignatoryLabel', 'É'.repeat(201)],
+      ['clientSignatoryLabel', 'x\0y'],
+      ['clientSignatoryLabel', null],
+      ['providerSignedOn', '2026-09-26'],
+      ['clientSignedOn', '2026-09-28'],
+      ['clientSignedOn', '2026-02-30'],
+      ['providerSignedOn', '2026-9-27'],
+      ['note', '🙂'.repeat(501)],
+      ['note', 42],
+      ['evidenceKind', 'REAL'],
+      ['file', 'scan.pdf'],
+      ['expectedContractRevision', 0],
+      ['acknowledgedWarningCodes', ['PARTY_AVAILABLE']],
+      [
+        'acknowledgedWarningCodes',
+        ['TERM_END_NOT_PASSED', 'TERM_END_NOT_PASSED'],
+      ],
+    ] as const) {
+      const response = await signatureRequest(
+        fixture,
+        versionId,
+        { ...signaturePayload(), [field]: value },
+        'invalid-' + field,
+      );
+      expect(response.status).toBe(400);
+      expect(await json(response)).toMatchObject({
+        code: 'INVALID_CONTRACT_INPUT',
+        field,
+      });
+    }
+    expect(await signatureCounts()).toEqual({
+      signatures: '0',
+      runs: '1',
+      receipts: '0',
+      events: '0',
+      revision: 2,
+    });
+    const result = await signatureRequest(
+      fixture,
+      versionId,
+      {
+        ...signaturePayload(),
+        providerSignatoryLabel: '👩'.repeat(200),
+        note: '🙂'.repeat(500),
+      },
+      'unicode',
+    );
+    expect(result.status).toBe(201);
+  });
+  it('requires an approved unexecuted head and preserves earlier receipts after execution', async () => {
+    const { fixture, versionId, base } = await qualityFixture();
+    await grantApprover(fixture);
+    expect(
+      await json(
+        await signatureRequest(
+          fixture,
+          versionId,
+          { ...signaturePayload(), expectedContractRevision: 1 },
+          'pending',
+        ),
+      ),
+    ).toMatchObject({ code: 'CONTRACT_VERSION_NOT_APPROVED' });
+    const approvalPayload = {
+      expectedContractRevision: 1,
+      acknowledgedWarningCodes: [],
+    };
+    const approval = await json(
+      await decisionRequest(
+        fixture,
+        versionId,
+        'approve',
+        approvalPayload,
+        'approve-before-signature',
+      ),
+    );
+    expect(
+      await json(
+        await signatureRequest(
+          fixture,
+          versionId,
+          { ...signaturePayload(), expectedContractRevision: 1 },
+          'stale',
+        ),
+      ),
+    ).toMatchObject({ code: 'STALE_CONTRACT_REVISION' });
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'execute',
+        )
+      ).status,
+    ).toBe(201);
+    expect(
+      await json(
+        await signatureRequest(
+          fixture,
+          versionId,
+          { ...signaturePayload(), expectedContractRevision: 3 },
+          'execute-again',
+        ),
+      ),
+    ).toMatchObject({ code: 'CONTRACT_VERSION_ALREADY_EXECUTED' });
+    expect(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          approvalPayload,
+          'approve-before-signature',
+        ),
+      ),
+    ).toEqual(approval);
+    const reloaded = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(reloaded.revision).toBe(3);
+    expect(await signatureCounts()).toEqual({
+      signatures: '1',
+      runs: '2',
+      receipts: '1',
+      events: '1',
+      revision: 3,
+    });
+  });
+  it('acknowledges only fresh warnings beyond approval and blocks current errors without effects', async () => {
+    const { fixture, versionId } = await approvedSignatureFixture({
+      termEndsOn: '2026-09-27',
+      specialConditions: 'Declared conditions',
+    });
+    instant = new Date('2026-09-28T00:00:00.000Z');
+    for (const warnings of [
+      [],
+      ['ADDED_CONDITIONS_CONFIRMED'],
+      ['ADDED_CONDITIONS_CONFIRMED', 'TERM_END_NOT_PASSED'],
+    ])
+      expect(
+        await json(
+          await signatureRequest(
+            fixture,
+            versionId,
+            { ...signaturePayload(), acknowledgedWarningCodes: warnings },
+            'new-warnings',
+          ),
+        ),
+      ).toMatchObject({ code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED' });
+    await pool.query(
+      "UPDATE client_accounts SET status='archived' WHERE id=$1",
+      [fixture.clientId],
+    );
+    expect(
+      await json(
+        await signatureRequest(
+          fixture,
+          versionId,
+          {
+            ...signaturePayload(),
+            acknowledgedWarningCodes: ['TERM_END_NOT_PASSED'],
+          },
+          'fresh-errors',
+        ),
+      ),
+    ).toMatchObject({ code: 'QUALITY_CHECK_ERRORS' });
+    expect(await signatureCounts()).toEqual({
+      signatures: '0',
+      runs: '1',
+      receipts: '0',
+      events: '0',
+      revision: 2,
+    });
+    await pool.query("UPDATE client_accounts SET status='active' WHERE id=$1", [
+      fixture.clientId,
+    ]);
+    const signed = record(
+      await json(
+        await signatureRequest(
+          fixture,
+          versionId,
+          {
+            ...signaturePayload(),
+            acknowledgedWarningCodes: ['TERM_END_NOT_PASSED'],
+          },
+          'new-warnings',
+        ),
+      ),
+    );
+    expect(signed.acknowledgedWarningCodes).toEqual(['TERM_END_NOT_PASSED']);
+    const event = (
+      await pool.query<{ metadata: unknown }>(
+        "SELECT metadata FROM contract_events WHERE action='contract_version.signature_recorded'",
+      )
+    ).rows[0];
+    expect(event?.metadata).toMatchObject({
+      evidenceKind: 'SIMULATED',
+      provenance: 'ILLUSTRATIVE',
+      acknowledgedWarningCodes: ['TERM_END_NOT_PASSED'],
+    });
+    expect(Object.keys(record(event?.metadata)).sort()).toEqual([
+      'acknowledgedWarningCodes',
+      'contractId',
+      'contractVersionId',
+      'evidenceKind',
+      'kind',
+      'offerVersionId',
+      'origin',
+      'pricingSnapshotId',
+      'provenance',
+      'ruleSetVersion',
+      'versionNumber',
+    ]);
+  });
+  it('converges concurrent signature keys and exact retries while changed payloads conflict and revoked replay denies', async () => {
+    const { fixture, versionId } = await approvedSignatureFixture();
+    const payload = signaturePayload();
+    const concurrent = await Promise.all(
+      ['one', 'two'].map((key) =>
+        signatureRequest(fixture, versionId, payload, key),
+      ),
+    );
+    expect(concurrent.map((r) => r.status).sort()).toEqual([201, 409]);
+    const winnerIndex = concurrent.findIndex((r) => r.status === 201),
+      winner = concurrent[winnerIndex];
+    if (!winner) throw new Error('Missing signature winner.');
+    const result = await json(winner),
+      key = winnerIndex === 0 ? 'one' : 'two';
+    instant = new Date('2026-10-10T23:59:59.000Z');
+    const repeats = await Promise.all([
+      signatureRequest(fixture, versionId, payload, key),
+      signatureRequest(fixture, versionId, payload, key),
+    ]);
+    for (const repeat of repeats) {
+      expect(repeat.status).toBe(201);
+      expect(await json(repeat)).toEqual(result);
+    }
+    expect(
+      await json(
+        await signatureRequest(
+          fixture,
+          versionId,
+          { ...payload, note: 'Changed' },
+          key,
+        ),
+      ),
+    ).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    expect(await signatureCounts()).toEqual({
+      signatures: '1',
+      runs: '2',
+      receipts: '1',
+      events: '1',
+      revision: 3,
+    });
+    await request({
+      path:
+        '/company-contract-approver-assignments/' +
+        fixture.actorMembershipId +
+        '/' +
+        fixture.companyId,
+      init: {
+        method: 'DELETE',
+        headers: { 'idempotency-key': 'revoke-signature' },
+      },
+    });
+    expect(
+      (await signatureRequest(fixture, versionId, payload, key)).status,
+    ).toBe(403);
+  });
+  it('rolls back signature evidence on event failure and refuses forbidden database changes', async () => {
+    const { fixture, versionId } = await approvedSignatureFixture();
+    const incomplete = await pool.connect();
+    try {
+      await incomplete.query('BEGIN');
+      await incomplete.query(
+        "UPDATE contract_versions SET execution_state='EXECUTED'; UPDATE contracts SET revision=3",
+      );
+      await expect(incomplete.query('COMMIT')).rejects.toMatchObject({
+        code: '23514',
+      });
+    } finally {
+      await incomplete.query('ROLLBACK');
+      incomplete.release();
+    }
+    await pool.query(
+      "CREATE FUNCTION fail_signature_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='contract_version.signature_recorded' THEN RAISE EXCEPTION 'Synthetic signature rollback'; END IF; RETURN NEW; END; $$; CREATE TRIGGER fail_signature_event BEFORE INSERT ON contract_events FOR EACH ROW EXECUTE FUNCTION fail_signature_event()",
+    );
+    try {
+      expect(
+        await json(
+          await signatureRequest(
+            fixture,
+            versionId,
+            signaturePayload(),
+            'rollback-signature',
+          ),
+        ),
+      ).toMatchObject({ code: 'CONTRACT_SIGNATURE_UNCERTAIN' });
+      expect(await signatureCounts()).toEqual({
+        signatures: '0',
+        runs: '1',
+        receipts: '0',
+        events: '0',
+        revision: 2,
+      });
+    } finally {
+      await pool.query(
+        'DROP TRIGGER fail_signature_event ON contract_events; DROP FUNCTION fail_signature_event()',
+      );
+    }
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'rollback-signature',
+        )
+      ).status,
+    ).toBe(201);
+    for (const mutation of [
+      "UPDATE contract_signatures SET evidence_kind='REAL'",
+      "UPDATE contract_signatures SET note='changed'",
+      'DELETE FROM contract_signatures',
+      "UPDATE contract_versions SET execution_state='NOT_EXECUTED'",
+      "UPDATE contract_versions SET scope_note='Changed'",
+      'DELETE FROM contract_versions',
+      'DELETE FROM contracts',
+      "UPDATE contract_decisions SET representation_checksum=repeat('0',64)",
+      'DELETE FROM contract_decisions',
+      'DELETE FROM contract_quality_runs',
+      'DELETE FROM contract_commands',
+      'DELETE FROM contract_events',
+    ])
+      await expect(pool.query(mutation)).rejects.toMatchObject({
+        code: '23514',
+      });
+    expect(await signatureCounts()).toEqual({
+      signatures: '1',
+      runs: '2',
+      receipts: '1',
+      events: '1',
+      revision: 3,
+    });
+  });
+  it('records signatures with independent captured authority and safely denies missing, foreign and revoked targets', async () => {
+    const { fixture, versionId, base } = await approvedSignatureFixture();
+    const member = record(
+      await json(
+        await request({
+          path: '/access/current-actor',
+          init: { headers: memberHeaders('contract-reader') },
+        }),
+      ),
+    );
+    const membership = stringField(member, 'workspaceMembershipId');
+    const headers = memberHeaders('contract-reader');
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'independent',
+          headers,
+        )
+      ).status,
+    ).toBe(403);
+    for (const route of [
+      '/company-context-assignments',
+      '/company-commercial-intake-assignments',
+      '/company-contract-approver-assignments',
+    ])
+      await command({
+        path: route,
+        body: {
+          workspaceMembershipId: membership,
+          companyId: fixture.companyId,
+        },
+        key: 'signature-independent-' + route,
+      });
+    const active = record(
+      record(
+        await json(
+          await request({
+            path: '/access/current-actor',
+            companyId: fixture.companyId,
+            init: { headers },
+          }),
+        ),
+      ).activeCompany,
+    );
+    expect(active.clientPermissions).toEqual([]);
+    expect(active.offerPermissions).toBeUndefined();
+    expect(active.pricingUserPermissions).toBeUndefined();
+    expect(active.projectPermissions).toBeUndefined();
+    const unknown = await signatureRequest(
+      fixture,
+      '00000000-0000-4000-8000-000000000999',
+      signaturePayload(),
+      'unknown',
+      headers,
+    );
+    expect(unknown.status).toBe(404);
+    const safe = await json(unknown);
+    const other = await acceptedOffer({ suffix: 'signature-foreign' });
+    await grantApprover(other);
+    const foreign = await request({
+      path: base + '/versions/' + versionId + '/signature',
+      companyId: other.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'foreign',
+        },
+        body: JSON.stringify(signaturePayload()),
+      },
+    });
+    expect(foreign.status).toBe(404);
+    expect(await json(foreign)).toEqual(safe);
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'independent',
+          headers,
+        )
+      ).status,
+    ).toBe(201);
+    const reloaded = record(
+      record(
+        await json(
+          await request({
+            path: base,
+            companyId: fixture.companyId,
+            init: { headers },
+          }),
+        ),
+      ).contract,
+    );
+    expect(
+      record(record(reloaded.version).signature).actorWorkspaceMembershipId,
+    ).toBe(membership);
+    expect(reloaded.clientReference).toBeUndefined();
+    await request({
+      path:
+        '/company-commercial-intake-assignments/' +
+        membership +
+        '/' +
+        fixture.companyId,
+      init: {
+        method: 'DELETE',
+        headers: { 'idempotency-key': 'revoke-signature-read' },
+      },
+    });
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'independent',
+          headers,
+        )
+      ).status,
+    ).toBe(403);
+  });
+  it('orders effective approver revocation and current Client invalidation before signature commit', async () => {
+    const { fixture, versionId } = await approvedSignatureFixture();
+    for (const fence of ['client', 'approver'] as const) {
+      const blocker = await pool.connect();
+      let pending: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const identity = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0];
+        if (!identity) throw new Error('Missing blocker');
+        await blocker.query(
+          fence === 'client'
+            ? "UPDATE client_accounts SET status='archived' WHERE id=$1"
+            : "UPDATE company_role_assignments SET revoked_at=now() WHERE bundle='company_contract_approver' AND company_id=$1",
+          [fence === 'client' ? fixture.clientId : fixture.companyId],
+        );
+        pending = signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'fenced-' + fence,
+        );
+        await waitForBlocker(identity.pid);
+        await blocker.query('COMMIT');
+        const refused = await pending;
+        expect(refused.status).toBe(fence === 'client' ? 409 : 403);
+        if (fence === 'client')
+          expect(await json(refused)).toMatchObject({
+            code: 'QUALITY_CHECK_ERRORS',
+          });
+        expect(await signatureCounts()).toEqual({
+          signatures: '0',
+          runs: '1',
+          receipts: '0',
+          events: '0',
+          revision: 2,
+        });
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        if (pending) await Promise.allSettled([pending]);
+      }
+      if (fence === 'client')
+        await pool.query(
+          "UPDATE client_accounts SET status='active' WHERE id=$1",
+          [fixture.clientId],
+        );
+    }
+  });
+  it('refuses a representation different from the approved checksum without persisting signature evidence', async () => {
+    const { fixture, versionId } = await approvedSignatureFixture();
+    const saved = (
+      await pool.query<{ representation_checksum: string }>(
+        'SELECT representation_checksum FROM contract_decisions',
+      )
+    ).rows[0];
+    if (!saved) throw new Error('Missing approval');
+    // A controlled legacy-corruption probe tests the public checksum refusal;
+    // ordinary writes cannot bypass the separate append-only database guard.
+    await pool.query(
+      'ALTER TABLE contract_decisions DISABLE TRIGGER contract_decisions_immutable',
+    );
+    try {
+      await pool.query(
+        "UPDATE contract_decisions SET representation_checksum=repeat('0',64)",
+      );
+      expect(
+        await json(
+          await signatureRequest(
+            fixture,
+            versionId,
+            signaturePayload(),
+            'checksum-mismatch',
+          ),
+        ),
+      ).toMatchObject({ code: 'REPRESENTATION_MISMATCH' });
+      expect(await signatureCounts()).toEqual({
+        signatures: '0',
+        runs: '1',
+        receipts: '0',
+        events: '0',
+        revision: 2,
+      });
+    } finally {
+      await pool.query(
+        'UPDATE contract_decisions SET representation_checksum=$1',
+        [saved.representation_checksum],
+      );
+      await pool.query(
+        'ALTER TABLE contract_decisions ENABLE TRIGGER contract_decisions_immutable',
+      );
+    }
+  });
   it('lets an independent approver decide the exact version with fresh warnings and unchanged representation', async () => {
     const { fixture, created, base, versionId } = await qualityFixture({
       specialConditions: 'Synthetic additional conditions',
@@ -556,162 +1187,174 @@ withPostgres('First illustrative Contract REST', () => {
     ).toBe(403);
   });
 
-  it('fails closed for captured approver versions and each independent prerequisite without leaking targets', async () => {
-    const { fixture, versionId } = await qualityFixture();
-    const route =
-      '/contracts/opportunities/' +
-      fixture.opportunityId +
-      '/versions/' +
-      versionId +
-      '/approve';
-    const body = { expectedContractRevision: 1, acknowledgedWarningCodes: [] };
-    const send = (
-      companyId = fixture.companyId,
-      path = route,
-      headers: Record<string, string> = {},
-    ) =>
-      request({
-        path,
-        companyId,
-        init: {
-          method: 'POST',
-          headers: {
-            ...headers,
-            'content-type': 'application/json',
-            'idempotency-key': 'denied-key',
+  it.each(['approve', 'signature'] as const)(
+    'fails closed for captured approver versions and each independent prerequisite on %s without leaking targets',
+    async (action) => {
+      const { fixture, versionId } = await qualityFixture();
+      const route =
+        '/contracts/opportunities/' +
+        fixture.opportunityId +
+        '/versions/' +
+        versionId +
+        '/' +
+        action;
+      const body = {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: [],
+      };
+      const send = (
+        companyId = fixture.companyId,
+        path = route,
+        headers: Record<string, string> = {},
+      ) =>
+        request({
+          path,
+          companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'content-type': 'application/json',
+              'idempotency-key': 'denied-key',
+            },
+            body: JSON.stringify(body),
           },
-          body: JSON.stringify(body),
-        },
-      });
-    expect((await send()).status).toBe(403);
-    await grantApprover(fixture);
-    await expect(
-      pool.query(
-        "INSERT INTO company_role_assignments(workspace_id,company_id,workspace_membership_id,bundle,permission_set_version) VALUES($1,$2,$3,'company_contract_approver',NULL)",
-        [WORKSPACE_ID, fixture.companyId, fixture.actorMembershipId],
-      ),
-    ).rejects.toMatchObject({ code: '23514' });
-    const [constraint] = (
-      await pool.query<{ definition: string }>(
-        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
-      )
-    ).rows;
-    if (!constraint) throw new Error('Missing captured version constraint.');
-    await pool.query(
-      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
-    );
-    try {
-      for (const version of [null, 'v999']) {
+        });
+      expect((await send()).status).toBe(403);
+      await grantApprover(fixture);
+      await expect(
+        pool.query(
+          "INSERT INTO company_role_assignments(workspace_id,company_id,workspace_membership_id,bundle,permission_set_version) VALUES($1,$2,$3,'company_contract_approver',NULL)",
+          [WORKSPACE_ID, fixture.companyId, fixture.actorMembershipId],
+        ),
+      ).rejects.toMatchObject({ code: '23514' });
+      const [constraint] = (
+        await pool.query<{ definition: string }>(
+          "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
+        )
+      ).rows;
+      if (!constraint) throw new Error('Missing captured version constraint.');
+      await pool.query(
+        'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+      );
+      try {
+        for (const version of [null, 'v999']) {
+          await pool.query(
+            "UPDATE company_role_assignments SET permission_set_version=$1 WHERE workspace_id=$2 AND company_id=$3 AND bundle='company_contract_approver'",
+            [version, WORKSPACE_ID, fixture.companyId],
+          );
+          expect((await send()).status).toBe(403);
+        }
+      } finally {
         await pool.query(
-          "UPDATE company_role_assignments SET permission_set_version=$1 WHERE workspace_id=$2 AND company_id=$3 AND bundle='company_contract_approver'",
-          [version, WORKSPACE_ID, fixture.companyId],
+          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE workspace_id=$1 AND company_id=$2 AND bundle='company_contract_approver'",
+          [WORKSPACE_ID, fixture.companyId],
         );
-        expect((await send()).status).toBe(403);
+        await pool.query(
+          'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+            constraint.definition,
+        );
       }
-    } finally {
-      await pool.query(
-        "UPDATE company_role_assignments SET permission_set_version='v1' WHERE workspace_id=$1 AND company_id=$2 AND bundle='company_contract_approver'",
-        [WORKSPACE_ID, fixture.companyId],
+      const unknown = await send(
+        fixture.companyId,
+        route.replace(versionId, '00000000-0000-4000-8000-000000000999'),
       );
-      await pool.query(
-        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
-          constraint.definition,
-      );
-    }
-    const unknown = await send(
-      fixture.companyId,
-      route.replace(versionId, '00000000-0000-4000-8000-000000000999'),
-    );
-    expect(unknown.status).toBe(404);
-    const safe = await json(unknown);
-    const other = await acceptedOffer({ suffix: 'other-decision' });
-    await grantApprover(other);
-    const hidden = await send(other.companyId);
-    expect(hidden.status).toBe(404);
-    expect(await json(hidden)).toEqual(safe);
-    expect(
-      (
-        await send(fixture.companyId, route, {
-          'x-workspace-context-id': '00000000-0000-4000-8000-000000000999',
-        })
-      ).status,
-    ).toBe(403);
-    expect(
-      (
-        await fetch(origin + '/api' + route, {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'x-company-context-id': fixture.companyId,
-          },
-          body: JSON.stringify(body),
-        })
-      ).status,
-    ).toBe(401);
-    const reader = record(
-      await json(
-        await request({
-          path: '/access/current-actor',
-          init: { headers: memberHeaders('contract-reader') },
-        }),
-      ),
-    );
-    const independentMembershipId = stringField(
-      reader,
-      'workspaceMembershipId',
-    );
-    for (const bundle of [
-      'company-context',
-      'company-commercial-intake',
-      'company-contract-approver',
-    ])
-      await command({
-        path: '/' + bundle + '-assignments',
-        body: {
-          workspaceMembershipId: independentMembershipId,
-          companyId: fixture.companyId,
-        },
-        key: 'independent-' + bundle,
-      });
-    for (const bundle of ['company-commercial-intake', 'company-context']) {
+      expect(unknown.status).toBe(404);
+      const safe = await json(unknown);
+      const other = await acceptedOffer({ suffix: 'other-decision' });
+      await grantApprover(other);
+      const hidden = await send(other.companyId);
+      expect(hidden.status).toBe(404);
+      expect(await json(hidden)).toEqual(safe);
       expect(
         (
-          await request({
-            path:
-              '/' +
-              bundle +
-              '-assignments/' +
-              independentMembershipId +
-              '/' +
-              fixture.companyId,
-            init: {
-              method: 'DELETE',
-              headers: { 'idempotency-key': 'revoke-' + bundle },
-            },
+          await send(fixture.companyId, route, {
+            'x-workspace-context-id': '00000000-0000-4000-8000-000000000999',
           })
         ).status,
-      ).toBe(200);
-      expect(
-        (await send(fixture.companyId, route, memberHeaders('contract-reader')))
-          .status,
       ).toBe(403);
-      await command({
-        path: '/' + bundle + '-assignments',
-        body: {
-          workspaceMembershipId: independentMembershipId,
-          companyId: fixture.companyId,
-        },
-        key: 'restore-independent-' + bundle,
-      });
-    }
-    expect(
-      (
-        await pool.query<{ count: string }>(
-          'SELECT count(*)::text AS count FROM contract_decisions',
-        )
-      ).rows[0]?.count,
-    ).toBe('0');
-  });
+      expect(
+        (
+          await fetch(origin + '/api' + route, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-company-context-id': fixture.companyId,
+            },
+            body: JSON.stringify(body),
+          })
+        ).status,
+      ).toBe(401);
+      const reader = record(
+        await json(
+          await request({
+            path: '/access/current-actor',
+            init: { headers: memberHeaders('contract-reader') },
+          }),
+        ),
+      );
+      const independentMembershipId = stringField(
+        reader,
+        'workspaceMembershipId',
+      );
+      for (const bundle of [
+        'company-context',
+        'company-commercial-intake',
+        'company-contract-approver',
+      ])
+        await command({
+          path: '/' + bundle + '-assignments',
+          body: {
+            workspaceMembershipId: independentMembershipId,
+            companyId: fixture.companyId,
+          },
+          key: 'independent-' + bundle,
+        });
+      for (const bundle of ['company-commercial-intake', 'company-context']) {
+        expect(
+          (
+            await request({
+              path:
+                '/' +
+                bundle +
+                '-assignments/' +
+                independentMembershipId +
+                '/' +
+                fixture.companyId,
+              init: {
+                method: 'DELETE',
+                headers: { 'idempotency-key': 'revoke-' + bundle },
+              },
+            })
+          ).status,
+        ).toBe(200);
+        expect(
+          (
+            await send(
+              fixture.companyId,
+              route,
+              memberHeaders('contract-reader'),
+            )
+          ).status,
+        ).toBe(403);
+        await command({
+          path: '/' + bundle + '-assignments',
+          body: {
+            workspaceMembershipId: independentMembershipId,
+            companyId: fixture.companyId,
+          },
+          key: 'restore-independent-' + bundle,
+        });
+      }
+      expect(
+        (
+          await pool.query<{ count: string }>(
+            'SELECT count(*)::text AS count FROM contract_decisions',
+          )
+        ).rows[0]?.count,
+      ).toBe('0');
+    },
+  );
 
   it('orders decision authority before a concurrent revocation and denies replay after revocation', async () => {
     const { fixture, versionId } = await qualityFixture();
@@ -817,94 +1460,126 @@ withPostgres('First illustrative Contract REST', () => {
     }
   });
 
-  it('converges an identical retry after the HTTP acknowledgement is lost following commit', async () => {
-    const { fixture, versionId, base } = await qualityFixture();
-    await grantApprover(fixture);
-    const payload = {
-      expectedContractRevision: 1,
-      acknowledgedWarningCodes: [],
-    };
-    const proxy = createServer(async (incoming, outgoing) => {
-      try {
-        const chunks: Buffer[] = [];
-        for await (const chunk of incoming) {
-          if (!Buffer.isBuffer(chunk)) throw new Error('Unexpected proxy body');
-          chunks.push(chunk);
-        }
-        const committed = await fetch(
-          origin + '/api' + base + '/versions/' + versionId + '/approve',
-          {
-            method: 'POST',
-            headers: {
-              ...OWNER,
-              'x-company-context-id': fixture.companyId,
-              'content-type': 'application/json',
-              'idempotency-key': 'lost-ack',
+  it.each(['approve', 'signature'] as const)(
+    'converges an identical %s retry after the HTTP acknowledgement is lost following commit',
+    async (action) => {
+      const { fixture, versionId, base } =
+        action === 'signature'
+          ? await approvedSignatureFixture()
+          : await qualityFixture();
+      await grantApprover(fixture);
+      const payload =
+        action === 'signature'
+          ? signaturePayload()
+          : {
+              expectedContractRevision: 1,
+              acknowledgedWarningCodes: [],
+            };
+      const proxy = createServer(async (incoming, outgoing) => {
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of incoming) {
+            if (!Buffer.isBuffer(chunk))
+              throw new Error('Unexpected proxy body');
+            chunks.push(chunk);
+          }
+          const committed = await fetch(
+            origin + '/api' + base + '/versions/' + versionId + '/' + action,
+            {
+              method: 'POST',
+              headers: {
+                ...OWNER,
+                'x-company-context-id': fixture.companyId,
+                'content-type': 'application/json',
+                'idempotency-key': 'lost-ack',
+              },
+              body: Buffer.concat(chunks),
             },
-            body: Buffer.concat(chunks),
-          },
+          );
+          await committed.arrayBuffer();
+          outgoing.destroy();
+        } catch {
+          outgoing.destroy();
+        }
+      });
+      await new Promise<void>((resolve) =>
+        proxy.listen(0, '127.0.0.1', resolve),
+      );
+      const address = proxy.address();
+      if (!address || typeof address === 'string')
+        throw new Error('Missing proxy port');
+      try {
+        await expect(
+          fetch('http://127.0.0.1:' + address.port, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          }),
+        ).rejects.toThrow();
+        const stored = record(
+          record(
+            await json(
+              await request({ path: base, companyId: fixture.companyId }),
+            ),
+          ).contract,
         );
-        await committed.arrayBuffer();
-        outgoing.destroy();
-      } catch {
-        outgoing.destroy();
-      }
-    });
-    await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
-    const address = proxy.address();
-    if (!address || typeof address === 'string')
-      throw new Error('Missing proxy port');
-    try {
-      await expect(
-        fetch('http://127.0.0.1:' + address.port, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        }),
-      ).rejects.toThrow();
-      const stored = record(
-        record(
+        expect(stored.revision).toBe(action === 'signature' ? 3 : 2);
+        const decision = record(
+          record(stored.version)[
+            action === 'signature' ? 'signature' : 'decision'
+          ],
+        );
+        instant = new Date('2026-10-09T12:00:00.000Z');
+        expect(
           await json(
-            await request({ path: base, companyId: fixture.companyId }),
+            await decisionRequest(
+              fixture,
+              versionId,
+              action,
+              payload,
+              'lost-ack',
+            ),
           ),
-        ).contract,
-      );
-      expect(stored.revision).toBe(2);
-      const decision = record(record(stored.version).decision);
-      instant = new Date('2026-10-09T12:00:00.000Z');
-      expect(
-        await json(
-          await decisionRequest(
-            fixture,
-            versionId,
-            'approve',
-            payload,
-            'lost-ack',
-          ),
-        ),
-      ).toEqual(decision);
-      expect(
-        (
-          await pool.query<{ decisions: string; runs: string; events: string }>(
-            "SELECT (SELECT count(*) FROM contract_decisions)::text AS decisions,(SELECT count(*) FROM contract_quality_runs)::text AS runs,(SELECT count(*) FROM contract_events WHERE action='contract_version.approved')::text AS events",
-          )
-        ).rows[0],
-      ).toEqual({ decisions: '1', runs: '1', events: '1' });
-      for (const mutation of [
-        "UPDATE contract_decisions SET reason='changed'",
-        'DELETE FROM contract_decisions',
-        'UPDATE contracts SET revision=1',
-        "UPDATE contract_versions SET decision_state='PENDING'",
-      ])
-        await expect(pool.query(mutation)).rejects.toMatchObject({
-          code: '23514',
+        ).toEqual(decision);
+        expect(
+          (
+            await pool.query<{
+              decisions: string;
+              runs: string;
+              events: string;
+            }>(
+              "SELECT (SELECT count(*) FROM contract_decisions)::text AS decisions,(SELECT count(*) FROM contract_quality_runs)::text AS runs,(SELECT count(*) FROM contract_events WHERE action='contract_version.approved')::text AS events",
+            )
+          ).rows[0],
+        ).toEqual({
+          decisions: '1',
+          runs: action === 'signature' ? '2' : '1',
+          events: '1',
         });
-    } finally {
-      proxy.closeAllConnections();
-      await new Promise<void>((resolve, reject) =>
-        proxy.close((error) => (error ? reject(error) : resolve())),
-      );
-    }
-  });
+        if (action === 'signature')
+          expect(await signatureCounts()).toEqual({
+            signatures: '1',
+            runs: '2',
+            receipts: '1',
+            events: '1',
+            revision: 3,
+          });
+        for (const mutation of [
+          "UPDATE contract_decisions SET reason='changed'",
+          'DELETE FROM contract_decisions',
+          'UPDATE contracts SET revision=1',
+          "UPDATE contract_versions SET decision_state='PENDING'",
+        ])
+          await expect(pool.query(mutation)).rejects.toMatchObject({
+            code: '23514',
+          });
+      } finally {
+        proxy.closeAllConnections();
+        await new Promise<void>((resolve, reject) =>
+          proxy.close((error) => (error ? reject(error) : resolve())),
+        );
+      }
+    },
+  );
 
   it('runs and reopens attributed checks on the exact persisted Contract Version', async () => {
     const fixture = await acceptedOffer();
@@ -1687,6 +2362,12 @@ withPostgres('First illustrative Contract REST', () => {
       index: 55,
       previousTag: '0054_contract_quality_checks',
     },
+    {
+      baseline: 'C4 / 0055',
+      migration: '0056_contract_simulated_signature',
+      index: 56,
+      previousTag: '0055_contract_decisions',
+    },
   ])(
     'upgrades actual $baseline versions and receipts without changing any historic field or immutable guard',
     async ({ migration, index: expectedIndex, previousTag }) => {
@@ -1745,6 +2426,8 @@ withPostgres('First illustrative Contract REST', () => {
           termEndsOn: '2026-12-31',
           specialConditions: 'Historic conditions\nkept exactly',
         };
+        // C4's deferred evidence constraints require one coherent transaction.
+        if (index === 56) await pool.query('BEGIN');
         // Synthesize creation using only the actual preceding schema's columns.
         const inserted = await pool.query<{ id: string }>(
           `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,source_offer_id,source_offer_version_id,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
@@ -1786,7 +2469,8 @@ withPostgres('First illustrative Contract REST', () => {
         CROSS JOIN LATERAL (VALUES ('contract.created',NULL::uuid),('contract_version.created',v.id)) e(action,version_id) WHERE c.id=$1`,
           [contractId],
         );
-        if (index === 55) {
+        if (index === 56) await pool.query('COMMIT');
+        if (index >= 55) {
           // C3 records are synthesized using only the delivered 0054 columns;
           // the current command model additionally selects C4 receipt columns.
           const results = [
@@ -1825,8 +2509,46 @@ withPostgres('First illustrative Contract REST', () => {
             ],
           );
         }
+        if (index === 56) {
+          // Preserve an actual C4 approval shape, including its immutable
+          // run, receipt and event. Its checksum is synthetic fixture evidence.
+          await pool.query('BEGIN');
+          await pool.query(
+            `INSERT INTO contract_decisions(workspace_id,company_id,contract_id,contract_version_id,kind,result_revision,actor_internal_user_id,actor_workspace_membership_id,decided_at,quality_run_id,representation_checksum,acknowledged_warning_codes)
+             SELECT workspace_id,company_id,contract_id,contract_version_id,'APPROVE',2,actor_internal_user_id,actor_workspace_membership_id,evaluated_at,id,repeat('1',64),'["ADDED_CONDITIONS_CONFIRMED"]'::jsonb FROM contract_quality_runs WHERE contract_id=$1`,
+            [contractId],
+          );
+          await pool.query(
+            `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,kind,result_decision_id,created_at)
+             SELECT d.workspace_id,d.company_id,d.actor_workspace_membership_id,'historic-c4-approval',repeat('2',64),c.opportunity_id,c.id,'APPROVE',d.id,d.decided_at FROM contract_decisions d JOIN contracts c ON c.id=d.contract_id WHERE c.id=$1`,
+            [contractId],
+          );
+          await pool.query(
+            `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata)
+             SELECT d.workspace_id,d.company_id,'contract_version.approved',c.id,v.id,d.actor_internal_user_id,d.actor_workspace_membership_id,d.decided_at,
+               jsonb_build_object('contractId',c.id,'contractVersionId',v.id,'versionNumber',v.version_number,'kind',c.kind,'origin',c.origin,'provenance','ILLUSTRATIVE','offerVersionId',c.source_offer_version_id,'pricingSnapshotId',v.pricing_snapshot_id,'ruleSetVersion',1,'acknowledgedWarningCodes',d.acknowledged_warning_codes)
+             FROM contract_decisions d JOIN contracts c ON c.id=d.contract_id JOIN contract_versions v ON v.id=d.contract_version_id WHERE c.id=$1`,
+            [contractId],
+          );
+          await pool.query(
+            "UPDATE contract_versions SET decision_state='APPROVED' WHERE contract_id=$1",
+            [contractId],
+          );
+          await pool.query('UPDATE contracts SET revision=2 WHERE id=$1', [
+            contractId,
+          ]);
+          await pool.query('COMMIT');
+        }
+        const historicDecisions =
+          index === 56
+            ? (
+                await pool.query(
+                  'SELECT to_jsonb(d) AS row FROM contract_decisions d',
+                )
+              ).rows
+            : null;
         const historicQuality =
-          index === 55
+          index >= 55
             ? (
                 await pool.query(
                   'SELECT to_jsonb(r) AS row FROM contract_quality_runs r',
@@ -1844,7 +2566,7 @@ withPostgres('First illustrative Contract REST', () => {
             `SELECT
         (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contracts c) AS contracts,
         (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['template_code','template_version','clause_versions']::text[] ELSE to_jsonb(v) END ORDER BY id) FROM contract_versions v) AS versions,
-        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
+        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
         (SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM company_role_assignments a) AS permissions,
@@ -1866,12 +2588,23 @@ withPostgres('First illustrative Contract REST', () => {
                 'contract_versions_decision_evidence',
                 'contract_commands_kind_check',
                 'contract_commands_run_fk',
+                'contract_commands_signature_fk',
+                'contracts_signature_evidence',
+                'contract_versions_signature_evidence',
               ],
             ],
           );
         const before = (await evidence()).rows;
         await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
         expect((await evidence()).rows).toEqual(before);
+        if (historicDecisions)
+          expect(
+            (
+              await pool.query(
+                'SELECT to_jsonb(d) AS row FROM contract_decisions d',
+              )
+            ).rows,
+          ).toEqual(historicDecisions);
         if (historicQuality)
           expect(
             (
@@ -2846,10 +3579,82 @@ withPostgres('First illustrative Contract REST', () => {
       key: 'grant-approver-' + fixture.companyId,
     });
   }
+  function signaturePayload() {
+    return {
+      expectedContractRevision: 2,
+      providerSignatoryLabel: 'Synthetic provider',
+      clientSignatoryLabel: 'Synthetic Client',
+      providerSignedOn: '2026-09-27',
+      clientSignedOn: '2026-09-27',
+      note: null,
+      acknowledgedWarningCodes: [],
+    };
+  }
+  async function approvedSignatureFixture(
+    content: { specialConditions?: string; termEndsOn?: string } = {},
+  ) {
+    const target = await qualityFixture(content);
+    await grantApprover(target.fixture);
+    const response = await decisionRequest(
+      target.fixture,
+      target.versionId,
+      'approve',
+      {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: content.specialConditions
+          ? ['ADDED_CONDITIONS_CONFIRMED']
+          : [],
+      },
+      'signature-fixture-approval',
+    );
+    expect(response.status).toBe(201);
+    return target;
+  }
+  function signatureRequest(
+    fixture: PreparedOffer,
+    versionId: string,
+    body: unknown,
+    key: string,
+    headers: Record<string, string> = {},
+  ) {
+    return request({
+      path:
+        '/contracts/opportunities/' +
+        fixture.opportunityId +
+        '/versions/' +
+        versionId +
+        '/signature',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify(body),
+      },
+    });
+  }
+  async function signatureCounts() {
+    const row = (
+      await pool.query<{
+        signatures: string;
+        runs: string;
+        receipts: string;
+        events: string;
+        revision: number;
+      }>(
+        "SELECT (SELECT count(*) FROM contract_signatures)::text AS signatures,(SELECT count(*) FROM contract_quality_runs)::text AS runs,(SELECT count(*) FROM contract_commands WHERE kind='RECORD_SIGNATURE')::text AS receipts,(SELECT count(*) FROM contract_events WHERE action='contract_version.signature_recorded')::text AS events,(SELECT revision FROM contracts LIMIT 1) AS revision",
+      )
+    ).rows[0];
+    if (!row) throw new Error('Missing signature evidence counts.');
+    return row;
+  }
   async function decisionRequest(
     fixture: PreparedOffer,
     versionId: string,
-    kind: 'approve' | 'reject',
+    kind: 'approve' | 'reject' | 'signature',
     body: unknown,
     key: string,
   ) {

@@ -1,5 +1,6 @@
 import { resolveMessage } from '../localization/messages';
 import { contractDecisionMessages } from './contract-decision.copy';
+import { contractSignatureMessages } from './contract-signature.copy';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -26,6 +27,280 @@ afterEach(() => {
   window.localStorage.removeItem(interfaceLocaleStorageKey);
 });
 describe('ContractPanel', () => {
+  it.each(interfaceLocales)(
+    'localizes both declared signature parties and the recording action in %s',
+    async (locale) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({ contract: approvedUiFixture() }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={signatureActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      expect(
+        await screen.findByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'provider'),
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'client'),
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('button', {
+          name: resolveMessage(contractSignatureMessages, locale, 'record'),
+        }),
+      ).toBeVisible();
+    },
+  );
+  it.each([
+    { code: 'QUALITY_CHECK_ERRORS', key: 'errors', terminal: false },
+    {
+      code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+      key: 'warnings',
+      terminal: false,
+    },
+    { code: 'STALE_CONTRACT_REVISION', key: 'stale', terminal: true },
+    {
+      code: 'CONTRACT_VERSION_ALREADY_EXECUTED',
+      key: 'already',
+      terminal: true,
+    },
+    {
+      code: 'CONTRACT_VERSION_NOT_APPROVED',
+      key: 'notApproved',
+      terminal: true,
+    },
+    { code: 'REPRESENTATION_MISMATCH', key: 'mismatch', terminal: true },
+    { code: 'INVALID_CONTRACT_INPUT', key: 'invalid', terminal: false },
+  ] as const)(
+    'preserves declared signature fields after $code and blocks only terminal outcomes',
+    async ({ code, key, terminal }) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+        init?.method === 'POST'
+          ? response(
+              { code, field: 'providerSignedOn' },
+              key === 'invalid' ? 400 : 409,
+            )
+          : response({ contract: approvedUiFixture() }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={signatureActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      await fillSignatureFields();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Record both simulated signatures',
+        }),
+      );
+      expect(
+        await screen.findByText(
+          resolveMessage(contractSignatureMessages, 'en', key),
+        ),
+      ).toBeVisible();
+      expect(screen.getByLabelText('Provider signatory label')).toHaveValue(
+        'Provider declaration',
+      );
+      expect(screen.getByLabelText('Client signatory label')).toHaveValue(
+        'Client declaration',
+      );
+      expect(screen.getByLabelText('Signature note')).toHaveValue(
+        'Declared note',
+      );
+      const action = screen.getByRole('button', {
+        name: 'Record both simulated signatures',
+      });
+      if (terminal) expect(action).toBeDisabled();
+      else expect(action).toBeEnabled();
+    },
+  );
+  it('invalidates an in-flight signature after a Company change and suppresses its late result', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    let finish: ((value: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+      init?.method === 'POST'
+        ? new Promise<Response>((resolve) => {
+            finish = resolve;
+          })
+        : response({ contract: approvedUiFixture() }),
+    );
+    const current = signatureActor();
+    const mounted = render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await fillSignatureFields();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record both simulated signatures' }),
+    );
+    await waitFor(() => expect(finish).toBeDefined());
+    mounted.rerender(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={{
+            ...current,
+            activeCompany: current.activeCompany
+              ? { ...current.activeCompany, id: 'another-company' }
+              : undefined,
+          }}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await act(async () => {
+      if (!finish) throw new Error('Missing delayed command');
+      finish(response({ id: 'late-hidden-signature' }, 201));
+    });
+    expect(screen.queryByText('Provider declaration')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Both simulated signatures recorded.'),
+    ).not.toBeInTheDocument();
+  });
+  it('preserves the entire uncertain simulated signature for explicit identical retry and shows both declarations', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const current = actor(false);
+    if (!current.activeCompany) throw new Error('Missing Company');
+    current.activeCompany.contractPermissions = [
+      'commercial.contract.read',
+      'commercial.contract.approve',
+      'commercial.contract.signature.record',
+    ];
+    current.activeCompany.contractApproverAssignmentId = 'approver-one';
+    current.activeCompany.contractApproverPermissionSetVersion = 'v1';
+    const approval = {
+      id: 'approval-one',
+      contractVersionId: 'version-one',
+      revision: 2,
+      kind: 'APPROVE',
+      actorWorkspaceMembershipId: 'member-one',
+      decidedAt: '2026-10-07T09:00:00.000Z',
+      qualityRun: qualityRun(),
+      acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+      representationChecksum: '1'.repeat(64),
+    };
+    const commands: Array<{ body: unknown; key: string | null }> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/signature')) {
+        commands.push({
+          body: init?.body,
+          key: new Headers(init?.headers).get('idempotency-key'),
+        });
+        if (commands.length === 1) return response({}, 500);
+        return response(
+          {
+            id: 'signature-one',
+            contractVersionId: 'version-one',
+            revision: 3,
+            evidenceKind: 'SIMULATED',
+            provenance: 'ILLUSTRATIVE',
+            provisional: true,
+            actorWorkspaceMembershipId: 'member-one',
+            recordedAt: '2026-10-08T10:00:00.000Z',
+            providerSignatoryLabel: '  Provider É  ',
+            clientSignatoryLabel: 'Client 🙂',
+            providerSignedOn: '2026-10-07',
+            clientSignedOn: '2026-10-08',
+            note: 'Declared only',
+            qualityRun: {
+              ...qualityRun(),
+              id: 'signature-run',
+              evaluatedAt: '2026-10-08T10:00:00.000Z',
+            },
+            acknowledgedWarningCodes: [],
+            representationChecksum: '1'.repeat(64),
+          },
+          201,
+        );
+      }
+      const stored = fixture();
+      return response({
+        contract: {
+          ...stored,
+          revision: 2,
+          version: {
+            ...stored.version,
+            decisionState: 'APPROVED',
+            decision: approval,
+            latestQualityRun: qualityRun(),
+          },
+        },
+      });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Provider signatory label'), {
+      target: { value: '  Provider É  ' },
+    });
+    fireEvent.change(screen.getByLabelText('Client signatory label'), {
+      target: { value: 'Client 🙂' },
+    });
+    fireEvent.change(screen.getByLabelText('Provider signing date'), {
+      target: { value: '2026-10-07' },
+    });
+    fireEvent.change(screen.getByLabelText('Client signing date'), {
+      target: { value: '2026-10-08' },
+    });
+    fireEvent.change(screen.getByLabelText('Signature note'), {
+      target: { value: 'Declared only' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record both simulated signatures' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Retry the same simulated signature',
+      }),
+    );
+    const signatures = screen.getByRole('region', {
+      name: 'Simulated Contract signatures',
+    });
+    expect(
+      await within(signatures).findByText('Executed — simulated evidence only'),
+    ).toBeVisible();
+    expect(
+      within(signatures).getByText('Provider É', { exact: true }),
+    ).toBeVisible();
+    expect(screen.getByText('Client 🙂')).toBeVisible();
+    expect(commands).toHaveLength(2);
+    expect(commands[1]).toEqual(commands[0]);
+    expect(
+      screen.queryByRole('button', {
+        name: 'Record both simulated signatures',
+      }),
+    ).not.toBeInTheDocument();
+  });
   it.each([false, true])(
     'shows the committed approval checks immediately with prior run %s and keeps reopened history',
     async (hasPriorRun) => {
@@ -980,6 +1255,56 @@ function actor(prepare: boolean): ActorContext {
         : {}),
     },
   };
+}
+function signatureActor(): ActorContext {
+  const result = actor(false);
+  if (!result.activeCompany) throw new Error('Missing Company');
+  result.activeCompany.contractPermissions = [
+    'commercial.contract.read',
+    'commercial.contract.approve',
+    'commercial.contract.signature.record',
+  ];
+  result.activeCompany.contractApproverAssignmentId = 'approver-one';
+  result.activeCompany.contractApproverPermissionSetVersion = 'v1';
+  return result;
+}
+function approvedUiFixture() {
+  const stored = fixture();
+  return {
+    ...stored,
+    revision: 2,
+    version: {
+      ...stored.version,
+      decisionState: 'APPROVED',
+      latestQualityRun: qualityRun(),
+      decision: {
+        id: 'approval-one',
+        contractVersionId: 'version-one',
+        revision: 2,
+        kind: 'APPROVE',
+        actorWorkspaceMembershipId: 'member-one',
+        decidedAt: '2026-10-07T09:00:00.000Z',
+        qualityRun: qualityRun(),
+        acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+        representationChecksum: '1'.repeat(64),
+      },
+    },
+  };
+}
+async function fillSignatureFields() {
+  fireEvent.change(await screen.findByLabelText('Provider signatory label'), {
+    target: { value: 'Provider declaration' },
+  });
+  fireEvent.change(screen.getByLabelText('Client signatory label'), {
+    target: { value: 'Client declaration' },
+  });
+  for (const field of ['Provider signing date', 'Client signing date'])
+    fireEvent.change(screen.getByLabelText(field), {
+      target: { value: '2026-10-07' },
+    });
+  fireEvent.change(screen.getByLabelText('Signature note'), {
+    target: { value: 'Declared note' },
+  });
 }
 function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

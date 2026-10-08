@@ -40,6 +40,11 @@ import {
   type DecideContractVersionInput,
 } from './contract-decision-command.js';
 import { qualityRunView } from './contract-quality-view.js';
+import {
+  recordContractSignature,
+  readContractSignature,
+  type RecordContractSignatureInput,
+} from './contract-signature-command.js';
 import { readCreateContractCommand } from './contract.validation.js';
 import {
   CONTRACT_TEMPLATE_CODE,
@@ -265,6 +270,21 @@ export class ContractService {
 
   async decide(input: DecideContractVersionInput): Promise<ContractDecision> {
     return decideContractVersion(input, {
+      databaseContext: this.databaseContext,
+      authorization: this.authorization,
+      accountability: this.accountability,
+      intake: this.intake,
+      clock: this.clock,
+      find: (target) => this.find(target),
+      evaluateFreshQuality: (target) => this.evaluateFreshQuality(target),
+      representationChecksum: async (actor, contract, version) =>
+        (await this.view(actor, contract, version)).version.representation
+          .sha256,
+    });
+  }
+
+  async recordSignature(input: RecordContractSignatureInput) {
+    return recordContractSignature(input, {
       databaseContext: this.databaseContext,
       authorization: this.authorization,
       accountability: this.accountability,
@@ -735,14 +755,20 @@ export class ContractService {
     if (
       contract.kind !== 'CONTRACT' ||
       contract.origin !== 'ACCEPTED_OFFER' ||
-      ![1, 2].includes(contract.revision) ||
+      ![1, 2, 3].includes(contract.revision) ||
       version.versionNumber !== 1 ||
       !['PENDING', 'APPROVED', 'REJECTED'].includes(version.decisionState) ||
-      version.executionState !== 'NOT_EXECUTED' ||
+      !['NOT_EXECUTED', 'EXECUTED'].includes(version.executionState) ||
       version.provenance !== 'ILLUSTRATIVE'
     )
       throw new Error('Invalid stored Contract state.');
     const decision = await readContractDecision(
+      this.databaseContext,
+      actor,
+      contract,
+      version,
+    );
+    const signature = await readContractSignature(
       this.databaseContext,
       actor,
       contract,
@@ -753,11 +779,20 @@ export class ContractService {
         (decision !== null || contract.revision !== 1)) ||
       (version.decisionState !== 'PENDING' &&
         (!decision ||
-          decision.revision !== contract.revision ||
+          (version.executionState === 'NOT_EXECUTED' &&
+            decision.revision !== contract.revision) ||
           version.decisionState !==
             (decision.kind === 'APPROVE' ? 'APPROVED' : 'REJECTED')))
     )
       throw new Error('Invalid stored Contract decision state.');
+    if (
+      (version.executionState === 'EXECUTED' &&
+        (!signature ||
+          decision?.kind !== 'APPROVE' ||
+          contract.revision !== signature.revision)) ||
+      (version.executionState === 'NOT_EXECUTED' && signature !== null)
+    )
+      throw new Error('Invalid stored Contract execution state.');
     const recipient = recordedRecipient(version);
     const [latestRun] = await this.databaseContext.connection
       .select()
@@ -830,6 +865,7 @@ export class ContractService {
           provenance: 'ILLUSTRATIVE',
         }),
         decision,
+        signature,
         latestQualityRun: latestRun ? qualityRunView(latestRun, version) : null,
         versionNumber: version.versionNumber,
         recipient,

@@ -393,6 +393,13 @@
       "when": 1791398884662,
       "tag": "0055_contract_decisions",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1791492699111,
+      "tag": "0056_contract_simulated_signature",
+      "breakpoints": true
     }
   ]
 }

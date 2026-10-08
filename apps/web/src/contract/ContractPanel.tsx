@@ -1,4 +1,6 @@
 import { ContractDecisionPanel } from './ContractDecisionPanel';
+import { ContractSignaturePanel } from './ContractSignaturePanel';
+import { useContractSignatureCopy } from './contract-signature.copy';
 import { useContractDecisionCopy } from './contract-decision.copy';
 import { ContractQualityPanel } from './ContractQualityPanel';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -96,6 +98,7 @@ export function ContractPanel({
     [running, setRunning] = useState(false),
     [qualityProtected, setQualityProtected] = useState(false),
     [decisionProtected, setDecisionProtected] = useState(false),
+    [signatureProtected, setSignatureProtected] = useState(false),
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
@@ -104,6 +107,7 @@ export function ContractPanel({
   const locked =
     running ||
     decisionProtected ||
+    signatureProtected ||
     feedback === 'uncertain' ||
     qualityProtected;
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
@@ -318,7 +322,7 @@ export function ContractPanel({
                   'commercial.contract.approve',
                 ),
               )}
-              protectedChecks={qualityProtected}
+              protectedChecks={qualityProtected || signatureProtected}
               reject={reject}
               onProtectionChange={setDecisionProtected}
               onDecision={(decision) =>
@@ -347,6 +351,42 @@ export function ContractPanel({
                 )
               }
             />
+            <ContractSignaturePanel
+              key={stamp + ':signature:' + view.contract.version.id}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contract={view.contract}
+              mayRecord={Boolean(
+                context?.contractApproverPermissionSetVersion === 'v1' &&
+                context.contractApproverAssignmentId &&
+                context.contractPermissions?.includes(
+                  'commercial.contract.signature.record',
+                ),
+              )}
+              protectedChecks={qualityProtected || decisionProtected}
+              reject={reject}
+              onProtectionChange={setSignatureProtected}
+              onSignature={(signature) =>
+                setView((current) =>
+                  current.kind === 'ready'
+                    ? {
+                        ...current,
+                        contract: {
+                          ...current.contract,
+                          revision: signature.revision,
+                          version: {
+                            ...current.contract.version,
+                            executionState: 'EXECUTED',
+                            signature,
+                            latestQualityRun: signature.qualityRun,
+                          },
+                        },
+                      }
+                    : current,
+                )
+              }
+            />
             <ContractQualityPanel
               key={
                 stamp +
@@ -367,6 +407,7 @@ export function ContractPanel({
               initialRun={view.contract.version.latestQualityRun}
               mayRun={
                 !decisionProtected &&
+                !signatureProtected &&
                 Boolean(
                   context?.contractPermissions?.includes(
                     'commercial.contract.prepare',
@@ -376,7 +417,7 @@ export function ContractPanel({
                   ),
                 )
               }
-              protectedDecision={decisionProtected}
+              protectedDecision={decisionProtected || signatureProtected}
               onRun={(run) =>
                 setView((current) =>
                   current.kind === 'ready'
@@ -460,6 +501,7 @@ export function ContractPanel({
 function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
   const decisionCopy = useContractDecisionCopy();
+  const signatureCopy = useContractSignatureCopy();
   return (
     <>
       <p>
@@ -473,7 +515,10 @@ function ContractSummary({ contract }: { contract: ContractView }) {
               ? 'rejected'
               : 'pending',
         )}{' '}
-        · {copy.execution}
+        ·{' '}
+        {version.executionState === 'EXECUTED'
+          ? signatureCopy('executed')
+          : copy.execution}
       </p>
       <dl>
         <dt>{copy.source}</dt>

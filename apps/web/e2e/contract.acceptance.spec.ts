@@ -926,6 +926,150 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(
     decision.getByRole('button', { name: 'Approve exact Contract Version' }),
   ).toHaveCount(0);
+  const signatures = panel.getByRole('region', {
+    name: 'Simulated Contract signatures',
+    exact: true,
+  });
+  const approvedRead = object(
+    object(
+      await body(
+        await request.get(api + '/contracts/opportunities/' + opportunityId, {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  const signingDate = text(
+    object(object(approvedRead.version).decision).decidedAt,
+  ).slice(0, 10);
+  const providerLabel = '  Synthetic provider É  ',
+    clientLabel = 'Synthetic Client 🙂',
+    signatureNote = 'Declared and unverified simulated evidence';
+  await signatures.getByLabel('Provider signatory label').fill(providerLabel);
+  await signatures.getByLabel('Client signatory label').fill(clientLabel);
+  await signatures.getByLabel('Provider signing date').fill(signingDate);
+  await signatures.getByLabel('Client signing date').fill(signingDate);
+  await signatures.getByLabel('Signature note').fill(signatureNote);
+  await expect(signatures.getByRole('checkbox')).toHaveCount(0);
+  const signaturePath =
+    '/contracts/opportunities/' +
+    opportunityId +
+    '/versions/' +
+    versionId +
+    '/signature';
+  const signatureAttempts: Array<{
+    body: string | null;
+    key: string | undefined;
+  }> = [];
+  await page.route('**/api' + signaturePath, async (route) => {
+    signatureAttempts.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (signatureAttempts.length === 1) {
+      expect((await route.fetch()).status()).toBe(201);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await signatures
+    .getByRole('button', { name: 'Record both simulated signatures' })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    signatures.getByText(
+      'The signature outcome is uncertain. Retry sends the same fields, revision and key.',
+    ),
+  ).toBeVisible();
+  await expect(
+    signatures.getByLabel('Provider signatory label'),
+  ).toBeDisabled();
+  await expect(
+    panel.getByRole('button', { name: 'Reload Contract', exact: true }),
+  ).toBeDisabled();
+  await signatures.screenshot({
+    path: testInfo.outputPath(
+      'contract-signature-uncertain-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await signatures
+    .getByRole('button', { name: 'Retry the same simulated signature' })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    signatures.getByText('Executed — simulated evidence only', { exact: true }),
+  ).toBeVisible();
+  expect(signatureAttempts).toHaveLength(2);
+  expect(signatureAttempts[1]).toEqual(signatureAttempts[0]);
+  expect(signatureAttempts[0]?.key).toBeTruthy();
+  await page.unroute('**/api' + signaturePath);
+  await expect(signatures.locator('.contract-checksum')).toHaveText(
+    recordedChecksum ?? '',
+  );
+  await expect(
+    signatures.getByText(clientLabel, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    signatures.getByText(signatureNote, { exact: true }),
+  ).toBeVisible();
+  await signatures.screenshot({
+    path: testInfo.outputPath(
+      'contract-signature-recorded-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Contract Request ' + suffix, { exact: true }),
+    })
+    .click();
+  await expect(
+    signatures.getByText('Executed — simulated evidence only', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    signatures.getByRole('button', {
+      name: 'Record both simulated signatures',
+    }),
+  ).toHaveCount(0);
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  await expect(panel.locator('.contract-representation code')).toHaveText(
+    recordedChecksum ?? '',
+  );
+  const executedRead = object(
+    object(
+      await body(
+        await request.get(api + '/contracts/opportunities/' + opportunityId, {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  expect(executedRead.revision).toBe(3);
+  expect(object(object(executedRead.version).signature)).toMatchObject({
+    providerSignatoryLabel: providerLabel,
+    clientSignatoryLabel: clientLabel,
+    providerSignedOn: signingDate,
+    clientSignedOn: signingDate,
+    note: signatureNote,
+    evidenceKind: 'SIMULATED',
+    provenance: 'ILLUSTRATIVE',
+  });
+  expect(object(executedRead.version).decision).toEqual(
+    object(approvedRead.version).decision,
+  );
+  await signatures.screenshot({
+    path: testInfo.outputPath(
+      'contract-signature-reopened-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'contract-signature-context-' + suffix.toLowerCase() + '.png',
+    ),
+  });
   await page.reload();
   await page
     .getByRole('button')

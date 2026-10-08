@@ -43,6 +43,21 @@ export class ContractController {
       }),
     };
   }
+  @Post('versions/:versionId/signature') recordSignature(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.contracts.recordSignature({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post('versions/:versionId/approve') approve(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,

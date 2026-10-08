@@ -38,7 +38,7 @@ export interface DecideContractVersionInput {
   payload: unknown;
   idempotencyKey: string | undefined;
 }
-interface DecisionDependencies {
+export interface DecisionDependencies {
   databaseContext: DatabaseContext;
   authorization: CompanyContextAuthorization;
   accountability: AccountabilityService;
