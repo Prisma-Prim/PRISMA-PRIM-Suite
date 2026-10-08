@@ -390,7 +390,8 @@ export const COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS = [
   'commercial.contract.project.link',
 ] as const;
 export type CompanyContractPermission =
-  (typeof COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS)[number];
+  | (typeof COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS)[number]
+  | (typeof COMPANY_CONTRACT_APPROVER_V1_PERMISSIONS)[number];
 export function contractPreparerPermissionsFor(
   version: unknown,
 ): readonly CompanyContractPermission[] {
@@ -428,4 +429,19 @@ export function profitabilityDirectorPermissionsFor(
   version: unknown,
 ): readonly CompanyProfitabilityDirectorPermission[] {
   return version === 'v1' ? COMPANY_PROFITABILITY_DIRECTOR_V1_PERMISSIONS : [];
+}
+
+export const COMPANY_CONTRACT_APPROVER_BUNDLE =
+  'company_contract_approver' as const;
+export const COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL =
+  'Company Contract Approver' as const;
+export const COMPANY_CONTRACT_APPROVER_V1_PERMISSIONS = [
+  'commercial.contract.read',
+  'commercial.contract.approve',
+  'commercial.contract.signature.record',
+] as const;
+export function contractApproverPermissionsFor(
+  version: unknown,
+): readonly CompanyContractPermission[] {
+  return version === 'v1' ? COMPANY_CONTRACT_APPROVER_V1_PERMISSIONS : [];
 }

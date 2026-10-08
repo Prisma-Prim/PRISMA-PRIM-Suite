@@ -121,7 +121,7 @@ export const contracts = pgTable(
     }),
     check(
       'contracts_initial_check',
-      sql`${t.kind} = 'CONTRACT' AND ${t.origin} = 'ACCEPTED_OFFER' AND ${t.revision} = 1 AND ${t.illustrativeReference} > 0`,
+      sql`${t.kind} = 'CONTRACT' AND ${t.origin} = 'ACCEPTED_OFFER' AND ${t.revision} IN (1, 2) AND ${t.illustrativeReference} > 0`,
     ),
   ],
 );
@@ -245,7 +245,7 @@ export const contractVersions = pgTable(
     }),
     check(
       'contract_versions_initial_check',
-      sql`${t.versionNumber} = 1 AND ${t.decisionState} = 'PENDING' AND ${t.executionState} = 'NOT_EXECUTED' AND ${t.provenance} = 'ILLUSTRATIVE'`,
+      sql`${t.versionNumber} = 1 AND ${t.decisionState} IN ('PENDING', 'APPROVED', 'REJECTED') AND ${t.executionState} = 'NOT_EXECUTED' AND ${t.provenance} = 'ILLUSTRATIVE'`,
     ),
     check(
       'contract_versions_template_binding_check',
@@ -343,6 +343,78 @@ export const contractQualityRuns = pgTable(
   ],
 );
 
+export const contractDecisions = pgTable(
+  'contract_decisions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    contractId: uuid('contract_id').notNull(),
+    contractVersionId: uuid('contract_version_id').notNull(),
+    kind: text('kind').notNull(),
+    resultRevision: integer('result_revision').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    decidedAt: timestamp('decided_at', { withTimezone: true }).notNull(),
+    reason: text('reason'),
+    qualityRunId: uuid('quality_run_id'),
+    representationChecksum: text('representation_checksum'),
+    acknowledgedWarningCodes: jsonb(
+      'acknowledged_warning_codes',
+    ).$type<unknown>(),
+  },
+  (t) => [
+    uniqueIndex('contract_decisions_version_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.contractVersionId,
+    ),
+    uniqueIndex('contract_decisions_scope_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.contractId,
+      t.id,
+    ),
+    foreignKey({
+      name: 'contract_decisions_version_fk',
+      columns: [t.workspaceId, t.companyId, t.contractId, t.contractVersionId],
+      foreignColumns: [
+        contractVersions.workspaceId,
+        contractVersions.companyId,
+        contractVersions.contractId,
+        contractVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'contract_decisions_run_fk',
+      columns: [t.workspaceId, t.companyId, t.contractId, t.qualityRunId],
+      foreignColumns: [
+        contractQualityRuns.workspaceId,
+        contractQualityRuns.companyId,
+        contractQualityRuns.contractId,
+        contractQualityRuns.id,
+      ],
+    }),
+    foreignKey({
+      name: 'contract_decisions_actor_fk',
+      columns: [
+        t.workspaceId,
+        t.actorWorkspaceMembershipId,
+        t.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'contract_decisions_result_check',
+      sql`${t.resultRevision} = 2 AND ((${t.kind} = 'APPROVE' AND ${t.reason} IS NULL AND ${t.qualityRunId} IS NOT NULL AND ${t.representationChecksum} ~ '^[0-9a-f]{64}$' AND jsonb_typeof(${t.acknowledgedWarningCodes}) = 'array') OR (${t.kind} = 'REJECT' AND char_length(${t.reason}) BETWEEN 1 AND 500 AND btrim(${t.reason}) <> '' AND ${t.qualityRunId} IS NULL AND ${t.representationChecksum} IS NULL AND ${t.acknowledgedWarningCodes} IS NULL)) IS TRUE`,
+    ),
+  ],
+);
+
 export const contractCommands = pgTable(
   'contract_commands',
   {
@@ -356,6 +428,7 @@ export const contractCommands = pgTable(
     resultContractId: uuid('result_contract_id').notNull(),
     kind: text('kind').default('CREATE').notNull(),
     resultQualityRunId: uuid('result_quality_run_id'),
+    resultDecisionId: uuid('result_decision_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (t) => [
@@ -367,8 +440,23 @@ export const contractCommands = pgTable(
     ),
     check(
       'contract_commands_kind_check',
-      sql`(${t.kind} = 'CREATE' AND ${t.resultQualityRunId} IS NULL) OR (${t.kind} = 'RUN_QUALITY_CHECKS' AND ${t.resultQualityRunId} IS NOT NULL)`,
+      sql`((${t.kind} = 'CREATE' AND ${t.resultQualityRunId} IS NULL) OR (${t.kind} = 'RUN_QUALITY_CHECKS' AND ${t.resultQualityRunId} IS NOT NULL)) AND ${t.resultDecisionId} IS NULL OR (${t.kind} IN ('APPROVE','REJECT') AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NOT NULL)`,
     ),
+    foreignKey({
+      name: 'contract_commands_decision_fk',
+      columns: [
+        t.workspaceId,
+        t.companyId,
+        t.resultContractId,
+        t.resultDecisionId,
+      ],
+      foreignColumns: [
+        contractDecisions.workspaceId,
+        contractDecisions.companyId,
+        contractDecisions.contractId,
+        contractDecisions.id,
+      ],
+    }),
     foreignKey({
       name: 'contract_commands_run_fk',
       columns: [
@@ -426,7 +514,7 @@ export const contractEvents = pgTable(
     actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
     metadata: jsonb('metadata')
-      .$type<Record<string, string | number>>()
+      .$type<Record<string, string | number | readonly string[]>>()
       .notNull(),
   },
   (t) => [
@@ -436,6 +524,11 @@ export const contractEvents = pgTable(
     uniqueIndex('contract_events_version_created_unique')
       .on(t.workspaceId, t.contractVersionId)
       .where(sql`${t.action} = 'contract_version.created'`),
+    uniqueIndex('contract_events_decision_unique')
+      .on(t.workspaceId, t.companyId, t.contractVersionId)
+      .where(
+        sql`${t.action} IN ('contract_version.approved','contract_version.rejected')`,
+      ),
     foreignKey({
       name: 'contract_events_contract_fk',
       columns: [t.workspaceId, t.companyId, t.contractId],
@@ -469,11 +562,11 @@ export const contractEvents = pgTable(
     }),
     check(
       'contract_events_target_check',
-      sql`(${t.action} = 'contract.created' AND ${t.contractVersionId} IS NULL) OR (${t.action} = 'contract_version.created' AND ${t.contractVersionId} IS NOT NULL)`,
+      sql`(${t.action} = 'contract.created' AND ${t.contractVersionId} IS NULL) OR (${t.action} IN ('contract_version.created','contract_version.approved','contract_version.rejected') AND ${t.contractVersionId} IS NOT NULL)`,
     ),
     check(
       'contract_events_metadata_check',
-      sql`(jsonb_typeof(${t.metadata}) = 'object' AND (${t.metadata} - ARRAY['contractId','contractVersionId','versionNumber','illustrativeReference','kind','origin','offerVersionId','pricingSnapshotId','provenance']::text[]) = '{}'::jsonb AND ${t.metadata}->>'contractId' = ${t.contractId}::text AND ${t.metadata}->>'kind' = 'CONTRACT' AND ${t.metadata}->>'origin' = 'ACCEPTED_OFFER' AND ${t.metadata}->>'provenance' = 'ILLUSTRATIVE') IS TRUE`,
+      sql`(jsonb_typeof(${t.metadata}) = 'object' AND (${t.metadata} - ARRAY['contractId','contractVersionId','versionNumber','illustrativeReference','kind','origin','offerVersionId','pricingSnapshotId','provenance','ruleSetVersion','acknowledgedWarningCodes']::text[]) = '{}'::jsonb AND ${t.metadata}->>'contractId' = ${t.contractId}::text AND ${t.metadata}->>'kind' = 'CONTRACT' AND ${t.metadata}->>'origin' = 'ACCEPTED_OFFER' AND ${t.metadata}->>'provenance' = 'ILLUSTRATIVE') IS TRUE`,
     ),
   ],
 );

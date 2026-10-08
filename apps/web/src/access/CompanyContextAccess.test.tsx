@@ -13,6 +13,8 @@ import { ApplicationPresentation } from '../production-shell/application-present
 import { changeValue, selectOption } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
+import { contractDecisionMessages } from '../contract/contract-decision.copy';
+import { resolveMessage } from '../localization/messages';
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -28,6 +30,7 @@ const bundleLabels = {
   pricing: 'Company Pricing Configuration',
   pricingUser: 'Company Pricing User',
   offerPreparer: 'Company Offer Preparer',
+  contractApprover: 'Company Contract Approver',
   pricingAdjustment: 'Company Pricing Adjustment',
   reader: 'Company Commercial Activity Reader',
   manager: 'Company Opportunity Manager',
@@ -42,6 +45,7 @@ const serverVersions = {
   pricing: 'v1',
   pricingUser: 'v1',
   offerPreparer: 'v1',
+  contractApprover: 'v1',
   pricingAdjustment: 'v1',
   reader: 'v1',
   manager: 'v1',
@@ -83,6 +87,88 @@ const administration = (
 });
 
 describe('CompanyContextAccess', () => {
+  it('grants and revokes captured Contract Approver v1 through the localized administration choice', async () => {
+    let active = false;
+    const commands: Array<{
+      method: string;
+      path: string;
+      key: string | null;
+      body: unknown;
+    }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(
+            administration(active ? 'contractApprover' : undefined),
+          );
+        if (path.startsWith('/api/company-contract-approver-assignments')) {
+          const body: unknown =
+            typeof options?.body === 'string'
+              ? JSON.parse(options.body)
+              : undefined;
+          commands.push({
+            method: options?.method ?? 'GET',
+            path,
+            key: new Headers(options?.headers).get('idempotency-key'),
+            body,
+          });
+          active = options?.method === 'POST';
+          return Response.json(
+            {
+              id: 'contract-approver-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Contract Approver',
+              permissionSetVersion: 'v1',
+              active,
+            },
+            { status: active ? 201 : 200 },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    chooseBundle('contract-approver');
+    expect(
+      screen.getByText(
+        resolveMessage(contractDecisionMessages, 'ro', 'prerequisites'),
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      'Granted — captured version v1',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      'Not granted',
+    );
+    expect(commands).toEqual([
+      {
+        method: 'POST',
+        path: '/api/company-contract-approver-assignments',
+        key: expect.any(String),
+        body: { workspaceMembershipId: memberId, companyId },
+      },
+      {
+        method: 'DELETE',
+        path: `/api/company-contract-approver-assignments/${memberId}/${companyId}`,
+        key: expect.any(String),
+        body: undefined,
+      },
+    ]);
+    expect(commands[0]?.key).not.toBe(commands[1]?.key);
+  });
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -379,6 +465,18 @@ describe('CompanyContextAccess', () => {
   });
 
   it.each([
+    {
+      name: 'a null Contract Approver version',
+      assignment: { bundle: 'Company Contract Approver', version: null },
+    },
+    {
+      name: 'a missing Contract Approver version',
+      assignment: { bundle: 'Company Contract Approver', version: undefined },
+    },
+    {
+      name: 'an unknown Contract Approver version',
+      assignment: { bundle: 'Company Contract Approver', version: 'v2' },
+    },
     {
       name: 'an unknown Director Client version',
       assignment: { bundle: 'Company Director Client Access', version: 'v3' },

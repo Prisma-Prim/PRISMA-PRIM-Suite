@@ -1,14 +1,519 @@
+import { resolveMessage } from '../localization/messages';
+import { contractDecisionMessages } from './contract-decision.copy';
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ContractPanel } from './ContractPanel';
+import {
+  InterfaceLocaleProvider,
+  interfaceLocales,
+  interfaceLocaleStorageKey,
+} from '../localization/interface-locale';
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'contract-reader',
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  window.localStorage.removeItem(interfaceLocaleStorageKey);
+});
 describe('ContractPanel', () => {
+  it.each([false, true])(
+    'shows the committed approval checks immediately with prior run %s and keeps reopened history',
+    async (hasPriorRun) => {
+      const current = actor(false);
+      if (!current.activeCompany) throw new Error('Missing Company');
+      current.activeCompany.contractPermissions = [
+        'commercial.contract.read',
+        'commercial.contract.approve',
+      ];
+      const historical = qualityRun();
+      const committed = {
+        ...historical,
+        id: 'approval-run',
+        evaluatedAt: '2026-10-07T10:00:00.000Z',
+        actorWorkspaceMembershipId: 'approval-member',
+        results: historical.results.map((item) => ({
+          ...item,
+          status: 'PASS',
+        })),
+      };
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        const path = input.toString();
+        if (path.endsWith('/approve'))
+          return response(
+            {
+              id: 'decision-one',
+              contractVersionId: 'version-one',
+              revision: 2,
+              actorWorkspaceMembershipId: committed.actorWorkspaceMembershipId,
+              decidedAt: committed.evaluatedAt,
+              kind: 'APPROVE',
+              qualityRun: committed,
+              acknowledgedWarningCodes: [],
+              representationChecksum: '1'.repeat(64),
+            },
+            201,
+          );
+        if (path.endsWith('/quality-checks'))
+          return response({ items: [historical], nextCursor: null });
+        if (path.endsWith('/quality-checks/run-one'))
+          return response(historical);
+        const stored = fixture();
+        return response({
+          contract: {
+            ...stored,
+            version: {
+              ...stored.version,
+              latestQualityRun: hasPriorRun ? historical : null,
+            },
+          },
+        });
+      });
+      render(
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: resolveMessage(contractDecisionMessages, 'ro', 'approve'),
+        }),
+      );
+      await screen.findByText('1'.repeat(64));
+      const checks = within(
+        screen.getByRole('region', { name: 'Contract Quality Checks' }),
+      );
+      expect(
+        await checks.findByText(committed.actorWorkspaceMembershipId),
+      ).toBeVisible();
+      expect(checks.getByText(committed.evaluatedAt)).toBeVisible();
+      expect(
+        checks.queryByText('No Contract Quality Check run yet.'),
+      ).not.toBeInTheDocument();
+      const reopenHistory = checks.getByRole('button', {
+        name: 'Reopen recorded checks',
+      });
+      await waitFor(() => expect(reopenHistory).toBeEnabled());
+      fireEvent.click(reopenHistory);
+      fireEvent.click(
+        await checks.findByRole('button', { name: /Reopen run/u }),
+      );
+      expect(
+        await checks.findByText(historical.actorWorkspaceMembershipId),
+      ).toBeVisible();
+      expect(
+        checks.queryByText(committed.actorWorkspaceMembershipId),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it.each(interfaceLocales)(
+    'formats the new decision instant in %s with UTC preserved',
+    async (locale) => {
+      const decidedAt = '2026-10-07T23:15:42.000Z';
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      const stored = fixture();
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({
+          contract: {
+            ...stored,
+            revision: 2,
+            version: {
+              ...stored.version,
+              decisionState: 'REJECTED',
+              decision: {
+                id: 'decision-one',
+                contractVersionId: 'version-one',
+                revision: 2,
+                actorWorkspaceMembershipId: 'member-one',
+                decidedAt,
+                kind: 'REJECT',
+                reason: 'Synthetic rejection',
+              },
+            },
+          },
+        }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={actor(false)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const expected = new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+        timeZone: 'UTC',
+      }).format(new Date(decidedAt));
+      expect(await screen.findByText(expected)).toBeVisible();
+      expect(
+        screen.getByText(
+          resolveMessage(contractDecisionMessages, locale, 'instant'),
+        ),
+      ).toHaveTextContent('UTC');
+      expect(screen.queryByText(decidedAt)).not.toBeInTheDocument();
+      window.localStorage.removeItem(interfaceLocaleStorageKey);
+    },
+  );
+  it('submits only warnings still displayed after a fresh review', async () => {
+    const current = actor(false);
+    if (!current.activeCompany) throw new Error('Missing Company');
+    current.activeCompany.contractPermissions = [
+      'commercial.contract.read',
+      'commercial.contract.approve',
+    ];
+    const freshRun = {
+      ...qualityRun(),
+      id: 'fresh-run',
+      results: qualityRun().results.map((result) => ({
+        ...result,
+        status: 'PASS',
+      })),
+    };
+    let submitted: BodyInit | null | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/quality-checks'))
+        return response(freshRun, 201);
+      if (input.toString().endsWith('/approve')) {
+        submitted = init?.body;
+        return response(
+          {
+            id: 'decision-one',
+            contractVersionId: 'version-one',
+            revision: 2,
+            actorWorkspaceMembershipId: 'member-one',
+            decidedAt: freshRun.evaluatedAt,
+            kind: 'APPROVE',
+            qualityRun: freshRun,
+            acknowledgedWarningCodes: [],
+            representationChecksum: '1'.repeat(64),
+          },
+          201,
+        );
+      }
+      const stored = fixture();
+      return response({
+        contract: {
+          ...stored,
+          version: { ...stored.version, latestQualityRun: qualityRun() },
+        },
+      });
+    });
+    render(
+      <ContractPanel
+        actor={current}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    fireEvent.click(await screen.findByRole('checkbox'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Run Contract Quality Checks' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument(),
+    );
+    const approve = screen.getByRole('button', {
+      name: resolveMessage(contractDecisionMessages, 'ro', 'approve'),
+    });
+    await waitFor(() => expect(approve).toBeEnabled());
+    fireEvent.click(approve);
+    expect(await screen.findByText('1'.repeat(64))).toBeInTheDocument();
+    expect(submitted).toBe(
+      JSON.stringify({
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: [],
+      }),
+    );
+  });
+  it('keeps a malformed successful decision uncertain and retries the exact submitted intent', async () => {
+    const current = actor(false);
+    if (!current.activeCompany) throw new Error('Missing Company');
+    current.activeCompany.contractPermissions = [
+      'commercial.contract.read',
+      'commercial.contract.approve',
+    ];
+    const attempts: Array<{
+      body: BodyInit | null | undefined;
+      key: string | null;
+    }> = [];
+    const recorded = {
+      id: 'decision-one',
+      contractVersionId: 'version-one',
+      revision: 2,
+      actorWorkspaceMembershipId: 'member-one',
+      decidedAt: '2026-10-07T09:00:00.000Z',
+      kind: 'REJECT',
+      reason: 'Synthetic preserved rejection',
+    };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/reject')) {
+        attempts.push({
+          body: init?.body,
+          key: new Headers(init?.headers).get('idempotency-key'),
+        });
+        return response(
+          attempts.length === 1
+            ? { ...recorded, contractVersionId: 'another-version' }
+            : recorded,
+          201,
+        );
+      }
+      return response({ contract: fixture() });
+    });
+    render(
+      <ContractPanel
+        actor={current}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    const reason = await screen.findByRole('textbox', {
+      name: resolveMessage(contractDecisionMessages, 'ro', 'reason'),
+    });
+    fireEvent.change(reason, { target: { value: recorded.reason } });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: resolveMessage(contractDecisionMessages, 'ro', 'reject'),
+      }),
+    );
+    const retry = await screen.findByRole('button', {
+      name: resolveMessage(contractDecisionMessages, 'ro', 'retry'),
+    });
+    expect(reason).toHaveValue(recorded.reason);
+    expect(reason).toBeDisabled();
+    expect(
+      screen.queryByText(
+        resolveMessage(contractDecisionMessages, 'ro', 'rejected'),
+      ),
+    ).not.toBeInTheDocument();
+    fireEvent.click(retry);
+    expect(
+      await screen.findByText(
+        resolveMessage(contractDecisionMessages, 'ro', 'rejected'),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(recorded.reason)).toBeInTheDocument();
+    expect(attempts[1]).toEqual(attempts[0]);
+  });
+  it('discards an in-flight decision when the active Company changes', async () => {
+    const current = actor(false);
+    if (!current.activeCompany) throw new Error('Missing Company');
+    current.activeCompany.contractPermissions = [
+      'commercial.contract.read',
+      'commercial.contract.approve',
+    ];
+    let finish: ((response: Response) => void) | undefined;
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (input.toString().endsWith('/reject'))
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      if (++reads > 1) return new Promise<Response>(() => undefined);
+      return response({ contract: fixture() });
+    });
+    const properties = {
+      actor: current,
+      identity,
+      opportunityId: 'opportunity-one',
+      onCompanyContextRejected: () => undefined,
+    };
+    const view = render(<ContractPanel {...properties} />);
+    fireEvent.change(
+      await screen.findByRole('textbox', {
+        name: resolveMessage(contractDecisionMessages, 'ro', 'reason'),
+      }),
+      { target: { value: 'Synthetic private reason' } },
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: resolveMessage(contractDecisionMessages, 'ro', 'reject'),
+      }),
+    );
+    await waitFor(() => expect(finish).toBeDefined());
+    view.rerender(
+      <ContractPanel
+        {...properties}
+        actor={{
+          ...current,
+          activeCompany: { ...current.activeCompany, id: 'another-company' },
+        }}
+      />,
+    );
+    await act(async () => {
+      if (!finish) throw new Error('Missing pending decision');
+      finish(
+        response(
+          {
+            id: 'decision-one',
+            contractVersionId: 'version-one',
+            revision: 2,
+            actorWorkspaceMembershipId: 'member-one',
+            decidedAt: '2026-10-07T09:00:00.000Z',
+            kind: 'REJECT',
+            reason: 'Synthetic private reason',
+          },
+          201,
+        ),
+      );
+    });
+    expect(
+      screen.queryByText('Synthetic private reason'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        resolveMessage(contractDecisionMessages, 'ro', 'rejected'),
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: resolveMessage(contractDecisionMessages, 'ro', 'retry'),
+      }),
+    ).not.toBeInTheDocument();
+  });
+  it('exposes an approver-only decision, preserves an uncertain exact retry and reloads approval evidence', async () => {
+    const current = actor(false);
+    if (!current.activeCompany) throw new Error('Missing fixture Company');
+    current.activeCompany.contractPermissions = [
+      'commercial.contract.read',
+      'commercial.contract.approve',
+      'commercial.contract.signature.record',
+    ];
+    current.activeCompany.contractPermissionAssignmentId = undefined;
+    current.activeCompany.contractPermissionSetVersion = undefined;
+    current.activeCompany.contractApproverAssignmentId = 'approver-one';
+    current.activeCompany.contractApproverPermissionSetVersion = 'v1';
+    const attempts: Array<{
+      body: BodyInit | null | undefined;
+      key: string | null;
+    }> = [];
+    const freshRun = {
+      ...qualityRun(),
+      results: qualityRun().results.map((result) => ({
+        ...result,
+        status: 'PASS',
+      })),
+    };
+    const approved = {
+      id: 'decision-one',
+      contractVersionId: 'version-one',
+      revision: 2,
+      actorWorkspaceMembershipId: 'member-one',
+      decidedAt: '2026-10-07T09:00:00.000Z',
+      kind: 'APPROVE',
+      qualityRun: freshRun,
+      acknowledgedWarningCodes: [],
+      representationChecksum: '1'.repeat(64),
+    };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/approve')) {
+        attempts.push({
+          body: init?.body,
+          key: new Headers(init?.headers).get('idempotency-key'),
+        });
+        if (attempts.length === 1) throw new Error('Lost response');
+        return response(approved, 201);
+      }
+      return response({ contract: fixture() });
+    });
+    render(
+      <ContractPanel
+        actor={current}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    const copy = (key: 'approve' | 'retry' | 'approved') =>
+      resolveMessage(contractDecisionMessages, 'ro', key);
+    fireEvent.click(
+      await screen.findByRole('button', { name: copy('approve') }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: copy('retry') }));
+    await waitFor(() => expect(attempts).toHaveLength(2));
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts[0]?.body).toBe(
+      JSON.stringify({
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: [],
+      }),
+    );
+    expect(await screen.findByText('1'.repeat(64))).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: copy('approve') }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Create Contract' }),
+    ).not.toBeInTheDocument();
+  });
+  it.each([
+    'QUALITY_CHECK_ERRORS',
+    'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+    'STALE_CONTRACT_REVISION',
+    'CONTRACT_VERSION_ALREADY_DECIDED',
+  ])(
+    'preserves reason text on %s and disables stale decisions',
+    async (code) => {
+      const current = actor(false);
+      if (!current.activeCompany) throw new Error('Missing Company');
+      current.activeCompany.contractPermissions = [
+        'commercial.contract.read',
+        'commercial.contract.approve',
+      ];
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        response(
+          input.toString().endsWith('/approve')
+            ? { code }
+            : { contract: fixture() },
+          input.toString().endsWith('/approve') ? 409 : 200,
+        ),
+      );
+      render(
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      const approve = await screen.findByRole('button', {
+        name: resolveMessage(contractDecisionMessages, 'ro', 'approve'),
+      });
+      const reason = screen.getByRole('textbox', {
+        name: resolveMessage(contractDecisionMessages, 'ro', 'reason'),
+      });
+      fireEvent.change(reason, {
+        target: { value: 'Synthetic entered reason' },
+      });
+      fireEvent.click(approve);
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
+      expect(reason).toHaveValue('Synthetic entered reason');
+      if (
+        code === 'STALE_CONTRACT_REVISION' ||
+        code === 'CONTRACT_VERSION_ALREADY_DECIDED'
+      )
+        expect(approve).toBeDisabled();
+    },
+  );
+
   it.each([
     'opportunity',
     'identity',

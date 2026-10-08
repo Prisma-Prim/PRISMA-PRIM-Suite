@@ -103,6 +103,10 @@ export const companyContextAccessCopy = {
       'revoked Company Project Approver',
     'company_pricing_user_assignment.granted': 'granted Company Pricing User',
     'company_pricing_user_assignment.revoked': 'revoked Company Pricing User',
+    'company_contract_approver_assignment.granted':
+      'granted Company Contract Approver',
+    'company_contract_approver_assignment.revoked':
+      'revoked Company Contract Approver',
     'company_contract_preparer_assignment.granted':
       'granted Company Contract Preparer',
     'company_contract_preparer_assignment.revoked':

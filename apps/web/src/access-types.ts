@@ -63,9 +63,13 @@ export interface ActorContext {
       | 'commercial.contract.read'
       | 'commercial.contract.prepare'
       | 'commercial.contract.project.link'
+      | 'commercial.contract.approve'
+      | 'commercial.contract.signature.record'
     >;
     contractPermissionAssignmentId?: string;
     contractPermissionSetVersion?: 'v1';
+    contractApproverAssignmentId?: string;
+    contractApproverPermissionSetVersion?: 'v1';
     profitabilityContributorPermissions?: Array<
       | 'commercial.profitability_estimate.read'
       | 'commercial.profitability_estimate.create'

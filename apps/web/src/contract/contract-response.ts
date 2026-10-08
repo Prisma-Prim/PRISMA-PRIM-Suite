@@ -1,4 +1,8 @@
 import {
+  readContractDecision,
+  type ContractDecisionView,
+} from './contract-decision-response';
+import {
   readContractQualityRun,
   type ContractQualityRunView,
 } from './contract-quality-response';
@@ -9,7 +13,10 @@ export interface ContractView {
   sourceOfferVersionId: string;
   sourceOffer: { illustrativeReference: number; versionNumber: number };
   illustrativeReference: number;
+  revision: number;
   version: {
+    decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
+    decision: ContractDecisionView | null;
     latestQualityRun: ContractQualityRunView | null;
     id: string;
     recipient: {
@@ -50,10 +57,12 @@ export function readContract(value: unknown): ContractView {
   if (
     input.kind !== 'CONTRACT' ||
     input.origin !== 'ACCEPTED_OFFER' ||
-    input.revision !== 1 ||
+    (input.revision !== 1 && input.revision !== 2) ||
     input.provisional !== true ||
     version.versionNumber !== 1 ||
-    version.decisionState !== 'PENDING' ||
+    (version.decisionState !== 'PENDING' &&
+      version.decisionState !== 'APPROVED' &&
+      version.decisionState !== 'REJECTED') ||
     version.executionState !== 'NOT_EXECUTED' ||
     version.provenance !== 'ILLUSTRATIVE' ||
     version.provisional !== true ||
@@ -65,8 +74,27 @@ export function readContract(value: unknown): ContractView {
     string(version.pricingSnapshotId) !== string(snapshot.id)
   )
     throw new Error('Invalid Contract response.');
+  const decision =
+    version.decision === null || version.decision === undefined
+      ? null
+      : readContractDecision(
+          version.decision,
+          string(version.id),
+          nullableDate(version.termEndsOn),
+        );
+  if (
+    (version.decisionState === 'PENDING' &&
+      (decision !== null || input.revision !== 1)) ||
+    (version.decisionState !== 'PENDING' &&
+      (!decision ||
+        decision.revision !== input.revision ||
+        version.decisionState !==
+          (decision.kind === 'APPROVE' ? 'APPROVED' : 'REJECTED')))
+  )
+    throw new Error('Invalid Contract decision state.');
   return {
     id: string(input.id),
+    revision: positiveInteger(input.revision),
     companyId: string(input.companyId),
     opportunityId: string(input.opportunityId),
     sourceOfferVersionId: string(input.sourceOfferVersionId),
@@ -76,6 +104,8 @@ export function readContract(value: unknown): ContractView {
     },
     illustrativeReference: input.illustrativeReference,
     version: {
+      decision,
+      decisionState: version.decisionState,
       id: string(version.id),
       latestQualityRun:
         version.latestQualityRun === null

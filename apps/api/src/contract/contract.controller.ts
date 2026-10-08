@@ -43,6 +43,38 @@ export class ContractController {
       }),
     };
   }
+  @Post('versions/:versionId/approve') approve(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.contracts.decide({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      kind: 'APPROVE',
+      payload,
+      idempotencyKey,
+    });
+  }
+  @Post('versions/:versionId/reject') reject(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.contracts.decide({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      kind: 'REJECT',
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post('versions/:versionId/quality-checks') runQuality(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,

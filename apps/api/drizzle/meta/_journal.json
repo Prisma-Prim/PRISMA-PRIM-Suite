@@ -386,6 +386,13 @@
       "when": 1791380360258,
       "tag": "0054_contract_quality_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1791398884662,
+      "tag": "0055_contract_decisions",
+      "breakpoints": true
     }
   ]
 }

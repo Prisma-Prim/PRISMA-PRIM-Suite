@@ -88,3 +88,23 @@
 .contract-quality code {
   overflow-wrap: anywhere;
 }
+.contract-decision {
+  display: grid;
+  gap: 0.75rem;
+  margin-block: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d9d8e8;
+}
+.contract-decision button {
+  max-width: 100%;
+  white-space: normal;
+  min-height: 2.75rem;
+}
+.contract-panel .contract-warning-acknowledgement {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.5rem;
+}
+.contract-warning-acknowledgement input {
+  width: auto;
+}

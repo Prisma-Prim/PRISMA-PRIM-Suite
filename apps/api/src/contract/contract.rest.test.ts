@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import type { Pool } from 'pg';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -80,6 +81,831 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('lets an independent approver decide the exact version with fresh warnings and unchanged representation', async () => {
+    const { fixture, created, base, versionId } = await qualityFixture({
+      specialConditions: 'Synthetic additional conditions',
+    });
+    const reader = record(
+      await json(
+        await request({
+          path: '/access/current-actor',
+          init: { headers: memberHeaders('contract-reader') },
+        }),
+      ),
+    );
+    const membershipId = stringField(reader, 'workspaceMembershipId');
+    for (const route of [
+      '/company-context-assignments',
+      '/company-commercial-intake-assignments',
+      '/company-contract-approver-assignments',
+    ]) {
+      await command({
+        path: route,
+        body: {
+          workspaceMembershipId: membershipId,
+          companyId: fixture.companyId,
+        },
+        key: 'approver-' + route,
+      });
+    }
+    const active = record(
+      record(
+        await json(
+          await request({
+            path: '/access/current-actor',
+            companyId: fixture.companyId,
+            init: { headers: memberHeaders('contract-reader') },
+          }),
+        ),
+      ).activeCompany,
+    );
+    expect(active.contractPermissions).toEqual([
+      'commercial.contract.read',
+      'commercial.contract.approve',
+      'commercial.contract.signature.record',
+    ]);
+    expect(active.contractApproverPermissionSetVersion).toBe('v1');
+    expect(active.contractPermissionAssignmentId).toBeUndefined();
+    expect(active.clientPermissions).toEqual([]);
+    for (const field of [
+      'offerPermissions',
+      'pricingUserPermissions',
+      'pricingConfigurationPermissions',
+    ])
+      expect(active[field]).toBeUndefined();
+    expect(
+      (
+        await request({
+          path: '/company-contract-approver-assignments',
+          init: {
+            method: 'POST',
+            headers: {
+              ...memberHeaders('contract-reader'),
+              'content-type': 'application/json',
+              'idempotency-key': 'forbidden-admin',
+            },
+            body: JSON.stringify({
+              workspaceMembershipId: membershipId,
+              companyId: fixture.companyId,
+            }),
+          },
+        })
+      ).status,
+    ).toBe(403);
+    const target = base + '/versions/' + versionId;
+    const decision = await request({
+      path: target + '/approve',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          ...memberHeaders('contract-reader'),
+          'content-type': 'application/json',
+          'idempotency-key': 'approve-exact',
+        },
+        body: JSON.stringify({
+          expectedContractRevision: 1,
+          acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+        }),
+      },
+    });
+    expect(decision.status).toBe(201);
+    const result = record(await json(decision));
+    expect(result).toMatchObject({
+      revision: 2,
+      actorWorkspaceMembershipId: membershipId,
+      decidedAt: instant.toISOString(),
+      kind: 'APPROVE',
+    });
+    const reload = record(
+      record(
+        await json(
+          await request({
+            path: base,
+            companyId: fixture.companyId,
+            init: { headers: memberHeaders('contract-reader') },
+          }),
+        ),
+      ).contract,
+    );
+    expect(reload).toMatchObject({
+      revision: 2,
+      version: { decisionState: 'APPROVED', decision: result },
+    });
+    expect(record(reload.version).representation).toEqual(
+      record(created.version).representation,
+    );
+    expect(reload.clientReference).toBeUndefined();
+  });
+
+  it('rejects without quality gating, preserves the reason and refuses a second decision', async () => {
+    const { fixture, created, base, versionId } = await qualityFixture();
+    await grantApprover(fixture);
+    for (const payload of [
+      { expectedContractRevision: 0, acknowledgedWarningCodes: [] },
+      {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: ['PARTY_AVAILABLE'],
+      },
+      {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: [
+          'ADDED_CONDITIONS_CONFIRMED',
+          'ADDED_CONDITIONS_CONFIRMED',
+        ],
+      },
+      {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: [],
+        unexpected: true,
+      },
+    ])
+      expect(
+        (
+          await decisionRequest(
+            fixture,
+            versionId,
+            'approve',
+            payload,
+            'invalid-approval',
+          )
+        ).status,
+      ).toBe(400);
+    await pool.query(
+      "UPDATE client_accounts SET status='archived' WHERE id=$1",
+      [fixture.clientId],
+    );
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          versionId,
+          'reject',
+          { expectedContractRevision: 1, reason: '  ' },
+          'invalid-reject',
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          versionId,
+          'reject',
+          { expectedContractRevision: 1, reason: 'x'.repeat(501) },
+          'long-reject',
+        )
+      ).status,
+    ).toBe(400);
+    const reason = 'Synthetic rejection reason\nkept exactly';
+    const original = await json(
+      await decisionRequest(
+        fixture,
+        versionId,
+        'reject',
+        { expectedContractRevision: 1, reason },
+        'reject-exact',
+      ),
+    );
+    expect(original).toMatchObject({ kind: 'REJECT', revision: 2, reason });
+    const stored = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(record(stored.version).decision).toEqual(original);
+    expect(record(stored.version).representation).toEqual(
+      record(created.version).representation,
+    );
+    expect(
+      await json(
+        await request({
+          path: base + '/versions/' + versionId + '/quality-checks',
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toMatchObject({ items: [] });
+    expect(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'reject',
+          { expectedContractRevision: 2, reason: 'second' },
+          'second-reject',
+        ),
+      ),
+    ).toMatchObject({ code: 'CONTRACT_VERSION_ALREADY_DECIDED' });
+    expect(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+          'obsolete',
+        ),
+      ),
+    ).toMatchObject({ code: 'STALE_CONTRACT_REVISION' });
+    expect(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'reject',
+          { expectedContractRevision: 1, reason },
+          'reject-exact',
+        ),
+      ),
+    ).toEqual(original);
+    expect(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'reject',
+          { expectedContractRevision: 1, reason: 'changed' },
+          'reject-exact',
+        ),
+      ),
+    ).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    const events = await pool.query<{ action: string; metadata: unknown }>(
+      'SELECT action,metadata FROM contract_events ORDER BY occurred_at,action',
+    );
+    expect(
+      events.rows.filter((row) => row.action === 'contract_version.rejected'),
+    ).toHaveLength(1);
+    expect(JSON.stringify(events.rows)).not.toContain(reason);
+    expect(
+      (
+        await pool.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM contract_quality_runs',
+        )
+      ).rows[0]?.count,
+    ).toBe('0');
+  });
+
+  it('requires fresh errors and exact current warnings without storing failed approval attempts', async () => {
+    const { fixture, created, versionId, path } = await qualityFixture({
+      termEndsOn: '2026-09-27',
+    });
+    await grantApprover(fixture);
+    const reviewed = record(
+      await command({
+        path,
+        body: {},
+        key: 'review',
+        companyId: fixture.companyId,
+      }),
+    );
+    expect(reviewed.results).toContainEqual({
+      code: 'TERM_END_NOT_PASSED',
+      status: 'PASS',
+    });
+    instant = new Date('2026-09-28T09:00:00.000Z');
+    const payload = {
+      expectedContractRevision: 1,
+      acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+    };
+    expect(
+      await json(
+        await decisionRequest(fixture, versionId, 'approve', payload, 'fresh'),
+      ),
+    ).toMatchObject({ code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED' });
+    expect(
+      (
+        await pool.query<{ runs: string; decisions: string }>(
+          'SELECT (SELECT count(*) FROM contract_quality_runs)::text AS runs,(SELECT count(*) FROM contract_decisions)::text AS decisions',
+        )
+      ).rows[0],
+    ).toEqual({ runs: '1', decisions: '0' });
+    await pool.query(
+      "UPDATE client_accounts SET status='archived' WHERE id=$1",
+      [fixture.clientId],
+    );
+    expect(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            ...payload,
+            acknowledgedWarningCodes: [
+              'ADDED_CONDITIONS_CONFIRMED',
+              'TERM_END_NOT_PASSED',
+            ],
+          },
+          'errors',
+        ),
+      ),
+    ).toMatchObject({ code: 'QUALITY_CHECK_ERRORS' });
+    await pool.query("UPDATE client_accounts SET status='active' WHERE id=$1", [
+      fixture.clientId,
+    ]);
+    const result = record(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            ...payload,
+            acknowledgedWarningCodes: [
+              'TERM_END_NOT_PASSED',
+              'ADDED_CONDITIONS_CONFIRMED',
+            ],
+          },
+          'fresh',
+        ),
+      ),
+    );
+    expect(result).toMatchObject({
+      kind: 'APPROVE',
+      decidedAt: instant.toISOString(),
+      representationChecksum: record(record(created.version).representation)
+        .sha256,
+      acknowledgedWarningCodes: [
+        'ADDED_CONDITIONS_CONFIRMED',
+        'TERM_END_NOT_PASSED',
+      ],
+    });
+    expect(record(result.qualityRun).id).not.toBe(reviewed.id);
+    expect(record(result.qualityRun).evaluatedAt).toBe(instant.toISOString());
+    instant = new Date('2026-10-07T09:00:00.000Z');
+    await command({
+      path,
+      body: {},
+      key: 'after-approval-review',
+      companyId: fixture.companyId,
+    });
+    expect(
+      await json(
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            ...payload,
+            acknowledgedWarningCodes: [
+              'TERM_END_NOT_PASSED',
+              'ADDED_CONDITIONS_CONFIRMED',
+            ],
+          },
+          'fresh',
+        ),
+      ),
+    ).toEqual(result);
+  });
+
+  it('serializes competing decisions, rechecks revocation on replay and rolls back failed events', async () => {
+    const { fixture, created, base, versionId } = await qualityFixture();
+    await grantApprover(fixture);
+    const payload = {
+      expectedContractRevision: 1,
+      acknowledgedWarningCodes: [],
+    };
+    await pool.query(
+      "CREATE FUNCTION fail_c4_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic decision event failure'; END; $$; CREATE TRIGGER fail_c4_event BEFORE INSERT ON contract_events FOR EACH ROW EXECUTE FUNCTION fail_c4_event()",
+    );
+    try {
+      expect(
+        await json(
+          await decisionRequest(
+            fixture,
+            versionId,
+            'approve',
+            payload,
+            'atomic',
+          ),
+        ),
+      ).toMatchObject({ code: 'CONTRACT_DECISION_UNCERTAIN' });
+      const stored = record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      );
+      expect(stored).toEqual(created);
+      expect(
+        (
+          await pool.query<{ count: string }>(
+            'SELECT ((SELECT count(*) FROM contract_decisions)+(SELECT count(*) FROM contract_quality_runs))::text AS count',
+          )
+        ).rows[0]?.count,
+      ).toBe('0');
+    } finally {
+      await pool.query(
+        'DROP TRIGGER fail_c4_event ON contract_events; DROP FUNCTION fail_c4_event()',
+      );
+    }
+    const decisions = await Promise.all([
+      decisionRequest(fixture, versionId, 'approve', payload, 'atomic'),
+      decisionRequest(
+        fixture,
+        versionId,
+        'reject',
+        {
+          expectedContractRevision: 1,
+          reason: 'Synthetic concurrent rejection',
+        },
+        'competing',
+      ),
+    ]);
+    expect(decisions.map((value) => value.status).sort()).toEqual([201, 409]);
+    const winner = decisions.find((response) => response.status === 201);
+    if (!winner) throw new Error('Missing decision winner');
+    const recorded = record(await json(winner));
+    const kind = recorded.kind === 'APPROVE' ? 'approve' : 'reject';
+    const body =
+      kind === 'approve'
+        ? payload
+        : {
+            expectedContractRevision: 1,
+            reason: 'Synthetic concurrent rejection',
+          };
+    const key = kind === 'approve' ? 'atomic' : 'competing';
+    const identical = await Promise.all([
+      decisionRequest(fixture, versionId, kind, body, key),
+      decisionRequest(fixture, versionId, kind, body, key),
+    ]);
+    expect(identical.map((response) => response.status)).toEqual([201, 201]);
+    for (const response of identical)
+      expect(await json(response)).toEqual(recorded);
+    expect(
+      (
+        await pool.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM contract_decisions',
+        )
+      ).rows[0]?.count,
+    ).toBe('1');
+    await request({
+      path:
+        '/company-contract-approver-assignments/' +
+        fixture.actorMembershipId +
+        '/' +
+        fixture.companyId,
+      init: {
+        method: 'DELETE',
+        headers: { 'idempotency-key': 'revoke-decision' },
+      },
+    });
+    expect(
+      (await decisionRequest(fixture, versionId, kind, body, key)).status,
+    ).toBe(403);
+  });
+
+  it('fails closed for captured approver versions and each independent prerequisite without leaking targets', async () => {
+    const { fixture, versionId } = await qualityFixture();
+    const route =
+      '/contracts/opportunities/' +
+      fixture.opportunityId +
+      '/versions/' +
+      versionId +
+      '/approve';
+    const body = { expectedContractRevision: 1, acknowledgedWarningCodes: [] };
+    const send = (
+      companyId = fixture.companyId,
+      path = route,
+      headers: Record<string, string> = {},
+    ) =>
+      request({
+        path,
+        companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            ...headers,
+            'content-type': 'application/json',
+            'idempotency-key': 'denied-key',
+          },
+          body: JSON.stringify(body),
+        },
+      });
+    expect((await send()).status).toBe(403);
+    await grantApprover(fixture);
+    await expect(
+      pool.query(
+        "INSERT INTO company_role_assignments(workspace_id,company_id,workspace_membership_id,bundle,permission_set_version) VALUES($1,$2,$3,'company_contract_approver',NULL)",
+        [WORKSPACE_ID, fixture.companyId, fixture.actorMembershipId],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    const [constraint] = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
+      )
+    ).rows;
+    if (!constraint) throw new Error('Missing captured version constraint.');
+    await pool.query(
+      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+    );
+    try {
+      for (const version of [null, 'v999']) {
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version=$1 WHERE workspace_id=$2 AND company_id=$3 AND bundle='company_contract_approver'",
+          [version, WORKSPACE_ID, fixture.companyId],
+        );
+        expect((await send()).status).toBe(403);
+      }
+    } finally {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version='v1' WHERE workspace_id=$1 AND company_id=$2 AND bundle='company_contract_approver'",
+        [WORKSPACE_ID, fixture.companyId],
+      );
+      await pool.query(
+        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+          constraint.definition,
+      );
+    }
+    const unknown = await send(
+      fixture.companyId,
+      route.replace(versionId, '00000000-0000-4000-8000-000000000999'),
+    );
+    expect(unknown.status).toBe(404);
+    const safe = await json(unknown);
+    const other = await acceptedOffer({ suffix: 'other-decision' });
+    await grantApprover(other);
+    const hidden = await send(other.companyId);
+    expect(hidden.status).toBe(404);
+    expect(await json(hidden)).toEqual(safe);
+    expect(
+      (
+        await send(fixture.companyId, route, {
+          'x-workspace-context-id': '00000000-0000-4000-8000-000000000999',
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(origin + '/api' + route, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-company-context-id': fixture.companyId,
+          },
+          body: JSON.stringify(body),
+        })
+      ).status,
+    ).toBe(401);
+    const reader = record(
+      await json(
+        await request({
+          path: '/access/current-actor',
+          init: { headers: memberHeaders('contract-reader') },
+        }),
+      ),
+    );
+    const independentMembershipId = stringField(
+      reader,
+      'workspaceMembershipId',
+    );
+    for (const bundle of [
+      'company-context',
+      'company-commercial-intake',
+      'company-contract-approver',
+    ])
+      await command({
+        path: '/' + bundle + '-assignments',
+        body: {
+          workspaceMembershipId: independentMembershipId,
+          companyId: fixture.companyId,
+        },
+        key: 'independent-' + bundle,
+      });
+    for (const bundle of ['company-commercial-intake', 'company-context']) {
+      expect(
+        (
+          await request({
+            path:
+              '/' +
+              bundle +
+              '-assignments/' +
+              independentMembershipId +
+              '/' +
+              fixture.companyId,
+            init: {
+              method: 'DELETE',
+              headers: { 'idempotency-key': 'revoke-' + bundle },
+            },
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (await send(fixture.companyId, route, memberHeaders('contract-reader')))
+          .status,
+      ).toBe(403);
+      await command({
+        path: '/' + bundle + '-assignments',
+        body: {
+          workspaceMembershipId: independentMembershipId,
+          companyId: fixture.companyId,
+        },
+        key: 'restore-independent-' + bundle,
+      });
+    }
+    expect(
+      (
+        await pool.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM contract_decisions',
+        )
+      ).rows[0]?.count,
+    ).toBe('0');
+  });
+
+  it('orders decision authority before a concurrent revocation and denies replay after revocation', async () => {
+    const { fixture, versionId } = await qualityFixture();
+    await grantApprover(fixture);
+    const blocker = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    let revoked: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const {
+        rows: [identity],
+      } = await blocker.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      if (!identity) throw new Error('Missing blocker');
+      await blocker.query(
+        'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      pending = decisionRequest(
+        fixture,
+        versionId,
+        'approve',
+        { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+        'fenced-approval',
+      );
+      const decisionPid = await waitForBlocker(identity.pid);
+      revoked = request({
+        path:
+          '/company-contract-approver-assignments/' +
+          fixture.actorMembershipId +
+          '/' +
+          fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'concurrent-approver-revoke' },
+        },
+      });
+      await waitForBlocker(decisionPid);
+      await blocker.query('COMMIT');
+      expect((await pending).status).toBe(201);
+      expect((await revoked).status).toBe(200);
+      expect(
+        (
+          await decisionRequest(
+            fixture,
+            versionId,
+            'approve',
+            { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+            'fenced-approval',
+          )
+        ).status,
+      ).toBe(403);
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await Promise.allSettled(
+        [pending, revoked].filter((value) => value !== undefined),
+      );
+    }
+  });
+
+  it('evaluates current Client availability after its owner fence, storing no approval on invalidation', async () => {
+    const { fixture, versionId } = await qualityFixture();
+    await grantApprover(fixture);
+    const blocker = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const {
+        rows: [identity],
+      } = await blocker.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      if (!identity) throw new Error('Missing blocker');
+      await blocker.query(
+        "UPDATE client_accounts SET status='archived' WHERE id=$1",
+        [fixture.clientId],
+      );
+      pending = decisionRequest(
+        fixture,
+        versionId,
+        'approve',
+        { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+        'invalidated-approval',
+      );
+      await waitForBlocker(identity.pid);
+      await blocker.query('COMMIT');
+      expect(await json(await pending)).toMatchObject({
+        code: 'QUALITY_CHECK_ERRORS',
+      });
+      expect(
+        (
+          await pool.query<{ count: string }>(
+            'SELECT ((SELECT count(*) FROM contract_decisions)+(SELECT count(*) FROM contract_quality_runs))::text AS count',
+          )
+        ).rows[0]?.count,
+      ).toBe('0');
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+  });
+
+  it('converges an identical retry after the HTTP acknowledgement is lost following commit', async () => {
+    const { fixture, versionId, base } = await qualityFixture();
+    await grantApprover(fixture);
+    const payload = {
+      expectedContractRevision: 1,
+      acknowledgedWarningCodes: [],
+    };
+    const proxy = createServer(async (incoming, outgoing) => {
+      try {
+        const chunks: Buffer[] = [];
+        for await (const chunk of incoming) {
+          if (!Buffer.isBuffer(chunk)) throw new Error('Unexpected proxy body');
+          chunks.push(chunk);
+        }
+        const committed = await fetch(
+          origin + '/api' + base + '/versions/' + versionId + '/approve',
+          {
+            method: 'POST',
+            headers: {
+              ...OWNER,
+              'x-company-context-id': fixture.companyId,
+              'content-type': 'application/json',
+              'idempotency-key': 'lost-ack',
+            },
+            body: Buffer.concat(chunks),
+          },
+        );
+        await committed.arrayBuffer();
+        outgoing.destroy();
+      } catch {
+        outgoing.destroy();
+      }
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
+    const address = proxy.address();
+    if (!address || typeof address === 'string')
+      throw new Error('Missing proxy port');
+    try {
+      await expect(
+        fetch('http://127.0.0.1:' + address.port, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        }),
+      ).rejects.toThrow();
+      const stored = record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      );
+      expect(stored.revision).toBe(2);
+      const decision = record(record(stored.version).decision);
+      instant = new Date('2026-10-09T12:00:00.000Z');
+      expect(
+        await json(
+          await decisionRequest(
+            fixture,
+            versionId,
+            'approve',
+            payload,
+            'lost-ack',
+          ),
+        ),
+      ).toEqual(decision);
+      expect(
+        (
+          await pool.query<{ decisions: string; runs: string; events: string }>(
+            "SELECT (SELECT count(*) FROM contract_decisions)::text AS decisions,(SELECT count(*) FROM contract_quality_runs)::text AS runs,(SELECT count(*) FROM contract_events WHERE action='contract_version.approved')::text AS events",
+          )
+        ).rows[0],
+      ).toEqual({ decisions: '1', runs: '1', events: '1' });
+      for (const mutation of [
+        "UPDATE contract_decisions SET reason='changed'",
+        'DELETE FROM contract_decisions',
+        'UPDATE contracts SET revision=1',
+        "UPDATE contract_versions SET decision_state='PENDING'",
+      ])
+        await expect(pool.query(mutation)).rejects.toMatchObject({
+          code: '23514',
+        });
+    } finally {
+      proxy.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        proxy.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+
   it('runs and reopens attributed checks on the exact persisted Contract Version', async () => {
     const fixture = await acceptedOffer();
     await grantContract(fixture, 'grant-quality');
@@ -611,48 +1437,6 @@ withPostgres('First illustrative Contract REST', () => {
     expect((await send()).status).toBe(201);
   });
 
-  it('upgrades the delivered 0053 baseline with persisted C1 Contract evidence and every existing permission and write-once guard intact', async () => {
-    const { fixture, created, base } = await qualityFixture();
-    const evidence = () =>
-      pool.query<{
-        contracts: unknown;
-        versions: unknown;
-        receipts: unknown;
-        permissions: unknown;
-        guards: unknown;
-      }>(`SELECT
-      (SELECT jsonb_agg(to_jsonb(c) ORDER BY c.id) FROM contracts c) AS contracts,
-      (SELECT jsonb_agg(to_jsonb(v) ORDER BY v.id) FROM contract_versions v) AS versions,
-      (SELECT jsonb_agg(to_jsonb(r)-ARRAY['kind','result_quality_run_id'] ORDER BY r.id) FROM contract_commands r) AS receipts,
-      (SELECT jsonb_agg(to_jsonb(a) ORDER BY a.id) FROM company_role_assignments a) AS permissions,
-      (SELECT jsonb_agg(pg_get_triggerdef(t.oid) ORDER BY t.tgname) FROM pg_trigger t WHERE t.tgname IN ('contracts_immutable','contract_versions_immutable','contract_commands_immutable','contract_events_immutable')) AS guards`);
-    const before = (await evidence()).rows;
-    // Restore only C3 additions in this isolated fixture to the delivered 0053
-    // baseline; exercise the ordinary additive upgrade over real C1 rows.
-    await pool.query(`DROP TABLE contract_quality_runs CASCADE;
-      DROP FUNCTION guard_c3_quality_results();
-      ALTER TABLE contract_commands DROP COLUMN kind, DROP COLUMN result_quality_run_id;
-      DROP INDEX contract_versions_contract_identity_unique;
-      DELETE FROM drizzle.__drizzle_migrations WHERE created_at=(SELECT max(created_at) FROM drizzle.__drizzle_migrations);`);
-    await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
-    expect((await evidence()).rows).toEqual(before);
-    expect(
-      record(
-        await json(await request({ path: base, companyId: fixture.companyId })),
-      ).contract,
-    ).toEqual(created);
-    await expect(
-      pool.query(
-        'UPDATE contract_versions SET special_conditions=$1 WHERE contract_id=$2',
-        ['Changed', created.id],
-      ),
-    ).rejects.toMatchObject({ code: '23514' });
-    await expect(
-      pool.query('DELETE FROM contract_commands WHERE result_contract_id=$1', [
-        created.id,
-      ]),
-    ).rejects.toMatchObject({ code: '23514' });
-  });
   it('keeps unknown, cross-Company, cross-Workspace and missing Opportunity authority refusals free of run metadata', async () => {
     const { fixture, path } = await qualityFixture();
     const old = record(
@@ -897,6 +1681,12 @@ withPostgres('First illustrative Contract REST', () => {
       index: 54,
       previousTag: '0053_contract_template_binding',
     },
+    {
+      baseline: 'C3 / 0054',
+      migration: '0055_contract_decisions',
+      index: 55,
+      previousTag: '0054_contract_quality_checks',
+    },
   ])(
     'upgrades actual $baseline versions and receipts without changing any historic field or immutable guard',
     async ({ migration, index: expectedIndex, previousTag }) => {
@@ -996,6 +1786,53 @@ withPostgres('First illustrative Contract REST', () => {
         CROSS JOIN LATERAL (VALUES ('contract.created',NULL::uuid),('contract_version.created',v.id)) e(action,version_id) WHERE c.id=$1`,
           [contractId],
         );
+        if (index === 55) {
+          // C3 records are synthesized using only the delivered 0054 columns;
+          // the current command model additionally selects C4 receipt columns.
+          const results = [
+            { code: 'SOURCE_COMPANY_MATCHES', status: 'PASS' },
+            { code: 'PARTY_AVAILABLE', status: 'PASS' },
+            { code: 'PARTY_MATCHES_SOURCE', status: 'PASS' },
+            { code: 'PARTY_IDENTITY_MATCHES_SOURCE', status: 'PASS' },
+            { code: 'PARTY_IDENTITY_CURRENT', status: 'PASS' },
+            { code: 'PARTY_TAX_ID_RECORDED', status: 'PASS' },
+            { code: 'PRICE_MATCHES_ACCEPTED_OFFER', status: 'PASS' },
+            { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+            { code: 'CONDITIONS_MATCH_ACCEPTED_OFFER', status: 'PASS' },
+            { code: 'ADDED_CONDITIONS_CONFIRMED', status: 'WARNING' },
+            { code: 'TERM_END_NOT_PASSED', status: 'PASS' },
+            { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+          ];
+          await pool.query(
+            `INSERT INTO contract_quality_runs(workspace_id,company_id,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,evaluated_at,results) SELECT workspace_id,company_id,contract_id,id,created_by_internal_user_id,created_by_workspace_membership_id,created_at,$2::jsonb FROM contract_versions WHERE contract_id=$1`,
+            [contractId, JSON.stringify(results)],
+          );
+          await pool.query(
+            `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,kind,result_quality_run_id,created_at) SELECT r.workspace_id,r.company_id,r.actor_workspace_membership_id,'historic-c3-run',$2,c.opportunity_id,c.id,'RUN_QUALITY_CHECKS',r.id,r.evaluated_at FROM contract_quality_runs r JOIN contracts c ON c.id=r.contract_id WHERE c.id=$1`,
+            [
+              contractId,
+              commandFingerprint({
+                kind: 'RUN_QUALITY_CHECKS',
+                opportunityId: fixture.opportunityId,
+                versionId: (
+                  await pool.query<{ id: string }>(
+                    'SELECT id FROM contract_versions WHERE contract_id=$1',
+                    [contractId],
+                  )
+                ).rows[0]?.id,
+                payload: {},
+              }),
+            ],
+          );
+        }
+        const historicQuality =
+          index === 55
+            ? (
+                await pool.query(
+                  'SELECT to_jsonb(r) AS row FROM contract_quality_runs r',
+                )
+              ).rows
+            : null;
         const evidence = () =>
           pool.query<{
             contracts: unknown;
@@ -1007,19 +1844,26 @@ withPostgres('First illustrative Contract REST', () => {
             `SELECT
         (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contracts c) AS contracts,
         (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['template_code','template_version','clause_versions']::text[] ELSE to_jsonb(v) END ORDER BY id) FROM contract_versions v) AS versions,
-        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
+        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
         (SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM company_role_assignments a) AS permissions,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM activity_log_events e) AS activity,
         (SELECT jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) ORDER BY conname) FROM pg_constraint WHERE conrelid IN ('contracts'::regclass,'contract_versions'::regclass,'contract_commands'::regclass,'contract_events'::regclass,'contract_reference_counters'::regclass) AND conname<>ALL($2::text[])) AS constraints,
-        (SELECT jsonb_agg(pg_get_triggerdef(oid) ORDER BY tgname) FROM pg_trigger WHERE tgname IN ('contracts_immutable','contract_versions_immutable','contract_commands_immutable','contract_events_immutable')) AS guards`,
+        (SELECT jsonb_agg(pg_get_triggerdef(oid) ORDER BY tgname) FROM pg_trigger WHERE tgname IN ('contract_commands_immutable','contract_events_immutable')) AS guards`,
             [
               index === 53,
               [
                 ...(index === 53
                   ? ['contract_versions_template_binding_check']
                   : []),
+                'contracts_initial_check',
+                'contract_versions_initial_check',
+                'contract_events_target_check',
+                'contract_events_metadata_check',
+                'contract_commands_decision_fk',
+                'contracts_decision_evidence',
+                'contract_versions_decision_evidence',
                 'contract_commands_kind_check',
                 'contract_commands_run_fk',
               ],
@@ -1028,12 +1872,29 @@ withPostgres('First illustrative Contract REST', () => {
         const before = (await evidence()).rows;
         await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
         expect((await evidence()).rows).toEqual(before);
+        if (historicQuality)
+          expect(
+            (
+              await pool.query(
+                'SELECT to_jsonb(r) AS row FROM contract_quality_runs r',
+              )
+            ).rows,
+          ).toEqual(historicQuality);
+        expect(
+          (
+            await pool.query<{ count: string }>(
+              "SELECT count(*)::text AS count FROM pg_constraint WHERE conname IN ('contracts_decision_evidence','contract_versions_decision_evidence','contract_commands_decision_fk')",
+            )
+          ).rows[0]?.count,
+        ).toBe('3');
         expect(
           (
             await pool.query<{
               kind: string;
               result_quality_run_id: string | null;
-            }>('SELECT kind,result_quality_run_id FROM contract_commands')
+            }>(
+              "SELECT kind,result_quality_run_id FROM contract_commands WHERE kind='CREATE'",
+            )
           ).rows,
         ).toEqual([{ kind: 'CREATE', result_quality_run_id: null }]);
         const additions = await pool.query<{ name: string }>(
@@ -1078,6 +1939,21 @@ withPostgres('First illustrative Contract REST', () => {
           await json(await sendContract(fixture, payload, 'historic-command')),
         ).toEqual(stored);
         expect((await evidence()).rows).toEqual(before);
+        if (historicQuality)
+          expect(
+            (
+              await pool.query(
+                'SELECT to_jsonb(r) AS row FROM contract_quality_runs r',
+              )
+            ).rows,
+          ).toEqual(historicQuality);
+        expect(
+          (
+            await pool.query<{ count: string }>(
+              "SELECT count(*)::text AS count FROM pg_constraint WHERE conname IN ('contracts_decision_evidence','contract_versions_decision_evidence','contract_commands_decision_fk')",
+            )
+          ).rows[0]?.count,
+        ).toBe('3');
         for (const table of [
           'contracts',
           'contract_versions',
@@ -1960,14 +2836,49 @@ withPostgres('First illustrative Contract REST', () => {
       ).rows[0]?.count,
     ).toBe('0');
   });
-  async function qualityFixture() {
+  async function grantApprover(fixture: PreparedOffer) {
+    return command({
+      path: '/company-contract-approver-assignments',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      key: 'grant-approver-' + fixture.companyId,
+    });
+  }
+  async function decisionRequest(
+    fixture: PreparedOffer,
+    versionId: string,
+    kind: 'approve' | 'reject',
+    body: unknown,
+    key: string,
+  ) {
+    return request({
+      path:
+        '/contracts/opportunities/' +
+        fixture.opportunityId +
+        '/versions/' +
+        versionId +
+        '/' +
+        kind,
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': key },
+        body: JSON.stringify(body),
+      },
+    });
+  }
+  async function qualityFixture(
+    content: { specialConditions?: string; termEndsOn?: string } = {},
+  ) {
     const fixture = await acceptedOffer();
     await grantContract(fixture, 'grant-quality-fixture');
     const base = '/contracts/opportunities/' + fixture.opportunityId;
     const created = record(
       await command({
         path: base,
-        body: await contractPayload(fixture),
+        body: { ...(await contractPayload(fixture)), ...content },
         key: 'create-quality-fixture',
         companyId: fixture.companyId,
       }),

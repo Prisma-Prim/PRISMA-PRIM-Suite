@@ -35,6 +35,8 @@ export function ContractQualityPanel({
   mayRun,
   reject,
   onProtectionChange,
+  onRun,
+  protectedDecision = false,
 }: {
   identity: BrowserIdentity;
   companyId: string;
@@ -43,6 +45,8 @@ export function ContractQualityPanel({
   termEndsOn: string | null;
   initialRun: ContractQualityRunView | null;
   mayRun: boolean;
+  protectedDecision?: boolean;
+  onRun?: (run: ContractQualityRunView) => void;
   onProtectionChange: (protectedCommand: boolean) => void;
   reject: (
     result: ApiResult<unknown>,
@@ -75,6 +79,7 @@ export function ContractQualityPanel({
       | { kind: 'reopen'; id: string },
   ) {
     if (
+      protectedDecision ||
       state === 'running' ||
       state === 'loading' ||
       (state === 'uncertain' && action.kind !== 'run')
@@ -135,6 +140,7 @@ export function ContractQualityPanel({
           if (action.kind === 'reopen' && recorded.id !== action.id)
             throw new Error('Mismatched Contract run.');
           setRun(recorded);
+          onRun?.(recorded);
         }
         attempt.current = undefined;
         setState('idle');
@@ -165,7 +171,10 @@ export function ContractQualityPanel({
     }
   }
   const busy =
-    state === 'running' || state === 'loading' || state === 'uncertain';
+    protectedDecision ||
+    state === 'running' ||
+    state === 'loading' ||
+    state === 'uncertain';
   const denied =
     state === 'denied' || state === 'unavailable' || state === 'superseded';
   const outcome = run?.results.some((item) => item.status === 'ERROR')

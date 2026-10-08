@@ -63,6 +63,8 @@ export interface ActiveCompanyContext {
   contractPermissions?: CompanyContractPermission[];
   contractPermissionAssignmentId?: string;
   contractPermissionSetVersion?: 'v1';
+  contractApproverAssignmentId?: string;
+  contractApproverPermissionSetVersion?: 'v1';
   offerPermissions?: CompanyOfferPermission[];
   offerPermissionAssignmentId?: string;
   offerPermissionSetVersion?: 'v1';

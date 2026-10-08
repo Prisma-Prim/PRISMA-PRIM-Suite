@@ -587,6 +587,14 @@ describe.skipIf(!databaseUrl)(
         title: 'Second preparation',
         clientAccountId: clientId,
       });
+      const firstCreatedAt = '2034-01-01T00:00:00.000Z';
+      const secondCreatedAt = '2035-01-01T00:00:00.000Z';
+      await harness.pool.query(
+        'UPDATE projects SET created_at = CASE WHEN id = $1::uuid THEN $3::timestamptz ELSE $4::timestamptz END WHERE id IN ($1::uuid, $2::uuid)',
+        [projectId, string(second.id), firstCreatedAt, secondCreatedAt],
+      );
+      project.createdAt = firstCreatedAt;
+      second.createdAt = secondCreatedAt;
       const listed = await request('/projects');
       expect(await listed.json()).toEqual([project, second]);
       const assignees = objects(
