@@ -1001,6 +1001,16 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   expect(signatureAttempts).toHaveLength(2);
   expect(signatureAttempts[1]).toEqual(signatureAttempts[0]);
   expect(signatureAttempts[0]?.key).toBeTruthy();
+  const displayedSigningDate = new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(new Date(signingDate));
+  const declaredDates = signatures.locator(
+    'time[datetime="' + signingDate + '"]',
+  );
+  await expect(declaredDates).toHaveCount(2);
+  for (const declaredDate of await declaredDates.all())
+    await expect(declaredDate).toHaveText(displayedSigningDate);
   await page.unroute('**/api' + signaturePath);
   await expect(signatures.locator('.contract-checksum')).toHaveText(
     recordedChecksum ?? '',
@@ -1031,6 +1041,9 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
       name: 'Record both simulated signatures',
     }),
   ).toHaveCount(0);
+  await expect(declaredDates).toHaveCount(2);
+  for (const declaredDate of await declaredDates.all())
+    await expect(declaredDate).toHaveText(displayedSigningDate);
   await panel
     .getByRole('button', { name: 'Open exact Contract document', exact: true })
     .click();

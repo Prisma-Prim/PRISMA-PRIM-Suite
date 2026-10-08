@@ -12,7 +12,6 @@ import {
   type ContractSignatureView,
 } from './contract-signature-response';
 import { useContractSignatureCopy } from './contract-signature.copy';
-import { contractQualityLabels } from './contract.copy';
 type Feedback =
   | 'idle'
   | 'running'
@@ -53,7 +52,7 @@ export function ContractSignaturePanel({
   onProtectionChange: (protectedCommand: boolean) => void;
 }) {
   const copy = useContractSignatureCopy(),
-    { locale } = useInterfaceLocale();
+    { locale, formatDate } = useInterfaceLocale();
   const [feedback, setFeedback] = useState<Feedback>('idle');
   const [fields, setFields] = useState({
     providerSignatoryLabel: '',
@@ -199,7 +198,7 @@ export function ContractSignaturePanel({
             <dt>{copy('providerDate')}</dt>
             <dd>
               <time dateTime={signature.providerSignedOn}>
-                {signature.providerSignedOn}
+                {formatDate(signature.providerSignedOn)}
               </time>
             </dd>
             <dt>{copy('client')}</dt>
@@ -207,7 +206,7 @@ export function ContractSignaturePanel({
             <dt>{copy('clientDate')}</dt>
             <dd>
               <time dateTime={signature.clientSignedOn}>
-                {signature.clientSignedOn}
+                {formatDate(signature.clientSignedOn)}
               </time>
             </dd>
             {signature.note !== null && (
@@ -331,7 +330,7 @@ export function ContractSignaturePanel({
                   )
                 }
               />
-              {copy('acknowledge')}: {contractQualityLabels[item.code]}
+              {copy('acknowledge')}: {copy(item.code)}
             </label>
           ))}
           {feedback === 'uncertain' ? (

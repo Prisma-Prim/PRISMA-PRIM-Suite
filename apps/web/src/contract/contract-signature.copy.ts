@@ -1,4 +1,6 @@
 import { defineMessages, useMessages } from '../localization/messages';
+import type { InterfaceLocale } from '../localization/interface-locale';
+import type { ContractQualityCode } from './contract-quality-response';
 const keys = [
   'title',
   'banner',
@@ -29,6 +31,18 @@ const keys = [
   'mismatch',
   'conflict',
   'success',
+  'SOURCE_COMPANY_MATCHES',
+  'PARTY_AVAILABLE',
+  'PARTY_MATCHES_SOURCE',
+  'PARTY_IDENTITY_MATCHES_SOURCE',
+  'PARTY_IDENTITY_CURRENT',
+  'PARTY_TAX_ID_RECORDED',
+  'PRICE_MATCHES_ACCEPTED_OFFER',
+  'PRICING_SNAPSHOT_COHERENT',
+  'CONDITIONS_MATCH_ACCEPTED_OFFER',
+  'ADDED_CONDITIONS_CONFIRMED',
+  'TERM_END_NOT_PASSED',
+  'PROVISIONAL_MARKER_PRESENT',
 ] as const;
 export const contractSignatureMessages = defineMessages(keys, {
   en: {
@@ -67,6 +81,19 @@ export const contractSignatureMessages = defineMessages(keys, {
       'The document differs from the approved representation. Recording was refused.',
     conflict: 'This key was used for another command. Reload the Contract.',
     success: 'Both simulated signatures recorded.',
+    SOURCE_COMPANY_MATCHES: 'Issuing Company matches the source',
+    PARTY_AVAILABLE: 'Named party is currently available',
+    PARTY_MATCHES_SOURCE: 'Named party matches the source',
+    PARTY_IDENTITY_MATCHES_SOURCE: 'Recorded identity matches the source',
+    PARTY_IDENTITY_CURRENT: 'Recorded identity matches current identity',
+    PARTY_TAX_ID_RECORDED: 'IDNO / tax code is recorded',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Price matches the Accepted Offer',
+    PRICING_SNAPSHOT_COHERENT: 'Pricing Snapshot trace is coherent',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Copied conditions match the Accepted Offer',
+    ADDED_CONDITIONS_CONFIRMED: 'Added terms and conditions need confirmation',
+    TERM_END_NOT_PASSED: 'Term end has not passed (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Illustrative markers are present',
   },
   ro: {
     title: 'Semnături simulate ale contractului',
@@ -105,6 +132,22 @@ export const contractSignatureMessages = defineMessages(keys, {
     conflict:
       'Cheia a fost folosită pentru altă comandă. Reîncarcă contractul.',
     success: 'Ambele semnături simulate au fost înregistrate.',
+    SOURCE_COMPANY_MATCHES: 'Compania emitentă corespunde sursei',
+    PARTY_AVAILABLE: 'Partea numită este disponibilă în prezent',
+    PARTY_MATCHES_SOURCE: 'Partea numită corespunde sursei',
+    PARTY_IDENTITY_MATCHES_SOURCE: 'Identitatea înregistrată corespunde sursei',
+    PARTY_IDENTITY_CURRENT:
+      'Identitatea înregistrată corespunde identității actuale',
+    PARTY_TAX_ID_RECORDED: 'IDNO / codul fiscal este înregistrat',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Prețul corespunde ofertei acceptate',
+    PRICING_SNAPSHOT_COHERENT:
+      'Trasabilitatea instantaneului de preț este coerentă',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Condițiile copiate corespund ofertei acceptate',
+    ADDED_CONDITIONS_CONFIRMED:
+      'Termenii și condițiile adăugate necesită confirmare',
+    TERM_END_NOT_PASSED: 'Termenul final nu a trecut (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Marcajele ilustrative sunt prezente',
   },
   fr: {
     title: 'Signatures simulées du contrat',
@@ -142,6 +185,23 @@ export const contractSignatureMessages = defineMessages(keys, {
       'Le document diffère de la représentation approuvée. L’enregistrement a été refusé.',
     conflict: 'Cette clé a servi à une autre commande. Rechargez le contrat.',
     success: 'Les deux signatures simulées ont été enregistrées.',
+    SOURCE_COMPANY_MATCHES: 'La société émettrice correspond à la source',
+    PARTY_AVAILABLE: 'La partie désignée est actuellement disponible',
+    PARTY_MATCHES_SOURCE: 'La partie désignée correspond à la source',
+    PARTY_IDENTITY_MATCHES_SOURCE:
+      'L’identité enregistrée correspond à la source',
+    PARTY_IDENTITY_CURRENT:
+      'L’identité enregistrée correspond à l’identité actuelle',
+    PARTY_TAX_ID_RECORDED: 'L’IDNO / code fiscal est enregistré',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Le prix correspond à l’offre acceptée',
+    PRICING_SNAPSHOT_COHERENT:
+      'La traçabilité de l’instantané de prix est cohérente',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Les conditions copiées correspondent à l’offre acceptée',
+    ADDED_CONDITIONS_CONFIRMED:
+      'Les conditions ajoutées doivent être confirmées',
+    TERM_END_NOT_PASSED: 'La date de fin n’est pas passée (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Les mentions illustratives sont présentes',
   },
   ru: {
     title: 'Симулированные подписи договора',
@@ -179,8 +239,24 @@ export const contractSignatureMessages = defineMessages(keys, {
       'Документ отличается от одобренного представления. Запись отклонена.',
     conflict: 'Ключ использован для другой команды. Перезагрузите договор.',
     success: 'Обе симулированные подписи записаны.',
+    SOURCE_COMPANY_MATCHES: 'Компания-эмитент соответствует источнику',
+    PARTY_AVAILABLE: 'Указанная сторона сейчас доступна',
+    PARTY_MATCHES_SOURCE: 'Указанная сторона соответствует источнику',
+    PARTY_IDENTITY_MATCHES_SOURCE: 'Записанные данные соответствуют источнику',
+    PARTY_IDENTITY_CURRENT: 'Записанные данные соответствуют текущим данным',
+    PARTY_TAX_ID_RECORDED: 'IDNO / налоговый код записан',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Цена соответствует принятому предложению',
+    PRICING_SNAPSHOT_COHERENT: 'История снимка цены согласована',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Скопированные условия соответствуют принятому предложению',
+    ADDED_CONDITIONS_CONFIRMED: 'Добавленные условия требуют подтверждения',
+    TERM_END_NOT_PASSED: 'Дата окончания не прошла (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Иллюстративные отметки присутствуют',
   },
-});
+} satisfies Record<
+  InterfaceLocale,
+  Record<(typeof keys)[number] | ContractQualityCode, string>
+>);
 export function useContractSignatureCopy() {
   return useMessages(contractSignatureMessages);
 }
