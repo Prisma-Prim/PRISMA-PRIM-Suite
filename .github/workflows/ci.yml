@@ -14,7 +14,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          postgres: 'false'
+          chromium: 'false'
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm typecheck
+
+      - name: Test scripts
+        run: pnpm test:scripts
+
+  api:
+    needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -35,7 +64,92 @@ jobs:
       DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
       TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
       POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          chromium: 'false'
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor:postgres
+
+      - name: Test API
+        run: pnpm --filter @prisma-prim/api test
+
+  web_unit:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          postgres: 'false'
+          chromium: 'false'
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor
+
+      - name: Test Web unit
+        run: pnpm --filter @prisma-prim/web exec vitest run
+
+  browser:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          postgres: 'false'
+
+      - name: Verify supported agent environment
+        run: pnpm agent:doctor:web
+
+      - name: Test browser
+        run: pnpm --filter @prisma-prim/web test:browser
+
+      - name: Upload browser evidence
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence-part-browser-${{ github.run_id }}
+          overwrite: true
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  acceptance:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: prisma_prim_dev
+          POSTGRES_USER: prisma_prim
+          POSTGRES_PASSWORD: prisma_prim
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prisma_prim -d prisma_prim_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev
+      TEST_DATABASE_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_test
+      POSTGRES_ADMIN_URL: postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/postgres
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -46,40 +160,43 @@ jobs:
       - name: Verify supported agent environment
         run: pnpm agent:doctor:web-postgres
 
-      - name: Check formatting
-        run: pnpm format:check
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type-check
-        run: pnpm typecheck
-
-      - name: Test
+      - name: Test acceptance
         id: repository_tests
-        run: pnpm test
+        run: pnpm --filter @prisma-prim/web test:browser:acceptance
 
       - name: Verify acceptance failure evidence
         if: ${{ !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
         run: node scripts/verify-acceptance-evidence.mjs
 
-      - name: Upload browser evidence
+      - name: Upload acceptance evidence
         if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: browser-evidence-pr-${{ github.event.pull_request.number }}
-          path: |
-            apps/web/test-results/**/*.png
-            apps/web/test-results/acceptance/**
-            apps/web/test-results/acceptance-evidence-probe/**
+          name: browser-evidence-part-acceptance-${{ github.run_id }}
+          overwrite: true
+          path: apps/web/test-results/
           if-no-files-found: warn
           retention-days: 14
+
+  build:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up repository verification
+        uses: ./.github/actions/setup-verification
+        with:
+          postgres: 'false'
+          chromium: 'false'
 
       - name: Build
         run: pnpm build
 
   packaging:
-    needs: quality
+    needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -102,3 +219,40 @@ jobs:
 
       - name: Prove production image packaging
         run: bash scripts/railway-packaging-smoke.sh
+
+  quality:
+    needs: [checks, api, web_unit, browser, acceptance, build, packaging]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Require every verification result
+        env:
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: node scripts/verify-ci-results.mjs
+
+      - name: Download complete browser evidence
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@v4
+        with:
+          pattern: browser-evidence-part-*-${{ github.run_id }}
+          path: browser-evidence/
+          merge-multiple: true
+
+      - name: Upload complete browser evidence
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence-pr-${{ github.event.pull_request.number }}
+          overwrite: true
+          path: browser-evidence/
+          if-no-files-found: warn
+          retention-days: 14
