@@ -19,7 +19,7 @@ export type ContractDecisionCommand =
 export type ContractDecision = {
   readonly id: string;
   readonly contractVersionId: string;
-  readonly revision: 2;
+  readonly revision: number;
   readonly actorWorkspaceMembershipId: string;
   readonly decidedAt: string;
 } & (

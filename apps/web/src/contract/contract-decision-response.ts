@@ -5,7 +5,7 @@ import {
 export type ContractDecisionView = {
   id: string;
   contractVersionId: string;
-  revision: 2;
+  revision: number;
   actorWorkspaceMembershipId: string;
   decidedAt: string;
 } & (
@@ -27,7 +27,9 @@ export function readContractDecision(
   const input = Object.fromEntries(Object.entries(value));
   if (
     input.contractVersionId !== versionId ||
-    input.revision !== 2 ||
+    typeof input.revision !== 'number' ||
+    !Number.isSafeInteger(input.revision) ||
+    input.revision < 2 ||
     typeof input.decidedAt !== 'string' ||
     !Number.isFinite(Date.parse(input.decidedAt))
   )
@@ -35,7 +37,7 @@ export function readContractDecision(
   const base = {
     id: text(input.id),
     contractVersionId: versionId,
-    revision: 2 as const,
+    revision: input.revision,
     actorWorkspaceMembershipId: text(input.actorWorkspaceMembershipId),
     decidedAt: input.decidedAt,
   };

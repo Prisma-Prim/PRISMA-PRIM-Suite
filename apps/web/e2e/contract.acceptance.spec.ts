@@ -625,10 +625,10 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     })
     .click();
   await expect(
-    panel.getByText(
-      'Synthetic Contract special conditions <script>globalThis.contractInjected = true</script>',
-      { exact: true },
-    ),
+    panel.getByRole('definition').filter({
+      hasText:
+        'Synthetic Contract special conditions <script>globalThis.contractInjected = true</script>',
+    }),
   ).toBeVisible();
   await panel
     .getByRole('button', { name: 'Open exact Contract document' })
@@ -1488,6 +1488,272 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await panel.screenshot({
     path: testInfo.outputPath(
       'contract-rejected-context-real-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  const c6Base = '/contracts/opportunities/' + rejectionOpportunityId;
+  const readC6 = async () =>
+    object(
+      object(
+        await body(
+          await request.get(api + c6Base, {
+            headers: { ...preparer, 'x-company-context-id': companyId },
+          }),
+        ),
+      ).contract,
+    );
+  const predecessor = await readC6();
+  const predecessorVersion = object(predecessor.version);
+  const c6CurrentClient = object(
+    await body(
+      await request.get(api + '/clients/' + text(client.id), {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  );
+  expect(
+    (
+      await request.patch(api + '/clients/' + text(client.id), {
+        headers: {
+          ...preparer,
+          'x-company-context-id': companyId,
+          'idempotency-key': 'c6-client-' + suffix,
+        },
+        data: {
+          expectedVersion: c6CurrentClient.version,
+          taxId: 'SYNTHETIC-C6-' + suffix,
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  const c6VersionPath = c6Base + '/versions';
+  const versionAttempts: Array<{
+    body: string | null;
+    key: string | undefined;
+  }> = [];
+  await page.route('**/api' + c6VersionPath, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    versionAttempts.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (versionAttempts.length === 1) {
+      expect((await route.fetch()).status()).toBe(201);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  const revisions = panel.getByRole('region', {
+    name: 'Revise Contract before signature',
+    exact: true,
+  });
+  await revisions.getByLabel('Revised term start').fill('2026-10-01');
+  await revisions.getByLabel('Revised term end').fill('2026-12-31');
+  await revisions
+    .getByLabel('Revised special conditions')
+    .fill('  C6 revised synthetic conditions  ');
+  await revisions
+    .getByRole('button', { name: 'Create new Contract Version', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    revisions.getByText(
+      'The revision result is uncertain. Retry the identical version command.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    revisions.getByLabel('Revised special conditions'),
+  ).toBeDisabled();
+  await revisions.screenshot({
+    path: testInfo.outputPath('c6-uncertain-' + suffix.toLowerCase() + '.png'),
+  });
+  await revisions
+    .getByRole('button', {
+      name: 'Retry identical version command',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  const history = panel.getByRole('region', {
+    name: 'Contract Version history',
+    exact: true,
+  });
+  await expect(
+    history.getByRole('button', {
+      name: 'Open Contract Version 2',
+      exact: true,
+    }),
+  ).toBeDisabled();
+  expect(versionAttempts).toHaveLength(2);
+  expect(versionAttempts[1]).toEqual(versionAttempts[0]);
+  await page.unroute('**/api' + c6VersionPath);
+  await expect(revisions.getByLabel('Revised special conditions')).toHaveValue(
+    '  C6 revised synthetic conditions  ',
+  );
+  const differences = history.getByRole('region', {
+    name: 'Changes from the preceding version',
+    exact: true,
+  });
+  await expect(
+    differences.getByText('Recorded tax identifier', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    differences.getByText('Term start', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    checks.getByText('No Contract Quality Check run yet.', { exact: true }),
+  ).toBeVisible();
+  await history
+    .getByRole('button', { name: 'Open Contract Version 1', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    decision.getByText(rejectionReason, { exact: true }),
+  ).toBeVisible();
+  await expect(revisions).toHaveCount(0);
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(documentElement).toHaveAttribute(
+    'srcdoc',
+    text(object(predecessorVersion.representation).html),
+  );
+  const c6Old = object(
+    object(
+      await body(
+        await request.get(
+          api + c6VersionPath + '/' + text(predecessorVersion.id),
+          { headers: { ...preparer, 'x-company-context-id': companyId } },
+        ),
+      ),
+    ).contract,
+  );
+  expect(object(c6Old.version).representation).toEqual(
+    predecessorVersion.representation,
+  );
+  expect(object(c6Old.version).decision).toEqual(predecessorVersion.decision);
+  await history
+    .getByRole('button', { name: 'Open Contract Version 2', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  await expect(decision.getByRole('checkbox')).toHaveCount(2);
+  for (const box of await decision.getByRole('checkbox').all())
+    await box.check();
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .click();
+  await expect(
+    decision.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  const approvedSecond = await readC6();
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c6-approved-differences-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  // Approval does not freeze an unexecuted head: the next version must start fresh again.
+  await revisions
+    .getByLabel('Revised special conditions')
+    .fill('C6 third version requires its own approval');
+  await revisions
+    .getByRole('button', { name: 'Create new Contract Version', exact: true })
+    .click();
+  await expect(
+    history.getByRole('button', {
+      name: 'Open Contract Version 3',
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(
+    checks.getByText('No Contract Quality Check run yet.', { exact: true }),
+  ).toBeVisible();
+  await history
+    .getByRole('button', { name: 'Open Contract Version 2', exact: true })
+    .click();
+  await expect(
+    decision.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(documentElement).toHaveAttribute(
+    'srcdoc',
+    text(object(object(approvedSecond.version).representation).html),
+  );
+  await history
+    .getByRole('button', { name: 'Open Contract Version 3', exact: true })
+    .click();
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  await expect(decision.getByRole('checkbox')).toHaveCount(2);
+  for (const box of await decision.getByRole('checkbox').all())
+    await box.check();
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .click();
+  await expect(
+    decision.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  const third = await readC6();
+  const signedOn = text(object(object(third.version).decision).decidedAt).slice(
+    0,
+    10,
+  );
+  await signatures
+    .getByLabel('Provider signatory label')
+    .fill('Synthetic C6 provider');
+  await signatures
+    .getByLabel('Client signatory label')
+    .fill('Synthetic C6 Client');
+  await signatures.getByLabel('Provider signing date').fill(signedOn);
+  await signatures.getByLabel('Client signing date').fill(signedOn);
+  await signatures
+    .getByRole('button', {
+      name: 'Record both simulated signatures',
+      exact: true,
+    })
+    .click();
+  await expect(
+    signatures.getByText('Executed — simulated evidence only', { exact: true }),
+  ).toBeVisible();
+  await expect(revisions).toHaveCount(0);
+  const executedThird = await readC6();
+  const c6Refused = await request.post(api + c6VersionPath, {
+    headers: {
+      ...preparer,
+      'x-company-context-id': companyId,
+      'idempotency-key': 'c6-executed-' + suffix,
+    },
+    data: { expectedContractRevision: executedThird.revision },
+  });
+  expect(c6Refused.status()).toBe(409);
+  expect(await body(c6Refused)).toMatchObject({ code: 'CONTRACT_EXECUTED' });
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Rejection Request ' + suffix, { exact: true }),
+    })
+    .click();
+  await expect(
+    history.getByRole('button', {
+      name: 'Open Contract Version 3',
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(revisions).toHaveCount(0);
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c6-executed-reopened-' + suffix.toLowerCase() + '.png',
     ),
   });
   expect(

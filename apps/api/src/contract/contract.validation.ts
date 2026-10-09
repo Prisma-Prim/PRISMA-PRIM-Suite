@@ -5,6 +5,35 @@ export interface CreateContractCommand {
   readonly termEndsOn: string | null;
   readonly specialConditions: string | null;
 }
+export function readCreateContractVersionCommand(value: unknown) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw invalid('body');
+  const input = Object.fromEntries(Object.entries(value));
+  for (const key of Object.keys(input))
+    if (
+      ![
+        'expectedContractRevision',
+        'termStartsOn',
+        'termEndsOn',
+        'specialConditions',
+      ].includes(key)
+    )
+      throw invalid(key);
+  if (
+    typeof input.expectedContractRevision !== 'number' ||
+    !Number.isSafeInteger(input.expectedContractRevision) ||
+    input.expectedContractRevision < 1 ||
+    input.expectedContractRevision > 2147483646
+  )
+    throw invalid('expectedContractRevision');
+  const entered = readEnteredContractFields(input);
+  return {
+    expectedContractRevision: input.expectedContractRevision,
+    termStartsOn: entered.termStartsOn,
+    termEndsOn: entered.termEndsOn,
+    specialConditions: entered.specialConditions,
+  };
+}
 export function readCreateContractCommand(
   value: unknown,
 ): CreateContractCommand {
@@ -29,6 +58,9 @@ export function readCreateContractCommand(
     )
   )
     throw invalid('acceptedOfferVersionId');
+  return { acceptedOfferVersionId, ...readEnteredContractFields(input) };
+}
+function readEnteredContractFields(input: Record<string, unknown>) {
   const termStartsOn = calendarDate(input.termStartsOn, 'termStartsOn'),
     termEndsOn = calendarDate(input.termEndsOn, 'termEndsOn');
   if (termStartsOn && termEndsOn && termEndsOn < termStartsOn)
@@ -42,7 +74,6 @@ export function readCreateContractCommand(
   )
     throw invalid('specialConditions');
   return {
-    acceptedOfferVersionId,
     termStartsOn,
     termEndsOn,
     specialConditions,

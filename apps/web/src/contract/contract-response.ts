@@ -14,6 +14,18 @@ import {
   readLinkedProjects,
   type LinkedProject,
 } from './contract-projects-response';
+export interface ContractVersionDifference {
+  field:
+    | 'recipientLegalName'
+    | 'recipientTaxId'
+    | 'recipientLegalAddress'
+    | 'pricingSnapshotId'
+    | 'termStartsOn'
+    | 'termEndsOn'
+    | 'specialConditions';
+  before: string | null;
+  after: string | null;
+}
 export interface ContractView {
   id: string;
   companyId: string;
@@ -28,6 +40,10 @@ export interface ContractView {
     decision: ContractDecisionView | null;
     latestQualityRun: ContractQualityRunView | null;
     id: string;
+    versionNumber: number;
+    predecessorVersionId: string | null;
+    supersededByVersionId: string | null;
+    differences: ContractVersionDifference[];
     recipient: {
       legalName: string;
       taxId: string | null;
@@ -72,9 +88,10 @@ export function readContract(value: unknown): ContractView {
     typeof input.revision !== 'number' ||
     !Number.isInteger(input.revision) ||
     input.revision < 1 ||
-    input.revision > 53 ||
     input.provisional !== true ||
-    version.versionNumber !== 1 ||
+    typeof version.versionNumber !== 'number' ||
+    !Number.isSafeInteger(version.versionNumber) ||
+    version.versionNumber < 1 ||
     (version.decisionState !== 'PENDING' &&
       version.decisionState !== 'APPROVED' &&
       version.decisionState !== 'REJECTED') ||
@@ -90,6 +107,22 @@ export function readContract(value: unknown): ContractView {
     string(version.pricingSnapshotId) !== string(snapshot.id)
   )
     throw new Error('Invalid Contract response.');
+  const createdRevision =
+    version.createdContractRevision === undefined && version.versionNumber === 1
+      ? 1
+      : positiveInteger(version.createdContractRevision);
+  const predecessorVersionId =
+    version.versionNumber === 1
+      ? nullableString(version.predecessorVersionId ?? null)
+      : string(version.predecessorVersionId);
+  const supersededByVersionId = nullableString(
+    version.supersededByVersionId ?? null,
+  );
+  if (
+    createdRevision > input.revision ||
+    (version.versionNumber === 1 && predecessorVersionId !== null)
+  )
+    throw new Error('Invalid Contract lineage.');
   const decision =
     version.decision === null || version.decision === undefined
       ? null
@@ -100,10 +133,13 @@ export function readContract(value: unknown): ContractView {
         );
   if (
     (version.decisionState === 'PENDING' &&
-      (decision !== null || input.revision !== 1)) ||
+      (decision !== null ||
+        (!supersededByVersionId && input.revision !== createdRevision))) ||
     (version.decisionState !== 'PENDING' &&
       (!decision ||
+        decision.revision !== createdRevision + 1 ||
         (version.executionState === 'NOT_EXECUTED' &&
+          !supersededByVersionId &&
           decision.revision !== input.revision) ||
         version.decisionState !==
           (decision.kind === 'APPROVE' ? 'APPROVED' : 'REJECTED')))
@@ -149,6 +185,10 @@ export function readContract(value: unknown): ContractView {
       decision,
       decisionState: version.decisionState,
       id: string(version.id),
+      versionNumber: version.versionNumber,
+      predecessorVersionId,
+      supersededByVersionId,
+      differences: readContractDifferences(version.differences ?? []),
       latestQualityRun:
         version.latestQualityRun === null
           ? null
@@ -185,6 +225,30 @@ export function readContract(value: unknown): ContractView {
       },
     },
   };
+}
+function readContractDifferences(value: unknown): ContractVersionDifference[] {
+  if (!Array.isArray(value)) throw new Error('Invalid Contract differences.');
+  const differences: ContractVersionDifference[] = [];
+  for (const item of value) {
+    const row = record(item),
+      field = row.field;
+    if (
+      field !== 'recipientLegalName' &&
+      field !== 'recipientTaxId' &&
+      field !== 'recipientLegalAddress' &&
+      field !== 'pricingSnapshotId' &&
+      field !== 'termStartsOn' &&
+      field !== 'termEndsOn' &&
+      field !== 'specialConditions'
+    )
+      throw new Error('Invalid Contract difference field.');
+    const before = nullableString(row.before),
+      after = nullableString(row.after);
+    if (before === after || differences.some((entry) => entry.field === field))
+      throw new Error('Invalid Contract difference.');
+    differences.push({ field, before, after });
+  }
+  return differences;
 }
 function positiveInteger(value: unknown): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)

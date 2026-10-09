@@ -187,6 +187,19 @@ export class ContractController {
       cursor,
     });
   }
+  @Post('versions') createVersion(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.contracts.createVersion({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Get('versions/:versionId') async version(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,
