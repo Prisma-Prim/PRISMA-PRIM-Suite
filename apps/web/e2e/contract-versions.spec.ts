@@ -64,7 +64,7 @@ const detail = {
 };
 for (const locale of interfaceLocales)
   test(
-    'revises by keyboard with exact retry and localized differences in ' +
+    'requires current Client read and revises by keyboard with exact retry in ' +
       locale,
     async ({ page }, testInfo) => {
       const copy = (key: (typeof contractVersionMessages.keys)[number]) =>
@@ -74,6 +74,12 @@ for (const locale of interfaceLocales)
         { key: interfaceLocaleStorageKey, locale },
       );
       let head = 1;
+      const ownerWithoutClientRead: ActorContext = {
+        ...actor,
+        workspacePermissions: ['client.manage'],
+        activeCompany: { ...actor.activeCompany, clientPermissions: [] },
+      };
+      let currentActor: ActorContext = ownerWithoutClientRead;
       const attempts: Array<{ body: string | null; key: string | undefined }> =
         [];
       const contract = (number: number) => ({
@@ -144,7 +150,7 @@ for (const locale of interfaceLocales)
         const sent = route.request(),
           path = new URL(sent.url()).pathname;
         if (path.endsWith('/access/current-actor'))
-          return route.fulfill({ json: actor });
+          return route.fulfill({ json: currentActor });
         if (path.endsWith('/companies'))
           return route.fulfill({ json: [company] });
         if (path.endsWith('/commercial-intake/requests'))
@@ -201,15 +207,37 @@ for (const locale of interfaceLocales)
         }
         return route.fulfill({ json: { items: [], nextCursor: null } });
       });
-      await page.goto('/?frame=prisme#requests');
-      await page
-        .getByRole('button')
-        .filter({ has: page.getByText(detail.subject, { exact: true }) })
-        .click();
+      const openRequest = async () => {
+        await page
+          .getByRole('button')
+          .filter({ has: page.getByText(detail.subject, { exact: true }) })
+          .click();
+      };
       const revisions = page.getByRole('region', {
         name: copy('title'),
         exact: true,
       });
+      const history = page.getByRole('region', {
+        name: copy('history'),
+        exact: true,
+      });
+      await page.goto('/?frame=prisme#requests');
+      await openRequest();
+      await expect(
+        history.getByRole('button', {
+          name: copy('version') + ' 1',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(page.getByText('Synthetic accepted scope')).toBeVisible();
+      await expect(revisions).toHaveCount(0);
+      await expect(
+        page.getByRole('button', { name: copy('create'), exact: true }),
+      ).toHaveCount(0);
+      expect(attempts).toHaveLength(0);
+      currentActor = actor;
+      await page.reload();
+      await openRequest();
       await revisions.getByLabel(copy('conditions')).fill('Exact revised text');
       await revisions
         .getByRole('button', { name: copy('create'), exact: true })
@@ -223,10 +251,6 @@ for (const locale of interfaceLocales)
         .getByRole('button', { name: copy('retry'), exact: true })
         .focus();
       await page.keyboard.press('Enter');
-      const history = page.getByRole('region', {
-        name: copy('history'),
-        exact: true,
-      });
       await expect(
         history.getByRole('button', {
           name: copy('version') + ' 2',
@@ -245,6 +269,32 @@ for (const locale of interfaceLocales)
           'c6-' + locale + '-' + testInfo.project.name + '.png',
         ),
       });
+      currentActor = ownerWithoutClientRead;
+      await page.reload();
+      await openRequest();
+      await expect(
+        history.getByRole('button', {
+          name: copy('version') + ' 2',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(page.getByText('Synthetic accepted scope')).toBeVisible();
+      await expect(revisions).toHaveCount(0);
+      await expect(
+        page.getByRole('button', { name: copy('create'), exact: true }),
+      ).toHaveCount(0);
+      expect(attempts).toHaveLength(2);
+      await page
+        .getByRole('region', { name: 'Contract', exact: true })
+        .screenshot({
+          path: testInfo.outputPath(
+            'c6-client-read-revoked-' +
+              locale +
+              '-' +
+              testInfo.project.name +
+              '.png',
+          ),
+        });
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

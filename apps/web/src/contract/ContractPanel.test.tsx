@@ -47,6 +47,62 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it('C6 requires current Company Client read to revise while preserving independent Contract history', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const original = fixture();
+    const owner = actor(false);
+    owner.workspacePermissions = ['client.manage'];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/versions')
+        ? response({ items: [original.version], nextCursor: null })
+        : response({ contract: original }),
+    );
+    const show = (current: ActorContext) => (
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>
+    );
+    const view = render(show(owner));
+    const expectReadableHistory = async () => {
+      expect(await screen.findByText('Synthetic accepted scope')).toBeVisible();
+      expect(
+        await within(
+          screen.getByRole('region', { name: 'Contract Version history' }),
+        ).findByRole('button', { name: 'Open Contract Version 1' }),
+      ).toBeVisible();
+    };
+    await expectReadableHistory();
+    expect(
+      screen.queryByRole('button', { name: 'Create new Contract Version' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Revised special conditions'),
+    ).not.toBeInTheDocument();
+    const eligible = actor(true);
+    eligible.workspacePermissions = ['client.manage'];
+    if (!eligible.activeCompany) throw new Error('Missing Company');
+    eligible.activeCompany.offerPermissions = [];
+    view.rerender(show(eligible));
+    expect(
+      await screen.findByRole('button', {
+        name: 'Create new Contract Version',
+      }),
+    ).toBeEnabled();
+    await expectReadableHistory();
+    view.rerender(show(owner));
+    await expectReadableHistory();
+    expect(
+      screen.queryByRole('button', { name: 'Create new Contract Version' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Revised special conditions'),
+    ).not.toBeInTheDocument();
+  });
   it('C6 keeps an identical revision command for explicit uncertain retry', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const commands: Array<{ body: unknown; key: string | null }> = [];

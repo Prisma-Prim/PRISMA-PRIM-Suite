@@ -347,8 +347,7 @@ export function ContractPanel({
                 context.contractPermissions?.includes(
                   'commercial.contract.prepare',
                 ) &&
-                (context.clientPermissions?.includes('client.read') ||
-                  actor.workspacePermissions.includes('client.manage')),
+                context.clientPermissions?.includes('client.read'),
               )}
               protectedCommand={
                 qualityProtected ||
