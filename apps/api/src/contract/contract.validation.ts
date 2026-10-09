@@ -161,3 +161,127 @@ function invalid(field: string) {
     message: `Invalid ${field}.`,
   });
 }
+
+export function readDirectContractCommand(value: unknown, revision = false) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw invalid('body');
+  const input = Object.fromEntries(Object.entries(value));
+  const allowed = [
+    'pricingSnapshotId',
+    'scopeNote',
+    'commercialConditions',
+    'termStartsOn',
+    'termEndsOn',
+    'specialConditions',
+    ...(revision
+      ? ['expectedContractRevision']
+      : ['recipient', 'directReason']),
+  ];
+  for (const field of Object.keys(input))
+    if (!allowed.includes(field)) throw invalid(field);
+  if (!isPricingSnapshotId(input.pricingSnapshotId))
+    throw invalid('pricingSnapshotId');
+  const entered = readEnteredContractFields(input);
+  return {
+    ...entered,
+    pricingSnapshotId: input.pricingSnapshotId.toLowerCase(),
+    scopeNote: directText(input.scopeNote, 'scopeNote', 2000, true),
+    commercialConditions: directText(
+      input.commercialConditions,
+      'commercialConditions',
+      4000,
+      false,
+    ),
+    ...(revision
+      ? {
+          expectedContractRevision: readCreateContractVersionCommand({
+            expectedContractRevision: input.expectedContractRevision,
+          }).expectedContractRevision,
+        }
+      : {}),
+  };
+}
+export function readDirectCreationCommand(value: unknown) {
+  const fields = readDirectContractCommand(value);
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('recipient' in value) ||
+    !('directReason' in value)
+  )
+    throw invalid('recipient');
+  const recipient = value.recipient;
+  if (
+    typeof recipient !== 'object' ||
+    recipient === null ||
+    Array.isArray(recipient) ||
+    !('kind' in recipient)
+  )
+    throw invalid('recipient');
+  if (recipient.kind === 'PRIMARY' && Object.keys(recipient).length === 1)
+    return {
+      ...fields,
+      recipient: { kind: 'PRIMARY' } as const,
+      directReason: directText(value.directReason, 'directReason', 500, true),
+    };
+  if (
+    recipient.kind === 'ADDITIONAL' &&
+    Object.keys(recipient).length === 2 &&
+    'legalEntityId' in recipient &&
+    isPricingSnapshotId(recipient.legalEntityId)
+  )
+    return {
+      ...fields,
+      recipient: {
+        kind: 'ADDITIONAL',
+        legalEntityId: recipient.legalEntityId.toLowerCase(),
+      } as const,
+      directReason: directText(value.directReason, 'directReason', 500, true),
+    };
+  throw invalid('recipient');
+}
+function directText(
+  value: unknown,
+  field: string,
+  max: number,
+  required: true,
+): string;
+function directText(
+  value: unknown,
+  field: string,
+  max: number,
+  required: false,
+): string | null;
+function directText(
+  value: unknown,
+  field: string,
+  max: number,
+  required: boolean,
+): string | null {
+  if (!required && (value === undefined || value === null)) return null;
+  if (
+    typeof value !== 'string' ||
+    value.length > max ||
+    value.includes('\0') ||
+    (required && !value.trim())
+  )
+    throw invalid(field);
+  return value;
+}
+
+export function readDirectVersionCommand(value: unknown) {
+  const fields = readDirectContractCommand(value, true);
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('expectedContractRevision' in value)
+  )
+    throw invalid('expectedContractRevision');
+  return {
+    ...fields,
+    expectedContractRevision: readCreateContractVersionCommand({
+      expectedContractRevision: value.expectedContractRevision,
+    }).expectedContractRevision,
+    changeSummary: null,
+  };
+}

@@ -1,6 +1,7 @@
 import {
   contractQualityRuns,
   contractVersions,
+  contracts,
 } from '../database/schema/index.js';
 import {
   readContractQualityResults,
@@ -11,6 +12,7 @@ type VersionRow = typeof contractVersions.$inferSelect;
 export function qualityRunView(
   row: typeof contractQualityRuns.$inferSelect,
   version: VersionRow,
+  contract: typeof contracts.$inferSelect,
 ): ContractQualityRun {
   if (
     row.ruleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
@@ -29,9 +31,11 @@ export function qualityRunView(
       row.results,
       contractQualityCodes(
         version.termEndsOn,
-        version.templateCode === 'ADDENDUM_ILLUSTRATIVE'
-          ? { pricingSnapshotId: version.pricingSnapshotId }
-          : null,
+        contract.origin === 'DIRECT'
+          ? { kind: 'DIRECT' }
+          : version.templateCode === 'ADDENDUM_ILLUSTRATIVE'
+            ? { pricingSnapshotId: version.pricingSnapshotId }
+            : null,
       ),
     ),
   };

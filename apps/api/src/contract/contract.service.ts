@@ -1,3 +1,4 @@
+import { createDirectContract } from './contract-direct-command.js';
 import {
   createContractAddendum,
   type CreateAddendumInput,
@@ -281,7 +282,10 @@ export class ContractService {
           contractId: contract.id,
           contractVersionId: version.id,
           illustrativeReference: contract.illustrativeReference,
-          offerVersionId: source.offerVersionId,
+          source: {
+            kind: 'ACCEPTED_OFFER',
+            offerVersionId: source.offerVersionId,
+          },
           pricingSnapshotId: source.pricingSnapshotId,
           occurredAt: createdAt,
         });
@@ -296,6 +300,20 @@ export class ContractService {
             'The Contract outcome is uncertain. Retry the identical command.',
         });
       });
+  }
+
+  async createDirect(input: Parameters<typeof createDirectContract>[0]) {
+    return createDirectContract(input, {
+      databaseContext: this.databaseContext,
+      authorization: this.authorization,
+      accountability: this.accountability,
+      clients: this.clients,
+      intake: this.intake,
+      offers: this.offers,
+      pricing: this.pricing,
+      versions: this.versions,
+      clock: this.clock,
+    });
   }
 
   async createAddendum(input: CreateAddendumInput) {
@@ -439,7 +457,7 @@ export class ContractService {
             throw new Error(
               'The recorded Contract Quality Check run is missing.',
             );
-          return qualityRunView(recorded, version);
+          return qualityRunView(recorded, version, contract);
         }
         if (
           typeof input.payload !== 'object' ||
@@ -477,7 +495,7 @@ export class ContractService {
           .returning();
         if (!run)
           throw new Error('The Contract Quality Check run was not recorded.');
-        const response = qualityRunView(run, version);
+        const response = qualityRunView(run, version, contract);
         await this.databaseContext.connection.insert(contractCommands).values({
           workspaceId: actor.workspaceId,
           companyId,
@@ -515,7 +533,7 @@ export class ContractService {
     version: VersionRow;
   }) {
     const source =
-      contract.kind === 'ADDENDUM'
+      contract.origin !== 'ACCEPTED_OFFER'
         ? null
         : await this.offers.inspectContractQualitySource({
             actor,
@@ -631,7 +649,9 @@ export class ContractService {
               scopeNote: source.scopeNote,
               commercialConditions: source.commercialConditions,
             }
-          : missingQualitySource(),
+          : contract.origin === 'DIRECT'
+            ? { kind: 'DIRECT', companyId: contract.companyId }
+            : missingQualitySource(),
     });
     return { evaluatedAt, results };
   }
@@ -710,7 +730,7 @@ export class ContractService {
         .limit(limit + 1);
       const items = rows
         .slice(0, limit)
-        .map((row) => qualityRunView(row, found.version));
+        .map((row) => qualityRunView(row, found.version, found.contract));
       return {
         items,
         nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null,
@@ -766,7 +786,7 @@ export class ContractService {
           ),
         );
       if (!run) throw new NotFoundException();
-      return qualityRunView(run, found.version);
+      return qualityRunView(run, found.version, found.contract);
     });
   }
 

@@ -1,3 +1,4 @@
+import type { ContractEventSource } from '../contract/contract-source.js';
 import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
 import type {
   ProjectResponsibleChangedActivityEvent,
@@ -208,8 +209,7 @@ export class AccountabilityService {
     contractId: string;
     contractVersionId: string;
     illustrativeReference: number;
-    offerVersionId: string | null;
-    addendum?: { parentContractId: string; addendumOrdinal: number };
+    source: ContractEventSource;
     pricingSnapshotId: string | null;
     occurredAt: Date;
   }): Promise<void> {
@@ -223,7 +223,7 @@ export class AccountabilityService {
     };
     const metadata = {
       contractId: input.contractId,
-      ...contractEventSource(input),
+      ...contractEventMetadata(input.source),
       provenance: 'ILLUSTRATIVE',
     };
     await this.databaseContext.connection.insert(contractEvents).values([
@@ -259,8 +259,7 @@ export class AccountabilityService {
     contractVersionId: string;
     versionNumber: number;
     predecessorVersionNumber: number;
-    offerVersionId: string | null;
-    addendum?: { parentContractId: string; addendumOrdinal: number };
+    source: ContractEventSource;
     pricingSnapshotId: string | null;
     occurredAt: Date;
   }): Promise<void> {
@@ -278,7 +277,7 @@ export class AccountabilityService {
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
         predecessorVersionNumber: input.predecessorVersionNumber,
-        ...contractEventSource(input),
+        ...contractEventMetadata(input.source),
         provenance: 'ILLUSTRATIVE',
         ...(input.pricingSnapshotId === null
           ? {}
@@ -294,8 +293,7 @@ export class AccountabilityService {
     contractVersionId: string;
     versionNumber: number;
     kind: 'APPROVE' | 'REJECT';
-    offerVersionId: string | null;
-    addendum?: { parentContractId: string; addendumOrdinal: number };
+    source: ContractEventSource;
     pricingSnapshotId: string | null;
     acknowledgedWarningCodes: readonly string[];
     occurredAt: Date;
@@ -316,7 +314,7 @@ export class AccountabilityService {
         contractId: input.contractId,
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
-        ...contractEventSource(input),
+        ...contractEventMetadata(input.source),
         provenance: 'ILLUSTRATIVE',
         ...(input.pricingSnapshotId === null
           ? {}
@@ -337,8 +335,7 @@ export class AccountabilityService {
     contractId: string;
     contractVersionId: string;
     versionNumber: number;
-    offerVersionId: string | null;
-    addendum?: { parentContractId: string; addendumOrdinal: number };
+    source: ContractEventSource;
     pricingSnapshotId: string | null;
     acknowledgedWarningCodes: readonly string[];
     occurredAt: Date;
@@ -356,7 +353,7 @@ export class AccountabilityService {
         contractId: input.contractId,
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
-        ...contractEventSource(input),
+        ...contractEventMetadata(input.source),
         provenance: 'ILLUSTRATIVE',
         ...(input.pricingSnapshotId === null
           ? {}
@@ -2557,20 +2554,27 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected Activity Log variant: ${JSON.stringify(value)}`);
 }
 
-function contractEventSource(input: {
-  offerVersionId: string | null;
-  addendum?: { parentContractId: string; addendumOrdinal: number };
-}): Record<string, string | number | boolean | readonly string[]> {
-  if (input.addendum)
-    return {
-      kind: 'ADDENDUM',
-      parentContractId: input.addendum.parentContractId,
-      addendumOrdinal: input.addendum.addendumOrdinal,
-    };
-  if (!input.offerVersionId) throw new Error('Missing Contract source.');
-  return {
-    kind: 'CONTRACT',
-    origin: 'ACCEPTED_OFFER',
-    offerVersionId: input.offerVersionId,
-  };
+function contractEventMetadata(
+  source: ContractEventSource,
+): Record<string, string | number> {
+  switch (source.kind) {
+    case 'DIRECT':
+      return { kind: 'CONTRACT', origin: 'DIRECT' };
+    case 'ACCEPTED_OFFER':
+      return {
+        kind: 'CONTRACT',
+        origin: 'ACCEPTED_OFFER',
+        offerVersionId: source.offerVersionId,
+      };
+    case 'ADDENDUM':
+      return {
+        kind: 'ADDENDUM',
+        parentContractId: source.parentContractId,
+        addendumOrdinal: source.addendumOrdinal,
+      };
+    default: {
+      const unreachable: never = source;
+      return unreachable;
+    }
+  }
 }

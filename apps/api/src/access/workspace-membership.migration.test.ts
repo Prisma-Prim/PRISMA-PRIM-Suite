@@ -102,6 +102,8 @@ describeWithPostgres('Workspace Membership migration', () => {
     await isolatedDatabase?.close();
   });
 
+  // This test applies the complete migration journal and checks historical and current
+  // public reads across three applications, so it needs its own migration budget.
   it('preserves membership authority and public reads through expand, backfill, and contract', async () => {
     await applyMigration('0000_ordinary_stephen_strange.sql');
     await applyMigration('0001_fat_kylun.sql');
@@ -363,7 +365,7 @@ describeWithPostgres('Workspace Membership migration', () => {
       internal_user_function_absent: true,
       activity_event_function_absent: true,
     });
-  });
+  }, 15_000);
 
   async function startLegacyApp() {
     const moduleRef = await Test.createTestingModule({

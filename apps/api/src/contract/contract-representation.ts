@@ -45,7 +45,7 @@ export interface RenderContractRepresentationInput {
     readonly legalAddress: string | null;
   };
   readonly createdAt: string;
-  readonly sourceOffer: {
+  readonly sourceOffer: null | {
     readonly illustrativeReference: number;
     readonly versionNumber: number;
   };
@@ -103,21 +103,25 @@ export function renderContractRepresentation(
         ],
         ['Contract Version', String(input.versionNumber)],
         ['Created at', input.createdAt],
-        [
-          'Source accepted Offer reference',
-          String(input.sourceOffer.illustrativeReference),
-        ],
-        [
-          'Source accepted Offer Version',
-          String(input.sourceOffer.versionNumber),
-        ],
+        ...(input.sourceOffer
+          ? ([
+              [
+                'Source accepted Offer reference',
+                String(input.sourceOffer.illustrativeReference),
+              ],
+              [
+                'Source accepted Offer Version',
+                String(input.sourceOffer.versionNumber),
+              ],
+            ] satisfies [string, string][])
+          : ([['Source', 'Direct origin']] satisfies [string, string][])),
         ['Precontract reference', null],
       ],
     )}</dl></section>`,
     clause(
       'CL_SUBJECT',
       'Subject',
-      `<dl>${details([['Accepted scope', input.scopeNote]])}</dl>`,
+      `<dl>${details([[input.sourceOffer ? 'Accepted scope' : 'Scope', input.scopeNote]])}</dl>`,
     ),
     clause(
       'CL_PRICE',
@@ -143,7 +147,12 @@ export function renderContractRepresentation(
       'CL_CONDITIONS',
       'Conditions',
       `<dl>${details([
-        ['Accepted commercial conditions', input.commercialConditions],
+        [
+          input.sourceOffer
+            ? 'Accepted commercial conditions'
+            : 'Commercial conditions',
+          input.commercialConditions,
+        ],
         ['Special conditions', input.specialConditions],
       ])}</dl>`,
     ),
