@@ -1,0 +1,262 @@
+import { defineMessages, useMessages } from '../localization/messages';
+import type { InterfaceLocale } from '../localization/interface-locale';
+import type { ContractQualityCode } from './contract-quality-response';
+const keys = [
+  'title',
+  'banner',
+  'executed',
+  'pending',
+  'provider',
+  'client',
+  'providerDate',
+  'clientDate',
+  'note',
+  'record',
+  'retry',
+  'acknowledge',
+  'actor',
+  'instant',
+  'checksum',
+  'run',
+  'running',
+  'uncertain',
+  'invalid',
+  'denied',
+  'unavailable',
+  'stale',
+  'already',
+  'notApproved',
+  'errors',
+  'warnings',
+  'mismatch',
+  'conflict',
+  'success',
+  'SOURCE_COMPANY_MATCHES',
+  'PARTY_AVAILABLE',
+  'PARTY_MATCHES_SOURCE',
+  'PARTY_IDENTITY_MATCHES_SOURCE',
+  'PARTY_IDENTITY_CURRENT',
+  'PARTY_TAX_ID_RECORDED',
+  'PRICE_MATCHES_ACCEPTED_OFFER',
+  'PRICING_SNAPSHOT_COHERENT',
+  'CONDITIONS_MATCH_ACCEPTED_OFFER',
+  'ADDED_CONDITIONS_CONFIRMED',
+  'TERM_END_NOT_PASSED',
+  'PROVISIONAL_MARKER_PRESENT',
+] as const;
+export const contractSignatureMessages = defineMessages(keys, {
+  en: {
+    title: 'Simulated Contract signatures',
+    banner:
+      'Illustrative internal record only. Signatory labels and dates are declared and unverified; this is not a legally signed agreement.',
+    executed: 'Executed — simulated evidence only',
+    pending: 'Not executed',
+    provider: 'Provider signatory label',
+    client: 'Client signatory label',
+    providerDate: 'Provider signing date',
+    clientDate: 'Client signing date',
+    note: 'Signature note',
+    record: 'Record both simulated signatures',
+    retry: 'Retry the same simulated signature',
+    acknowledge: 'I acknowledge this new warning',
+    actor: 'Recording membership',
+    instant: 'Recording time (UTC)',
+    checksum: 'Recorded SHA-256 checksum',
+    run: 'Signature check run',
+    running: 'Recording simulated signatures…',
+    uncertain:
+      'The signature outcome is uncertain. Retry sends the same fields, revision and key.',
+    invalid:
+      'Check both signatory labels, signing dates and note. Dates must fall between approval and recording (UTC).',
+    denied: 'Signature recording access is unavailable.',
+    unavailable: 'The Contract Version is unavailable.',
+    stale: 'The Contract changed. Reload before recording signatures.',
+    already: 'This version is already executed. Reload the Contract.',
+    notApproved: 'This version must first be approved internally.',
+    errors:
+      'Current Quality Check errors prevent recording. Run and review checks again.',
+    warnings:
+      'Run and review current checks, then acknowledge exactly the warnings not acknowledged at approval.',
+    mismatch:
+      'The document differs from the approved representation. Recording was refused.',
+    conflict: 'This key was used for another command. Reload the Contract.',
+    success: 'Both simulated signatures recorded.',
+    SOURCE_COMPANY_MATCHES: 'Issuing Company matches the source',
+    PARTY_AVAILABLE: 'Named party is currently available',
+    PARTY_MATCHES_SOURCE: 'Named party matches the source',
+    PARTY_IDENTITY_MATCHES_SOURCE: 'Recorded identity matches the source',
+    PARTY_IDENTITY_CURRENT: 'Recorded identity matches current identity',
+    PARTY_TAX_ID_RECORDED: 'IDNO / tax code is recorded',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Price matches the Accepted Offer',
+    PRICING_SNAPSHOT_COHERENT: 'Pricing Snapshot trace is coherent',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Copied conditions match the Accepted Offer',
+    ADDED_CONDITIONS_CONFIRMED: 'Added terms and conditions need confirmation',
+    TERM_END_NOT_PASSED: 'Term end has not passed (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Illustrative markers are present',
+  },
+  ro: {
+    title: 'Semnături simulate ale contractului',
+    banner:
+      'Doar înregistrare internă ilustrativă. Numele semnatarilor și datele sunt declarate și neverificate; acesta nu este un acord semnat cu valoare juridică.',
+    executed: 'Executat — doar dovezi simulate',
+    pending: 'Neexecutat',
+    provider: 'Numele semnatarului prestatorului',
+    client: 'Numele semnatarului clientului',
+    providerDate: 'Data semnării de către prestator',
+    clientDate: 'Data semnării de către client',
+    note: 'Notă privind semnăturile',
+    record: 'Înregistrează ambele semnături simulate',
+    retry: 'Reîncearcă aceleași semnături simulate',
+    acknowledge: 'Confirm acest avertisment nou',
+    actor: 'Membrul care a înregistrat',
+    instant: 'Momentul înregistrării (UTC)',
+    checksum: 'Suma SHA-256 înregistrată',
+    run: 'Verificarea de la semnare',
+    running: 'Se înregistrează semnăturile simulate…',
+    uncertain:
+      'Rezultatul semnării este incert. Reîncercarea trimite aceleași câmpuri, revizie și cheie.',
+    invalid:
+      'Verifică ambele nume, datele semnării și nota. Datele trebuie să fie între aprobare și înregistrare (UTC).',
+    denied: 'Accesul la înregistrarea semnăturilor nu este disponibil.',
+    unavailable: 'Versiunea contractului nu este disponibilă.',
+    stale: 'Contractul s-a schimbat. Reîncarcă înainte de semnare.',
+    already: 'Această versiune este deja executată. Reîncarcă contractul.',
+    notApproved: 'Această versiune trebuie mai întâi aprobată intern.',
+    errors:
+      'Erorile actuale împiedică înregistrarea. Rulează și verifică din nou controalele.',
+    warnings:
+      'Rulează și verifică controalele actuale, apoi confirmă exact avertismentele neconfirmate la aprobare.',
+    mismatch:
+      'Documentul diferă de reprezentarea aprobată. Înregistrarea a fost refuzată.',
+    conflict:
+      'Cheia a fost folosită pentru altă comandă. Reîncarcă contractul.',
+    success: 'Ambele semnături simulate au fost înregistrate.',
+    SOURCE_COMPANY_MATCHES: 'Compania emitentă corespunde sursei',
+    PARTY_AVAILABLE: 'Partea numită este disponibilă în prezent',
+    PARTY_MATCHES_SOURCE: 'Partea numită corespunde sursei',
+    PARTY_IDENTITY_MATCHES_SOURCE: 'Identitatea înregistrată corespunde sursei',
+    PARTY_IDENTITY_CURRENT:
+      'Identitatea înregistrată corespunde identității actuale',
+    PARTY_TAX_ID_RECORDED: 'IDNO / codul fiscal este înregistrat',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Prețul corespunde ofertei acceptate',
+    PRICING_SNAPSHOT_COHERENT:
+      'Trasabilitatea instantaneului de preț este coerentă',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Condițiile copiate corespund ofertei acceptate',
+    ADDED_CONDITIONS_CONFIRMED:
+      'Termenii și condițiile adăugate necesită confirmare',
+    TERM_END_NOT_PASSED: 'Termenul final nu a trecut (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Marcajele ilustrative sunt prezente',
+  },
+  fr: {
+    title: 'Signatures simulées du contrat',
+    banner:
+      'Enregistrement interne illustratif uniquement. Les noms et dates sont déclarés et non vérifiés ; ce document n’est pas un accord signé juridiquement.',
+    executed: 'Exécuté — preuves simulées uniquement',
+    pending: 'Non exécuté',
+    provider: 'Nom du signataire du prestataire',
+    client: 'Nom du signataire du client',
+    providerDate: 'Date de signature du prestataire',
+    clientDate: 'Date de signature du client',
+    note: 'Note de signature',
+    record: 'Enregistrer les deux signatures simulées',
+    retry: 'Réessayer les mêmes signatures simulées',
+    acknowledge: 'Je reconnais ce nouvel avertissement',
+    actor: 'Membre ayant enregistré',
+    instant: 'Date d’enregistrement (UTC)',
+    checksum: 'Empreinte SHA-256 enregistrée',
+    run: 'Contrôle lors de la signature',
+    running: 'Enregistrement des signatures simulées…',
+    uncertain:
+      'Le résultat est incertain. Réessayer envoie les mêmes champs, révision et clé.',
+    invalid:
+      'Vérifiez les deux noms, les dates et la note. Les dates doivent être comprises entre l’approbation et l’enregistrement (UTC).',
+    denied: 'L’accès à l’enregistrement des signatures est indisponible.',
+    unavailable: 'Cette version du contrat est indisponible.',
+    stale: 'Le contrat a changé. Rechargez avant d’enregistrer les signatures.',
+    already: 'Cette version est déjà exécutée. Rechargez le contrat.',
+    notApproved: 'Cette version doit d’abord être approuvée en interne.',
+    errors:
+      'Les erreurs actuelles bloquent l’enregistrement. Relancez et consultez les contrôles.',
+    warnings:
+      'Relancez les contrôles puis reconnaissez uniquement les avertissements non reconnus lors de l’approbation.',
+    mismatch:
+      'Le document diffère de la représentation approuvée. L’enregistrement a été refusé.',
+    conflict: 'Cette clé a servi à une autre commande. Rechargez le contrat.',
+    success: 'Les deux signatures simulées ont été enregistrées.',
+    SOURCE_COMPANY_MATCHES: 'La société émettrice correspond à la source',
+    PARTY_AVAILABLE: 'La partie désignée est actuellement disponible',
+    PARTY_MATCHES_SOURCE: 'La partie désignée correspond à la source',
+    PARTY_IDENTITY_MATCHES_SOURCE:
+      'L’identité enregistrée correspond à la source',
+    PARTY_IDENTITY_CURRENT:
+      'L’identité enregistrée correspond à l’identité actuelle',
+    PARTY_TAX_ID_RECORDED: 'L’IDNO / code fiscal est enregistré',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Le prix correspond à l’offre acceptée',
+    PRICING_SNAPSHOT_COHERENT:
+      'La traçabilité de l’instantané de prix est cohérente',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Les conditions copiées correspondent à l’offre acceptée',
+    ADDED_CONDITIONS_CONFIRMED:
+      'Les conditions ajoutées doivent être confirmées',
+    TERM_END_NOT_PASSED: 'La date de fin n’est pas passée (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Les mentions illustratives sont présentes',
+  },
+  ru: {
+    title: 'Симулированные подписи договора',
+    banner:
+      'Только иллюстративная внутренняя запись. Имена и даты заявлены и не проверены; это не юридически подписанное соглашение.',
+    executed: 'Исполнен — только симулированные доказательства',
+    pending: 'Не исполнен',
+    provider: 'Имя подписанта исполнителя',
+    client: 'Имя подписанта клиента',
+    providerDate: 'Дата подписи исполнителя',
+    clientDate: 'Дата подписи клиента',
+    note: 'Примечание к подписям',
+    record: 'Записать обе симулированные подписи',
+    retry: 'Повторить те же симулированные подписи',
+    acknowledge: 'Я подтверждаю новое предупреждение',
+    actor: 'Участник, записавший подписи',
+    instant: 'Время записи (UTC)',
+    checksum: 'Записанная сумма SHA-256',
+    run: 'Проверка при записи подписей',
+    running: 'Запись симулированных подписей…',
+    uncertain:
+      'Результат неизвестен. Повтор отправляет те же поля, ревизию и ключ.',
+    invalid:
+      'Проверьте оба имени, даты и примечание. Даты должны быть между одобрением и записью (UTC).',
+    denied: 'Доступ к записи подписей недоступен.',
+    unavailable: 'Версия договора недоступна.',
+    stale: 'Договор изменился. Перезагрузите перед записью подписей.',
+    already: 'Эта версия уже исполнена. Перезагрузите договор.',
+    notApproved: 'Сначала требуется внутреннее одобрение этой версии.',
+    errors:
+      'Текущие ошибки блокируют запись. Выполните и изучите проверки снова.',
+    warnings:
+      'Выполните проверки и подтвердите только предупреждения, не подтвержденные при одобрении.',
+    mismatch:
+      'Документ отличается от одобренного представления. Запись отклонена.',
+    conflict: 'Ключ использован для другой команды. Перезагрузите договор.',
+    success: 'Обе симулированные подписи записаны.',
+    SOURCE_COMPANY_MATCHES: 'Компания-эмитент соответствует источнику',
+    PARTY_AVAILABLE: 'Указанная сторона сейчас доступна',
+    PARTY_MATCHES_SOURCE: 'Указанная сторона соответствует источнику',
+    PARTY_IDENTITY_MATCHES_SOURCE: 'Записанные данные соответствуют источнику',
+    PARTY_IDENTITY_CURRENT: 'Записанные данные соответствуют текущим данным',
+    PARTY_TAX_ID_RECORDED: 'IDNO / налоговый код записан',
+    PRICE_MATCHES_ACCEPTED_OFFER: 'Цена соответствует принятому предложению',
+    PRICING_SNAPSHOT_COHERENT: 'История снимка цены согласована',
+    CONDITIONS_MATCH_ACCEPTED_OFFER:
+      'Скопированные условия соответствуют принятому предложению',
+    ADDED_CONDITIONS_CONFIRMED: 'Добавленные условия требуют подтверждения',
+    TERM_END_NOT_PASSED: 'Дата окончания не прошла (UTC)',
+    PROVISIONAL_MARKER_PRESENT: 'Иллюстративные отметки присутствуют',
+  },
+} satisfies Record<
+  InterfaceLocale,
+  Record<(typeof keys)[number] | ContractQualityCode, string>
+>);
+export function useContractSignatureCopy() {
+  return useMessages(contractSignatureMessages);
+}

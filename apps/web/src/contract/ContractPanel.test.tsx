@@ -1,5 +1,9 @@
-import { resolveMessage } from '../localization/messages';
+import {
+  assertMessageCoverage,
+  resolveMessage,
+} from '../localization/messages';
 import { contractDecisionMessages } from './contract-decision.copy';
+import { contractSignatureMessages } from './contract-signature.copy';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -17,15 +21,562 @@ import {
   InterfaceLocaleProvider,
   interfaceLocales,
   interfaceLocaleStorageKey,
+  useInterfaceLocale,
 } from '../localization/interface-locale';
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'contract-reader',
 });
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   window.localStorage.removeItem(interfaceLocaleStorageKey);
 });
+function SignatureLocaleChoices() {
+  const { changeLocale } = useInterfaceLocale();
+  return (
+    <>
+      {interfaceLocales.map((locale) => (
+        <button key={locale} onClick={() => changeLocale(locale)}>
+          Choose {locale}
+        </button>
+      ))}
+    </>
+  );
+}
 describe('ContractPanel', () => {
+  it('requires signature message coverage in every offered locale', () => {
+    expect(() =>
+      assertMessageCoverage('contractSignature', contractSignatureMessages),
+    ).not.toThrow();
+  });
+  it.each([
+    {
+      locale: 'ro',
+      descriptions: [
+        'Identitatea înregistrată corespunde sursei',
+        'Identitatea înregistrată corespunde identității actuale',
+        'Termenii și condițiile adăugate necesită confirmare',
+        'Termenul final nu a trecut (UTC)',
+      ],
+    },
+    {
+      locale: 'ru',
+      descriptions: [
+        'Записанные данные соответствуют источнику',
+        'Записанные данные соответствуют текущим данным',
+        'Добавленные условия требуют подтверждения',
+        'Дата окончания не прошла (UTC)',
+      ],
+    },
+    {
+      locale: 'fr',
+      descriptions: [
+        'L’identité enregistrée correspond à la source',
+        'L’identité enregistrée correspond à l’identité actuelle',
+        'Les conditions ajoutées doivent être confirmées',
+        'La date de fin n’est pas passée (UTC)',
+      ],
+    },
+    {
+      locale: 'en',
+      descriptions: [
+        'Recorded identity matches the source',
+        'Recorded identity matches current identity',
+        'Added terms and conditions need confirmation',
+        'Term end has not passed (UTC)',
+      ],
+    },
+  ] as const)(
+    'localizes fresh signature warning descriptions in $locale',
+    async ({ locale, descriptions }) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      const approved = approvedUiFixture();
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({
+          contract: {
+            ...approved,
+            version: {
+              ...approved.version,
+              termEndsOn: '2026-10-07',
+              decision: {
+                ...approved.version.decision,
+                acknowledgedWarningCodes: [],
+                qualityRun: {
+                  ...qualityRun(),
+                  results: [
+                    ...qualityRun()
+                      .results.slice(0, -1)
+                      .map((item) => ({ ...item, status: 'PASS' })),
+                    { code: 'TERM_END_NOT_PASSED', status: 'PASS' },
+                    { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+                  ],
+                },
+              },
+              latestQualityRun: {
+                ...qualityRun(),
+                id: 'fresh-run',
+                results: [
+                  ...qualityRun()
+                    .results.slice(0, -1)
+                    .map((item) => ({
+                      ...item,
+                      status: [
+                        'PARTY_IDENTITY_MATCHES_SOURCE',
+                        'PARTY_IDENTITY_CURRENT',
+                        'ADDED_CONDITIONS_CONFIRMED',
+                      ].includes(item.code)
+                        ? 'WARNING'
+                        : 'PASS',
+                    })),
+                  { code: 'TERM_END_NOT_PASSED', status: 'WARNING' },
+                  { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+                ],
+              },
+            },
+          },
+        }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={signatureActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      for (const description of descriptions)
+        expect(
+          await screen.findByRole('checkbox', {
+            name:
+              resolveMessage(contractSignatureMessages, locale, 'acknowledge') +
+              ': ' +
+              description,
+          }),
+        ).toBeVisible();
+    },
+  );
+  it.each([
+    { locale: 'ro', provider: '1 ian. 1', client: '31 dec. 2026' },
+    { locale: 'ru', provider: '1 янв. 1 г.', client: '31 дек. 2026 г.' },
+    { locale: 'fr', provider: '1 janv. 1', client: '31 déc. 2026' },
+    { locale: 'en', provider: 'Jan 1, 1', client: 'Dec 31, 2026' },
+  ] as const)(
+    'localizes declared calendar dates without shifting their UTC day in $locale',
+    async ({ locale, provider, client }) => {
+      vi.stubEnv('TZ', 'America/Los_Angeles');
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      const approved = approvedUiFixture();
+      const approval = {
+        ...approved.version.decision,
+        decidedAt: '0001-01-01T00:00:00.000Z',
+        qualityRun: {
+          ...qualityRun(),
+          evaluatedAt: '0001-01-01T00:00:00.000Z',
+        },
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({
+          contract: {
+            ...approved,
+            revision: 3,
+            version: {
+              ...approved.version,
+              decision: approval,
+              executionState: 'EXECUTED',
+              signature: {
+                id: 'signature-one',
+                contractVersionId: 'version-one',
+                revision: 3,
+                evidenceKind: 'SIMULATED',
+                provenance: 'ILLUSTRATIVE',
+                provisional: true,
+                actorWorkspaceMembershipId: 'member-one',
+                recordedAt: '2027-01-01T00:00:00.000Z',
+                providerSignatoryLabel: 'Provider declaration',
+                clientSignatoryLabel: 'Client declaration',
+                providerSignedOn: '0001-01-01',
+                clientSignedOn: '2026-12-31',
+                note: null,
+                qualityRun: {
+                  ...qualityRun(),
+                  evaluatedAt: '2027-01-01T00:00:00.000Z',
+                },
+                acknowledgedWarningCodes: [],
+                representationChecksum: '1'.repeat(64),
+              },
+            },
+          },
+        }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={signatureActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const panel = await screen.findByRole('region', {
+        name: resolveMessage(contractSignatureMessages, locale, 'title'),
+      });
+      expect(await within(panel).findByText(provider)).toHaveAttribute(
+        'datetime',
+        '0001-01-01',
+      );
+      expect(within(panel).getByText(client)).toHaveAttribute(
+        'datetime',
+        '2026-12-31',
+      );
+    },
+  );
+  it('preserves entered signature fields and the identical uncertain command across all locale switches', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const commands: Array<{ body: unknown; key: string | null }> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
+      if (init?.method === 'POST') {
+        commands.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return response({}, 500);
+      }
+      return response({ contract: approvedUiFixture() });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <SignatureLocaleChoices />
+        <ContractPanel
+          actor={signatureActor()}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await fillSignatureFields();
+    for (const locale of interfaceLocales) {
+      fireEvent.click(screen.getByRole('button', { name: 'Choose ' + locale }));
+      expect(
+        screen.getByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'provider'),
+        ),
+      ).toHaveValue('Provider declaration');
+      expect(
+        screen.getByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'client'),
+        ),
+      ).toHaveValue('Client declaration');
+      expect(
+        screen.getByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'providerDate'),
+        ),
+      ).toHaveValue('2026-10-07');
+      expect(
+        screen.getByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'clientDate'),
+        ),
+      ).toHaveValue('2026-10-07');
+      expect(
+        screen.getByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'note'),
+        ),
+      ).toHaveValue('Declared note');
+    }
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: resolveMessage(contractSignatureMessages, 'en', 'record'),
+      }),
+    );
+    await screen.findByText(
+      resolveMessage(contractSignatureMessages, 'en', 'uncertain'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: resolveMessage(contractSignatureMessages, 'fr', 'retry'),
+      }),
+    );
+    await waitFor(() => expect(commands).toHaveLength(2));
+    expect(commands[1]).toEqual(commands[0]);
+  });
+  it.each(interfaceLocales)(
+    'localizes both declared signature parties and the recording action in %s',
+    async (locale) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        response({ contract: approvedUiFixture() }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={signatureActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      expect(
+        await screen.findByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'provider'),
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByLabelText(
+          resolveMessage(contractSignatureMessages, locale, 'client'),
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('button', {
+          name: resolveMessage(contractSignatureMessages, locale, 'record'),
+        }),
+      ).toBeVisible();
+    },
+  );
+  it.each([
+    { code: 'QUALITY_CHECK_ERRORS', key: 'errors', terminal: false },
+    {
+      code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+      key: 'warnings',
+      terminal: false,
+    },
+    { code: 'STALE_CONTRACT_REVISION', key: 'stale', terminal: true },
+    {
+      code: 'CONTRACT_VERSION_ALREADY_EXECUTED',
+      key: 'already',
+      terminal: true,
+    },
+    {
+      code: 'CONTRACT_VERSION_NOT_APPROVED',
+      key: 'notApproved',
+      terminal: true,
+    },
+    { code: 'REPRESENTATION_MISMATCH', key: 'mismatch', terminal: true },
+    { code: 'INVALID_CONTRACT_INPUT', key: 'invalid', terminal: false },
+  ] as const)(
+    'preserves declared signature fields after $code and blocks only terminal outcomes',
+    async ({ code, key, terminal }) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+        init?.method === 'POST'
+          ? response(
+              { code, field: 'providerSignedOn' },
+              key === 'invalid' ? 400 : 409,
+            )
+          : response({ contract: approvedUiFixture() }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={signatureActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      await fillSignatureFields();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Record both simulated signatures',
+        }),
+      );
+      expect(
+        await screen.findByText(
+          resolveMessage(contractSignatureMessages, 'en', key),
+        ),
+      ).toBeVisible();
+      expect(screen.getByLabelText('Provider signatory label')).toHaveValue(
+        'Provider declaration',
+      );
+      expect(screen.getByLabelText('Client signatory label')).toHaveValue(
+        'Client declaration',
+      );
+      expect(screen.getByLabelText('Signature note')).toHaveValue(
+        'Declared note',
+      );
+      const action = screen.getByRole('button', {
+        name: 'Record both simulated signatures',
+      });
+      if (terminal) expect(action).toBeDisabled();
+      else expect(action).toBeEnabled();
+    },
+  );
+  it('invalidates an in-flight signature after a Company change and suppresses its late result', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    let finish: ((value: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+      init?.method === 'POST'
+        ? new Promise<Response>((resolve) => {
+            finish = resolve;
+          })
+        : response({ contract: approvedUiFixture() }),
+    );
+    const current = signatureActor();
+    const mounted = render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await fillSignatureFields();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record both simulated signatures' }),
+    );
+    await waitFor(() => expect(finish).toBeDefined());
+    mounted.rerender(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={{
+            ...current,
+            activeCompany: current.activeCompany
+              ? { ...current.activeCompany, id: 'another-company' }
+              : undefined,
+          }}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await act(async () => {
+      if (!finish) throw new Error('Missing delayed command');
+      finish(response({ id: 'late-hidden-signature' }, 201));
+    });
+    expect(screen.queryByText('Provider declaration')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Both simulated signatures recorded.'),
+    ).not.toBeInTheDocument();
+  });
+  it('preserves the entire uncertain simulated signature for explicit identical retry and shows both declarations', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const current = actor(false);
+    if (!current.activeCompany) throw new Error('Missing Company');
+    current.activeCompany.contractPermissions = [
+      'commercial.contract.read',
+      'commercial.contract.approve',
+      'commercial.contract.signature.record',
+    ];
+    current.activeCompany.contractApproverAssignmentId = 'approver-one';
+    current.activeCompany.contractApproverPermissionSetVersion = 'v1';
+    const approval = {
+      id: 'approval-one',
+      contractVersionId: 'version-one',
+      revision: 2,
+      kind: 'APPROVE',
+      actorWorkspaceMembershipId: 'member-one',
+      decidedAt: '2026-10-07T09:00:00.000Z',
+      qualityRun: qualityRun(),
+      acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+      representationChecksum: '1'.repeat(64),
+    };
+    const commands: Array<{ body: unknown; key: string | null }> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/signature')) {
+        commands.push({
+          body: init?.body,
+          key: new Headers(init?.headers).get('idempotency-key'),
+        });
+        if (commands.length === 1) return response({}, 500);
+        return response(
+          {
+            id: 'signature-one',
+            contractVersionId: 'version-one',
+            revision: 3,
+            evidenceKind: 'SIMULATED',
+            provenance: 'ILLUSTRATIVE',
+            provisional: true,
+            actorWorkspaceMembershipId: 'member-one',
+            recordedAt: '2026-10-08T10:00:00.000Z',
+            providerSignatoryLabel: '  Provider É  ',
+            clientSignatoryLabel: 'Client 🙂',
+            providerSignedOn: '2026-10-07',
+            clientSignedOn: '2026-10-08',
+            note: 'Declared only',
+            qualityRun: {
+              ...qualityRun(),
+              id: 'signature-run',
+              evaluatedAt: '2026-10-08T10:00:00.000Z',
+            },
+            acknowledgedWarningCodes: [],
+            representationChecksum: '1'.repeat(64),
+          },
+          201,
+        );
+      }
+      const stored = fixture();
+      return response({
+        contract: {
+          ...stored,
+          revision: 2,
+          version: {
+            ...stored.version,
+            decisionState: 'APPROVED',
+            decision: approval,
+            latestQualityRun: qualityRun(),
+          },
+        },
+      });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Provider signatory label'), {
+      target: { value: '  Provider É  ' },
+    });
+    fireEvent.change(screen.getByLabelText('Client signatory label'), {
+      target: { value: 'Client 🙂' },
+    });
+    fireEvent.change(screen.getByLabelText('Provider signing date'), {
+      target: { value: '2026-10-07' },
+    });
+    fireEvent.change(screen.getByLabelText('Client signing date'), {
+      target: { value: '2026-10-08' },
+    });
+    fireEvent.change(screen.getByLabelText('Signature note'), {
+      target: { value: 'Declared only' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Record both simulated signatures' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Retry the same simulated signature',
+      }),
+    );
+    const signatures = screen.getByRole('region', {
+      name: 'Simulated Contract signatures',
+    });
+    expect(
+      await within(signatures).findByText('Executed — simulated evidence only'),
+    ).toBeVisible();
+    expect(
+      within(signatures).getByText('Provider É', { exact: true }),
+    ).toBeVisible();
+    expect(screen.getByText('Client 🙂')).toBeVisible();
+    expect(commands).toHaveLength(2);
+    expect(commands[1]).toEqual(commands[0]);
+    expect(
+      screen.queryByRole('button', {
+        name: 'Record both simulated signatures',
+      }),
+    ).not.toBeInTheDocument();
+  });
   it.each([false, true])(
     'shows the committed approval checks immediately with prior run %s and keeps reopened history',
     async (hasPriorRun) => {
@@ -980,6 +1531,56 @@ function actor(prepare: boolean): ActorContext {
         : {}),
     },
   };
+}
+function signatureActor(): ActorContext {
+  const result = actor(false);
+  if (!result.activeCompany) throw new Error('Missing Company');
+  result.activeCompany.contractPermissions = [
+    'commercial.contract.read',
+    'commercial.contract.approve',
+    'commercial.contract.signature.record',
+  ];
+  result.activeCompany.contractApproverAssignmentId = 'approver-one';
+  result.activeCompany.contractApproverPermissionSetVersion = 'v1';
+  return result;
+}
+function approvedUiFixture() {
+  const stored = fixture();
+  return {
+    ...stored,
+    revision: 2,
+    version: {
+      ...stored.version,
+      decisionState: 'APPROVED',
+      latestQualityRun: qualityRun(),
+      decision: {
+        id: 'approval-one',
+        contractVersionId: 'version-one',
+        revision: 2,
+        kind: 'APPROVE',
+        actorWorkspaceMembershipId: 'member-one',
+        decidedAt: '2026-10-07T09:00:00.000Z',
+        qualityRun: qualityRun(),
+        acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+        representationChecksum: '1'.repeat(64),
+      },
+    },
+  };
+}
+async function fillSignatureFields() {
+  fireEvent.change(await screen.findByLabelText('Provider signatory label'), {
+    target: { value: 'Provider declaration' },
+  });
+  fireEvent.change(screen.getByLabelText('Client signatory label'), {
+    target: { value: 'Client declaration' },
+  });
+  for (const field of ['Provider signing date', 'Client signing date'])
+    fireEvent.change(screen.getByLabelText(field), {
+      target: { value: '2026-10-07' },
+    });
+  fireEvent.change(screen.getByLabelText('Signature note'), {
+    target: { value: 'Declared note' },
+  });
 }
 function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

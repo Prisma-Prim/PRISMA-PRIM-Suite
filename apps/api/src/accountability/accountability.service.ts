@@ -293,6 +293,41 @@ export class AccountabilityService {
     });
   }
 
+  async recordContractSignature(input: {
+    actor: ActorContext;
+    companyId: string;
+    contractId: string;
+    contractVersionId: string;
+    offerVersionId: string;
+    pricingSnapshotId: string;
+    acknowledgedWarningCodes: readonly string[];
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(contractEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      contractId: input.contractId,
+      contractVersionId: input.contractVersionId,
+      action: 'contract_version.signature_recorded',
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      metadata: {
+        contractId: input.contractId,
+        contractVersionId: input.contractVersionId,
+        versionNumber: 1,
+        kind: 'CONTRACT',
+        origin: 'ACCEPTED_OFFER',
+        provenance: 'ILLUSTRATIVE',
+        offerVersionId: input.offerVersionId,
+        pricingSnapshotId: input.pricingSnapshotId,
+        ruleSetVersion: 1,
+        acknowledgedWarningCodes: input.acknowledgedWarningCodes,
+        evidenceKind: 'SIMULATED',
+      },
+    });
+  }
+
   async recordOfferCreated(input: {
     actor: ActorContext;
     companyId: string;

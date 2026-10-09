@@ -121,7 +121,7 @@ export const contracts = pgTable(
     }),
     check(
       'contracts_initial_check',
-      sql`${t.kind} = 'CONTRACT' AND ${t.origin} = 'ACCEPTED_OFFER' AND ${t.revision} IN (1, 2) AND ${t.illustrativeReference} > 0`,
+      sql`${t.kind} = 'CONTRACT' AND ${t.origin} = 'ACCEPTED_OFFER' AND ${t.revision} IN (1, 2, 3) AND ${t.illustrativeReference} > 0`,
     ),
   ],
 );
@@ -245,7 +245,7 @@ export const contractVersions = pgTable(
     }),
     check(
       'contract_versions_initial_check',
-      sql`${t.versionNumber} = 1 AND ${t.decisionState} IN ('PENDING', 'APPROVED', 'REJECTED') AND ${t.executionState} = 'NOT_EXECUTED' AND ${t.provenance} = 'ILLUSTRATIVE'`,
+      sql`${t.versionNumber} = 1 AND ${t.decisionState} IN ('PENDING', 'APPROVED', 'REJECTED') AND ${t.executionState} IN ('NOT_EXECUTED','EXECUTED') AND (${t.executionState} <> 'EXECUTED' OR ${t.decisionState} = 'APPROVED') AND ${t.provenance} = 'ILLUSTRATIVE'`,
     ),
     check(
       'contract_versions_template_binding_check',
@@ -415,6 +415,87 @@ export const contractDecisions = pgTable(
   ],
 );
 
+export const contractSignatures = pgTable(
+  'contract_signatures',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    contractId: uuid('contract_id').notNull(),
+    contractVersionId: uuid('contract_version_id').notNull(),
+    resultRevision: integer('result_revision').notNull(),
+    evidenceKind: text('evidence_kind').default('SIMULATED').notNull(),
+    provenance: text('provenance').default('ILLUSTRATIVE').notNull(),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+    providerSignatoryLabel: text('provider_signatory_label').notNull(),
+    clientSignatoryLabel: text('client_signatory_label').notNull(),
+    providerSignedOn: date('provider_signed_on').notNull(),
+    clientSignedOn: date('client_signed_on').notNull(),
+    note: text('note'),
+    qualityRunId: uuid('quality_run_id').notNull(),
+    representationChecksum: text('representation_checksum').notNull(),
+    acknowledgedWarningCodes: jsonb('acknowledged_warning_codes')
+      .$type<unknown>()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex('contract_signatures_version_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.contractVersionId,
+    ),
+    uniqueIndex('contract_signatures_scope_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.contractId,
+      t.id,
+    ),
+    foreignKey({
+      name: 'contract_signatures_version_fk',
+      columns: [t.workspaceId, t.companyId, t.contractId, t.contractVersionId],
+      foreignColumns: [
+        contractVersions.workspaceId,
+        contractVersions.companyId,
+        contractVersions.contractId,
+        contractVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'contract_signatures_run_fk',
+      columns: [t.workspaceId, t.companyId, t.contractId, t.qualityRunId],
+      foreignColumns: [
+        contractQualityRuns.workspaceId,
+        contractQualityRuns.companyId,
+        contractQualityRuns.contractId,
+        contractQualityRuns.id,
+      ],
+    }),
+    foreignKey({
+      name: 'contract_signatures_actor_fk',
+      columns: [
+        t.workspaceId,
+        t.actorWorkspaceMembershipId,
+        t.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'contract_signatures_evidence_check',
+      sql`${t.resultRevision} = 3 AND ${t.evidenceKind} = 'SIMULATED' AND ${t.provenance} = 'ILLUSTRATIVE' AND ${t.representationChecksum} ~ '^[0-9a-f]{64}$' AND jsonb_typeof(${t.acknowledgedWarningCodes}) = 'array'`,
+    ),
+    check(
+      'contract_signatures_content_check',
+      sql`char_length(${t.providerSignatoryLabel}) BETWEEN 1 AND 200 AND btrim(${t.providerSignatoryLabel}) <> '' AND char_length(${t.clientSignatoryLabel}) BETWEEN 1 AND 200 AND btrim(${t.clientSignatoryLabel}) <> '' AND (${t.note} IS NULL OR char_length(${t.note}) <= 500)`,
+    ),
+  ],
+);
+
 export const contractCommands = pgTable(
   'contract_commands',
   {
@@ -429,6 +510,7 @@ export const contractCommands = pgTable(
     kind: text('kind').default('CREATE').notNull(),
     resultQualityRunId: uuid('result_quality_run_id'),
     resultDecisionId: uuid('result_decision_id'),
+    resultSignatureId: uuid('result_signature_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (t) => [
@@ -440,8 +522,23 @@ export const contractCommands = pgTable(
     ),
     check(
       'contract_commands_kind_check',
-      sql`((${t.kind} = 'CREATE' AND ${t.resultQualityRunId} IS NULL) OR (${t.kind} = 'RUN_QUALITY_CHECKS' AND ${t.resultQualityRunId} IS NOT NULL)) AND ${t.resultDecisionId} IS NULL OR (${t.kind} IN ('APPROVE','REJECT') AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NOT NULL)`,
+      sql`((((${t.kind} = 'CREATE' AND ${t.resultQualityRunId} IS NULL) OR (${t.kind} = 'RUN_QUALITY_CHECKS' AND ${t.resultQualityRunId} IS NOT NULL)) AND ${t.resultDecisionId} IS NULL OR (${t.kind} IN ('APPROVE','REJECT') AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NOT NULL)) AND ${t.resultSignatureId} IS NULL) OR (${t.kind} = 'RECORD_SIGNATURE' AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NULL AND ${t.resultSignatureId} IS NOT NULL)`,
     ),
+    foreignKey({
+      name: 'contract_commands_signature_fk',
+      columns: [
+        t.workspaceId,
+        t.companyId,
+        t.resultContractId,
+        t.resultSignatureId,
+      ],
+      foreignColumns: [
+        contractSignatures.workspaceId,
+        contractSignatures.companyId,
+        contractSignatures.contractId,
+        contractSignatures.id,
+      ],
+    }),
     foreignKey({
       name: 'contract_commands_decision_fk',
       columns: [
@@ -529,6 +626,9 @@ export const contractEvents = pgTable(
       .where(
         sql`${t.action} IN ('contract_version.approved','contract_version.rejected')`,
       ),
+    uniqueIndex('contract_events_signature_unique')
+      .on(t.workspaceId, t.companyId, t.contractVersionId)
+      .where(sql`${t.action} = 'contract_version.signature_recorded'`),
     foreignKey({
       name: 'contract_events_contract_fk',
       columns: [t.workspaceId, t.companyId, t.contractId],
@@ -562,11 +662,11 @@ export const contractEvents = pgTable(
     }),
     check(
       'contract_events_target_check',
-      sql`(${t.action} = 'contract.created' AND ${t.contractVersionId} IS NULL) OR (${t.action} IN ('contract_version.created','contract_version.approved','contract_version.rejected') AND ${t.contractVersionId} IS NOT NULL)`,
+      sql`(${t.action} = 'contract.created' AND ${t.contractVersionId} IS NULL) OR (${t.action} IN ('contract_version.created','contract_version.approved','contract_version.rejected','contract_version.signature_recorded') AND ${t.contractVersionId} IS NOT NULL)`,
     ),
     check(
       'contract_events_metadata_check',
-      sql`(jsonb_typeof(${t.metadata}) = 'object' AND (${t.metadata} - ARRAY['contractId','contractVersionId','versionNumber','illustrativeReference','kind','origin','offerVersionId','pricingSnapshotId','provenance','ruleSetVersion','acknowledgedWarningCodes']::text[]) = '{}'::jsonb AND ${t.metadata}->>'contractId' = ${t.contractId}::text AND ${t.metadata}->>'kind' = 'CONTRACT' AND ${t.metadata}->>'origin' = 'ACCEPTED_OFFER' AND ${t.metadata}->>'provenance' = 'ILLUSTRATIVE') IS TRUE`,
+      sql`(jsonb_typeof(${t.metadata}) = 'object' AND (${t.metadata} - ARRAY['contractId','contractVersionId','versionNumber','illustrativeReference','kind','origin','offerVersionId','pricingSnapshotId','provenance','ruleSetVersion','acknowledgedWarningCodes','evidenceKind']::text[]) = '{}'::jsonb AND ${t.metadata}->>'contractId' = ${t.contractId}::text AND ${t.metadata}->>'kind' = 'CONTRACT' AND ${t.metadata}->>'origin' = 'ACCEPTED_OFFER' AND ${t.metadata}->>'provenance' = 'ILLUSTRATIVE' AND (${t.action} <> 'contract_version.signature_recorded' OR ${t.metadata}->>'evidenceKind' = 'SIMULATED')) IS TRUE`,
     ),
   ],
 );
