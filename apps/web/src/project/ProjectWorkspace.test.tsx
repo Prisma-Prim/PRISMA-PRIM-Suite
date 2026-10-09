@@ -937,9 +937,9 @@ it('presents the existing preparatory Project detail in Prisme without changing 
   );
   expect(documentsPanel).not.toBeNull();
   if (!documentsPanel) throw new Error('Working Documents panel is missing.');
-  expect(within(tasksPanel).getByRole('region', { name: 'Tasks' })).toHaveClass(
-    'project-tasks--prisme',
-  );
+  expect(
+    await within(tasksPanel).findByRole('region', { name: 'Tasks' }),
+  ).toHaveClass('project-tasks--prisme');
   expect(tasksPanel).toBeVisible();
   expect(documentsPanel).not.toBeVisible();
 
