@@ -72,6 +72,17 @@ export class ProjectService {
   }
 
   async create(actor: ActorContext, body: unknown, key: string | undefined) {
+    return this.databaseContext.transaction(() =>
+      this.createWithinTransaction(actor, body, key),
+    );
+  }
+
+  /** Caller owns the transaction so registration and its related command commit together. */
+  async createWithinTransaction(
+    actor: ActorContext,
+    body: unknown,
+    key: string | undefined,
+  ) {
     if (
       !isRecord(body) ||
       Object.keys(body).some(
@@ -80,72 +91,88 @@ export class ProjectService {
       typeof body.title !== 'string'
     )
       throw new BadRequestException('A Project title and Client are required.');
-    const title = body.title.trim();
-    if (!title || title.length > 200)
-      throw new BadRequestException(
-        'Project title must contain 1–200 characters.',
-      );
+    const title = readProjectTitle(body.title);
     const clientAccountId = requireUuid(body.clientAccountId);
     const idempotencyKey = requireIdempotencyKey(key);
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireProjectAccess(
-        actor,
-        true,
-      );
-      const lockKey = JSON.stringify([
-        'project.create',
-        actor.workspaceId,
-        actor.workspaceMembershipId,
-        idempotencyKey,
-      ]);
-      await this.databaseContext.connection.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-      );
-      const [existing] = await this.databaseContext.connection
-        .select()
-        .from(projects)
-        .where(
-          and(
-            eq(projects.workspaceId, actor.workspaceId),
-            eq(
-              projects.createdByWorkspaceMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(projects.idempotencyKey, idempotencyKey),
+    const companyId = await this.authorization.requireProjectAccess(
+      actor,
+      true,
+    );
+    const lockKey = JSON.stringify([
+      'project.create',
+      actor.workspaceId,
+      actor.workspaceMembershipId,
+      idempotencyKey,
+    ]);
+    await this.databaseContext.connection.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+    );
+    const [existing] = await this.databaseContext.connection
+      .select()
+      .from(projects)
+      .where(
+        and(
+          eq(projects.workspaceId, actor.workspaceId),
+          eq(
+            projects.createdByWorkspaceMembershipId,
+            actor.workspaceMembershipId,
           ),
+          eq(projects.idempotencyKey, idempotencyKey),
+        ),
+      );
+    if (existing) {
+      if (
+        existing.title !== title ||
+        existing.clientAccountId !== clientAccountId ||
+        existing.companyId !== companyId
+      )
+        throw new ConflictException(
+          'Idempotency-Key was already used for another Project.',
         );
-      if (existing) {
-        if (
-          existing.title !== title ||
-          existing.clientAccountId !== clientAccountId ||
-          existing.companyId !== companyId
-        )
-          throw new ConflictException(
-            'Idempotency-Key was already used for another Project.',
-          );
-        return this.view(actor, existing);
-      }
-      await this.clients.recordReferenceUse(actor, clientAccountId);
-      const [project] = await this.databaseContext.connection
-        .insert(projects)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          clientAccountId,
-          title,
-          createdByInternalUserId: actor.internalUserId,
-          createdByWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey,
-        })
-        .returning();
-      if (!project) throw new Error('The Project was not recorded.');
-      await this.accountability.recordProjectCreated({
-        actor,
-        projectId: project.id,
+      return this.view(actor, existing);
+    }
+    await this.clients.recordReferenceUse(actor, clientAccountId);
+    const [project] = await this.databaseContext.connection
+      .insert(projects)
+      .values({
+        workspaceId: actor.workspaceId,
         companyId,
-      });
-      return this.view(actor, project);
+        clientAccountId,
+        title,
+        createdByInternalUserId: actor.internalUserId,
+        createdByWorkspaceMembershipId: actor.workspaceMembershipId,
+        idempotencyKey,
+      })
+      .returning();
+    if (!project) throw new Error('The Project was not recorded.');
+    await this.accountability.recordProjectCreated({
+      actor,
+      projectId: project.id,
+      companyId,
     });
+    return this.view(actor, project);
+  }
+
+  /** Independent current creation authority; Contract authority supplies no Project grant. */
+  async requireCreationAccess(actor: ActorContext) {
+    return this.authorization.requireProjectAccess(actor, true);
+  }
+
+  /** Current candidates are decided after this Client-owner operational fence. */
+  async lockContractCreationClient(
+    actor: ActorContext,
+    originalClientAccountId: string,
+  ) {
+    await this.requireCreationAccess(actor);
+    const resolved = await this.clients.resolveProjectLinkClients(
+      actor,
+      [originalClientAccountId],
+      true,
+    );
+    const clientAccountId = resolved.get(originalClientAccountId);
+    if (!clientAccountId) throw new NotFoundException();
+    await this.clients.lockActiveReferenceClient(actor, clientAccountId);
+    return clientAccountId;
   }
 
   /** Existing relationship replays require visibility, even after the Project closes. */
@@ -218,4 +245,12 @@ export class ProjectService {
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function readProjectTitle(value: unknown): string {
+  if (typeof value !== 'string' || !value.trim() || value.trim().length > 200)
+    throw new BadRequestException(
+      'Project title must contain 1–200 characters.',
+    );
+  return value.trim();
 }

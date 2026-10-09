@@ -8,6 +8,7 @@ import {
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useProjectLifecycleCopy } from '../project/project-lifecycle-localized.copy';
 import type { ContractView } from './contract-response';
+import { ContractProjectCreatePanel } from './ContractProjectCreatePanel';
 import { useContractProjectsCopy } from './contract-projects.copy';
 import {
   readContractProjectCandidates,
@@ -38,6 +39,8 @@ export function ContractProjectsPanel({
   opportunityId,
   contract,
   mayLink,
+  mayCreate,
+  opportunityTitle,
   protectedCommand,
   reject,
   onLinked,
@@ -50,6 +53,8 @@ export function ContractProjectsPanel({
   opportunityId: string;
   contract: ContractView;
   mayLink: boolean;
+  mayCreate: boolean;
+  opportunityTitle: string;
   protectedCommand: boolean;
   reject: (
     result: ApiResult<unknown>,
@@ -69,6 +74,8 @@ export function ContractProjectsPanel({
   const [load, setLoad] = useState<Load>({ kind: 'loading' }),
     [selected, setSelected] = useState(''),
     [feedback, setFeedback] = useState<Feedback>('idle');
+  const [creationProtected, setCreationProtected] = useState(false),
+    [candidateRefresh, setCandidateRefresh] = useState(0);
   const read = useRef<AbortController | undefined>(undefined),
     pending = useRef<AbortController | undefined>(undefined),
     attempt = useRef<
@@ -77,7 +84,10 @@ export function ContractProjectsPanel({
     >(undefined);
   const eligible = mayLink && contract.version.executionState === 'EXECUTED';
   const busy =
-    feedback === 'running' || feedback === 'uncertain' || protectedCommand;
+    feedback === 'running' ||
+    feedback === 'uncertain' ||
+    protectedCommand ||
+    creationProtected;
   const terminal = [
     'denied',
     'unavailable',
@@ -90,6 +100,7 @@ export function ContractProjectsPanel({
   useEffect(() => {
     if (!eligible) return;
     const controller = new AbortController();
+    setLoad({ kind: 'loading' });
     read.current = controller;
     async function loadCandidates() {
       try {
@@ -118,10 +129,12 @@ export function ContractProjectsPanel({
     return () => controller.abort();
     // The parent keys this session by actor, Company and all captured authority.
     // Revision changes after our own successful link retain feedback and selection.
-  }, [identity, companyId, opportunityId, eligible]);
+  }, [identity, companyId, opportunityId, eligible, candidateRefresh]);
   useEffect(() => {
-    onProtectionChange(feedback === 'running' || feedback === 'uncertain');
-  }, [feedback, onProtectionChange]);
+    onProtectionChange(
+      feedback === 'running' || feedback === 'uncertain' || creationProtected,
+    );
+  }, [feedback, creationProtected, onProtectionChange]);
   useEffect(
     () => () => {
       read.current?.abort();
@@ -133,7 +146,13 @@ export function ContractProjectsPanel({
 
   async function execute(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!eligible || feedback === 'running' || protectedCommand || terminal)
+    if (
+      !eligible ||
+      feedback === 'running' ||
+      protectedCommand ||
+      creationProtected ||
+      terminal
+    )
       return;
     const project =
       load.kind === 'ready'
@@ -337,6 +356,49 @@ export function ContractProjectsPanel({
             </p>
           )}
           {feedback !== 'idle' && <p role="status">{copy(feedback)}</p>}
+          {mayCreate && (
+            <ContractProjectCreatePanel
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contractId={contract.id}
+              revision={contract.revision}
+              initialTitle={opportunityTitle}
+              candidates={load.kind === 'ready' ? load.items : undefined}
+              protectedCommand={
+                protectedCommand ||
+                feedback === 'running' ||
+                feedback === 'uncertain'
+              }
+              reject={reject}
+              onProtectionChange={setCreationProtected}
+              onCandidatesChanged={() =>
+                setCandidateRefresh((current) => current + 1)
+              }
+              onCreated={(link, project) => {
+                setLoad((current) =>
+                  current.kind === 'ready'
+                    ? {
+                        kind: 'ready',
+                        items: [
+                          {
+                            ...project,
+                            alreadyLinked: true,
+                            otherContracts: [],
+                          },
+                          ...current.items,
+                        ].slice(0, 50),
+                      }
+                    : current,
+                );
+                onLinked(link, {
+                  ...project,
+                  alreadyLinked: true,
+                  otherContracts: [],
+                });
+              }}
+            />
+          )}
           {feedback === 'uncertain' && (
             <button
               type="button"

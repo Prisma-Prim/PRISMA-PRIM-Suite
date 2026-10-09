@@ -7,7 +7,7 @@ export interface ContractProjectLink {
   contractId: string;
   projectId: string;
   revision: number;
-  created: false;
+  created: boolean;
   actorWorkspaceMembershipId: string;
   linkedAt: string;
 }
@@ -34,7 +34,7 @@ export type LinkedProject = ProjectSummary & { link: ContractProjectLink };
 export function readContractProjectLink(value: unknown): ContractProjectLink {
   const row = record(value);
   if (
-    row.created !== false ||
+    typeof row.created !== 'boolean' ||
     typeof row.revision !== 'number' ||
     !Number.isInteger(row.revision) ||
     row.revision < 4 ||
@@ -46,7 +46,7 @@ export function readContractProjectLink(value: unknown): ContractProjectLink {
     contractId: text(row.contractId),
     projectId: text(row.projectId),
     revision: row.revision,
-    created: false,
+    created: row.created,
     actorWorkspaceMembershipId: text(row.actorWorkspaceMembershipId),
     linkedAt: instant(row.linkedAt),
   };
@@ -115,6 +115,18 @@ export function readLinkedProjects(
       throw new Error('Mismatched Contract Project link.');
     return { ...summary, link };
   });
+}
+export function readCreatedContractProject(value: unknown) {
+  const row = record(value),
+    project = projectSummary(record(row.project)),
+    link = readContractProjectLink(row.link);
+  if (
+    !link.created ||
+    project.id !== link.projectId ||
+    project.status !== 'preparatory'
+  )
+    throw new Error('Invalid created Contract Project.');
+  return { project, link };
 }
 function projectSummary(row: Record<string, unknown>): ProjectSummary {
   const status = PROJECT_STATUSES.find((status) => status === row.status);

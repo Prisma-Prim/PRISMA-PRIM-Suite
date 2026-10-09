@@ -1,37 +1,34 @@
 import {
+  ContractProjectLinkStore,
+  contractProjectLinkView,
+  projectLinkConflict as conflict,
+} from './contract-project-link.store.js';
+import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   HttpException,
-  Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
   requireUuid,
 } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
-import { AccountabilityService } from '../accountability/accountability.service.js';
+
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
-import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
+
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
 import { DatabaseContext } from '../database/database-context.js';
-import {
-  contracts,
-  contractVersions,
-  contractProjectLinks,
-  contractCommands,
-} from '../database/schema/index.js';
+import { contracts, contractProjectLinks } from '../database/schema/index.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
 import { ProjectService } from '../project/project.service.js';
 import { isOpenProjectStatus } from '../project/project-status.js';
 
-type LinkRow = typeof contractProjectLinks.$inferSelect;
 type ContractRow = typeof contracts.$inferSelect;
 const LINK_PERMISSIONS = [
   'commercial.contract.read',
@@ -43,11 +40,10 @@ export class ContractProjectsService {
   constructor(
     private readonly database: DatabaseContext,
     private readonly authorization: CompanyContextAuthorization,
-    private readonly accountability: AccountabilityService,
+    private readonly links: ContractProjectLinkStore,
     private readonly clients: ClientOperationalReferenceService,
     private readonly projects: ProjectService,
     private readonly intake: CommercialIntakeService,
-    @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
 
   async candidates(input: { actor: ActorContext; opportunityId: string }) {
@@ -63,34 +59,18 @@ export class ContractProjectsService {
           input.opportunityId,
           false,
         );
-        const current = await this.find(
-          input.actor,
+        const current = await this.links.find({
+          actor: input.actor,
           companyId,
-          input.opportunityId,
-        );
-        this.requireExecuted(current);
-        const projects = await this.projects.list(input.actor);
-        const resolved = await this.clients.resolveProjectLinkClients(
-          input.actor,
-          [
+          opportunityId: input.opportunityId,
+        });
+        this.links.requireExecuted(current);
+        const eligible = (
+          await this.currentCandidates(
+            input.actor,
             current.contract.originalClientAccountId,
-            ...projects.map((project) => project.clientAccountId),
-          ],
-        );
-        const clientId = resolved.get(current.contract.originalClientAccountId);
-        const eligible = projects
-          .filter(
-            (project) =>
-              clientId !== undefined &&
-              resolved.get(project.clientAccountId) === clientId &&
-              isOpenProjectStatus(project.status),
           )
-          .sort(
-            (left, right) =>
-              right.createdAt.localeCompare(left.createdAt) ||
-              right.id.localeCompare(left.id),
-          )
-          .slice(0, 50);
+        ).slice(0, 50);
         const links = await this.database.connection
           .select()
           .from(contractProjectLinks)
@@ -119,6 +99,30 @@ export class ContractProjectsService {
     );
   }
 
+  /** Complete current set; callers decide whether truncation permits their operation. */
+  async currentCandidates(
+    actor: ActorContext,
+    originalClientAccountId: string,
+  ) {
+    const projects = await this.projects.list(actor);
+    const resolved = await this.clients.resolveProjectLinkClients(actor, [
+      originalClientAccountId,
+      ...projects.map((project) => project.clientAccountId),
+    ]);
+    const clientId = resolved.get(originalClientAccountId);
+    return projects
+      .filter(
+        (project) =>
+          clientId !== undefined &&
+          resolved.get(project.clientAccountId) === clientId &&
+          isOpenProjectStatus(project.status),
+      )
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(left.createdAt) ||
+          right.id.localeCompare(left.id),
+      );
+  }
   async link(input: {
     actor: ActorContext;
     opportunityId: string;
@@ -143,57 +147,38 @@ export class ContractProjectsService {
           input.opportunityId,
           true,
         );
-        const found = await this.find(actor, companyId, input.opportunityId);
+        const found = await this.links.find({
+          actor,
+          companyId,
+          opportunityId: input.opportunityId,
+        });
         const fingerprint = commandFingerprint({
           kind: 'LINK_PROJECT',
           opportunityId: input.opportunityId,
           payload: input.payload,
         });
-        await this.database.connection.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${key}`},0))`,
-        );
-        const [receipt] = await this.database.connection
-          .select()
-          .from(contractCommands)
-          .where(
-            and(
-              eq(contractCommands.workspaceId, actor.workspaceId),
-              eq(contractCommands.companyId, companyId),
-              eq(
-                contractCommands.actorWorkspaceMembershipId,
-                actor.workspaceMembershipId,
-              ),
-              eq(contractCommands.idempotencyKey, key),
-            ),
-          );
+        const receipt = await this.links.command({ actor, companyId, key });
         if (receipt) {
-          if (
-            receipt.kind !== 'LINK_PROJECT' ||
-            !receipt.resultProjectLinkId ||
-            receipt.resultContractId !== found.contract.id
-          )
-            throw conflict('IDEMPOTENCY_CONFLICT');
-          const [link] = await this.database.connection
-            .select()
-            .from(contractProjectLinks)
-            .where(
-              and(
-                eq(contractProjectLinks.workspaceId, actor.workspaceId),
-                eq(contractProjectLinks.companyId, companyId),
-                eq(contractProjectLinks.contractId, found.contract.id),
-                eq(contractProjectLinks.id, receipt.resultProjectLinkId),
-              ),
-            );
-          if (!link)
-            throw new Error('Missing Contract Project receipt result.');
+          const link = await this.links.receiptLink({
+            actor,
+            companyId,
+            contractId: found.contract.id,
+            kind: 'LINK_PROJECT',
+            receipt,
+          });
           await this.projects.lockReadableContractLinkProject(
             actor,
             link.projectId,
           );
-          await this.find(actor, companyId, input.opportunityId, true);
+          await this.links.find({
+            actor,
+            companyId,
+            opportunityId: input.opportunityId,
+            lock: true,
+          });
           if (receipt.fingerprint !== fingerprint)
             throw conflict('IDEMPOTENCY_CONFLICT');
-          return linkView(link);
+          return contractProjectLinkView(link);
         }
         const command = readCommand(input.payload);
         const context = await this.projects.lockContractLinkContext({
@@ -202,76 +187,31 @@ export class ContractProjectsService {
           contractOriginalClientAccountId:
             found.contract.originalClientAccountId,
         });
-        const current = await this.find(
+        const current = await this.links.find({
           actor,
           companyId,
-          input.opportunityId,
-          true,
-        );
+          opportunityId: input.opportunityId,
+          lock: true,
+        });
         if (current.contract.revision !== command.expectedContractRevision)
           throw conflict('STALE_CONTRACT_REVISION');
-        this.requireExecuted(current);
+        this.links.requireExecuted(current);
         if (!context.eligible) throw conflict('PROJECT_NOT_ELIGIBLE');
-        const links = await this.database.connection
-          .select()
-          .from(contractProjectLinks)
-          .where(
-            and(
-              eq(contractProjectLinks.workspaceId, actor.workspaceId),
-              eq(contractProjectLinks.companyId, companyId),
-              eq(contractProjectLinks.contractId, current.contract.id),
-            ),
-          );
-        if (links.some((link) => link.projectId === command.projectId))
-          throw conflict('CONTRACT_PROJECT_ALREADY_LINKED');
-        if (links.length >= 50)
-          throw conflict('CONTRACT_PROJECT_LINK_CAPACITY_EXCEEDED');
-        const linkedAt = this.clock.now();
-        const revision = current.contract.revision + 1;
-        const [link] = await this.database.connection
-          .insert(contractProjectLinks)
-          .values({
-            workspaceId: actor.workspaceId,
-            companyId,
-            contractId: current.contract.id,
-            projectId: command.projectId,
-            resultRevision: revision,
-            actorInternalUserId: actor.internalUserId,
-            actorWorkspaceMembershipId: actor.workspaceMembershipId,
-            linkedAt,
-          })
-          .returning();
-        if (!link) throw new Error('Missing Contract Project link.');
-        await this.database.connection
-          .update(contracts)
-          .set({ revision })
-          .where(
-            and(
-              eq(contracts.workspaceId, actor.workspaceId),
-              eq(contracts.companyId, companyId),
-              eq(contracts.id, current.contract.id),
-            ),
-          );
-        await this.database.connection.insert(contractCommands).values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey: key,
-          fingerprint,
-          opportunityId: input.opportunityId,
-          resultContractId: current.contract.id,
-          kind: 'LINK_PROJECT',
-          resultProjectLinkId: link.id,
-          createdAt: linkedAt,
-        });
-        await this.accountability.recordContractProjectLinked({
+        await this.links.requireCapacity({
           actor,
           companyId,
           contractId: current.contract.id,
           projectId: command.projectId,
-          occurredAt: linkedAt,
         });
-        return linkView(link);
+        return this.links.append({
+          actor,
+          companyId,
+          contract: current.contract,
+          projectId: command.projectId,
+          kind: 'LINK_PROJECT',
+          key,
+          fingerprint,
+        });
       })
       .catch((error: unknown) => {
         if (error instanceof HttpException) throw error;
@@ -301,7 +241,7 @@ export class ContractProjectsService {
       try {
         items.push({
           ...(await this.projects.read(actor, link.projectId)),
-          link: linkView(link),
+          link: contractProjectLinkView(link),
         });
       } catch (error: unknown) {
         if (!(
@@ -410,47 +350,6 @@ export class ContractProjectsService {
     }
     return items;
   }
-
-  private async find(
-    actor: ActorContext,
-    companyId: string,
-    opportunityId: string,
-    lock = false,
-  ) {
-    const query = this.database.connection
-      .select({ contract: contracts, version: contractVersions })
-      .from(contracts)
-      .innerJoin(
-        contractVersions,
-        and(
-          eq(contractVersions.workspaceId, contracts.workspaceId),
-          eq(contractVersions.companyId, contracts.companyId),
-          eq(contractVersions.contractId, contracts.id),
-        ),
-      )
-      .where(
-        and(
-          eq(contracts.workspaceId, actor.workspaceId),
-          eq(contracts.companyId, companyId),
-          eq(contracts.opportunityId, opportunityId),
-        ),
-      );
-    const [found] = await (lock
-      ? query.for('update', { of: contracts })
-      : query);
-    if (!found) throw new NotFoundException();
-    return found;
-  }
-
-  private requireExecuted(current: {
-    contract: ContractRow;
-    version: typeof contractVersions.$inferSelect;
-  }) {
-    if (current.contract.kind !== 'CONTRACT')
-      throw conflict('CONTRACT_KIND_NOT_LINKABLE');
-    if (current.version.executionState !== 'EXECUTED')
-      throw conflict('CONTRACT_NOT_EXECUTED');
-  }
 }
 
 function readCommand(value: unknown) {
@@ -487,22 +386,4 @@ function invalid(field: string) {
     field,
     message: `Invalid ${field}.`,
   });
-}
-function conflict(code: string) {
-  return new ConflictException({
-    code,
-    message:
-      'The Contract Project link cannot be recorded. Reload the current context.',
-  });
-}
-function linkView(row: LinkRow) {
-  return {
-    id: row.id,
-    contractId: row.contractId,
-    projectId: row.projectId,
-    revision: row.resultRevision,
-    created: false as const,
-    actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
-    linkedAt: row.linkedAt.toISOString(),
-  };
 }

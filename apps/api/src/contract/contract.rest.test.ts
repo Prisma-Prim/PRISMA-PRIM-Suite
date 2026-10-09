@@ -81,6 +81,669 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('creates and links one preparatory Project from an acknowledged executed Contract without changing signed evidence', async () => {
+    const { fixture, versionId, base } = await approvedSignatureFixture();
+    await signatureRequest(
+      fixture,
+      versionId,
+      signaturePayload(),
+      'cp2-signature',
+    );
+    await grantLinkProject(fixture);
+    const before = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    const payload = {
+      title: '  Synthetic Contract Project  ',
+      acknowledgedCandidateProjectIds: [],
+      expectedContractRevision: 3,
+    };
+    const result = record(
+      await command({
+        path: base + '/projects/create',
+        companyId: fixture.companyId,
+        body: payload,
+        key: 'cp2-create',
+      }),
+    );
+    const link = record(result.link),
+      project = record(result.project);
+    expect(project).toMatchObject({
+      title: 'Synthetic Contract Project',
+      status: 'preparatory',
+      companyId: fixture.companyId,
+      clientAccountId: fixture.clientId,
+    });
+    expect(link).toMatchObject({
+      projectId: project.id,
+      contractId: before.id,
+      revision: 4,
+      created: true,
+    });
+    const reopened = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(reopened).toMatchObject({
+      revision: 4,
+      linkedProjects: [{ ...project, link }],
+    });
+    expect(reopened.version).toEqual(before.version);
+    expect(
+      await command({
+        path: base + '/projects/create',
+        companyId: fixture.companyId,
+        body: payload,
+        key: 'cp2-create',
+      }),
+    ).toEqual(result);
+    expect(
+      await json(
+        await request({
+          path: '/contracts/projects/' + stringField(project, 'id'),
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toMatchObject({ items: [{ id: before.id }] });
+    expect(
+      (
+        await pool.query(
+          "SELECT (SELECT count(*) FROM projects)::text AS projects,(SELECT count(*) FROM contract_project_links)::text AS links,(SELECT count(*) FROM project_creation_events)::text AS projects_events,(SELECT count(*) FROM contract_events WHERE action='contract_project.linked' AND metadata->'created'='true'::jsonb)::text AS links_events",
+        )
+      ).rows[0],
+    ).toEqual({
+      projects: '1',
+      links: '1',
+      projects_events: '1',
+      links_events: '1',
+    });
+  });
+  it('requires the complete current candidate set including linked Projects and normalizes exact creation replay', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId, base } = target;
+    const payload = {
+      title: '  Deliberate additional Project  ',
+      acknowledgedCandidateProjectIds: [],
+      expectedContractRevision: 3,
+    };
+    expect(
+      await json(await createProjectRequest(target, payload, 'cp2-changed')),
+    ).toMatchObject({ code: 'PROJECT_CANDIDATES_CHANGED' });
+    await linkRequest(
+      target,
+      { projectId, expectedContractRevision: 3 },
+      'cp2-existing-link',
+    );
+    const acknowledged = {
+      ...payload,
+      acknowledgedCandidateProjectIds: [projectId],
+      expectedContractRevision: 4,
+    };
+    const created = record(
+      await json(
+        await createProjectRequest(target, acknowledged, 'cp2-acknowledged'),
+      ),
+    );
+    expect(record(created.link)).toMatchObject({ revision: 5, created: true });
+    const createdId = stringField(record(created.project), 'id');
+    await closeLinkProject(target, createdId);
+    expect(
+      await json(
+        await createProjectRequest(
+          target,
+          { ...acknowledged, title: 'Deliberate additional Project' },
+          'cp2-acknowledged',
+        ),
+      ),
+    ).toEqual(created);
+    expect(
+      await json(
+        await createProjectRequest(
+          target,
+          { ...acknowledged, title: 'Different Project' },
+          'cp2-acknowledged',
+        ),
+      ),
+    ).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    expect(
+      await json(
+        await createProjectRequest(target, acknowledged, 'cp2-new-stale'),
+      ),
+    ).toMatchObject({ code: 'STALE_CONTRACT_REVISION' });
+    const counts = (
+      await pool.query(
+        "SELECT (SELECT count(*) FROM projects)::text AS projects,(SELECT count(*) FROM project_creation_events)::text AS events,(SELECT count(*) FROM contract_commands WHERE kind='CREATE_PROJECT')::text AS receipts",
+      )
+    ).rows[0];
+    expect(counts).toEqual({ projects: '2', events: '2', receipts: '1' });
+    expect(
+      record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      ).revision,
+    ).toBe(5);
+  });
+  it.each(['project_creation_events', 'contract_events', 'contract_commands'])(
+    'rolls back every CP2 write and Client fence when the real %s write fails',
+    async (table) => {
+      const target = await projectCreationFixture();
+      const before = await creationCounts(target.fixture.clientId);
+      await pool.query(
+        `CREATE FUNCTION fail_cp2_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic atomic rollback'; END; $$; CREATE TRIGGER fail_cp2_write BEFORE INSERT ON ${table} FOR EACH ROW EXECUTE FUNCTION fail_cp2_write()`,
+      );
+      try {
+        const failed = await createProjectRequest(
+          target,
+          creationPayload(),
+          'cp2-atomic',
+        );
+        expect(failed.status).toBe(500);
+        expect(await json(failed)).toMatchObject({
+          code: 'CONTRACT_PROJECT_CREATE_UNCERTAIN',
+        });
+        expect(await creationCounts(target.fixture.clientId)).toEqual(before);
+      } finally {
+        await pool.query(
+          `DROP TRIGGER fail_cp2_write ON ${table}; DROP FUNCTION fail_cp2_write()`,
+        );
+      }
+      expect(
+        (await createProjectRequest(target, creationPayload(), 'cp2-atomic'))
+          .status,
+      ).toBe(201);
+      expect(await creationCounts(target.fixture.clientId)).toMatchObject({
+        projects: '1',
+        links: '1',
+        events: '1',
+        receipts: '1',
+        revision: 4,
+        clientVersion: before.clientVersion + 1,
+      });
+    },
+  );
+  it.each([
+    'company-contract-preparer-assignments',
+    'company-project-assignments',
+    'company-director-client-assignments',
+    'company-commercial-intake-assignments',
+  ])(
+    'denies CP2 creation replay after independent %s revocation without side effects',
+    async (route) => {
+      const target = await projectCreationFixture();
+      const headers = memberHeaders('contract-reader');
+      const member = record(
+        await json(
+          await request({ path: '/access/current-actor', init: { headers } }),
+        ),
+      );
+      const membershipId = stringField(member, 'workspaceMembershipId');
+      for (const assignment of [
+        'company-project-assignments',
+        'company-commercial-intake-assignments',
+        'company-contract-preparer-assignments',
+        'company-director-client-assignments',
+      ])
+        await command({
+          path: '/' + assignment,
+          body: {
+            workspaceMembershipId: membershipId,
+            companyId: target.fixture.companyId,
+          },
+          key: 'cp2-reader-' + assignment,
+        });
+      expect(
+        (
+          await createProjectRequest(
+            target,
+            creationPayload(),
+            'cp2-authority',
+            headers,
+          )
+        ).status,
+      ).toBe(201);
+      const before = await creationCounts(target.fixture.clientId);
+      expect(
+        (
+          await request({
+            path:
+              '/' + route + '/' + membershipId + '/' + target.fixture.companyId,
+            init: {
+              method: 'DELETE',
+              headers: { 'idempotency-key': 'cp2-revoke' },
+            },
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await createProjectRequest(
+            target,
+            creationPayload(),
+            'cp2-authority',
+            headers,
+          )
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await createProjectRequest(
+            target,
+            { ...creationPayload(), expectedContractRevision: 4 },
+            'cp2-denied-new',
+            headers,
+          )
+        ).status,
+      ).toBe(403);
+      expect(await creationCounts(target.fixture.clientId)).toEqual(before);
+    },
+  );
+  it('rejects invalid titles, candidate sets, unsupported Project grants and unexecuted CP2 creation safely', async () => {
+    const target = await projectCreationFixture();
+    const before = await creationCounts(target.fixture.clientId);
+    for (const body of [
+      { ...creationPayload(), title: '' },
+      { ...creationPayload(), title: 'x'.repeat(201) },
+      { ...creationPayload(), title: 42 },
+      { ...creationPayload(), acknowledgedCandidateProjectIds: ['invalid'] },
+      {
+        ...creationPayload(),
+        acknowledgedCandidateProjectIds: [
+          target.fixture.clientId,
+          target.fixture.clientId,
+        ],
+      },
+      { ...creationPayload(), acknowledgedCandidateProjectIds: undefined },
+      { ...creationPayload(), extra: true },
+    ])
+      expect(
+        (await createProjectRequest(target, body, 'cp2-invalid')).status,
+      ).toBe(400);
+    const definition = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
+      )
+    ).rows[0]?.definition;
+    if (!definition) throw new Error('Missing captured-version constraint');
+    await pool.query(
+      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+    );
+    try {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version='unknown' WHERE bundle='company_project_access'",
+      );
+      expect(
+        (await createProjectRequest(target, creationPayload(), 'cp2-unknown'))
+          .status,
+      ).toBe(403);
+    } finally {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle='company_project_access'",
+      );
+      await pool.query(
+        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+          definition,
+      );
+    }
+    expect(await creationCounts(target.fixture.clientId)).toEqual(before);
+  });
+  it('revalidates CP2 captured Project versions and rejects foreign replay contexts without returning a result', async () => {
+    const target = await projectCreationFixture();
+    const created = await createProjectRequest(
+      target,
+      creationPayload(),
+      'cp2-context',
+    );
+    expect(created.status).toBe(201);
+    const before = await creationCounts(target.fixture.clientId);
+    const definition = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
+      )
+    ).rows[0]?.definition;
+    if (!definition) throw new Error('Missing captured-version constraint');
+    await pool.query(
+      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+    );
+    try {
+      for (const version of [null, 'v999']) {
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version=$1 WHERE bundle='company_project_access'",
+          [version],
+        );
+        expect(
+          (await createProjectRequest(target, creationPayload(), 'cp2-context'))
+            .status,
+        ).toBe(403);
+      }
+    } finally {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version='v2' WHERE bundle='company_project_access'",
+      );
+      await pool.query(
+        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+          definition,
+      );
+    }
+    expect(
+      (
+        await createProjectRequest(target, creationPayload(), 'cp2-context', {
+          'x-workspace-context-id': '00000000-0000-4000-8000-000000000999',
+        })
+      ).status,
+    ).toBe(403);
+    const foreign = await preparedOffer('cp2-foreign-replay');
+    await grantContract(foreign, 'cp2-foreign-grant');
+    expect(
+      (
+        await request({
+          path: target.base + '/projects/create',
+          companyId: foreign.companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'cp2-context',
+            },
+            body: JSON.stringify(creationPayload()),
+          },
+        })
+      ).status,
+    ).toBe(404);
+    expect(await creationCounts(target.fixture.clientId)).toMatchObject({
+      links: before.links,
+      receipts: before.receipts,
+      projects: before.projects,
+      events: before.events,
+      clientVersion: before.clientVersion,
+    });
+  });
+  it.each([
+    'appearance',
+    'two-creates',
+    'same-command',
+    'link',
+    'create-before-link',
+    'closure',
+  ])(
+    'serializes CP2 %s before the current-candidate decision through the real Client fence',
+    async (ordering) => {
+      const target =
+        ordering === 'link' ||
+        ordering === 'closure' ||
+        ordering === 'create-before-link'
+          ? await projectLinkFixture()
+          : await projectCreationFixture();
+      const projectId =
+        'projectId' in target && typeof target.projectId === 'string'
+          ? target.projectId
+          : undefined;
+      if (ordering === 'closure')
+        await command({
+          path: '/company-project-approver-assignments',
+          body: {
+            workspaceMembershipId: target.fixture.actorMembershipId,
+            companyId: target.fixture.companyId,
+          },
+          key: 'cp2-closure-grant',
+        });
+      const blocker = await pool.connect();
+      let first: Promise<Response> | undefined,
+        second: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (!pid) throw new Error('Missing blocker PID');
+        await blocker.query(
+          'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+          [target.fixture.clientId],
+        );
+        if (ordering === 'appearance')
+          first = request({
+            path: '/projects',
+            companyId: target.fixture.companyId,
+            init: {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'idempotency-key': 'cp2-intervening',
+              },
+              body: JSON.stringify({
+                title: 'Intervening candidate',
+                clientAccountId: target.fixture.clientId,
+              }),
+            },
+          });
+        else if (
+          ordering === 'two-creates' ||
+          ordering === 'same-command' ||
+          ordering === 'create-before-link'
+        )
+          first = createProjectRequest(
+            target,
+            creationPayload(projectId ? [projectId] : []),
+            'cp2-first',
+          );
+        else if (ordering === 'link' && projectId)
+          first = linkRequest(
+            target,
+            { projectId, expectedContractRevision: 3 },
+            'cp2-first-link',
+          );
+        else if (projectId) first = closeLinkProject(target, projectId, false);
+        else throw new Error('Missing controlled ordering');
+        const firstPid = await waitForBlocker(pid);
+        second =
+          ordering === 'create-before-link' && projectId
+            ? linkRequest(
+                target,
+                { projectId, expectedContractRevision: 3 },
+                'cp2-second-link',
+              )
+            : createProjectRequest(
+                target,
+                creationPayload(projectId ? [projectId] : []),
+                ordering === 'same-command' ? 'cp2-first' : 'cp2-second',
+              );
+        await waitForBlocker(pid, firstPid);
+        await blocker.query('COMMIT');
+        expect((await first).status).toBe(ordering === 'closure' ? 200 : 201);
+        const rejected = await second;
+        if (ordering === 'same-command') {
+          expect(rejected.status).toBe(201);
+          expect(await json(rejected)).toMatchObject({
+            link: { created: true, revision: 4 },
+          });
+        } else {
+          expect(rejected.status).toBe(409);
+          expect(await json(rejected)).toMatchObject({
+            code:
+              ordering === 'appearance' || ordering === 'closure'
+                ? 'PROJECT_CANDIDATES_CHANGED'
+                : 'STALE_CONTRACT_REVISION',
+          });
+        }
+        expect((await creationCounts(target.fixture.clientId)).receipts).toBe(
+          ordering === 'two-creates' ||
+            ordering === 'same-command' ||
+            ordering === 'create-before-link'
+            ? '1'
+            : '0',
+        );
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await Promise.allSettled([
+          ...(first ? [first] : []),
+          ...(second ? [second] : []),
+        ]);
+      }
+    },
+  );
+  it('refuses CP2 after relevant Client invalidation commits at its held identity fence', async () => {
+    const target = await projectCreationFixture(),
+      blocker = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    const before = await creationCounts(target.fixture.clientId);
+    try {
+      await blocker.query('BEGIN');
+      const pid = (
+        await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0]?.pid;
+      if (!pid) throw new Error('Missing blocker PID');
+      await blocker.query(
+        'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+        [target.fixture.clientId],
+      );
+      pending = createProjectRequest(
+        target,
+        creationPayload(),
+        'cp2-client-invalidated',
+      );
+      await waitForBlocker(pid);
+      await blocker.query(
+        "UPDATE client_accounts SET status='archived' WHERE id=$1",
+        [target.fixture.clientId],
+      );
+      await blocker.query('COMMIT');
+      expect((await pending).status).toBe(404);
+      expect(await creationCounts(target.fixture.clientId)).toEqual(before);
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      if (pending) await Promise.allSettled([pending]);
+    }
+  });
+  it('denies CP2 when Project revocation wins before locked authority and denies replay after a serialized revocation', async () => {
+    const target = await projectCreationFixture(),
+      blocker = await pool.connect();
+    let revoked: Promise<Response> | undefined,
+      pending: Promise<Response> | undefined;
+    const before = await creationCounts(target.fixture.clientId);
+    try {
+      await blocker.query('BEGIN');
+      const pid = (
+        await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0]?.pid;
+      if (!pid) throw new Error('Missing blocker PID');
+      await blocker.query(
+        "SELECT id FROM company_role_assignments WHERE bundle='company_project_access' AND company_id=$1 FOR UPDATE",
+        [target.fixture.companyId],
+      );
+      revoked = request({
+        path:
+          '/company-project-assignments/' +
+          target.fixture.actorMembershipId +
+          '/' +
+          target.fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'cp2-prior-revoke' },
+        },
+      });
+      const revokePid = await waitForBlocker(pid);
+      pending = createProjectRequest(
+        target,
+        creationPayload(),
+        'cp2-revoke-loser',
+      );
+      await waitForBlocker(pid, revokePid);
+      await blocker.query('COMMIT');
+      expect((await revoked).status).toBe(200);
+      expect((await pending).status).toBe(403);
+      expect(await creationCounts(target.fixture.clientId)).toEqual(before);
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await Promise.allSettled([
+        ...(revoked ? [revoked] : []),
+        ...(pending ? [pending] : []),
+      ]);
+    }
+  });
+  it('fails closed above fifty eligible CP2 candidates even when the submitted bounded view appears complete', async () => {
+    const target = await projectCreationFixture();
+    for (let index = 0; index < 51; index++)
+      await createLinkProject(target.fixture, 'CP2 candidate ' + index);
+    const candidates = record(
+      await json(
+        await request({
+          path: target.base + '/project-candidates',
+          companyId: target.fixture.companyId,
+        }),
+      ),
+    ).items;
+    if (!Array.isArray(candidates)) throw new Error('Missing candidates');
+    expect(candidates).toHaveLength(50);
+    const before = await creationCounts(target.fixture.clientId);
+    expect(
+      await json(
+        await createProjectRequest(
+          target,
+          creationPayload(
+            candidates.map((item: unknown) => stringField(record(item), 'id')),
+          ),
+          'cp2-truncated',
+        ),
+      ),
+    ).toMatchObject({ code: 'PROJECT_CANDIDATE_LIMIT' });
+    expect(await creationCounts(target.fixture.clientId)).toEqual(before);
+  }, 60000);
+  it('requires execution and independent Project creation access without revealing hidden Company candidates', async () => {
+    const target = await approvedSignatureFixture();
+    expect(
+      (
+        await createProjectRequest(
+          target,
+          creationPayload(),
+          'cp2-missing-project',
+        )
+      ).status,
+    ).toBe(403);
+    await grantLinkProject(target.fixture);
+    expect(
+      await json(
+        await createProjectRequest(
+          target,
+          { ...creationPayload(), expectedContractRevision: 2 },
+          'cp2-unexecuted',
+        ),
+      ),
+    ).toMatchObject({ code: 'CONTRACT_NOT_EXECUTED' });
+    await signatureRequest(
+      target.fixture,
+      target.versionId,
+      signaturePayload(),
+      'cp2-execution',
+    );
+    const foreign = await preparedOffer('cp2-foreign');
+    await grantLinkProject(foreign);
+    await createLinkProject(foreign, 'Hidden foreign Company Project');
+    expect(
+      await json(
+        await request({
+          path: target.base + '/project-candidates',
+          companyId: target.fixture.companyId,
+        }),
+      ),
+    ).toEqual({ items: [] });
+    expect(
+      (
+        await createProjectRequest(
+          target,
+          creationPayload(),
+          'cp2-empty-visible',
+        )
+      ).status,
+    ).toBe(201);
+  });
   it('links an executed Contract to an eligible existing Project and reopens both without changing signed evidence', async () => {
     const { fixture, versionId, base } = await approvedSignatureFixture();
     const signature = await json(
@@ -3414,6 +4077,12 @@ withPostgres('First illustrative Contract REST', () => {
       index: 57,
       previousTag: '0056_contract_simulated_signature',
     },
+    {
+      baseline: 'CP1 / 0057 executed with existing link',
+      migration: '0058_contract_project_creation',
+      index: 58,
+      previousTag: '0057_contract_project_links',
+    },
   ])(
     'upgrades actual $baseline versions and receipts without changing any historic field or immutable guard',
     async ({ migration, index: expectedIndex, previousTag }) => {
@@ -3585,7 +4254,7 @@ withPostgres('First illustrative Contract REST', () => {
           ]);
           await pool.query('COMMIT');
         }
-        if (index === 57) {
+        if (index >= 57) {
           // These rows satisfy the immutable 0056 guards before CP1 exists.
           await pool.query('BEGIN');
           await pool.query(
@@ -3614,8 +4283,41 @@ withPostgres('First illustrative Contract REST', () => {
           ]);
           await pool.query('COMMIT');
         }
+        let historicLinks: unknown;
+        if (index === 58) {
+          await grantLinkProject(fixture);
+          const projectId = await createLinkProject(
+            fixture,
+            'Historic CP1 Project',
+          );
+          await pool.query('BEGIN');
+          const linkId = (
+            await pool.query<{ id: string }>(
+              `INSERT INTO contract_project_links(workspace_id,company_id,contract_id,project_id,result_revision,actor_internal_user_id,actor_workspace_membership_id,linked_at) SELECT workspace_id,company_id,id,$2,4,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contracts WHERE id=$1 RETURNING id`,
+              [contractId, projectId],
+            )
+          ).rows[0]?.id;
+          if (!linkId) throw new Error('Missing historic CP1 link');
+          await pool.query(
+            `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,kind,result_project_link_id,created_at) SELECT workspace_id,company_id,created_by_workspace_membership_id,'historic-cp1-link',repeat('3',64),opportunity_id,id,'LINK_PROJECT',$2,created_at FROM contracts WHERE id=$1`,
+            [contractId, linkId],
+          );
+          await pool.query(
+            `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata) SELECT workspace_id,company_id,'contract_project.linked',id,created_by_internal_user_id,created_by_workspace_membership_id,created_at,jsonb_build_object('contractId',id::text,'projectId',$2::text,'created',false) FROM contracts WHERE id=$1`,
+            [contractId, projectId],
+          );
+          await pool.query('UPDATE contracts SET revision=4 WHERE id=$1', [
+            contractId,
+          ]);
+          await pool.query('COMMIT');
+          historicLinks = (
+            await pool.query(
+              'SELECT to_jsonb(l) AS row FROM contract_project_links l',
+            )
+          ).rows;
+        }
         const historicSignatures =
-          index === 57
+          index >= 57
             ? (
                 await pool.query(
                   'SELECT to_jsonb(s) AS row FROM contract_signatures s',
@@ -3681,6 +4383,19 @@ withPostgres('First illustrative Contract REST', () => {
         const before = (await evidence()).rows;
         await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
         expect((await evidence()).rows).toEqual(before);
+        if (index === 58) {
+          expect(
+            (
+              await pool.query(
+                "SELECT to_jsonb(l)-'created' AS row FROM contract_project_links l",
+              )
+            ).rows,
+          ).toEqual(historicLinks);
+          expect(
+            (await pool.query('SELECT created FROM contract_project_links'))
+              .rows,
+          ).toEqual([{ created: false }]);
+        }
         if (historicSignatures)
           expect(
             (
@@ -4758,6 +5473,61 @@ withPostgres('First illustrative Contract REST', () => {
         body: JSON.stringify(body),
       },
     });
+  }
+  async function projectCreationFixture() {
+    const target = await approvedSignatureFixture();
+    await signatureRequest(
+      target.fixture,
+      target.versionId,
+      signaturePayload(),
+      'cp2-execution',
+    );
+    await grantLinkProject(target.fixture);
+    return target;
+  }
+  function creationPayload(ids: string[] = []) {
+    return {
+      title: 'Synthetic CP2 Project',
+      acknowledgedCandidateProjectIds: ids,
+      expectedContractRevision: 3,
+    };
+  }
+  function createProjectRequest(
+    target: { fixture: PreparedOffer; base: string },
+    body: unknown,
+    key: string,
+    headers: Record<string, string> = {},
+  ) {
+    return request({
+      path: target.base + '/projects/create',
+      companyId: target.fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify(body),
+      },
+    });
+  }
+  async function creationCounts(clientId: string) {
+    const row = (
+      await pool.query<{
+        projects: string;
+        links: string;
+        events: string;
+        receipts: string;
+        revision: number;
+        clientVersion: number;
+      }>(
+        'SELECT (SELECT count(*) FROM projects)::text AS projects,(SELECT count(*) FROM contract_project_links)::text AS links,(SELECT count(*) FROM project_creation_events)::text AS events,(SELECT count(*) FROM contract_commands WHERE kind=\'CREATE_PROJECT\')::text AS receipts,(SELECT revision FROM contracts LIMIT 1) AS revision,(SELECT version FROM client_accounts WHERE id=$1) AS "clientVersion"',
+        [clientId],
+      )
+    ).rows[0];
+    if (!row) throw new Error('Missing CP2 counts');
+    return row;
   }
   async function closeLinkProject(
     target: { fixture: PreparedOffer },

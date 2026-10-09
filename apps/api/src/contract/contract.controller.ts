@@ -16,12 +16,14 @@ import {
 } from '../access/actor-context.adapter.js';
 import { ContractService } from './contract.service.js';
 import { ContractProjectsService } from './contract-projects.service.js';
+import { ContractProjectCreationService } from './contract-project-creation.service.js';
 @Controller('contracts/opportunities/:opportunityId')
 @UseGuards(ActorContextAdapter)
 export class ContractController {
   constructor(
     private readonly contracts: ContractService,
     private readonly projects: ContractProjectsService,
+    private readonly projectCreation: ContractProjectCreationService,
   ) {}
   @Get('project-candidates') candidates(
     @Req() request: ActorContextRequest,
@@ -39,6 +41,19 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.projects.link({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
+  @Post('projects/create') createProject(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.projectCreation.create({
       actor: actorFrom(request),
       opportunityId,
       payload,

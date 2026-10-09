@@ -44,6 +44,7 @@ export function ContractPanel({
   actor,
   identity,
   opportunityId,
+  opportunityTitle = '',
   onCompanyContextRejected,
   onActorRevalidated = ignoreActor,
   onWorkspaceAccessRejected = ignoreActor,
@@ -52,6 +53,7 @@ export function ContractPanel({
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
+  opportunityTitle?: string;
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
@@ -404,6 +406,10 @@ export function ContractPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               contract={view.contract}
+              opportunityTitle={opportunityTitle}
+              mayCreate={Boolean(
+                context?.projectPermissions?.includes('project.create'),
+              )}
               mayLink={Boolean(
                 context?.contractPermissionSetVersion === 'v1' &&
                 context.contractPermissionAssignmentId &&
