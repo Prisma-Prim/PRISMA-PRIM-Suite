@@ -61,6 +61,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
   let harness: PostgresRestTestHarness;
   let companyA: string;
   let ownerMembershipId: string;
+  let fixture: Awaited<ReturnType<typeof seed>>;
 
   beforeAll(async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
@@ -104,6 +105,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
     ownerMembershipId = string(
       object(await read('/access/current-actor')).workspaceMembershipId,
     );
+    fixture = await seed();
   });
 
   function request(
@@ -355,7 +357,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
   };
 
   it('counts the active Company records the reader can open at the Chisinau date of one server instant', async () => {
-    const { companyB, projects, tasks } = await seed();
+    const { companyB, projects, tasks } = fixture;
 
     expect(await home()).toMatchObject({
       companyId: companyA,
@@ -425,7 +427,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
   });
 
   it('uses the sampled date for every comparison and reflects Task changes on the next read', async () => {
-    const { tasks } = await seed();
+    const { tasks } = fixture;
     const overdueCount = async () =>
       objects(object(await home()).summaries).find(
         (summary) => summary.kind === 'overdue_tasks',
@@ -455,7 +457,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
   });
 
   it('shows exactly the summaries whose owning read the reader holds, each equal to its drill-down', async () => {
-    const { companyB, colleague } = await seed();
+    const { companyB, colleague } = fixture;
     const directory = await member('home-directory', ['client']);
     const projectsOnly = await member('home-projects', ['client', 'project']);
     await member('home-context', ['context']);
@@ -559,7 +561,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
   });
 
   it('orders the overdue list by due date, creation and identifier, bounds it at 100 rows and refuses exactly as My Tasks', async () => {
-    const { projects, tasks } = await seed();
+    const { projects, tasks } = fixture;
     // Equal due dates and creation times prove the creation and identifier
     // tie-breaks. 101 Tasks copy the scope and creator of an API-created Task.
     const tiedAt = '2026-09-02T08:00:00.000Z';
@@ -637,7 +639,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
   });
 
   it('writes no Activity Log event, command receipt, version or Client fence advance', async () => {
-    const { companyB } = await seed();
+    const { companyB } = fixture;
     const tables = [
       'activity_log_events',
       'task_events',
