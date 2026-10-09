@@ -32,6 +32,7 @@ const keys = [
   'termStartsOn',
   'termEndsOn',
   'specialConditions',
+  'changeSummary',
   'missing',
   'superseded',
 ] as const;
@@ -71,6 +72,7 @@ export const contractVersionMessages = defineMessages(keys, {
     termStartsOn: 'Term start',
     termEndsOn: 'Term end',
     specialConditions: 'Special conditions',
+    changeSummary: 'Change summary',
     missing: 'Not recorded',
     superseded:
       'Historical version — preserved; no further decision or signature.',
@@ -110,6 +112,7 @@ export const contractVersionMessages = defineMessages(keys, {
     termStartsOn: 'Début de période',
     termEndsOn: 'Fin de période',
     specialConditions: 'Conditions particulières',
+    changeSummary: 'Résumé des changements',
     missing: 'Non renseigné',
     superseded:
       'Version historique conservée ; aucune nouvelle décision ni signature.',
@@ -148,6 +151,7 @@ export const contractVersionMessages = defineMessages(keys, {
     termStartsOn: 'Începutul perioadei',
     termEndsOn: 'Sfârșitul perioadei',
     specialConditions: 'Condiții speciale',
+    changeSummary: 'Rezumatul modificărilor',
     missing: 'Neînregistrat',
     superseded: 'Versiune istorică păstrată; fără decizie sau semnătură nouă.',
   },
@@ -184,6 +188,7 @@ export const contractVersionMessages = defineMessages(keys, {
     termStartsOn: 'Начало срока',
     termEndsOn: 'Окончание срока',
     specialConditions: 'Особые условия',
+    changeSummary: 'Описание изменений',
     missing: 'Не указано',
     superseded:
       'Историческая версия сохранена; новые решения и подписи недоступны.',

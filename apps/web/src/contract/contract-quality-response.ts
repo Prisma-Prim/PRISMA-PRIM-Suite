@@ -9,6 +9,8 @@ const rules = {
   PRICING_SNAPSHOT_COHERENT: 'ERROR',
   CONDITIONS_MATCH_ACCEPTED_OFFER: 'ERROR',
   ADDED_CONDITIONS_CONFIRMED: 'WARNING',
+  PARENT_EXECUTED: 'ERROR',
+  CURRENCY_MATCHES_PARENT: 'WARNING',
   TERM_END_NOT_PASSED: 'WARNING',
   PROVISIONAL_MARKER_PRESENT: 'ERROR',
 } satisfies Record<string, 'WARNING' | 'ERROR'>;
@@ -29,6 +31,7 @@ export function readContractQualityRun(
   value: unknown,
   versionId: string,
   termEndsOn: string | null,
+  addendum?: { pricingSnapshotId: string | null },
 ): ContractQualityRunView {
   const input = object(value);
   if (
@@ -50,6 +53,14 @@ export function readContractQualityRun(
     'CONDITIONS_MATCH_ACCEPTED_OFFER',
     'ADDED_CONDITIONS_CONFIRMED',
   ];
+  if (addendum) {
+    codes.splice(6);
+    if (addendum.pricingSnapshotId !== null)
+      codes.push('PRICING_SNAPSHOT_COHERENT');
+    codes.push('PARENT_EXECUTED');
+    if (addendum.pricingSnapshotId !== null)
+      codes.push('CURRENCY_MATCHES_PARENT');
+  }
   if (termEndsOn !== null) codes.push('TERM_END_NOT_PASSED');
   codes.push('PROVISIONAL_MARKER_PRESENT');
   const results: unknown[] = input.results;
@@ -84,6 +95,7 @@ export function readContractQualityHistory(
   value: unknown,
   versionId: string,
   termEndsOn: string | null,
+  addendum?: { pricingSnapshotId: string | null },
 ): { items: ContractQualityRunView[]; nextCursor: string | null } {
   const input = object(value);
   if (
@@ -93,7 +105,7 @@ export function readContractQualityHistory(
   )
     throw new Error('Invalid Contract Quality Check history.');
   const items = input.items.map((item: unknown) =>
-    readContractQualityRun(item, versionId, termEndsOn),
+    readContractQualityRun(item, versionId, termEndsOn, addendum),
   );
   if (
     new Set(items.map((item) => item.id)).size !== items.length ||

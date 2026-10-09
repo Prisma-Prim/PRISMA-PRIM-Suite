@@ -208,8 +208,9 @@ export class AccountabilityService {
     contractId: string;
     contractVersionId: string;
     illustrativeReference: number;
-    offerVersionId: string;
-    pricingSnapshotId: string;
+    offerVersionId: string | null;
+    addendum?: { parentContractId: string; addendumOrdinal: number };
+    pricingSnapshotId: string | null;
     occurredAt: Date;
   }): Promise<void> {
     const base = {
@@ -222,10 +223,8 @@ export class AccountabilityService {
     };
     const metadata = {
       contractId: input.contractId,
-      kind: 'CONTRACT',
-      origin: 'ACCEPTED_OFFER',
+      ...contractEventSource(input),
       provenance: 'ILLUSTRATIVE',
-      offerVersionId: input.offerVersionId,
     };
     await this.databaseContext.connection.insert(contractEvents).values([
       {
@@ -245,7 +244,9 @@ export class AccountabilityService {
           ...metadata,
           contractVersionId: input.contractVersionId,
           versionNumber: 1,
-          pricingSnapshotId: input.pricingSnapshotId,
+          ...(input.pricingSnapshotId === null
+            ? {}
+            : { pricingSnapshotId: input.pricingSnapshotId }),
         },
       },
     ]);
@@ -258,8 +259,9 @@ export class AccountabilityService {
     contractVersionId: string;
     versionNumber: number;
     predecessorVersionNumber: number;
-    offerVersionId: string;
-    pricingSnapshotId: string;
+    offerVersionId: string | null;
+    addendum?: { parentContractId: string; addendumOrdinal: number };
+    pricingSnapshotId: string | null;
     occurredAt: Date;
   }): Promise<void> {
     await this.databaseContext.connection.insert(contractEvents).values({
@@ -276,11 +278,11 @@ export class AccountabilityService {
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
         predecessorVersionNumber: input.predecessorVersionNumber,
-        kind: 'CONTRACT',
-        origin: 'ACCEPTED_OFFER',
+        ...contractEventSource(input),
         provenance: 'ILLUSTRATIVE',
-        offerVersionId: input.offerVersionId,
-        pricingSnapshotId: input.pricingSnapshotId,
+        ...(input.pricingSnapshotId === null
+          ? {}
+          : { pricingSnapshotId: input.pricingSnapshotId }),
       },
     });
   }
@@ -292,8 +294,9 @@ export class AccountabilityService {
     contractVersionId: string;
     versionNumber: number;
     kind: 'APPROVE' | 'REJECT';
-    offerVersionId: string;
-    pricingSnapshotId: string;
+    offerVersionId: string | null;
+    addendum?: { parentContractId: string; addendumOrdinal: number };
+    pricingSnapshotId: string | null;
     acknowledgedWarningCodes: readonly string[];
     occurredAt: Date;
   }): Promise<void> {
@@ -313,11 +316,11 @@ export class AccountabilityService {
         contractId: input.contractId,
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
-        kind: 'CONTRACT',
-        origin: 'ACCEPTED_OFFER',
+        ...contractEventSource(input),
         provenance: 'ILLUSTRATIVE',
-        offerVersionId: input.offerVersionId,
-        pricingSnapshotId: input.pricingSnapshotId,
+        ...(input.pricingSnapshotId === null
+          ? {}
+          : { pricingSnapshotId: input.pricingSnapshotId }),
         ...(input.kind === 'APPROVE'
           ? {
               ruleSetVersion: 1,
@@ -334,8 +337,9 @@ export class AccountabilityService {
     contractId: string;
     contractVersionId: string;
     versionNumber: number;
-    offerVersionId: string;
-    pricingSnapshotId: string;
+    offerVersionId: string | null;
+    addendum?: { parentContractId: string; addendumOrdinal: number };
+    pricingSnapshotId: string | null;
     acknowledgedWarningCodes: readonly string[];
     occurredAt: Date;
   }): Promise<void> {
@@ -352,11 +356,11 @@ export class AccountabilityService {
         contractId: input.contractId,
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
-        kind: 'CONTRACT',
-        origin: 'ACCEPTED_OFFER',
+        ...contractEventSource(input),
         provenance: 'ILLUSTRATIVE',
-        offerVersionId: input.offerVersionId,
-        pricingSnapshotId: input.pricingSnapshotId,
+        ...(input.pricingSnapshotId === null
+          ? {}
+          : { pricingSnapshotId: input.pricingSnapshotId }),
         ruleSetVersion: 1,
         acknowledgedWarningCodes: input.acknowledgedWarningCodes,
         evidenceKind: 'SIMULATED',
@@ -1012,7 +1016,7 @@ export class AccountabilityService {
   }
 
   // The same boundary as `project.created`: current Project and Client read
-  // plus the Project's original Client–Company relationship. Workspace
+  // plus the Project's original Clientâ€“Company relationship. Workspace
   // ownership or Client visibility alone discloses nothing.
   private async projectResponsibilityEvents(
     actor: ActorContext,
@@ -1091,7 +1095,7 @@ export class AccountabilityService {
   }
 
   // The `project.responsible.changed` boundary: the recording Company only,
-  // current Project and Client read, and the original Client–Company
+  // current Project and Client read, and the original Clientâ€“Company
   // relationship. Metadata carries no reason, declaration, member or date.
   private async projectLifecycleEvents(
     actor: ActorContext,
@@ -2471,7 +2475,7 @@ function canonicalTarget(event: PersistedActivityTarget) {
         type: event.targetType,
         relationshipId: required(
           event.targetClientCompanyRelationshipId,
-          'Client–Company Relationship id',
+          'Clientâ€“Company Relationship id',
         ),
         clientAccountId: required(event.targetClientAccountId, 'Client id'),
         clientDisplayName: required(
@@ -2551,4 +2555,22 @@ function required(value: string | null, field: string): string {
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected Activity Log variant: ${JSON.stringify(value)}`);
+}
+
+function contractEventSource(input: {
+  offerVersionId: string | null;
+  addendum?: { parentContractId: string; addendumOrdinal: number };
+}): Record<string, string | number | boolean | readonly string[]> {
+  if (input.addendum)
+    return {
+      kind: 'ADDENDUM',
+      parentContractId: input.addendum.parentContractId,
+      addendumOrdinal: input.addendum.addendumOrdinal,
+    };
+  if (!input.offerVersionId) throw new Error('Missing Contract source.');
+  return {
+    kind: 'CONTRACT',
+    origin: 'ACCEPTED_OFFER',
+    offerVersionId: input.offerVersionId,
+  };
 }

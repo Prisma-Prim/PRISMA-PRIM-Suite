@@ -421,6 +421,13 @@
       "when": 1791522713657,
       "tag": "0059_contract_versions",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1791539335525,
+      "tag": "0060_contract_addenda",
+      "breakpoints": true
     }
   ]
 }

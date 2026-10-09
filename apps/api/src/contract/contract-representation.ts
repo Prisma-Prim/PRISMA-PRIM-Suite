@@ -10,6 +10,14 @@ export const CONTRACT_CLAUSE_VERSIONS = [
   { code: 'CL_CONDITIONS', version: 1 },
   { code: 'CL_GENERAL', version: 1 },
 ] as const;
+export const ADDENDUM_CLAUSE_VERSIONS = [
+  { code: 'CL_SUBJECT', version: 1 },
+  { code: 'CL_PRICE', version: 1 },
+  { code: 'CL_TERM', version: 1 },
+  { code: 'CL_CONDITIONS', version: 1 },
+  { code: 'CL_CHANGE', version: 1 },
+  { code: 'CL_GENERAL', version: 1 },
+] as const;
 
 type RepresentationLine = Pick<
   PricingSnapshotLineRecord,
@@ -180,6 +188,129 @@ function supportedClauses(value: unknown): boolean {
     })
   );
 }
+export function renderAddendumRepresentation(input: {
+  templateCode: string;
+  templateVersion: number;
+  clauseVersions: unknown;
+  illustrativeReference: number;
+  versionNumber: number;
+  issuingCompanyLabel: string;
+  recipient: RenderContractRepresentationInput['recipient'];
+  createdAt: string;
+  parent: {
+    id: string;
+    illustrativeReference: number;
+    versionNumber: number;
+    kind: string;
+  };
+  ordinal: number;
+  changeSummary: string;
+  termEndsOn: string | null;
+  snapshot:
+    | (Pick<
+        RenderContractRepresentationInput,
+        'currency' | 'subtotal' | 'taxTotal' | 'total' | 'lines'
+      > & { id: string })
+    | null;
+}) {
+  if (
+    input.templateCode !== 'ADDENDUM_ILLUSTRATIVE' ||
+    input.templateVersion !== 1 ||
+    !supportedAddendumClauses(input.clauseVersions)
+  )
+    throw new Error('Unsupported Addendum generation binding.');
+  const snapshot = input.snapshot;
+  const html = [
+    '<!doctype html>',
+    '<html lang="en">',
+    `<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Illustrative Addendum</title><style>body{padding:1rem;font-family:system-ui,sans-serif;color:#172033}p,dd{white-space:pre-wrap;overflow-wrap:anywhere}dt{font-weight:700}dd{margin:0 0 .75rem}section{margin-block:1.5rem}</style></head>`,
+    '<body><article aria-labelledby="contract-title">',
+    '<header><p><strong>Provisional illustrative document — cannot be accepted — no legal effect — no official number — not a signed agreement — clauses are placeholders</strong></p><h1 id="contract-title">Illustrative Addendum</h1></header>',
+    `<section><h2>Addendum details</h2><dl>${details([
+      ['Parent kind', input.parent.kind],
+      ['Parent Contract id', input.parent.id],
+      [
+        'Parent illustrative reference',
+        String(input.parent.illustrativeReference),
+      ],
+      ['Parent executed version', String(input.parent.versionNumber)],
+      ['Addendum ordinal', String(input.ordinal)],
+      ['Issuing Company', input.issuingCompanyLabel],
+      ['Recipient legal name', input.recipient.legalName],
+      ['Recipient tax ID', input.recipient.taxId],
+      ['Recipient legal address', input.recipient.legalAddress],
+      ['Illustrative Addendum reference', String(input.illustrativeReference)],
+      ['Contract Version', String(input.versionNumber)],
+      ['Created at', input.createdAt],
+    ])}</dl></section>`,
+    clause(
+      'CL_SUBJECT',
+      'Subject',
+      `<dl>${details([['Parent agreement', input.parent.id]])}</dl>`,
+    ),
+    clause(
+      'CL_PRICE',
+      'Price',
+      snapshot === null
+        ? '<p>No Pricing Snapshot referenced.</p>'
+        : `<dl>${details([
+            ['Pricing Snapshot id', snapshot.id],
+            ['Subtotal', snapshot.subtotal + ' ' + snapshot.currency],
+            ['Tax total', snapshot.taxTotal + ' ' + snapshot.currency],
+            ['Total', snapshot.total + ' ' + snapshot.currency],
+            ['Currency', snapshot.currency],
+          ])}</dl>${snapshot.lines
+            .map(
+              (line) =>
+                `<dl>${details([
+                  ['Service name', line.serviceName],
+                  ['Quantity', line.quantity],
+                  ['Unit', line.unit],
+                  ['Unit amount', line.unitAmount],
+                  ['Line net', line.lineNet],
+                  ['Tax label', line.taxLabel],
+                  ['Line tax', line.lineTax],
+                  ['Adjustment reason', line.adjustment?.reason ?? null],
+                  ['Adjusted line net', line.adjustedLineNet],
+                  ['Adjusted line tax', line.adjustedLineTax],
+                ])}</dl>`,
+            )
+            .join('')}`,
+    ),
+    clause(
+      'CL_TERM',
+      'Term',
+      `<dl>${details([['New term end', input.termEndsOn]])}</dl>`,
+    ),
+    clause('CL_CONDITIONS', 'Conditions', ''),
+    clause(
+      'CL_CHANGE',
+      'Change',
+      `<dl>${details([['Change summary', input.changeSummary]])}</dl>`,
+    ),
+    clause('CL_GENERAL', 'General', ''),
+    `<footer><dl>${details([
+      ['Template Version', 'ADDENDUM_ILLUSTRATIVE v1 (unapproved)'],
+      [
+        'Clause Versions',
+        ADDENDUM_CLAUSE_VERSIONS.map(
+          (entry) => entry.code + ' v' + String(entry.version),
+        ).join(', '),
+      ],
+      ['Pricing Snapshot id', snapshot?.id ?? null],
+      ['Provenance', 'ILLUSTRATIVE'],
+    ])}</dl></footer>`,
+    '</article></body>',
+    '</html>',
+  ].join('\n');
+  return {
+    templateCode: 'ADDENDUM_ILLUSTRATIVE',
+    templateVersion: 1,
+    clauseVersions: ADDENDUM_CLAUSE_VERSIONS,
+    html,
+    sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
+  };
+}
 function clause(code: string, title: string, content: string) {
   return `<section aria-labelledby="${code}"><h2 id="${code}">${title} — ${code} v1</h2><p>No approved legal wording exists for this clause. This is an illustrative placeholder.</p>${content}</section>`;
 }
@@ -198,4 +329,24 @@ function escapeHtml(value: string) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function supportedAddendumClauses(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length === ADDENDUM_CLAUSE_VERSIONS.length &&
+    value.every((entry: unknown, index) => {
+      if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
+        return false;
+      const expected = ADDENDUM_CLAUSE_VERSIONS[index];
+      return (
+        expected !== undefined &&
+        'code' in entry &&
+        entry.code === expected.code &&
+        'version' in entry &&
+        entry.version === expected.version &&
+        Object.keys(entry).length === 2
+      );
+    })
+  );
 }

@@ -12,6 +12,7 @@ export function contractVersionDifferences(
     'termStartsOn',
     'termEndsOn',
     'specialConditions',
+    'changeSummary',
   ] as const;
   return fields.flatMap((field) =>
     previous[field] === current[field]

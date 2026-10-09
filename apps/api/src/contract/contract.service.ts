@@ -1,4 +1,8 @@
 import {
+  createContractAddendum,
+  type CreateAddendumInput,
+} from './contract-addendum-command.js';
+import {
   BadRequestException,
   ConflictException,
   HttpException,
@@ -78,6 +82,7 @@ export class ContractService {
   async create(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     payload: unknown;
     idempotencyKey: string | undefined;
   }) {
@@ -293,6 +298,18 @@ export class ContractService {
       });
   }
 
+  async createAddendum(input: CreateAddendumInput) {
+    return createContractAddendum(input, {
+      databaseContext: this.databaseContext,
+      authorization: this.authorization,
+      accountability: this.accountability,
+      clients: this.clients,
+      intake: this.intake,
+      pricing: this.pricing,
+      versions: this.versions,
+      clock: this.clock,
+    });
+  }
   async createVersion(input: CreateContractVersionInput) {
     return createContractVersion(input, {
       databaseContext: this.databaseContext,
@@ -301,6 +318,7 @@ export class ContractService {
       clients: this.clients,
       intake: this.intake,
       offers: this.offers,
+      pricing: this.pricing,
       clock: this.clock,
       find: (target) => this.versions.find(target),
     });
@@ -339,6 +357,7 @@ export class ContractService {
   async runQualityChecks(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     versionId: string;
     payload: unknown;
     idempotencyKey: string | undefined;
@@ -362,12 +381,16 @@ export class ContractService {
           companyId,
           opportunityId: input.opportunityId,
           versionId: input.versionId,
+          contractId: input.contractId,
         });
         if (!found || found.version.id !== input.versionId)
           throw new NotFoundException();
         const { contract, version } = found;
         const fingerprint = commandFingerprint({
           kind: 'RUN_QUALITY_CHECKS',
+          ...(input.contractId === undefined
+            ? {}
+            : { contractId: input.contractId }),
           opportunityId: input.opportunityId,
           versionId: input.versionId,
           payload: input.payload,
@@ -491,17 +514,27 @@ export class ContractService {
     contract: ContractRow;
     version: VersionRow;
   }) {
-    const source = await this.offers.inspectContractQualitySource({
-      actor,
-      opportunityId: contract.opportunityId,
-      contractId: contract.id,
-    });
-    const pricing = await this.pricing.resolveContractVersionSnapshot({
-      actor,
-      companyId,
-      opportunityId: contract.opportunityId,
-      contractVersionId: version.id,
-    });
+    const source =
+      contract.kind === 'ADDENDUM'
+        ? null
+        : await this.offers.inspectContractQualitySource({
+            actor,
+            opportunityId: contract.opportunityId,
+            contractId: contract.id,
+          });
+    const parent =
+      contract.kind === 'ADDENDUM'
+        ? await this.versions.addendumSource(actor, contract)
+        : null;
+    const pricing =
+      version.pricingSnapshotId === null
+        ? null
+        : await this.pricing.resolveContractVersionSnapshot({
+            actor,
+            companyId,
+            opportunityId: contract.opportunityId,
+            contractVersionId: version.id,
+          });
     const recipient = recordedRecipient(version);
     // The Client owner fences current identity, relationship and union resolution
     // without requiring or granting dossier-read permission.
@@ -555,10 +588,12 @@ export class ContractService {
       partyAvailable: current.recipientAvailable,
       partyIdentityCurrent: current.recipientIdentityCurrent,
       snapshotId: version.pricingSnapshotId,
-      snapshot: {
-        ...pricing,
-        belongsToOffer: pricing.opportunityId === contract.opportunityId,
-      },
+      snapshot: pricing
+        ? {
+            ...pricing,
+            belongsToOffer: pricing.opportunityId === contract.opportunityId,
+          }
+        : null,
       scopeNote: version.scopeNote,
       commercialConditions: version.commercialConditions,
       termStartsOn: version.termStartsOn,
@@ -567,15 +602,36 @@ export class ContractService {
       preliminaryWork: null,
       provenance: version.provenance,
       provisional: version.provenance === 'ILLUSTRATIVE',
-      source: {
-        kind: 'ACCEPTED_OFFER',
-        companyId: source.companyId,
-        partyKey: partyKey(source.originalClientAccountId, source.recipient),
-        identity: source.recipient,
-        snapshotId: source.pricingSnapshotId,
-        scopeNote: source.scopeNote,
-        commercialConditions: source.commercialConditions,
-      },
+      source: parent
+        ? {
+            kind: 'ADDENDUM',
+            companyId: parent.contract.companyId,
+            partyKey: partyKey(
+              parent.contract.originalClientAccountId,
+              recordedRecipient(parent.version),
+            ),
+            identity: recordedRecipient(parent.version),
+            parentKind:
+              parent.contract.kind === 'PRECONTRACT'
+                ? 'PRECONTRACT'
+                : 'CONTRACT',
+            parentExecutionState: 'EXECUTED',
+            currency: parent.currency,
+          }
+        : source
+          ? {
+              kind: 'ACCEPTED_OFFER',
+              companyId: source.companyId,
+              partyKey: partyKey(
+                source.originalClientAccountId,
+                source.recipient,
+              ),
+              identity: source.recipient,
+              snapshotId: source.pricingSnapshotId,
+              scopeNote: source.scopeNote,
+              commercialConditions: source.commercialConditions,
+            }
+          : missingQualitySource(),
     });
     return { evaluatedAt, results };
   }
@@ -583,6 +639,7 @@ export class ContractService {
   async listQualityRuns(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     versionId: string;
     limit: string | undefined;
     cursor: string | undefined;
@@ -602,6 +659,9 @@ export class ContractService {
         actor: input.actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         versionId: input.versionId,
       });
       if (!found || found.version.id !== input.versionId)
@@ -661,6 +721,7 @@ export class ContractService {
   async readQualityRun(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     versionId: string;
     runId: string;
   }): Promise<ContractQualityRun> {
@@ -679,6 +740,9 @@ export class ContractService {
         actor: input.actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         versionId: input.versionId,
       });
       if (
@@ -723,4 +787,8 @@ function partyKey(clientId: string, recipient: OfferRecipientCopy): string {
   return recipient.kind === 'PRIMARY'
     ? `PRIMARY:${clientId}`
     : `ADDITIONAL:${recipient.additionalLegalEntityId}`;
+}
+
+function missingQualitySource(): never {
+  throw new Error('Missing Contract quality source.');
 }

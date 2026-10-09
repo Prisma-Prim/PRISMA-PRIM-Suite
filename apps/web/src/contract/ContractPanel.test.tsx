@@ -2,6 +2,7 @@ import {
   assertMessageCoverage,
   resolveMessage,
 } from '../localization/messages';
+import { contractAddendumMessages } from './contract-addendum.copy';
 import { contractVersionMessages } from './contract-version.copy';
 import { contractDecisionMessages } from './contract-decision.copy';
 import { contractSignatureMessages } from './contract-signature.copy';
@@ -47,6 +48,313 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it('C8 keeps exact uncertain Addendum creation and opens its own optional-price content', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const parent = { ...executedUiFixture(), addenda: [] };
+    const original = fixture();
+    const child = {
+      ...original,
+      id: 'addendum-one',
+      kind: 'ADDENDUM',
+      origin: null,
+      sourceOfferId: null,
+      sourceOfferVersionId: null,
+      sourceOffer: null,
+      parentContractId: parent.id,
+      addendumOrdinal: 1,
+      parent: {
+        id: parent.id,
+        illustrativeReference: 1,
+        versionNumber: 1,
+        revision: 3,
+        kind: 'CONTRACT',
+      },
+      addenda: [],
+      linkedProjects: [],
+      version: {
+        ...original.version,
+        id: 'addendum-version-one',
+        specialConditions: null,
+        scopeNote: null,
+        commercialConditions: null,
+        changeSummary: '  Exact child change  ',
+        pricingSnapshotId: null,
+        pricingSnapshot: null,
+      },
+    };
+    const attempts: Array<{ body: unknown; key: string | null }> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (init?.method === 'POST' && path.endsWith('/addenda')) {
+        attempts.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return attempts.length === 1 ? response({}, 500) : response(child, 201);
+      }
+      if (path.endsWith('/versions'))
+        return response({
+          items: [
+            path.includes('/agreements/addendum-one')
+              ? child.version
+              : parent.version,
+          ],
+          nextCursor: null,
+        });
+      return response({
+        contract: path.includes('/agreements/addendum-one') ? child : parent,
+      });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={actor(true)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Change summary'), {
+      target: { value: '  Exact child change  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Addendum' }));
+    expect(
+      await screen.findByText(
+        'The Addendum result is uncertain. Retry the identical command.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Change summary')).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Retry identical Addendum command' }),
+    );
+    await waitFor(() => expect(attempts).toHaveLength(2));
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(
+      await screen.findByText('Exact child change', { selector: 'dd' }),
+    ).toBeVisible();
+    expect(screen.getByText('No Pricing Snapshot referenced.')).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Create Project' }),
+    ).not.toBeInTheDocument();
+  });
+  it('C8 selects an older optional Snapshot through its independent current Pricing grant', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const parent = { ...executedUiFixture(), addenda: [] },
+      original = fixture();
+    const child = {
+      ...original,
+      id: 'paged-child',
+      kind: 'ADDENDUM',
+      origin: null,
+      sourceOfferId: null,
+      sourceOfferVersionId: null,
+      sourceOffer: null,
+      parentContractId: parent.id,
+      addendumOrdinal: 1,
+      parent: {
+        id: parent.id,
+        kind: 'CONTRACT',
+        illustrativeReference: 1,
+        versionNumber: 1,
+        revision: 3,
+      },
+      addenda: [],
+      version: {
+        ...original.version,
+        id: 'paged-child-version',
+        changeSummary: 'Choose old Snapshot',
+        specialConditions: null,
+        scopeNote: null,
+        commercialConditions: null,
+        pricingSnapshotId: 'snapshot-old',
+        pricingSnapshot: {
+          ...original.version.pricingSnapshot,
+          id: 'snapshot-old',
+        },
+      },
+    };
+    const bodies: unknown[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (path.includes('/pricing/opportunities/'))
+        return response({
+          items: [
+            {
+              id: path.includes('&cursor=') ? 'snapshot-old' : 'snapshot-new',
+              currency: 'EUR',
+              total: '345.00',
+              committedAt: '2026-10-07T09:00:00.000Z',
+            },
+          ],
+          ...(path.includes('&cursor=') ? {} : { nextCursor: 'snapshot-new' }),
+        });
+      if (init?.method === 'POST') {
+        bodies.push(JSON.parse(String(init.body)));
+        return response(child, 201);
+      }
+      const current = path.includes('/agreements/paged-child') ? child : parent;
+      return path.endsWith('/versions')
+        ? response({ items: [current.version], nextCursor: null })
+        : response({ contract: current });
+    });
+    const preparer = actor(true);
+    if (!preparer.activeCompany) throw new Error('Missing Company');
+    preparer.activeCompany.offerPermissions = [];
+    preparer.activeCompany.pricingUserPermissions = [
+      'commercial.pricing.snapshot.read',
+    ];
+    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
+    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-grant';
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={preparer}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Change summary'), {
+      target: { value: 'Choose old Snapshot' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Choose a Pricing Snapshot' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Load more Pricing Snapshots',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Load more Pricing Snapshots' }),
+      ).not.toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole('combobox'));
+    fireEvent.click(
+      screen.getByRole('option', { name: 'EUR · 345.00 · snapshot-old' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Create Addendum' }));
+    await waitFor(() =>
+      expect(bodies).toEqual([
+        {
+          expectedContractRevision: 3,
+          changeSummary: 'Choose old Snapshot',
+          termEndsOn: null,
+          pricingSnapshotId: 'snapshot-old',
+        },
+      ]),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Return to parent agreement' }),
+    ).toBeVisible();
+  });
+  it.each(interfaceLocales)(
+    'C8 keeps localized values for correctable errors and shows a stale outcome in %s',
+    async (locale) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      assertMessageCoverage('contractAddendum', contractAddendumMessages);
+      const copy = (key: (typeof contractAddendumMessages.keys)[number]) =>
+        resolveMessage(contractAddendumMessages, locale, key);
+      const parent = { ...executedUiFixture(), addenda: [] };
+      let posts = 0;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        if (init?.method === 'POST' && input.toString().endsWith('/addenda'))
+          return ++posts === 1
+            ? response({ field: 'changeSummary' }, 400)
+            : response({ code: 'STALE_CONTRACT_REVISION' }, 409);
+        return input.toString().endsWith('/versions')
+          ? response({ items: [parent.version], nextCursor: null })
+          : response({ contract: parent });
+      });
+      const preparer = actor(true);
+      if (!preparer.activeCompany) throw new Error('Missing Company');
+      preparer.activeCompany.offerPermissions = [];
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={preparer}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const summary = await screen.findByLabelText(copy('summary'));
+      fireEvent.change(summary, {
+        target: { value: '  Preserve exact entered text  ' },
+      });
+      fireEvent.change(screen.getByLabelText(copy('end')), {
+        target: { value: '2030-12-31' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: copy('create') }));
+      expect(await screen.findByText(copy('invalid'))).toBeVisible();
+      expect(summary).toHaveValue('  Preserve exact entered text  ');
+      expect(screen.getByLabelText(copy('end'))).toHaveValue('2030-12-31');
+      fireEvent.click(screen.getByRole('button', { name: copy('create') }));
+      expect(await screen.findByText(copy('stale'))).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: copy('create') }),
+      ).toBeDisabled();
+    },
+  );
+  it('C8 discards a late creation after Company authority changes and retains independent parent navigation without Client read', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const parent = {
+      ...executedUiFixture(),
+      addenda: [
+        {
+          id: 'child-one',
+          addendumOrdinal: 1,
+          illustrativeReference: 1,
+          versionNumber: 1,
+          decisionState: 'PENDING',
+          executionState: 'NOT_EXECUTED',
+        },
+      ],
+    };
+    let finish: ((result: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'POST')
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      return input.toString().endsWith('/versions')
+        ? response({ items: [parent.version], nextCursor: null })
+        : response({ contract: parent });
+    });
+    const show = (current: ActorContext) => (
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>
+    );
+    const displayed = render(show(actor(true)));
+    fireEvent.change(await screen.findByLabelText('Change summary'), {
+      target: { value: 'Discard pending response' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Addendum' }));
+    await waitFor(() => expect(finish).toBeDefined());
+    const reader = actor(false);
+    displayed.rerender(show(reader));
+    expect(
+      await screen.findByRole('button', { name: 'Open Addendum 1' }),
+    ).toBeEnabled();
+    expect(screen.queryByLabelText('Change summary')).not.toBeInTheDocument();
+    await act(async () => {
+      finish?.(response({ id: 'late-child' }, 201));
+    });
+    expect(screen.queryByText('Addendum recorded.')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Open Addendum 1' }),
+    ).toBeEnabled();
+  });
   it('C6 requires current Company Client read to revise while preserving independent Contract history', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const original = fixture();

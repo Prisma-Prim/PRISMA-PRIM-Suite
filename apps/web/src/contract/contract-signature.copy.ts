@@ -31,6 +31,8 @@ const keys = [
   'mismatch',
   'conflict',
   'success',
+  'PARENT_EXECUTED',
+  'CURRENCY_MATCHES_PARENT',
   'SOURCE_COMPANY_MATCHES',
   'PARTY_AVAILABLE',
   'PARTY_MATCHES_SOURCE',
@@ -46,6 +48,8 @@ const keys = [
 ] as const;
 export const contractSignatureMessages = defineMessages(keys, {
   en: {
+    PARENT_EXECUTED: 'Parent agreement is executed',
+    CURRENCY_MATCHES_PARENT: 'Currency matches the parent',
     title: 'Simulated Contract signatures',
     banner:
       'Illustrative internal record only. Signatory labels and dates are declared and unverified; this is not a legally signed agreement.',
@@ -96,6 +100,8 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Illustrative markers are present',
   },
   ro: {
+    PARENT_EXECUTED: 'Acordul părinte este executat',
+    CURRENCY_MATCHES_PARENT: 'Moneda corespunde acordului părinte',
     title: 'Semnături simulate ale contractului',
     banner:
       'Doar înregistrare internă ilustrativă. Numele semnatarilor și datele sunt declarate și neverificate; acesta nu este un acord semnat cu valoare juridică.',
@@ -150,6 +156,8 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Marcajele ilustrative sunt prezente',
   },
   fr: {
+    PARENT_EXECUTED: 'L’accord parent est exécuté',
+    CURRENCY_MATCHES_PARENT: 'La devise correspond à celle du parent',
     title: 'Signatures simulées du contrat',
     banner:
       'Enregistrement interne illustratif uniquement. Les noms et dates sont déclarés et non vérifiés ; ce document n’est pas un accord signé juridiquement.',
@@ -204,6 +212,8 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Les mentions illustratives sont présentes',
   },
   ru: {
+    PARENT_EXECUTED: 'Родительское соглашение исполнено',
+    CURRENCY_MATCHES_PARENT: 'Валюта соответствует родительскому соглашению',
     title: 'Симулированные подписи договора',
     banner:
       'Только иллюстративная внутренняя запись. Имена и даты заявлены и не проверены; это не юридически подписанное соглашение.',

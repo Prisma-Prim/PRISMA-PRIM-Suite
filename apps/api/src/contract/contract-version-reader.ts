@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, lt } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
@@ -20,7 +20,10 @@ import { readContractDecision } from './contract-decision-command.js';
 import { readContractSignature } from './contract-signature-command.js';
 import { qualityRunView } from './contract-quality-view.js';
 import { ContractProjectsService } from './contract-projects.service.js';
-import { renderContractRepresentation } from './contract-representation.js';
+import {
+  renderContractRepresentation,
+  renderAddendumRepresentation,
+} from './contract-representation.js';
 import { contractVersionDifferences } from './contract-version-differences.js';
 type ContractRow = typeof contracts.$inferSelect;
 type VersionRow = typeof contractVersions.$inferSelect;
@@ -37,6 +40,7 @@ export class ContractVersionReader {
   async read(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     versionId?: string;
   }) {
     return this.databaseContext.transaction(async () => {
@@ -54,10 +58,13 @@ export class ContractVersionReader {
         actor: input.actor,
         companyId,
         opportunityId: opportunity.id,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         versionId: input.versionId,
       });
       if (!found) {
-        if (input.versionId) throw new NotFoundException();
+        if (input.versionId || input.contractId) throw new NotFoundException();
         return null;
       }
       if (input.versionId !== undefined && input.versionId !== found.version.id)
@@ -69,6 +76,7 @@ export class ContractVersionReader {
   async listVersions(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     limit: string | undefined;
     cursor: string | undefined;
   }) {
@@ -95,8 +103,12 @@ export class ContractVersionReader {
         actor: input.actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
       });
       if (!current) {
+        if (input.contractId !== undefined) throw new NotFoundException();
         if (input.cursor !== undefined)
           throw new BadRequestException({ field: 'cursor' });
         return { items: [], nextCursor: null };
@@ -112,6 +124,9 @@ export class ContractVersionReader {
           actor: input.actor,
           companyId,
           opportunityId: input.opportunityId,
+          ...(input.contractId === undefined
+            ? {}
+            : { contractId: input.contractId }),
           versionId: input.cursor,
         });
         if (!cursor) throw new BadRequestException({ field: 'cursor' });
@@ -147,12 +162,21 @@ export class ContractVersionReader {
     companyId,
     opportunityId,
     versionId,
+    contractId,
   }: {
     actor: ActorContext;
     companyId: string;
     opportunityId: string;
+    contractId?: string;
     versionId?: string;
   }) {
+    if (
+      contractId !== undefined &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+        contractId,
+      )
+    )
+      return undefined;
     if (
       versionId !== undefined &&
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
@@ -176,6 +200,9 @@ export class ContractVersionReader {
           eq(contracts.workspaceId, actor.workspaceId),
           eq(contracts.companyId, companyId),
           eq(contracts.opportunityId, opportunityId),
+          contractId === undefined
+            ? eq(contracts.kind, 'CONTRACT')
+            : eq(contracts.id, contractId),
           versionId === undefined
             ? undefined
             : eq(contractVersions.id, versionId),
@@ -188,8 +215,19 @@ export class ContractVersionReader {
 
   async view(actor: ActorContext, contract: ContractRow, version: VersionRow) {
     if (
-      contract.kind !== 'CONTRACT' ||
-      contract.origin !== 'ACCEPTED_OFFER' ||
+      !(
+        (contract.kind === 'CONTRACT' &&
+          contract.origin === 'ACCEPTED_OFFER' &&
+          contract.sourceOfferId &&
+          contract.sourceOfferVersionId &&
+          !contract.parentContractId) ||
+        (contract.kind === 'ADDENDUM' &&
+          contract.origin === null &&
+          contract.sourceOfferId === null &&
+          contract.sourceOfferVersionId === null &&
+          contract.parentContractId &&
+          contract.addendumOrdinal)
+      ) ||
       !Number.isInteger(contract.revision) ||
       contract.revision < 1 ||
       !Number.isInteger(version.versionNumber) ||
@@ -253,17 +291,27 @@ export class ContractVersionReader {
       )
       .orderBy(desc(contractQualityRuns.sequence))
       .limit(1);
-    const pricingSnapshot = await this.pricing.resolveContractVersionSnapshot({
-      actor,
-      companyId: contract.companyId,
-      opportunityId: contract.opportunityId,
-      contractVersionId: version.id,
-    });
-    const sourceOffer = await this.offers.readContractSourceReference({
-      actor,
-      contractId: contract.id,
-      opportunityId: contract.opportunityId,
-    });
+    const pricingSnapshot =
+      version.pricingSnapshotId === null
+        ? null
+        : await this.pricing.resolveContractVersionSnapshot({
+            actor,
+            companyId: contract.companyId,
+            opportunityId: contract.opportunityId,
+            contractVersionId: version.id,
+          });
+    const sourceOffer =
+      contract.kind === 'ADDENDUM'
+        ? null
+        : await this.offers.readContractSourceReference({
+            actor,
+            contractId: contract.id,
+            opportunityId: contract.opportunityId,
+          });
+    const parent =
+      contract.kind === 'ADDENDUM'
+        ? await this.addendumSource(actor, contract)
+        : null;
     const clientReference = await this.intake.readPricingClientProjection(
       actor,
       contract.originalClientAccountId,
@@ -274,10 +322,34 @@ export class ContractVersionReader {
           companyId: contract.companyId,
           opportunityId: contract.opportunityId,
           versionId: version.predecessorVersionId,
+          contractId: contract.id,
         })
       : null;
     if (version.predecessorVersionId && !predecessor)
       throw new Error('Missing Contract predecessor.');
+    const previousSnapshot =
+      predecessor &&
+      predecessor.version.pricingSnapshotId !== null &&
+      predecessor.version.pricingSnapshotId !== version.pricingSnapshotId
+        ? await this.pricing.resolveContractVersionSnapshot({
+            actor,
+            companyId: contract.companyId,
+            opportunityId: contract.opportunityId,
+            contractVersionId: predecessor.version.id,
+          })
+        : null;
+    const differences = predecessor
+      ? contractVersionDifferences(predecessor.version, version).map(
+          (difference) =>
+            difference.field === 'pricingSnapshotId'
+              ? {
+                  ...difference,
+                  beforeSnapshot: snapshotDifference(previousSnapshot),
+                  afterSnapshot: snapshotDifference(pricingSnapshot),
+                }
+              : difference,
+        )
+      : [];
     return {
       id: contract.id,
       companyId: contract.companyId,
@@ -289,12 +361,27 @@ export class ContractVersionReader {
       sourceOfferId: contract.sourceOfferId,
       sourceOfferVersionId: contract.sourceOfferVersionId,
       sourceOffer,
+      parentContractId: contract.parentContractId,
+      addendumOrdinal: contract.addendumOrdinal,
+      parent: parent
+        ? {
+            id: parent.contract.id,
+            illustrativeReference: parent.contract.illustrativeReference,
+            versionNumber: parent.version.versionNumber,
+            revision: parent.contract.revision,
+            kind: parent.contract.kind,
+          }
+        : null,
+      addenda: await this.listAddenda(actor, contract),
       illustrativeReference: contract.illustrativeReference,
       revision: contract.revision,
       provisional: true,
       createdByWorkspaceMembershipId: contract.createdByWorkspaceMembershipId,
       createdAt: contract.createdAt.toISOString(),
-      linkedProjects: await this.projectLinks.linkedProjects(actor, contract),
+      linkedProjects: await this.projectLinks.linkedProjects(
+        actor,
+        parent?.contract ?? contract,
+      ),
       ...(clientReference ? { clientReference } : {}),
       version: {
         id: version.id,
@@ -302,32 +389,54 @@ export class ContractVersionReader {
         predecessorVersionId: version.predecessorVersionId,
         supersededByVersionId: version.supersededByVersionId,
         supersededAt: version.supersededAt?.toISOString() ?? null,
-        differences: predecessor
-          ? contractVersionDifferences(predecessor.version, version)
-          : [],
-        representation: renderContractRepresentation({
-          templateCode: version.templateCode,
-          templateVersion: version.templateVersion,
-          clauseVersions: version.clauseVersions,
-          illustrativeReference: contract.illustrativeReference,
-          versionNumber: version.versionNumber,
-          issuingCompanyLabel: version.issuingCompanyLabel,
-          recipient,
-          createdAt: version.createdAt.toISOString(),
-          sourceOffer,
-          pricingSnapshotId: version.pricingSnapshotId,
-          lines: pricingSnapshot.lines,
-          subtotal: pricingSnapshot.subtotal,
-          taxTotal: pricingSnapshot.taxTotal,
-          total: pricingSnapshot.total,
-          currency: pricingSnapshot.currency,
-          scopeNote: version.scopeNote,
-          commercialConditions: version.commercialConditions,
-          termStartsOn: version.termStartsOn,
-          termEndsOn: version.termEndsOn,
-          specialConditions: version.specialConditions,
-          provenance: 'ILLUSTRATIVE',
-        }),
+        differences,
+        representation:
+          parent && contract.addendumOrdinal && version.changeSummary !== null
+            ? renderAddendumRepresentation({
+                templateCode: version.templateCode,
+                templateVersion: version.templateVersion,
+                clauseVersions: version.clauseVersions,
+                illustrativeReference: contract.illustrativeReference,
+                versionNumber: version.versionNumber,
+                issuingCompanyLabel: version.issuingCompanyLabel,
+                recipient,
+                createdAt: version.createdAt.toISOString(),
+                parent: {
+                  id: parent.contract.id,
+                  illustrativeReference: parent.contract.illustrativeReference,
+                  versionNumber: parent.version.versionNumber,
+                  kind: parent.contract.kind,
+                },
+                ordinal: contract.addendumOrdinal,
+                changeSummary: version.changeSummary,
+                termEndsOn: version.termEndsOn,
+                snapshot: pricingSnapshot,
+              })
+            : sourceOffer && pricingSnapshot && version.pricingSnapshotId
+              ? renderContractRepresentation({
+                  templateCode: version.templateCode,
+                  templateVersion: version.templateVersion,
+                  clauseVersions: version.clauseVersions,
+                  illustrativeReference: contract.illustrativeReference,
+                  versionNumber: version.versionNumber,
+                  issuingCompanyLabel: version.issuingCompanyLabel,
+                  recipient,
+                  createdAt: version.createdAt.toISOString(),
+                  sourceOffer,
+                  pricingSnapshotId: version.pricingSnapshotId,
+                  lines: pricingSnapshot.lines,
+                  subtotal: pricingSnapshot.subtotal,
+                  taxTotal: pricingSnapshot.taxTotal,
+                  total: pricingSnapshot.total,
+                  currency: pricingSnapshot.currency,
+                  scopeNote: version.scopeNote,
+                  commercialConditions: version.commercialConditions,
+                  termStartsOn: version.termStartsOn,
+                  termEndsOn: version.termEndsOn,
+                  specialConditions: version.specialConditions,
+                  provenance: 'ILLUSTRATIVE',
+                })
+              : missingRepresentation(),
         decision,
         signature,
         latestQualityRun: latestRun ? qualityRunView(latestRun, version) : null,
@@ -341,6 +450,7 @@ export class ContractVersionReader {
         termStartsOn: version.termStartsOn,
         termEndsOn: version.termEndsOn,
         specialConditions: version.specialConditions,
+        changeSummary: version.changeSummary,
         decisionState: version.decisionState,
         executionState: version.executionState,
         provenance: version.provenance,
@@ -349,6 +459,65 @@ export class ContractVersionReader {
         createdAt: version.createdAt.toISOString(),
       },
     };
+  }
+  async addendumSource(actor: ActorContext, contract: ContractRow) {
+    if (!contract.parentContractId) throw new Error('Missing Addendum parent.');
+    const parent = await this.find({
+      actor,
+      companyId: contract.companyId,
+      opportunityId: contract.opportunityId,
+      contractId: contract.parentContractId,
+    });
+    if (
+      !parent ||
+      !['CONTRACT', 'PRECONTRACT'].includes(parent.contract.kind) ||
+      parent.version.executionState !== 'EXECUTED'
+    )
+      throw new Error('Invalid Addendum parent.');
+    const snapshot =
+      parent.version.pricingSnapshotId === null
+        ? null
+        : await this.pricing.resolveContractVersionSnapshot({
+            actor,
+            companyId: contract.companyId,
+            opportunityId: contract.opportunityId,
+            contractVersionId: parent.version.id,
+          });
+    return { ...parent, currency: snapshot?.currency ?? null };
+  }
+  private async listAddenda(actor: ActorContext, contract: ContractRow) {
+    const rows = await this.databaseContext.connection
+      .select()
+      .from(contracts)
+      .where(
+        and(
+          eq(contracts.workspaceId, actor.workspaceId),
+          eq(contracts.companyId, contract.companyId),
+          eq(contracts.opportunityId, contract.opportunityId),
+          eq(contracts.parentContractId, contract.id),
+          eq(contracts.kind, 'ADDENDUM'),
+        ),
+      )
+      .orderBy(asc(contracts.addendumOrdinal));
+    const items = [];
+    for (const row of rows) {
+      const head = await this.find({
+        actor,
+        companyId: contract.companyId,
+        opportunityId: contract.opportunityId,
+        contractId: row.id,
+      });
+      if (!head) throw new Error('Missing Addendum head.');
+      items.push({
+        id: row.id,
+        addendumOrdinal: row.addendumOrdinal,
+        illustrativeReference: row.illustrativeReference,
+        versionNumber: head.version.versionNumber,
+        decisionState: head.version.decisionState,
+        executionState: head.version.executionState,
+      });
+    }
+    return items;
   }
 }
 export function recordedRecipient(version: VersionRow): OfferRecipientCopy {
@@ -372,4 +541,16 @@ export function recordedRecipient(version: VersionRow): OfferRecipientCopy {
       additionalLegalEntityId: version.recipientAdditionalLegalEntityId,
     };
   throw new Error('Invalid recorded Contract party.');
+}
+
+function missingRepresentation(): never {
+  throw new Error('Missing Contract generation inputs.');
+}
+
+function snapshotDifference(
+  snapshot: { id: string; currency: string; total: string } | null,
+) {
+  return snapshot
+    ? { id: snapshot.id, currency: snapshot.currency, total: snapshot.total }
+    : null;
 }

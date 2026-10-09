@@ -160,6 +160,7 @@ function sameIdentity(left: Identity, right: Identity) {
 /** Runtime C3 applicability, correlated with the exact persisted C1 version. */
 export function contractQualityCodes(
   termEndsOn: string | null,
+  addendum: { pricingSnapshotId: string | null } | null = null,
 ): ContractQualityCode[] {
   const codes: ContractQualityCode[] = [
     'SOURCE_COMPANY_MATCHES',
@@ -173,6 +174,14 @@ export function contractQualityCodes(
     'CONDITIONS_MATCH_ACCEPTED_OFFER',
     'ADDED_CONDITIONS_CONFIRMED',
   ];
+  if (addendum) {
+    codes.splice(6);
+    if (addendum.pricingSnapshotId !== null)
+      codes.push('PRICING_SNAPSHOT_COHERENT');
+    codes.push('PARENT_EXECUTED');
+    if (addendum.pricingSnapshotId !== null)
+      codes.push('CURRENCY_MATCHES_PARENT');
+  }
   if (termEndsOn !== null) codes.push('TERM_END_NOT_PASSED');
   codes.push('PROVISIONAL_MARKER_PRESENT');
   return codes;

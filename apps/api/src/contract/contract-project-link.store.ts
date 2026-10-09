@@ -51,6 +51,7 @@ export class ContractProjectLinkStore {
           eq(contracts.workspaceId, actor.workspaceId),
           eq(contracts.companyId, companyId),
           eq(contracts.opportunityId, opportunityId),
+          eq(contracts.kind, 'CONTRACT'),
         ),
       )
       .orderBy(desc(contractVersions.versionNumber))

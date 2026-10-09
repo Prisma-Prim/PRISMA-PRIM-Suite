@@ -1,3 +1,4 @@
+import { contractPath } from './contract-response';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -42,7 +43,7 @@ export function ContractVersionHistory({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}/versions${cursor ? '?cursor=' + encodeURIComponent(cursor) : ''}`,
+        `${contractPath(opportunityId, contract)}/versions${cursor ? '?cursor=' + encodeURIComponent(cursor) : ''}`,
         { companyContextId: companyId, signal: controller.signal },
       );
       if (controller.signal.aborted) return;
@@ -117,9 +118,15 @@ export function ContractVersionHistory({
                   <dt>{copy(difference.field)}</dt>
                   <dd>
                     {copy('before')}: {difference.before ?? copy('missing')}
+                    {difference.field === 'pricingSnapshotId' &&
+                      difference.beforeSnapshot &&
+                      ` · ${difference.beforeSnapshot.currency} · ${difference.beforeSnapshot.total}`}
                   </dd>
                   <dd>
                     {copy('after')}: {difference.after ?? copy('missing')}
+                    {difference.field === 'pricingSnapshotId' &&
+                      difference.afterSnapshot &&
+                      ` · ${difference.afterSnapshot.currency} · ${difference.afterSnapshot.total}`}
                   </dd>
                 </div>
               ))}

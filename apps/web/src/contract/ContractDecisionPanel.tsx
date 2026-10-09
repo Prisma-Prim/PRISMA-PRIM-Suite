@@ -1,3 +1,5 @@
+import { useContractAddendumCopy } from './contract-addendum.copy';
+import { contractPath, contractQualityContext } from './contract-response';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -50,6 +52,7 @@ export function ContractDecisionPanel({
   onDecision: (decision: ContractDecisionView) => void;
   onProtectionChange: (protectedCommand: boolean) => void;
 }) {
+  const addendumCopy = useContractAddendumCopy();
   const copy = useContractDecisionCopy();
   const { locale } = useInterfaceLocale();
   const [feedback, setFeedback] = useState<Feedback>('idle');
@@ -107,7 +110,7 @@ export function ContractDecisionPanel({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}/versions/${encodeURIComponent(contract.version.id)}/${command.kind}`,
+        `${contractPath(opportunityId, contract)}/versions/${encodeURIComponent(contract.version.id)}/${command.kind}`,
         {
           method: 'POST',
           companyContextId: companyId,
@@ -130,6 +133,7 @@ export function ContractDecisionPanel({
           result.value,
           contract.version.id,
           contract.version.termEndsOn,
+          contractQualityContext(contract),
         );
         if (
           recorded.kind !==
@@ -240,7 +244,12 @@ export function ContractDecisionPanel({
                   )
                 }
               />
-              {copy('acknowledge')}: {contractQualityLabels[item.code]}
+              {copy('acknowledge')}:{' '}
+              {item.code === 'PARENT_EXECUTED'
+                ? addendumCopy('parentExecuted')
+                : item.code === 'CURRENCY_MATCHES_PARENT'
+                  ? addendumCopy('currencyMatches')
+                  : contractQualityLabels[item.code]}
             </label>
           ))}
           <label>

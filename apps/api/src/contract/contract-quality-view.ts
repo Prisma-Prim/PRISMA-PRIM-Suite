@@ -27,7 +27,12 @@ export function qualityRunView(
     evaluatedAt: row.evaluatedAt.toISOString(),
     results: readContractQualityResults(
       row.results,
-      contractQualityCodes(version.termEndsOn),
+      contractQualityCodes(
+        version.termEndsOn,
+        version.templateCode === 'ADDENDUM_ILLUSTRATIVE'
+          ? { pricingSnapshotId: version.pricingSnapshotId }
+          : null,
+      ),
     ),
   };
 }

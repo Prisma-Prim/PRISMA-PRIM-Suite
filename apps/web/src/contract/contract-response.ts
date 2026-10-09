@@ -14,24 +14,39 @@ import {
   readLinkedProjects,
   type LinkedProject,
 } from './contract-projects-response';
-export interface ContractVersionDifference {
+interface ContentDifference {
   field:
     | 'recipientLegalName'
     | 'recipientTaxId'
     | 'recipientLegalAddress'
-    | 'pricingSnapshotId'
     | 'termStartsOn'
     | 'termEndsOn'
-    | 'specialConditions';
+    | 'specialConditions'
+    | 'changeSummary';
   before: string | null;
   after: string | null;
 }
-export interface ContractView {
+export type ContractVersionDifference =
+  | ContentDifference
+  | {
+      field: 'pricingSnapshotId';
+      before: string | null;
+      after: string | null;
+      beforeSnapshot: { id: string; currency: string; total: string } | null;
+      afterSnapshot: { id: string; currency: string; total: string } | null;
+    };
+interface ContractContent {
+  addenda: Array<{
+    id: string;
+    addendumOrdinal: number;
+    illustrativeReference: number;
+    versionNumber: number;
+    decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
+    executionState: 'NOT_EXECUTED' | 'EXECUTED';
+  }>;
   id: string;
   companyId: string;
   opportunityId: string;
-  sourceOfferVersionId: string;
-  sourceOffer: { illustrativeReference: number; versionNumber: number };
   illustrativeReference: number;
   revision: number;
   linkedProjects: LinkedProject[];
@@ -55,6 +70,8 @@ export interface ContractView {
     termStartsOn: string | null;
     termEndsOn: string | null;
     specialConditions: string | null;
+    changeSummary: string | null;
+    pricingSnapshotId: string | null;
     pricingSnapshot: {
       currency: string;
       subtotal: string;
@@ -66,12 +83,37 @@ export interface ContractView {
         lineNet: string;
         lineTax: string;
       }>;
-    };
+    } | null;
   } & (
     | { executionState: 'NOT_EXECUTED'; signature: null }
     | { executionState: 'EXECUTED'; signature: ContractSignatureView }
   );
 }
+export type ContractView = ContractContent &
+  (
+    | {
+        kind: 'CONTRACT';
+        parentContractId: null;
+        addendumOrdinal: null;
+        parent: null;
+        sourceOfferVersionId: string;
+        sourceOffer: { illustrativeReference: number; versionNumber: number };
+      }
+    | {
+        kind: 'ADDENDUM';
+        parentContractId: string;
+        addendumOrdinal: number;
+        parent: {
+          id: string;
+          kind: 'CONTRACT' | 'PRECONTRACT';
+          illustrativeReference: number;
+          versionNumber: number;
+          revision: number;
+        };
+        sourceOfferVersionId: null;
+        sourceOffer: null;
+      }
+  );
 export function readContractDetail(value: unknown): ContractView | null {
   const input = record(value);
   return input.contract === null ? null : readContract(input.contract);
@@ -80,11 +122,34 @@ export function readContract(value: unknown): ContractView {
   const input = record(value),
     version = record(input.version),
     recipient = record(version.recipient),
-    sourceOffer = record(input.sourceOffer),
-    snapshot = record(version.pricingSnapshot);
+    sourceOffer = input.sourceOffer === null ? null : record(input.sourceOffer),
+    snapshot =
+      version.pricingSnapshot === null ? null : record(version.pricingSnapshot);
+  const isAddendum = input.kind === 'ADDENDUM';
+  const parent = isAddendum ? readParent(input.parent) : null;
+  const addendum = isAddendum
+    ? { pricingSnapshotId: nullableString(version.pricingSnapshotId) }
+    : undefined;
   if (
-    input.kind !== 'CONTRACT' ||
-    input.origin !== 'ACCEPTED_OFFER' ||
+    !(
+      (input.kind === 'CONTRACT' &&
+        input.origin === 'ACCEPTED_OFFER' &&
+        sourceOffer !== null &&
+        snapshot !== null) ||
+      (isAddendum &&
+        input.origin === null &&
+        input.sourceOfferVersionId === null &&
+        input.sourceOfferId === null &&
+        sourceOffer === null &&
+        parent !== null &&
+        input.parentContractId === parent.id &&
+        Number.isSafeInteger(input.addendumOrdinal) &&
+        typeof input.addendumOrdinal === 'number' &&
+        input.addendumOrdinal > 0 &&
+        typeof version.changeSummary === 'string' &&
+        version.changeSummary.length > 0 &&
+        version.changeSummary.length <= 4000)
+    ) ||
     typeof input.revision !== 'number' ||
     !Number.isInteger(input.revision) ||
     input.revision < 1 ||
@@ -100,11 +165,13 @@ export function readContract(value: unknown): ContractView {
     version.provenance !== 'ILLUSTRATIVE' ||
     version.provisional !== true ||
     !['PRIMARY', 'ADDITIONAL'].includes(string(recipient.kind)) ||
-    !Array.isArray(snapshot.lines) ||
+    (snapshot !== null && !Array.isArray(snapshot.lines)) ||
     !Number.isSafeInteger(input.illustrativeReference) ||
     typeof input.illustrativeReference !== 'number' ||
     input.illustrativeReference < 1 ||
-    string(version.pricingSnapshotId) !== string(snapshot.id)
+    (snapshot === null
+      ? version.pricingSnapshotId !== null
+      : string(version.pricingSnapshotId) !== string(snapshot.id))
   )
     throw new Error('Invalid Contract response.');
   const createdRevision =
@@ -130,6 +197,7 @@ export function readContract(value: unknown): ContractView {
           version.decision,
           string(version.id),
           nullableDate(version.termEndsOn),
+          addendum,
         );
   if (
     (version.decisionState === 'PENDING' &&
@@ -153,6 +221,7 @@ export function readContract(value: unknown): ContractView {
             versionId: string(version.id),
             termEndsOn: nullableDate(version.termEndsOn),
             approval: decision,
+            addendum,
           }),
         } as const)
       : ({ executionState: 'NOT_EXECUTED', signature: null } as const);
@@ -164,21 +233,17 @@ export function readContract(value: unknown): ContractView {
       version.signature !== undefined)
   )
     throw new Error('Invalid Contract execution state.');
-  return {
+  const content: ContractContent = {
+    addenda: readAddenda(input.addenda ?? []),
     id: string(input.id),
     revision: positiveInteger(input.revision),
     linkedProjects: readLinkedProjects(
       input.linkedProjects,
-      string(input.id),
-      input.revision,
+      parent?.id ?? string(input.id),
+      parent?.revision ?? input.revision,
     ),
     companyId: string(input.companyId),
     opportunityId: string(input.opportunityId),
-    sourceOfferVersionId: string(input.sourceOfferVersionId),
-    sourceOffer: {
-      illustrativeReference: positiveInteger(sourceOffer.illustrativeReference),
-      versionNumber: positiveInteger(sourceOffer.versionNumber),
-    },
     illustrativeReference: input.illustrativeReference,
     version: {
       ...execution,
@@ -196,6 +261,7 @@ export function readContract(value: unknown): ContractView {
               version.latestQualityRun,
               string(version.id),
               nullableDate(version.termEndsOn),
+              addendum,
             ),
       recipient: {
         legalName: string(recipient.legalName),
@@ -208,21 +274,48 @@ export function readContract(value: unknown): ContractView {
       termStartsOn: nullableDate(version.termStartsOn),
       termEndsOn: nullableDate(version.termEndsOn),
       specialConditions: nullableString(version.specialConditions),
-      pricingSnapshot: {
-        currency: string(snapshot.currency),
-        subtotal: money(snapshot.subtotal),
-        taxTotal: money(snapshot.taxTotal),
-        total: money(snapshot.total),
-        lines: snapshot.lines.map((value) => {
-          const line = record(value);
-          return {
-            serviceName: string(line.serviceName),
-            quantity: string(line.quantity),
-            lineNet: money(line.adjustedLineNet ?? line.lineNet),
-            lineTax: money(line.adjustedLineTax ?? line.lineTax),
-          };
-        }),
-      },
+      changeSummary: isAddendum ? string(version.changeSummary) : null,
+      pricingSnapshotId: nullableString(version.pricingSnapshotId),
+      pricingSnapshot: snapshot
+        ? {
+            currency: string(snapshot.currency),
+            subtotal: money(snapshot.subtotal),
+            taxTotal: money(snapshot.taxTotal),
+            total: money(snapshot.total),
+            lines: snapshotLines(snapshot.lines).map((value: unknown) => {
+              const line = record(value);
+              return {
+                serviceName: string(line.serviceName),
+                quantity: string(line.quantity),
+                lineNet: money(line.adjustedLineNet ?? line.lineNet),
+                lineTax: money(line.adjustedLineTax ?? line.lineTax),
+              };
+            }),
+          }
+        : null,
+    },
+  };
+  if (isAddendum && parent)
+    return {
+      ...content,
+      kind: 'ADDENDUM',
+      parentContractId: parent.id,
+      parent,
+      addendumOrdinal: positiveInteger(input.addendumOrdinal),
+      sourceOfferVersionId: null,
+      sourceOffer: null,
+    };
+  if (!sourceOffer) throw new Error('Missing Contract Offer source.');
+  return {
+    ...content,
+    kind: 'CONTRACT',
+    parentContractId: null,
+    parent: null,
+    addendumOrdinal: null,
+    sourceOfferVersionId: string(input.sourceOfferVersionId),
+    sourceOffer: {
+      illustrativeReference: positiveInteger(sourceOffer.illustrativeReference),
+      versionNumber: positiveInteger(sourceOffer.versionNumber),
     },
   };
 }
@@ -239,14 +332,25 @@ function readContractDifferences(value: unknown): ContractVersionDifference[] {
       field !== 'pricingSnapshotId' &&
       field !== 'termStartsOn' &&
       field !== 'termEndsOn' &&
-      field !== 'specialConditions'
+      field !== 'specialConditions' &&
+      field !== 'changeSummary'
     )
       throw new Error('Invalid Contract difference field.');
     const before = nullableString(row.before),
       after = nullableString(row.after);
     if (before === after || differences.some((entry) => entry.field === field))
       throw new Error('Invalid Contract difference.');
-    differences.push({ field, before, after });
+    differences.push(
+      field === 'pricingSnapshotId'
+        ? {
+            field,
+            before,
+            after,
+            beforeSnapshot: readSnapshotDifference(row.beforeSnapshot, before),
+            afterSnapshot: readSnapshotDifference(row.afterSnapshot, after),
+          }
+        : { field, before, after },
+    );
   }
   return differences;
 }
@@ -302,4 +406,77 @@ function money(value: unknown): string {
   if (!/^\d+\.\d{2}$/u.test(amount))
     throw new Error('Invalid Contract amount.');
   return amount;
+}
+
+function snapshotLines(value: unknown): unknown[] {
+  if (!Array.isArray(value)) throw new Error('Invalid Snapshot lines.');
+  return value;
+}
+function readParent(
+  value: unknown,
+): NonNullable<Extract<ContractView, { kind: 'ADDENDUM' }>['parent']> {
+  const input = record(value);
+  const kind = string(input.kind);
+  if (kind !== 'CONTRACT' && kind !== 'PRECONTRACT')
+    throw new Error('Invalid Addendum parent kind.');
+  return {
+    id: string(input.id),
+    kind,
+    illustrativeReference: positiveInteger(input.illustrativeReference),
+    versionNumber: positiveInteger(input.versionNumber),
+    revision: positiveInteger(input.revision),
+  };
+}
+function readAddenda(value: unknown): ContractView['addenda'] {
+  if (!Array.isArray(value)) throw new Error('Invalid Addenda list.');
+  const items: ContractView['addenda'] = [];
+  for (const item of value) {
+    const input = record(item);
+    const decisionState = input.decisionState,
+      executionState = input.executionState;
+    if (
+      (decisionState !== 'PENDING' &&
+        decisionState !== 'APPROVED' &&
+        decisionState !== 'REJECTED') ||
+      (executionState !== 'EXECUTED' && executionState !== 'NOT_EXECUTED') ||
+      (executionState === 'EXECUTED' && decisionState !== 'APPROVED')
+    )
+      throw new Error('Invalid Addendum state.');
+    const ordinal = positiveInteger(input.addendumOrdinal);
+    if (
+      (items.at(-1)?.addendumOrdinal ?? 0) >= ordinal ||
+      items.some((entry) => entry.id === input.id)
+    )
+      throw new Error('Invalid Addendum order.');
+    items.push({
+      id: string(input.id),
+      addendumOrdinal: ordinal,
+      illustrativeReference: positiveInteger(input.illustrativeReference),
+      versionNumber: positiveInteger(input.versionNumber),
+      decisionState,
+      executionState,
+    });
+  }
+  return items;
+}
+export function contractPath(
+  opportunityId: string,
+  contract: Pick<ContractView, 'id' | 'kind'>,
+) {
+  return `/contracts/opportunities/${encodeURIComponent(opportunityId)}${contract.kind === 'ADDENDUM' ? '/agreements/' + encodeURIComponent(contract.id) : ''}`;
+}
+export function contractQualityContext(contract: ContractView) {
+  return contract.kind === 'ADDENDUM'
+    ? { pricingSnapshotId: contract.version.pricingSnapshotId }
+    : undefined;
+}
+
+function readSnapshotDifference(value: unknown, id: string | null) {
+  if (id === null) {
+    if (value !== null) throw new Error('Invalid absent Snapshot difference.');
+    return null;
+  }
+  const row = record(value);
+  if (row.id !== id) throw new Error('Invalid Snapshot difference target.');
+  return { id, currency: string(row.currency), total: money(row.total) };
 }

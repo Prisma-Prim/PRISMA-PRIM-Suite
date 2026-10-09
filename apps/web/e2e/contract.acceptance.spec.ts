@@ -1756,6 +1756,293 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
       'c6-executed-reopened-' + suffix.toLowerCase() + '.png',
     ),
   });
+  // C8 uses the executed main agreement with both CP1/CP2 links.
+  await command({
+    request,
+    path: '/company-pricing-user-assignments',
+    data: { workspaceMembershipId: membership, companyId },
+    key: 'c8-pricing-grant-' + suffix,
+    administrator: true,
+  });
+  const parentPath = '/contracts/opportunities/' + opportunityId;
+  const readParent = async () =>
+    object(
+      object(
+        await body(
+          await request.get(api + parentPath, {
+            headers: { ...preparer, 'x-company-context-id': companyId },
+          }),
+        ),
+      ).contract,
+    );
+  const parentBefore = await readParent();
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Contract Request ' + suffix, { exact: true }),
+    })
+    .click();
+  const addendumAttempts: Array<{
+    body: string | null;
+    key: string | undefined;
+  }> = [];
+  const addendumPath =
+    parentPath + '/agreements/' + text(parentBefore.id) + '/addenda';
+  await page.route('**/api' + addendumPath, async (route) => {
+    addendumAttempts.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (addendumAttempts.length === 1) {
+      expect((await route.fetch()).status()).toBe(201);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await panel
+    .getByRole('textbox', { name: 'Change summary', exact: true })
+    .fill('  C8 first exact change ' + suffix + '  ');
+  await panel
+    .getByRole('button', { name: 'Create Addendum', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    panel.getByText(
+      'The Addendum result is uncertain. Retry the identical command.',
+    ),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole('textbox', { name: 'Change summary', exact: true }),
+  ).toBeDisabled();
+  await panel
+    .getByRole('button', {
+      name: 'Retry identical Addendum command',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    panel.getByRole('button', {
+      name: 'Return to parent agreement',
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(addendumAttempts).toHaveLength(2);
+  expect(addendumAttempts[1]).toEqual(addendumAttempts[0]);
+  await page.unroute('**/api' + addendumPath);
+  await expect(
+    panel
+      .getByRole('paragraph')
+      .filter({ hasText: /^No Pricing Snapshot referenced\.$/ }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole('region', { name: 'Contract Projects', exact: true }),
+  ).toHaveCount(0);
+  await expect(panel.getByText(chosenTitle, { exact: true })).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Return to parent agreement', exact: true })
+    .click();
+  await panel
+    .getByRole('textbox', { name: 'Change summary', exact: true })
+    .fill('C8 second priced change ' + suffix);
+  await Promise.all([
+    page.waitForResponse((response) =>
+      response
+        .url()
+        .includes(
+          '/pricing/opportunities/' + opportunityId + '/snapshots?limit=25',
+        ),
+    ),
+    panel
+      .getByRole('button', { name: 'Choose a Pricing Snapshot', exact: true })
+      .click(),
+  ]);
+  await selectOption(panel.getByRole('combobox'), { value: text(snapshot.id) });
+  await panel
+    .getByRole('button', { name: 'Create Addendum', exact: true })
+    .click();
+  await expect(
+    panel
+      .getByRole('definition')
+      .filter({ hasText: 'C8 second priced change ' + suffix }),
+  ).toBeVisible();
+  await expect(
+    panel
+      .getByRole('paragraph')
+      .filter({ hasText: /^No Pricing Snapshot referenced\.$/ }),
+  ).toHaveCount(0);
+  await panel
+    .getByRole('button', { name: 'Return to parent agreement', exact: true })
+    .click();
+  const addenda = panel.getByRole('region', { name: 'Addenda', exact: true });
+  await expect(addenda.getByRole('button')).toHaveText([
+    'Open Addendum 1',
+    'Open Addendum 2',
+  ]);
+  await addenda
+    .getByRole('button', { name: 'Open Addendum 1', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await panel
+    .getByRole('textbox', { name: 'Change summary', exact: true })
+    .fill('C8 revised exact change ' + suffix);
+  await panel
+    .getByLabel('New term end (optional)', { exact: true })
+    .fill('2030-12-31');
+  await panel
+    .getByRole('button', { name: 'Create new Addendum Version', exact: true })
+    .click();
+  await expect(
+    panel.getByRole('definition').filter({
+      hasText: new RegExp('^C8 revised exact change ' + suffix + '$'),
+    }),
+  ).toBeVisible();
+  await expect(
+    history.getByRole('button', {
+      name: 'Open Contract Version 2',
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  await expect(
+    checks.getByText('Parent agreement is executed', { exact: true }),
+  ).toBeVisible();
+  await checks
+    .getByRole('button', { name: 'Reopen recorded checks', exact: true })
+    .click();
+  const recordedChildRun = checks
+    .getByRole('button', { name: /^Reopen run · / })
+    .first();
+  await expect(recordedChildRun).toBeVisible();
+  await recordedChildRun.click();
+  await expect(
+    checks.getByText('Parent agreement is executed', { exact: true }),
+  ).toBeVisible();
+  for (const checkbox of await decision.getByRole('checkbox').all())
+    await checkbox.check();
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .click();
+  await expect(
+    decision.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  const parentWithChildren = await readParent();
+  if (!Array.isArray(parentWithChildren.addenda))
+    throw new Error('Missing C8 ordered Addenda');
+  const firstChildId = text(object(parentWithChildren.addenda[0]).id),
+    secondChildId = text(object(parentWithChildren.addenda[1]).id);
+  const childBase = parentPath + '/agreements/' + firstChildId;
+  const readChild = async (id: string) =>
+    object(
+      object(
+        await body(
+          await request.get(api + parentPath + '/agreements/' + id, {
+            headers: { ...preparer, 'x-company-context-id': companyId },
+          }),
+        ),
+      ).contract,
+    );
+  const approvedChild = await readChild(firstChildId),
+    childApproval = object(object(approvedChild.version).decision);
+  const childSignedOn = text(childApproval.decidedAt).slice(0, 10);
+  await signatures
+    .getByLabel('Provider signatory label', { exact: true })
+    .fill('Synthetic C8 provider');
+  await signatures
+    .getByLabel('Client signatory label', { exact: true })
+    .fill('Synthetic C8 Client');
+  await signatures
+    .getByLabel('Provider signing date', { exact: true })
+    .fill(childSignedOn);
+  await signatures
+    .getByLabel('Client signing date', { exact: true })
+    .fill(childSignedOn);
+  for (const checkbox of await signatures.getByRole('checkbox').all())
+    await checkbox.check();
+  await signatures
+    .getByRole('button', {
+      name: 'Record both simulated signatures',
+      exact: true,
+    })
+    .click();
+  await expect(
+    signatures.getByText('Executed — simulated evidence only', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole('button', {
+      name: 'Create new Addendum Version',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(
+    frame.getByRole('heading', { name: 'Illustrative Addendum', exact: true }),
+  ).toBeVisible();
+  await expect(
+    frame.getByText('C8 revised exact change ' + suffix, { exact: true }),
+  ).toBeVisible();
+  const executedChild = await readChild(firstChildId);
+  expect(
+    object(object(executedChild.version).signature).representationChecksum,
+  ).toBe(childApproval.representationChecksum);
+  expect(object(object(executedChild.version).representation).sha256).toBe(
+    childApproval.representationChecksum,
+  );
+  const frozenRefusal = await request.post(api + childBase + '/versions', {
+    headers: {
+      ...preparer,
+      'x-company-context-id': companyId,
+      'idempotency-key': 'c8-frozen-' + suffix,
+    },
+    data: {
+      expectedContractRevision: executedChild.revision,
+      changeSummary: 'Cannot change signed child',
+    },
+  });
+  expect(frozenRefusal.status()).toBe(409);
+  await panel.screenshot({
+    path: testInfo.outputPath('c8-executed-' + suffix.toLowerCase() + '.png'),
+  });
+  await panel
+    .getByRole('button', { name: 'Return to parent agreement', exact: true })
+    .click();
+  await expect(addenda.getByRole('listitem').first()).toContainText(
+    'Executed — simulated evidence only',
+  );
+  await addenda
+    .getByRole('button', { name: 'Open Addendum 2', exact: true })
+    .click();
+  await expect(
+    panel
+      .getByRole('definition')
+      .filter({ hasText: 'C8 second priced change ' + suffix }),
+  ).toBeVisible();
+  expect(
+    object((await readChild(secondChildId)).version).pricingSnapshotId,
+  ).toBe(text(snapshot.id));
+  await panel
+    .getByRole('button', { name: 'Return to parent agreement', exact: true })
+    .click();
+  const parentAfter = await readParent();
+  expect({ ...parentAfter, addenda: [] }).toEqual({
+    ...parentBefore,
+    addenda: [],
+  });
+  await expect(
+    projectsPanel.getByRole('button', { name: 'Open Project', exact: true }),
+  ).toHaveCount(2);
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c8-parent-unchanged-' + suffix.toLowerCase() + '.png',
+    ),
+  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

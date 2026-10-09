@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   renderContractRepresentation,
+  renderAddendumRepresentation,
+  ADDENDUM_CLAUSE_VERSIONS,
   type RenderContractRepresentationInput,
 } from './contract-representation.js';
 
@@ -121,5 +123,80 @@ describe('Exact illustrative Contract representation', () => {
     expect(() =>
       renderContractRepresentation({ ...input, ...binding }),
     ).toThrow('unsupported');
+  });
+});
+
+describe('Exact illustrative Addendum representation', () => {
+  const addendum: Parameters<typeof renderAddendumRepresentation>[0] = {
+    templateCode: 'ADDENDUM_ILLUSTRATIVE',
+    templateVersion: 1,
+    clauseVersions: ADDENDUM_CLAUSE_VERSIONS,
+    illustrativeReference: 7,
+    versionNumber: 1,
+    issuingCompanyLabel: input.issuingCompanyLabel,
+    recipient: input.recipient,
+    createdAt: input.createdAt,
+    parent: {
+      id: 'synthetic-parent',
+      kind: 'CONTRACT',
+      illustrativeReference: 4,
+      versionNumber: 2,
+    },
+    ordinal: 3,
+    changeSummary: '  Change <script> & scope\nexact  ',
+    termEndsOn: null,
+    snapshot: null,
+  };
+  it('matches literal golden bytes and digest with absent optional price and exact escaped change', () => {
+    const expected = readFileSync('src/contract/addendum-v1.golden.txt', 'utf8')
+      .replaceAll('\r\n', '\n')
+      .replace(/\n$/u, '');
+    const result = renderAddendumRepresentation(addendum);
+    expect(result.html).toBe(expected);
+    expect(result.sha256).toBe(
+      'bf8f1eb94a1f5edf0cca791ede888e34f168eaa726fb09ec5ee62a3621c1b17b',
+    );
+    expect(renderAddendumRepresentation(addendum)).toEqual(result);
+    expect(result.html).not.toContain('<dd>0.00');
+  });
+  it('renders only bound immutable price strings and supports JSON object key order', () => {
+    const result = renderAddendumRepresentation({
+      ...addendum,
+      clauseVersions: ADDENDUM_CLAUSE_VERSIONS.map((entry) => ({
+        version: entry.version,
+        code: entry.code,
+      })),
+      snapshot: {
+        id: 'synthetic-snapshot',
+        currency: input.currency,
+        subtotal: input.subtotal,
+        taxTotal: input.taxTotal,
+        total: input.total,
+        lines: input.lines,
+      },
+      termEndsOn: '2026-12-31',
+    });
+    expect(result.html).toContain(
+      '<dt>Pricing Snapshot id</dt><dd>synthetic-snapshot</dd>',
+    );
+    expect(result.html).toContain('<dt>Total</dt><dd>431.25 EUR</dd>');
+    expect(result.html).toContain('<dt>Quantity</dt><dd>1.2500</dd>');
+    expect(result.html).toContain('<dt>New term end</dt><dd>2026-12-31</dd>');
+  });
+  it.each([
+    { templateCode: 'CONTRACT_ILLUSTRATIVE' },
+    { templateVersion: 2 },
+    { clauseVersions: null },
+    { clauseVersions: [...ADDENDUM_CLAUSE_VERSIONS].reverse() },
+    {
+      clauseVersions: ADDENDUM_CLAUSE_VERSIONS.map((entry) => ({
+        ...entry,
+        extra: true,
+      })),
+    },
+  ])('refuses unsupported bindings %j', (binding) => {
+    expect(() =>
+      renderAddendumRepresentation({ ...addendum, ...binding }),
+    ).toThrow('Unsupported');
   });
 });
