@@ -21,6 +21,7 @@ export function readContractDecision(
   value: unknown,
   versionId: string,
   termEndsOn: string | null,
+  addendum?: { pricingSnapshotId: string | null },
 ): ContractDecisionView {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('Invalid Contract decision.');
@@ -67,6 +68,7 @@ export function readContractDecision(
       input.qualityRun,
       versionId,
       termEndsOn,
+      addendum,
     );
     const representationChecksum = text(input.representationChecksum);
     if (

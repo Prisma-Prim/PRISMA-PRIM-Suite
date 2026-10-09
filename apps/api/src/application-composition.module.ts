@@ -1,3 +1,4 @@
+import { ContractAgreementsController } from './contract/contract-agreements.controller.js';
 import { ContractModule } from './contract/contract.module.js';
 import {
   ContractController,
@@ -153,6 +154,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalHomeController,
     OfferController,
     ContractController,
+    ContractAgreementsController,
     ProfitabilityEstimateController,
   ],
   providers: [

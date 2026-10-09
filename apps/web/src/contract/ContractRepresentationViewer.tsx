@@ -15,6 +15,7 @@ export function ContractRepresentationViewer({
   opportunityId,
   contractId,
   versionId,
+  agreementId,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -24,6 +25,7 @@ export function ContractRepresentationViewer({
   opportunityId: string;
   contractId: string;
   versionId: string;
+  agreementId?: string;
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
@@ -40,7 +42,7 @@ export function ContractRepresentationViewer({
         const api = await createAuthenticatedApiClient(identity);
         if (signal.aborted) return;
         const result = await api.request<unknown>(
-          `/contracts/opportunities/${encodeURIComponent(opportunityId)}/versions/${encodeURIComponent(versionId)}/representation`,
+          `/contracts/opportunities/${encodeURIComponent(opportunityId)}${agreementId ? '/agreements/' + encodeURIComponent(agreementId) : ''}/versions/${encodeURIComponent(versionId)}/representation`,
           { companyContextId: companyId, signal },
         );
         if (signal.aborted) return;
@@ -65,7 +67,12 @@ export function ContractRepresentationViewer({
         }
         setView({
           kind: 'ready',
-          ...readRepresentation({ value: result.value, contractId, versionId }),
+          ...readRepresentation({
+            value: result.value,
+            contractId,
+            versionId,
+            agreementId,
+          }),
         });
       } catch {
         if (!signal.aborted) setView({ kind: 'error' });
@@ -79,6 +86,7 @@ export function ContractRepresentationViewer({
     opportunityId,
     contractId,
     versionId,
+    agreementId,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
@@ -119,10 +127,12 @@ function readRepresentation({
   value,
   contractId,
   versionId,
+  agreementId,
 }: {
   value: unknown;
   contractId: string;
   versionId: string;
+  agreementId?: string;
 }) {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('Invalid Contract representation.');
@@ -132,7 +142,8 @@ function readRepresentation({
     !('contractVersionId' in value) ||
     value.contractVersionId !== versionId ||
     !('templateCode' in value) ||
-    value.templateCode !== 'CONTRACT_ILLUSTRATIVE' ||
+    value.templateCode !==
+      (agreementId ? 'ADDENDUM_ILLUSTRATIVE' : 'CONTRACT_ILLUSTRATIVE') ||
     !('templateVersion' in value) ||
     value.templateVersion !== 1 ||
     !('html' in value) ||
@@ -146,7 +157,7 @@ function readRepresentation({
   if (
     !('clauseVersions' in value) ||
     !Array.isArray(value.clauseVersions) ||
-    value.clauseVersions.length !== 5
+    value.clauseVersions.length !== (agreementId ? 6 : 5)
   )
     throw new Error('Invalid Contract clause bindings.');
   const codes = [
@@ -154,6 +165,7 @@ function readRepresentation({
     'CL_PRICE',
     'CL_TERM',
     'CL_CONDITIONS',
+    ...(agreementId ? ['CL_CHANGE'] : []),
     'CL_GENERAL',
   ];
   if (

@@ -27,6 +27,7 @@ export function readContractSignature(
     versionId: string;
     termEndsOn: string | null;
     approval: ContractDecisionView | null;
+    addendum?: { pricingSnapshotId: string | null };
   },
 ): ContractSignatureView {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -65,6 +66,7 @@ export function readContractSignature(
     row.qualityRun,
     input.versionId,
     input.termEndsOn,
+    input.addendum,
   );
   if (
     qualityRun.actorWorkspaceMembershipId !== actorWorkspaceMembershipId ||

@@ -31,6 +31,7 @@ import {
 export interface RecordContractSignatureInput {
   actor: ActorContext;
   opportunityId: string;
+  contractId?: string;
   versionId: string;
   payload: unknown;
   idempotencyKey: string | undefined;
@@ -65,6 +66,9 @@ export async function recordContractSignature(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         versionId: input.versionId,
       });
       if (!found || found.version.id !== input.versionId)
@@ -72,6 +76,9 @@ export async function recordContractSignature(
       const fingerprint = commandFingerprint({
         kind: 'RECORD_SIGNATURE',
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         versionId: input.versionId,
         payload: input.payload,
       });
@@ -129,6 +136,9 @@ export async function recordContractSignature(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
       });
       if (!current) throw new NotFoundException();
       if (current.version.id !== input.versionId)
@@ -272,6 +282,15 @@ export async function recordContractSignature(
         contractVersionId: current.version.id,
         versionNumber: current.version.versionNumber,
         offerVersionId: current.contract.sourceOfferVersionId,
+        ...(current.contract.parentContractId &&
+        current.contract.addendumOrdinal
+          ? {
+              addendum: {
+                parentContractId: current.contract.parentContractId,
+                addendumOrdinal: current.contract.addendumOrdinal,
+              },
+            }
+          : {}),
         pricingSnapshotId: current.version.pricingSnapshotId,
         acknowledgedWarningCodes: warnings,
         occurredAt: quality.evaluatedAt,

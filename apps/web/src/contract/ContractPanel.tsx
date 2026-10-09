@@ -1,3 +1,6 @@
+import { ContractAddendumEditor } from './ContractAddendumEditor';
+import { useContractAddendumCopy } from './contract-addendum.copy';
+import { contractQualityContext } from './contract-response';
 import { useContractVersionCopy } from './contract-version.copy';
 import { ContractVersionPanel } from './ContractVersionPanel';
 import { ContractVersionHistory } from './ContractVersionHistory';
@@ -62,6 +65,13 @@ export function ContractPanel({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onOpenProject?: (projectId: string) => void;
 }) {
+  const addendumCopy = useContractAddendumCopy();
+  const decisionCopy = useContractDecisionCopy();
+  const signatureCopy = useContractSignatureCopy();
+  const [agreementId, setAgreementId] = useState<string | null>(null);
+  const [addendumSuccessId, setAddendumSuccessId] = useState<string | null>(
+    null,
+  );
   const companyId = actor.activeCompany?.id;
   const context = actor.activeCompany;
   const mayRead = Boolean(
@@ -82,6 +92,7 @@ export function ContractPanel({
   );
   const stamp = JSON.stringify([
     opportunityId,
+    agreementId,
     actor.internalUserId,
     actor.workspaceId,
     actor.workspaceMembershipId,
@@ -97,8 +108,13 @@ export function ContractPanel({
     context?.clientPermissionAssignmentId,
     context?.clientPermissionSetVersion,
     context?.clientPermissions,
+    context?.pricingUserPermissionAssignmentId,
+    context?.pricingUserPermissionSetVersion,
+    context?.pricingUserPermissions,
     context?.offerPermissionAssignmentId,
+    context?.offerPermissionSetVersion,
     context?.offerApproverAssignmentId,
+    context?.offerApproverPermissionSetVersion,
     context?.offerPermissions,
     context?.projectPermissions,
     actor.workspacePermissions,
@@ -111,6 +127,7 @@ export function ContractPanel({
     [signatureProtected, setSignatureProtected] = useState(false),
     [projectLinkProtected, setProjectLinkProtected] = useState(false),
     [versionProtected, setVersionProtected] = useState(false),
+    [addendumProtected, setAddendumProtected] = useState(false),
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
@@ -118,6 +135,7 @@ export function ContractPanel({
     attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   const locked =
     running ||
+    addendumProtected ||
     versionProtected ||
     decisionProtected ||
     signatureProtected ||
@@ -145,7 +163,7 @@ export function ContractPanel({
       const api = await createAuthenticatedApiClient(identity);
       if (signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}${versionId ? '/versions/' + encodeURIComponent(versionId) : ''}`,
+        `/contracts/opportunities/${encodeURIComponent(opportunityId)}${agreementId ? '/agreements/' + encodeURIComponent(agreementId) : ''}${versionId ? '/versions/' + encodeURIComponent(versionId) : ''}`,
         { companyContextId: companyId, signal },
       );
       if (signal.aborted) return;
@@ -162,7 +180,8 @@ export function ContractPanel({
       if (contract) {
         if (
           contract.companyId !== companyId ||
-          contract.opportunityId !== opportunityId
+          contract.opportunityId !== opportunityId ||
+          (agreementId !== null && contract.id !== agreementId)
         )
           throw new Error('Mismatched Contract.');
         setView({ kind: 'ready', contract, stamp, identity });
@@ -196,6 +215,7 @@ export function ContractPanel({
     attempt.current = undefined;
     setFeedback(null);
     setRunning(false);
+    setAddendumProtected(false);
     setStart('');
     setEnd('');
     setConditions('');
@@ -208,6 +228,10 @@ export function ContractPanel({
     };
     // This authority key captures every input which can invalidate business state.
   }, [stamp, opportunityId, identity]);
+  useEffect(() => {
+    setAgreementId(null);
+    setAddendumSuccessId(null);
+  }, [opportunityId, companyId, actor.workspaceId, identity]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
@@ -313,7 +337,115 @@ export function ContractPanel({
         view.contract.opportunityId === opportunityId &&
         companyId && (
           <>
+            {view.contract.kind === 'ADDENDUM' && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => {
+                  setAddendumSuccessId(null);
+                  setAgreementId(null);
+                }}
+              >
+                {addendumCopy('back')}
+              </button>
+            )}
+            {addendumSuccessId === view.contract.id && (
+              <p role="status">{addendumCopy('success')}</p>
+            )}
             <ContractSummary contract={view.contract} />
+            {view.contract.kind === 'CONTRACT' &&
+              view.contract.version.executionState === 'EXECUTED' && (
+                <section aria-label={addendumCopy('title')}>
+                  <h5>{addendumCopy('title')}</h5>
+                  <ol>
+                    {view.contract.addenda.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          disabled={locked}
+                          onClick={() => {
+                            setAddendumSuccessId(null);
+                            setAgreementId(item.id);
+                          }}
+                        >
+                          {addendumCopy('open')} {item.addendumOrdinal}
+                        </button>{' '}
+                        ·{' '}
+                        {decisionCopy(
+                          item.decisionState === 'APPROVED'
+                            ? 'approved'
+                            : item.decisionState === 'REJECTED'
+                              ? 'rejected'
+                              : 'pending',
+                        )}{' '}
+                        ·{' '}
+                        {signatureCopy(
+                          item.executionState === 'EXECUTED'
+                            ? 'executed'
+                            : 'pending',
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              )}
+            {Boolean(
+              context?.contractPermissionSetVersion === 'v1' &&
+              context.contractPermissionAssignmentId &&
+              context.contractPermissions?.includes(
+                'commercial.contract.prepare',
+              ) &&
+              context.clientPermissions?.includes('client.read'),
+            ) &&
+              !view.contract.version.supersededByVersionId &&
+              (view.contract.kind === 'ADDENDUM'
+                ? view.contract.version.executionState !== 'EXECUTED'
+                : view.contract.version.executionState === 'EXECUTED') && (
+                <ContractAddendumEditor
+                  key={
+                    stamp +
+                    ':addendum:' +
+                    view.contract.id +
+                    ':' +
+                    view.contract.revision
+                  }
+                  identity={identity}
+                  companyId={companyId}
+                  opportunityId={opportunityId}
+                  contract={view.contract}
+                  maySelectSnapshot={Boolean(
+                    (context?.pricingUserPermissionSetVersion === 'v1' &&
+                      context.pricingUserPermissionAssignmentId &&
+                      context.pricingUserPermissions?.includes(
+                        'commercial.pricing.snapshot.read',
+                      )) ||
+                    (context?.offerPermissionSetVersion === 'v1' &&
+                      context.offerPermissionAssignmentId &&
+                      context.offerPermissions?.includes(
+                        'commercial.pricing.snapshot.read',
+                      )),
+                  )}
+                  protectedCommand={
+                    versionProtected ||
+                    qualityProtected ||
+                    decisionProtected ||
+                    signatureProtected ||
+                    projectLinkProtected
+                  }
+                  reject={reject}
+                  onProtectionChange={setAddendumProtected}
+                  onCreated={(id) => {
+                    setAddendumSuccessId(id);
+                    if (agreementId === id) {
+                      request.current?.abort();
+                      const controller = new AbortController();
+                      request.current = controller;
+                      void load(controller.signal);
+                    } else setAgreementId(id);
+                  }}
+                />
+              )}
+
             <ContractVersionHistory
               key={stamp + ':history'}
               identity={identity}
@@ -329,41 +461,43 @@ export function ContractPanel({
                 void load(controller.signal, versionId);
               }}
             />
-            <ContractVersionPanel
-              key={
-                stamp +
-                ':revision:' +
-                view.contract.version.id +
-                ':' +
-                view.contract.revision
-              }
-              identity={identity}
-              companyId={companyId}
-              opportunityId={opportunityId}
-              contract={view.contract}
-              mayRevise={Boolean(
-                context?.contractPermissionSetVersion === 'v1' &&
-                context.contractPermissionAssignmentId &&
-                context.contractPermissions?.includes(
-                  'commercial.contract.prepare',
-                ) &&
-                context.clientPermissions?.includes('client.read'),
-              )}
-              protectedCommand={
-                qualityProtected ||
-                decisionProtected ||
-                signatureProtected ||
-                projectLinkProtected
-              }
-              reject={reject}
-              onProtectionChange={setVersionProtected}
-              onCreated={() => {
-                request.current?.abort();
-                const controller = new AbortController();
-                request.current = controller;
-                void load(controller.signal);
-              }}
-            />
+            {view.contract.kind === 'CONTRACT' && (
+              <ContractVersionPanel
+                key={
+                  stamp +
+                  ':revision:' +
+                  view.contract.version.id +
+                  ':' +
+                  view.contract.revision
+                }
+                identity={identity}
+                companyId={companyId}
+                opportunityId={opportunityId}
+                contract={view.contract}
+                mayRevise={Boolean(
+                  context?.contractPermissionSetVersion === 'v1' &&
+                  context.contractPermissionAssignmentId &&
+                  context.contractPermissions?.includes(
+                    'commercial.contract.prepare',
+                  ) &&
+                  context.clientPermissions?.includes('client.read'),
+                )}
+                protectedCommand={
+                  qualityProtected ||
+                  decisionProtected ||
+                  signatureProtected ||
+                  projectLinkProtected
+                }
+                reject={reject}
+                onProtectionChange={setVersionProtected}
+                onCreated={() => {
+                  request.current?.abort();
+                  const controller = new AbortController();
+                  request.current = controller;
+                  void load(controller.signal);
+                }}
+              />
+            )}
 
             <ContractRepresentationViewer
               key={stamp + opportunityId + view.contract.version.id}
@@ -371,6 +505,9 @@ export function ContractPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               contractId={view.contract.id}
+              agreementId={
+                view.contract.kind === 'ADDENDUM' ? view.contract.id : undefined
+              }
               versionId={view.contract.version.id}
               onCompanyContextRejected={onCompanyContextRejected}
               onActorRevalidated={onActorRevalidated}
@@ -389,6 +526,7 @@ export function ContractPanel({
                 ),
               )}
               protectedChecks={
+                addendumProtected ||
                 versionProtected ||
                 qualityProtected ||
                 signatureProtected ||
@@ -437,6 +575,7 @@ export function ContractPanel({
                 ),
               )}
               protectedChecks={
+                addendumProtected ||
                 versionProtected ||
                 qualityProtected ||
                 decisionProtected ||
@@ -464,64 +603,67 @@ export function ContractPanel({
                 )
               }
             />
-            <ContractProjectsPanel
-              key={stamp + ':projects:' + view.contract.id}
-              identity={identity}
-              companyId={companyId}
-              opportunityId={opportunityId}
-              contract={view.contract}
-              opportunityTitle={opportunityTitle}
-              mayCreate={Boolean(
-                context?.projectPermissions?.includes('project.create'),
-              )}
-              mayLink={Boolean(
-                context?.contractPermissionSetVersion === 'v1' &&
-                context.contractPermissionAssignmentId &&
-                context.contractPermissions?.includes(
-                  'commercial.contract.project.link',
-                ) &&
-                context.projectPermissions?.includes('project.read') &&
-                (context.clientPermissions?.includes('client.read') ||
-                  actor.workspacePermissions.includes('client.manage')),
-              )}
-              protectedCommand={
-                versionProtected ||
-                qualityProtected ||
-                decisionProtected ||
-                signatureProtected
-              }
-              reject={reject}
-              onProtectionChange={setProjectLinkProtected}
-              onOpenProject={onOpenProject}
-              onReload={() => {
-                const controller = new AbortController();
-                request.current = controller;
-                void load(controller.signal);
-              }}
-              onLinked={(link, project) =>
-                setView((current) =>
-                  current.kind === 'ready'
-                    ? {
-                        ...current,
-                        contract: {
-                          ...current.contract,
-                          revision: link.revision,
-                          linkedProjects: [
-                            {
-                              id: project.id,
-                              title: project.title,
-                              status: project.status,
-                              createdAt: project.createdAt,
-                              link,
-                            },
-                            ...current.contract.linkedProjects,
-                          ],
-                        },
-                      }
-                    : current,
-                )
-              }
-            />
+            {view.contract.kind === 'CONTRACT' && (
+              <ContractProjectsPanel
+                key={stamp + ':projects:' + view.contract.id}
+                identity={identity}
+                companyId={companyId}
+                opportunityId={opportunityId}
+                contract={view.contract}
+                opportunityTitle={opportunityTitle}
+                mayCreate={Boolean(
+                  context?.projectPermissions?.includes('project.create'),
+                )}
+                mayLink={Boolean(
+                  context?.contractPermissionSetVersion === 'v1' &&
+                  context.contractPermissionAssignmentId &&
+                  context.contractPermissions?.includes(
+                    'commercial.contract.project.link',
+                  ) &&
+                  context.projectPermissions?.includes('project.read') &&
+                  (context.clientPermissions?.includes('client.read') ||
+                    actor.workspacePermissions.includes('client.manage')),
+                )}
+                protectedCommand={
+                  addendumProtected ||
+                  versionProtected ||
+                  qualityProtected ||
+                  decisionProtected ||
+                  signatureProtected
+                }
+                reject={reject}
+                onProtectionChange={setProjectLinkProtected}
+                onOpenProject={onOpenProject}
+                onReload={() => {
+                  const controller = new AbortController();
+                  request.current = controller;
+                  void load(controller.signal);
+                }}
+                onLinked={(link, project) =>
+                  setView((current) =>
+                    current.kind === 'ready'
+                      ? {
+                          ...current,
+                          contract: {
+                            ...current.contract,
+                            revision: link.revision,
+                            linkedProjects: [
+                              {
+                                id: project.id,
+                                title: project.title,
+                                status: project.status,
+                                createdAt: project.createdAt,
+                                link,
+                              },
+                              ...current.contract.linkedProjects,
+                            ],
+                          },
+                        }
+                      : current,
+                  )
+                }
+              />
+            )}
             <ContractQualityPanel
               key={
                 stamp +
@@ -538,10 +680,15 @@ export function ContractPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               versionId={view.contract.version.id}
+              agreementId={
+                view.contract.kind === 'ADDENDUM' ? view.contract.id : undefined
+              }
+              addendum={contractQualityContext(view.contract)}
               termEndsOn={view.contract.version.termEndsOn}
               initialRun={view.contract.version.latestQualityRun}
               mayRun={
                 !view.contract.version.supersededByVersionId &&
+                !addendumProtected &&
                 !versionProtected &&
                 !decisionProtected &&
                 !signatureProtected &&
@@ -556,6 +703,7 @@ export function ContractPanel({
                 )
               }
               protectedDecision={
+                addendumProtected ||
                 versionProtected ||
                 decisionProtected ||
                 signatureProtected ||
@@ -643,11 +791,26 @@ export function ContractPanel({
 }
 function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
+  const addendumCopy = useContractAddendumCopy();
   const versionCopy = useContractVersionCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
   return (
     <>
+      {contract.kind === 'ADDENDUM' && (
+        <>
+          <h5>
+            {addendumCopy('itemTitle')} {contract.addendumOrdinal}
+          </h5>
+          <p>
+            {addendumCopy('parent')}: {contract.parent.illustrativeReference}
+          </p>
+          <dl>
+            <dt>{addendumCopy('summary')}</dt>
+            <dd>{version.changeSummary}</dd>
+          </dl>
+        </>
+      )}
       <p>
         {copy.reference} {contract.illustrativeReference} ·{' '}
         {versionCopy('versionLabel')} {version.versionNumber}
@@ -666,10 +829,16 @@ function ContractSummary({ contract }: { contract: ContractView }) {
           : copy.execution}
       </p>
       <dl>
-        <dt>{copy.source}</dt>
+        <dt>
+          {contract.kind === 'ADDENDUM' ? addendumCopy('parent') : copy.source}
+        </dt>
         <dd>
-          {copy.reference} {contract.sourceOffer.illustrativeReference} ·{' '}
-          {copy.sourceVersion} {contract.sourceOffer.versionNumber}
+          {copy.reference}{' '}
+          {contract.sourceOffer?.illustrativeReference ??
+            contract.parent?.illustrativeReference}{' '}
+          · {copy.sourceVersion}{' '}
+          {contract.sourceOffer?.versionNumber ??
+            contract.parent?.versionNumber}
         </dd>
         <dt>{copy.issuer}</dt>
         <dd>{version.issuingCompanyLabel}</dd>
@@ -681,47 +850,67 @@ function ContractSummary({ contract }: { contract: ContractView }) {
           <br />
           {version.recipient.legalAddress ?? copy.missing}
         </dd>
-        <dt>{copy.scope}</dt>
-        <dd>{version.scopeNote ?? copy.missing}</dd>
-        <dt>{copy.commercial}</dt>
-        <dd>{version.commercialConditions ?? copy.missing}</dd>
-        <dt>{copy.start}</dt>
-        <dd>{version.termStartsOn ?? copy.missing}</dd>
-        <dt>{copy.end}</dt>
+        {contract.kind === 'CONTRACT' && (
+          <>
+            <dt>{copy.scope}</dt>
+            <dd>{version.scopeNote ?? copy.missing}</dd>
+            <dt>{copy.commercial}</dt>
+            <dd>{version.commercialConditions ?? copy.missing}</dd>
+            <dt>{copy.start}</dt>
+            <dd>{version.termStartsOn ?? copy.missing}</dd>
+            <dt>{copy.conditions}</dt>
+            <dd>{version.specialConditions ?? copy.missing}</dd>
+          </>
+        )}
+        <dt>{contract.kind === 'ADDENDUM' ? addendumCopy('end') : copy.end}</dt>
         <dd>{version.termEndsOn ?? copy.missing}</dd>
-        <dt>{copy.conditions}</dt>
-        <dd>{version.specialConditions ?? copy.missing}</dd>
       </dl>
-      <div className="contract-price">
-        <table>
-          <caption>
-            {copy.price} ({version.pricingSnapshot.currency})
-          </caption>
-          <thead>
-            <tr>
-              <th>{copy.service}</th>
-              <th>{copy.quantity}</th>
-              <th>{copy.net}</th>
-              <th>{copy.lineTax}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {version.pricingSnapshot.lines.map((line, index) => (
-              <tr key={index}>
-                <td>{line.serviceName}</td>
-                <td>{line.quantity}</td>
-                <td>{line.lineNet}</td>
-                <td>{line.lineTax}</td>
-              </tr>
+      {version.pricingSnapshot ? (
+        <>
+          <div className="contract-price">
+            <table>
+              <caption>
+                {copy.price} ({version.pricingSnapshot.currency})
+              </caption>
+              <thead>
+                <tr>
+                  <th>{copy.service}</th>
+                  <th>{copy.quantity}</th>
+                  <th>{copy.net}</th>
+                  <th>{copy.lineTax}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {version.pricingSnapshot.lines.map((line, index) => (
+                  <tr key={index}>
+                    <td>{line.serviceName}</td>
+                    <td>{line.quantity}</td>
+                    <td>{line.lineNet}</td>
+                    <td>{line.lineTax}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            {copy.subtotal}: {version.pricingSnapshot.subtotal} · {copy.tax}:{' '}
+            {version.pricingSnapshot.taxTotal} · {copy.total}:{' '}
+            {version.pricingSnapshot.total} {version.pricingSnapshot.currency}
+          </p>
+        </>
+      ) : (
+        <p>{addendumCopy('noSnapshot')}</p>
+      )}
+      {contract.kind === 'ADDENDUM' && contract.linkedProjects.length > 0 && (
+        <section aria-label={addendumCopy('linkedProjects')}>
+          <h5>{addendumCopy('linkedProjects')}</h5>
+          <ul>
+            {contract.linkedProjects.map((project) => (
+              <li key={project.id}>{project.title}</li>
             ))}
-          </tbody>
-        </table>
-      </div>
-      <p>
-        {copy.subtotal}: {version.pricingSnapshot.subtotal} · {copy.tax}:{' '}
-        {version.pricingSnapshot.taxTotal} · {copy.total}:{' '}
-        {version.pricingSnapshot.total} {version.pricingSnapshot.currency}
-      </p>
+          </ul>
+        </section>
+      )}
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { contractPath, contractQualityContext } from './contract-response';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -116,7 +117,7 @@ export function ContractSignaturePanel({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}/versions/${encodeURIComponent(contract.version.id)}/signature`,
+        `${contractPath(opportunityId, contract)}/versions/${encodeURIComponent(contract.version.id)}/signature`,
         {
           method: 'POST',
           companyContextId: companyId,
@@ -139,6 +140,7 @@ export function ContractSignaturePanel({
           versionId: contract.version.id,
           termEndsOn: contract.version.termEndsOn,
           approval: decision,
+          addendum: contractQualityContext(contract),
         });
         if (recorded.revision !== contract.revision + 1)
           throw new Error('Mismatched signature revision.');

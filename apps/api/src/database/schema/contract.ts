@@ -29,9 +29,11 @@ export const contracts = pgTable(
     clientRequestId: uuid('client_request_id').notNull(),
     originalClientAccountId: uuid('original_client_account_id').notNull(),
     kind: text('kind').default('CONTRACT').notNull(),
-    origin: text('origin').default('ACCEPTED_OFFER').notNull(),
-    sourceOfferId: uuid('source_offer_id').notNull(),
-    sourceOfferVersionId: uuid('source_offer_version_id').notNull(),
+    origin: text('origin').default('ACCEPTED_OFFER'),
+    sourceOfferId: uuid('source_offer_id'),
+    sourceOfferVersionId: uuid('source_offer_version_id'),
+    parentContractId: uuid('parent_contract_id'),
+    addendumOrdinal: integer('addendum_ordinal'),
     illustrativeReference: integer('illustrative_reference').notNull(),
     revision: integer('revision').default(1).notNull(),
     createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
@@ -48,11 +50,25 @@ export const contracts = pgTable(
       t.opportunityId,
       t.id,
     ),
-    uniqueIndex('contracts_opportunity_unique').on(
+    uniqueIndex('contracts_opportunity_unique')
+      .on(t.workspaceId, t.companyId, t.opportunityId)
+      .where(sql`${t.kind} <> 'ADDENDUM'`),
+    uniqueIndex('contracts_parent_ordinal_unique').on(
       t.workspaceId,
       t.companyId,
-      t.opportunityId,
+      t.parentContractId,
+      t.addendumOrdinal,
     ),
+    foreignKey({
+      name: 'contracts_parent_fk',
+      columns: [
+        t.workspaceId,
+        t.companyId,
+        t.opportunityId,
+        t.parentContractId,
+      ],
+      foreignColumns: [t.workspaceId, t.companyId, t.opportunityId, t.id],
+    }),
     uniqueIndex('contracts_reference_unique').on(
       t.workspaceId,
       t.companyId,
@@ -123,7 +139,7 @@ export const contracts = pgTable(
     }),
     check(
       'contracts_initial_check',
-      sql`${t.kind} = 'CONTRACT' AND ${t.origin} = 'ACCEPTED_OFFER' AND ${t.revision} > 0 AND ${t.illustrativeReference} > 0`,
+      sql`(${t.revision} > 0 AND ${t.illustrativeReference} > 0 AND ((${t.kind} = 'CONTRACT' AND ${t.origin} = 'ACCEPTED_OFFER' AND ${t.sourceOfferId} IS NOT NULL AND ${t.sourceOfferVersionId} IS NOT NULL AND ${t.parentContractId} IS NULL AND ${t.addendumOrdinal} IS NULL) OR (${t.kind} = 'ADDENDUM' AND ${t.origin} IS NULL AND ${t.sourceOfferId} IS NULL AND ${t.sourceOfferVersionId} IS NULL AND ${t.parentContractId} IS NOT NULL AND ${t.parentContractId} <> ${t.id} AND ${t.addendumOrdinal} > 0))) IS TRUE`,
     ),
   ],
 );
@@ -142,7 +158,7 @@ export const contractVersions = pgTable(
     predecessorVersionId: uuid('predecessor_version_id'),
     supersededByVersionId: uuid('superseded_by_version_id'),
     supersededAt: timestamp('superseded_at', { withTimezone: true }),
-    pricingSnapshotId: uuid('pricing_snapshot_id').notNull(),
+    pricingSnapshotId: uuid('pricing_snapshot_id'),
     opportunityId: uuid('opportunity_id').notNull(),
     recipientClientAccountId: uuid('recipient_client_account_id').notNull(),
     recipientKind: text('recipient_kind').notNull(),
@@ -158,6 +174,7 @@ export const contractVersions = pgTable(
     termStartsOn: date('term_starts_on'),
     termEndsOn: date('term_ends_on'),
     specialConditions: text('special_conditions'),
+    changeSummary: text('change_summary'),
     templateCode: text('template_code')
       .default('CONTRACT_ILLUSTRATIVE')
       .notNull(),
@@ -287,7 +304,7 @@ export const contractVersions = pgTable(
     ),
     check(
       'contract_versions_template_binding_check',
-      sql`${t.templateCode} = 'CONTRACT_ILLUSTRATIVE' AND ${t.templateVersion} = 1 AND ${t.clauseVersions} = '[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb`,
+      sql`${t.templateVersion} = 1 AND ((${t.templateCode} = 'CONTRACT_ILLUSTRATIVE' AND ${t.clauseVersions} = '[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb AND ${t.pricingSnapshotId} IS NOT NULL AND ${t.changeSummary} IS NULL) OR (${t.templateCode} = 'ADDENDUM_ILLUSTRATIVE' AND ${t.clauseVersions} = '[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_CHANGE","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb AND char_length(${t.changeSummary}) BETWEEN 1 AND 4000 AND btrim(${t.changeSummary}) <> '' AND ${t.scopeNote} IS NULL AND ${t.commercialConditions} IS NULL AND ${t.specialConditions} IS NULL AND ${t.termStartsOn} IS NULL)) IS TRUE`,
     ),
     check(
       'contract_versions_entity_check',
@@ -321,7 +338,7 @@ export const contractReferenceCounters = pgTable(
     }),
     check(
       'contract_reference_counters_check',
-      sql`${t.kind} = 'CONTRACT' AND ${t.currentReference} > 0`,
+      sql`${t.kind} IN ('CONTRACT','ADDENDUM') AND ${t.currentReference} > 0`,
     ),
   ],
 );
@@ -811,7 +828,7 @@ export const contractEvents = pgTable(
     ),
     check(
       'contract_events_metadata_check',
-      sql`(jsonb_typeof(${t.metadata}) = 'object' AND ${t.metadata}->>'contractId' = ${t.contractId}::text AND ((${t.action} = 'contract_project.linked' AND (${t.metadata} - ARRAY['contractId','projectId','created']::text[]) = '{}'::jsonb AND ${t.metadata}->'created' IN ('false'::jsonb,'true'::jsonb) AND jsonb_typeof(${t.metadata}->'projectId') = 'string') OR (${t.action} <> 'contract_project.linked' AND (${t.metadata} - ARRAY['contractId','contractVersionId','versionNumber','predecessorVersionNumber','illustrativeReference','kind','origin','offerVersionId','pricingSnapshotId','provenance','ruleSetVersion','acknowledgedWarningCodes','evidenceKind']::text[]) = '{}'::jsonb AND ${t.metadata}->>'kind' = 'CONTRACT' AND ${t.metadata}->>'origin' = 'ACCEPTED_OFFER' AND ${t.metadata}->>'provenance' = 'ILLUSTRATIVE' AND (${t.action} <> 'contract_version.signature_recorded' OR ${t.metadata}->>'evidenceKind' = 'SIMULATED')))) IS TRUE`,
+      sql`(jsonb_typeof(${t.metadata}) = 'object' AND ${t.metadata}->>'contractId' = ${t.contractId}::text AND ((${t.action} = 'contract_project.linked' AND (${t.metadata} - ARRAY['contractId','projectId','created']::text[]) = '{}'::jsonb AND ${t.metadata}->'created' IN ('false'::jsonb,'true'::jsonb) AND jsonb_typeof(${t.metadata}->'projectId') = 'string') OR (${t.action} <> 'contract_project.linked' AND (${t.metadata} - ARRAY['contractId','contractVersionId','versionNumber','predecessorVersionNumber','illustrativeReference','kind','origin','offerVersionId','pricingSnapshotId','provenance','ruleSetVersion','acknowledgedWarningCodes','evidenceKind','parentContractId','addendumOrdinal']::text[]) = '{}'::jsonb AND ((${t.metadata}->>'kind' = 'CONTRACT' AND ${t.metadata}->>'origin' = 'ACCEPTED_OFFER' AND NOT (${t.metadata} ?| ARRAY['parentContractId','addendumOrdinal'])) OR (${t.metadata}->>'kind' = 'ADDENDUM' AND NOT (${t.metadata} ?| ARRAY['origin','offerVersionId']) AND jsonb_typeof(${t.metadata}->'parentContractId') = 'string' AND jsonb_typeof(${t.metadata}->'addendumOrdinal') = 'number')) AND ${t.metadata}->>'provenance' = 'ILLUSTRATIVE' AND (${t.action} <> 'contract_version.signature_recorded' OR ${t.metadata}->>'evidenceKind' = 'SIMULATED')))) IS TRUE`,
     ),
   ],
 );

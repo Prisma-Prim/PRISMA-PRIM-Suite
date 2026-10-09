@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Illustrative Addendum</title><style>body{padding:1rem;font-family:system-ui,sans-serif;color:#172033}p,dd{white-space:pre-wrap;overflow-wrap:anywhere}dt{font-weight:700}dd{margin:0 0 .75rem}section{margin-block:1.5rem}</style></head>
+<body><article aria-labelledby="contract-title">
+<header><p><strong>Provisional illustrative document — cannot be accepted — no legal effect — no official number — not a signed agreement — clauses are placeholders</strong></p><h1 id="contract-title">Illustrative Addendum</h1></header>
+<section><h2>Addendum details</h2><dl><dt>Parent kind</dt><dd>CONTRACT</dd><dt>Parent Contract id</dt><dd>synthetic-parent</dd><dt>Parent illustrative reference</dt><dd>4</dd><dt>Parent executed version</dt><dd>2</dd><dt>Addendum ordinal</dt><dd>3</dd><dt>Issuing Company</dt><dd>Provider &amp; Co</dd><dt>Recipient legal name</dt><dd>&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;</dd><dt>Recipient tax ID</dt><dd>Not recorded</dd><dt>Recipient legal address</dt><dd>1 &#39;Example&#39; Street</dd><dt>Illustrative Addendum reference</dt><dd>7</dd><dt>Contract Version</dt><dd>1</dd><dt>Created at</dt><dd>2026-09-27T09:00:00.000Z</dd></dl></section>
+<section aria-labelledby="CL_SUBJECT"><h2 id="CL_SUBJECT">Subject — CL_SUBJECT v1</h2><p>No approved legal wording exists for this clause. This is an illustrative placeholder.</p><dl><dt>Parent agreement</dt><dd>synthetic-parent</dd></dl></section>
+<section aria-labelledby="CL_PRICE"><h2 id="CL_PRICE">Price — CL_PRICE v1</h2><p>No approved legal wording exists for this clause. This is an illustrative placeholder.</p><p>No Pricing Snapshot referenced.</p></section>
+<section aria-labelledby="CL_TERM"><h2 id="CL_TERM">Term — CL_TERM v1</h2><p>No approved legal wording exists for this clause. This is an illustrative placeholder.</p><dl><dt>New term end</dt><dd>Not recorded</dd></dl></section>
+<section aria-labelledby="CL_CONDITIONS"><h2 id="CL_CONDITIONS">Conditions — CL_CONDITIONS v1</h2><p>No approved legal wording exists for this clause. This is an illustrative placeholder.</p></section>
+<section aria-labelledby="CL_CHANGE"><h2 id="CL_CHANGE">Change — CL_CHANGE v1</h2><p>No approved legal wording exists for this clause. This is an illustrative placeholder.</p><dl><dt>Change summary</dt><dd>  Change &lt;script&gt; &amp; scope
+exact  </dd></dl></section>
+<section aria-labelledby="CL_GENERAL"><h2 id="CL_GENERAL">General — CL_GENERAL v1</h2><p>No approved legal wording exists for this clause. This is an illustrative placeholder.</p></section>
+<footer><dl><dt>Template Version</dt><dd>ADDENDUM_ILLUSTRATIVE v1 (unapproved)</dd><dt>Clause Versions</dt><dd>CL_SUBJECT v1, CL_PRICE v1, CL_TERM v1, CL_CONDITIONS v1, CL_CHANGE v1, CL_GENERAL v1</dd><dt>Pricing Snapshot id</dt><dd>Not recorded</dd><dt>Provenance</dt><dd>ILLUSTRATIVE</dd></dl></footer>
+</article></body>
+</html>

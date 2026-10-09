@@ -12,6 +12,7 @@ import type { CompanyContextAuthorization } from '../access/company-context-auth
 import type { AccountabilityService } from '../accountability/accountability.service.js';
 import type { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import type { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
+import type { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import type { OfferService } from '../offer/offer.service.js';
 import type { DatabaseContext } from '../database/database-context.js';
 import type { ServerClock } from '../clock/server-clock.js';
@@ -21,11 +22,16 @@ import {
   contractCommands,
 } from '../database/schema/index.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
-import { readCreateContractVersionCommand } from './contract.validation.js';
+import {
+  readCreateContractVersionCommand,
+  readAddendumCommand,
+  selectedAddendumSnapshotId,
+} from './contract.validation.js';
 import {
   CONTRACT_TEMPLATE_CODE,
   CONTRACT_TEMPLATE_VERSION,
   CONTRACT_CLAUSE_VERSIONS,
+  ADDENDUM_CLAUSE_VERSIONS,
 } from './contract-representation.js';
 
 type ContractRow = typeof contracts.$inferSelect;
@@ -33,6 +39,7 @@ type VersionRow = typeof contractVersions.$inferSelect;
 export interface CreateContractVersionInput {
   actor: ActorContext;
   opportunityId: string;
+  contractId?: string;
   payload: unknown;
   idempotencyKey: string | undefined;
 }
@@ -43,11 +50,13 @@ interface VersionDependencies {
   clients: ClientOperationalReferenceService;
   intake: CommercialIntakeService;
   offers: OfferService;
+  pricing: PricingSnapshotService;
   clock: ServerClock;
   find: (input: {
     actor: ActorContext;
     companyId: string;
     opportunityId: string;
+    contractId?: string;
     versionId?: string;
   }) => Promise<{ contract: ContractRow; version: VersionRow } | undefined>;
 }
@@ -81,6 +90,9 @@ export async function createContractVersion(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
       });
       if (!found) throw new NotFoundException();
       // Preserve command ordering: Opportunity, scoped key, Client fence, receipt, Contract.
@@ -103,9 +115,23 @@ export async function createContractVersion(
         found.contract.originalClientAccountId,
         selection,
       );
+      const selectedSnapshotId =
+        found.contract.kind === 'ADDENDUM'
+          ? selectedAddendumSnapshotId(input.payload)
+          : null;
+      if (selectedSnapshotId !== null)
+        await dependencies.pricing.resolveOfferSnapshot({
+          actor,
+          companyId,
+          opportunityId: input.opportunityId,
+          snapshotId: selectedSnapshotId,
+        });
       const fingerprint = commandFingerprint({
         kind: 'CREATE_VERSION',
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         payload: input.payload,
       });
       const [receipt] = await dependencies.databaseContext.connection
@@ -134,17 +160,30 @@ export async function createContractVersion(
           actor,
           companyId,
           opportunityId: input.opportunityId,
+          ...(input.contractId === undefined
+            ? {}
+            : { contractId: input.contractId }),
           versionId: receipt.resultVersionId,
         });
         if (!stored) throw new Error('Missing recorded Contract Version.');
         return createdVersionResult(stored.contract, stored.version);
       }
-      const command = readCreateContractVersionCommand(input.payload);
-      const source = await dependencies.offers.inspectContractQualitySource({
-        actor,
-        opportunityId: input.opportunityId,
-        contractId: found.contract.id,
-      });
+      const command =
+        found.contract.kind === 'ADDENDUM'
+          ? readAddendumCommand(input.payload)
+          : {
+              ...readCreateContractVersionCommand(input.payload),
+              changeSummary: null,
+              pricingSnapshotId: found.version.pricingSnapshotId,
+            };
+      const source =
+        found.contract.kind === 'ADDENDUM'
+          ? null
+          : await dependencies.offers.inspectContractQualitySource({
+              actor,
+              opportunityId: input.opportunityId,
+              contractId: found.contract.id,
+            });
       await dependencies.databaseContext.connection
         .select({ id: contracts.id })
         .from(contracts)
@@ -160,6 +199,9 @@ export async function createContractVersion(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
       });
       if (!current) throw new NotFoundException();
       if (current.contract.revision !== command.expectedContractRevision)
@@ -189,7 +231,9 @@ export async function createContractVersion(
           versionNumber: current.version.versionNumber + 1,
           createdContractRevision: revision,
           predecessorVersionId: current.version.id,
-          pricingSnapshotId: source.pricingSnapshotId,
+          pricingSnapshotId: source
+            ? source.pricingSnapshotId
+            : command.pricingSnapshotId,
           recipientClientAccountId: recipient.currentClientAccountId,
           recipientKind: recipient.recipient.kind,
           recipientAdditionalLegalEntityId:
@@ -200,14 +244,21 @@ export async function createContractVersion(
           recipientTaxId: recipient.recipient.taxId,
           recipientLegalAddress: recipient.recipient.legalAddress,
           issuingCompanyLabel: current.version.issuingCompanyLabel,
-          scopeNote: source.scopeNote,
-          commercialConditions: source.commercialConditions,
+          scopeNote: source?.scopeNote ?? null,
+          commercialConditions: source?.commercialConditions ?? null,
           termStartsOn: command.termStartsOn,
           termEndsOn: command.termEndsOn,
           specialConditions: command.specialConditions,
-          templateCode: CONTRACT_TEMPLATE_CODE,
+          changeSummary: command.changeSummary,
+          templateCode:
+            current.contract.kind === 'ADDENDUM'
+              ? 'ADDENDUM_ILLUSTRATIVE'
+              : CONTRACT_TEMPLATE_CODE,
           templateVersion: CONTRACT_TEMPLATE_VERSION,
-          clauseVersions: CONTRACT_CLAUSE_VERSIONS,
+          clauseVersions:
+            current.contract.kind === 'ADDENDUM'
+              ? ADDENDUM_CLAUSE_VERSIONS
+              : CONTRACT_CLAUSE_VERSIONS,
           createdByInternalUserId: actor.internalUserId,
           createdByWorkspaceMembershipId: actor.workspaceMembershipId,
           createdAt,
@@ -245,6 +296,15 @@ export async function createContractVersion(
         versionNumber: version.versionNumber,
         predecessorVersionNumber: current.version.versionNumber,
         offerVersionId: current.contract.sourceOfferVersionId,
+        ...(current.contract.parentContractId &&
+        current.contract.addendumOrdinal
+          ? {
+              addendum: {
+                parentContractId: current.contract.parentContractId,
+                addendumOrdinal: current.contract.addendumOrdinal,
+              },
+            }
+          : {}),
         pricingSnapshotId: version.pricingSnapshotId,
         occurredAt: createdAt,
       });

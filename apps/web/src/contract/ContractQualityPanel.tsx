@@ -1,3 +1,4 @@
+import { useContractAddendumCopy } from './contract-addendum.copy';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -30,6 +31,8 @@ export function ContractQualityPanel({
   companyId,
   opportunityId,
   versionId,
+  agreementId,
+  addendum,
   termEndsOn,
   initialRun,
   mayRun,
@@ -42,6 +45,8 @@ export function ContractQualityPanel({
   companyId: string;
   opportunityId: string;
   versionId: string;
+  agreementId?: string;
+  addendum?: { pricingSnapshotId: string | null };
   termEndsOn: string | null;
   initialRun: ContractQualityRunView | null;
   mayRun: boolean;
@@ -53,6 +58,7 @@ export function ContractQualityPanel({
     signal: AbortSignal,
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
+  const addendumCopy = useContractAddendumCopy();
   const [run, setRun] = useState(initialRun);
   const [history, setHistory] = useState<{
     items: ContractQualityRunView[];
@@ -71,7 +77,7 @@ export function ContractQualityPanel({
     },
     [onProtectionChange],
   );
-  const base = `/contracts/opportunities/${encodeURIComponent(opportunityId)}/versions/${encodeURIComponent(versionId)}/quality-checks`;
+  const base = `/contracts/opportunities/${encodeURIComponent(opportunityId)}${agreementId ? '/agreements/' + encodeURIComponent(agreementId) : ''}/versions/${encodeURIComponent(versionId)}/quality-checks`;
   async function execute(
     action:
       | { kind: 'run' }
@@ -129,13 +135,19 @@ export function ContractQualityPanel({
       } else if (result.status === 'ok') {
         if (action.kind === 'history')
           setHistory(
-            readContractQualityHistory(result.value, versionId, termEndsOn),
+            readContractQualityHistory(
+              result.value,
+              versionId,
+              termEndsOn,
+              addendum,
+            ),
           );
         else {
           const recorded = readContractQualityRun(
             result.value,
             versionId,
             termEndsOn,
+            addendum,
           );
           if (action.kind === 'reopen' && recorded.id !== action.id)
             throw new Error('Mismatched Contract run.');
@@ -217,7 +229,13 @@ export function ContractQualityPanel({
           <ul>
             {run.results.map((item) => (
               <li key={item.code}>
-                <span>{contractQualityLabels[item.code]}</span>{' '}
+                <span>
+                  {item.code === 'PARENT_EXECUTED'
+                    ? addendumCopy('parentExecuted')
+                    : item.code === 'CURRENCY_MATCHES_PARENT'
+                      ? addendumCopy('currencyMatches')
+                      : contractQualityLabels[item.code]}
+                </span>{' '}
                 <strong>{item.status}</strong>
               </li>
             ))}

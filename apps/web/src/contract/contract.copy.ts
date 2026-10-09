@@ -86,6 +86,8 @@ export const contractQualityLabels = {
   PRICING_SNAPSHOT_COHERENT: 'Pricing Snapshot trace is coherent',
   CONDITIONS_MATCH_ACCEPTED_OFFER: 'Copied conditions match the Accepted Offer',
   ADDED_CONDITIONS_CONFIRMED: 'Added terms and conditions need confirmation',
+  PARENT_EXECUTED: 'Parent agreement is executed',
+  CURRENCY_MATCHES_PARENT: 'Snapshot currency matches the parent',
   TERM_END_NOT_PASSED: 'Term end has not passed (UTC)',
   PROVISIONAL_MARKER_PRESENT: 'Illustrative markers are present',
 };

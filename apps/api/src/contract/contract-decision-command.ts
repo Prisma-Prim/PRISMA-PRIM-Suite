@@ -33,6 +33,7 @@ type VersionRow = typeof contractVersions.$inferSelect;
 export interface DecideContractVersionInput {
   actor: ActorContext;
   opportunityId: string;
+  contractId?: string;
   versionId: string;
   kind: 'APPROVE' | 'REJECT';
   payload: unknown;
@@ -48,6 +49,7 @@ export interface DecisionDependencies {
     actor: ActorContext;
     companyId: string;
     opportunityId: string;
+    contractId?: string;
     versionId?: string;
   }) => Promise<{ contract: ContractRow; version: VersionRow } | undefined>;
   evaluateFreshQuality: (input: {
@@ -88,6 +90,9 @@ export async function decideContractVersion(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         versionId: input.versionId,
       });
       if (!found || found.version.id !== input.versionId)
@@ -95,6 +100,9 @@ export async function decideContractVersion(
       const fingerprint = commandFingerprint({
         kind: input.kind,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
         versionId: input.versionId,
         payload: input.payload,
       });
@@ -168,6 +176,9 @@ export async function decideContractVersion(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        ...(input.contractId === undefined
+          ? {}
+          : { contractId: input.contractId }),
       });
       if (!current) throw new NotFoundException();
       if (current.version.id !== input.versionId)
@@ -292,6 +303,15 @@ export async function decideContractVersion(
         versionNumber: current.version.versionNumber,
         kind: command.kind,
         offerVersionId: current.contract.sourceOfferVersionId,
+        ...(current.contract.parentContractId &&
+        current.contract.addendumOrdinal
+          ? {
+              addendum: {
+                parentContractId: current.contract.parentContractId,
+                addendumOrdinal: current.contract.addendumOrdinal,
+              },
+            }
+          : {}),
         pricingSnapshotId: current.version.pricingSnapshotId,
         acknowledgedWarningCodes: warnings ?? [],
         occurredAt: decidedAt,

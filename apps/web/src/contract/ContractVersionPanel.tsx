@@ -1,3 +1,4 @@
+import { contractPath } from './contract-response';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -103,7 +104,7 @@ export function ContractVersionPanel({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}/versions`,
+        `${contractPath(opportunityId, contract)}/versions`,
         {
           method: 'POST',
           companyContextId: companyId,
