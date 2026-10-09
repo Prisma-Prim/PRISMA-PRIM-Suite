@@ -31,6 +31,7 @@ const keys = [
   'mismatch',
   'conflict',
   'success',
+  'DIRECT_ORIGIN_REVIEWED',
   'PARENT_EXECUTED',
   'CURRENCY_MATCHES_PARENT',
   'SOURCE_COMPANY_MATCHES',
@@ -48,6 +49,7 @@ const keys = [
 ] as const;
 export const contractSignatureMessages = defineMessages(keys, {
   en: {
+    DIRECT_ORIGIN_REVIEWED: 'Direct origin requires review',
     PARENT_EXECUTED: 'Parent agreement is executed',
     CURRENCY_MATCHES_PARENT: 'Currency matches the parent',
     title: 'Simulated Contract signatures',
@@ -100,6 +102,7 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Illustrative markers are present',
   },
   ro: {
+    DIRECT_ORIGIN_REVIEWED: 'Originea directă necesită verificare',
     PARENT_EXECUTED: 'Acordul părinte este executat',
     CURRENCY_MATCHES_PARENT: 'Moneda corespunde acordului părinte',
     title: 'Semnături simulate ale contractului',
@@ -156,6 +159,7 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Marcajele ilustrative sunt prezente',
   },
   fr: {
+    DIRECT_ORIGIN_REVIEWED: 'L’origine directe doit être examinée',
     PARENT_EXECUTED: 'L’accord parent est exécuté',
     CURRENCY_MATCHES_PARENT: 'La devise correspond à celle du parent',
     title: 'Signatures simulées du contrat',
@@ -212,6 +216,7 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Les mentions illustratives sont présentes',
   },
   ru: {
+    DIRECT_ORIGIN_REVIEWED: 'Прямое происхождение требует проверки',
     PARENT_EXECUTED: 'Родительское соглашение исполнено',
     CURRENCY_MATCHES_PARENT: 'Валюта соответствует родительскому соглашению',
     title: 'Симулированные подписи договора',

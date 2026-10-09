@@ -200,3 +200,27 @@ describe('Exact illustrative Addendum representation', () => {
     ).toThrow('Unsupported');
   });
 });
+
+it('C9 renders direct source and exact entered content deterministically without an Offer', () => {
+  const direct = {
+    ...input,
+    sourceOffer: null,
+    scopeNote: 'Direct <scope>\nkept exactly',
+    commercialConditions: 'Direct & conditions',
+  };
+  const rendered = renderContractRepresentation(direct);
+  expect(rendered.html).toBe(
+    readFileSync('src/contract/contract-direct-v1.golden.txt', 'utf8')
+      .replaceAll('\r\n', '\n')
+      .replace(/\n$/u, ''),
+  );
+  expect(rendered.sha256).toBe(
+    '9880d0fd7eb3cceb199d22705de487b8e4b9898f08691ff3df2b7fcadd733499',
+  );
+  expect(renderContractRepresentation(direct)).toEqual(rendered);
+  expect(rendered.html).toContain('<dt>Source</dt><dd>Direct origin</dd>');
+  expect(rendered.html).toContain('Direct &lt;scope&gt;\nkept exactly');
+  expect(rendered.html).toContain('Direct &amp; conditions');
+  expect(rendered.html).not.toContain('Accepted Offer');
+  expect(rendered.html).toContain('Illustrative');
+});

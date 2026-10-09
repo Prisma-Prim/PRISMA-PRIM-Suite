@@ -1,3 +1,4 @@
+import { useContractDirectCopy } from './contract-direct.copy';
 import { useContractAddendumCopy } from './contract-addendum.copy';
 import { contractPath, contractQualityContext } from './contract-response';
 import { useEffect, useRef, useState } from 'react';
@@ -53,6 +54,7 @@ export function ContractDecisionPanel({
   onProtectionChange: (protectedCommand: boolean) => void;
 }) {
   const addendumCopy = useContractAddendumCopy();
+  const directCopy = useContractDirectCopy();
   const copy = useContractDecisionCopy();
   const { locale } = useInterfaceLocale();
   const [feedback, setFeedback] = useState<Feedback>('idle');
@@ -245,11 +247,13 @@ export function ContractDecisionPanel({
                 }
               />
               {copy('acknowledge')}:{' '}
-              {item.code === 'PARENT_EXECUTED'
-                ? addendumCopy('parentExecuted')
-                : item.code === 'CURRENCY_MATCHES_PARENT'
-                  ? addendumCopy('currencyMatches')
-                  : contractQualityLabels[item.code]}
+              {item.code === 'DIRECT_ORIGIN_REVIEWED'
+                ? directCopy('review')
+                : item.code === 'PARENT_EXECUTED'
+                  ? addendumCopy('parentExecuted')
+                  : item.code === 'CURRENCY_MATCHES_PARENT'
+                    ? addendumCopy('currencyMatches')
+                    : contractQualityLabels[item.code]}
             </label>
           ))}
           <label>

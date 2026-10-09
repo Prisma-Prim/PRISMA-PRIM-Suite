@@ -1,3 +1,5 @@
+import { useContractDirectCopy } from './contract-direct.copy';
+import type { ContractQualityContext } from './contract-quality-response';
 import { useContractAddendumCopy } from './contract-addendum.copy';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
@@ -46,7 +48,7 @@ export function ContractQualityPanel({
   opportunityId: string;
   versionId: string;
   agreementId?: string;
-  addendum?: { pricingSnapshotId: string | null };
+  addendum?: ContractQualityContext;
   termEndsOn: string | null;
   initialRun: ContractQualityRunView | null;
   mayRun: boolean;
@@ -59,6 +61,7 @@ export function ContractQualityPanel({
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
   const addendumCopy = useContractAddendumCopy();
+  const directCopy = useContractDirectCopy();
   const [run, setRun] = useState(initialRun);
   const [history, setHistory] = useState<{
     items: ContractQualityRunView[];
@@ -230,11 +233,13 @@ export function ContractQualityPanel({
             {run.results.map((item) => (
               <li key={item.code}>
                 <span>
-                  {item.code === 'PARENT_EXECUTED'
-                    ? addendumCopy('parentExecuted')
-                    : item.code === 'CURRENCY_MATCHES_PARENT'
-                      ? addendumCopy('currencyMatches')
-                      : contractQualityLabels[item.code]}
+                  {item.code === 'DIRECT_ORIGIN_REVIEWED'
+                    ? directCopy('review')
+                    : item.code === 'PARENT_EXECUTED'
+                      ? addendumCopy('parentExecuted')
+                      : item.code === 'CURRENCY_MATCHES_PARENT'
+                        ? addendumCopy('currencyMatches')
+                        : contractQualityLabels[item.code]}
                 </span>{' '}
                 <strong>{item.status}</strong>
               </li>

@@ -1,3 +1,5 @@
+import { ContractDirectEditor } from './ContractDirectEditor';
+import { useContractDirectCopy } from './contract-direct.copy';
 import { ContractAddendumEditor } from './ContractAddendumEditor';
 import { useContractAddendumCopy } from './contract-addendum.copy';
 import { contractQualityContext } from './contract-response';
@@ -51,6 +53,7 @@ export function ContractPanel({
   identity,
   opportunityId,
   opportunityTitle = '',
+  currentClientId,
   onCompanyContextRejected,
   onActorRevalidated = ignoreActor,
   onWorkspaceAccessRejected = ignoreActor,
@@ -60,6 +63,7 @@ export function ContractPanel({
   identity: BrowserIdentity;
   opportunityId: string;
   opportunityTitle?: string;
+  currentClientId?: string;
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
@@ -90,7 +94,25 @@ export function ContractPanel({
     context?.offerPermissions?.includes('commercial.offer.read') &&
     context?.clientPermissions?.includes('client.read'),
   );
+  const mayPrepareDirect = Boolean(
+    mayRead &&
+    context?.contractPermissionSetVersion === 'v1' &&
+    context.contractPermissionAssignmentId &&
+    context.contractPermissions?.includes('commercial.contract.prepare') &&
+    context.clientPermissions?.includes('client.read') &&
+    ((context.pricingUserPermissionSetVersion === 'v1' &&
+      context.pricingUserPermissionAssignmentId &&
+      context.pricingUserPermissions?.includes(
+        'commercial.pricing.snapshot.read',
+      )) ||
+      (context.offerPermissionSetVersion === 'v1' &&
+        context.offerPermissionAssignmentId &&
+        context.offerPermissions?.includes(
+          'commercial.pricing.snapshot.read',
+        ))),
+  );
   const stamp = JSON.stringify([
+    currentClientId,
     opportunityId,
     agreementId,
     actor.internalUserId,
@@ -327,7 +349,35 @@ export function ContractPanel({
       {view.kind === 'empty' && (
         <>
           <p>{copy.empty}</p>
-          {!view.acceptedVersionId && <p>{copy.awaiting}</p>}
+          {!view.acceptedVersionId && !mayPrepareDirect && (
+            <p>{copy.awaiting}</p>
+          )}
+          {!view.acceptedVersionId &&
+            mayPrepareDirect &&
+            companyId &&
+            currentClientId && (
+              <ContractDirectEditor
+                key={stamp + ':direct-create'}
+                identity={identity}
+                companyId={companyId}
+                opportunityId={opportunityId}
+                mode={{ kind: 'create', clientId: currentClientId }}
+                protectedCommand={
+                  running ||
+                  qualityProtected ||
+                  decisionProtected ||
+                  signatureProtected ||
+                  projectLinkProtected ||
+                  addendumProtected
+                }
+                reject={reject}
+                onProtectionChange={setVersionProtected}
+                onCreated={(contract) => {
+                  if (contract)
+                    setView({ kind: 'ready', contract, stamp, identity });
+                }}
+              />
+            )}
         </>
       )}
       {view.kind === 'ready' &&
@@ -461,7 +511,7 @@ export function ContractPanel({
                 void load(controller.signal, versionId);
               }}
             />
-            {view.contract.kind === 'CONTRACT' && (
+            {view.contract.origin === 'ACCEPTED_OFFER' && (
               <ContractVersionPanel
                 key={
                   stamp +
@@ -499,6 +549,39 @@ export function ContractPanel({
               />
             )}
 
+            {view.contract.origin === 'DIRECT' &&
+              mayPrepareDirect &&
+              !view.contract.version.supersededByVersionId &&
+              view.contract.version.executionState !== 'EXECUTED' && (
+                <ContractDirectEditor
+                  key={
+                    stamp +
+                    ':direct-revise:' +
+                    view.contract.version.id +
+                    ':' +
+                    view.contract.revision
+                  }
+                  identity={identity}
+                  companyId={companyId}
+                  opportunityId={opportunityId}
+                  mode={{ kind: 'revise', contract: view.contract }}
+                  protectedCommand={
+                    qualityProtected ||
+                    decisionProtected ||
+                    signatureProtected ||
+                    projectLinkProtected ||
+                    addendumProtected
+                  }
+                  reject={reject}
+                  onProtectionChange={setVersionProtected}
+                  onCreated={() => {
+                    request.current?.abort();
+                    const controller = new AbortController();
+                    request.current = controller;
+                    void load(controller.signal);
+                  }}
+                />
+              )}
             <ContractRepresentationViewer
               key={stamp + opportunityId + view.contract.version.id}
               identity={identity}
@@ -791,6 +874,7 @@ export function ContractPanel({
 }
 function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
+  const directCopy = useContractDirectCopy();
   const addendumCopy = useContractAddendumCopy();
   const versionCopy = useContractVersionCopy();
   const decisionCopy = useContractDecisionCopy();
@@ -830,16 +914,32 @@ function ContractSummary({ contract }: { contract: ContractView }) {
       </p>
       <dl>
         <dt>
-          {contract.kind === 'ADDENDUM' ? addendumCopy('parent') : copy.source}
+          {contract.origin === 'DIRECT'
+            ? directCopy('title')
+            : contract.kind === 'ADDENDUM'
+              ? addendumCopy('parent')
+              : copy.source}
         </dt>
         <dd>
-          {copy.reference}{' '}
-          {contract.sourceOffer?.illustrativeReference ??
-            contract.parent?.illustrativeReference}{' '}
-          · {copy.sourceVersion}{' '}
-          {contract.sourceOffer?.versionNumber ??
-            contract.parent?.versionNumber}
+          {contract.origin === 'DIRECT' ? (
+            directCopy('origin')
+          ) : (
+            <>
+              {copy.reference}{' '}
+              {contract.sourceOffer?.illustrativeReference ??
+                contract.parent?.illustrativeReference}{' '}
+              · {copy.sourceVersion}{' '}
+              {contract.sourceOffer?.versionNumber ??
+                contract.parent?.versionNumber}
+            </>
+          )}
         </dd>
+        {contract.origin === 'DIRECT' && (
+          <>
+            <dt>{directCopy('reason')}</dt>
+            <dd>{contract.directReason}</dd>
+          </>
+        )}
         <dt>{copy.issuer}</dt>
         <dd>{version.issuingCompanyLabel}</dd>
         <dt>{copy.party}</dt>
@@ -852,9 +952,15 @@ function ContractSummary({ contract }: { contract: ContractView }) {
         </dd>
         {contract.kind === 'CONTRACT' && (
           <>
-            <dt>{copy.scope}</dt>
+            <dt>
+              {contract.origin === 'DIRECT' ? directCopy('scope') : copy.scope}
+            </dt>
             <dd>{version.scopeNote ?? copy.missing}</dd>
-            <dt>{copy.commercial}</dt>
+            <dt>
+              {contract.origin === 'DIRECT'
+                ? directCopy('commercial')
+                : copy.commercial}
+            </dt>
             <dd>{version.commercialConditions ?? copy.missing}</dd>
             <dt>{copy.start}</dt>
             <dd>{version.termStartsOn ?? copy.missing}</dd>
@@ -870,7 +976,10 @@ function ContractSummary({ contract }: { contract: ContractView }) {
           <div className="contract-price">
             <table>
               <caption>
-                {copy.price} ({version.pricingSnapshot.currency})
+                {contract.origin === 'DIRECT'
+                  ? directCopy('snapshot')
+                  : copy.price}{' '}
+                ({version.pricingSnapshot.currency})
               </caption>
               <thead>
                 <tr>

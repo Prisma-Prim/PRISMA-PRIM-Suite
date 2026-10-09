@@ -1,3 +1,4 @@
+import type { ContractQualityContext } from './contract-quality-response';
 import {
   readContractQualityRun,
   type ContractQualityRunView,
@@ -21,7 +22,7 @@ export function readContractDecision(
   value: unknown,
   versionId: string,
   termEndsOn: string | null,
-  addendum?: { pricingSnapshotId: string | null },
+  addendum?: ContractQualityContext,
 ): ContractDecisionView {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('Invalid Contract decision.');

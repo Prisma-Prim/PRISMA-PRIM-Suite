@@ -79,8 +79,7 @@ export interface ContractQualityRun {
   readonly evaluatedAt: string;
   readonly results: readonly ContractQualityResult[];
 }
-/** Stable pure ruleset seam. Constructed inputs exercise every canonical origin;
- * runtime commands still accept only the delivered CONTRACT/ACCEPTED_OFFER. */
+/** Stable pure ruleset seam for the delivered Contract origins and Addenda. */
 export function evaluateContractQuality(
   input: ContractQualityInput,
 ): ContractQualityResult[] {
@@ -160,7 +159,8 @@ function sameIdentity(left: Identity, right: Identity) {
 /** Runtime C3 applicability, correlated with the exact persisted C1 version. */
 export function contractQualityCodes(
   termEndsOn: string | null,
-  addendum: { pricingSnapshotId: string | null } | null = null,
+  source:
+    { pricingSnapshotId: string | null } | { kind: 'DIRECT' } | null = null,
 ): ContractQualityCode[] {
   const codes: ContractQualityCode[] = [
     'SOURCE_COMPANY_MATCHES',
@@ -174,14 +174,25 @@ export function contractQualityCodes(
     'CONDITIONS_MATCH_ACCEPTED_OFFER',
     'ADDED_CONDITIONS_CONFIRMED',
   ];
-  if (addendum) {
+  if (source && 'pricingSnapshotId' in source) {
     codes.splice(6);
-    if (addendum.pricingSnapshotId !== null)
+    if (source.pricingSnapshotId !== null)
       codes.push('PRICING_SNAPSHOT_COHERENT');
     codes.push('PARENT_EXECUTED');
-    if (addendum.pricingSnapshotId !== null)
+    if (source.pricingSnapshotId !== null)
       codes.push('CURRENCY_MATCHES_PARENT');
   }
+  if (source && 'kind' in source)
+    codes.splice(
+      0,
+      codes.length,
+      'SOURCE_COMPANY_MATCHES',
+      'PARTY_AVAILABLE',
+      'PARTY_IDENTITY_CURRENT',
+      'PARTY_TAX_ID_RECORDED',
+      'PRICING_SNAPSHOT_COHERENT',
+      'DIRECT_ORIGIN_REVIEWED',
+    );
   if (termEndsOn !== null) codes.push('TERM_END_NOT_PASSED');
   codes.push('PROVISIONAL_MARKER_PRESENT');
   return codes;
@@ -202,7 +213,9 @@ export function readContractQualityResults(
       !('code' in item) ||
       item.code !== code ||
       !('status' in item) ||
-      (item.status !== 'PASS' && item.status !== CONTRACT_QUALITY_RULES[code])
+      (item.status !== 'PASS' &&
+        item.status !== CONTRACT_QUALITY_RULES[code]) ||
+      (code === 'DIRECT_ORIGIN_REVIEWED' && item.status !== 'WARNING')
     )
       throw new Error('Invalid Contract Quality Check result.');
     return {

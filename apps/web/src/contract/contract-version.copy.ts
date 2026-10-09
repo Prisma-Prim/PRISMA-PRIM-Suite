@@ -33,11 +33,15 @@ const keys = [
   'termEndsOn',
   'specialConditions',
   'changeSummary',
+  'scopeNote',
+  'commercialConditions',
   'missing',
   'superseded',
 ] as const;
 export const contractVersionMessages = defineMessages(keys, {
   en: {
+    scopeNote: 'Scope',
+    commercialConditions: 'Commercial conditions',
     versionLabel: 'Version',
     title: 'Revise Contract before signature',
     create: 'Create new Contract Version',
@@ -78,6 +82,8 @@ export const contractVersionMessages = defineMessages(keys, {
       'Historical version — preserved; no further decision or signature.',
   },
   fr: {
+    scopeNote: 'Périmètre',
+    commercialConditions: 'Conditions commerciales',
     versionLabel: 'Version',
     title: 'Réviser le contrat avant signature',
     create: 'Créer une nouvelle version du contrat',
@@ -118,6 +124,8 @@ export const contractVersionMessages = defineMessages(keys, {
       'Version historique conservée ; aucune nouvelle décision ni signature.',
   },
   ro: {
+    scopeNote: 'Obiect',
+    commercialConditions: 'Condiții comerciale',
     versionLabel: 'Versiune',
     title: 'Revizuiește contractul înainte de semnare',
     create: 'Creează o versiune nouă a contractului',
@@ -156,6 +164,8 @@ export const contractVersionMessages = defineMessages(keys, {
     superseded: 'Versiune istorică păstrată; fără decizie sau semnătură nouă.',
   },
   ru: {
+    scopeNote: 'Предмет',
+    commercialConditions: 'Коммерческие условия',
     versionLabel: 'Версия',
     title: 'Изменить договор до подписания',
     create: 'Создать новую версию договора',

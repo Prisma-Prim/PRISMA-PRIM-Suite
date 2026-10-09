@@ -1,3 +1,5 @@
+export type ContractQualityContext =
+  { pricingSnapshotId: string | null } | { origin: 'DIRECT' };
 const rules = {
   SOURCE_COMPANY_MATCHES: 'ERROR',
   PARTY_AVAILABLE: 'ERROR',
@@ -9,6 +11,7 @@ const rules = {
   PRICING_SNAPSHOT_COHERENT: 'ERROR',
   CONDITIONS_MATCH_ACCEPTED_OFFER: 'ERROR',
   ADDED_CONDITIONS_CONFIRMED: 'WARNING',
+  DIRECT_ORIGIN_REVIEWED: 'WARNING',
   PARENT_EXECUTED: 'ERROR',
   CURRENCY_MATCHES_PARENT: 'WARNING',
   TERM_END_NOT_PASSED: 'WARNING',
@@ -31,7 +34,7 @@ export function readContractQualityRun(
   value: unknown,
   versionId: string,
   termEndsOn: string | null,
-  addendum?: { pricingSnapshotId: string | null },
+  addendum?: ContractQualityContext,
 ): ContractQualityRunView {
   const input = object(value);
   if (
@@ -53,7 +56,7 @@ export function readContractQualityRun(
     'CONDITIONS_MATCH_ACCEPTED_OFFER',
     'ADDED_CONDITIONS_CONFIRMED',
   ];
-  if (addendum) {
+  if (addendum && 'pricingSnapshotId' in addendum) {
     codes.splice(6);
     if (addendum.pricingSnapshotId !== null)
       codes.push('PRICING_SNAPSHOT_COHERENT');
@@ -61,6 +64,17 @@ export function readContractQualityRun(
     if (addendum.pricingSnapshotId !== null)
       codes.push('CURRENCY_MATCHES_PARENT');
   }
+  if (addendum && 'origin' in addendum)
+    codes.splice(
+      0,
+      codes.length,
+      'SOURCE_COMPANY_MATCHES',
+      'PARTY_AVAILABLE',
+      'PARTY_IDENTITY_CURRENT',
+      'PARTY_TAX_ID_RECORDED',
+      'PRICING_SNAPSHOT_COHERENT',
+      'DIRECT_ORIGIN_REVIEWED',
+    );
   if (termEndsOn !== null) codes.push('TERM_END_NOT_PASSED');
   codes.push('PROVISIONAL_MARKER_PRESENT');
   const results: unknown[] = input.results;
@@ -84,7 +98,8 @@ export function readContractQualityRun(
       if (
         Object.keys(result).length !== 2 ||
         result.code !== code ||
-        (result.status !== 'PASS' && result.status !== rules[code])
+        (result.status !== 'PASS' && result.status !== rules[code]) ||
+        (code === 'DIRECT_ORIGIN_REVIEWED' && result.status !== 'WARNING')
       )
         throw new Error('Invalid Contract Quality Check result.');
       return { code, status: result.status === 'PASS' ? 'PASS' : rules[code] };
@@ -95,7 +110,7 @@ export function readContractQualityHistory(
   value: unknown,
   versionId: string,
   termEndsOn: string | null,
-  addendum?: { pricingSnapshotId: string | null },
+  addendum?: ContractQualityContext,
 ): { items: ContractQualityRunView[]; nextCursor: string | null } {
   const input = object(value);
   if (

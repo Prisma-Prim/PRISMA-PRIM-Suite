@@ -48,6 +48,190 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it('C9 creates DIRECT without Offer access and retains an identical uncertain retry', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const preparer = actor(true);
+    if (!preparer.activeCompany) throw new Error('Missing Company');
+    preparer.activeCompany.offerPermissions = [];
+    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
+    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
+    preparer.activeCompany.pricingUserPermissions = [
+      'commercial.pricing.snapshot.read',
+    ];
+    const direct = {
+      ...fixture(),
+      origin: 'DIRECT',
+      directReason: ' Internal reason ',
+      sourceOfferId: null,
+      sourceOfferVersionId: null,
+      sourceOffer: null,
+      parent: null,
+      parentContractId: null,
+      addendumOrdinal: null,
+    };
+    const attempts: Array<{ body: unknown; key: string | null }> = [];
+    const calls: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      calls.push(path);
+      if (path.endsWith('/direct') && init?.method === 'POST') {
+        attempts.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return attempts.length === 1
+          ? response({}, 500)
+          : response(direct, 201);
+      }
+      if (path.includes('/snapshots'))
+        return response({
+          items: [
+            {
+              id: 'snapshot-one',
+              currency: 'EUR',
+              total: '345.00',
+              committedAt: '2026-10-07T09:00:00.000Z',
+            },
+          ],
+        });
+      if (path.endsWith('/legal-entities'))
+        return response({ clientVersion: 1, legalEntities: [] });
+      if (path.endsWith('/representation')) return response(representation());
+      if (path.endsWith('/versions'))
+        return response({ items: [direct.version], nextCursor: null });
+      return response({ contract: null });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={preparer}
+          identity={identity}
+          opportunityId="opportunity-one"
+          currentClientId="client-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Internal direct reason'), {
+      target: { value: ' Internal reason ' },
+    });
+    fireEvent.change(screen.getByLabelText('Direct scope'), {
+      target: { value: ' Exact scope ' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create direct Contract' }),
+    );
+    expect(
+      await screen.findByText(
+        'The direct Contract result is uncertain. Retry the identical command.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Internal direct reason')).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Retry identical direct Contract command',
+      }),
+    );
+    expect(await screen.findByText('Direct origin')).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(calls.some((path) => path.includes('/offers/'))).toBe(false);
+  });
+  it('C9 suppresses a late direct creation after independent Snapshot authority changes', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const preparer = actor(true);
+    if (!preparer.activeCompany) throw new Error('Missing Company');
+    preparer.activeCompany.offerPermissions = [];
+    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
+    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
+    preparer.activeCompany.pricingUserPermissions = [
+      'commercial.pricing.snapshot.read',
+    ];
+    let resolveLate: ((value: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (path.endsWith('/direct') && init?.method === 'POST')
+        return new Promise<Response>((resolve) => {
+          resolveLate = resolve;
+        });
+      if (path.includes('/snapshots'))
+        return response({
+          items: [
+            {
+              id: 'snapshot-one',
+              currency: 'EUR',
+              total: '345.00',
+              committedAt: '2026-10-07T09:00:00.000Z',
+            },
+          ],
+          nextCursor: null,
+        });
+      if (path.endsWith('/legal-entities'))
+        return response({ clientVersion: 1, legalEntities: [] });
+      return response({ contract: null });
+    });
+    const props = {
+      identity,
+      opportunityId: 'opportunity-one',
+      currentClientId: 'client-one',
+      onCompanyContextRejected: () => undefined,
+    };
+    const view = render(
+      <InterfaceLocaleProvider>
+        <ContractPanel {...props} actor={preparer} />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Internal direct reason'), {
+      target: { value: 'Internal reason' },
+    });
+    fireEvent.change(screen.getByLabelText('Direct scope'), {
+      target: { value: 'Exact scope' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create direct Contract' }),
+    );
+    await waitFor(() => expect(resolveLate).toBeDefined());
+    view.rerender(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          {...props}
+          actor={{
+            ...preparer,
+            activeCompany: {
+              ...preparer.activeCompany,
+              pricingUserPermissions: [],
+            },
+          }}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText('Internal direct reason'),
+      ).not.toBeInTheDocument(),
+    );
+    await act(async () => {
+      resolveLate?.(
+        response(
+          {
+            ...fixture(),
+            origin: 'DIRECT',
+            directReason: 'Internal reason',
+            sourceOfferId: null,
+            sourceOfferVersionId: null,
+            sourceOffer: null,
+            parent: null,
+            parentContractId: null,
+            addendumOrdinal: null,
+          },
+          201,
+        ),
+      );
+    });
+    expect(
+      screen.queryByText('Direct origin', { exact: true }),
+    ).not.toBeInTheDocument();
+  });
   it('C8 keeps exact uncertain Addendum creation and opens its own optional-price content', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const parent = { ...executedUiFixture(), addenda: [] };

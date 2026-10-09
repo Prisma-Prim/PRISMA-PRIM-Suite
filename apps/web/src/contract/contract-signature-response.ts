@@ -1,3 +1,4 @@
+import type { ContractQualityContext } from './contract-quality-response';
 import type { ContractDecisionView } from './contract-decision-response';
 import {
   readContractQualityRun,
@@ -27,7 +28,7 @@ export function readContractSignature(
     versionId: string;
     termEndsOn: string | null;
     approval: ContractDecisionView | null;
-    addendum?: { pricingSnapshotId: string | null };
+    addendum?: ContractQualityContext;
   },
 ): ContractSignatureView {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
