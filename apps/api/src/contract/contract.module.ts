@@ -10,6 +10,8 @@ import { PricingConfigurationModule } from '../pricing-configuration/pricing-con
 import { ContractService } from './contract.service.js';
 import { ContractProjectsService } from './contract-projects.service.js';
 import { ProjectModule } from '../project/project.module.js';
+import { ContractProjectLinkStore } from './contract-project-link.store.js';
+import { ContractProjectCreationService } from './contract-project-creation.service.js';
 @Module({
   imports: [
     AccessModule,
@@ -22,7 +24,16 @@ import { ProjectModule } from '../project/project.module.js';
     PricingConfigurationModule,
     ServerClockModule,
   ],
-  providers: [ContractService, ContractProjectsService],
-  exports: [ContractService, ContractProjectsService],
+  providers: [
+    ContractService,
+    ContractProjectsService,
+    ContractProjectLinkStore,
+    ContractProjectCreationService,
+  ],
+  exports: [
+    ContractService,
+    ContractProjectsService,
+    ContractProjectCreationService,
+  ],
 })
 export class ContractModule {}

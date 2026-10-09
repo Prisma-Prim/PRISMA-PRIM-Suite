@@ -2137,6 +2137,7 @@ function RequestDetail({
       />
       <ContractPanel
         onOpenProject={onOpenProject}
+        opportunityTitle={request.initialOpportunity.title}
         key={
           clientAuthority +
           ':' +

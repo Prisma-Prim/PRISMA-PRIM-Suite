@@ -1,6 +1,7 @@
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
 import { contractSignatureMessages } from '../contract/contract-signature.copy';
 import { contractProjectsMessages } from '../contract/contract-projects.copy';
+import { contractProjectCreateMessages } from '../contract/contract-project-create.copy';
 import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
 import { appMessages } from '../app.copy';
 import { companyContextMessages } from '../company/company-context.copy';
@@ -17,6 +18,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('contractDecision', contractDecisionMessages);
   assertMessageCoverage('contractSignature', contractSignatureMessages);
   assertMessageCoverage('contractProjects', contractProjectsMessages);
+  assertMessageCoverage('contractProjectCreate', contractProjectCreateMessages);
   assertMessageCoverage('profitability', profitabilityMessages);
   assertMessageCoverage('app', appMessages);
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);

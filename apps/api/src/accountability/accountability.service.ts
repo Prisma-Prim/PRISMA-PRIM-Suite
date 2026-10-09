@@ -333,6 +333,7 @@ export class AccountabilityService {
     companyId: string;
     contractId: string;
     projectId: string;
+    created: boolean;
     occurredAt: Date;
   }): Promise<void> {
     await this.databaseContext.connection.insert(contractEvents).values({
@@ -346,7 +347,7 @@ export class AccountabilityService {
       metadata: {
         contractId: input.contractId,
         projectId: input.projectId,
-        created: false,
+        created: input.created,
       },
     });
   }

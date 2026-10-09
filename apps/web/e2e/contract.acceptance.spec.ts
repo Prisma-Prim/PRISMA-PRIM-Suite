@@ -1287,6 +1287,177 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await page
     .getByRole('button')
     .filter({
+      has: page.getByText('Contract Request ' + suffix, { exact: true }),
+    })
+    .click();
+  const projectCreationPanel = projectsPanel.getByRole('region', {
+    name: 'Create a preparatory Project',
+    exact: true,
+  });
+  const creationTitle = projectCreationPanel.getByRole('textbox', {
+    name: 'New Project title',
+  });
+  await expect(creationTitle).toHaveValue('Prepare Contract ' + suffix);
+  const chosenTitle = 'Created from Contract ' + suffix;
+  await creationTitle.fill(chosenTitle);
+  const acknowledgement = projectCreationPanel.getByRole('checkbox');
+  await acknowledgement.focus();
+  await page.keyboard.press('Space');
+  const intervening = object(
+    await command({
+      request,
+      path: '/projects',
+      companyId,
+      data: {
+        title: 'Intervening Project ' + suffix,
+        clientAccountId: text(client.id),
+      },
+      key: 'cp2-intervening-' + suffix,
+    }),
+  );
+  await projectCreationPanel
+    .getByRole('button', { name: 'Create and link Project', exact: true })
+    .click();
+  await expect(
+    projectCreationPanel.getByText(
+      'The candidates changed. Review the refreshed list and confirm again.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    projectsPanel.getByRole('radio', {
+      name: new RegExp('Intervening Project ' + suffix),
+    }),
+  ).toBeVisible();
+  await expect(creationTitle).toHaveValue(chosenTitle);
+  await expect(acknowledgement).not.toBeChecked();
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-create-candidates-changed-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await acknowledgement.check();
+  const creationPath = projectLinkPath + '/create',
+    createAttempts: Array<{ body: string | null; key: string | undefined }> =
+      [];
+  await page.route('**/api' + creationPath, async (route) => {
+    createAttempts.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (createAttempts.length === 1) {
+      const response = await route.fetch();
+      expect(response.status()).toBe(201);
+      await route.abort();
+    } else await route.continue();
+  });
+  await projectCreationPanel
+    .getByRole('button', { name: 'Create and link Project', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    projectCreationPanel.getByRole('button', {
+      name: 'Retry the same Project creation',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(creationTitle).toBeDisabled();
+  await expect(acknowledgement).toBeDisabled();
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-create-uncertain-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await projectCreationPanel
+    .getByRole('button', {
+      name: 'Retry the same Project creation',
+      exact: true,
+    })
+    .click();
+  await expect(
+    projectCreationPanel.getByText('Preparatory Project created and linked.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  expect(createAttempts).toHaveLength(2);
+  expect(createAttempts[1]).toEqual(createAttempts[0]);
+  expect(createAttempts[0]?.key).toBeTruthy();
+  await page.unroute('**/api' + creationPath);
+  const cp2Read = object(
+    object(
+      await body(
+        await request.get(api + '/contracts/opportunities/' + opportunityId, {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  expect(cp2Read.revision).toBe(5);
+  expect(cp2Read.version).toEqual(executedRead.version);
+  const linkedProjects = cp2Read.linkedProjects;
+  if (!Array.isArray(linkedProjects))
+    throw new Error('Missing linked Projects');
+  expect(linkedProjects).toHaveLength(2);
+  const createdProjects = linkedProjects
+    .map(object)
+    .filter((project) => project.title === chosenTitle);
+  expect(createdProjects).toHaveLength(1);
+  const createdProject = createdProjects[0];
+  if (!createdProject) throw new Error('Missing created Project');
+  expect(createdProject.status).toBe('preparatory');
+  expect(object(createdProject.link).created).toBe(true);
+  expect(text(createdProject.id)).not.toBe(text(intervening.id));
+  const createdLink = projectsPanel
+    .getByRole('listitem')
+    .filter({ hasText: chosenTitle });
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-create-linked-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await createdLink
+    .getByRole('button', { name: 'Open Project', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: chosenTitle, exact: true }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole('article', { name: chosenTitle, exact: true })
+      .getByText(
+        'Preparation only. This record does not authorize work to start.',
+        { exact: true },
+      ),
+  ).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath(
+      'contract-created-project-reopened-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await linkedContracts
+    .getByRole('button', { name: 'Open Contract', exact: true })
+    .click();
+  await expect(
+    projectsPanel.getByRole('radio', { name: new RegExp(chosenTitle) }),
+  ).toBeDisabled();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-create-reopened-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({
       has: page.getByText('Rejection Request ' + suffix, { exact: true }),
     })
     .click();
