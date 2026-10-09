@@ -414,6 +414,13 @@
       "when": 1791513262069,
       "tag": "0058_contract_project_creation",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1791522713657,
+      "tag": "0059_contract_versions",
+      "breakpoints": true
     }
   ]
 }

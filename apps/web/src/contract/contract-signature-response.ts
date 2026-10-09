@@ -6,7 +6,7 @@ import {
 export interface ContractSignatureView {
   id: string;
   contractVersionId: string;
-  revision: 3;
+  revision: number;
   evidenceKind: 'SIMULATED';
   provenance: 'ILLUSTRATIVE';
   provisional: true;
@@ -39,7 +39,7 @@ export function readContractSignature(
     !approval ||
     approval.kind !== 'APPROVE' ||
     row.contractVersionId !== input.versionId ||
-    row.revision !== 3 ||
+    row.revision !== approval.revision + 1 ||
     row.evidenceKind !== 'SIMULATED' ||
     row.provenance !== 'ILLUSTRATIVE' ||
     row.provisional !== true ||
@@ -91,7 +91,7 @@ export function readContractSignature(
   return {
     id: text(row.id),
     contractVersionId: input.versionId,
-    revision: 3,
+    revision: approval.revision + 1,
     evidenceKind: 'SIMULATED',
     provenance: 'ILLUSTRATIVE',
     provisional: true,

@@ -195,7 +195,7 @@ function readCommand(value: unknown) {
     typeof row.expectedContractRevision !== 'number' ||
     !Number.isSafeInteger(row.expectedContractRevision) ||
     row.expectedContractRevision < 1 ||
-    row.expectedContractRevision > 53
+    row.expectedContractRevision > 2147483646
   )
     throw invalid('expectedContractRevision');
   return {

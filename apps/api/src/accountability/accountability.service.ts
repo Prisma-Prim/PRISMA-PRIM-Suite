@@ -251,11 +251,46 @@ export class AccountabilityService {
     ]);
   }
 
+  async recordContractVersionCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    contractId: string;
+    contractVersionId: string;
+    versionNumber: number;
+    predecessorVersionNumber: number;
+    offerVersionId: string;
+    pricingSnapshotId: string;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(contractEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      contractId: input.contractId,
+      contractVersionId: input.contractVersionId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      action: 'contract_version.created',
+      metadata: {
+        contractId: input.contractId,
+        contractVersionId: input.contractVersionId,
+        versionNumber: input.versionNumber,
+        predecessorVersionNumber: input.predecessorVersionNumber,
+        kind: 'CONTRACT',
+        origin: 'ACCEPTED_OFFER',
+        provenance: 'ILLUSTRATIVE',
+        offerVersionId: input.offerVersionId,
+        pricingSnapshotId: input.pricingSnapshotId,
+      },
+    });
+  }
+
   async recordContractDecision(input: {
     actor: ActorContext;
     companyId: string;
     contractId: string;
     contractVersionId: string;
+    versionNumber: number;
     kind: 'APPROVE' | 'REJECT';
     offerVersionId: string;
     pricingSnapshotId: string;
@@ -277,7 +312,7 @@ export class AccountabilityService {
       metadata: {
         contractId: input.contractId,
         contractVersionId: input.contractVersionId,
-        versionNumber: 1,
+        versionNumber: input.versionNumber,
         kind: 'CONTRACT',
         origin: 'ACCEPTED_OFFER',
         provenance: 'ILLUSTRATIVE',
@@ -298,6 +333,7 @@ export class AccountabilityService {
     companyId: string;
     contractId: string;
     contractVersionId: string;
+    versionNumber: number;
     offerVersionId: string;
     pricingSnapshotId: string;
     acknowledgedWarningCodes: readonly string[];
@@ -315,7 +351,7 @@ export class AccountabilityService {
       metadata: {
         contractId: input.contractId,
         contractVersionId: input.contractVersionId,
-        versionNumber: 1,
+        versionNumber: input.versionNumber,
         kind: 'CONTRACT',
         origin: 'ACCEPTED_OFFER',
         provenance: 'ILLUSTRATIVE',

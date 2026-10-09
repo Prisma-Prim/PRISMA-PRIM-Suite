@@ -81,6 +81,842 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('C6 revises an approved Contract into a fresh pending version and preserves historical representation', async () => {
+    const { fixture, versionId, base } = await approvedSignatureFixture();
+    const before = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    const response = await request({
+      path: base + '/versions',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c6-first',
+        },
+        body: JSON.stringify({
+          expectedContractRevision: 2,
+          termStartsOn: '2026-10-01',
+          termEndsOn: '2026-12-31',
+          specialConditions: '  Revised synthetic conditions  ',
+        }),
+      },
+    });
+    expect(response.status).toBe(201);
+    const result = record(await json(response));
+    expect(result).toMatchObject({
+      contractId: before.id,
+      versionNumber: 2,
+      revision: 3,
+      provisional: true,
+    });
+    const next = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(next).toMatchObject({
+      id: before.id,
+      revision: 3,
+      version: {
+        versionNumber: 2,
+        predecessorVersionId: versionId,
+        decisionState: 'PENDING',
+        executionState: 'NOT_EXECUTED',
+        decision: null,
+        signature: null,
+        latestQualityRun: null,
+        specialConditions: '  Revised synthetic conditions  ',
+      },
+    });
+    const historic = record(
+      record(
+        await json(
+          await request({
+            path: base + '/versions/' + versionId,
+            companyId: fixture.companyId,
+          }),
+        ),
+      ).contract,
+    );
+    expect(record(historic.version).representation).toEqual(
+      record(before.version).representation,
+    );
+    expect(record(historic.version).decision).toEqual(
+      record(before.version).decision,
+    );
+    for (const mutation of [
+      "UPDATE contract_versions SET special_conditions='Rewrite frozen content' WHERE id=$1",
+      "UPDATE contract_versions SET superseded_at=superseded_at+interval '1 second' WHERE id=$1",
+      'UPDATE contract_versions SET superseded_by_version_id=NULL,superseded_at=NULL WHERE id=$1',
+      'DELETE FROM contract_versions WHERE id=$1',
+    ])
+      await expect(pool.query(mutation, [versionId])).rejects.toMatchObject({
+        code: '23514',
+      });
+  });
+  it.each(['PENDING', 'REJECTED'] as const)(
+    'C6 revises a %s head, starts fresh checks and decisions, and replays the original result after execution',
+    async (state) => {
+      const target = await qualityFixture();
+      const { fixture, base, versionId } = target;
+      await grantApprover(fixture);
+      if (state === 'REJECTED')
+        expect(
+          (
+            await decisionRequest(
+              fixture,
+              versionId,
+              'reject',
+              { expectedContractRevision: 1, reason: '  Original rejection  ' },
+              'c6-reject',
+            )
+          ).status,
+        ).toBe(201);
+      const revision = state === 'REJECTED' ? 2 : 1;
+      const body = {
+        expectedContractRevision: revision,
+        specialConditions: '  Changed conditions\nexact  ',
+      };
+      const replies = await Promise.all([
+        reviseRequest(target, body, 'c6-repeat'),
+        reviseRequest(target, body, 'c6-repeat'),
+      ]);
+      expect(replies.map((reply) => reply.status)).toEqual([201, 201]);
+      const result = record(await json(replies[0]));
+      expect(await json(replies[1])).toEqual(result);
+      const successor = stringField(result, 'contractVersionId');
+      const read = record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      );
+      expect(read).toMatchObject({
+        revision: revision + 1,
+        version: {
+          id: successor,
+          versionNumber: 2,
+          scopeNote: record(target.created.version).scopeNote,
+          pricingSnapshotId: fixture.snapshotId,
+          decision: null,
+          signature: null,
+          latestQualityRun: null,
+          differences: [
+            {
+              field: 'specialConditions',
+              before: null,
+              after: body.specialConditions,
+            },
+          ],
+        },
+      });
+      const history = record(
+        await json(
+          await request({
+            path: base + '/versions?limit=1',
+            companyId: fixture.companyId,
+          }),
+        ),
+      );
+      expect(history).toMatchObject({
+        items: [{ id: successor }],
+        nextCursor: successor,
+      });
+      expect(
+        await json(
+          await request({
+            path: base + '/versions?limit=1&cursor=' + successor,
+            companyId: fixture.companyId,
+          }),
+        ),
+      ).toMatchObject({
+        items: [{ id: versionId, supersededByVersionId: successor }],
+        nextCursor: null,
+      });
+      for (const [action, payload] of [
+        [
+          'approve',
+          {
+            expectedContractRevision: revision + 1,
+            acknowledgedWarningCodes: [],
+          },
+        ],
+        [
+          'reject',
+          { expectedContractRevision: revision + 1, reason: 'Too late' },
+        ],
+        [
+          'signature',
+          { ...signaturePayload(), expectedContractRevision: revision + 1 },
+        ],
+      ] as const) {
+        const refused = await decisionRequest(
+          fixture,
+          versionId,
+          action,
+          payload,
+          'c6-old-' + action,
+        );
+        expect(refused.status).toBe(409);
+        expect(await json(refused)).toMatchObject({
+          code: 'CONTRACT_VERSION_SUPERSEDED',
+        });
+      }
+      expect(
+        await json(
+          await request({
+            path: base + '/versions/' + versionId + '/quality-checks',
+            companyId: fixture.companyId,
+            init: {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'idempotency-key': 'c6-old-check',
+              },
+              body: '{}',
+            },
+          }),
+        ),
+      ).toMatchObject({ code: 'CONTRACT_VERSION_SUPERSEDED' });
+      const run = record(
+        await command({
+          path: base + '/versions/' + successor + '/quality-checks',
+          companyId: fixture.companyId,
+          body: {},
+          key: 'c6-new-check',
+        }),
+      );
+      expect(run.contractVersionId).toBe(successor);
+      expect(
+        (
+          await decisionRequest(
+            fixture,
+            successor,
+            'approve',
+            {
+              expectedContractRevision: revision + 1,
+              acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+            },
+            'c6-new-approve',
+          )
+        ).status,
+      ).toBe(201);
+      expect(
+        (
+          await signatureRequest(
+            fixture,
+            successor,
+            { ...signaturePayload(), expectedContractRevision: revision + 2 },
+            'c6-new-sign',
+          )
+        ).status,
+      ).toBe(201);
+      expect(
+        await json(await reviseRequest(target, body, 'c6-repeat')),
+      ).toEqual(result);
+      expect(
+        await json(
+          await reviseRequest(
+            target,
+            { ...body, specialConditions: 'Changed intent' },
+            'c6-repeat',
+          ),
+        ),
+      ).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+      expect(
+        await json(
+          await reviseRequest(
+            target,
+            { expectedContractRevision: revision + 3 },
+            'c6-after-sign',
+          ),
+        ),
+      ).toMatchObject({ code: 'CONTRACT_EXECUTED' });
+      expect(await c6Counts()).toMatchObject({
+        versions: '2',
+        receipts: '1',
+        events: '2',
+        revision: revision + 3,
+      });
+      if (state === 'REJECTED')
+        expect(
+          record(
+            record(
+              await json(
+                await request({
+                  path: base + '/versions/' + versionId,
+                  companyId: fixture.companyId,
+                }),
+              ),
+            ).contract,
+          ).version,
+        ).toMatchObject({ decision: { reason: '  Original rejection  ' } });
+      await grantLinkProject(fixture);
+      expect(
+        (
+          await request({
+            path: base + '/projects/create',
+            companyId: fixture.companyId,
+            init: {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'idempotency-key': 'c6-create-project',
+              },
+              body: JSON.stringify({
+                title: 'Project after revised signature',
+                acknowledgedCandidateProjectIds: [],
+                expectedContractRevision: revision + 3,
+              }),
+            },
+          })
+        ).status,
+      ).toBe(201);
+    },
+  );
+  it('C6 refreshes Client identity, recopies fixed source without Offer authority, and preserves old representation bytes', async () => {
+    const target = await qualityFixture();
+    const { fixture, base, created, versionId } = target;
+    const client = record(
+      await json(
+        await request({
+          path: '/clients/' + fixture.clientId,
+          companyId: fixture.companyId,
+        }),
+      ),
+    );
+    expect(
+      (
+        await request({
+          path: '/clients/' + fixture.clientId,
+          companyId: fixture.companyId,
+          init: {
+            method: 'PATCH',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'c6-correct',
+            },
+            body: JSON.stringify({
+              expectedVersion: numberField(client, 'version'),
+              displayName: 'Current corrected legal name',
+            }),
+          },
+        })
+      ).status,
+    ).toBe(200);
+    for (const route of ['company-offer-preparer', 'company-pricing-user'])
+      await request({
+        path:
+          '/' +
+          route +
+          '-assignments/' +
+          fixture.actorMembershipId +
+          '/' +
+          fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'c6-revoke-' + route },
+        },
+      });
+    const revised = await reviseRequest(
+      target,
+      { expectedContractRevision: 1 },
+      'c6-refresh',
+    );
+    expect(revised.status).toBe(201);
+    const next = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(next.version).toMatchObject({
+      recipient: { legalName: 'Current corrected legal name' },
+      differences: [
+        {
+          field: 'recipientLegalName',
+          before: record(record(created.version).recipient).legalName,
+          after: 'Current corrected legal name',
+        },
+      ],
+      scopeNote: record(created.version).scopeNote,
+      commercialConditions: record(created.version).commercialConditions,
+      pricingSnapshotId: fixture.snapshotId,
+    });
+    const old = record(
+      record(
+        await json(
+          await request({
+            path: base + '/versions/' + versionId,
+            companyId: fixture.companyId,
+          }),
+        ),
+      ).contract,
+    );
+    expect(record(old.version).representation).toEqual(
+      record(created.version).representation,
+    );
+    expect(
+      (
+        await request({
+          path: base + '/versions?limit=51',
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request({
+          path: base + '/versions?cursor=not-a-uuid',
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(400);
+  });
+  it.each(['new', 'approve', 'reject', 'signature'] as const)(
+    'C6 controls new-version versus %s in both winning orders',
+    async (other) => {
+      for (const revisionFirst of [true, false]) {
+        // Each ordering has an independent persisted Contract and Client fence.
+        if (!revisionFirst)
+          await pool.query(
+            'TRUNCATE activity_log_events, workspace_memberships, internal_users, workspaces CASCADE',
+          );
+        const target =
+          other === 'signature'
+            ? await approvedSignatureFixture()
+            : await qualityFixture();
+        const { fixture, versionId } = target;
+        await grantApprover(fixture);
+        const revision = other === 'signature' ? 2 : 1;
+        const revise = () =>
+          reviseRequest(
+            target,
+            {
+              expectedContractRevision: revision,
+              specialConditions: 'Race revision',
+            },
+            'c6-race-new-' + revisionFirst,
+          );
+        const competitor = () =>
+          other === 'new'
+            ? reviseRequest(
+                target,
+                {
+                  expectedContractRevision: revision,
+                  specialConditions: 'Competing revision',
+                },
+                'c6-race-other-' + revisionFirst,
+              )
+            : decisionRequest(
+                fixture,
+                versionId,
+                other,
+                other === 'approve'
+                  ? {
+                      expectedContractRevision: revision,
+                      acknowledgedWarningCodes: [],
+                    }
+                  : other === 'reject'
+                    ? {
+                        expectedContractRevision: revision,
+                        reason: 'Race rejection',
+                      }
+                    : {
+                        ...signaturePayload(),
+                        expectedContractRevision: revision,
+                      },
+                'c6-race-other-' + revisionFirst,
+              );
+        const blocker = await pool.connect();
+        let first: Promise<Response> | undefined,
+          second: Promise<Response> | undefined;
+        try {
+          await blocker.query('BEGIN');
+          const pid = (
+            await blocker.query<{ pid: number }>(
+              'SELECT pg_backend_pid() AS pid',
+            )
+          ).rows[0]?.pid;
+          if (pid === undefined) throw new Error('No blocker');
+          await blocker.query(
+            'SELECT id FROM contracts WHERE opportunity_id=$1 FOR UPDATE',
+            [fixture.opportunityId],
+          );
+          first = (revisionFirst ? revise : competitor)();
+          const firstPid = await waitForBlocker(pid);
+          second = (revisionFirst ? competitor : revise)();
+          await waitForBlocker(firstPid, pid);
+          await blocker.query('COMMIT');
+          expect((await first).status).toBe(201);
+          expect((await second).status).toBe(409);
+          expect(await json(await second)).toMatchObject({
+            code:
+              revisionFirst && other !== 'new'
+                ? 'CONTRACT_VERSION_SUPERSEDED'
+                : 'STALE_CONTRACT_REVISION',
+          });
+        } finally {
+          await blocker.query('ROLLBACK');
+          blocker.release();
+          await Promise.allSettled(
+            [first, second].filter((item) => item !== undefined),
+          );
+        }
+      }
+    },
+  );
+  it.each(['client', 'preparer'] as const)(
+    'C6 denies when %s invalidation wins its current owner fence',
+    async (fence) => {
+      const target = await qualityFixture();
+      const { fixture } = target;
+      const before = await c6Counts();
+      const blocker = await pool.connect();
+      let pending: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('No blocker');
+        await blocker.query(
+          fence === 'client'
+            ? "UPDATE client_accounts SET status='archived' WHERE id=$1"
+            : "UPDATE company_role_assignments SET revoked_at=now() WHERE bundle='company_contract_preparer' AND company_id=$1",
+          [fence === 'client' ? fixture.clientId : fixture.companyId],
+        );
+        pending = reviseRequest(
+          target,
+          { expectedContractRevision: 1 },
+          'c6-fence',
+        );
+        await waitForBlocker(pid);
+        await blocker.query('COMMIT');
+        expect((await pending).status).toBe(fence === 'client' ? 404 : 403);
+        expect(await c6Counts()).toEqual(before);
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await pending;
+      }
+    },
+  );
+  it.each(['contract_commands', 'contract_events'] as const)(
+    'C6 rolls back every new-version effect when %s writing fails',
+    async (table) => {
+      const target = await qualityFixture();
+      const before = await c6Counts();
+      await pool.query(
+        `CREATE FUNCTION fail_c6_write() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic failure'; END; $$; CREATE TRIGGER fail_c6_write BEFORE INSERT ON ${table} FOR EACH ROW EXECUTE FUNCTION fail_c6_write()`,
+      );
+      try {
+        const failed = await reviseRequest(
+          target,
+          { expectedContractRevision: 1 },
+          'c6-rollback',
+        );
+        expect(failed.status).toBe(500);
+        expect(await json(failed)).toMatchObject({
+          code: 'CONTRACT_VERSION_UNCERTAIN',
+        });
+        expect(await c6Counts()).toEqual(before);
+        expect(
+          (
+            await pool.query(
+              'SELECT superseded_by_version_id FROM contract_versions',
+            )
+          ).rows,
+        ).toEqual([{ superseded_by_version_id: null }]);
+      } finally {
+        await pool.query(
+          `DROP TRIGGER fail_c6_write ON ${table};DROP FUNCTION fail_c6_write()`,
+        );
+      }
+      expect(
+        (
+          await reviseRequest(
+            target,
+            { expectedContractRevision: 1 },
+            'c6-rollback',
+          )
+        ).status,
+      ).toBe(201);
+    },
+  );
+  it('C6 rejects editable source fields, invalid terms, missing keys/revisions and stale commands without effects', async () => {
+    const target = await qualityFixture();
+    const before = await c6Counts();
+    for (const payload of [
+      {},
+      { expectedContractRevision: 0 },
+      { expectedContractRevision: 1, scopeNote: 'Editable source' },
+      {
+        expectedContractRevision: 1,
+        pricingSnapshotId: target.fixture.snapshotId,
+      },
+      { expectedContractRevision: 1, acceptedOfferVersionId: 'changed' },
+      { expectedContractRevision: 1, termStartsOn: '2026-02-30' },
+      {
+        expectedContractRevision: 1,
+        termStartsOn: '2026-12-01',
+        termEndsOn: '2026-01-01',
+      },
+      { expectedContractRevision: 1, specialConditions: 'x'.repeat(4001) },
+    ])
+      expect((await reviseRequest(target, payload, 'c6-invalid')).status).toBe(
+        400,
+      );
+    expect(
+      (await reviseRequest(target, { expectedContractRevision: 1 }, '')).status,
+    ).toBe(400);
+    expect(
+      await json(
+        await reviseRequest(
+          target,
+          { expectedContractRevision: 2 },
+          'c6-stale',
+        ),
+      ),
+    ).toMatchObject({ code: 'STALE_CONTRACT_REVISION' });
+    expect(await c6Counts()).toEqual(before);
+  });
+  it('C6 replays initial Contract CREATE with its recorded version after a successor and denies revoked replay', async () => {
+    const fixture = await acceptedOffer();
+    await grantContract(fixture, 'c6-create-replay-grant');
+    const payload = {
+      ...(await contractPayload(fixture)),
+      termStartsOn: '2026-10-01',
+      termEndsOn: '2026-12-31',
+      specialConditions: 'Original CREATE conditions',
+    };
+    const initialResponse = await sendContract(
+      fixture,
+      payload,
+      'c6-initial-create',
+    );
+    expect(initialResponse.status).toBe(201);
+    const initial = record(await json(initialResponse));
+    const originalVersion = record(initial.version);
+    const revisedResponse = await reviseRequest(
+      { fixture },
+      {
+        expectedContractRevision: 1,
+        termStartsOn: '2027-01-01',
+        specialConditions: 'Successor conditions',
+      },
+      'c6-create-successor',
+    );
+    expect(revisedResponse.status).toBe(201);
+    const successor = record(await json(revisedResponse));
+    const beforeReplay = await c6Counts();
+    const replay = await sendContract(fixture, payload, 'c6-initial-create');
+    expect(replay.status).toBe(201);
+    const recorded = record(await json(replay));
+    expect(recorded.id).toBe(initial.id);
+    expect(recorded.version).toMatchObject({
+      id: originalVersion.id,
+      versionNumber: 1,
+      termStartsOn: payload.termStartsOn,
+      termEndsOn: payload.termEndsOn,
+      specialConditions: payload.specialConditions,
+      supersededByVersionId: successor.contractVersionId,
+      representation: originalVersion.representation,
+    });
+    expect(await c6Counts()).toEqual(beforeReplay);
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at=now() WHERE bundle='company_contract_preparer' AND company_id=$1",
+      [fixture.companyId],
+    );
+    expect(
+      (await sendContract(fixture, payload, 'c6-initial-create')).status,
+    ).toBe(403);
+    expect(await c6Counts()).toEqual(beforeReplay);
+  });
+  it('C6 replays the original creation after later heads and reauthorizes before every replay', async () => {
+    const target = await qualityFixture();
+    const { fixture } = target;
+    const original = {
+      expectedContractRevision: 1,
+      specialConditions: 'Original immutable result',
+    };
+    const first = await reviseRequest(target, original, 'c6-original');
+    expect(first.status).toBe(201);
+    const recorded = await json(first);
+    expect(
+      (await reviseRequest(target, { expectedContractRevision: 2 }, 'c6-third'))
+        .status,
+    ).toBe(201);
+    expect(
+      await json(await reviseRequest(target, original, 'c6-original')),
+    ).toEqual(recorded);
+    const before = await c6Counts();
+    await pool.query(
+      "UPDATE company_role_assignments SET revoked_at=now() WHERE bundle='company_contract_preparer' AND company_id=$1",
+      [fixture.companyId],
+    );
+    expect((await reviseRequest(target, original, 'c6-original')).status).toBe(
+      403,
+    );
+    expect(await c6Counts()).toEqual(before);
+    await grantContract(fixture, 'c6-reauthorize');
+    await pool.query(
+      "UPDATE client_accounts SET status='archived' WHERE id=$1",
+      [fixture.clientId],
+    );
+    expect((await reviseRequest(target, original, 'c6-original')).status).toBe(
+      404,
+    );
+    expect(await c6Counts()).toEqual(before);
+  });
+  it('C6 rejects unknown Contract bundle versions before receipt lookup without side effects', async () => {
+    const target = await qualityFixture();
+    const body = { expectedContractRevision: 1 };
+    expect((await reviseRequest(target, body, 'c6-bundle')).status).toBe(201);
+    const before = await c6Counts();
+    const constraint = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
+      )
+    ).rows[0];
+    if (!constraint) throw new Error('Missing captured version constraint');
+    await pool.query(
+      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+    );
+    try {
+      for (const version of [null, 'v2', 'V1']) {
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version=$1 WHERE bundle='company_contract_preparer' AND company_id=$2",
+          [version, target.fixture.companyId],
+        );
+        expect((await reviseRequest(target, body, 'c6-bundle')).status).toBe(
+          403,
+        );
+        expect(await c6Counts()).toEqual(before);
+      }
+    } finally {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle='company_contract_preparer' AND company_id=$1",
+        [target.fixture.companyId],
+      );
+      await pool.query(
+        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+          constraint.definition,
+      );
+    }
+  });
+  it.each(['membership', 'opportunity'] as const)(
+    'C6 refuses recorded replay after current %s access is lost',
+    async (boundary) => {
+      const target = await qualityFixture();
+      const payload = { expectedContractRevision: 1 };
+      expect((await reviseRequest(target, payload, 'c6-boundary')).status).toBe(
+        201,
+      );
+      const before = await c6Counts();
+      if (boundary === 'membership')
+        await pool.query(
+          "UPDATE workspace_memberships SET status='inactive' WHERE id=$1",
+          [target.fixture.actorMembershipId],
+        );
+      else
+        expect(
+          (
+            await request({
+              path:
+                '/company-commercial-intake-assignments/' +
+                target.fixture.actorMembershipId +
+                '/' +
+                target.fixture.companyId,
+              init: {
+                method: 'DELETE',
+                headers: { 'idempotency-key': 'c6-revoke-opportunity' },
+              },
+            })
+          ).status,
+        ).toBe(200);
+      const refused = await reviseRequest(target, payload, 'c6-boundary');
+      expect([401, 403]).toContain(refused.status);
+      expect(await json(refused)).not.toHaveProperty('contractVersionId');
+      expect(await c6Counts()).toEqual(before);
+    },
+  );
+  it('C6 hides foreign Company and Workspace targets and unknown Opportunities without effects', async () => {
+    const target = await qualityFixture();
+    const other = await acceptedOffer({ suffix: 'c6-other-scope' });
+    await grantContract(other, 'c6-other-grant');
+    const before = await c6Counts();
+    const inputs: Array<{
+      opportunityId: string;
+      companyId: string;
+      headers: Record<string, string>;
+    }> = [
+      {
+        opportunityId: target.fixture.opportunityId,
+        companyId: other.companyId,
+        headers: {},
+      },
+      {
+        opportunityId: target.fixture.opportunityId,
+        companyId: target.fixture.companyId,
+        headers: {
+          'x-workspace-context-id': '00000000-0000-4000-8000-000000000999',
+        },
+      },
+      {
+        opportunityId: '00000000-0000-4000-8000-000000000999',
+        companyId: target.fixture.companyId,
+        headers: {},
+      },
+    ];
+    for (const input of inputs) {
+      const refused = await request({
+        path: '/contracts/opportunities/' + input.opportunityId + '/versions',
+        companyId: input.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            ...input.headers,
+            'content-type': 'application/json',
+            'idempotency-key': 'c6-scope',
+          },
+          body: JSON.stringify({ expectedContractRevision: 1 }),
+        },
+      });
+      expect([403, 404]).toContain(refused.status);
+      expect(await json(refused)).not.toHaveProperty('contractVersionId');
+      expect(await c6Counts()).toEqual(before);
+    }
+  });
+  function reviseRequest(
+    target: { fixture: PreparedOffer },
+    body: unknown,
+    key: string,
+  ) {
+    return request({
+      path:
+        '/contracts/opportunities/' +
+        target.fixture.opportunityId +
+        '/versions',
+      companyId: target.fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': key },
+        body: JSON.stringify(body),
+      },
+    });
+  }
+  async function c6Counts() {
+    return (
+      await pool.query(
+        "SELECT (SELECT count(*) FROM contract_versions)::text AS versions,(SELECT count(*) FROM contract_commands WHERE kind='CREATE_VERSION')::text AS receipts,(SELECT count(*) FROM contract_events WHERE action='contract_version.created')::text AS events,(SELECT revision FROM contracts ORDER BY created_at DESC LIMIT 1) AS revision,(SELECT jsonb_agg(jsonb_build_object('id',id,'version',version,'updatedAt',updated_at) ORDER BY id) FROM client_accounts) AS clients",
+      )
+    ).rows[0];
+  }
   it('creates and links one preparatory Project from an acknowledged executed Contract without changing signed evidence', async () => {
     const { fixture, versionId, base } = await approvedSignatureFixture();
     await signatureRequest(
@@ -4078,6 +4914,12 @@ withPostgres('First illustrative Contract REST', () => {
       previousTag: '0056_contract_simulated_signature',
     },
     {
+      baseline: 'CP2 / 0058 executed with created Project',
+      migration: '0059_contract_versions',
+      index: 59,
+      previousTag: '0058_contract_project_creation',
+    },
+    {
       baseline: 'CP1 / 0057 executed with existing link',
       migration: '0058_contract_project_creation',
       index: 58,
@@ -4284,26 +5126,26 @@ withPostgres('First illustrative Contract REST', () => {
           await pool.query('COMMIT');
         }
         let historicLinks: unknown;
-        if (index === 58) {
+        if (index >= 58) {
           await grantLinkProject(fixture);
           const projectId = await createLinkProject(
             fixture,
-            'Historic CP1 Project',
+            index === 59 ? 'Historic CP2 Project' : 'Historic CP1 Project',
           );
           await pool.query('BEGIN');
           const linkId = (
             await pool.query<{ id: string }>(
-              `INSERT INTO contract_project_links(workspace_id,company_id,contract_id,project_id,result_revision,actor_internal_user_id,actor_workspace_membership_id,linked_at) SELECT workspace_id,company_id,id,$2,4,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contracts WHERE id=$1 RETURNING id`,
+              `INSERT INTO contract_project_links(workspace_id,company_id,contract_id,project_id,result_revision,actor_internal_user_id,actor_workspace_membership_id,linked_at${index === 59 ? ',created' : ''}) SELECT workspace_id,company_id,id,$2,4,created_by_internal_user_id,created_by_workspace_membership_id,created_at${index === 59 ? ',true' : ''} FROM contracts WHERE id=$1 RETURNING id`,
               [contractId, projectId],
             )
           ).rows[0]?.id;
           if (!linkId) throw new Error('Missing historic CP1 link');
           await pool.query(
-            `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,kind,result_project_link_id,created_at) SELECT workspace_id,company_id,created_by_workspace_membership_id,'historic-cp1-link',repeat('3',64),opportunity_id,id,'LINK_PROJECT',$2,created_at FROM contracts WHERE id=$1`,
+            `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,kind,result_project_link_id,created_at) SELECT workspace_id,company_id,created_by_workspace_membership_id,'historic-cp1-link',repeat('3',64),opportunity_id,id,'${index === 59 ? 'CREATE_PROJECT' : 'LINK_PROJECT'}',$2,created_at FROM contracts WHERE id=$1`,
             [contractId, linkId],
           );
           await pool.query(
-            `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata) SELECT workspace_id,company_id,'contract_project.linked',id,created_by_internal_user_id,created_by_workspace_membership_id,created_at,jsonb_build_object('contractId',id::text,'projectId',$2::text,'created',false) FROM contracts WHERE id=$1`,
+            `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata) SELECT workspace_id,company_id,'contract_project.linked',id,created_by_internal_user_id,created_by_workspace_membership_id,created_at,jsonb_build_object('contractId',id::text,'projectId',$2::text,'created',${index === 59 ? 'true' : 'false'}) FROM contracts WHERE id=$1`,
             [contractId, projectId],
           );
           await pool.query('UPDATE contracts SET revision=4 WHERE id=$1', [
@@ -4350,8 +5192,8 @@ withPostgres('First illustrative Contract REST', () => {
           }>(
             `SELECT
         (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contracts c) AS contracts,
-        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['template_code','template_version','clause_versions']::text[] ELSE to_jsonb(v) END ORDER BY id) FROM contract_versions v) AS versions,
-        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id','result_project_link_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
+        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at']::text[] ELSE to_jsonb(v)-ARRAY['created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
+        (SELECT jsonb_agg(CASE WHEN $3::boolean THEN to_jsonb(c)-'result_version_id' ELSE to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id','result_project_link_id','result_version_id']::text[] END ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
         (SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM company_role_assignments a) AS permissions,
@@ -4364,6 +5206,12 @@ withPostgres('First illustrative Contract REST', () => {
                 ...(index === 53
                   ? ['contract_versions_template_binding_check']
                   : []),
+                'contract_versions_lineage_check',
+                'contract_versions_predecessor_fk',
+                'contract_versions_successor_fk',
+                'contract_commands_version_fk',
+                'contracts_version_chain',
+                'contract_versions_chain',
                 'contracts_initial_check',
                 'contract_versions_initial_check',
                 'contract_events_target_check',
@@ -4378,6 +5226,7 @@ withPostgres('First illustrative Contract REST', () => {
                 'contracts_signature_evidence',
                 'contract_versions_signature_evidence',
               ],
+              index === 59,
             ],
           );
         const before = (await evidence()).rows;
@@ -4396,6 +5245,14 @@ withPostgres('First illustrative Contract REST', () => {
               .rows,
           ).toEqual([{ created: false }]);
         }
+        if (index === 59)
+          expect(
+            (
+              await pool.query(
+                'SELECT to_jsonb(l) AS row FROM contract_project_links l',
+              )
+            ).rows,
+          ).toEqual(historicLinks);
         if (historicSignatures)
           expect(
             (

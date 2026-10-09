@@ -2,6 +2,7 @@ import {
   assertMessageCoverage,
   resolveMessage,
 } from '../localization/messages';
+import { contractVersionMessages } from './contract-version.copy';
 import { contractDecisionMessages } from './contract-decision.copy';
 import { contractSignatureMessages } from './contract-signature.copy';
 import { contractProjectsMessages } from './contract-projects.copy';
@@ -46,6 +47,217 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it('C6 keeps an identical revision command for explicit uncertain retry', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const commands: Array<{ body: unknown; key: string | null }> = [];
+    const original = fixture();
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'POST' && input.toString().endsWith('/versions')) {
+        commands.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return commands.length === 1
+          ? response({}, 500)
+          : response(
+              {
+                contractId: original.id,
+                contractVersionId: 'version-two',
+                versionNumber: 2,
+                revision: 2,
+                createdAt: '2026-09-27T09:00:00.000Z',
+                provisional: true,
+              },
+              201,
+            );
+      }
+      if (input.toString().endsWith('/versions'))
+        return response({ items: [original.version], nextCursor: null });
+      return response({ contract: original });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={actor(true)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(
+      await screen.findByLabelText('Revised special conditions'),
+      { target: { value: '  Exact revision  ' } },
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create new Contract Version' }),
+    );
+    await screen.findByText(
+      'The revision result is uncertain. Retry the identical version command.',
+    );
+    expect(screen.getByLabelText('Revised special conditions')).toBeDisabled();
+    expect(commands).toHaveLength(1);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Retry identical version command' }),
+    );
+    await waitFor(() => expect(commands).toHaveLength(2));
+    expect(commands[1]).toEqual(commands[0]);
+    expect(JSON.parse(String(commands[0]?.body))).toMatchObject({
+      expectedContractRevision: 1,
+      specialConditions: '  Exact revision  ',
+    });
+  });
+  it.each(interfaceLocales)(
+    'C6 preserves editable values after validation in %s without Offer authority',
+    async (locale) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      const original = fixture();
+      const current = actor(true);
+      if (!current.activeCompany) throw new Error('Missing Company');
+      current.activeCompany.offerPermissions = [];
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+        init?.method === 'POST'
+          ? response({}, 400)
+          : input.toString().endsWith('/versions')
+            ? response({ items: [original.version], nextCursor: null })
+            : response({ contract: original }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={current}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const message = (key: (typeof contractVersionMessages.keys)[number]) =>
+        resolveMessage(contractVersionMessages, locale, key);
+      const field = await screen.findByLabelText(message('conditions'));
+      fireEvent.change(field, {
+        target: { value: '  Keep editable values  ' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: message('create') }));
+      await screen.findByText(message('invalid'));
+      expect(field).toHaveValue('  Keep editable values  ');
+      expect(field).toBeEnabled();
+      expect(() =>
+        assertMessageCoverage('contractVersion', contractVersionMessages),
+      ).not.toThrow();
+    },
+  );
+  it('C6 discards a late revision result after the Opportunity changes', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    let complete: ((response: Response) => void) | undefined;
+    const original = fixture();
+    const current = actor(true);
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'POST')
+        return new Promise<Response>((resolve) => {
+          complete = resolve;
+        });
+      return input.toString().endsWith('/versions')
+        ? response({ items: [original.version], nextCursor: null })
+        : response({
+            contract: {
+              ...original,
+              opportunityId: input.toString().includes('opportunity-two')
+                ? 'opportunity-two'
+                : 'opportunity-one',
+            },
+          });
+    });
+    const props = {
+      actor: current,
+      identity,
+      onCompanyContextRejected: () => undefined,
+    };
+    const { rerender } = render(
+      <InterfaceLocaleProvider>
+        <ContractPanel {...props} opportunityId="opportunity-one" />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(
+      await screen.findByLabelText('Revised special conditions'),
+      { target: { value: 'Old context edit' } },
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create new Contract Version' }),
+    );
+    await waitFor(() => expect(complete).toBeTypeOf('function'));
+    rerender(
+      <InterfaceLocaleProvider>
+        <ContractPanel {...props} opportunityId="opportunity-two" />
+      </InterfaceLocaleProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText('Revised special conditions'),
+      ).not.toHaveValue('Old context edit'),
+    );
+    await act(async () => complete?.(response({}, 500)));
+    expect(
+      screen.queryByText(
+        'The revision result is uncertain. Retry the identical version command.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Revised special conditions')).toBeEnabled();
+  });
+  it.each([
+    { status: 403, code: 'FORBIDDEN', message: 'denied' },
+    { status: 404, code: 'NOT_FOUND', message: 'unavailable' },
+    { status: 409, code: 'STALE_CONTRACT_REVISION', message: 'stale' },
+    { status: 409, code: 'CONTRACT_EXECUTED', message: 'executed' },
+    { status: 409, code: 'IDEMPOTENCY_CONFLICT', message: 'conflict' },
+  ] as const)(
+    'C6 presents safe $code without an uncertain retry',
+    async ({ status, code, message }) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      const current = actor(true);
+      const original = fixture();
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+        input.toString().includes('/access/current-actor')
+          ? response(current)
+          : init?.method === 'POST'
+            ? response({ code }, status)
+            : input.toString().endsWith('/versions')
+              ? response({ items: [original.version], nextCursor: null })
+              : response({ contract: original }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={current}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      fireEvent.change(
+        await screen.findByLabelText('Revised special conditions'),
+        { target: { value: 'Keep entered conditions' } },
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Create new Contract Version' }),
+      );
+      await screen.findByText(
+        resolveMessage(contractVersionMessages, 'en', message),
+      );
+      expect(screen.getByLabelText('Revised special conditions')).toHaveValue(
+        'Keep entered conditions',
+      );
+      expect(
+        screen.getByRole('button', { name: 'Create new Contract Version' }),
+      ).toBeDisabled();
+      expect(
+        screen.queryByRole('button', {
+          name: 'Retry identical version command',
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
   it.each(['candidates', 'link'] as const)(
     'discards a late Project %s response after Company changes',
     async (stage) => {
@@ -1505,6 +1717,8 @@ describe('ContractPanel', () => {
     async (replacement) => {
       let calls = 0;
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        if (input.toString().endsWith('/versions'))
+          return response({ items: [fixture().version], nextCursor: null });
         calls++;
         if (calls > 2) return new Promise<Response>(() => undefined);
         return response(

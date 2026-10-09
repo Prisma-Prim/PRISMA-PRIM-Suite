@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
@@ -52,7 +52,9 @@ export class ContractProjectLinkStore {
           eq(contracts.companyId, companyId),
           eq(contracts.opportunityId, opportunityId),
         ),
-      );
+      )
+      .orderBy(desc(contractVersions.versionNumber))
+      .limit(1);
     const [found] = await (lock
       ? query.for('update', { of: contracts })
       : query);

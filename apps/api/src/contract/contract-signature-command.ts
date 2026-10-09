@@ -65,6 +65,7 @@ export async function recordContractSignature(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        versionId: input.versionId,
       });
       if (!found || found.version.id !== input.versionId)
         throw new NotFoundException();
@@ -112,6 +113,11 @@ export async function recordContractSignature(
           throw new Error('Missing recorded Contract signature.');
         return recorded;
       }
+      if (found.version.supersededByVersionId)
+        throw conflict(
+          'CONTRACT_VERSION_SUPERSEDED',
+          'The Contract Version has been superseded.',
+        );
       const command = readContractSignatureCommand(input.payload);
       // C3 fences the current Client context before locking the Contract and sampling one instant.
       const quality = await dependencies.evaluateFreshQuality({
@@ -124,8 +130,12 @@ export async function recordContractSignature(
         companyId,
         opportunityId: input.opportunityId,
       });
-      if (!current || current.version.id !== input.versionId)
-        throw new NotFoundException();
+      if (!current) throw new NotFoundException();
+      if (current.version.id !== input.versionId)
+        throw conflict(
+          'CONTRACT_VERSION_SUPERSEDED',
+          'The Contract Version has been superseded.',
+        );
       if (current.contract.revision !== command.expectedContractRevision)
         throw conflict(
           'STALE_CONTRACT_REVISION',
@@ -260,6 +270,7 @@ export async function recordContractSignature(
         companyId,
         contractId: current.contract.id,
         contractVersionId: current.version.id,
+        versionNumber: current.version.versionNumber,
         offerVersionId: current.contract.sourceOfferVersionId,
         pricingSnapshotId: current.version.pricingSnapshotId,
         acknowledgedWarningCodes: warnings,
@@ -303,7 +314,7 @@ export async function readContractSignature(
     );
   if (!row) return null;
   if (
-    row.resultRevision !== 3 ||
+    row.resultRevision !== version.createdContractRevision + 2 ||
     row.evidenceKind !== 'SIMULATED' ||
     row.provenance !== 'ILLUSTRATIVE' ||
     !/^[0-9a-f]{64}$/u.test(row.representationChecksum)
@@ -331,7 +342,7 @@ export async function readContractSignature(
   return {
     id: row.id,
     contractVersionId: version.id,
-    revision: 3,
+    revision: row.resultRevision,
     evidenceKind: 'SIMULATED',
     provenance: 'ILLUSTRATIVE',
     provisional: true,

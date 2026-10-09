@@ -1,3 +1,6 @@
+import { useContractVersionCopy } from './contract-version.copy';
+import { ContractVersionPanel } from './ContractVersionPanel';
+import { ContractVersionHistory } from './ContractVersionHistory';
 import { ContractDecisionPanel } from './ContractDecisionPanel';
 import { ContractSignaturePanel } from './ContractSignaturePanel';
 import { ContractProjectsPanel } from './ContractProjectsPanel';
@@ -107,6 +110,7 @@ export function ContractPanel({
     [decisionProtected, setDecisionProtected] = useState(false),
     [signatureProtected, setSignatureProtected] = useState(false),
     [projectLinkProtected, setProjectLinkProtected] = useState(false),
+    [versionProtected, setVersionProtected] = useState(false),
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
@@ -114,6 +118,7 @@ export function ContractPanel({
     attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   const locked =
     running ||
+    versionProtected ||
     decisionProtected ||
     signatureProtected ||
     projectLinkProtected ||
@@ -130,7 +135,7 @@ export function ContractPanel({
       signal,
     });
   }
-  async function load(signal: AbortSignal) {
+  async function load(signal: AbortSignal, versionId?: string) {
     if (!mayRead || !companyId) {
       setView({ kind: 'denied' });
       return;
@@ -140,7 +145,7 @@ export function ContractPanel({
       const api = await createAuthenticatedApiClient(identity);
       if (signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}`,
+        `/contracts/opportunities/${encodeURIComponent(opportunityId)}${versionId ? '/versions/' + encodeURIComponent(versionId) : ''}`,
         { companyContextId: companyId, signal },
       );
       if (signal.aborted) return;
@@ -309,6 +314,58 @@ export function ContractPanel({
         companyId && (
           <>
             <ContractSummary contract={view.contract} />
+            <ContractVersionHistory
+              key={stamp + ':history'}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contract={view.contract}
+              locked={locked || qualityProtected}
+              reject={reject}
+              onOpen={(versionId) => {
+                request.current?.abort();
+                const controller = new AbortController();
+                request.current = controller;
+                void load(controller.signal, versionId);
+              }}
+            />
+            <ContractVersionPanel
+              key={
+                stamp +
+                ':revision:' +
+                view.contract.version.id +
+                ':' +
+                view.contract.revision
+              }
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contract={view.contract}
+              mayRevise={Boolean(
+                context?.contractPermissionSetVersion === 'v1' &&
+                context.contractPermissionAssignmentId &&
+                context.contractPermissions?.includes(
+                  'commercial.contract.prepare',
+                ) &&
+                (context.clientPermissions?.includes('client.read') ||
+                  actor.workspacePermissions.includes('client.manage')),
+              )}
+              protectedCommand={
+                qualityProtected ||
+                decisionProtected ||
+                signatureProtected ||
+                projectLinkProtected
+              }
+              reject={reject}
+              onProtectionChange={setVersionProtected}
+              onCreated={() => {
+                request.current?.abort();
+                const controller = new AbortController();
+                request.current = controller;
+                void load(controller.signal);
+              }}
+            />
+
             <ContractRepresentationViewer
               key={stamp + opportunityId + view.contract.version.id}
               identity={identity}
@@ -327,12 +384,16 @@ export function ContractPanel({
               opportunityId={opportunityId}
               contract={view.contract}
               mayDecide={Boolean(
+                !view.contract.version.supersededByVersionId &&
                 context?.contractPermissions?.includes(
                   'commercial.contract.approve',
                 ),
               )}
               protectedChecks={
-                qualityProtected || signatureProtected || projectLinkProtected
+                versionProtected ||
+                qualityProtected ||
+                signatureProtected ||
+                projectLinkProtected
               }
               reject={reject}
               onProtectionChange={setDecisionProtected}
@@ -369,6 +430,7 @@ export function ContractPanel({
               opportunityId={opportunityId}
               contract={view.contract}
               mayRecord={Boolean(
+                !view.contract.version.supersededByVersionId &&
                 context?.contractApproverPermissionSetVersion === 'v1' &&
                 context.contractApproverAssignmentId &&
                 context.contractPermissions?.includes(
@@ -376,7 +438,10 @@ export function ContractPanel({
                 ),
               )}
               protectedChecks={
-                qualityProtected || decisionProtected || projectLinkProtected
+                versionProtected ||
+                qualityProtected ||
+                decisionProtected ||
+                projectLinkProtected
               }
               reject={reject}
               onProtectionChange={setSignatureProtected}
@@ -421,7 +486,10 @@ export function ContractPanel({
                   actor.workspacePermissions.includes('client.manage')),
               )}
               protectedCommand={
-                qualityProtected || decisionProtected || signatureProtected
+                versionProtected ||
+                qualityProtected ||
+                decisionProtected ||
+                signatureProtected
               }
               reject={reject}
               onProtectionChange={setProjectLinkProtected}
@@ -474,6 +542,8 @@ export function ContractPanel({
               termEndsOn={view.contract.version.termEndsOn}
               initialRun={view.contract.version.latestQualityRun}
               mayRun={
+                !view.contract.version.supersededByVersionId &&
+                !versionProtected &&
                 !decisionProtected &&
                 !signatureProtected &&
                 !projectLinkProtected &&
@@ -487,7 +557,10 @@ export function ContractPanel({
                 )
               }
               protectedDecision={
-                decisionProtected || signatureProtected || projectLinkProtected
+                versionProtected ||
+                decisionProtected ||
+                signatureProtected ||
+                projectLinkProtected
               }
               onRun={(run) =>
                 setView((current) =>
@@ -571,12 +644,14 @@ export function ContractPanel({
 }
 function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
+  const versionCopy = useContractVersionCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
   return (
     <>
       <p>
-        {copy.reference} {contract.illustrativeReference} · {copy.version}
+        {copy.reference} {contract.illustrativeReference} ·{' '}
+        {versionCopy('versionLabel')} {version.versionNumber}
       </p>
       <p>
         {decisionCopy(

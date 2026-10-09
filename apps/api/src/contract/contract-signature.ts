@@ -17,7 +17,7 @@ export interface ContractSignatureCommand {
 export interface ContractSignature {
   readonly id: string;
   readonly contractVersionId: string;
-  readonly revision: 3;
+  readonly revision: number;
   readonly evidenceKind: 'SIMULATED';
   readonly provenance: 'ILLUSTRATIVE';
   readonly provisional: true;

@@ -1,3 +1,4 @@
+import { ContractVersionReader } from './contract-version-reader.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
@@ -25,6 +26,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
     ServerClockModule,
   ],
   providers: [
+    ContractVersionReader,
     ContractService,
     ContractProjectsService,
     ContractProjectLinkStore,

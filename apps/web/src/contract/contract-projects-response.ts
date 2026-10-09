@@ -38,7 +38,7 @@ export function readContractProjectLink(value: unknown): ContractProjectLink {
     typeof row.revision !== 'number' ||
     !Number.isInteger(row.revision) ||
     row.revision < 4 ||
-    row.revision > 53
+    row.revision > 2147483646
   )
     throw new Error('Invalid Contract Project link.');
   return {

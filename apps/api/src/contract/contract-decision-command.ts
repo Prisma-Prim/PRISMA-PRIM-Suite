@@ -48,6 +48,7 @@ export interface DecisionDependencies {
     actor: ActorContext;
     companyId: string;
     opportunityId: string;
+    versionId?: string;
   }) => Promise<{ contract: ContractRow; version: VersionRow } | undefined>;
   evaluateFreshQuality: (input: {
     actor: ActorContext;
@@ -87,6 +88,7 @@ export async function decideContractVersion(
         actor,
         companyId,
         opportunityId: input.opportunityId,
+        versionId: input.versionId,
       });
       if (!found || found.version.id !== input.versionId)
         throw new NotFoundException();
@@ -134,6 +136,11 @@ export async function decideContractVersion(
           throw new Error('Missing recorded Contract decision.');
         return recorded;
       }
+      if (found.version.supersededByVersionId)
+        throw conflict(
+          'CONTRACT_VERSION_SUPERSEDED',
+          'The Contract Version has been superseded.',
+        );
       const command = readContractDecisionCommand(input.kind, input.payload);
       // Approval shares C3's Client-owner fence and fresh evaluation. Rejection
       // needs no quality context, so it only locks the Contract's decision state.
@@ -162,8 +169,12 @@ export async function decideContractVersion(
         companyId,
         opportunityId: input.opportunityId,
       });
-      if (!current || current.version.id !== input.versionId)
-        throw new NotFoundException();
+      if (!current) throw new NotFoundException();
+      if (current.version.id !== input.versionId)
+        throw conflict(
+          'CONTRACT_VERSION_SUPERSEDED',
+          'The Contract Version has been superseded.',
+        );
       if (current.contract.revision !== command.expectedContractRevision)
         throw conflict(
           'STALE_CONTRACT_REVISION',
@@ -278,6 +289,7 @@ export async function decideContractVersion(
         companyId,
         contractId: current.contract.id,
         contractVersionId: current.version.id,
+        versionNumber: current.version.versionNumber,
         kind: command.kind,
         offerVersionId: current.contract.sourceOfferVersionId,
         pricingSnapshotId: current.version.pricingSnapshotId,
@@ -322,12 +334,12 @@ export async function readContractDecision(
       ),
     );
   if (!row) return null;
-  if (row.resultRevision !== 2)
+  if (row.resultRevision !== version.createdContractRevision + 1)
     throw new Error('Invalid stored Contract decision revision.');
   const base = {
     id: row.id,
     contractVersionId: version.id,
-    revision: 2 as const,
+    revision: row.resultRevision,
     actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
     decidedAt: row.decidedAt.toISOString(),
   };
