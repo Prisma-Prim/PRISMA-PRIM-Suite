@@ -148,6 +148,45 @@ export class ProjectService {
     });
   }
 
+  /** Existing relationship replays require visibility, even after the Project closes. */
+  async lockReadableContractLinkProject(
+    actor: ActorContext,
+    projectId: string,
+  ) {
+    await this.authorization.requireProjectAccess(actor, true);
+    const project = await this.read(actor, projectId);
+    await this.clients.lockReadableProjectReferences(actor, [
+      project.clientAccountId,
+    ]);
+    return this.read(actor, projectId);
+  }
+
+  /** Client identities precede lifecycle/Contract locks, matching union, reversal and closure. */
+  async lockContractLinkContext(input: {
+    actor: ActorContext;
+    projectId: string;
+    contractOriginalClientAccountId: string;
+  }) {
+    await this.authorization.requireProjectAccess(input.actor, true);
+    const project = await this.read(input.actor, input.projectId);
+    const references = await this.clients.resolveProjectLinkClients(
+      input.actor,
+      [project.clientAccountId, input.contractOriginalClientAccountId],
+      true,
+    );
+    const projectClient = references.get(project.clientAccountId);
+    const contractClient = references.get(
+      input.contractOriginalClientAccountId,
+    );
+    if (!projectClient || !contractClient) throw new NotFoundException();
+    const current = await this.read(input.actor, project.id);
+    return {
+      project: current,
+      eligible:
+        isOpenProjectStatus(current.status) && projectClient === contractClient,
+    };
+  }
+
   private async view(actor: ActorContext, row: ProjectRow) {
     const client = (
       await this.clients.readProjectReferences(actor, [row.clientAccountId])

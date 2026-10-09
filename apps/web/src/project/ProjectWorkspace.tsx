@@ -1,5 +1,6 @@
 import { ProjectDocuments } from './ProjectDocuments';
 import { ProjectLifecycle, ProjectStatusLabel } from './ProjectLifecycle';
+import { ProjectContracts } from '../contract/ProjectContracts';
 import { ProjectResponsible } from './ProjectResponsible';
 import { ProjectTasks, type RequestedTask } from './ProjectTasks';
 import {
@@ -88,6 +89,7 @@ export function ProjectWorkspace({
   clientIdentityRevision = 0,
   onOpenClientDossier,
   onOpenDocument,
+  onOpenContract,
   requestedProject,
   projectOpenRequestId = 0,
 }: {
@@ -100,6 +102,7 @@ export function ProjectWorkspace({
   onOpenClientDossier?: (clientDossierId: string) => void;
   /** Passed unchanged to the opened Project's linked Documents. */
   onOpenDocument?: (documentId: string) => void;
+  onOpenContract?: (clientRequestId: string) => void;
   /**
    * Opens this Project as choosing its row would, then its optional Task as
    * choosing that Task's row would; each new request id once.
@@ -869,6 +872,12 @@ export function ProjectWorkspace({
               );
             }}
             onActivityRecorded={onActivityRecorded}
+          />
+          <ProjectContracts
+            actor={actor}
+            identity={identity}
+            projectId={selected.project.id}
+            onOpenContract={onOpenContract}
           />
           <ProjectResponsible
             actor={actor}

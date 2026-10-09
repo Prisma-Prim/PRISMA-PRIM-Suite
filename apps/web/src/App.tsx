@@ -329,6 +329,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.requests,
       content: (
         <CommercialIntakeWorkspace
+          onOpenProject={
+            openProject && ((projectId) => openProject({ projectId }))
+          }
           key={`commercial-intake:${requestsMount}`}
           actor={access.actor}
           identity={identity}
@@ -487,6 +490,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.projects,
       content: (
         <ProjectWorkspace
+          onOpenContract={openRequest}
           key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
           actor={access.actor}
           identity={identity}

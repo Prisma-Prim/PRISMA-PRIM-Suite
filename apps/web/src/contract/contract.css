@@ -108,3 +108,26 @@
 .contract-warning-acknowledgement input {
   width: auto;
 }
+
+.contract-projects fieldset {
+  min-width: 0;
+  border: 1px solid #d9d8e8;
+  border-radius: 0.5rem;
+}
+.contract-panel .contract-project-choice {
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding-block: 0.5rem;
+}
+.contract-project-choice input {
+  width: auto;
+  margin-top: 0.25rem;
+}
+.contract-projects li {
+  margin-bottom: 0.75rem;
+}
+.contract-projects li button {
+  display: block;
+  margin-top: 0.5rem;
+}

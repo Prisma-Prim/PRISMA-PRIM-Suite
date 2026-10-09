@@ -81,6 +81,1046 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('links an executed Contract to an eligible existing Project and reopens both without changing signed evidence', async () => {
+    const { fixture, versionId, base } = await approvedSignatureFixture();
+    const signature = await json(
+      await signatureRequest(
+        fixture,
+        versionId,
+        signaturePayload(),
+        'cp1-signature',
+      ),
+    );
+    const before = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    await command({
+      path: '/company-project-assignments',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      key: 'cp1-project-grant',
+    });
+    const project = record(
+      await command({
+        path: '/projects',
+        companyId: fixture.companyId,
+        body: {
+          title: 'Synthetic existing Project',
+          clientAccountId: fixture.clientId,
+        },
+        key: 'cp1-project',
+      }),
+    );
+    const projectId = stringField(project, 'id');
+    const candidates = await request({
+      path: base + '/project-candidates',
+      companyId: fixture.companyId,
+    });
+    expect(candidates.status).toBe(200);
+    expect(await json(candidates)).toMatchObject({
+      items: [
+        {
+          id: projectId,
+          title: 'Synthetic existing Project',
+          status: 'preparatory',
+          alreadyLinked: false,
+          otherContracts: [],
+        },
+      ],
+    });
+    const payload = { projectId, expectedContractRevision: 3 };
+    const link = record(
+      await command({
+        path: base + '/projects',
+        companyId: fixture.companyId,
+        body: payload,
+        key: 'cp1-link',
+      }),
+    );
+    expect(link).toMatchObject({
+      projectId,
+      contractId: before.id,
+      revision: 4,
+      created: false,
+      linkedAt: instant.toISOString(),
+    });
+    const reopened = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(reopened).toMatchObject({
+      revision: 4,
+      linkedProjects: [{ ...project, link }],
+    });
+    expect(record(reopened.version)).toEqual(record(before.version));
+    expect(record(reopened.version).signature).toEqual(signature);
+    expect(
+      await json(
+        await request({
+          path: '/contracts/projects/' + projectId,
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toMatchObject({
+      items: [
+        {
+          id: before.id,
+          opportunityId: fixture.opportunityId,
+          illustrativeReference: 1,
+        },
+      ],
+    });
+    expect(
+      await command({
+        path: base + '/projects',
+        companyId: fixture.companyId,
+        body: payload,
+        key: 'cp1-link',
+      }),
+    ).toEqual(link);
+    const evidence = (
+      await pool.query<{ links: string; receipts: string; events: string }>(
+        "SELECT (SELECT count(*) FROM contract_project_links)::text AS links,(SELECT count(*) FROM contract_commands WHERE kind='LINK_PROJECT')::text AS receipts,(SELECT count(*) FROM contract_events WHERE action='contract_project.linked')::text AS events",
+      )
+    ).rows[0];
+    expect(evidence).toEqual({ links: '1', receipts: '1', events: '1' });
+  });
+  it('requires independent live authority and safely filters unreadable Contract Project relationships', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, base, projectId } = target;
+    const headers = memberHeaders('contract-reader');
+    const member = record(
+      await json(
+        await request({ path: '/access/current-actor', init: { headers } }),
+      ),
+    );
+    const membershipId = stringField(member, 'workspaceMembershipId');
+    for (const route of [
+      'company-context-assignments',
+      'company-project-assignments',
+      'company-commercial-intake-assignments',
+      'company-contract-preparer-assignments',
+      'company-contract-approver-assignments',
+      'company-director-client-assignments',
+    ]) {
+      await command({
+        path: '/' + route,
+        body: {
+          companyId: fixture.companyId,
+          workspaceMembershipId: membershipId,
+        },
+        key: 'cp1-independent-' + route,
+      });
+    }
+    const read = (path: string) =>
+      request({ path, companyId: fixture.companyId, init: { headers } });
+    const payload = { projectId, expectedContractRevision: 3 };
+    const linked = await json(
+      await linkRequest(target, payload, 'cp1-authority-link', headers),
+    );
+    expect(linked).toMatchObject({ revision: 4 });
+    for (const bundle of [
+      'company-project-assignments',
+      'company-commercial-intake-assignments',
+      'company-contract-preparer-assignments',
+      'company-director-client-assignments',
+    ]) {
+      const denial = await request({
+        path: '/' + bundle + '/' + membershipId + '/' + fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'cp1-revoke-' + bundle },
+        },
+      });
+      expect(denial.status).toBe(200);
+      expect(
+        (await linkRequest(target, payload, 'cp1-authority-link', headers))
+          .status,
+      ).toBe(403);
+      const projected = await read('/contracts/projects/' + projectId);
+      if (bundle === 'company-commercial-intake-assignments')
+        expect(await json(projected)).toEqual({ items: [] });
+      if (
+        bundle === 'company-project-assignments' ||
+        bundle === 'company-director-client-assignments'
+      ) {
+        expect(
+          record(record(await json(await read(base))).contract).linkedProjects,
+        ).toEqual([]);
+      }
+      await command({
+        path: '/' + bundle,
+        body: {
+          companyId: fixture.companyId,
+          workspaceMembershipId: membershipId,
+        },
+        key: 'cp1-restore-' + bundle,
+      });
+    }
+    await request({
+      path:
+        '/company-contract-preparer-assignments/' +
+        membershipId +
+        '/' +
+        fixture.companyId,
+      init: {
+        method: 'DELETE',
+        headers: { 'idempotency-key': 'cp1-read-revoke-preparer' },
+      },
+    });
+    await request({
+      path:
+        '/company-contract-approver-assignments/' +
+        membershipId +
+        '/' +
+        fixture.companyId,
+      init: {
+        method: 'DELETE',
+        headers: { 'idempotency-key': 'cp1-read-revoke-approver' },
+      },
+    });
+    expect(await json(await read('/contracts/projects/' + projectId))).toEqual({
+      items: [],
+    });
+    expect(await projectLinkCounts()).toEqual({
+      links: '1',
+      receipts: '1',
+      events: '1',
+      revision: 4,
+    });
+  }, 30000);
+
+  it('refuses malformed, foreign, unexecuted and readable ineligible Project link requests', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId, base } = target;
+    for (const body of [
+      { projectId, expectedContractRevision: 0 },
+      { projectId: 'unknown', expectedContractRevision: 3 },
+      { projectId, expectedContractRevision: 3, created: true },
+    ]) {
+      const response = await linkRequest(
+        target,
+        body,
+        'cp1-invalid-' + JSON.stringify(body),
+      );
+      expect(response.status).toBe(400);
+      expect(await json(response)).toMatchObject({
+        code: 'INVALID_CONTRACT_INPUT',
+      });
+    }
+    expect(
+      (
+        await linkRequest(
+          target,
+          {
+            projectId: '00000000-0000-4000-8000-000000009999',
+            expectedContractRevision: 3,
+          },
+          'cp1-unknown',
+        )
+      ).status,
+    ).toBe(404);
+    const otherClient = stringField(
+      record(
+        await command({
+          path: '/clients',
+          companyId: fixture.companyId,
+          body: { displayName: 'Another synthetic Client' },
+          key: 'cp1-other-client',
+        }),
+      ),
+      'id',
+    );
+    const otherProject = await createLinkProject(
+      fixture,
+      'cp1-other-client-project',
+      otherClient,
+    );
+    expect(
+      await json(
+        await linkRequest(
+          target,
+          { projectId: otherProject, expectedContractRevision: 3 },
+          'cp1-client-mismatch',
+        ),
+      ),
+    ).toMatchObject({ code: 'PROJECT_NOT_ELIGIBLE' });
+    const foreign = await acceptedOffer({ suffix: 'cp1-foreign' });
+    await grantContract(foreign, 'cp1-foreign-grant');
+    expect(
+      (
+        await request({
+          path: base + '/projects',
+          companyId: foreign.companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'cp1-foreign',
+            },
+            body: JSON.stringify({ projectId, expectedContractRevision: 3 }),
+          },
+        })
+      ).status,
+    ).toBe(404);
+    const pending = record(
+      await command({
+        path: '/contracts/opportunities/' + foreign.opportunityId,
+        companyId: foreign.companyId,
+        body: await contractPayload(foreign),
+        key: 'cp1-pending-contract',
+      }),
+    );
+    await grantLinkProject(foreign);
+    const foreignProjectId = await createLinkProject(
+      foreign,
+      'cp1-unexecuted-project',
+    );
+    expect(
+      await json(
+        await linkRequest(
+          {
+            fixture: foreign,
+            base: '/contracts/opportunities/' + foreign.opportunityId,
+          },
+          { projectId: foreignProjectId, expectedContractRevision: 1 },
+          'cp1-unexecuted',
+        ),
+      ),
+    ).toMatchObject({ code: 'CONTRACT_NOT_EXECUTED' });
+    expect(pending.revision).toBe(1);
+  }, 30000);
+  it('refuses missing or unknown captured Project link authority and foreign Workspace contexts without effects', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId } = target;
+    const payload = { projectId, expectedContractRevision: 3 };
+    const [constraint] = (
+      await pool.query<{ definition: string }>(
+        "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
+      )
+    ).rows;
+    if (!constraint) throw new Error('Missing captured version constraint.');
+    await pool.query(
+      'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+    );
+    try {
+      for (const version of [null, 'v999']) {
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version=$1 WHERE workspace_id=$2 AND company_id=$3 AND bundle='company_contract_preparer'",
+          [version, WORKSPACE_ID, fixture.companyId],
+        );
+        expect(
+          (await linkRequest(target, payload, 'cp1-captured-denial')).status,
+        ).toBe(403);
+        expect(
+          (
+            await request({
+              path: target.base + '/project-candidates',
+              companyId: fixture.companyId,
+            })
+          ).status,
+        ).toBe(403);
+      }
+    } finally {
+      await pool.query(
+        "UPDATE company_role_assignments SET permission_set_version='v1' WHERE workspace_id=$1 AND company_id=$2 AND bundle='company_contract_preparer'",
+        [WORKSPACE_ID, fixture.companyId],
+      );
+      await pool.query(
+        'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+          constraint.definition,
+      );
+    }
+    expect(
+      (
+        await linkRequest(target, payload, 'cp1-foreign-workspace', {
+          'x-workspace-context-id': '00000000-0000-4000-8000-000000000999',
+        })
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await fetch(origin + '/api' + target.base + '/projects', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-company-context-id': fixture.companyId,
+          },
+          body: JSON.stringify(payload),
+        })
+      ).status,
+    ).toBe(401);
+    expect(await projectLinkCounts()).toEqual({
+      links: '0',
+      receipts: '0',
+      events: '0',
+      revision: 3,
+    });
+  });
+  it('shows readable other Contracts on a shared Project without copying its identity or creating a second Project', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId } = target;
+    expect(
+      (
+        await linkRequest(
+          target,
+          { projectId, expectedContractRevision: 3 },
+          'cp1-shared-first',
+        )
+      ).status,
+    ).toBe(201);
+    const intake = record(
+      await command({
+        path: '/commercial-intake/requests',
+        companyId: fixture.companyId,
+        body: {
+          originalText: 'Second synthetic commercial path',
+          clientAccountId: fixture.clientId,
+          opportunity: {
+            title: 'Second Contract',
+            scope: 'Synthetic shared Project',
+            nextAction: 'Prepare Contract',
+          },
+        },
+        key: 'cp1-shared-intake',
+      }),
+    );
+    const opportunityId = stringField(record(intake.initialOpportunity), 'id');
+    const snapshot = record(
+      await command({
+        path: '/pricing/opportunities/' + opportunityId + '/snapshots',
+        companyId: fixture.companyId,
+        body: {
+          pricingRuleVersionNumber: fixture.ruleVersionNumber,
+          lines: [
+            {
+              offeringId: fixture.offeringId,
+              tariffVersionNumber: fixture.tariffVersionNumber,
+              quantity: '1',
+            },
+          ],
+        },
+        key: 'cp1-shared-snapshot',
+      }),
+    );
+    const second = await acceptedOffer({
+      suffix: '-shared',
+      prepared: {
+        ...fixture,
+        requestId: stringField(intake, 'id'),
+        opportunityId,
+        snapshotId: stringField(snapshot, 'id'),
+      },
+    });
+    const base = '/contracts/opportunities/' + opportunityId;
+    const created = record(
+      await command({
+        path: base,
+        companyId: fixture.companyId,
+        body: await contractPayload(second),
+        key: 'cp1-shared-contract',
+      }),
+    );
+    const versionId = stringField(record(created.version), 'id');
+    expect(
+      (
+        await decisionRequest(
+          second,
+          versionId,
+          'approve',
+          { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+          'cp1-shared-approval',
+        )
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await signatureRequest(
+          second,
+          versionId,
+          signaturePayload(),
+          'cp1-shared-signature',
+        )
+      ).status,
+    ).toBe(201);
+    const candidates = record(
+      await json(
+        await request({
+          path: base + '/project-candidates',
+          companyId: fixture.companyId,
+        }),
+      ),
+    );
+    expect(candidates).toMatchObject({
+      items: [
+        {
+          id: projectId,
+          alreadyLinked: false,
+          otherContracts: [{ illustrativeReference: 1 }],
+        },
+      ],
+    });
+    expect(
+      (
+        await linkRequest(
+          { fixture: second, base },
+          { projectId, expectedContractRevision: 3 },
+          'cp1-shared-second',
+        )
+      ).status,
+    ).toBe(201);
+    const [firstRead, secondRead, projectRead] = await Promise.all([
+      request({
+        path: target.base + '/project-candidates',
+        companyId: fixture.companyId,
+      }),
+      request({
+        path: base + '/project-candidates',
+        companyId: fixture.companyId,
+      }),
+      request({
+        path: '/contracts/projects/' + projectId,
+        companyId: fixture.companyId,
+      }),
+    ]);
+    expect([firstRead.status, secondRead.status, projectRead.status]).toEqual([
+      200, 200, 200,
+    ]);
+    expect(await json(firstRead)).toMatchObject({
+      items: [
+        {
+          id: projectId,
+          alreadyLinked: true,
+          otherContracts: [{ illustrativeReference: 2 }],
+        },
+      ],
+    });
+    expect(await json(secondRead)).toMatchObject({
+      items: [
+        {
+          id: projectId,
+          alreadyLinked: true,
+          otherContracts: [{ illustrativeReference: 1 }],
+        },
+      ],
+    });
+    const linked = record(await json(projectRead));
+    expect(linked.items).toHaveLength(2);
+    expect(
+      (
+        await pool.query<{ count: string }>(
+          'SELECT count(*)::text AS count FROM projects',
+        )
+      ).rows[0]?.count,
+    ).toBe('1');
+  }, 30000);
+
+  it('links a Project through current Client resolution while preserving original identities and owner reversal rules', async () => {
+    const prepared = await preparedOffer();
+    await grantLinkProject(prepared);
+    const second = stringField(
+      record(
+        await command({
+          path: '/clients',
+          companyId: prepared.companyId,
+          body: { displayName: 'Legacy same identity' },
+          key: 'cp1-legacy-client',
+        }),
+      ),
+      'id',
+    );
+    const projectId = await createLinkProject(
+      prepared,
+      'cp1-preunion-project',
+      second,
+    );
+    const originalProject = await json(
+      await request({
+        path: '/projects/' + projectId,
+        companyId: prepared.companyId,
+      }),
+    );
+    // Only synthetic historic duplication bypasses create validation; union remains public.
+    await pool.query(
+      "UPDATE client_accounts SET tax_id='SYNTHETIC-456' WHERE id=$1",
+      [second],
+    );
+    const review = record(
+      await command({
+        path: '/clients/' + prepared.clientId + '/union-reviews',
+        companyId: prepared.companyId,
+        body: {},
+        key: 'cp1-union-review',
+      }),
+    );
+    expect(review.outcome).toBe('comparison');
+    const union = record(
+      await command({
+        path:
+          '/client-union-reviews/' +
+          stringField(review, 'reviewReference') +
+          '/confirm',
+        companyId: prepared.companyId,
+        body: {
+          canonicalClientId: prepared.clientId,
+          fields: {
+            displayName: prepared.clientId,
+            taxId: prepared.clientId,
+            address: prepared.clientId,
+            telephone: prepared.clientId,
+            generalEmail: prepared.clientId,
+            businessActivity: prepared.clientId,
+          },
+          companyIds: [prepared.companyId],
+          reviewedDifferences: true,
+          reason: 'Legacy synthetic duplicate identity.',
+        },
+        key: 'cp1-confirm-union',
+      }),
+    );
+    const fixture = await acceptedOffer({ prepared });
+    await grantContract(fixture, 'cp1-union-contract-grant');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const created = record(
+      await command({
+        path: base,
+        companyId: fixture.companyId,
+        body: await contractPayload(fixture),
+        key: 'cp1-union-contract',
+      }),
+    );
+    const versionId = stringField(record(created.version), 'id');
+    await grantApprover(fixture);
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+          'cp1-union-approval',
+        )
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'cp1-union-signature',
+        )
+      ).status,
+    ).toBe(201);
+    expect(
+      await json(
+        await request({
+          path: base + '/project-candidates',
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toMatchObject({ items: [{ id: projectId, alreadyLinked: false }] });
+    expect(
+      (
+        await linkRequest(
+          { fixture, base },
+          { projectId, expectedContractRevision: 3 },
+          'cp1-union-link',
+        )
+      ).status,
+    ).toBe(201);
+    const current = record(
+      await json(
+        await request({
+          path: '/projects/' + projectId,
+          companyId: fixture.companyId,
+        }),
+      ),
+    );
+    expect(current).toMatchObject({
+      ...record(originalProject),
+      clientDossierId: fixture.clientId,
+    });
+    const linked = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(linked.originalClientAccountId).toBe(fixture.clientId);
+    expect(linked.linkedProjects).toMatchObject([
+      {
+        id: projectId,
+        clientAccountId: second,
+        clientDossierId: fixture.clientId,
+      },
+    ]);
+    // New commercial references are a material operation: the Client owner refuses reversal.
+    const reversal = await request({
+      path:
+        '/client-union-operations/' +
+        stringField(union, 'projectionReference') +
+        '/reversal',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'cp1-reversal-after-contract',
+        },
+        body: JSON.stringify({
+          companyIds: [fixture.companyId],
+          reason: 'Reverse synthetic union.',
+        }),
+      },
+    });
+    expect(reversal.status).toBe(409);
+    expect(await projectLinkCounts()).toEqual({
+      links: '1',
+      receipts: '1',
+      events: '1',
+      revision: 4,
+    });
+  }, 30000);
+
+  it('rechecks Project link eligibility after the Client owner fence and orders live revocation before replay', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId } = target;
+    const blocker = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    let revoked: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const pid = (
+        await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0]?.pid;
+      if (!pid) throw new Error('Missing blocker PID');
+      await blocker.query(
+        'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      pending = linkRequest(
+        target,
+        { projectId, expectedContractRevision: 3 },
+        'cp1-before-revocation',
+      );
+      const commandPid = await waitForBlocker(pid);
+      revoked = request({
+        path:
+          '/company-contract-preparer-assignments/' +
+          fixture.actorMembershipId +
+          '/' +
+          fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'cp1-concurrent-revocation' },
+        },
+      });
+      await waitForBlocker(commandPid);
+      await blocker.query('COMMIT');
+      expect((await pending).status).toBe(201);
+      expect((await revoked).status).toBe(200);
+      expect(
+        (
+          await linkRequest(
+            target,
+            { projectId, expectedContractRevision: 3 },
+            'cp1-before-revocation',
+          )
+        ).status,
+      ).toBe(403);
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await Promise.allSettled([
+        ...(pending ? [pending] : []),
+        ...(revoked ? [revoked] : []),
+      ]);
+    }
+  });
+
+  it('refuses a new Project link after closure commits while it waits for the original Client identity', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId } = target;
+    await command({
+      path: '/company-project-approver-assignments',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      key: 'cp1-fenced-closure-grant',
+    });
+    const blocker = await pool.connect();
+    let pending: Promise<Response> | undefined;
+    let closed: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const pid = (
+        await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+      ).rows[0]?.pid;
+      if (!pid) throw new Error('Missing blocker PID');
+      await blocker.query(
+        'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      closed = closeLinkProject(target, projectId, false);
+      const closingPid = await waitForBlocker(pid);
+      pending = linkRequest(
+        target,
+        { projectId, expectedContractRevision: 3 },
+        'cp1-after-closure',
+      );
+      await waitForBlocker(pid, closingPid);
+      await blocker.query('COMMIT');
+      expect((await closed).status).toBe(200);
+      expect(await json(await pending)).toMatchObject({
+        code: 'PROJECT_NOT_ELIGIBLE',
+      });
+      expect(await projectLinkCounts()).toEqual({
+        links: '0',
+        receipts: '0',
+        events: '0',
+        revision: 3,
+      });
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await Promise.allSettled([
+        ...(pending ? [pending] : []),
+        ...(closed ? [closed] : []),
+      ]);
+    }
+  });
+
+  it('replays an original link after closure but refuses changed, stale, duplicate and newly ineligible commands', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId, base } = target;
+    const payload = { projectId, expectedContractRevision: 3 };
+    const linked = await json(await linkRequest(target, payload, 'cp1-replay'));
+    expect(
+      await json(
+        await linkRequest(
+          target,
+          { ...payload, expectedContractRevision: 4 },
+          'cp1-replay',
+        ),
+      ),
+    ).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    expect(
+      await json(await linkRequest(target, payload, 'cp1-stale')),
+    ).toMatchObject({ code: 'STALE_CONTRACT_REVISION' });
+    expect(
+      await json(
+        await linkRequest(
+          target,
+          { ...payload, expectedContractRevision: 4 },
+          'cp1-duplicate',
+        ),
+      ),
+    ).toMatchObject({ code: 'CONTRACT_PROJECT_ALREADY_LINKED' });
+    await closeLinkProject(target, projectId);
+    expect(
+      await json(await linkRequest(target, payload, 'cp1-replay')),
+    ).toEqual(linked);
+    expect(
+      await json(
+        await linkRequest(
+          target,
+          { ...payload, expectedContractRevision: 4 },
+          'cp1-closed',
+        ),
+      ),
+    ).toMatchObject({ code: 'PROJECT_NOT_ELIGIBLE' });
+    expect(
+      await json(
+        await request({
+          path: base + '/project-candidates',
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toEqual({ items: [] });
+    expect(
+      record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      ).linkedProjects,
+    ).toMatchObject([{ id: projectId, status: 'cancelled' }]);
+    await pool.query(
+      "UPDATE client_company_relationships SET status='archived' WHERE company_id=$1 AND client_account_id=$2",
+      [fixture.companyId, fixture.clientId],
+    );
+    expect((await linkRequest(target, payload, 'cp1-replay')).status).toBe(404);
+    expect(
+      record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      ).linkedProjects,
+    ).toEqual([]);
+    expect(
+      (
+        await request({
+          path: '/contracts/projects/' + projectId,
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(404);
+    expect(await projectLinkCounts()).toEqual({
+      links: '1',
+      receipts: '1',
+      events: '1',
+      revision: 4,
+    });
+  });
+
+  it('rolls back Project link evidence and rejects unexplained executed revisions or immutable changes', async () => {
+    const target = await projectLinkFixture();
+    const { projectId } = target;
+    await pool.query(
+      "CREATE FUNCTION fail_cp1_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='contract_project.linked' THEN RAISE EXCEPTION 'Synthetic link rollback'; END IF; RETURN NEW; END; $$; CREATE TRIGGER fail_cp1_event BEFORE INSERT ON contract_events FOR EACH ROW EXECUTE FUNCTION fail_cp1_event()",
+    );
+    try {
+      const response = await linkRequest(
+        target,
+        { projectId, expectedContractRevision: 3 },
+        'cp1-rollback',
+      );
+      expect(response.status).toBe(500);
+      expect(await json(response)).toMatchObject({
+        code: 'CONTRACT_PROJECT_LINK_UNCERTAIN',
+      });
+      expect(await projectLinkCounts()).toEqual({
+        links: '0',
+        receipts: '0',
+        events: '0',
+        revision: 3,
+      });
+    } finally {
+      await pool.query(
+        'DROP TRIGGER fail_cp1_event ON contract_events; DROP FUNCTION fail_cp1_event()',
+      );
+    }
+    for (const query of [
+      'UPDATE contracts SET revision=4',
+      "UPDATE contract_versions SET scope_note='changed'",
+      'DELETE FROM contract_signatures',
+      "UPDATE contract_signatures SET representation_checksum=repeat('2',64)",
+    ])
+      await expect(pool.query(query)).rejects.toMatchObject({ code: '23514' });
+    const response = await linkRequest(
+      target,
+      { projectId, expectedContractRevision: 3 },
+      'cp1-rollback',
+    );
+    expect(response.status).toBe(201);
+    const recorded = record(await json(response));
+    for (const query of [
+      'UPDATE contracts SET revision=5',
+      'UPDATE contract_project_links SET result_revision=5',
+      'DELETE FROM contract_project_links',
+    ])
+      await expect(pool.query(query)).rejects.toMatchObject({ code: '23514' });
+    expect(
+      (
+        await pool.query<{ metadata: unknown }>(
+          "SELECT metadata FROM contract_events WHERE action='contract_project.linked'",
+        )
+      ).rows[0]?.metadata,
+    ).toEqual({ contractId: recorded.contractId, projectId, created: false });
+    expect(await projectLinkCounts()).toEqual({
+      links: '1',
+      receipts: '1',
+      events: '1',
+      revision: 4,
+    });
+  });
+
+  it('serializes duplicate and capacity-boundary links and lists only the 50 newest candidates', async () => {
+    const target = await projectLinkFixture();
+    const { fixture, projectId, base } = target;
+    const payload = { projectId, expectedContractRevision: 3 };
+    const duplicate = await Promise.all([
+      linkRequest(target, payload, 'cp1-race-a'),
+      linkRequest(target, payload, 'cp1-race-b'),
+    ]);
+    expect(duplicate.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+    const winner = duplicate.find((response) => response.status === 201);
+    if (!winner) throw new Error('Missing winning link');
+    const key = duplicate[0]?.status === 201 ? 'cp1-race-a' : 'cp1-race-b';
+    const result = await json(winner);
+    const replays = await Promise.all([
+      linkRequest(target, payload, key),
+      linkRequest(target, payload, key),
+    ]);
+    for (const replay of replays) expect(await json(replay)).toEqual(result);
+    const extra: string[] = [];
+    for (let index = 1; index <= 51; index++)
+      extra.push(await createLinkProject(fixture, 'cp1-capacity-' + index));
+    for (let index = 0; index < 48; index++) {
+      const response = await linkRequest(
+        target,
+        { projectId: extra[index], expectedContractRevision: 4 + index },
+        'cp1-fill-' + index,
+      );
+      expect(response.status).toBe(201);
+    }
+    const boundary = await Promise.all([
+      linkRequest(
+        target,
+        { projectId: extra[48], expectedContractRevision: 52 },
+        'cp1-boundary-a',
+      ),
+      linkRequest(
+        target,
+        { projectId: extra[49], expectedContractRevision: 52 },
+        'cp1-boundary-b',
+      ),
+    ]);
+    expect(boundary.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+    expect(
+      await json(
+        await linkRequest(
+          target,
+          { projectId: extra[50], expectedContractRevision: 53 },
+          'cp1-over-capacity',
+        ),
+      ),
+    ).toMatchObject({ code: 'CONTRACT_PROJECT_LINK_CAPACITY_EXCEEDED' });
+    const candidates = record(
+      await json(
+        await request({
+          path: base + '/project-candidates',
+          companyId: fixture.companyId,
+        }),
+      ),
+    );
+    if (!Array.isArray(candidates.items)) throw new Error('Missing candidates');
+    expect(candidates.items).toHaveLength(50);
+    expect(record(candidates.items[0]).id).toBe(extra[50]);
+    expect(
+      candidates.items.map(record).some((project) => project.id === projectId),
+    ).toBe(false);
+    expect(await projectLinkCounts()).toEqual({
+      links: '50',
+      receipts: '50',
+      events: '50',
+      revision: 53,
+    });
+  }, 60000);
+
   it('records both simulated signatures on the approved exact version and reloads unchanged evidence', async () => {
     const { fixture, created, base, versionId } = await qualityFixture();
     await grantApprover(fixture);
@@ -2368,6 +3408,12 @@ withPostgres('First illustrative Contract REST', () => {
       index: 56,
       previousTag: '0055_contract_decisions',
     },
+    {
+      baseline: 'C5 / 0056 executed',
+      migration: '0057_contract_project_links',
+      index: 57,
+      previousTag: '0056_contract_simulated_signature',
+    },
   ])(
     'upgrades actual $baseline versions and receipts without changing any historic field or immutable guard',
     async ({ migration, index: expectedIndex, previousTag }) => {
@@ -2427,7 +3473,7 @@ withPostgres('First illustrative Contract REST', () => {
           specialConditions: 'Historic conditions\nkept exactly',
         };
         // C4's deferred evidence constraints require one coherent transaction.
-        if (index === 56) await pool.query('BEGIN');
+        if (index >= 56) await pool.query('BEGIN');
         // Synthesize creation using only the actual preceding schema's columns.
         const inserted = await pool.query<{ id: string }>(
           `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,source_offer_id,source_offer_version_id,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
@@ -2469,7 +3515,7 @@ withPostgres('First illustrative Contract REST', () => {
         CROSS JOIN LATERAL (VALUES ('contract.created',NULL::uuid),('contract_version.created',v.id)) e(action,version_id) WHERE c.id=$1`,
           [contractId],
         );
-        if (index === 56) await pool.query('COMMIT');
+        if (index >= 56) await pool.query('COMMIT');
         if (index >= 55) {
           // C3 records are synthesized using only the delivered 0054 columns;
           // the current command model additionally selects C4 receipt columns.
@@ -2509,7 +3555,7 @@ withPostgres('First illustrative Contract REST', () => {
             ],
           );
         }
-        if (index === 56) {
+        if (index >= 56) {
           // Preserve an actual C4 approval shape, including its immutable
           // run, receipt and event. Its checksum is synthetic fixture evidence.
           await pool.query('BEGIN');
@@ -2539,8 +3585,45 @@ withPostgres('First illustrative Contract REST', () => {
           ]);
           await pool.query('COMMIT');
         }
+        if (index === 57) {
+          // These rows satisfy the immutable 0056 guards before CP1 exists.
+          await pool.query('BEGIN');
+          await pool.query(
+            `INSERT INTO contract_signatures(workspace_id,company_id,contract_id,contract_version_id,result_revision,actor_internal_user_id,actor_workspace_membership_id,recorded_at,provider_signatory_label,client_signatory_label,provider_signed_on,client_signed_on,note,quality_run_id,representation_checksum,acknowledged_warning_codes)
+             SELECT workspace_id,company_id,contract_id,contract_version_id,3,actor_internal_user_id,actor_workspace_membership_id,decided_at,'Historic provider','Historic Client',(decided_at AT TIME ZONE 'UTC')::date,(decided_at AT TIME ZONE 'UTC')::date,NULL,quality_run_id,representation_checksum,'[]'::jsonb FROM contract_decisions WHERE contract_id=$1`,
+            [contractId],
+          );
+          await pool.query(
+            `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,kind,result_signature_id,created_at)
+             SELECT s.workspace_id,s.company_id,s.actor_workspace_membership_id,'historic-c5-signature',repeat('3',64),c.opportunity_id,c.id,'RECORD_SIGNATURE',s.id,s.recorded_at FROM contract_signatures s JOIN contracts c ON c.id=s.contract_id WHERE c.id=$1`,
+            [contractId],
+          );
+          await pool.query(
+            `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata)
+             SELECT s.workspace_id,s.company_id,'contract_version.signature_recorded',c.id,v.id,s.actor_internal_user_id,s.actor_workspace_membership_id,s.recorded_at,
+               jsonb_build_object('contractId',c.id,'contractVersionId',v.id,'versionNumber',v.version_number,'kind',c.kind,'origin',c.origin,'provenance','ILLUSTRATIVE','offerVersionId',c.source_offer_version_id,'pricingSnapshotId',v.pricing_snapshot_id,'ruleSetVersion',1,'acknowledgedWarningCodes',s.acknowledged_warning_codes,'evidenceKind','SIMULATED')
+             FROM contract_signatures s JOIN contracts c ON c.id=s.contract_id JOIN contract_versions v ON v.id=s.contract_version_id WHERE c.id=$1`,
+            [contractId],
+          );
+          await pool.query(
+            "UPDATE contract_versions SET execution_state='EXECUTED' WHERE contract_id=$1",
+            [contractId],
+          );
+          await pool.query('UPDATE contracts SET revision=3 WHERE id=$1', [
+            contractId,
+          ]);
+          await pool.query('COMMIT');
+        }
+        const historicSignatures =
+          index === 57
+            ? (
+                await pool.query(
+                  'SELECT to_jsonb(s) AS row FROM contract_signatures s',
+                )
+              ).rows
+            : null;
         const historicDecisions =
-          index === 56
+          index >= 56
             ? (
                 await pool.query(
                   'SELECT to_jsonb(d) AS row FROM contract_decisions d',
@@ -2566,7 +3649,7 @@ withPostgres('First illustrative Contract REST', () => {
             `SELECT
         (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM contracts c) AS contracts,
         (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['template_code','template_version','clause_versions']::text[] ELSE to_jsonb(v) END ORDER BY id) FROM contract_versions v) AS versions,
-        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
+        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id','result_project_link_id']::text[] ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
         (SELECT jsonb_agg(to_jsonb(a) ORDER BY id) FROM company_role_assignments a) AS permissions,
@@ -2589,6 +3672,7 @@ withPostgres('First illustrative Contract REST', () => {
                 'contract_commands_kind_check',
                 'contract_commands_run_fk',
                 'contract_commands_signature_fk',
+                'contract_commands_project_link_fk',
                 'contracts_signature_evidence',
                 'contract_versions_signature_evidence',
               ],
@@ -2597,6 +3681,14 @@ withPostgres('First illustrative Contract REST', () => {
         const before = (await evidence()).rows;
         await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
         expect((await evidence()).rows).toEqual(before);
+        if (historicSignatures)
+          expect(
+            (
+              await pool.query(
+                'SELECT to_jsonb(s) AS row FROM contract_signatures s',
+              )
+            ).rows,
+          ).toEqual(historicSignatures);
         if (historicDecisions)
           expect(
             (
@@ -2703,6 +3795,41 @@ withPostgres('First illustrative Contract REST', () => {
           ).rejects.toMatchObject({
             code: '23514',
           });
+        }
+        if (index === 57) {
+          await grantLinkProject(fixture);
+          const projectId = await createLinkProject(
+            fixture,
+            'cp1-upgraded-executed-project',
+          );
+          expect(
+            (
+              await linkRequest(
+                { fixture, base: path },
+                { projectId, expectedContractRevision: 3 },
+                'cp1-upgraded-link',
+              )
+            ).status,
+          ).toBe(201);
+          const linked = record(
+            record(
+              await json(await request({ path, companyId: fixture.companyId })),
+            ).contract,
+          );
+          expect(linked.revision).toBe(4);
+          expect(linked.version).toEqual(version);
+          expect(
+            (
+              await pool.query(
+                'SELECT to_jsonb(s) AS row FROM contract_signatures s',
+              )
+            ).rows,
+          ).toEqual(historicSignatures);
+          await expect(
+            pool.query('UPDATE contracts SET revision=5 WHERE id=$1', [
+              contractId,
+            ]),
+          ).rejects.toMatchObject({ code: '23514' });
         }
       } finally {
         ({ origin, pool } = original);
@@ -3569,6 +4696,117 @@ withPostgres('First illustrative Contract REST', () => {
       ).rows[0]?.count,
     ).toBe('0');
   });
+  async function projectLinkFixture() {
+    const target = await approvedSignatureFixture();
+    expect(
+      (
+        await signatureRequest(
+          target.fixture,
+          target.versionId,
+          signaturePayload(),
+          'cp1-fixture-signature',
+        )
+      ).status,
+    ).toBe(201);
+    await grantLinkProject(target.fixture);
+    const projectId = await createLinkProject(target.fixture, 'cp1-existing');
+    return { ...target, projectId };
+  }
+  async function grantLinkProject(fixture: PreparedOffer) {
+    return command({
+      path: '/company-project-assignments',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      key: 'cp1-project-grant-' + Date.now(),
+    });
+  }
+  async function createLinkProject(
+    fixture: PreparedOffer,
+    title: string,
+    clientId = fixture.clientId,
+  ) {
+    return stringField(
+      record(
+        await command({
+          path: '/projects',
+          companyId: fixture.companyId,
+          body: { title, clientAccountId: clientId },
+          key: title,
+        }),
+      ),
+      'id',
+    );
+  }
+  function linkRequest(
+    target: { fixture: PreparedOffer; base: string },
+    body: unknown,
+    key: string,
+    headers: Record<string, string> = {},
+  ) {
+    return request({
+      path: target.base + '/projects',
+      companyId: target.fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body: JSON.stringify(body),
+      },
+    });
+  }
+  async function closeLinkProject(
+    target: { fixture: PreparedOffer },
+    projectId: string,
+    grant = true,
+  ) {
+    if (grant)
+      await command({
+        path: '/company-project-approver-assignments',
+        body: {
+          workspaceMembershipId: target.fixture.actorMembershipId,
+          companyId: target.fixture.companyId,
+        },
+        key: 'cp1-close-grant',
+      });
+    const response = await request({
+      path: '/projects/' + projectId + '/lifecycle-transitions',
+      companyId: target.fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'cp1-close-' + projectId,
+        },
+        body: JSON.stringify({
+          action: 'cancel',
+          expectedLifecycleRevision: 0,
+          reason: 'Synthetic closed Project',
+        }),
+      },
+    });
+    if (grant) expect(response.status).toBe(200);
+    return response;
+  }
+  async function projectLinkCounts() {
+    const row = (
+      await pool.query<{
+        links: string;
+        receipts: string;
+        events: string;
+        revision: number;
+      }>(
+        "SELECT (SELECT count(*) FROM contract_project_links)::text AS links,(SELECT count(*) FROM contract_commands WHERE kind='LINK_PROJECT')::text AS receipts,(SELECT count(*) FROM contract_events WHERE action='contract_project.linked')::text AS events,(SELECT revision FROM contracts LIMIT 1) AS revision",
+      )
+    ).rows[0];
+    if (!row) throw new Error('Missing Contract Project counts');
+    return row;
+  }
+
   async function grantApprover(fixture: PreparedOffer) {
     return command({
       path: '/company-contract-approver-assignments',
@@ -3735,11 +4973,14 @@ withPostgres('First illustrative Contract REST', () => {
       },
     });
   }
-  async function waitForBlocker(pid: number): Promise<number> {
+  async function waitForBlocker(
+    pid: number,
+    precedingPid = 0,
+  ): Promise<number> {
     for (let attempt = 0; attempt < 80; attempt++) {
       const waiting = await pool.query<{ pid: number }>(
-        "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND $1=ANY(pg_blocking_pids(pid))",
-        [pid],
+        "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND ($1=ANY(pg_blocking_pids(pid)) OR $2=ANY(pg_blocking_pids(pid))) AND pid<>$2",
+        [pid, precedingPid],
       );
       const waiter = waiting.rows[0];
       if (waiter) return waiter.pid;

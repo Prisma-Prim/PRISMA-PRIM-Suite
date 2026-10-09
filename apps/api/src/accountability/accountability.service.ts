@@ -328,6 +328,29 @@ export class AccountabilityService {
     });
   }
 
+  async recordContractProjectLinked(input: {
+    actor: ActorContext;
+    companyId: string;
+    contractId: string;
+    projectId: string;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(contractEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      contractId: input.contractId,
+      action: 'contract_project.linked',
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      metadata: {
+        contractId: input.contractId,
+        projectId: input.projectId,
+        created: false,
+      },
+    });
+  }
+
   async recordOfferCreated(input: {
     actor: ActorContext;
     companyId: string;

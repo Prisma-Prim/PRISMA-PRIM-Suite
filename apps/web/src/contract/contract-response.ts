@@ -10,6 +10,10 @@ import {
   readContractSignature,
   type ContractSignatureView,
 } from './contract-signature-response';
+import {
+  readLinkedProjects,
+  type LinkedProject,
+} from './contract-projects-response';
 export interface ContractView {
   id: string;
   companyId: string;
@@ -18,6 +22,7 @@ export interface ContractView {
   sourceOffer: { illustrativeReference: number; versionNumber: number };
   illustrativeReference: number;
   revision: number;
+  linkedProjects: LinkedProject[];
   version: {
     decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
     decision: ContractDecisionView | null;
@@ -64,7 +69,10 @@ export function readContract(value: unknown): ContractView {
   if (
     input.kind !== 'CONTRACT' ||
     input.origin !== 'ACCEPTED_OFFER' ||
-    (input.revision !== 1 && input.revision !== 2 && input.revision !== 3) ||
+    typeof input.revision !== 'number' ||
+    !Number.isInteger(input.revision) ||
+    input.revision < 1 ||
+    input.revision > 53 ||
     input.provisional !== true ||
     version.versionNumber !== 1 ||
     (version.decisionState !== 'PENDING' &&
@@ -114,7 +122,7 @@ export function readContract(value: unknown): ContractView {
       : ({ executionState: 'NOT_EXECUTED', signature: null } as const);
   if (
     (execution.executionState === 'EXECUTED' &&
-      (input.revision !== 3 || version.decisionState !== 'APPROVED')) ||
+      (input.revision < 3 || version.decisionState !== 'APPROVED')) ||
     (execution.executionState === 'NOT_EXECUTED' &&
       version.signature !== null &&
       version.signature !== undefined)
@@ -123,6 +131,11 @@ export function readContract(value: unknown): ContractView {
   return {
     id: string(input.id),
     revision: positiveInteger(input.revision),
+    linkedProjects: readLinkedProjects(
+      input.linkedProjects,
+      string(input.id),
+      input.revision,
+    ),
     companyId: string(input.companyId),
     opportunityId: string(input.opportunityId),
     sourceOfferVersionId: string(input.sourceOfferVersionId),

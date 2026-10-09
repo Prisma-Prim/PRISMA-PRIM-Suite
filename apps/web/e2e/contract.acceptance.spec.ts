@@ -64,6 +64,8 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     'company-offer-preparer',
     'company-offer-approver',
     'company-contract-preparer',
+    'company-project',
+    'company-project-approver',
   ])
     await command({
       request: request,
@@ -238,6 +240,28 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     companyId: companyId,
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
+  const projectTitle = 'Existing Contract Project ' + suffix;
+  const existingProject = object(
+    await command({
+      request,
+      path: '/projects',
+      data: { title: projectTitle, clientAccountId: text(client.id) },
+      key: 'cp1-existing-' + suffix,
+      companyId,
+    }),
+  );
+  const closingProject = object(
+    await command({
+      request,
+      path: '/projects',
+      data: {
+        title: 'Closing Project ' + suffix,
+        clientAccountId: text(client.id),
+      },
+      key: 'cp1-closing-' + suffix,
+      companyId,
+    }),
+  );
   await page.goto('/?frame=classic#requests');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
@@ -1081,6 +1105,182 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await panel.screenshot({
     path: testInfo.outputPath(
       'contract-signature-context-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  // C2–C5 proved independent reads after these grants were revoked.
+  // CP1 explicitly restores its separate preparer and Project/Client prerequisites.
+  for (const route of ['company-contract-preparer', 'company-director-client'])
+    await command({
+      request,
+      path: '/' + route + '-assignments',
+      data: { workspaceMembershipId: membership, companyId },
+      key: 'cp1-restore-' + route + '-' + suffix,
+      administrator: true,
+    });
+  await page.goto('/#requests');
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Contract Request ' + suffix, { exact: true }),
+    })
+    .click();
+  const projectsPanel = panel.getByRole('region', {
+    name: 'Contract Projects',
+    exact: true,
+  });
+  const projectId = text(existingProject.id);
+  const beforeLinkProject = await body(
+    await request.get(api + '/projects/' + projectId, {
+      headers: { ...preparer, 'x-company-context-id': companyId },
+    }),
+  );
+  const selectedProject = projectsPanel.getByRole('radio', {
+    name: new RegExp(projectTitle),
+  });
+  await expect(selectedProject).toBeEnabled();
+  await selectedProject.focus();
+  await page.keyboard.press('Space');
+  await expect(selectedProject).toBeChecked();
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-project-candidates-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  const projectLinkPath =
+    '/contracts/opportunities/' + opportunityId + '/projects';
+  const linkAttempts: Array<{ body: string | null; key: string | undefined }> =
+    [];
+  await page.route('**/api' + projectLinkPath, async (route) => {
+    linkAttempts.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (linkAttempts.length === 1) {
+      await route.fetch();
+      await route.abort();
+    } else await route.continue();
+  });
+  await projectsPanel
+    .getByRole('button', { name: 'Link selected Project' })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    projectsPanel.getByText(
+      'The link outcome is uncertain. Retry sends the same Project, revision and key.',
+    ),
+  ).toBeVisible();
+  await expect(selectedProject).toBeDisabled();
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-project-uncertain-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await projectsPanel
+    .getByRole('button', { name: 'Retry the same Project link' })
+    .click();
+  await expect(
+    projectsPanel.getByText('Project linked.', { exact: true }),
+  ).toBeVisible();
+  expect(linkAttempts).toHaveLength(2);
+  expect(linkAttempts[1]).toEqual(linkAttempts[0]);
+  expect(linkAttempts[0]?.key).toBeTruthy();
+  await page.unroute('**/api' + projectLinkPath);
+  const linkedRead = object(
+    object(
+      await body(
+        await request.get(api + '/contracts/opportunities/' + opportunityId, {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  expect(linkedRead.revision).toBe(4);
+  expect(linkedRead.version).toEqual(executedRead.version);
+  expect(
+    await body(
+      await request.get(api + '/projects/' + projectId, {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  ).toEqual(beforeLinkProject);
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-project-linked-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await projectsPanel
+    .getByRole('button', { name: 'Open Project', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    page.getByRole('heading', { name: projectTitle, exact: true }),
+  ).toBeVisible();
+  const linkedContracts = page.getByRole('region', {
+    name: 'Linked Contracts',
+    exact: true,
+  });
+  await expect(
+    linkedContracts.getByText('Illustrative Contract 1', { exact: true }),
+  ).toBeVisible();
+  await linkedContracts.screenshot({
+    path: testInfo.outputPath(
+      'project-contract-reopened-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await page.screenshot({
+    path: testInfo.outputPath(
+      'project-contract-context-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await linkedContracts
+    .getByRole('button', { name: 'Open Contract', exact: true })
+    .click();
+  await expect(
+    projectsPanel.getByRole('radio', { name: new RegExp(projectTitle) }),
+  ).toBeDisabled();
+  await expect(
+    signatures.getByText('Executed — simulated evidence only', { exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-project-reopened-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await projectsPanel
+    .getByRole('radio', { name: new RegExp('Closing Project ' + suffix) })
+    .check();
+  const closure = await request.post(
+    api + '/projects/' + text(closingProject.id) + '/lifecycle-transitions',
+    {
+      headers: {
+        ...preparer,
+        'x-company-context-id': companyId,
+        'idempotency-key': 'cp1-close-after-selection-' + suffix,
+      },
+      data: {
+        action: 'cancel',
+        expectedLifecycleRevision: 0,
+        reason: 'Synthetic closure after Project selection.',
+      },
+    },
+  );
+  expect(closure.status()).toBe(200);
+  await projectsPanel
+    .getByRole('button', { name: 'Link selected Project' })
+    .click();
+  await expect(
+    projectsPanel.getByText(
+      'This Project is no longer eligible. Reload the candidates.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await projectsPanel.screenshot({
+    path: testInfo.outputPath(
+      'contract-project-no-longer-eligible-' + suffix.toLowerCase() + '.png',
     ),
   });
   await page.reload();

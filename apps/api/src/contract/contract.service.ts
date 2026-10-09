@@ -46,6 +46,7 @@ import {
   type RecordContractSignatureInput,
 } from './contract-signature-command.js';
 import { readCreateContractCommand } from './contract.validation.js';
+import { ContractProjectsService } from './contract-projects.service.js';
 import {
   CONTRACT_TEMPLATE_CODE,
   CONTRACT_TEMPLATE_VERSION,
@@ -66,6 +67,7 @@ export class ContractService {
     private readonly intake: CommercialIntakeService,
     private readonly offers: OfferService,
     private readonly pricing: PricingSnapshotService,
+    private readonly projectLinks: ContractProjectsService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
 
@@ -755,7 +757,9 @@ export class ContractService {
     if (
       contract.kind !== 'CONTRACT' ||
       contract.origin !== 'ACCEPTED_OFFER' ||
-      ![1, 2, 3].includes(contract.revision) ||
+      !Number.isInteger(contract.revision) ||
+      contract.revision < 1 ||
+      contract.revision > 53 ||
       version.versionNumber !== 1 ||
       !['PENDING', 'APPROVED', 'REJECTED'].includes(version.decisionState) ||
       !['NOT_EXECUTED', 'EXECUTED'].includes(version.executionState) ||
@@ -789,10 +793,15 @@ export class ContractService {
       (version.executionState === 'EXECUTED' &&
         (!signature ||
           decision?.kind !== 'APPROVE' ||
-          contract.revision !== signature.revision)) ||
+          contract.revision < signature.revision)) ||
       (version.executionState === 'NOT_EXECUTED' && signature !== null)
     )
       throw new Error('Invalid stored Contract execution state.');
+    if (signature)
+      await this.projectLinks.requireExecutedRevision(
+        contract,
+        signature.revision,
+      );
     const recipient = recordedRecipient(version);
     const [latestRun] = await this.databaseContext.connection
       .select()
@@ -838,6 +847,7 @@ export class ContractService {
       provisional: true,
       createdByWorkspaceMembershipId: contract.createdByWorkspaceMembershipId,
       createdAt: contract.createdAt.toISOString(),
+      linkedProjects: await this.projectLinks.linkedProjects(actor, contract),
       ...(clientReference ? { clientReference } : {}),
       version: {
         id: version.id,

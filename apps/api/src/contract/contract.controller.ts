@@ -15,10 +15,36 @@ import {
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
 import { ContractService } from './contract.service.js';
+import { ContractProjectsService } from './contract-projects.service.js';
 @Controller('contracts/opportunities/:opportunityId')
 @UseGuards(ActorContextAdapter)
 export class ContractController {
-  constructor(private readonly contracts: ContractService) {}
+  constructor(
+    private readonly contracts: ContractService,
+    private readonly projects: ContractProjectsService,
+  ) {}
+  @Get('project-candidates') candidates(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+  ) {
+    return this.projects.candidates({
+      actor: actorFrom(request),
+      opportunityId,
+    });
+  }
+  @Post('projects') linkProject(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.projects.link({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post() create(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,
@@ -180,4 +206,16 @@ export class ContractController {
 function actorFrom(request: ActorContextRequest) {
   if (!request.actorContext) throw new ForbiddenException();
   return request.actorContext;
+}
+
+@Controller('contracts/projects')
+@UseGuards(ActorContextAdapter)
+export class ProjectContractsController {
+  constructor(private readonly projects: ContractProjectsService) {}
+  @Get(':projectId') read(
+    @Req() request: ActorContextRequest,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.projects.forProject({ actor: actorFrom(request), projectId });
+  }
 }
