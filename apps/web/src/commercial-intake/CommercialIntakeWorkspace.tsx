@@ -196,6 +196,7 @@ export function CommercialIntakeWorkspace({
   clientAuthorityRevision = 0,
   onOpenClientDossier,
   requestedRequest,
+  onOpenProject,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -216,6 +217,7 @@ export function CommercialIntakeWorkspace({
    * in progress, and never interrupts one.
    */
   requestedRequest?: RequestedRequest;
+  onOpenProject?: (projectId: string) => void;
 }) {
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [selected, setSelected] = useState<SelectedRequest>();
@@ -1400,6 +1402,7 @@ export function CommercialIntakeWorkspace({
       ) : null}
       {selected && visibleRequest ? (
         <RequestDetail
+          onOpenProject={onOpenProject}
           actor={actor}
           identity={identity}
           request={visibleRequest}
@@ -1974,6 +1977,7 @@ type NextActionEditor = {
 };
 
 function RequestDetail({
+  onOpenProject,
   clientAuthority,
   actor,
   identity,
@@ -1989,6 +1993,7 @@ function RequestDetail({
   onWorkspaceAccessRejected,
 }: {
   actor: ActorContext;
+  onOpenProject?: (projectId: string) => void;
   identity: BrowserIdentity;
   request: ClientRequest;
   onBack: () => void;
@@ -2131,6 +2136,7 @@ function RequestDetail({
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
       <ContractPanel
+        onOpenProject={onOpenProject}
         key={
           clientAuthority +
           ':' +

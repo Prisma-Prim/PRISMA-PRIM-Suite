@@ -1,5 +1,8 @@
 import { ContractModule } from './contract/contract.module.js';
-import { ContractController } from './contract/contract.controller.js';
+import {
+  ContractController,
+  ProjectContractsController,
+} from './contract/contract.controller.js';
 import { CompanyContractApproverAssignmentController } from './access/company-contract-approver-assignment.controller.js';
 import { CompanyContractPreparerAssignmentController } from './access/company-contract-preparer-assignment.controller.js';
 import { TaskModule } from './task/task.module.js';
@@ -103,6 +106,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    ProjectContractsController,
     TaskController,
     CompanyTaskManagerAssignmentController,
     DocumentsController,

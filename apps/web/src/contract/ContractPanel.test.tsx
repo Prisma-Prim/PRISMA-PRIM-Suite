@@ -4,6 +4,8 @@ import {
 } from '../localization/messages';
 import { contractDecisionMessages } from './contract-decision.copy';
 import { contractSignatureMessages } from './contract-signature.copy';
+import { contractProjectsMessages } from './contract-projects.copy';
+import { ProjectContracts } from './ProjectContracts';
 import '@testing-library/jest-dom/vitest';
 import {
   act,
@@ -44,10 +46,438 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it.each(['candidates', 'link'] as const)(
+    'discards a late Project %s response after Company changes',
+    async (stage) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      let complete: ((response: Response) => void) | undefined;
+      const candidateResponse = () =>
+        response({ items: [candidateUiFixture()] });
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input) => {
+          const path = input.toString();
+          if (
+            (stage === 'candidates' && path.endsWith('/project-candidates')) ||
+            (stage === 'link' && path.endsWith('/projects'))
+          )
+            return new Promise<Response>((resolve) => {
+              complete = resolve;
+            });
+          if (path.endsWith('/project-candidates')) return candidateResponse();
+          return response({ contract: executedUiFixture() });
+        });
+      const props = {
+        identity,
+        opportunityId: 'opportunity-one',
+        onCompanyContextRejected: () => undefined,
+      };
+      const { rerender } = render(
+        <InterfaceLocaleProvider>
+          <ContractPanel {...props} actor={projectActor()} />
+        </InterfaceLocaleProvider>,
+      );
+      if (stage === 'link') {
+        fireEvent.click(
+          await screen.findByRole('radio', { name: /Existing Project/ }),
+        );
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Link selected Project' }),
+        );
+      }
+      await waitFor(() => expect(complete).toBeDefined());
+      const changed = projectActor();
+      if (!changed.activeCompany) throw new Error('Missing Company');
+      changed.activeCompany.id = 'company-two';
+      fetch.mockResolvedValue(response({ contract: null }));
+      rerender(
+        <InterfaceLocaleProvider>
+          <ContractPanel {...props} actor={changed} />
+        </InterfaceLocaleProvider>,
+      );
+      await act(async () =>
+        complete?.(
+          stage === 'candidates'
+            ? candidateResponse()
+            : response(
+                {
+                  id: 'link-one',
+                  contractId: 'contract-one',
+                  projectId: 'project-one',
+                  revision: 4,
+                  created: false,
+                  actorWorkspaceMembershipId: 'member-one',
+                  linkedAt: '2026-10-07T10:00:00.000Z',
+                },
+                201,
+              ),
+        ),
+      );
+      expect(
+        screen.queryByRole('radio', { name: /Existing Project/ }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Project linked.')).not.toBeInTheDocument();
+    },
+  );
+  it('selects an existing Project and preserves the exact uncertain link retry', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const current = actor(true);
+    if (!current.activeCompany) throw new Error('Missing Company');
+    current.activeCompany.contractPermissions?.push(
+      'commercial.contract.project.link',
+    );
+    current.activeCompany.projectPermissions = [
+      'project.read',
+      'project.create',
+    ];
+    const approved = approvedUiFixture();
+    const executed = {
+      ...approved,
+      revision: 3,
+      linkedProjects: [],
+      version: {
+        ...approved.version,
+        executionState: 'EXECUTED',
+        signature: {
+          id: 'signature-one',
+          contractVersionId: 'version-one',
+          revision: 3,
+          evidenceKind: 'SIMULATED',
+          provenance: 'ILLUSTRATIVE',
+          provisional: true,
+          actorWorkspaceMembershipId: 'member-one',
+          recordedAt: '2026-10-07T09:00:00.000Z',
+          providerSignatoryLabel: 'Provider declaration',
+          clientSignatoryLabel: 'Client declaration',
+          providerSignedOn: '2026-10-07',
+          clientSignedOn: '2026-10-07',
+          note: null,
+          qualityRun: qualityRun(),
+          acknowledgedWarningCodes: [],
+          representationChecksum: '1'.repeat(64),
+        },
+      },
+    };
+    const sent: Array<{ body: unknown; key: string | null }> = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (input.toString().endsWith('/project-candidates'))
+        return response({
+          items: [
+            {
+              id: 'project-one',
+              title: 'Existing synthetic Project',
+              status: 'preparatory',
+              createdAt: '2026-10-01T09:00:00.000Z',
+              alreadyLinked: false,
+              otherContracts: [],
+            },
+          ],
+        });
+      if (input.toString().endsWith('/projects')) {
+        sent.push({
+          body: init?.body,
+          key: new Headers(init?.headers).get('idempotency-key'),
+        });
+        if (sent.length === 1)
+          throw new Error('Synthetic lost acknowledgement');
+        return response(
+          {
+            id: 'link-one',
+            contractId: 'contract-one',
+            projectId: 'project-one',
+            revision: 4,
+            created: false,
+            actorWorkspaceMembershipId: 'member-one',
+            linkedAt: '2026-10-07T10:00:00.000Z',
+          },
+          201,
+        );
+      }
+      return response({ contract: executed });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={current}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.click(
+      await screen.findByRole('radio', { name: /Existing synthetic Project/ }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Link selected Project' }),
+    );
+    const retry = await screen.findByRole('button', {
+      name: 'Retry the same Project link',
+    });
+    expect(
+      screen.getByRole('radio', { name: /Existing synthetic Project/ }),
+    ).toBeDisabled();
+    fireEvent.click(retry);
+    expect(await screen.findByText('Project linked.')).toBeInTheDocument();
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[0]?.body).toBe(
+      JSON.stringify({ projectId: 'project-one', expectedContractRevision: 3 }),
+    );
+  });
   it('requires signature message coverage in every offered locale', () => {
     expect(() =>
       assertMessageCoverage('contractSignature', contractSignatureMessages),
     ).not.toThrow();
+  });
+  it.each(interfaceLocales)(
+    'localizes Project candidates and navigation in %s',
+    async (locale) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      const copy = (key: (typeof contractProjectsMessages.keys)[number]) =>
+        resolveMessage(contractProjectsMessages, locale, key);
+      const open = vi.fn();
+      const createdAt = '2026-10-01T09:00:00.000Z';
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        input.toString().includes('/contracts/projects/')
+          ? response({
+              items: [
+                {
+                  id: 'contract-one',
+                  opportunityId: 'opportunity-one',
+                  clientRequestId: 'request-one',
+                  illustrativeReference: 4,
+                  kind: 'CONTRACT',
+                  provisional: true,
+                  linkedAt: createdAt,
+                },
+              ],
+            })
+          : input.toString().endsWith('/project-candidates')
+            ? response({
+                items: [
+                  {
+                    id: 'project-one',
+                    title: 'Existing Project',
+                    status: 'preparatory',
+                    createdAt,
+                    alreadyLinked: true,
+                    otherContracts: [
+                      {
+                        id: 'contract-other',
+                        opportunityId: 'opportunity-other',
+                        clientRequestId: 'request-other',
+                        illustrativeReference: 9,
+                        kind: 'CONTRACT',
+                        provisional: true,
+                        linkedAt: createdAt,
+                      },
+                    ],
+                  },
+                ],
+              })
+            : response({ contract: executedUiFixture() }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={projectActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+          <ProjectContracts
+            actor={projectActor()}
+            identity={identity}
+            projectId="project-one"
+            onOpenContract={open}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const choice = await screen.findByRole('radio', {
+        name: /Existing Project/,
+      });
+      expect(choice).toBeDisabled();
+      expect(choice).toHaveAccessibleName(new RegExp(copy('alreadyLinked')));
+      const navigation = await screen.findByRole('button', {
+        name: copy('openContract'),
+      });
+      const dates = document.querySelectorAll(
+        'time[datetime="' + createdAt + '"]',
+      );
+      expect(dates).toHaveLength(2);
+      expect(dates[0]?.textContent).toEqual(dates[1]?.textContent);
+      expect(dates[0]?.textContent).toBe(
+        new Intl.DateTimeFormat(locale, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        }).format(new Date(createdAt)),
+      );
+      fireEvent.click(navigation);
+      expect(open).toHaveBeenCalledWith('request-one');
+      expect(() =>
+        assertMessageCoverage('contractProjects', contractProjectsMessages),
+      ).not.toThrow();
+    },
+  );
+  it.each([
+    {
+      status: 400,
+      code: 'INVALID_CONTRACT_INPUT',
+      message: 'Select one eligible Project and check the request.',
+    },
+    {
+      status: 403,
+      code: 'FORBIDDEN',
+      message: 'Project linking access is unavailable.',
+    },
+    {
+      status: 404,
+      code: 'NOT_FOUND',
+      message: 'The selected Project or Contract is unavailable.',
+    },
+    {
+      status: 409,
+      code: 'STALE_CONTRACT_REVISION',
+      message: 'The Contract changed. Reload before linking.',
+    },
+    {
+      status: 409,
+      code: 'PROJECT_NOT_ELIGIBLE',
+      message: 'This Project is no longer eligible. Reload the candidates.',
+    },
+    {
+      status: 409,
+      code: 'CONTRACT_PROJECT_ALREADY_LINKED',
+      message: 'This Project is already linked. Reload the relationship.',
+    },
+    {
+      status: 409,
+      code: 'CONTRACT_PROJECT_LINK_CAPACITY_EXCEEDED',
+      message: 'This Contract already has 50 linked Projects.',
+    },
+    {
+      status: 409,
+      code: 'IDEMPOTENCY_CONFLICT',
+      message:
+        'The request conflicts with an earlier command. Reload before linking.',
+    },
+  ])(
+    'presents safe Project link refusal $code without an uncertain retry',
+    async ({ status, code, message }) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        input.toString().includes('/access/current-actor')
+          ? response(projectActor())
+          : input.toString().endsWith('/projects')
+            ? response({ code }, status)
+            : input.toString().endsWith('/project-candidates')
+              ? response({ items: [candidateUiFixture()] })
+              : response({ contract: executedUiFixture() }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={projectActor()}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      fireEvent.click(
+        await screen.findByRole('radio', { name: /Existing Project/ }),
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Link selected Project' }),
+      );
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Retry the same Project link' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it('hides linked Contract identities when authority changes and ignores the old Project response', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    let complete: ((response: Response) => void) | undefined;
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const { rerender } = render(
+      <InterfaceLocaleProvider>
+        <ProjectContracts
+          actor={projectActor()}
+          identity={identity}
+          projectId="project-one"
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    const denied = projectActor();
+    if (!denied.activeCompany) throw new Error('Missing Company');
+    denied.activeCompany.contractPermissions = [];
+    rerender(
+      <InterfaceLocaleProvider>
+        <ProjectContracts
+          actor={denied}
+          identity={identity}
+          projectId="project-one"
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await act(async () =>
+      complete?.(
+        response({
+          items: [
+            {
+              id: 'hidden-contract',
+              opportunityId: 'hidden-opportunity',
+              clientRequestId: 'hidden-request',
+              illustrativeReference: 999,
+              kind: 'CONTRACT',
+              provisional: true,
+              linkedAt: '2026-10-01T09:00:00.000Z',
+            },
+          ],
+        }),
+      ),
+    );
+    expect(screen.queryByText(/999/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Linked Contracts' }),
+    ).not.toBeInTheDocument();
+  });
+  it('shows an explicit empty Project selection without offering a link command', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input) =>
+        input.toString().endsWith('/project-candidates')
+          ? response({ items: [] })
+          : response({ contract: executedUiFixture() }),
+      );
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={projectActor()}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    expect(
+      await screen.findByText('No eligible existing Project is available.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Link selected Project' }),
+    ).not.toBeInTheDocument();
+    expect(fetch.mock.calls.some((call) => call[1]?.method === 'POST')).toBe(
+      false,
+    );
   });
   it.each([
     {
@@ -1543,6 +1973,55 @@ function signatureActor(): ActorContext {
   result.activeCompany.contractApproverAssignmentId = 'approver-one';
   result.activeCompany.contractApproverPermissionSetVersion = 'v1';
   return result;
+}
+function projectActor(): ActorContext {
+  const result = actor(true);
+  if (!result.activeCompany) throw new Error('Missing Company');
+  result.activeCompany.contractPermissions?.push(
+    'commercial.contract.project.link',
+  );
+  result.activeCompany.projectPermissions = ['project.read', 'project.create'];
+  return result;
+}
+function candidateUiFixture() {
+  return {
+    id: 'project-one',
+    title: 'Existing Project',
+    status: 'preparatory',
+    createdAt: '2026-10-01T09:00:00.000Z',
+    alreadyLinked: false,
+    otherContracts: [],
+  };
+}
+function executedUiFixture() {
+  const approved = approvedUiFixture();
+  return {
+    ...approved,
+    revision: 3,
+    linkedProjects: [],
+    version: {
+      ...approved.version,
+      executionState: 'EXECUTED',
+      signature: {
+        id: 'signature-one',
+        contractVersionId: 'version-one',
+        revision: 3,
+        evidenceKind: 'SIMULATED',
+        provenance: 'ILLUSTRATIVE',
+        provisional: true,
+        actorWorkspaceMembershipId: 'member-one',
+        recordedAt: '2026-10-07T09:00:00.000Z',
+        providerSignatoryLabel: 'Provider declaration',
+        clientSignatoryLabel: 'Client declaration',
+        providerSignedOn: '2026-10-07',
+        clientSignedOn: '2026-10-07',
+        note: null,
+        qualityRun: qualityRun(),
+        acknowledgedWarningCodes: [],
+        representationChecksum: '1'.repeat(64),
+      },
+    },
+  };
 }
 function approvedUiFixture() {
   const stored = fixture();

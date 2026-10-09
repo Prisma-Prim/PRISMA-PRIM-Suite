@@ -8,9 +8,12 @@ import { DatabaseModule } from '../database/database.module.js';
 import { OfferModule } from '../offer/offer.module.js';
 import { PricingConfigurationModule } from '../pricing-configuration/pricing-configuration.module.js';
 import { ContractService } from './contract.service.js';
+import { ContractProjectsService } from './contract-projects.service.js';
+import { ProjectModule } from '../project/project.module.js';
 @Module({
   imports: [
     AccessModule,
+    ProjectModule,
     AccountabilityModule,
     ClientModule,
     CommercialIntakeModule,
@@ -19,7 +22,7 @@ import { ContractService } from './contract.service.js';
     PricingConfigurationModule,
     ServerClockModule,
   ],
-  providers: [ContractService],
-  exports: [ContractService],
+  providers: [ContractService, ContractProjectsService],
+  exports: [ContractService, ContractProjectsService],
 })
 export class ContractModule {}

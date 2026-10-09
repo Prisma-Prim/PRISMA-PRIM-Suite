@@ -205,6 +205,66 @@ export class ClientOperationalReferenceService {
     );
   }
 
+  /** Current Client identity for matching; display permissions never change the equality rule. */
+  async resolveProjectLinkClients(
+    actor: ActorContext,
+    originalIds: readonly string[],
+    lock = false,
+  ): Promise<Map<string, string>> {
+    const readable = await this.readProjectReferences(
+      actor,
+      originalIds,
+      lock,
+      lock,
+    );
+    const resolution = await this.resolveCurrentDossiers(
+      actor,
+      readable.keys(),
+    );
+    return new Map(
+      [...resolution.currentDossierByOriginal].filter(
+        ([id]) => !resolution.invalidOriginalIds.has(id),
+      ),
+    );
+  }
+
+  /** Fence an existing Project's original read boundary without imposing new-use eligibility. */
+  async lockReadableProjectReferences(
+    actor: ActorContext,
+    originalIds: readonly string[],
+  ) {
+    const companyId = this.requireClientRead(actor);
+    await this.lockClientReadAuthority(actor, companyId);
+    const ids = [...new Set(originalIds)].sort();
+    if (ids.length === 0) return new Map<string, ProjectClientReference>();
+    await this.databaseContext.connection
+      .select({ id: clientAccounts.id })
+      .from(clientAccounts)
+      .where(
+        and(
+          eq(clientAccounts.workspaceId, actor.workspaceId),
+          inArray(clientAccounts.id, ids),
+        ),
+      )
+      .orderBy(asc(clientAccounts.id))
+      .for('share');
+    await this.databaseContext.connection
+      .select({ id: clientCompanyRelationships.id })
+      .from(clientCompanyRelationships)
+      .where(
+        and(
+          eq(clientCompanyRelationships.workspaceId, actor.workspaceId),
+          eq(clientCompanyRelationships.companyId, companyId),
+          inArray(clientCompanyRelationships.clientAccountId, ids),
+        ),
+      )
+      .orderBy(asc(clientCompanyRelationships.id))
+      .for('share');
+    const references = await this.readProjectReferences(actor, ids);
+    if (ids.some((id) => !references.has(id))) throw new NotFoundException();
+    return references;
+  }
+
   /**
    * Resolves and locks one legal recipient through Client's identity and
    * relationship ownership. Offer receives only the fixed copy and fence data.

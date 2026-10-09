@@ -1,5 +1,6 @@
 import { ContractDecisionPanel } from './ContractDecisionPanel';
 import { ContractSignaturePanel } from './ContractSignaturePanel';
+import { ContractProjectsPanel } from './ContractProjectsPanel';
 import { useContractSignatureCopy } from './contract-signature.copy';
 import { useContractDecisionCopy } from './contract-decision.copy';
 import { ContractQualityPanel } from './ContractQualityPanel';
@@ -46,6 +47,7 @@ export function ContractPanel({
   onCompanyContextRejected,
   onActorRevalidated = ignoreActor,
   onWorkspaceAccessRejected = ignoreActor,
+  onOpenProject,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -53,6 +55,7 @@ export function ContractPanel({
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
+  onOpenProject?: (projectId: string) => void;
 }) {
   const companyId = actor.activeCompany?.id;
   const context = actor.activeCompany;
@@ -92,6 +95,8 @@ export function ContractPanel({
     context?.offerPermissionAssignmentId,
     context?.offerApproverAssignmentId,
     context?.offerPermissions,
+    context?.projectPermissions,
+    actor.workspacePermissions,
   ]);
   const [view, setView] = useState<View>({ kind: 'loading' }),
     [feedback, setFeedback] = useState<Feedback>(null),
@@ -99,6 +104,7 @@ export function ContractPanel({
     [qualityProtected, setQualityProtected] = useState(false),
     [decisionProtected, setDecisionProtected] = useState(false),
     [signatureProtected, setSignatureProtected] = useState(false),
+    [projectLinkProtected, setProjectLinkProtected] = useState(false),
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
@@ -108,6 +114,7 @@ export function ContractPanel({
     running ||
     decisionProtected ||
     signatureProtected ||
+    projectLinkProtected ||
     feedback === 'uncertain' ||
     qualityProtected;
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
@@ -322,7 +329,9 @@ export function ContractPanel({
                   'commercial.contract.approve',
                 ),
               )}
-              protectedChecks={qualityProtected || signatureProtected}
+              protectedChecks={
+                qualityProtected || signatureProtected || projectLinkProtected
+              }
               reject={reject}
               onProtectionChange={setDecisionProtected}
               onDecision={(decision) =>
@@ -364,7 +373,9 @@ export function ContractPanel({
                   'commercial.contract.signature.record',
                 ),
               )}
-              protectedChecks={qualityProtected || decisionProtected}
+              protectedChecks={
+                qualityProtected || decisionProtected || projectLinkProtected
+              }
               reject={reject}
               onProtectionChange={setSignatureProtected}
               onSignature={(signature) =>
@@ -381,6 +392,57 @@ export function ContractPanel({
                             signature,
                             latestQualityRun: signature.qualityRun,
                           },
+                        },
+                      }
+                    : current,
+                )
+              }
+            />
+            <ContractProjectsPanel
+              key={stamp + ':projects:' + view.contract.id}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contract={view.contract}
+              mayLink={Boolean(
+                context?.contractPermissionSetVersion === 'v1' &&
+                context.contractPermissionAssignmentId &&
+                context.contractPermissions?.includes(
+                  'commercial.contract.project.link',
+                ) &&
+                context.projectPermissions?.includes('project.read') &&
+                (context.clientPermissions?.includes('client.read') ||
+                  actor.workspacePermissions.includes('client.manage')),
+              )}
+              protectedCommand={
+                qualityProtected || decisionProtected || signatureProtected
+              }
+              reject={reject}
+              onProtectionChange={setProjectLinkProtected}
+              onOpenProject={onOpenProject}
+              onReload={() => {
+                const controller = new AbortController();
+                request.current = controller;
+                void load(controller.signal);
+              }}
+              onLinked={(link, project) =>
+                setView((current) =>
+                  current.kind === 'ready'
+                    ? {
+                        ...current,
+                        contract: {
+                          ...current.contract,
+                          revision: link.revision,
+                          linkedProjects: [
+                            {
+                              id: project.id,
+                              title: project.title,
+                              status: project.status,
+                              createdAt: project.createdAt,
+                              link,
+                            },
+                            ...current.contract.linkedProjects,
+                          ],
                         },
                       }
                     : current,
@@ -408,6 +470,7 @@ export function ContractPanel({
               mayRun={
                 !decisionProtected &&
                 !signatureProtected &&
+                !projectLinkProtected &&
                 Boolean(
                   context?.contractPermissions?.includes(
                     'commercial.contract.prepare',
@@ -417,7 +480,9 @@ export function ContractPanel({
                   ),
                 )
               }
-              protectedDecision={decisionProtected || signatureProtected}
+              protectedDecision={
+                decisionProtected || signatureProtected || projectLinkProtected
+              }
               onRun={(run) =>
                 setView((current) =>
                   current.kind === 'ready'
