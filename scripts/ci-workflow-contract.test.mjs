@@ -52,13 +52,17 @@ function requireOfficialImageSources([workflow, api, web, smoke]) {
     );
   }
   const images = [];
+  assert.equal(
+    /^postgres_image='([^']+)'$/m.exec(smoke)?.[1],
+    officialImages.postgres,
+  );
   for (const command of smoke
     .replaceAll(/\\\n/g, ' ')
     .matchAll(/docker run (.+)/g)) {
     const tokens = command[1].match(/"[^"]*"|'[^']*'|\S+/g);
     for (let index = 0; index < tokens.length; index += 1) {
       const token = tokens[index];
-      if (['--rm', '--detach'].includes(token)) continue;
+      if (['--rm', '--detach', '--pull=never'].includes(token)) continue;
       if (
         [
           '--name',
@@ -77,7 +81,7 @@ function requireOfficialImageSources([workflow, api, web, smoke]) {
   }
   assert.deepEqual(images, [
     '"$api_image"',
-    officialImages.postgres,
+    '"$postgres_image"',
     '"$api_image"',
     '"$api_image"',
     '"$web_image"',
