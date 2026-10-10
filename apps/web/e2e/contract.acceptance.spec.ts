@@ -640,6 +640,8 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(
     frame.getByRole('heading', { name: 'Illustrative Contract', exact: true }),
   ).toBeVisible();
+  await documentElement.scrollIntoViewIfNeeded();
+  await expect(documentElement).toBeInViewport();
   await frame.locator('footer').scrollIntoViewIfNeeded();
   await expect(
     frame.locator('footer').getByText(text(snapshot.id), { exact: false }),
