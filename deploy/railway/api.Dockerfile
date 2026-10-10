@@ -1,4 +1,4 @@
-FROM node:24.19.0-bookworm-slim AS build
+FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS build
 WORKDIR /app
 RUN npm install --global pnpm@11.20.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -8,7 +8,7 @@ RUN pnpm install --frozen-lockfile --filter @prisma-prim/api...
 COPY apps/api apps/api
 RUN pnpm --filter @prisma-prim/api build
 
-FROM node:24.19.0-bookworm-slim AS runtime
+FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 # Keep the locked Drizzle CLI dependencies for the existing pre-deploy command.

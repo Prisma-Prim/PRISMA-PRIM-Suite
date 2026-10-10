@@ -10,6 +10,103 @@ async function readWorkflow() {
   return (await readFile(workflowUrl, 'utf8')).replaceAll('\r\n', '\n');
 }
 
+const officialImages = {
+  node: 'public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df',
+  postgres:
+    'public.ecr.aws/docker/library/postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24',
+  nginx:
+    'public.ecr.aws/docker/library/nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284',
+};
+
+async function imageSources() {
+  return Promise.all(
+    [
+      '../.github/workflows/ci.yml',
+      '../deploy/railway/api.Dockerfile',
+      '../deploy/railway/web.Dockerfile',
+      './railway-packaging-smoke.sh',
+    ].map(async (path) =>
+      (await readFile(new URL(path, import.meta.url), 'utf8')).replaceAll(
+        '\r\n',
+        '\n',
+      ),
+    ),
+  );
+}
+
+function requireOfficialImageSources([workflow, api, web, smoke]) {
+  const services = [...workflow.matchAll(/^ +image: (\S+)$/gm)].map(
+    (match) => match[1],
+  );
+  assert.deepEqual(services, [
+    officialImages.postgres,
+    officialImages.postgres,
+  ]);
+  for (const [dockerfile, expected] of [
+    [api, [officialImages.node, officialImages.node]],
+    [web, [officialImages.node, officialImages.nginx]],
+  ]) {
+    assert.deepEqual(
+      [...dockerfile.matchAll(/^FROM (\S+)/gm)].map((match) => match[1]),
+      expected,
+    );
+  }
+  const images = [];
+  for (const command of smoke
+    .replaceAll(/\\\n/g, ' ')
+    .matchAll(/docker run (.+)/g)) {
+    const tokens = command[1].match(/"[^"]*"|'[^']*'|\S+/g);
+    for (let index = 0; index < tokens.length; index += 1) {
+      const token = tokens[index];
+      if (['--rm', '--detach'].includes(token)) continue;
+      if (
+        [
+          '--name',
+          '--network',
+          '--network-alias',
+          '--env',
+          '--publish',
+        ].includes(token)
+      ) {
+        index += 1;
+        continue;
+      }
+      images.push(token);
+      break;
+    }
+  }
+  assert.deepEqual(images, [
+    '"$api_image"',
+    officialImages.postgres,
+    '"$api_image"',
+    '"$api_image"',
+    '"$web_image"',
+  ]);
+}
+
+test('all CI services and packaging images use immutable official ECR indexes', async () => {
+  requireOfficialImageSources(await imageSources());
+});
+
+test('the image-source guard rejects Docker Hub reintroduced at every image reference', async () => {
+  const sources = await imageSources();
+  let rejected = 0;
+  for (const [sourceIndex, source] of sources.entries()) {
+    for (const match of source.matchAll(
+      /public\.ecr\.aws\/docker\/library\//g,
+    )) {
+      const mutated = [...sources];
+      mutated[sourceIndex] =
+        source.slice(0, match.index) +
+        'docker.io/library/' +
+        source.slice(match.index + match[0].length);
+      assert.throws(() => requireOfficialImageSources(mutated));
+      rejected += 1;
+    }
+  }
+  assert.equal(rejected, 7);
+});
+
 function jobsIn(workflow) {
   const jobs = workflow.slice(workflow.indexOf('\njobs:\n'));
   const declarations = [...jobs.matchAll(/^ {2}([a-z_]+):\n/gm)];
@@ -186,7 +283,7 @@ test('database jobs own isolated PostgreSQL services and matching environment ch
   ]) {
     assert.match(
       jobs[job],
-      /services:\n {6}postgres:\n {8}image: postgres:17-alpine/,
+      /services:\n {6}postgres:\n {8}image: public\.ecr\.aws\/docker\/library\/postgres:17-alpine@sha256:[a-f0-9]{64}\n/,
     );
     for (const [variable, database] of [
       ['DATABASE_URL', 'prisma_prim_dev'],
