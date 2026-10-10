@@ -45,7 +45,7 @@ docker network create "$network" >/dev/null
 docker run --detach --name "$postgres" --network "$network" \
   --network-alias postgres \
   --env POSTGRES_DB=packaging --env POSTGRES_USER=packaging \
-  --env POSTGRES_PASSWORD=packaging postgres:17-alpine >/dev/null
+  --env POSTGRES_PASSWORD=packaging public.ecr.aws/docker/library/postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24 >/dev/null
 for attempt in {1..60}; do
   if docker exec "$postgres" pg_isready -U packaging -d packaging >/dev/null 2>&1; then
     break

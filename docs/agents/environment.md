@@ -41,6 +41,14 @@ Use `postgres` for ordinary backend or persistent-data work. Use `web` only when
 
 ## Verification commands
 
+CI PostgreSQL services and Railway packaging use Docker Official Images from
+[Docker's Amazon ECR Public publisher](https://gallery.ecr.aws/docker). Readable
+version tags are pinned to immutable multi-platform index digests in the workflow,
+Dockerfiles and packaging smoke script. This avoids Docker Hub's unauthenticated
+image/token endpoints for these checks while retaining the existing image versions.
+ECR Public remains an external dependency with its own availability and rate
+limits; a local pull does not replace complete GitHub CI on the published head.
+
 `pnpm verify` is the complete local gate: formatting, lint, type-check, the unit and script suites, and the production build. Use it for sensitive changes and difficult diagnosis, or whenever the broader local gate adds useful confidence. Ordinary publication follows the targeted local checks defined in `issue-execution.md`. PostgreSQL-backed API suites run inside `pnpm verify` only when `TEST_DATABASE_URL` names a safe local `_test` database and skip otherwise. `pnpm test` adds the complete API suite and the Playwright journeys; GitHub Actions always runs it with PostgreSQL 17 and Chromium and is the authoritative integration gate before merge.
 
 Narrow seams for targeted runs:
@@ -100,7 +108,7 @@ bash scripts/codex-cloud-setup.sh --profile postgres
 bash scripts/codex-cloud-maintenance.sh --profile postgres
 ```
 
-It installs the `postgresql-17` package from the PGDG apt repository, starts the Debian `main` cluster on `127.0.0.1:5432`, creates the `prisma_prim` role and both databases idempotently, proves the application connection over TCP, exports the two targets for agent shells, and runs the `postgres` doctor. Resumes restart the cluster and recreate missing databases without reinstalling packages. Any PostgreSQL 17.x release is accepted; CI runs the current `postgres:17-alpine` image.
+It installs the `postgresql-17` package from the PGDG apt repository, starts the Debian `main` cluster on `127.0.0.1:5432`, creates the `prisma_prim` role and both databases idempotently, proves the application connection over TCP, exports the two targets for agent shells, and runs the `postgres` doctor. Resumes restart the cluster and recreate missing databases without reinstalling packages. Any PostgreSQL 17.x release is accepted; CI pins the official `postgres:17-alpine` image from ECR Public as described above.
 
 The profile exports both isolated targets itself, into `~/.config/prisma-prim/postgres-runtime.sh` sourced by the agent shell. Never define `DATABASE_URL` or `TEST_DATABASE_URL` as Codex environment variables: on 2026-09-04 every environment variable defined in the Codex environment settings made the container fail before the setup script ran. The exported credentials belong only to the isolated task container; never replace either URL with a shared, remote, staging, or production database.
 
