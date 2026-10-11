@@ -31,7 +31,7 @@ ALTER TABLE "offer_events" ADD CONSTRAINT "offer_events_metadata_check" CHECK ((
           AND "offer_events"."metadata"->>'offerVersionId' = "offer_events"."offer_version_id"::text
           AND jsonb_typeof("offer_events"."metadata"->'versionNumber') = 'number' AND "offer_events"."metadata"->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND "offer_events"."metadata"->>'provenance' = 'ILLUSTRATIVE'
-          AND (("offer_events"."action" = 'offer_version.approved' AND "offer_events"."metadata"->>'outcome' = 'APPROVED' AND "offer_events"."metadata"->>'ruleSetVersion' IN ('1','2') AND jsonb_typeof("offer_events"."metadata"->'acknowledgedWarningCodes') = 'array')
+          AND (("offer_events"."action" = 'offer_version.approved' AND "offer_events"."metadata"->>'outcome' = 'APPROVED' AND jsonb_typeof("offer_events"."metadata"->'ruleSetVersion') = 'number' AND "offer_events"."metadata"->>'ruleSetVersion' IN ('1','2') AND jsonb_typeof("offer_events"."metadata"->'acknowledgedWarningCodes') = 'array')
           OR ("offer_events"."action" = 'offer_version.rejected' AND "offer_events"."metadata"->>'outcome' = 'REJECTED' AND NOT ("offer_events"."metadata" ?| ARRAY['ruleSetVersion','acknowledgedWarningCodes'])))
         WHEN "offer_events"."action" = 'offer_version.transmission_recorded' THEN
           "offer_events"."metadata" ?& ARRAY['offerId','offerVersionId','versionNumber','channel','provenance','ruleSetVersion','acknowledgedWarningCodes']
@@ -41,7 +41,7 @@ ALTER TABLE "offer_events" ADD CONSTRAINT "offer_events_metadata_check" CHECK ((
           AND jsonb_typeof("offer_events"."metadata"->'versionNumber') = 'number' AND "offer_events"."metadata"->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND "offer_events"."metadata"->>'channel' = 'SIMULATED'
           AND "offer_events"."metadata"->>'provenance' = 'ILLUSTRATIVE'
-          AND "offer_events"."metadata"->>'ruleSetVersion' IN ('1','2')
+          AND jsonb_typeof("offer_events"."metadata"->'ruleSetVersion') = 'number' AND "offer_events"."metadata"->>'ruleSetVersion' IN ('1','2')
           AND jsonb_typeof("offer_events"."metadata"->'acknowledgedWarningCodes') = 'array'
         WHEN "offer_events"."action" = 'offer_version.client_response_recorded' THEN
           "offer_events"."metadata" ?& ARRAY['offerId','offerVersionId','versionNumber','evidenceKind','outcome','provenance']

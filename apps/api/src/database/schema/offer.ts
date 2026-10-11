@@ -679,7 +679,7 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
-          AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2') AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
+          AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND jsonb_typeof(${table.metadata}->'ruleSetVersion') = 'number' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2') AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
           OR (${table.action} = 'offer_version.rejected' AND ${table.metadata}->>'outcome' = 'REJECTED' AND NOT (${table.metadata} ?| ARRAY['ruleSetVersion','acknowledgedWarningCodes'])))
         WHEN ${table.action} = 'offer_version.transmission_recorded' THEN
           ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','channel','provenance','ruleSetVersion','acknowledgedWarningCodes']
@@ -689,7 +689,7 @@ export const offerEvents = pgTable(
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'channel' = 'SIMULATED'
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
-          AND ${table.metadata}->>'ruleSetVersion' IN ('1','2')
+          AND jsonb_typeof(${table.metadata}->'ruleSetVersion') = 'number' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2')
           AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array'
         WHEN ${table.action} = 'offer_version.client_response_recorded' THEN
           ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','evidenceKind','outcome','provenance']

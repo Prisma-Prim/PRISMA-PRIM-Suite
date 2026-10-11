@@ -351,11 +351,11 @@ it.skipIf(!databaseUrl)(
       ])
         await expect(refused()).rejects.toMatchObject({ code: '23514' });
       await transmitted(second, 2);
-      for (const invalid of [3, 0, '2.0', null])
+      for (const invalid of [3, 0, '2.0', '2', null])
         await expect(transmitted(second, invalid)).rejects.toMatchObject({
           code: '23514',
         });
-      for (const invalid of [3, '1.5', null])
+      for (const invalid of [3, '1.5', '2', null])
         await expect(approved(second, invalid)).rejects.toMatchObject({
           code: '23514',
         });
