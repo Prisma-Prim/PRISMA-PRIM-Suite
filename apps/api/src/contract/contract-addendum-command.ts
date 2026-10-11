@@ -288,12 +288,12 @@ export async function createContractAddendum(
         contractId: contract.id,
         contractVersionId: version.id,
         illustrativeReference: contract.illustrativeReference,
-        offerVersionId: null,
-        pricingSnapshotId: version.pricingSnapshotId,
-        addendum: {
+        source: {
+          kind: 'ADDENDUM',
           parentContractId: current.contract.id,
           addendumOrdinal: ordinal,
         },
+        pricingSnapshotId: version.pricingSnapshotId,
         occurredAt: createdAt,
       });
       return versions.view(actor, contract, version);

@@ -1,3 +1,4 @@
+import { contractSource } from './contract-source.js';
 import { qualityRunView } from './contract-quality-view.js';
 import {
   ConflictException,
@@ -302,16 +303,7 @@ export async function decideContractVersion(
         contractVersionId: current.version.id,
         versionNumber: current.version.versionNumber,
         kind: command.kind,
-        offerVersionId: current.contract.sourceOfferVersionId,
-        ...(current.contract.parentContractId &&
-        current.contract.addendumOrdinal
-          ? {
-              addendum: {
-                parentContractId: current.contract.parentContractId,
-                addendumOrdinal: current.contract.addendumOrdinal,
-              },
-            }
-          : {}),
+        source: contractSource(current.contract),
         pricingSnapshotId: current.version.pricingSnapshotId,
         acknowledgedWarningCodes: warnings ?? [],
         occurredAt: decidedAt,
@@ -398,7 +390,7 @@ export async function readContractDecision(
       run.evaluatedAt.getTime() !== row.decidedAt.getTime()
     )
       throw new Error('Invalid Contract approval check run.');
-    const qualityRun = qualityRunView(run, version);
+    const qualityRun = qualityRunView(run, version, contract);
     const acknowledgedWarningCodes = readContractWarningCodes(
       row.acknowledgedWarningCodes,
     );

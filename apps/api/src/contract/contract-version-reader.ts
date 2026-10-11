@@ -1,3 +1,4 @@
+import { contractSource } from './contract-source.js';
 import {
   BadRequestException,
   Injectable,
@@ -214,20 +215,8 @@ export class ContractVersionReader {
   }
 
   async view(actor: ActorContext, contract: ContractRow, version: VersionRow) {
+    const source = contractSource(contract);
     if (
-      !(
-        (contract.kind === 'CONTRACT' &&
-          contract.origin === 'ACCEPTED_OFFER' &&
-          contract.sourceOfferId &&
-          contract.sourceOfferVersionId &&
-          !contract.parentContractId) ||
-        (contract.kind === 'ADDENDUM' &&
-          contract.origin === null &&
-          contract.sourceOfferId === null &&
-          contract.sourceOfferVersionId === null &&
-          contract.parentContractId &&
-          contract.addendumOrdinal)
-      ) ||
       !Number.isInteger(contract.revision) ||
       contract.revision < 1 ||
       !Number.isInteger(version.versionNumber) ||
@@ -301,7 +290,7 @@ export class ContractVersionReader {
             contractVersionId: version.id,
           });
     const sourceOffer =
-      contract.kind === 'ADDENDUM'
+      source.kind !== 'ACCEPTED_OFFER'
         ? null
         : await this.offers.readContractSourceReference({
             actor,
@@ -358,6 +347,9 @@ export class ContractVersionReader {
       originalClientAccountId: contract.originalClientAccountId,
       kind: contract.kind,
       origin: contract.origin,
+      ...(source.kind === 'DIRECT'
+        ? { directReason: contract.directReason }
+        : {}),
       sourceOfferId: contract.sourceOfferId,
       sourceOfferVersionId: contract.sourceOfferVersionId,
       sourceOffer,
@@ -412,7 +404,9 @@ export class ContractVersionReader {
                 termEndsOn: version.termEndsOn,
                 snapshot: pricingSnapshot,
               })
-            : sourceOffer && pricingSnapshot && version.pricingSnapshotId
+            : (sourceOffer || source.kind === 'DIRECT') &&
+                pricingSnapshot &&
+                version.pricingSnapshotId
               ? renderContractRepresentation({
                   templateCode: version.templateCode,
                   templateVersion: version.templateVersion,
@@ -439,7 +433,9 @@ export class ContractVersionReader {
               : missingRepresentation(),
         decision,
         signature,
-        latestQualityRun: latestRun ? qualityRunView(latestRun, version) : null,
+        latestQualityRun: latestRun
+          ? qualityRunView(latestRun, version, contract)
+          : null,
         versionNumber: version.versionNumber,
         recipient,
         issuingCompanyLabel: version.issuingCompanyLabel,

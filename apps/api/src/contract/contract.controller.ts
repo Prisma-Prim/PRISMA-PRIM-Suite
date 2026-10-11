@@ -60,6 +60,19 @@ export class ContractController {
       idempotencyKey,
     });
   }
+  @Post('direct') createDirect(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.contracts.createDirect({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post() create(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,

@@ -1,3 +1,4 @@
+import { contractSource } from './contract-source.js';
 import {
   ConflictException,
   HttpException,
@@ -281,16 +282,7 @@ export async function recordContractSignature(
         contractId: current.contract.id,
         contractVersionId: current.version.id,
         versionNumber: current.version.versionNumber,
-        offerVersionId: current.contract.sourceOfferVersionId,
-        ...(current.contract.parentContractId &&
-        current.contract.addendumOrdinal
-          ? {
-              addendum: {
-                parentContractId: current.contract.parentContractId,
-                addendumOrdinal: current.contract.addendumOrdinal,
-              },
-            }
-          : {}),
+        source: contractSource(current.contract),
         pricingSnapshotId: current.version.pricingSnapshotId,
         acknowledgedWarningCodes: warnings,
         occurredAt: quality.evaluatedAt,
@@ -372,7 +364,7 @@ export async function readContractSignature(
     providerSignedOn: row.providerSignedOn,
     clientSignedOn: row.clientSignedOn,
     note: row.note,
-    qualityRun: qualityRunView(run, version),
+    qualityRun: qualityRunView(run, version, contract),
     acknowledgedWarningCodes: readContractWarningCodes(
       row.acknowledgedWarningCodes,
     ),

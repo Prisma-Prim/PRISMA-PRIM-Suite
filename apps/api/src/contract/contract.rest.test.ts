@@ -81,6 +81,1296 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('C9 creates and reloads DIRECT without Offer read and requires direct review at approval', async () => {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c9-prepare');
+    await grantApprover(fixture);
+    expect(
+      (
+        await request({
+          path:
+            '/company-offer-preparer-assignments/' +
+            fixture.actorMembershipId +
+            '/' +
+            fixture.companyId,
+          init: {
+            method: 'DELETE',
+            headers: { 'idempotency-key': 'c9-no-offer' },
+          },
+        })
+      ).status,
+    ).toBe(200);
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const body = {
+      recipient: { kind: 'PRIMARY' },
+      pricingSnapshotId: fixture.snapshotId,
+      directReason: ' Internal exception ',
+      scopeNote: ' Exact direct scope ',
+      commercialConditions: ' Exact conditions ',
+    };
+    const created = record(
+      await command({
+        path: base + '/direct',
+        companyId: fixture.companyId,
+        key: 'c9-create',
+        body,
+      }),
+    );
+    expect(created).toMatchObject({
+      kind: 'CONTRACT',
+      origin: 'DIRECT',
+      directReason: body.directReason,
+      sourceOfferId: null,
+      sourceOfferVersionId: null,
+      version: {
+        scopeNote: body.scopeNote,
+        commercialConditions: body.commercialConditions,
+        pricingSnapshotId: fixture.snapshotId,
+      },
+    });
+    const loaded = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(loaded).toEqual(created);
+    const versionId = stringField(record(created.version), 'id');
+    const run = record(
+      await command({
+        path: base + '/versions/' + versionId + '/quality-checks',
+        companyId: fixture.companyId,
+        key: 'c9-check',
+        body: {},
+      }),
+    );
+    expect(run.results).toContainEqual({
+      code: 'DIRECT_ORIGIN_REVIEWED',
+      status: 'WARNING',
+    });
+    const refused = await decisionRequest(
+      fixture,
+      versionId,
+      'approve',
+      { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+      'c9-refused',
+    );
+    expect(refused.status).toBe(409);
+    expect(await json(refused)).toMatchObject({
+      code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+    });
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            expectedContractRevision: 1,
+            acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+          },
+          'c9-approved',
+        )
+      ).status,
+    ).toBe(201);
+  });
+  it('C9 revises entered direct content and Snapshot after approval while conserving predecessor and reason', async () => {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c9-revision-prepare');
+    await grantApprover(fixture);
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const created = record(
+      await command({
+        path: base + '/direct',
+        companyId: fixture.companyId,
+        key: 'c9-revision-create',
+        body: {
+          recipient: { kind: 'PRIMARY' },
+          pricingSnapshotId: fixture.snapshotId,
+          directReason: 'Immutable internal exception',
+          scopeNote: 'Original scope',
+        },
+      }),
+    );
+    const oldVersion = record(created.version),
+      oldId = stringField(oldVersion, 'id');
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          oldId,
+          'approve',
+          {
+            expectedContractRevision: 1,
+            acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+          },
+          'c9-revision-approve',
+        )
+      ).status,
+    ).toBe(201);
+    const snapshot = identifiedRecord(
+      await command({
+        path: '/pricing/opportunities/' + fixture.opportunityId + '/snapshots',
+        companyId: fixture.companyId,
+        key: 'c9-new-price',
+        body: {
+          pricingRuleVersionNumber: fixture.ruleVersionNumber,
+          lines: [
+            {
+              offeringId: fixture.offeringId,
+              tariffVersionNumber: fixture.tariffVersionNumber,
+              quantity: '2',
+            },
+          ],
+        },
+      }),
+    );
+    const body = {
+      expectedContractRevision: 2,
+      pricingSnapshotId: snapshot.id,
+      scopeNote: ' Revised exact scope ',
+      commercialConditions: ' New conditions ',
+      termEndsOn: '2026-12-31',
+      specialConditions: 'New terms',
+    };
+    const revised = record(
+      await command({
+        path: base + '/versions',
+        companyId: fixture.companyId,
+        key: 'c9-revision',
+        body,
+      }),
+    );
+    const versionId = stringField(revised, 'contractVersionId');
+    const loaded = record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      ),
+      version = record(loaded.version);
+    expect(loaded.directReason).toBe('Immutable internal exception');
+    expect(version).toMatchObject({
+      versionNumber: 2,
+      decisionState: 'PENDING',
+      scopeNote: body.scopeNote,
+      commercialConditions: body.commercialConditions,
+      pricingSnapshotId: snapshot.id,
+    });
+    expect(version.differences).toEqual(
+      expect.arrayContaining([
+        { field: 'scopeNote', before: 'Original scope', after: body.scopeNote },
+        {
+          field: 'commercialConditions',
+          before: null,
+          after: body.commercialConditions,
+        },
+        expect.objectContaining({
+          field: 'pricingSnapshotId',
+          before: fixture.snapshotId,
+          after: snapshot.id,
+          afterSnapshot: expect.objectContaining({
+            currency: 'EUR',
+            total: '690.00',
+          }),
+        }),
+      ]),
+    );
+    const previous = record(
+      record(
+        record(
+          await json(
+            await request({
+              path: base + '/versions/' + oldId,
+              companyId: fixture.companyId,
+            }),
+          ),
+        ).contract,
+      ).version,
+    );
+    expect(previous.representation).toEqual(oldVersion.representation);
+    expect(record(version.representation).html).not.toContain(
+      'Immutable internal exception',
+    );
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          oldId,
+          'reject',
+          { expectedContractRevision: 3, reason: 'Old version' },
+          'c9-old-refusal',
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            expectedContractRevision: 3,
+            acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+          },
+          'c9-new-approval',
+        )
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          { ...signaturePayload(), expectedContractRevision: 4 },
+          'c9-new-signature',
+        )
+      ).status,
+    ).toBe(201);
+    expect(
+      await command({
+        path: base + '/versions',
+        companyId: fixture.companyId,
+        key: 'c9-revision',
+        body,
+      }),
+    ).toEqual(revised);
+    const retry = await command({
+      path: base + '/direct',
+      companyId: fixture.companyId,
+      key: 'c9-revision-create',
+      body: {
+        recipient: { kind: 'PRIMARY' },
+        pricingSnapshotId: fixture.snapshotId,
+        directReason: 'Immutable internal exception',
+        scopeNote: 'Original scope',
+      },
+    });
+    expect(record(record(retry).version).id).toBe(oldId);
+  });
+  it('C9 replays original receipts after later state changes only while authority and the recorded party stay readable', async () => {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c9-receipts-grant');
+    const path = '/contracts/opportunities/' + fixture.opportunityId,
+      body = {
+        recipient: { kind: 'PRIMARY' },
+        pricingSnapshotId: fixture.snapshotId,
+        directReason: 'Internal receipt',
+        scopeNote: 'Initial scope',
+      };
+    const created = record(
+      await command({
+        path: path + '/direct',
+        companyId: fixture.companyId,
+        key: 'c9-receipt-create',
+        body,
+      }),
+    );
+    const revisedBody = {
+      expectedContractRevision: 1,
+      pricingSnapshotId: fixture.snapshotId,
+      scopeNote: 'Second scope',
+    };
+    const revised = await command({
+      path: path + '/versions',
+      companyId: fixture.companyId,
+      key: 'c9-receipt-revise',
+      body: revisedBody,
+    });
+    const before = await c6Counts();
+    expect(
+      record(
+        record(
+          await command({
+            path: path + '/direct',
+            companyId: fixture.companyId,
+            key: 'c9-receipt-create',
+            body,
+          }),
+        ).version,
+      ).id,
+    ).toBe(record(created.version).id);
+    expect(
+      await command({
+        path: path + '/versions',
+        companyId: fixture.companyId,
+        key: 'c9-receipt-revise',
+        body: revisedBody,
+      }),
+    ).toEqual(revised);
+    const send = (route: string, payload: unknown, key: string) =>
+      request({
+        path: path + route,
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify(payload),
+        },
+      });
+    const changed = await send(
+      '/versions',
+      { ...revisedBody, scopeNote: '' },
+      'c9-receipt-revise',
+    );
+    expect(changed.status).toBe(409);
+    expect(await json(changed)).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    await pool.query(
+      "UPDATE client_accounts SET status='archived' WHERE id=$1",
+      [fixture.clientId],
+    );
+    expect((await send('/direct', body, 'c9-receipt-create')).status).toBe(404);
+    expect(
+      (await send('/versions', revisedBody, 'c9-receipt-revise')).status,
+    ).toBe(404);
+    expect(
+      (
+        await send(
+          '/versions',
+          { ...revisedBody, expectedContractRevision: 2 },
+          'c9-receipt-fresh',
+        )
+      ).status,
+    ).toBe(404);
+    expect(await c6Counts()).toEqual(before);
+    await pool.query("UPDATE client_accounts SET status='active' WHERE id=$1", [
+      fixture.clientId,
+    ]);
+    for (const route of ['company-pricing-user', 'company-offer-preparer'])
+      await request({
+        path:
+          '/' +
+          route +
+          '-assignments/' +
+          fixture.actorMembershipId +
+          '/' +
+          fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'c9-receipt-revoke-' + route },
+        },
+      });
+    expect((await send('/direct', body, 'c9-receipt-create')).status).toBe(403);
+    expect(
+      (await send('/versions', revisedBody, 'c9-receipt-revise')).status,
+    ).toBe(403);
+    expect(await c6Counts()).toEqual(before);
+  });
+  it.each(['direct', 'accepted', 'duplicate'] as const)(
+    'C9 serializes %s creation precedence at the Request boundary',
+    async (winner) => {
+      const fixture = await preparedOffer();
+      await grantContract(fixture, 'c9-race-grant');
+      const offer = record(
+        await command({
+          path: '/offers/opportunities/' + fixture.opportunityId,
+          companyId: fixture.companyId,
+          key: 'c9-race-offer',
+          body: {
+            recipient: { kind: 'PRIMARY' },
+            pricingSnapshotId: fixture.snapshotId,
+            scopeNote: 'Offer scope',
+          },
+        }),
+      );
+      await command({
+        path: '/company-offer-approver-assignments',
+        key: 'c9-race-approver',
+        body: {
+          workspaceMembershipId: fixture.actorMembershipId,
+          companyId: fixture.companyId,
+        },
+      });
+      const offerBase =
+        '/offers/opportunities/' +
+        fixture.opportunityId +
+        '/versions/' +
+        stringField(record(offer.version), 'id');
+      await command({
+        path: offerBase + '/approve',
+        companyId: fixture.companyId,
+        key: 'c9-race-approved',
+        body: { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+      });
+      await command({
+        path: offerBase + '/transmission',
+        companyId: fixture.companyId,
+        key: 'c9-race-transmitted',
+        body: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      });
+      const base = '/contracts/opportunities/' + fixture.opportunityId,
+        body = {
+          recipient: { kind: 'PRIMARY' },
+          pricingSnapshotId: fixture.snapshotId,
+          directReason: 'Governed direct exception',
+          scopeNote: 'Direct scope',
+        };
+      const send = (path: string, payload: unknown, key: string) =>
+        request({
+          path,
+          companyId: fixture.companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': key,
+            },
+            body: JSON.stringify(payload),
+          },
+        });
+      const direct = (key: string) => send(base + '/direct', body, key),
+        accept = () =>
+          send(
+            offerBase + '/client-response',
+            {
+              expectedOfferRevision: 3,
+              outcome: 'ACCEPTED',
+              receivedAt: instant.toISOString(),
+            },
+            'c9-race-accepted',
+          );
+      const blocker = await pool.connect();
+      let first: Promise<Response> | undefined,
+        second: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('Missing blocker');
+        await blocker.query(
+          'SELECT id FROM client_requests WHERE id=$1 FOR UPDATE',
+          [fixture.requestId],
+        );
+        first = winner === 'accepted' ? accept() : direct('c9-race-direct');
+        const firstPid = await waitForBlocker(pid);
+        second =
+          winner === 'duplicate'
+            ? direct('c9-race-duplicate')
+            : winner === 'accepted'
+              ? direct('c9-race-direct')
+              : accept();
+        await waitForBlocker(firstPid, pid);
+        await blocker.query('COMMIT');
+        expect((await first).status).toBe(201);
+        expect((await second).status).toBe(winner === 'direct' ? 201 : 409);
+        if (winner === 'accepted')
+          expect(await json(await second)).toMatchObject({
+            code: 'ACCEPTED_OFFER_EXISTS',
+          });
+        const rows = (
+          await pool.query<{
+            contracts: string;
+            versions: string;
+            receipts: string;
+            events: string;
+          }>(
+            'SELECT (SELECT count(*) FROM contracts)::text AS contracts,(SELECT count(*) FROM contract_versions)::text AS versions,(SELECT count(*) FROM contract_commands)::text AS receipts,(SELECT count(*) FROM contract_events)::text AS events',
+          )
+        ).rows[0];
+        expect(rows).toEqual(
+          winner === 'accepted'
+            ? { contracts: '0', versions: '0', receipts: '0', events: '0' }
+            : { contracts: '1', versions: '1', receipts: '1', events: '2' },
+        );
+        if (winner === 'direct') {
+          expect(
+            (
+              await send(
+                base + '/versions',
+                {
+                  expectedContractRevision: 1,
+                  pricingSnapshotId: fixture.snapshotId,
+                  scopeNote: 'Revised after later acceptance',
+                },
+                'c9-race-revise',
+              )
+            ).status,
+          ).toBe(201);
+          expect((await direct('c9-race-direct')).status).toBe(201);
+        }
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await Promise.allSettled(
+          [first, second].filter((item) => item !== undefined),
+        );
+      }
+    },
+  );
+  it('C9 preserves the fixed Additional party and refreshes only its current identity', async () => {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c9-additional-grant');
+    const registered = record(
+      await command({
+        path: '/clients/' + fixture.clientId + '/legal-entities',
+        companyId: fixture.companyId,
+        key: 'c9-additional-register',
+        body: {
+          expectedClientVersion: numberField(
+            record(
+              await json(
+                await request({
+                  path: '/clients/' + fixture.clientId,
+                  companyId: fixture.companyId,
+                }),
+              ),
+            ),
+            'version',
+          ),
+          legalName: 'Additional party',
+          taxId: 'SYNTHETIC-ADDITIONAL',
+          legalAddress: 'Synthetic address',
+        },
+      }),
+    );
+    const entityId = stringField(record(registered.legalEntity), 'id'),
+      base = '/contracts/opportunities/' + fixture.opportunityId;
+    const created = record(
+      await command({
+        path: base + '/direct',
+        companyId: fixture.companyId,
+        key: 'c9-additional-create',
+        body: {
+          recipient: { kind: 'ADDITIONAL', legalEntityId: entityId },
+          pricingSnapshotId: fixture.snapshotId,
+          directReason: 'Fixed party exception',
+          scopeNote: 'Original',
+        },
+      }),
+    );
+    const client = record(
+      await json(
+        await request({
+          path: '/clients/' + fixture.clientId,
+          companyId: fixture.companyId,
+        }),
+      ),
+    );
+    expect(
+      (
+        await request({
+          path: '/clients/' + fixture.clientId + '/legal-entities/' + entityId,
+          companyId: fixture.companyId,
+          init: {
+            method: 'PATCH',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'c9-additional-update',
+            },
+            body: JSON.stringify({
+              expectedClientVersion: numberField(client, 'version'),
+              changes: { legalName: 'Updated additional party' },
+            }),
+          },
+        })
+      ).status,
+    ).toBe(200);
+    const revision = await command({
+      path: base + '/versions',
+      companyId: fixture.companyId,
+      key: 'c9-additional-revise',
+      body: {
+        expectedContractRevision: 1,
+        pricingSnapshotId: fixture.snapshotId,
+        scopeNote: 'Revised',
+      },
+    });
+    const current = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(record(current.version).recipient).toMatchObject({
+      kind: 'ADDITIONAL',
+      additionalLegalEntityId: entityId,
+      legalName: 'Updated additional party',
+    });
+    expect(record(current.version).differences).toContainEqual({
+      field: 'recipientLegalName',
+      before: 'Additional party',
+      after: 'Updated additional party',
+    });
+    expect(current.directReason).toBe(created.directReason);
+    expect(record(revision).versionNumber).toBe(2);
+    for (const change of [
+      { recipient: { kind: 'PRIMARY' } },
+      { directReason: 'Change origin reason' },
+      { acceptedOfferVersionId: entityId },
+    ])
+      expect(
+        (
+          await request({
+            path: base + '/versions',
+            companyId: fixture.companyId,
+            init: {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'idempotency-key': 'c9-illegal-' + Object.keys(change)[0],
+              },
+              body: JSON.stringify({
+                expectedContractRevision: 2,
+                pricingSnapshotId: fixture.snapshotId,
+                scopeNote: 'Refused',
+                ...change,
+              }),
+            },
+          })
+        ).status,
+      ).toBe(400);
+  });
+  it('C9 freshly checks direct warnings and subtracts approval acknowledgements at signature', async () => {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c9-fresh-grant');
+    await grantApprover(fixture);
+    const base = '/contracts/opportunities/' + fixture.opportunityId,
+      created = record(
+        await command({
+          path: base + '/direct',
+          companyId: fixture.companyId,
+          key: 'c9-fresh-create',
+          body: {
+            recipient: { kind: 'PRIMARY' },
+            pricingSnapshotId: fixture.snapshotId,
+            directReason: 'Review every decision',
+            scopeNote: 'Synthetic scope',
+            termEndsOn: '2026-09-27',
+          },
+        }),
+      ),
+      versionId = stringField(record(created.version), 'id');
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            expectedContractRevision: 1,
+            acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+          },
+          'c9-fresh-approve',
+        )
+      ).status,
+    ).toBe(201);
+    instant = new Date('2026-09-28T00:00:00.000Z');
+    const refused = await signatureRequest(
+      fixture,
+      versionId,
+      signaturePayload(),
+      'c9-fresh-signature-missing',
+    );
+    expect(refused.status).toBe(409);
+    expect(await json(refused)).toMatchObject({
+      code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+    });
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          {
+            ...signaturePayload(),
+            acknowledgedWarningCodes: [
+              'DIRECT_ORIGIN_REVIEWED',
+              'TERM_END_NOT_PASSED',
+            ],
+          },
+          'c9-fresh-signature-extra',
+        )
+      ).status,
+    ).toBe(409);
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          {
+            ...signaturePayload(),
+            acknowledgedWarningCodes: ['TERM_END_NOT_PASSED'],
+          },
+          'c9-fresh-signature',
+        )
+      ).status,
+    ).toBe(201);
+  });
+  it('C9 database guards reject false direct PASS, immutable origin and private event content', async () => {
+    const { fixture, base, created, versionId } = await directFixture();
+    const run = record(
+      await command({
+        path: base + '/versions/' + versionId + '/quality-checks',
+        companyId: fixture.companyId,
+        key: 'c9-guard-check',
+        body: {},
+      }),
+    );
+    if (!Array.isArray(run.results)) throw new Error('Missing results');
+    const falsePass = run.results
+      .map(record)
+      .map((item) =>
+        item.code === 'DIRECT_ORIGIN_REVIEWED'
+          ? { code: item.code, status: 'PASS' }
+          : item,
+      );
+    await expect(
+      pool.query(
+        `INSERT INTO contract_quality_runs(workspace_id,company_id,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,evaluated_at,results) SELECT workspace_id,company_id,contract_id,id,created_by_internal_user_id,created_by_workspace_membership_id,created_at,$2::jsonb FROM contract_versions WHERE id=$1`,
+        [versionId, JSON.stringify(falsePass)],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    for (const update of [
+      "direct_reason='Changed'",
+      "origin='ACCEPTED_OFFER'",
+      "kind='PRECONTRACT'",
+    ])
+      await expect(
+        pool.query('UPDATE contracts SET ' + update + ' WHERE id=$1', [
+          created.id,
+        ]),
+      ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query(
+        `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata) SELECT workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata||jsonb_build_object('directReason','Private') FROM contract_events WHERE action='contract_version.created' AND contract_id=$1`,
+        [created.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    const events = (
+      await pool.query<{ action: string; metadata: unknown }>(
+        'SELECT action,metadata FROM contract_events WHERE contract_id=$1 ORDER BY action',
+        [created.id],
+      )
+    ).rows;
+    expect(events.map((item) => item.action)).toEqual([
+      'contract.created',
+      'contract_version.created',
+    ]);
+    for (const event of events) {
+      expect(record(event.metadata).origin).toBe('DIRECT');
+      for (const key of [
+        'offerVersionId',
+        'directReason',
+        'scopeNote',
+        'commercialConditions',
+        'recipient',
+        'signatory',
+      ])
+        expect(record(event.metadata)).not.toHaveProperty(key);
+      expect(JSON.stringify(event)).not.toContain('Synthetic direct fixture');
+    }
+  });
+  it('C9 blocks direct approval when the recorded tax identifier is missing', async () => {
+    const fixture = await preparedOffer();
+    await pool.query('UPDATE client_accounts SET tax_id=NULL WHERE id=$1', [
+      fixture.clientId,
+    ]);
+    await grantContract(fixture, 'c9-missing-grant');
+    await grantApprover(fixture);
+    const base = '/contracts/opportunities/' + fixture.opportunityId,
+      created = record(
+        await command({
+          path: base + '/direct',
+          companyId: fixture.companyId,
+          key: 'c9-missing-create',
+          body: {
+            recipient: { kind: 'PRIMARY' },
+            pricingSnapshotId: fixture.snapshotId,
+            directReason: 'Tax identifier is missing',
+            scopeNote: 'Synthetic scope',
+          },
+        }),
+      ),
+      versionId = stringField(record(created.version), 'id');
+    const run = record(
+      await command({
+        path: base + '/versions/' + versionId + '/quality-checks',
+        companyId: fixture.companyId,
+        key: 'c9-missing-check',
+        body: {},
+      }),
+    );
+    expect(run.results).toContainEqual({
+      code: 'PARTY_TAX_ID_RECORDED',
+      status: 'ERROR',
+    });
+    expect(
+      (
+        await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          {
+            expectedContractRevision: 1,
+            acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+          },
+          'c9-missing-approve',
+        )
+      ).status,
+    ).toBe(409);
+  });
+  it('C9 executed direct parents retain Addenda and preparatory Project compatibility', async () => {
+    const target = await directFixture(true),
+      { fixture, base, versionId } = target;
+    expect(
+      (
+        await signatureRequest(
+          fixture,
+          versionId,
+          signaturePayload(),
+          'c9-compat-signature',
+        )
+      ).status,
+    ).toBe(201);
+    await grantLinkProject(fixture);
+    const project = record(
+      await command({
+        path: base + '/projects/create',
+        companyId: fixture.companyId,
+        key: 'c9-compat-project-create',
+        body: {
+          title: 'Direct preparatory Project',
+          expectedContractRevision: 3,
+          acknowledgedCandidateProjectIds: [],
+        },
+      }),
+    );
+    expect(record(project.link)).toMatchObject({ created: true, revision: 4 });
+    const otherProject = await createLinkProject(
+      fixture,
+      'Other direct Project',
+    );
+    expect(
+      (
+        await linkRequest(
+          target,
+          { projectId: otherProject, expectedContractRevision: 4 },
+          'c9-compat-project-link',
+        )
+      ).status,
+    ).toBe(201);
+    const child = record(
+      await command({
+        path:
+          base +
+          '/agreements/' +
+          stringField(target.created, 'id') +
+          '/addenda',
+        companyId: fixture.companyId,
+        key: 'c9-compat-addendum',
+        body: {
+          expectedContractRevision: 5,
+          changeSummary: 'Direct parent change',
+        },
+      }),
+    );
+    expect(child).toMatchObject({
+      kind: 'ADDENDUM',
+      origin: null,
+      parentContractId: target.created.id,
+    });
+    expect(record(child.version).pricingSnapshotId).toBeNull();
+    const childBase = base + '/agreements/' + stringField(child, 'id'),
+      childVersion = stringField(record(child.version), 'id');
+    const approved = record(
+      await command({
+        path: childBase + '/versions/' + childVersion + '/approve',
+        companyId: fixture.companyId,
+        key: 'c9-compat-child-approve',
+        body: { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+      }),
+    );
+    expect(record(approved.qualityRun).results).toContainEqual({
+      code: 'PARENT_EXECUTED',
+      status: 'PASS',
+    });
+    expect(record(approved.qualityRun).results).not.toContainEqual(
+      expect.objectContaining({ code: 'DIRECT_ORIGIN_REVIEWED' }),
+    );
+    await command({
+      path: childBase + '/versions/' + childVersion + '/signature',
+      companyId: fixture.companyId,
+      key: 'c9-compat-child-signature',
+      body: signaturePayload(),
+    });
+    const reopened = record(
+      record(
+        await json(
+          await request({ path: childBase, companyId: fixture.companyId }),
+        ),
+      ).contract,
+    );
+    expect(reopened.linkedProjects).toHaveLength(2);
+    const parent = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(record(parent.version).representation).toEqual(
+      record(target.created.version).representation,
+    );
+  });
+  it('C9 rolls back failed creation atomically and reuses its original reference on retry', async () => {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c9-rollback-grant');
+    await pool.query(
+      "CREATE FUNCTION c9_fail_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.metadata->>'origin'='DIRECT' AND NEW.action='contract_version.created' THEN RAISE EXCEPTION 'Synthetic direct rollback'; END IF; RETURN NEW; END; $$; CREATE TRIGGER c9_fail_event BEFORE INSERT ON contract_events FOR EACH ROW EXECUTE FUNCTION c9_fail_event()",
+    );
+    const path =
+        '/contracts/opportunities/' + fixture.opportunityId + '/direct',
+      body = {
+        recipient: { kind: 'PRIMARY' },
+        pricingSnapshotId: fixture.snapshotId,
+        directReason: 'Rollback exception',
+        scopeNote: 'Exact retry',
+      };
+    const send = () =>
+      request({
+        path,
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': 'c9-rollback',
+          },
+          body: JSON.stringify(body),
+        },
+      });
+    try {
+      expect((await send()).status).toBe(500);
+      expect(
+        (
+          await pool.query(
+            'SELECT (SELECT count(*) FROM contracts)::int AS contracts,(SELECT count(*) FROM contract_versions)::int AS versions,(SELECT count(*) FROM contract_commands)::int AS receipts,(SELECT count(*) FROM contract_events)::int AS events,(SELECT count(*) FROM contract_reference_counters)::int AS counters',
+          )
+        ).rows,
+      ).toEqual([
+        { contracts: 0, versions: 0, receipts: 0, events: 0, counters: 0 },
+      ]);
+    } finally {
+      await pool.query(
+        'DROP TRIGGER c9_fail_event ON contract_events;DROP FUNCTION c9_fail_event()',
+      );
+    }
+    expect(record(await json(await send())).illustrativeReference).toBe(1);
+  });
+  it('C9 rejects malformed and foreign sources without writes and reads recorded content without live source grants', async () => {
+    const fixture = await preparedOffer(),
+      foreign = await preparedOffer('-c9-foreign');
+    await grantContract(fixture, 'c9-boundary-grant');
+    const foreignEntity = record(
+      await command({
+        path: '/clients/' + foreign.clientId + '/legal-entities',
+        companyId: foreign.companyId,
+        key: 'c9-foreign-entity-register',
+        body: {
+          expectedClientVersion: numberField(
+            record(
+              await json(
+                await request({
+                  path: '/clients/' + foreign.clientId,
+                  companyId: foreign.companyId,
+                }),
+              ),
+            ),
+            'version',
+          ),
+          legalName: 'Foreign synthetic party',
+          taxId: 'FOREIGN-SYNTHETIC',
+          legalAddress: 'Synthetic address',
+        },
+      }),
+    );
+    const base = '/contracts/opportunities/' + fixture.opportunityId,
+      body = {
+        recipient: { kind: 'PRIMARY' },
+        pricingSnapshotId: fixture.snapshotId,
+        directReason: 'Boundary exception',
+        scopeNote: 'Exact scope',
+      };
+    const send = (
+      payload: unknown,
+      key: string,
+      companyId = fixture.companyId,
+    ) =>
+      request({
+        path: base + '/direct',
+        companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify(payload),
+        },
+      });
+    let ordinal = 0;
+    for (const change of [
+      { directReason: '' },
+      { directReason: ' '.repeat(4) },
+      { directReason: 'x'.repeat(501) },
+      { scopeNote: '' },
+      { scopeNote: 'x'.repeat(2001) },
+      { commercialConditions: 'x'.repeat(4001) },
+      { specialConditions: 'x'.repeat(4001) },
+      { termStartsOn: '2026-10-02', termEndsOn: '2026-10-01' },
+      { termEndsOn: '2026-02-30' },
+      { pricingSnapshotId: null },
+      { origin: 'ACCEPTED_OFFER' },
+      { kind: 'PRECONTRACT' },
+      { acceptedOfferVersionId: fixture.snapshotId },
+      { recipient: { kind: 'PRIMARY', legalEntityId: fixture.snapshotId } },
+    ])
+      expect(
+        (await send({ ...body, ...change }, 'c9-invalid-' + ordinal++)).status,
+      ).toBe(400);
+    const otherRequest = record(
+      await command({
+        path: '/commercial-intake/requests',
+        companyId: fixture.companyId,
+        key: 'c9-other-opportunity',
+        body: {
+          originalText: 'Other synthetic Request',
+          subject: 'Other direct boundary',
+          clientAccountId: fixture.clientId,
+          opportunity: { title: 'Other opportunity', nextAction: 'Prepare' },
+        },
+      }),
+    );
+    const otherOpportunity = stringField(
+      record(otherRequest.initialOpportunity),
+      'id',
+    );
+    const otherSnapshot = record(
+      await command({
+        path: '/pricing/opportunities/' + otherOpportunity + '/snapshots',
+        companyId: fixture.companyId,
+        key: 'c9-other-snapshot',
+        body: {
+          pricingRuleVersionNumber: fixture.ruleVersionNumber,
+          lines: [
+            {
+              offeringId: fixture.offeringId,
+              tariffVersionNumber: fixture.tariffVersionNumber,
+              quantity: '1',
+            },
+          ],
+        },
+      }),
+    );
+    const wrongOpportunity = await send(
+      { ...body, pricingSnapshotId: otherSnapshot.id },
+      'c9-wrong-opportunity',
+    );
+    expect(wrongOpportunity.status).toBe(409);
+    expect(await json(wrongOpportunity)).toMatchObject({
+      code: 'PRICING_SNAPSHOT_NOT_FOR_OPPORTUNITY',
+    });
+    expect(
+      (
+        await send(
+          { ...body, pricingSnapshotId: foreign.snapshotId },
+          'c9-foreign-snapshot',
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await send(
+          {
+            ...body,
+            recipient: {
+              kind: 'ADDITIONAL',
+              legalEntityId: record(foreignEntity.legalEntity).id,
+            },
+          },
+          'c9-foreign-entity',
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await pool.query(
+          'SELECT (SELECT count(*) FROM contracts)::int AS contracts,(SELECT count(*) FROM contract_commands)::int AS receipts,(SELECT count(*) FROM contract_events)::int AS events',
+        )
+      ).rows,
+    ).toEqual([{ contracts: 0, receipts: 0, events: 0 }]);
+    const noClientRequest = record(
+      await command({
+        path: '/commercial-intake/requests',
+        companyId: fixture.companyId,
+        key: 'c9-no-client-request',
+        body: {
+          originalText: 'Synthetic unassociated Request',
+          subject: 'No Client',
+          opportunity: {
+            title: 'No Client opportunity',
+            nextAction: 'Prepare',
+          },
+        },
+      }),
+    );
+    const noClient = await request({
+      path:
+        '/contracts/opportunities/' +
+        stringField(record(noClientRequest.initialOpportunity), 'id') +
+        '/direct',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c9-no-client-create',
+        },
+        body: JSON.stringify(body),
+      },
+    });
+    expect(noClient.status).toBe(409);
+    expect(await json(noClient)).toMatchObject({
+      code: 'CONTRACT_CLIENT_REQUIRED',
+    });
+    const created = record(await json(await send(body, 'c9-boundary-create')));
+    expect(created.origin).toBe('DIRECT');
+    for (const route of [
+      'company-pricing-user',
+      'company-offer-preparer',
+      'company-director-client',
+    ])
+      expect(
+        (
+          await request({
+            path:
+              '/' +
+              route +
+              '-assignments/' +
+              fixture.actorMembershipId +
+              '/' +
+              fixture.companyId,
+            init: {
+              method: 'DELETE',
+              headers: { 'idempotency-key': 'c9-reader-revoke-' + route },
+            },
+          })
+        ).status,
+      ).toBe(200);
+    const loaded = record(
+      record(
+        await json(await request({ path: base, companyId: fixture.companyId })),
+      ).contract,
+    );
+    expect(loaded.version).toEqual(created.version);
+    expect((await send(body, 'c9-boundary-create')).status).toBe(403);
+  });
+  it.each(['client', 'preparer', 'snapshot'] as const)(
+    'C9 refuses creation when %s invalidation wins its live fence',
+    async (fence) => {
+      const fixture = await preparedOffer();
+      await grantContract(fixture, 'c9-fence-grant');
+      const blocker = await pool.connect();
+      let pending: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('Missing blocker');
+        if (fence === 'client')
+          await blocker.query(
+            "UPDATE client_accounts SET status='archived' WHERE id=$1",
+            [fixture.clientId],
+          );
+        else
+          await blocker.query(
+            'UPDATE company_role_assignments SET revoked_at=now() WHERE company_id=$1 AND bundle::text=ANY($2::text[])',
+            [
+              fixture.companyId,
+              fence === 'preparer'
+                ? ['company_contract_preparer']
+                : ['company_pricing_user', 'company_offer_preparer'],
+            ],
+          );
+        pending = request({
+          path: '/contracts/opportunities/' + fixture.opportunityId + '/direct',
+          companyId: fixture.companyId,
+          init: {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'idempotency-key': 'c9-fence-create',
+            },
+            body: JSON.stringify({
+              recipient: { kind: 'PRIMARY' },
+              pricingSnapshotId: fixture.snapshotId,
+              directReason: 'Fence exception',
+              scopeNote: 'Scope',
+            }),
+          },
+        });
+        await waitForBlocker(pid);
+        await blocker.query('COMMIT');
+        expect((await pending).status).toBe(fence === 'client' ? 404 : 403);
+        expect(
+          (await pool.query('SELECT count(*)::int AS count FROM contracts'))
+            .rows,
+        ).toEqual([{ count: 0 }]);
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await pending;
+      }
+    },
+  );
+  it('C9 requires complete direct creation evidence at the database boundary', async () => {
+    const { created, versionId } = await directFixture(),
+      target = await preparedOffer('-c9-incomplete'),
+      connection = await pool.connect();
+    try {
+      await connection.query('BEGIN');
+      const direct = (
+        await connection.query<{ id: string }>(
+          `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,kind,origin,direct_reason,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at) SELECT workspace_id,$2,$3,$4,$5,'CONTRACT','DIRECT','Incomplete synthetic evidence',1,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contracts WHERE id=$1 RETURNING id`,
+          [
+            created.id,
+            target.companyId,
+            target.opportunityId,
+            target.requestId,
+            target.clientId,
+          ],
+        )
+      ).rows[0]?.id;
+      if (!direct) throw new Error('Missing incomplete direct row');
+      await connection.query(
+        `INSERT INTO contract_versions(workspace_id,company_id,contract_id,opportunity_id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,created_by_internal_user_id,created_by_workspace_membership_id,created_at) SELECT workspace_id,$2,$3,$4,$5,$6,'PRIMARY',recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,'Synthetic valid scope',created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contract_versions WHERE id=$1`,
+        [
+          versionId,
+          target.companyId,
+          direct,
+          target.opportunityId,
+          target.snapshotId,
+          target.clientId,
+        ],
+      );
+      await expect(connection.query('COMMIT')).rejects.toMatchObject({
+        code: '23514',
+        message: 'Incomplete direct Contract creation evidence',
+      });
+    } finally {
+      await connection.query('ROLLBACK');
+      connection.release();
+    }
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::int AS count FROM contracts WHERE company_id=$1',
+          [target.companyId],
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+  });
   it('C8 review reopens only explicit child Quality Check history and details', async () => {
     const { fixture, base, versionId } = await approvedSignatureFixture();
     expect(
@@ -1838,6 +3128,100 @@ withPostgres('First illustrative Contract REST', () => {
       ).status,
     ).toBe(400);
   });
+  it.each(['new', 'approve', 'reject', 'signature'] as const)(
+    'C9 controls new-version versus %s in both winning orders',
+    async (other) => {
+      for (const revisionFirst of [true, false]) {
+        // Each ordering has an independent persisted Contract and Client fence.
+        if (!revisionFirst)
+          await pool.query(
+            'TRUNCATE activity_log_events, workspace_memberships, internal_users, workspaces CASCADE',
+          );
+        const target = await directFixture(other === 'signature');
+        const { fixture, versionId } = target;
+        await grantApprover(fixture);
+        const revision = other === 'signature' ? 2 : 1;
+        const revise = () =>
+          reviseRequest(
+            target,
+            {
+              expectedContractRevision: revision,
+              specialConditions: 'Race revision',
+              pricingSnapshotId: fixture.snapshotId,
+              scopeNote: 'Direct revision',
+            },
+            'c9-version-race-new-' + revisionFirst,
+          );
+        const competitor = () =>
+          other === 'new'
+            ? reviseRequest(
+                target,
+                {
+                  expectedContractRevision: revision,
+                  specialConditions: 'Competing revision',
+                  pricingSnapshotId: fixture.snapshotId,
+                  scopeNote: 'Other direct revision',
+                },
+                'c9-version-race-other-' + revisionFirst,
+              )
+            : decisionRequest(
+                fixture,
+                versionId,
+                other,
+                other === 'approve'
+                  ? {
+                      expectedContractRevision: revision,
+                      acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+                    }
+                  : other === 'reject'
+                    ? {
+                        expectedContractRevision: revision,
+                        reason: 'Race rejection',
+                      }
+                    : {
+                        ...signaturePayload(),
+                        expectedContractRevision: revision,
+                      },
+                'c9-version-race-other-' + revisionFirst,
+              );
+        const blocker = await pool.connect();
+        let first: Promise<Response> | undefined,
+          second: Promise<Response> | undefined;
+        try {
+          await blocker.query('BEGIN');
+          const pid = (
+            await blocker.query<{ pid: number }>(
+              'SELECT pg_backend_pid() AS pid',
+            )
+          ).rows[0]?.pid;
+          if (pid === undefined) throw new Error('No blocker');
+          await blocker.query(
+            'SELECT id FROM contracts WHERE opportunity_id=$1 FOR UPDATE',
+            [fixture.opportunityId],
+          );
+          first = (revisionFirst ? revise : competitor)();
+          const firstPid = await waitForBlocker(pid);
+          second = (revisionFirst ? competitor : revise)();
+          await waitForBlocker(firstPid, pid);
+          await blocker.query('COMMIT');
+          expect((await first).status).toBe(201);
+          expect((await second).status).toBe(409);
+          expect(await json(await second)).toMatchObject({
+            code:
+              revisionFirst && other !== 'new'
+                ? 'CONTRACT_VERSION_SUPERSEDED'
+                : 'STALE_CONTRACT_REVISION',
+          });
+        } finally {
+          await blocker.query('ROLLBACK');
+          blocker.release();
+          await Promise.allSettled(
+            [first, second].filter((item) => item !== undefined),
+          );
+        }
+      }
+    },
+  );
   it.each(['new', 'approve', 'reject', 'signature'] as const)(
     'C6 controls new-version versus %s in both winning orders',
     async (other) => {
@@ -6245,6 +7629,12 @@ withPostgres('First illustrative Contract REST', () => {
   });
   it.each([
     {
+      baseline: 'C8 / 0060 with Addendum',
+      migration: '0061_contract_direct_origin',
+      index: 61,
+      previousTag: '0060_contract_addenda',
+    },
+    {
       baseline: 'C6 / 0059 executed with Project links',
       migration: '0060_contract_addenda',
       index: 60,
@@ -6525,7 +7915,7 @@ withPostgres('First illustrative Contract REST', () => {
             )
           ).rows;
         }
-        if (index === 60) {
+        if (index >= 60) {
           const historyFixture = await acceptedOffer({ suffix: 'c8-history' });
           const historyPayload = await contractPayload(historyFixture);
           const historySource = historyPayload.acceptedOfferVersionId;
@@ -6605,6 +7995,42 @@ withPostgres('First illustrative Contract REST', () => {
             throw error;
           }
         }
+        if (index === 61) {
+          await pool.query('BEGIN');
+          try {
+            const child = (
+              await pool.query<{ id: string }>(
+                `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,kind,origin,parent_contract_id,addendum_ordinal,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
+              SELECT workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,'ADDENDUM',NULL,id,1,1,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contracts WHERE id=$1 RETURNING id`,
+                [contractId],
+              )
+            ).rows[0]?.id;
+            if (!child) throw new Error('Missing historic Addendum');
+            await pool.query(
+              `INSERT INTO contract_versions(workspace_id,company_id,contract_id,opportunity_id,recipient_client_account_id,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,change_summary,template_code,clause_versions,created_by_internal_user_id,created_by_workspace_membership_id,created_at)
+              SELECT workspace_id,company_id,$2,opportunity_id,recipient_client_account_id,recipient_kind,recipient_additional_legal_entity_id,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,'Exact historic Addendum','ADDENDUM_ILLUSTRATIVE','[{"code":"CL_SUBJECT","version":1},{"code":"CL_PRICE","version":1},{"code":"CL_TERM","version":1},{"code":"CL_CONDITIONS","version":1},{"code":"CL_CHANGE","version":1},{"code":"CL_GENERAL","version":1}]'::jsonb,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contract_versions WHERE contract_id=$1`,
+              [contractId, child],
+            );
+            await pool.query(
+              `INSERT INTO contract_commands(workspace_id,company_id,actor_workspace_membership_id,idempotency_key,fingerprint,opportunity_id,result_contract_id,kind,created_at) SELECT workspace_id,company_id,created_by_workspace_membership_id,'historic-c8-create',repeat('8',64),opportunity_id,id,'CREATE',created_at FROM contracts WHERE id=$1`,
+              [child],
+            );
+            await pool.query(
+              `INSERT INTO contract_reference_counters(workspace_id,company_id,kind,current_reference) SELECT workspace_id,company_id,kind,illustrative_reference FROM contracts WHERE id=$1`,
+              [child],
+            );
+            await pool.query(
+              `INSERT INTO contract_events(workspace_id,company_id,action,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,occurred_at,metadata)
+              SELECT c.workspace_id,c.company_id,e.action,c.id,e.version_id,c.created_by_internal_user_id,c.created_by_workspace_membership_id,c.created_at,jsonb_build_object('contractId',c.id,'kind','ADDENDUM','parentContractId',c.parent_contract_id,'addendumOrdinal',1,'provenance','ILLUSTRATIVE') || CASE WHEN e.version_id IS NULL THEN jsonb_build_object('illustrativeReference',1) ELSE jsonb_build_object('contractVersionId',v.id,'versionNumber',1) END
+              FROM contracts c JOIN contract_versions v ON v.contract_id=c.id CROSS JOIN LATERAL(VALUES('contract.created',NULL::uuid),('contract_version.created',v.id)) e(action,version_id) WHERE c.id=$1`,
+              [child],
+            );
+            await pool.query('COMMIT');
+          } catch (error: unknown) {
+            await pool.query('ROLLBACK');
+            throw error;
+          }
+        }
         const historicSignatures =
           index >= 57
             ? (
@@ -6638,7 +8064,7 @@ withPostgres('First illustrative Contract REST', () => {
             guards: unknown;
           }>(
             `SELECT
-        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['parent_contract_id','addendum_ordinal']::text[] ORDER BY id) FROM contracts c) AS contracts,
+        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['direct_reason','parent_contract_id','addendum_ordinal']::text[] ORDER BY id) FROM contracts c) AS contracts,
         (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['change_summary','template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at']::text[] WHEN $4::boolean THEN to_jsonb(v)-'change_summary' ELSE to_jsonb(v)-ARRAY['change_summary','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
         (SELECT jsonb_agg(CASE WHEN $3::boolean THEN to_jsonb(c)-'result_version_id' ELSE to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id','result_project_link_id','result_version_id']::text[] END ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
@@ -6656,6 +8082,7 @@ withPostgres('First illustrative Contract REST', () => {
                 'contracts_source_check',
                 'contract_reference_counters_check',
                 'contracts_addendum_evidence',
+                'contracts_direct_evidence',
                 'contract_versions_lineage_check',
                 'contract_versions_predecessor_fk',
                 'contract_versions_successor_fk',
@@ -6677,12 +8104,19 @@ withPostgres('First illustrative Contract REST', () => {
                 'contract_versions_signature_evidence',
               ],
               index >= 59,
-              index === 60,
+              index >= 60,
             ],
           );
         const before = (await evidence()).rows;
         await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
         expect((await evidence()).rows).toEqual(before);
+        expect(
+          (
+            await pool.query(
+              "SELECT conname FROM pg_constraint WHERE conname='contracts_direct_evidence'",
+            )
+          ).rows,
+        ).toEqual([{ conname: 'contracts_direct_evidence' }]);
         if (index === 58) {
           expect(
             (
@@ -7990,6 +9424,48 @@ withPostgres('First illustrative Contract REST', () => {
         body: JSON.stringify(body),
       },
     });
+  }
+  async function directFixture(approved = false) {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c9-direct-fixture');
+    await grantApprover(fixture);
+    const base = '/contracts/opportunities/' + fixture.opportunityId,
+      created = record(
+        await command({
+          path: base + '/direct',
+          companyId: fixture.companyId,
+          key: 'c9-direct-fixture-create',
+          body: {
+            recipient: { kind: 'PRIMARY' },
+            pricingSnapshotId: fixture.snapshotId,
+            directReason: 'Synthetic direct fixture',
+            scopeNote: 'Synthetic direct scope',
+          },
+        }),
+      );
+    const versionId = stringField(record(created.version), 'id');
+    if (approved)
+      expect(
+        (
+          await decisionRequest(
+            fixture,
+            versionId,
+            'approve',
+            {
+              expectedContractRevision: 1,
+              acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+            },
+            'c9-direct-fixture-approval',
+          )
+        ).status,
+      ).toBe(201);
+    return {
+      fixture,
+      base,
+      created,
+      versionId,
+      path: base + '/versions/' + versionId + '/quality-checks',
+    };
   }
   async function qualityFixture(
     content: { specialConditions?: string; termEndsOn?: string } = {},

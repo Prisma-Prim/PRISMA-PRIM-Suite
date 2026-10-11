@@ -178,6 +178,39 @@ export class OfferService {
     };
   }
 
+  /**
+   * Existence proof only; reveals no Offer id, version or content. Call only
+   * inside the Contract transaction that already holds the prepare authority
+   * and the Opportunity lock serializing creation with Offer acceptance.
+   */
+  async hasAcceptedContractSource(input: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+  }): Promise<boolean> {
+    const { companyId } = input;
+    const [accepted] = await this.databaseContext.connection
+      .select({ id: offers.id })
+      .from(offers)
+      .innerJoin(
+        offerClientResponses,
+        and(
+          eq(offerClientResponses.workspaceId, offers.workspaceId),
+          eq(offerClientResponses.companyId, offers.companyId),
+          eq(offerClientResponses.offerId, offers.id),
+        ),
+      )
+      .where(
+        and(
+          eq(offers.workspaceId, input.actor.workspaceId),
+          eq(offers.companyId, companyId),
+          eq(offers.opportunityId, input.opportunityId),
+          eq(offerClientResponses.outcome, 'ACCEPTED'),
+        ),
+      )
+      .limit(1);
+    return accepted !== undefined;
+  }
   /** Recorded accepted source only; no pricing or live-Client projection locks. */
   async resolveAcceptedContractSource(input: {
     actor: ActorContext;
