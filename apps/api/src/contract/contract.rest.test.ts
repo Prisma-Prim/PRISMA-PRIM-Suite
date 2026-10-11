@@ -179,7 +179,7 @@ withPostgres('First illustrative Contract REST', () => {
       precontract: { id: precontractId, illustrativeReference: 1 },
     });
     expect(String(record(record(main.version).representation).html)).toContain(
-      '<dt>Precontract reference</dt><dd>1</dd>',
+      '<dt>Illustrative Precontract reference</dt><dd>1</dd>',
     );
     const reopened = record(
       await json(await request({ path: base, companyId: fixture.companyId })),

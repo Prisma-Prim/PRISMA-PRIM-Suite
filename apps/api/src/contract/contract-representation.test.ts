@@ -302,7 +302,7 @@ describe('C7 illustrative Precontract representation', () => {
     expect(referenced.html).toBe(
       golden.html.replace(
         '<dt>Precontract reference</dt><dd>Not recorded</dd>',
-        '<dt>Precontract reference</dt><dd>3</dd>',
+        '<dt>Illustrative Precontract reference</dt><dd>3</dd>',
       ),
     );
     expect(referenced.sha256).not.toBe(golden.sha256);

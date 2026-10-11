@@ -11,6 +11,7 @@ export const CONTRACT_CLAUSE_VERSIONS = [
   { code: 'CL_GENERAL', version: 1 },
 ] as const;
 export const PRECONTRACT_TEMPLATE_CODE = 'PRECONTRACT_ILLUSTRATIVE';
+export const PRECONTRACT_TEMPLATE_VERSION = 1;
 export const PRECONTRACT_CLAUSE_VERSIONS = [
   { code: 'CL_SUBJECT', version: 1 },
   { code: 'CL_PRICE', version: 1 },
@@ -100,7 +101,7 @@ export function agreementGenerationFields(
   return command.kind === 'PRECONTRACT'
     ? {
         templateCode: PRECONTRACT_TEMPLATE_CODE,
-        templateVersion: CONTRACT_TEMPLATE_VERSION,
+        templateVersion: PRECONTRACT_TEMPLATE_VERSION,
         clauseVersions: PRECONTRACT_CLAUSE_VERSIONS,
         preliminaryWorkScope: command.preliminaryWork.scope,
         preliminaryFinancialConditions:
@@ -147,7 +148,7 @@ export function renderPrecontractRepresentation(
 ) {
   if (
     input.templateCode !== PRECONTRACT_TEMPLATE_CODE ||
-    input.templateVersion !== 1 ||
+    input.templateVersion !== PRECONTRACT_TEMPLATE_VERSION ||
     !supportedClauses(input.clauseVersions, PRECONTRACT_CLAUSE_VERSIONS)
   )
     throw new Error(
@@ -159,7 +160,7 @@ export function renderPrecontractRepresentation(
   });
   return {
     templateCode: PRECONTRACT_TEMPLATE_CODE,
-    templateVersion: 1,
+    templateVersion: PRECONTRACT_TEMPLATE_VERSION,
     clauseVersions: PRECONTRACT_CLAUSE_VERSIONS,
     html,
     sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
@@ -229,12 +230,14 @@ function renderAgreementHtml(
           : ([['Source', 'Direct origin']] satisfies [string, string][])),
         ...(layout.kind === 'CONTRACT'
           ? ([
-              [
-                'Precontract reference',
-                layout.precontractReference === null
-                  ? null
-                  : String(layout.precontractReference),
-              ],
+              // The unrecorded row keeps its delivered v1 bytes; a recorded
+              // reference is labelled illustrative, never official (§19.2).
+              layout.precontractReference === null
+                ? ['Precontract reference', null]
+                : [
+                    'Illustrative Precontract reference',
+                    String(layout.precontractReference),
+                  ],
             ] satisfies [string, string | null][])
           : []),
       ],

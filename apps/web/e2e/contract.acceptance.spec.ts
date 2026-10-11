@@ -2984,7 +2984,7 @@ test('C7 prepares, executes and references a persisted illustrative Precontract'
   });
   await expect(
     listed.getByText(
-      'Precontract reference 1 · Version 1 · Approved internally · Executed — simulated evidence only',
+      'Illustrative Precontract reference 1 · Version 1 · Approved internally · Executed — simulated evidence only',
       { exact: true },
     ),
   ).toBeVisible();
@@ -3005,7 +3005,7 @@ test('C7 prepares, executes and references a persisted illustrative Precontract'
     ),
   ).toBe(true);
   await panel
-    .getByRole('button', { name: 'Back to the Contract', exact: true })
+    .getByRole('button', { name: 'Back to the Contract area', exact: true })
     .click();
   await panel
     .getByRole('button', { name: 'Create Contract', exact: true })
@@ -3017,14 +3017,16 @@ test('C7 prepares, executes and references a persisted illustrative Precontract'
     panel.getByRole('definition').filter({ hasText: /^1$/u }).first(),
   ).toBeVisible();
   await expect(
-    panel.getByRole('term').filter({ hasText: /^Precontract reference$/u }),
+    panel
+      .getByRole('term')
+      .filter({ hasText: /^Illustrative Precontract reference$/u }),
   ).toBeVisible();
   await panel
     .getByRole('button', { name: 'Open exact Contract document', exact: true })
     .click();
   await expect(panel.locator('iframe')).toHaveAttribute(
     'srcdoc',
-    /<dt>Precontract reference<\/dt><dd>1<\/dd>/u,
+    /<dt>Illustrative Precontract reference<\/dt><dd>1<\/dd>/u,
   );
   await expect(
     panel.getByRole('button', { name: 'Create Precontract', exact: true }),

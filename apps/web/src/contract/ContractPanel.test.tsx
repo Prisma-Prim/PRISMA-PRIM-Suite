@@ -140,7 +140,7 @@ describe('ContractPanel', () => {
       screen.getByText('Synthetic limit', { selector: 'dd' }),
     ).toBeVisible();
     expect(
-      screen.getByRole('button', { name: 'Back to the Contract' }),
+      screen.getByRole('button', { name: 'Back to the Contract area' }),
     ).toBeEnabled();
     expect(reads[0]).toContain(
       '/contracts/opportunities/opportunity-one/agreements/precontract-one',
@@ -185,7 +185,7 @@ describe('ContractPanel', () => {
     const section = await screen.findByRole('region', { name: 'Precontract' });
     expect(
       within(section).getByText(
-        'Precontract reference 4 · Version 2 · Approved internally · Executed — simulated evidence only',
+        'Illustrative Precontract reference 4 · Version 2 · Approved internally · Executed — simulated evidence only',
       ),
     ).toBeVisible();
     expect(
@@ -196,14 +196,16 @@ describe('ContractPanel', () => {
     ).toBeVisible();
     main = true;
     fireEvent.click(screen.getByRole('button', { name: 'Reload Contract' }));
-    expect(await screen.findByText('Precontract reference')).toBeVisible();
+    expect(
+      await screen.findByText('Illustrative Precontract reference'),
+    ).toBeVisible();
     expect(screen.getByText('4', { selector: 'dd' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Open Precontract' }));
     expect(
       await screen.findByRole('heading', { name: 'Illustrative Precontract' }),
     ).toBeVisible();
     fireEvent.click(
-      screen.getByRole('button', { name: 'Back to the Contract' }),
+      screen.getByRole('button', { name: 'Back to the Contract area' }),
     );
     expect(
       await screen.findByRole('button', { name: 'Open Precontract' }),

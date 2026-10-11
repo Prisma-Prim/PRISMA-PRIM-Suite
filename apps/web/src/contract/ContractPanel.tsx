@@ -404,7 +404,7 @@ export function ContractPanel({
                 ·{' '}
                 {view.precontract.executionState === 'EXECUTED'
                   ? signatureCopy('executed')
-                  : copy.execution}
+                  : signatureCopy('pending')}
               </p>
               <button
                 type="button"
@@ -427,6 +427,7 @@ export function ContractPanel({
                 acceptedVersionId={view.acceptedVersionId}
                 protectedCommand={
                   running ||
+                  feedback === 'uncertain' ||
                   qualityProtected ||
                   decisionProtected ||
                   signatureProtected ||
