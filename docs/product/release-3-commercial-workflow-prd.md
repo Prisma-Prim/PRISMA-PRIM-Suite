@@ -1219,6 +1219,7 @@ Provisional choices for Iurie's validation:
 Excluded: Sales Stages; automatic status changes from Offers, Contracts or Projects; user-entered effective dates; reminders for held Opportunities; configurable reason lists; list filters by status; dashboards, conversion reports and forecasting; bulk changes; deletion; transfer between Companies.
 
 Open and not presented as business fact: whether `WON` should later require an Accepted Offer or a signed Contract; whether closing should withdraw open Offers; who besides Iurie may close or reopen an Opportunity; and which disqualification reasons Iurie uses (S04-Q07 was never asked).
+
 ## 24. Approved provisional configurable Sales Stage (SO-2)
 
 This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides how an authorized user configures a Company's Sales Stages and how an authorized user assigns one to an Opportunity. It is independent of the outcome-status contract (section 23): the outcome status and the stage never change each other, and either contract may be approved and delivered first.
