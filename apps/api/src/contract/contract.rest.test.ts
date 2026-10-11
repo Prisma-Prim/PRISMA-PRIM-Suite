@@ -348,7 +348,7 @@ withPostgres('First illustrative Contract REST', () => {
     });
     expect(record(record(retry).version).id).toBe(oldId);
   });
-  it('C9 replays original receipts before current Client validity but after live authority', async () => {
+  it('C9 replays original receipts after later state changes only while authority and the recorded party stay readable', async () => {
     const fixture = await preparedOffer();
     await grantContract(fixture, 'c9-receipts-grant');
     const path = '/contracts/opportunities/' + fixture.opportunityId,
@@ -377,10 +377,6 @@ withPostgres('First illustrative Contract REST', () => {
       key: 'c9-receipt-revise',
       body: revisedBody,
     });
-    await pool.query(
-      "UPDATE client_accounts SET status='archived' WHERE id=$1",
-      [fixture.clientId],
-    );
     const before = await c6Counts();
     expect(
       record(
@@ -422,6 +418,14 @@ withPostgres('First illustrative Contract REST', () => {
     );
     expect(changed.status).toBe(409);
     expect(await json(changed)).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    await pool.query(
+      "UPDATE client_accounts SET status='archived' WHERE id=$1",
+      [fixture.clientId],
+    );
+    expect((await send('/direct', body, 'c9-receipt-create')).status).toBe(404);
+    expect(
+      (await send('/versions', revisedBody, 'c9-receipt-revise')).status,
+    ).toBe(404);
     expect(
       (
         await send(
@@ -432,6 +436,9 @@ withPostgres('First illustrative Contract REST', () => {
       ).status,
     ).toBe(404);
     expect(await c6Counts()).toEqual(before);
+    await pool.query("UPDATE client_accounts SET status='active' WHERE id=$1", [
+      fixture.clientId,
+    ]);
     for (const route of ['company-pricing-user', 'company-offer-preparer'])
       await request({
         path:

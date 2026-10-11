@@ -140,6 +140,24 @@ export async function createDirectContract(
         });
         if (!existing || existing.contract.id !== receipt.resultContractId)
           throw new Error('Missing recorded Contract.');
+        // Replay requires the recorded party to stay readable, as for Addenda.
+        const party = existing.version;
+        const selection =
+          party.recipientKind === 'PRIMARY'
+            ? { kind: 'PRIMARY' as const }
+            : party.recipientKind === 'ADDITIONAL' &&
+                party.recipientAdditionalLegalEntityId
+              ? {
+                  kind: 'ADDITIONAL' as const,
+                  legalEntityId: party.recipientAdditionalLegalEntityId,
+                }
+              : null;
+        if (!selection) throw new Error('Invalid recorded Contract party.');
+        await dependencies.clients.lockOfferRecipient(
+          actor,
+          existing.contract.originalClientAccountId,
+          selection,
+        );
         return dependencies.versions.view(
           actor,
           existing.contract,
@@ -172,6 +190,7 @@ export async function createDirectContract(
       if (
         await dependencies.offers.hasAcceptedContractSource({
           actor,
+          companyId,
           opportunityId: opportunity.id,
         })
       )

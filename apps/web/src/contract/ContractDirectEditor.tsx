@@ -19,6 +19,7 @@ import { useContractDirectCopy } from './contract-direct.copy';
 type Mode =
   | { kind: 'create'; clientId: string }
   | { kind: 'revise'; contract: Extract<ContractView, { origin: 'DIRECT' }> };
+type SnapshotChoice = Pick<OfferSnapshotSummary, 'id' | 'currency' | 'total'>;
 type Feedback =
   | 'idle'
   | 'running'
@@ -61,7 +62,17 @@ export function ContractDirectEditor({
     [end, setEnd] = useState(version?.termEndsOn ?? ''),
     [special, setSpecial] = useState(version?.specialConditions ?? ''),
     [party, setParty] = useState('PRIMARY'),
-    [snapshot, setSnapshot] = useState('');
+    [snapshot, setSnapshot] = useState(version?.pricingSnapshotId ?? '');
+  // A revision keeps its recorded Snapshot until the preparer changes it,
+  // even when that Snapshot is not on a loaded page.
+  const recordedSnapshot: SnapshotChoice | null =
+    version?.pricingSnapshotId && version.pricingSnapshot
+      ? {
+          id: version.pricingSnapshotId,
+          currency: version.pricingSnapshot.currency,
+          total: version.pricingSnapshot.total,
+        }
+      : null;
   const [choices, setChoices] = useState<{
       snapshots: OfferSnapshotSummary[];
       entities: ClientLegalEntity[];
@@ -153,12 +164,8 @@ export function ContractDirectEditor({
         entities: cursor && current ? current.entities : legalEntities,
         nextCursor,
       }));
-      if (!cursor)
-        setSnapshot(
-          snapshots.some((item) => item.id === version?.pricingSnapshotId)
-            ? (version?.pricingSnapshotId ?? '')
-            : (snapshots[0]?.id ?? ''),
-        );
+      if (!cursor && mode.kind === 'create')
+        setSnapshot(snapshots[0]?.id ?? '');
       setChoiceState('ready');
     } catch {
       if (!controller.signal.aborted) setChoiceState('error');
@@ -290,6 +297,13 @@ export function ContractDirectEditor({
       if (!controller.signal.aborted) setFeedback('uncertain');
     }
   }
+  const snapshotChoices: SnapshotChoice[] =
+    choices === null
+      ? []
+      : recordedSnapshot &&
+          !choices.snapshots.some((item) => item.id === recordedSnapshot.id)
+        ? [recordedSnapshot, ...choices.snapshots]
+        : choices.snapshots;
   return (
     <section className="contract-revision" aria-label={copy('title')}>
       <h5>{copy('title')}</h5>
@@ -343,7 +357,7 @@ export function ContractDirectEditor({
             <Select
               id={id + '-snapshot'}
               value={snapshot}
-              options={choices.snapshots.map((item) => ({
+              options={snapshotChoices.map((item) => ({
                 value: item.id,
                 label: item.currency + ' · ' + item.total + ' · ' + item.id,
               }))}
@@ -361,7 +375,7 @@ export function ContractDirectEditor({
               {copy('more')}
             </button>
           )}
-          {choices.snapshots.length === 0 && <p>{copy('empty')}</p>}
+          {snapshotChoices.length === 0 && <p>{copy('empty')}</p>}
           <label>
             {copy('scope')}
             <textarea
@@ -414,7 +428,7 @@ export function ContractDirectEditor({
               protectedCommand ||
               feedback === 'running' ||
               choiceState !== 'ready' ||
-              choices.snapshots.length === 0 ||
+              snapshotChoices.length === 0 ||
               [
                 'denied',
                 'stale',

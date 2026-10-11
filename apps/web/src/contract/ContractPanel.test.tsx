@@ -137,6 +137,78 @@ describe('ContractPanel', () => {
     expect(attempts[1]).toEqual(attempts[0]);
     expect(calls.some((path) => path.includes('/offers/'))).toBe(false);
   });
+  it('C9 revision keeps its recorded Snapshot when it is not on the first loaded page', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const preparer = actor(true);
+    if (!preparer.activeCompany) throw new Error('Missing Company');
+    preparer.activeCompany.offerPermissions = [];
+    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
+    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
+    preparer.activeCompany.pricingUserPermissions = [
+      'commercial.pricing.snapshot.read',
+    ];
+    const base = fixture();
+    const direct = {
+      ...base,
+      origin: 'DIRECT',
+      directReason: 'Internal reason',
+      sourceOfferId: null,
+      sourceOfferVersionId: null,
+      sourceOffer: null,
+      parent: null,
+      parentContractId: null,
+      addendumOrdinal: null,
+      version: { ...base.version, scopeNote: 'Recorded scope' },
+    };
+    const revisions: unknown[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (path.endsWith('/versions') && init?.method === 'POST') {
+        revisions.push(typeof init.body === 'string' && JSON.parse(init.body));
+        return new Promise<Response>(() => undefined);
+      }
+      if (path.includes('/snapshots'))
+        return response({
+          items: [
+            {
+              id: 'snapshot-newer',
+              currency: 'EUR',
+              total: '999.00',
+              committedAt: '2026-10-08T09:00:00.000Z',
+            },
+          ],
+          nextCursor: 'older-page',
+        });
+      if (path.endsWith('/representation')) return response(representation());
+      if (path.endsWith('/versions'))
+        return response({ items: [direct.version], nextCursor: null });
+      return response({ contract: direct });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={preparer}
+          identity={identity}
+          opportunityId="opportunity-one"
+          currentClientId="client-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    const revise = await screen.findByRole('button', {
+      name: 'Create new direct Contract Version',
+    });
+    await waitFor(() => expect(revise).toBeEnabled());
+    fireEvent.change(screen.getByLabelText('Direct scope'), {
+      target: { value: 'Revised scope' },
+    });
+    fireEvent.click(revise);
+    await waitFor(() => expect(revisions).toHaveLength(1));
+    expect(revisions[0]).toMatchObject({
+      pricingSnapshotId: 'snapshot-one',
+      scopeNote: 'Revised scope',
+    });
+  });
   it('C9 suppresses a late direct creation after independent Snapshot authority changes', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const preparer = actor(true);

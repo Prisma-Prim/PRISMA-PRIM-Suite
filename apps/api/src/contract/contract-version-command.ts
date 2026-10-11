@@ -112,21 +112,11 @@ export async function createContractVersion(
               }
             : null;
       if (!selection) throw new Error('Invalid recorded Contract party.');
-      // DIRECT receipts require current authority, then replay before current identity validation.
-      if (found.contract.origin === 'DIRECT')
-        await dependencies.clients.readProjectReferences(
-          actor,
-          [found.contract.originalClientAccountId],
-          true,
-        );
-      const initialRecipient =
-        found.contract.origin === 'DIRECT'
-          ? null
-          : await dependencies.clients.lockOfferRecipient(
-              actor,
-              found.contract.originalClientAccountId,
-              selection,
-            );
+      const recipient = await dependencies.clients.lockOfferRecipient(
+        actor,
+        found.contract.originalClientAccountId,
+        selection,
+      );
       const selectedSnapshotId =
         found.contract.origin === 'DIRECT' || found.contract.kind === 'ADDENDUM'
           ? selectedAddendumSnapshotId(input.payload)
@@ -180,13 +170,6 @@ export async function createContractVersion(
         if (!stored) throw new Error('Missing recorded Contract Version.');
         return createdVersionResult(stored.contract, stored.version);
       }
-      const recipient =
-        initialRecipient ??
-        (await dependencies.clients.lockOfferRecipient(
-          actor,
-          found.contract.originalClientAccountId,
-          selection,
-        ));
       const command =
         found.contract.kind === 'ADDENDUM'
           ? {

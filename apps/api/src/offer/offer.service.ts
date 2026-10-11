@@ -178,20 +178,17 @@ export class OfferService {
     };
   }
 
+  /**
+   * Existence proof only; reveals no Offer id, version or content. Call only
+   * inside the Contract transaction that already holds the prepare authority
+   * and the Opportunity lock serializing creation with Offer acceptance.
+   */
   async hasAcceptedContractSource(input: {
     actor: ActorContext;
+    companyId: string;
     opportunityId: string;
   }): Promise<boolean> {
-    const companyId = await this.authorization.requireContractAccess(
-      input.actor,
-      ['commercial.contract.prepare'],
-      true,
-    );
-    await this.intake.requireReadableOfferOpportunity(
-      input.actor,
-      input.opportunityId,
-      true,
-    );
+    const { companyId } = input;
     const [accepted] = await this.databaseContext.connection
       .select({ id: offers.id })
       .from(offers)
