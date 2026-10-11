@@ -1322,7 +1322,7 @@ Open and not presented as business fact: Iurie's actual stage vocabulary (S04-Q0
 
 ## 25. Approved provisional Offer and Contract history in the commercial Activity Log (HI-4)
 
-This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. Dan approved its direction on 2026-10-11: the Offer and Contract events already recorded under sections 18.10 and 19.12 become readable in the commercial Activity Log, so an authorized reader can follow a commercial case from Request to signed agreement and reopen the exact version each event concerns. It replaces P15 and PC18 ("recorded but not projected") and records no new event.
+This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. Dan approved its direction on 2026-10-11 ([decision record on #290](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/290#issuecomment-6113125561)): the Offer and Contract events already recorded under sections 18.10 and 19.12 become readable in the commercial Activity Log, so an authorized reader can follow a commercial case from Request to signed agreement and reopen the exact version each event concerns. It replaces P15 and PC18 ("recorded but not projected") and records no new event.
 
 Sources:
 
@@ -1338,14 +1338,14 @@ The section 17.3 rule applies unchanged: active membership, the server-validated
 | Offer    | `offer.created`, `offer_version.created`, `offer_version.approved`, `offer_version.rejected`, `offer_version.transmission_recorded`, `offer_version.client_response_recorded` | `commercial.offer.read`    |
 | Contract | `contract.created`, `contract_version.created`, `contract_version.approved`, `contract_version.rejected`, `contract_version.signature_recorded`, `contract_project.linked`    | `commercial.contract.read` |
 
-`project.created` stays with the Project owner and is not added here. Unknown actions and metadata outside the section 18.10 or 19.12 shape fail closed.
+`contract_project.linked` concerns two targets, so it is projected only when the actor can currently read both the Contract, as above, and the linked Project under the Project owner's read rule (Project read and its Client boundary), as the [Activity Log PRD](activity-log-accountability-prd.md#7-authorization-and-privacy) requires for relationship events; otherwise the whole event is omitted. `project.created` stays with the Project owner and is not added here. Unknown actions and metadata outside the section 18.10 or 19.12 shape fail closed.
 
 ### 25.2 Returned content
 
 A projected event returns the section 17.3 fields: canonical action, responsible Company, actor label, server time and a readable target reference. In addition, from the recorded metadata and the immutable illustrative reference of the current target:
 
 - **Offer events:** the Offer's illustrative reference and the version number; for a Client response, its outcome (`ACCEPTED`, `REJECTED` or `EXPIRED`); for a transmission or response, the simulated provenance marker.
-- **Contract events:** the kind (`CONTRACT`, `PRECONTRACT` or `ADDENDUM`), the illustrative reference and the version number; for a signature, the simulated provenance marker; for a Project link, whether the Project was created, and the Project's reference only when the actor can currently read that Project.
+- **Contract events:** the kind (`CONTRACT`, `PRECONTRACT` or `ADDENDUM`), the illustrative reference and the version number; for a signature, the simulated provenance marker; for a Project link, whether the Project was created and the Project's reference.
 
 Nothing else is returned: no amount, condition, scope, reason, note, signatory label, user-entered date, party identity, Snapshot content or warning text. A reference that the current target no longer resolves is shown as unavailable rather than guessed.
 
@@ -1355,7 +1355,7 @@ Each projected event offers one link, only when the actor may currently read the
 
 ### 25.4 Compatibility, testing and delivery
 
-Already recorded events become readable without rewriting, duplicating or backfilling them; their order, page boundaries and the existing Activity Log page are unchanged. The highest stable seam is the Activity read REST interface against PostgreSQL, then the browser journey: perform an Offer sequence and a Contract sequence, read the events as an authorized reader, follow each link to the exact version, and repeat as a reader without `commercial.offer.read` or `commercial.contract.read`, as a reader holding them without `commercial.opportunity.read`, without `commercial.activity.read`, in another Company, and after revocation.
+Already recorded events become readable without rewriting, duplicating or backfilling them; their order, page boundaries and the existing Activity Log page are unchanged. The highest stable seam is the Activity read REST interface against PostgreSQL, then the browser journey: perform an Offer sequence and a Contract sequence, read the events as an authorized reader, follow each link to the exact version, and repeat as a reader without `commercial.offer.read` or `commercial.contract.read`, as a reader holding them without `commercial.opportunity.read`, as a Contract reader who cannot read the linked Project, without `commercial.activity.read`, in another Company, and after revocation.
 
 Two independently complete slices may deliver the Offer family and the Contract family in either order. The capability is credited once, when both are delivered.
 
