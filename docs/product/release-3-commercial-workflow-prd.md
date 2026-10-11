@@ -604,7 +604,7 @@ Negotiation variant: after step 5, the preparer creates version 2 with changed c
 11. one commit among concurrent approve and new-version, approve and reject, transmission and new-version, and response and new-version commands, and none on authority revoked concurrently;
 12. every permission enforced independently in both directions, the Opportunity and Client read prerequisites, and no implicit grant from any existing bundle or assignment;
 13. cross-Company and cross-Workspace not-found without count, reference or event leakage;
-14. exactly the events of section 18.10 with minimal metadata, none for runs, failures or replays, and none projected;
+14. exactly the events of section 18.10 with minimal metadata, none for runs, failures or replays; their projection is accepted under section 25;
 15. the provisional marker on every read and rendering, and rejection of any other provenance, channel or evidence value by the API and the database;
 16. empty, validation, denied, stale, uncertain, check-error, warning and success states at desktop and narrow width.
 17. an Offer Version can reference an adjusted Snapshot, version-2 Quality Checks reproduce its final totals from the immutable trace, and Template Version v2 renders the same ordered adjustment rows and totals without repricing; an older unadjusted Snapshot, Offer Version, rule-set run and v1 rendering remain unchanged.
@@ -628,7 +628,7 @@ O7 may follow O1 in parallel with O2–O6; whichever lands later inherits the ot
 
 O1 remains the priority Offer slice and depends on delivered R3B3 plus its existing Client Legal Entity dependency only. None of #454, R3B4 and O8 blocks O1. O8 was delivered as an additive slice through its own approved issue, [#559](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/559), after R3B4.
 
-Excluded from R3C here: creating, changing, approving or deleting pricing adjustments; percentage discounts, real Templates, clauses and variants, real prices, margin and discount thresholds, approved exceptions and overrides, Contracts (R3D), official numbering, real transmission channels, delivery receipts, recipient Contacts, e-signature, real acceptance evidence, withdrawal, validity extension, Offer-level next steps, deadlines and reminders (S04-Q08 and S04-Q09 Partial; the Opportunity next action remains the follow-up record), Opportunity outcome changes, referenced Documents, stored files and Document Registry entries, Company-wide Offer lists and dashboards, Activity projection of Offer events, export, deletion and AI assistance. R3C only reads the exact immutable R3B4 adjustment trace (O8).
+Excluded from R3C here: creating, changing, approving or deleting pricing adjustments; percentage discounts, real Templates, clauses and variants, real prices, margin and discount thresholds, approved exceptions and overrides, Contracts (R3D), official numbering, real transmission channels, delivery receipts, recipient Contacts, e-signature, real acceptance evidence, withdrawal, validity extension, Offer-level next steps, deadlines and reminders (S04-Q08 and S04-Q09 Partial; the Opportunity next action remains the follow-up record), Opportunity outcome changes, referenced Documents, stored files and Document Registry entries, Company-wide Offer lists and dashboards, Activity projection of Offer events (now owned by section 25), export, deletion and AI assistance. R3C only reads the exact immutable R3B4 adjustment trace (O8).
 
 ## 19. R3D provisional Contract execution contract (#403)
 
@@ -941,7 +941,7 @@ Revision variant: before approving the main Contract, the preparer creates versi
 13. exact replay convergence (including the same created Project), changed-payload conflict, denial of a replay after revocation, and the uncertain-outcome retry in the interface;
 14. one commit among concurrent approve and new-version, approve and reject, signature and new-version, and link and create commands, and none on authority revoked concurrently;
 15. every permission enforced independently in both directions, the Opportunity, Offer, Client, Snapshot and Project prerequisites, and no implicit grant from any existing bundle or assignment;
-16. cross-Company and cross-Workspace not-found without leakage; exactly the events of section 19.12 with minimal metadata, none for runs, reads, failures or replays, and none projected;
+16. cross-Company and cross-Workspace not-found without leakage; exactly the events of section 19.12 with minimal metadata, none for runs, reads, failures or replays, their projection is accepted under section 25;
 17. empty, validation, denied, stale, uncertain, check-error, warning, candidates-changed and success states at desktop and narrow width.
 
 ### 19.17 Delivery sequence and exclusions
@@ -965,7 +965,7 @@ Ordered vertical slices, tracked under [#290](https://github.com/Prisma-Prim/PRI
 
 C6 may follow C1 in parallel with C2–C5, and C7 and C8 may proceed in parallel once their blockers close; whichever lands later inherits the other's rules, as in section 17.6. [#400](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/400) blocks no slice: C5 may reuse its frozen-row guard precedent after it merges, and registering executed agreements as official Documents with a signed scan is a follow-up after #400 and its future signed-scan slice.
 
-Excluded from R3D here: imported and renewal origins, multi-party agreements (DEC-024), real Templates, clauses, variants and legal review, clause selection or editing, official numbering, Contract transmission, real or partial signature evidence, e-signature and MSign, legal or operational lifecycle states, instruments other than Addenda, consolidated terms, obligations and due dates (Sarcina M04-R104), invoices and tranches, Contract Documents, stored files and signed scans, unlinking, automatic Project creation or activation, Project Tasks, Drive and Calendar automation (MASTER §23), a Project's own legal-entity field, Opportunity status changes, Company-wide Contract lists and dashboards, Activity projection, export, deletion and AI assistance.
+Excluded from R3D here: imported and renewal origins, multi-party agreements (DEC-024), real Templates, clauses, variants and legal review, clause selection or editing, official numbering, Contract transmission, real or partial signature evidence, e-signature and MSign, legal or operational lifecycle states, instruments other than Addenda, consolidated terms, obligations and due dates (Sarcina M04-R104), invoices and tranches, Contract Documents, stored files and signed scans, unlinking, automatic Project creation or activation, Project Tasks, Drive and Calendar automation (MASTER §23), a Project's own legal-entity field, Opportunity status changes, Company-wide Contract lists and dashboards, Activity projection (now owned by section 25), export, deletion and AI assistance.
 
 ## 20. Approved provisional one-time Client association after Request capture (#450)
 
@@ -1331,7 +1331,7 @@ Sources:
 
 ### 25.1 Projected actions and authority
 
-The section 17.3 rule applies unchanged: active membership, the server-validated active Company equal to the event's responsible Company, `commercial.activity.read` in that Company, and current read authority on the event's target. Partial authority fails closed, and no count, label or ordering value discloses an event the actor cannot read.
+The section 17.3 rule applies unchanged: active membership, the server-validated active Company equal to the event's responsible Company, `commercial.activity.read` in that Company, and current read authority on the event's target. Reading an Offer or Contract target means its complete read prerequisite under sections 18.6 and 19.6: `commercial.offer.read` or `commercial.contract.read` together with current `commercial.opportunity.read` visibility of the owning Opportunity; neither permission alone suffices. Partial authority fails closed, and no count, label or ordering value discloses an event the actor cannot read.
 
 | Family   | Actions                                                                                                                                                                       | Target read required       |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
@@ -1355,7 +1355,7 @@ Each projected event offers one link, only when the actor may currently read the
 
 ### 25.4 Compatibility, testing and delivery
 
-Already recorded events become readable without rewriting, duplicating or backfilling them; their order, page boundaries and the existing Activity Log page are unchanged. The highest stable seam is the Activity read REST interface against PostgreSQL, then the browser journey: perform an Offer sequence and a Contract sequence, read the events as an authorized reader, follow each link to the exact version, and repeat as a reader without `commercial.offer.read` or `commercial.contract.read`, without `commercial.activity.read`, in another Company, and after revocation.
+Already recorded events become readable without rewriting, duplicating or backfilling them; their order, page boundaries and the existing Activity Log page are unchanged. The highest stable seam is the Activity read REST interface against PostgreSQL, then the browser journey: perform an Offer sequence and a Contract sequence, read the events as an authorized reader, follow each link to the exact version, and repeat as a reader without `commercial.offer.read` or `commercial.contract.read`, as a reader holding them without `commercial.opportunity.read`, without `commercial.activity.read`, in another Company, and after revocation.
 
 Two independently complete slices may deliver the Offer family and the Contract family in either order. The capability is credited once, when both are delivered.
 
