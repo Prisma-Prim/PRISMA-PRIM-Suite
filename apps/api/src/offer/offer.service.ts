@@ -290,12 +290,6 @@ export class OfferService {
         opportunityId,
         true,
       );
-      if (opportunity.status !== 'OPEN') {
-        throw namedConflict(
-          'OPPORTUNITY_NOT_OPEN',
-          'The Opportunity is not open.',
-        );
-      }
       if (!opportunity.originalClientAccountId) {
         throw namedConflict(
           'OFFER_CLIENT_REQUIRED',
@@ -337,6 +331,14 @@ export class OfferService {
           1,
         );
         return this.offerView(actor, stored.offer, stored.version, snapshot);
+      }
+      // Only a new creation needs an open Opportunity: the exact replay above
+      // returns an Offer committed before a later outcome change.
+      if (opportunity.status !== 'OPEN') {
+        throw namedConflict(
+          'OPPORTUNITY_NOT_OPEN',
+          'The Opportunity is not open.',
+        );
       }
       const command = readCreateOfferCommand(value);
       // Snapshot's live Client projection takes a share lock. Acquire the

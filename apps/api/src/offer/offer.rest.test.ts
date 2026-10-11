@@ -5625,6 +5625,48 @@ withPostgres('First illustrative Offer REST', () => {
     expect(created.status).toBe(201);
   });
 
+  it('replays an Offer created while open after the Opportunity has closed', async () => {
+    const fixture = await preparedOffer();
+    await command(
+      '/company-opportunity-manager-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'grant-opportunity-manager',
+    );
+    const creation = {
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'PRIMARY' },
+    };
+    const created = await postOffer(fixture, creation, 'created-before-loss');
+    expect(created.status).toBe(201);
+    const original = record(await json(created));
+    const lost = await request(
+      `/commercial-intake/opportunities/${fixture.opportunityId}/outcome`,
+      fixture.companyId,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'lose-after-offer',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          status: 'LOST',
+          lossReasonCode: 'PRICE',
+        }),
+      },
+    );
+    expect(lost.status).toBe(200);
+    const replayed = await postOffer(fixture, creation, 'created-before-loss');
+    expect(replayed.status).toBe(201);
+    expect(record(await json(replayed)).id).toBe(original.id);
+    const fresh = await postOffer(fixture, creation, 'created-after-loss');
+    expect(fresh.status).toBe(409);
+    expect(await json(fresh)).toMatchObject({ code: 'OPPORTUNITY_NOT_OPEN' });
+  });
+
   it('serializes an Opportunity closure with a concurrent Offer creation instead of deadlocking', async () => {
     const fixture = await preparedOffer();
     await command(
