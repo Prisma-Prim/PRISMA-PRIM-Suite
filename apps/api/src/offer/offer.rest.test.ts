@@ -5625,6 +5625,52 @@ withPostgres('First illustrative Offer REST', () => {
     expect(created.status).toBe(201);
   });
 
+  it('refuses a creation queued behind a closure that commits while it waits', async () => {
+    const fixture = await preparedOffer();
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      const blocker = await barrier.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      const blockerPid = blocker.rows[0]?.pid;
+      if (!blockerPid) throw new Error('Expected a PostgreSQL backend pid.');
+      // Stands in for an outcome change: it holds the Request, then closes
+      // the Opportunity after the creation has read it and queued.
+      await barrier.query(
+        `SELECT id FROM client_requests WHERE id =
+           (SELECT client_request_id FROM opportunities WHERE id = $1)
+         FOR NO KEY UPDATE`,
+        [fixture.opportunityId],
+      );
+      const creation = postOffer(
+        fixture,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'queued-behind-closure',
+      );
+      await waitForBlockedRequests(blockerPid, 1);
+      await barrier.query(
+        "UPDATE opportunities SET status = 'ARCHIVED' WHERE id = $1",
+        [fixture.opportunityId],
+      );
+      await barrier.query('COMMIT');
+      released = true;
+      const refused = await creation;
+      expect(refused.status).toBe(409);
+      expect(await json(refused)).toMatchObject({
+        code: 'OPPORTUNITY_NOT_OPEN',
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+    await expectNoOfferWrites();
+  });
+
   it('replays an Offer created while open after the Opportunity has closed', async () => {
     const fixture = await preparedOffer();
     await command(

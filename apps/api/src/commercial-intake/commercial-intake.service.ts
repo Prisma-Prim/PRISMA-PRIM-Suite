@@ -325,8 +325,12 @@ export class CommercialIntakeService {
       : await query;
     if (!target) throw new NotFoundException();
     if (lock) {
+      // The joined read above may have waited on the Request while an
+      // outcome change committed; its Opportunity columns then come from the
+      // earlier snapshot. Re-read the status with the Opportunity lock so a
+      // creation queued behind a closure sees the closed status.
       const [lockedOpportunity] = await this.databaseContext.connection
-        .select({ id: opportunities.id })
+        .select({ id: opportunities.id, status: opportunities.status })
         .from(opportunities)
         .where(
           and(
@@ -338,6 +342,7 @@ export class CommercialIntakeService {
         )
         .for('update');
       if (!lockedOpportunity) throw new NotFoundException();
+      return { ...target, status: lockedOpportunity.status };
     }
     return target;
   }
