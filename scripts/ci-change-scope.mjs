@@ -17,19 +17,20 @@ export function isDocumentationOnly({ event, files }) {
   );
 }
 
-/** The changed files between two commits, or undefined when git fails. */
+/**
+ * The exact changed paths between two commits, or undefined when git fails.
+ * NUL-delimited output keeps every path byte-for-byte: no quoting, no
+ * trimming, so a name with leading spaces cannot pass as a docs/ path.
+ */
 export function changedFiles(base, head, run = spawnSync) {
   if (!base || !head) return undefined;
   const result = run(
     'git',
-    ['diff', '--name-only', '--no-renames', `${base}...${head}`],
+    ['diff', '--name-only', '--no-renames', '-z', `${base}...${head}`],
     { encoding: 'utf8' },
   );
   if (result.error || result.status !== 0) return undefined;
-  return result.stdout
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  return result.stdout.split('\0').filter((path) => path.length > 0);
 }
 
 function argument(name) {

@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { changedFiles, isDocumentationOnly } from './ci-change-scope.mjs';
 import { unsuccessfulJobs } from './verify-ci-results.mjs';
@@ -48,15 +52,49 @@ test('a failed or missing changed-file read yields no list', () => {
   assert.equal(changedFiles('base', 'head', crashed), undefined);
   assert.equal(changedFiles(undefined, 'head', failing), undefined);
   assert.equal(changedFiles('base', '', failing), undefined);
-  const listed = () => ({
-    status: 0,
-    stdout: 'docs/a.md\n\n docs/b.md \n',
-    error: undefined,
-  });
-  assert.deepEqual(changedFiles('base', 'head', listed), [
-    'docs/a.md',
-    'docs/b.md',
-  ]);
+  let args;
+  const listed = (_command, commandArgs) => {
+    args = commandArgs;
+    return {
+      status: 0,
+      stdout: 'docs/a.md\0 docs/b.md\0docs/c d.md\0',
+      error: undefined,
+    };
+  };
+  // Paths are kept byte-for-byte: a root path " docs/b.md" is not docs/.
+  const files = changedFiles('base', 'head', listed);
+  assert.deepEqual(files, ['docs/a.md', ' docs/b.md', 'docs/c d.md']);
+  assert.ok(args.includes('-z'));
+  assert.equal(isDocumentationOnly({ event: 'pull_request', files }), false);
+});
+
+test('a real git diff with a space-prefixed root path is not docs-only', () => {
+  const repository = mkdtempSync(join(tmpdir(), 'ci-scope-'));
+  const git = (...gitArgs) =>
+    execFileSync('git', gitArgs, { cwd: repository, encoding: 'utf8' });
+  try {
+    git('init', '-q');
+    git('config', 'user.email', 'scope@example.test');
+    git('config', 'user.name', 'Scope Test');
+    mkdirSync(join(repository, 'docs'));
+    writeFileSync(join(repository, 'docs', 'a.md'), 'a\n');
+    git('add', '.');
+    git('commit', '-qm', 'base');
+    const base = git('rev-parse', 'HEAD').trim();
+    // A root directory named " docs" is not docs/, even though trimming its
+    // path would make it look like one.
+    mkdirSync(join(repository, ' docs'));
+    writeFileSync(join(repository, ' docs', 'a.md'), 'not under docs/\n');
+    git('add', '.');
+    git('commit', '-qm', 'head');
+    const run = (command, commandArgs, options) =>
+      spawnSync(command, commandArgs, { ...options, cwd: repository });
+    const files = changedFiles(base, 'HEAD', run);
+    assert.deepEqual(files, [' docs/a.md']);
+    assert.equal(isDocumentationOnly({ event: 'pull_request', files }), false);
+  } finally {
+    rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 const success = { result: 'success' };
