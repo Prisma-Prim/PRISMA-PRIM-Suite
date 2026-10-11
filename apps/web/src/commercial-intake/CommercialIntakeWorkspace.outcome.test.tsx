@@ -430,6 +430,44 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     expect(keyOf(retried?.[1])).toEqual(keyOf(first?.[1]));
   });
 
+  it.each<[string, Record<string, unknown>]>([
+    ['the same status', { previousStatus: 'LOST', status: 'LOST' }],
+    ['a pair outside the table', { previousStatus: 'WON', status: 'LOST' }],
+    ['the initial version', { version: 1 }],
+    ['an extra receipt field', { extra: true }],
+  ])(
+    'keeps the command for an explicit retry when a success carries %s',
+    async (_case, receiptOverrides) => {
+      const malformed = {
+        ...lostResult,
+        receipt: { ...lostResult.receipt, ...receiptOverrides },
+      };
+      const transport = stubRoutes({
+        [listPath]: [reply(listPage()), reply(listPage('LOST'))],
+        [detailPath]: [reply(requestDetail())],
+        [outcomePath]: [reply(malformed), reply(lostResult)],
+      });
+      renderWorkspace(manager);
+      const detail = await openRequest();
+      fireEvent.click(
+        within(detail).getByRole('button', { name: copy.changeOutcome }),
+      );
+      changeValue(transitionSelect(), 'lose');
+      changeValue(
+        screen.getByRole('combobox', { name: copy.outcomeLossReason }),
+        'UNKNOWN',
+      );
+      fireEvent.click(screen.getByRole('button', { name: copy.saveOutcome }));
+      expect(await screen.findByText(copy.outcomeUncertain)).toBeVisible();
+      expect(screen.queryByText(copy.outcomeChanged)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: copy.retryOutcome }));
+      expect(await screen.findByText(copy.outcomeChanged)).toBeVisible();
+      const [first, retried] = transport.calls(outcomePath);
+      expect(retried?.[1]?.body).toEqual(first?.[1]?.body);
+      expect(keyOf(retried?.[1])).toEqual(keyOf(first?.[1]));
+    },
+  );
+
   it('requires an explicit reload after a conflict', async () => {
     const transport = stubRoutes({
       [listPath]: [reply(listPage())],

@@ -32,6 +32,7 @@ import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import {
   EMPTY_OUTCOME_DRAFT,
   isOpportunityOutcomeStatus,
+  isOutcomeTransition,
   isOutcomeHistoryPage,
   outcomeCommandBody,
   type OpportunityOutcomeStatus,
@@ -2683,15 +2684,37 @@ function isNextActionUpdateResult(
   );
 }
 
+const OUTCOME_RECEIPT_FIELDS = [
+  'opportunityId',
+  'previousStatus',
+  'status',
+  'version',
+] as const;
+
+/**
+ * A committed outcome change: exactly the receipt fields, one permitted
+ * section 23.2 transition and a resulting version above the initial one. A
+ * malformed success keeps the command for an explicit retry instead of
+ * settling it.
+ */
 function isOutcomeChangeResult(value: unknown): value is OutcomeChangeResult {
-  if (!isRecord(value) || !isRecord(value.receipt)) return false;
+  if (
+    !isRecord(value) ||
+    Object.keys(value).length !== 2 ||
+    !isRecord(value.receipt)
+  )
+    return false;
   const receipt = value.receipt;
   return (
+    Object.keys(receipt).length === OUTCOME_RECEIPT_FIELDS.length &&
+    OUTCOME_RECEIPT_FIELDS.every((field) => Object.hasOwn(receipt, field)) &&
     typeof receipt.opportunityId === 'string' &&
     isOpportunityOutcomeStatus(receipt.previousStatus) &&
     isOpportunityOutcomeStatus(receipt.status) &&
+    isOutcomeTransition(receipt.previousStatus, receipt.status) &&
     typeof receipt.version === 'number' &&
-    Number.isInteger(receipt.version) &&
+    Number.isSafeInteger(receipt.version) &&
+    receipt.version >= 2 &&
     isClientRequest(value.request)
   );
 }
