@@ -71,6 +71,7 @@ A shared Client Account may be associated when the actor can already read it thr
 8. As an operational user, I want accepted work linked to an authorized Project without blind duplicate creation.
 9. As a commercial manager, I want to record that an Opportunity is on hold, won, lost, disqualified or archived, with its reason, and to reopen it, so that the Company knows which cases are still pursued and why the others ended; every change stays in a consultable history (section 23).
 10. As a commercial manager, I want to define my Company's own Sales Stages, and as a commercial user I want to place an Opportunity on one of them, so that the team sees where each case stands in our practice without changing its outcome status; renamed or retired stages stay intelligible in the history (section 24).
+11. As a commercial manager, I want to read in the Activity Log who prepared, approved, sent, accepted and signed each Offer and Contract, and open the exact version concerned, so that a commercial case can be followed and proven without opening every record (section 25).
 
 ## 6. Release boundary
 
@@ -315,7 +316,7 @@ Its grant and revocation are attributable through the assignment-lifecycle event
 
 A commercial event is projected only when the actor has an active membership, the server-validated active Company equals the event's responsible Company, that Company scope holds `commercial.activity.read`, and the actor can currently read the event's commercial target: `commercial.request.read` for a Request target and `commercial.opportunity.read` for an Opportunity target. Partial authority fails closed. Without an active Company, commercial events are omitted rather than widened to Workspace scope.
 
-Only the known actions `client_request.created`, `opportunity.created`, `opportunity.next_action.updated`, `opportunity.responsible.changed` and, once their sections are delivered, `opportunity.outcome.changed` (section 23), `opportunity.stage.changed` and `sales_stage.configured` (section 24) are eligible; `client_request.client_associated` becomes eligible only when its owning implementation is delivered. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice itself adds no producer or lifecycle for any action.
+Only the known actions `client_request.created`, `opportunity.created`, `opportunity.next_action.updated`, `opportunity.responsible.changed` and, once their sections are delivered, `opportunity.outcome.changed` (section 23), `opportunity.stage.changed` and `sales_stage.configured` (section 24), and the Offer and Contract actions of section 25.1, are eligible; `client_request.client_associated` becomes eligible only when its owning implementation is delivered. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice itself adds no producer or lifecycle for any action.
 
 A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target. For `opportunity.responsible.changed` the projection additionally returns the previous and new responsible actor as membership identifier and captured display label, not the version. For `opportunity.outcome.changed` it returns the previous and new status and the loss reason code when present, not the version. For `opportunity.stage.changed` it returns the previous and new stage labels captured at the change, not the version or identifiers. For `sales_stage.configured`, whose target is the Company's Sales Stage list and requires Commercial Intake read, it returns the operation, the labels and the positions section 24.5 names, not the revision. Any other metadata shape fails closed.
 
@@ -523,7 +524,7 @@ Each committed command records exactly the events below in its own transaction, 
 
 Metadata is limited to Offer and version identifiers and numbers, the predecessor version number, the Snapshot id, the recipient kind, the rule set version, acknowledged warning codes, the channel or evidence kind, the outcome and the provenance. It contains no amount, text, reason, note or recipient identity value. Quality Check runs, failures, denials, conflicts and exact replays record no event.
 
-These events are recorded but not projected (P15); the [section 17](#17-approved-provisional-company-commercial-activity-read-306) allowlist stays exact. Offer readers see the recorded decision, transmission and response facts on the Offer itself.
+Section 25 projects these events in the commercial Activity Log under the section 17.3 rule and `commercial.offer.read`. Offer readers also see the recorded decision, transmission and response facts on the Offer itself.
 
 ### 18.11 Command guarantees, errors and interface states
 
@@ -561,7 +562,7 @@ Each choice is reversible, is not approved business policy and is replaced throu
 | P12 | One simulated transmission per version; no recipient Contact                                                                                                                                                                        | Real channels and transmission evidence                             |
 | P13 | Responses `ACCEPTED`, `REJECTED` and `EXPIRED` with simulated evidence; rejection reason; acceptance within validity; manual expiry; no withdrawal                                                                                  | OQ3, S04-Q24 and S04-Q27                                            |
 | P14 | A superseded version accepts no further decision, transmission or response                                                                                                                                                          | Real negotiation practice                                           |
-| P15 | Offer events recorded but not projected                                                                                                                                                                                             | A separately normalized commercial Activity projection              |
+| P15 | Offer events projected under section 25                                                                                                                                                                                             | Iurie's validation of the section 25 action set                     |
 | P16 | Pricing PRD §11-style guarantees with an Offer-level revision token                                                                                                                                                                 | Owner preference once real volumes exist                            |
 
 ### 18.13 Open product questions
@@ -858,7 +859,7 @@ Each committed command records exactly the events below in its own transaction, 
 
 Metadata is limited to Contract and version identifiers and numbers, the kind, origin, parent and ordinal, the predecessor version number, the Offer Version and Snapshot ids, the rule set version, acknowledged warning codes, the evidence kind, the provenance, and the Project id with whether it was created. It contains no amount, text, reason, note, signatory label, date entered by the user or party identity value. Quality Check runs, candidate reads, failures, denials, conflicts and exact replays record no event.
 
-These events are recorded but not projected (PC18), as in section 18.10; the section 17 allowlist stays exact.
+Section 25 projects these events in the commercial Activity Log under the section 17.3 rule and `commercial.contract.read`; `project.created` stays with the Project owner.
 
 ### 19.13 Command guarantees, errors and interface states
 
@@ -891,7 +892,7 @@ Each choice is reversible, is not approved business policy and is replaced throu
 | PC15 | The Addendum is the only post-signature instrument; it never changes its parent; no consolidated terms                                                                                                                                                                                                                     | OQC6 (S04-Q37)                                                                                                                 |
 | PC16 | Create-or-link only after execution, with acknowledgement of the complete candidate set; a created Project is `preparatory`                                                                                                                                                                                                | Project activation rules (Project/Task PRD)                                                                                    |
 | PC17 | Contract–Project links many-to-many, append-only, at most 50 per Contract; Addenda not linkable                                                                                                                                                                                                                            | OQC6 (S04-Q39)                                                                                                                 |
-| PC18 | Contract events recorded but not projected                                                                                                                                                                                                                                                                                 | A separately normalized commercial Activity projection                                                                         |
+| PC18 | Contract events projected under section 25                                                                                                                                                                                                                                                                                 | Iurie's validation of the section 25 action set                                                                                |
 | PC19 | Section 18.11 guarantees with a Contract-level revision token                                                                                                                                                                                                                                                              | Owner preference once real volumes exist                                                                                       |
 
 ### 19.15 Open product questions
@@ -1318,3 +1319,44 @@ Provisional choices for Iurie's validation:
 Excluded: default or seeded stages; Workspace-wide or per-service-type lists; per-locale variants of a stage label; probabilities, weighting, forecasting and pipeline reports; automatic stage movement from Offers, Contracts or the outcome status; required stages before a status change; reminders; bulk assignment; deletion.
 
 Open and not presented as business fact: Iurie's actual stage vocabulary (S04-Q08 is Partial); whether stages differ by service type; whether closing an Opportunity should clear or freeze its stage.
+
+## 25. Approved provisional Offer and Contract history in the commercial Activity Log (HI-4)
+
+This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. Dan approved its direction on 2026-10-11: the Offer and Contract events already recorded under sections 18.10 and 19.12 become readable in the commercial Activity Log, so an authorized reader can follow a commercial case from Request to signed agreement and reopen the exact version each event concerns. It replaces P15 and PC18 ("recorded but not projected") and records no new event.
+
+Sources:
+
+- decision record §14.8 and §14.15, and the [Activity Log PRD](activity-log-accountability-prd.md#6-critical-event-families) §6: approval, rejection, acceptance evidence, Contract execution and post-signature instruments are critical attributed events;
+- sections 17.3, 18.10 and 19.12: the existing projection rule and the recorded Offer and Contract event families with their metadata limits.
+
+### 25.1 Projected actions and authority
+
+The section 17.3 rule applies unchanged: active membership, the server-validated active Company equal to the event's responsible Company, `commercial.activity.read` in that Company, and current read authority on the event's target. Partial authority fails closed, and no count, label or ordering value discloses an event the actor cannot read.
+
+| Family   | Actions                                                                                                                                                                       | Target read required       |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| Offer    | `offer.created`, `offer_version.created`, `offer_version.approved`, `offer_version.rejected`, `offer_version.transmission_recorded`, `offer_version.client_response_recorded` | `commercial.offer.read`    |
+| Contract | `contract.created`, `contract_version.created`, `contract_version.approved`, `contract_version.rejected`, `contract_version.signature_recorded`, `contract_project.linked`    | `commercial.contract.read` |
+
+`project.created` stays with the Project owner and is not added here. Unknown actions and metadata outside the section 18.10 or 19.12 shape fail closed.
+
+### 25.2 Returned content
+
+A projected event returns the section 17.3 fields: canonical action, responsible Company, actor label, server time and a readable target reference. In addition, from the recorded metadata and the immutable illustrative reference of the current target:
+
+- **Offer events:** the Offer's illustrative reference and the version number; for a Client response, its outcome (`ACCEPTED`, `REJECTED` or `EXPIRED`); for a transmission or response, the simulated provenance marker.
+- **Contract events:** the kind (`CONTRACT`, `PRECONTRACT` or `ADDENDUM`), the illustrative reference and the version number; for a signature, the simulated provenance marker; for a Project link, whether the Project was created, and the Project's reference only when the actor can currently read that Project.
+
+Nothing else is returned: no amount, condition, scope, reason, note, signatory label, user-entered date, party identity, Snapshot content or warning text. A reference that the current target no longer resolves is shown as unavailable rather than guessed.
+
+### 25.3 Navigation
+
+Each projected event offers one link, only when the actor may currently read the target: it opens the Request detail of the Opportunity that owns the Offer or Contract, with the exact Offer Version or Contract Version the event concerns selected, including a superseded version. A link to an unreadable or vanished target is not offered, and opening a link after authority was lost returns the existing safe denial or not-found.
+
+### 25.4 Compatibility, testing and delivery
+
+Already recorded events become readable without rewriting, duplicating or backfilling them; their order, page boundaries and the existing Activity Log page are unchanged. The highest stable seam is the Activity read REST interface against PostgreSQL, then the browser journey: perform an Offer sequence and a Contract sequence, read the events as an authorized reader, follow each link to the exact version, and repeat as a reader without `commercial.offer.read` or `commercial.contract.read`, without `commercial.activity.read`, in another Company, and after revocation.
+
+Two independently complete slices may deliver the Offer family and the Contract family in either order. The capability is credited once, when both are delivered.
+
+Provisional choices for Iurie's validation: the exact projected action set, the returned fields, and the reuse of the opt-in Commercial Activity Reader v1 bundle with no new permission. Excluded: filters, search, export, Opportunity-level timelines outside the Activity Log, Project events, notifications, and any new event or metadata field.
