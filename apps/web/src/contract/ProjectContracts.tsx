@@ -86,7 +86,12 @@ function ProjectContractsSession({
           {view.items.map((contract) => (
             <li key={contract.id}>
               <span>
-                {copy('reference')} {contract.illustrativeReference}
+                {copy(
+                  contract.kind === 'PRECONTRACT'
+                    ? 'precontractReference'
+                    : 'reference',
+                )}{' '}
+                {contract.illustrativeReference}
               </span>{' '}
               ·{' '}
               <time dateTime={contract.linkedAt}>

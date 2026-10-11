@@ -8,6 +8,7 @@ import {
 } from '../api/authenticated-api-client';
 import type { ContractView } from './contract-response';
 import { useContractVersionCopy } from './contract-version.copy';
+import { useContractPrecontractCopy } from './contract-precontract.copy';
 type Feedback =
   | 'idle'
   | 'running'
@@ -44,7 +45,14 @@ export function ContractVersionPanel({
   onProtectionChange: (value: boolean) => void;
 }) {
   const copy = useContractVersionCopy();
+  const precontractCopy = useContractPrecontractCopy();
+  const preliminary = contract.version.preliminaryWork;
   const [feedback, setFeedback] = useState<Feedback>('idle');
+  const [scope, setScope] = useState(preliminary?.scope ?? ''),
+    [financial, setFinancial] = useState(
+      preliminary?.financialConditions ?? '',
+    ),
+    [limits, setLimits] = useState(preliminary?.limits ?? '');
   const [start, setStart] = useState(contract.version.termStartsOn ?? ''),
     [end, setEnd] = useState(contract.version.termEndsOn ?? ''),
     [conditions, setConditions] = useState(
@@ -82,7 +90,13 @@ export function ContractVersionPanel({
       return;
     if (
       !attempt.current &&
-      ((start && end && end < start) || conditions.length > 4000)
+      ((start && end && end < start) ||
+        conditions.length > 4000 ||
+        (preliminary &&
+          (!end ||
+            [scope, financial, limits].some(
+              (value) => !value.trim() || value.length > 2000,
+            ))))
     ) {
       setFeedback('invalid');
       return;
@@ -94,6 +108,13 @@ export function ContractVersionPanel({
         termStartsOn: start || null,
         termEndsOn: end || null,
         specialConditions: conditions || null,
+        ...(preliminary
+          ? {
+              preliminaryWorkScope: scope,
+              preliminaryFinancialConditions: financial,
+              preliminaryLimits: limits,
+            }
+          : {}),
       }),
     };
     attempt.current = command;
@@ -191,11 +212,46 @@ export function ContractVersionPanel({
           {copy('end')}
           <input
             type="date"
+            required={preliminary !== null}
             value={end}
             disabled={frozen}
             onChange={(event) => setEnd(event.target.value)}
           />
         </label>
+        {preliminary && (
+          <>
+            <label>
+              {precontractCopy('scope')}
+              <textarea
+                required
+                maxLength={2000}
+                value={scope}
+                disabled={frozen}
+                onChange={(event) => setScope(event.target.value)}
+              />
+            </label>
+            <label>
+              {precontractCopy('financial')}
+              <textarea
+                required
+                maxLength={2000}
+                value={financial}
+                disabled={frozen}
+                onChange={(event) => setFinancial(event.target.value)}
+              />
+            </label>
+            <label>
+              {precontractCopy('limits')}
+              <textarea
+                required
+                maxLength={2000}
+                value={limits}
+                disabled={frozen}
+                onChange={(event) => setLimits(event.target.value)}
+              />
+            </label>
+          </>
+        )}
         <label>
           {copy('conditions')}
           <textarea

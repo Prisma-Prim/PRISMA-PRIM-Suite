@@ -1,5 +1,6 @@
 import {
   ContractProjectLinkStore,
+  agreementTarget,
   contractProjectLinkView,
   projectLinkConflict as conflict,
 } from './contract-project-link.store.js';
@@ -46,7 +47,11 @@ export class ContractProjectsService {
     private readonly intake: CommercialIntakeService,
   ) {}
 
-  async candidates(input: { actor: ActorContext; opportunityId: string }) {
+  async candidates(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    contractId?: string;
+  }) {
     return this.database.transaction(
       async () => {
         const companyId = await this.authorization.requireContractAccess(
@@ -63,6 +68,7 @@ export class ContractProjectsService {
           actor: input.actor,
           companyId,
           opportunityId: input.opportunityId,
+          ...agreementTarget(input),
         });
         this.links.requireExecuted(current);
         const eligible = (
@@ -126,6 +132,7 @@ export class ContractProjectsService {
   async link(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     payload: unknown;
     idempotencyKey: string | undefined;
   }) {
@@ -151,10 +158,12 @@ export class ContractProjectsService {
           actor,
           companyId,
           opportunityId: input.opportunityId,
+          ...agreementTarget(input),
         });
         const fingerprint = commandFingerprint({
           kind: 'LINK_PROJECT',
           opportunityId: input.opportunityId,
+          ...agreementTarget(input),
           payload: input.payload,
         });
         const receipt = await this.links.command({ actor, companyId, key });
@@ -174,6 +183,7 @@ export class ContractProjectsService {
             actor,
             companyId,
             opportunityId: input.opportunityId,
+            ...agreementTarget(input),
             lock: true,
           });
           if (receipt.fingerprint !== fingerprint)
@@ -191,6 +201,7 @@ export class ContractProjectsService {
           actor,
           companyId,
           opportunityId: input.opportunityId,
+          ...agreementTarget(input),
           lock: true,
         });
         if (current.contract.revision !== command.expectedContractRevision)
@@ -325,6 +336,9 @@ export class ContractProjectsService {
       );
     const items = [];
     for (const { contract, link } of rows) {
+      const kind = contract.kind;
+      if (kind !== 'CONTRACT' && kind !== 'PRECONTRACT')
+        throw new Error('Invalid linked Contract kind.');
       try {
         await this.intake.requireReadableOfferOpportunity(
           actor,
@@ -336,7 +350,7 @@ export class ContractProjectsService {
           opportunityId: contract.opportunityId,
           clientRequestId: contract.clientRequestId,
           illustrativeReference: contract.illustrativeReference,
-          kind: 'CONTRACT' as const,
+          kind,
           provisional: true as const,
           linkedAt: link.linkedAt.toISOString(),
         });

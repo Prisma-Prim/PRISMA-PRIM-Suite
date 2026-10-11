@@ -81,6 +81,890 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it('C7 creates a Precontract from the Accepted Offer and the later main Contract records it', async () => {
+    const fixture = await acceptedOffer();
+    await grantContract(fixture, 'c7-grant');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const source = await contractPayload(fixture);
+    const body = { ...source, ...precontractFields() };
+    const precontract = record(
+      await command({
+        path: base,
+        companyId: fixture.companyId,
+        key: 'c7-create',
+        body,
+      }),
+    );
+    expect(precontract).toMatchObject({
+      kind: 'PRECONTRACT',
+      origin: 'ACCEPTED_OFFER',
+      sourceOfferVersionId: source.acceptedOfferVersionId,
+      parentContractId: null,
+      precontract: null,
+      illustrativeReference: 1,
+      revision: 1,
+      provisional: true,
+      version: {
+        versionNumber: 1,
+        decisionState: 'PENDING',
+        executionState: 'NOT_EXECUTED',
+        scopeNote: 'Accepted scope',
+        commercialConditions: 'Accepted conditions',
+        termStartsOn: null,
+        termEndsOn: body.termEndsOn,
+        specialConditions: null,
+        preliminaryWork: {
+          scope: body.preliminaryWorkScope,
+          financialConditions: body.preliminaryFinancialConditions,
+          limits: body.preliminaryLimits,
+        },
+        representation: {
+          templateCode: 'PRECONTRACT_ILLUSTRATIVE',
+          templateVersion: 1,
+        },
+      },
+    });
+    const precontractId = stringField(precontract, 'id');
+    const opened = record(
+      await json(await request({ path: base, companyId: fixture.companyId })),
+    );
+    expect(opened.contract).toBeNull();
+    expect(opened.precontract).toEqual({
+      id: precontractId,
+      illustrativeReference: 1,
+      versionNumber: 1,
+      decisionState: 'PENDING',
+      executionState: 'NOT_EXECUTED',
+    });
+    expect(
+      record(
+        await json(
+          await request({
+            path: base + '/agreements/' + precontractId,
+            companyId: fixture.companyId,
+          }),
+        ),
+      ).contract,
+    ).toEqual(precontract);
+    const events = (
+      await pool.query<{ action: string; metadata: unknown }>(
+        'SELECT action,metadata FROM contract_events WHERE contract_id=$1 ORDER BY action',
+        [precontractId],
+      )
+    ).rows;
+    expect(events.map((event) => event.action)).toEqual([
+      'contract.created',
+      'contract_version.created',
+    ]);
+    for (const event of events) {
+      expect(record(event.metadata)).toMatchObject({
+        kind: 'PRECONTRACT',
+        origin: 'ACCEPTED_OFFER',
+        offerVersionId: source.acceptedOfferVersionId,
+        provenance: 'ILLUSTRATIVE',
+      });
+      expect(JSON.stringify(event.metadata)).not.toContain('Synthetic');
+    }
+    const main = record(
+      await command({
+        path: base,
+        companyId: fixture.companyId,
+        key: 'c7-main',
+        body: source,
+      }),
+    );
+    expect(main).toMatchObject({
+      kind: 'CONTRACT',
+      illustrativeReference: 1,
+      precontract: { id: precontractId, illustrativeReference: 1 },
+    });
+    expect(String(record(record(main.version).representation).html)).toContain(
+      '<dt>Precontract reference</dt><dd>1</dd>',
+    );
+    const reopened = record(
+      await json(await request({ path: base, companyId: fixture.companyId })),
+    );
+    expect(reopened.contract).toEqual(main);
+    expect(record(reopened.precontract).id).toBe(precontractId);
+  });
+  it('C7 checks, approves, signs, conserves and revises a Precontract as its own agreement', async () => {
+    const target = await precontractFixture();
+    const { fixture, agreement, versionId } = target;
+    await grantApprover(fixture);
+    const run = record(
+      await command({
+        path: agreement + '/versions/' + versionId + '/quality-checks',
+        companyId: fixture.companyId,
+        key: 'c7-check',
+        body: {},
+      }),
+    );
+    expect(run.results).toEqual([
+      { code: 'SOURCE_COMPANY_MATCHES', status: 'PASS' },
+      { code: 'PARTY_AVAILABLE', status: 'PASS' },
+      { code: 'PARTY_MATCHES_SOURCE', status: 'PASS' },
+      { code: 'PARTY_IDENTITY_MATCHES_SOURCE', status: 'PASS' },
+      { code: 'PARTY_IDENTITY_CURRENT', status: 'PASS' },
+      { code: 'PARTY_TAX_ID_RECORDED', status: 'PASS' },
+      { code: 'PRICE_MATCHES_ACCEPTED_OFFER', status: 'PASS' },
+      { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+      { code: 'CONDITIONS_MATCH_ACCEPTED_OFFER', status: 'PASS' },
+      { code: 'ADDED_CONDITIONS_CONFIRMED', status: 'WARNING' },
+      { code: 'TERM_END_NOT_PASSED', status: 'PASS' },
+      { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+    ]);
+    const revised = record(
+      await command({
+        path: agreement + '/versions',
+        companyId: fixture.companyId,
+        key: 'c7-revise',
+        body: {
+          expectedContractRevision: 1,
+          ...preliminaryEntry(),
+          preliminaryLimits: 'Synthetic narrower limit',
+          termEndsOn: '2027-01-31',
+        },
+      }),
+    );
+    expect(revised).toMatchObject({ versionNumber: 2, revision: 2 });
+    const revisedId = stringField(revised, 'contractVersionId');
+    const head = record(
+      record(
+        await json(
+          await request({
+            path: agreement + '/versions/' + revisedId,
+            companyId: fixture.companyId,
+          }),
+        ),
+      ).contract,
+    );
+    expect(record(head.version).differences).toEqual([
+      { field: 'termEndsOn', before: '2026-12-31', after: '2027-01-31' },
+      {
+        field: 'preliminaryLimits',
+        before: 'Synthetic limit until the Contract',
+        after: 'Synthetic narrower limit',
+      },
+    ]);
+    const predecessor = record(
+      record(
+        await json(
+          await request({
+            path: agreement + '/versions/' + versionId,
+            companyId: fixture.companyId,
+          }),
+        ),
+      ).contract,
+    );
+    expect(record(predecessor.version)).toMatchObject({
+      supersededByVersionId: revisedId,
+      representation: record(target.created.version).representation,
+    });
+    const refused = await request({
+      path: agreement + '/versions/' + revisedId + '/approve',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c7-unacknowledged',
+        },
+        body: JSON.stringify({
+          expectedContractRevision: 2,
+          acknowledgedWarningCodes: [],
+        }),
+      },
+    });
+    expect(refused.status).toBe(409);
+    expect(await json(refused)).toMatchObject({
+      code: 'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
+    });
+    const approved = record(
+      await command({
+        path: agreement + '/versions/' + revisedId + '/approve',
+        companyId: fixture.companyId,
+        key: 'c7-approve',
+        body: {
+          expectedContractRevision: 2,
+          acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+        },
+      }),
+    );
+    expect(approved).toMatchObject({ kind: 'APPROVE', revision: 3 });
+    const signed = record(
+      await command({
+        path: agreement + '/versions/' + revisedId + '/signature',
+        companyId: fixture.companyId,
+        key: 'c7-sign',
+        body: { ...signaturePayload(), expectedContractRevision: 3 },
+      }),
+    );
+    expect(signed).toMatchObject({ revision: 4, evidenceKind: 'SIMULATED' });
+    const executed = record(
+      record(
+        await json(
+          await request({ path: agreement, companyId: fixture.companyId }),
+        ),
+      ).contract,
+    );
+    expect(record(executed.version)).toMatchObject({
+      executionState: 'EXECUTED',
+      decisionState: 'APPROVED',
+    });
+    expect(
+      record(record(executed.version).signature).representationChecksum,
+    ).toBe(record(record(executed.version).representation).sha256);
+    const late = await request({
+      path: agreement + '/versions',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c7-late',
+        },
+        body: JSON.stringify({
+          expectedContractRevision: 4,
+          ...preliminaryEntry(),
+        }),
+      },
+    });
+    expect(late.status).toBe(409);
+    expect(await json(late)).toMatchObject({ code: 'CONTRACT_EXECUTED' });
+    const events = (
+      await pool.query<{ action: string; kind: string }>(
+        "SELECT action,metadata->>'kind' AS kind FROM contract_events WHERE contract_id=$1 ORDER BY action",
+        [target.created.id],
+      )
+    ).rows;
+    expect(events).toEqual([
+      { action: 'contract.created', kind: 'PRECONTRACT' },
+      { action: 'contract_version.approved', kind: 'PRECONTRACT' },
+      { action: 'contract_version.created', kind: 'PRECONTRACT' },
+      { action: 'contract_version.created', kind: 'PRECONTRACT' },
+      { action: 'contract_version.signature_recorded', kind: 'PRECONTRACT' },
+    ]);
+    const opened = record(
+      await json(
+        await request({ path: target.base, companyId: fixture.companyId }),
+      ),
+    );
+    expect(opened).toMatchObject({
+      contract: null,
+      precontract: {
+        id: target.created.id,
+        versionNumber: 2,
+        decisionState: 'APPROVED',
+        executionState: 'EXECUTED',
+      },
+    });
+  });
+  it('C7 executed Precontracts accept Addenda and link or create Projects while unexecuted agreements and Addenda stay non-linkable', async () => {
+    const target = await precontractFixture();
+    const { fixture, agreement, base } = target;
+    await grantApprover(fixture);
+    await grantLinkProject(fixture);
+    const unexecuted = await request({
+      path: agreement + '/projects/create',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c7-early-project',
+        },
+        body: JSON.stringify({
+          ...creationPayload([]),
+          expectedContractRevision: 1,
+        }),
+      },
+    });
+    expect(unexecuted.status).toBe(409);
+    expect(await json(unexecuted)).toMatchObject({
+      code: 'CONTRACT_NOT_EXECUTED',
+    });
+    await executePrecontract(target);
+    const candidates = record(
+      await json(
+        await request({
+          path: agreement + '/project-candidates',
+          companyId: fixture.companyId,
+        }),
+      ),
+    );
+    expect(candidates.items).toEqual([]);
+    const created = record(
+      await command({
+        path: agreement + '/projects/create',
+        companyId: fixture.companyId,
+        key: 'c7-project',
+        body: {
+          title: 'Synthetic preparatory Project',
+          acknowledgedCandidateProjectIds: [],
+          expectedContractRevision: 3,
+        },
+      }),
+    );
+    expect(record(created.project)).toMatchObject({ status: 'preparatory' });
+    expect(record(created.link)).toMatchObject({
+      contractId: target.created.id,
+      created: true,
+      revision: 4,
+    });
+    const projectId = stringField(record(created.project), 'id');
+    expect(
+      await json(
+        await request({
+          path: '/contracts/projects/' + projectId,
+          companyId: fixture.companyId,
+        }),
+      ),
+    ).toMatchObject({
+      items: [{ id: target.created.id, kind: 'PRECONTRACT' }],
+    });
+    const child = record(
+      await command({
+        path: agreement + '/addenda',
+        companyId: fixture.companyId,
+        key: 'c7-addendum',
+        body: {
+          expectedContractRevision: 4,
+          changeSummary: 'Synthetic Precontract change',
+          termEndsOn: '2027-03-31',
+        },
+      }),
+    );
+    expect(child).toMatchObject({
+      kind: 'ADDENDUM',
+      parentContractId: target.created.id,
+      parent: { kind: 'PRECONTRACT', illustrativeReference: 1 },
+      addendumOrdinal: 1,
+    });
+    const childAgreement = base + '/agreements/' + stringField(child, 'id');
+    const notLinkable = await request({
+      path: childAgreement + '/projects',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c7-addendum-link',
+        },
+        body: JSON.stringify({ projectId, expectedContractRevision: 1 }),
+      },
+    });
+    expect(notLinkable.status).toBe(409);
+    expect(await json(notLinkable)).toMatchObject({
+      code: 'CONTRACT_KIND_NOT_LINKABLE',
+    });
+    const parent = record(
+      record(
+        await json(
+          await request({ path: agreement, companyId: fixture.companyId }),
+        ),
+      ).contract,
+    );
+    expect(parent.addenda).toMatchObject([
+      { id: child.id, addendumOrdinal: 1 },
+    ]);
+    expect(record(parent.version).representation).toEqual(
+      record(target.created.version).representation,
+    );
+    const main = record(
+      await command({
+        path: base,
+        companyId: fixture.companyId,
+        key: 'c7-project-main',
+        body: target.source,
+      }),
+    );
+    expect(record(main.precontract).id).toBe(target.created.id);
+  });
+  it('C7 refuses invalid, server-owned and direct Precontract input without writes', async () => {
+    const target = await precontractFixture({ create: false });
+    const { fixture, base, source } = target;
+    const valid = { ...source, ...precontractFields() };
+    const cases: [string, unknown][] = [
+      ['kind', { ...valid, kind: 'ADDENDUM' }],
+      ['termEndsOn', { ...valid, termEndsOn: undefined }],
+      ['termEndsOn', { ...valid, termEndsOn: null }],
+      ['termEndsOn', { ...valid, termStartsOn: '2027-01-01' }],
+      ['preliminaryWorkScope', { ...valid, preliminaryWorkScope: undefined }],
+      ['preliminaryWorkScope', { ...valid, preliminaryWorkScope: '   ' }],
+      [
+        'preliminaryFinancialConditions',
+        { ...valid, preliminaryFinancialConditions: 'x'.repeat(2001) },
+      ],
+      ['preliminaryLimits', { ...valid, preliminaryLimits: 7 }],
+      ['scopeNote', { ...valid, scopeNote: 'Re-entered scope' }],
+      [
+        'pricingSnapshotId',
+        { ...valid, pricingSnapshotId: fixture.snapshotId },
+      ],
+      ['precontractId', { ...valid, precontractId: fixture.opportunityId }],
+      ['preliminaryWorkScope', { ...source, preliminaryWorkScope: 'Main' }],
+    ];
+    for (const [index, [field, body]] of cases.entries()) {
+      const response = await sendContract(
+        fixture,
+        body,
+        'c7-invalid-' + String(index),
+      );
+      expect(response.status, field).toBe(400);
+      expect(await json(response)).toMatchObject({
+        code: 'INVALID_CONTRACT_INPUT',
+        field,
+      });
+    }
+    const direct = await request({
+      path: base + '/direct',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c7-direct-precontract',
+        },
+        body: JSON.stringify({
+          kind: 'PRECONTRACT',
+          recipient: { kind: 'PRIMARY' },
+          pricingSnapshotId: fixture.snapshotId,
+          directReason: 'Synthetic',
+          scopeNote: 'Synthetic',
+        }),
+      },
+    });
+    expect(direct.status).toBe(400);
+    expect(await json(direct)).toMatchObject({ field: 'kind' });
+    expect(await agreementCounts()).toEqual({
+      contracts: '0',
+      versions: '0',
+      receipts: '0',
+      events: '0',
+      counters: '0',
+    });
+    const exact = await sendContract(fixture, valid, 'c7-valid-after-refusals');
+    expect(exact.status).toBe(201);
+    expect(record(await json(exact)).illustrativeReference).toBe(1);
+  });
+  it('C7 orders refusals: not accepted, existing kind, then Precontract after Contract', async () => {
+    const fixture = await preparedOffer();
+    await grantContract(fixture, 'c7-order-grant');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    await command({
+      path: base + '/direct',
+      companyId: fixture.companyId,
+      key: 'c7-order-direct',
+      body: {
+        recipient: { kind: 'PRIMARY' },
+        pricingSnapshotId: fixture.snapshotId,
+        directReason: 'Synthetic direct exception',
+        scopeNote: 'Synthetic direct scope',
+      },
+    });
+    const offer = record(
+      await command({
+        path: '/offers/opportunities/' + fixture.opportunityId,
+        companyId: fixture.companyId,
+        key: 'c7-order-offer',
+        body: {
+          recipient: { kind: 'PRIMARY' },
+          pricingSnapshotId: fixture.snapshotId,
+          scopeNote: 'Offer scope',
+        },
+      }),
+    );
+    const offerVersionId = stringField(record(offer.version), 'id');
+    const body = {
+      acceptedOfferVersionId: offerVersionId,
+      ...precontractFields(),
+    };
+    const notAccepted = await sendContract(fixture, body, 'c7-order-1');
+    expect(notAccepted.status).toBe(409);
+    expect(await json(notAccepted)).toMatchObject({
+      code: 'OFFER_NOT_ACCEPTED',
+    });
+    await command({
+      path: '/company-offer-approver-assignments',
+      key: 'c7-order-approver',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+    });
+    const offerBase =
+      '/offers/opportunities/' +
+      fixture.opportunityId +
+      '/versions/' +
+      offerVersionId;
+    for (const [step, payload] of [
+      ['approve', { expectedOfferRevision: 1, acknowledgedWarningCodes: [] }],
+      [
+        'transmission',
+        { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      ],
+      [
+        'client-response',
+        {
+          expectedOfferRevision: 3,
+          outcome: 'ACCEPTED',
+          receivedAt: instant.toISOString(),
+        },
+      ],
+    ] as const)
+      await command({
+        path: offerBase + '/' + step,
+        companyId: fixture.companyId,
+        key: 'c7-order-' + step,
+        body: payload,
+      });
+    const after = await sendContract(fixture, body, 'c7-order-2');
+    expect(after.status).toBe(409);
+    expect(await json(after)).toMatchObject({
+      code: 'PRECONTRACT_AFTER_CONTRACT',
+    });
+    const main = await sendContract(
+      fixture,
+      { acceptedOfferVersionId: offerVersionId },
+      'c7-order-main',
+    );
+    expect(main.status).toBe(409);
+    expect(await json(main)).toMatchObject({ code: 'CONTRACT_ALREADY_EXISTS' });
+    const counts = await agreementCounts();
+    expect(counts).toMatchObject({ contracts: '1', counters: '1' });
+    // A second Precontract is refused by its own kind before the Contract rule.
+    const second = await acceptedOffer({ suffix: 'c7-second' });
+    await grantContract(second, 'c7-second-grant');
+    const secondBody = {
+      ...(await contractPayload(second)),
+      ...precontractFields(),
+    };
+    expect((await sendContract(second, secondBody, 'c7-second-1')).status).toBe(
+      201,
+    );
+    const mainAfter = await sendContract(
+      second,
+      await contractPayload(second),
+      'c7-second-main',
+    );
+    expect(mainAfter.status).toBe(201);
+    const duplicate = await sendContract(second, secondBody, 'c7-second-2');
+    expect(duplicate.status).toBe(409);
+    expect(await json(duplicate)).toMatchObject({
+      code: 'CONTRACT_ALREADY_EXISTS',
+    });
+  });
+  it.each(['precontract', 'contract', 'duplicate'] as const)(
+    'C7 serializes racing %s-first creations on one Opportunity at the Request boundary',
+    async (winner) => {
+      const target = await precontractFixture({ create: false });
+      const { fixture, source } = target;
+      const precontract = (key: string) =>
+        sendContract(fixture, { ...source, ...precontractFields() }, key);
+      const main = () => sendContract(fixture, source, 'c7-race-main');
+      const blocker = await pool.connect();
+      let first: Promise<Response> | undefined,
+        second: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('Missing blocker');
+        await blocker.query(
+          'SELECT id FROM client_requests WHERE id=$1 FOR UPDATE',
+          [fixture.requestId],
+        );
+        first = winner === 'contract' ? main() : precontract('c7-race-pre');
+        const firstPid = await waitForBlocker(pid);
+        second =
+          winner === 'precontract'
+            ? main()
+            : precontract(
+                winner === 'duplicate' ? 'c7-race-duplicate' : 'c7-race-pre',
+              );
+        await waitForBlocker(firstPid, pid);
+        await blocker.query('COMMIT');
+        const firstResponse = await first;
+        const secondResponse = await second;
+        expect(firstResponse.status).toBe(201);
+        if (winner === 'precontract') {
+          expect(secondResponse.status).toBe(201);
+          expect(record(await json(secondResponse)).precontract).toMatchObject({
+            id: record(await json(firstResponse)).id,
+          });
+        } else {
+          expect(secondResponse.status).toBe(409);
+          expect(await json(secondResponse)).toMatchObject({
+            code:
+              winner === 'contract'
+                ? 'PRECONTRACT_AFTER_CONTRACT'
+                : 'CONTRACT_ALREADY_EXISTS',
+          });
+        }
+        expect(await agreementCounts()).toMatchObject({
+          contracts: winner === 'precontract' ? '2' : '1',
+          events: winner === 'precontract' ? '4' : '2',
+        });
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await Promise.allSettled(
+          [first, second].filter((item) => item !== undefined),
+        );
+      }
+    },
+  );
+  it('C7 replays exact Precontract creation, conflicts changed payloads and denies replay after permission loss', async () => {
+    const target = await precontractFixture({ create: false });
+    const { fixture, source } = target;
+    const body = { ...source, ...precontractFields() };
+    const created = await sendContract(fixture, body, 'c7-replay');
+    expect(created.status).toBe(201);
+    const view = await json(created);
+    const replay = await sendContract(fixture, body, 'c7-replay');
+    expect(replay.status).toBe(201);
+    expect(await json(replay)).toEqual(view);
+    const changed = await sendContract(
+      fixture,
+      { ...body, preliminaryLimits: 'Changed limit' },
+      'c7-replay',
+    );
+    expect(changed.status).toBe(409);
+    expect(await json(changed)).toMatchObject({ code: 'IDEMPOTENCY_CONFLICT' });
+    const asContract = await sendContract(fixture, source, 'c7-replay');
+    expect(asContract.status).toBe(409);
+    expect(await agreementCounts()).toMatchObject({
+      contracts: '1',
+      receipts: '1',
+      events: '2',
+    });
+    expect(
+      (
+        await request({
+          path:
+            '/company-contract-preparer-assignments/' +
+            fixture.actorMembershipId +
+            '/' +
+            fixture.companyId,
+          init: {
+            method: 'DELETE',
+            headers: { 'idempotency-key': 'c7-revoke' },
+          },
+        })
+      ).status,
+    ).toBe(200);
+    expect((await sendContract(fixture, body, 'c7-replay')).status).toBe(403);
+  });
+  it('C7 applies creation refusals for missing Client or Offer read and foreign Companies without writes', async () => {
+    const target = await precontractFixture({ create: false });
+    const { fixture } = target;
+    const body = { ...target.source, ...precontractFields() };
+    const foreign = await preparedOffer('c7-foreign');
+    await grantContract(foreign, 'c7-foreign-grant');
+    const crossCompany = await request({
+      path: '/contracts/opportunities/' + fixture.opportunityId,
+      companyId: foreign.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'c7-foreign',
+        },
+        body: JSON.stringify(body),
+      },
+    });
+    expect(crossCompany.status).toBe(404);
+    // Offer read comes from both Offer bundles; Client read from the director bundle.
+    for (const bundles of [
+      ['company-director-client'],
+      ['company-offer-preparer', 'company-offer-approver'],
+    ]) {
+      for (const bundle of bundles)
+        expect(
+          (
+            await request({
+              path:
+                '/' +
+                bundle +
+                '-assignments/' +
+                fixture.actorMembershipId +
+                '/' +
+                fixture.companyId,
+              init: {
+                method: 'DELETE',
+                headers: { 'idempotency-key': 'c7-revoke-' + bundle },
+              },
+            })
+          ).status,
+        ).toBe(200);
+      const refused = await sendContract(
+        fixture,
+        body,
+        'c7-no-' + bundles.join('-'),
+      );
+      expect(refused.status, bundles.join()).toBe(403);
+      for (const bundle of bundles)
+        await command({
+          path: '/' + bundle + '-assignments',
+          body: {
+            workspaceMembershipId: fixture.actorMembershipId,
+            companyId: fixture.companyId,
+          },
+          key: 'c7-regrant-' + bundle,
+        });
+    }
+    expect(await agreementCounts()).toEqual({
+      contracts: '0',
+      versions: '0',
+      receipts: '0',
+      events: '0',
+      counters: '0',
+    });
+  });
+  it('C7 rolls back every Precontract write when its event fails and retries with reference 1', async () => {
+    const target = await precontractFixture({ create: false });
+    const body = { ...target.source, ...precontractFields() };
+    await pool.query(
+      "CREATE FUNCTION fail_c7_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic event failure'; END; $$; CREATE TRIGGER fail_c7_event BEFORE INSERT ON contract_events FOR EACH ROW EXECUTE FUNCTION fail_c7_event()",
+    );
+    try {
+      const failed = await sendContract(target.fixture, body, 'c7-rollback');
+      expect(failed.status).toBe(500);
+      expect(await json(failed)).toMatchObject({
+        code: 'CONTRACT_CREATION_UNCERTAIN',
+      });
+      expect(await agreementCounts()).toEqual({
+        contracts: '0',
+        versions: '0',
+        receipts: '0',
+        events: '0',
+        counters: '0',
+      });
+    } finally {
+      await pool.query(
+        'DROP TRIGGER fail_c7_event ON contract_events; DROP FUNCTION fail_c7_event()',
+      );
+    }
+    const retried = await sendContract(target.fixture, body, 'c7-rollback');
+    expect(retried.status).toBe(201);
+    expect(record(await json(retried))).toMatchObject({
+      kind: 'PRECONTRACT',
+      illustrativeReference: 1,
+    });
+    expect(await agreementCounts()).toEqual({
+      contracts: '1',
+      versions: '1',
+      receipts: '1',
+      events: '2',
+      counters: '1',
+    });
+  });
+  it('C7 database guards admit only valid Precontract states and Contract references', async () => {
+    const target = await precontractFixture();
+    const { fixture, versionId } = target;
+    const run = record(
+      await command({
+        path: target.agreement + '/versions/' + versionId + '/quality-checks',
+        companyId: fixture.companyId,
+        key: 'c7-guard-check',
+        body: {},
+      }),
+    );
+    if (!Array.isArray(run.results)) throw new Error('Missing results');
+    const falsePass = run.results
+      .map(record)
+      .map((item) =>
+        item.code === 'ADDED_CONDITIONS_CONFIRMED'
+          ? { code: item.code, status: 'PASS' }
+          : item,
+      );
+    await expect(
+      pool.query(
+        `INSERT INTO contract_quality_runs(workspace_id,company_id,contract_id,contract_version_id,actor_internal_user_id,actor_workspace_membership_id,evaluated_at,results) SELECT workspace_id,company_id,contract_id,id,created_by_internal_user_id,created_by_workspace_membership_id,created_at,$2::jsonb FROM contract_versions WHERE id=$1`,
+        [versionId, JSON.stringify(falsePass)],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    const insertAgreement = (columns: string) =>
+      pool.query(
+        `INSERT INTO contracts(workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,kind,origin,source_offer_id,source_offer_version_id,direct_reason,precontract_id,illustrative_reference,created_by_internal_user_id,created_by_workspace_membership_id,created_at) SELECT workspace_id,company_id,opportunity_id,client_request_id,original_client_account_id,${columns},99,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contracts WHERE id=$1`,
+        [target.created.id],
+      );
+    for (const columns of [
+      "'PRECONTRACT','DIRECT',NULL,NULL,'Direct Precontract',NULL",
+      "'PRECONTRACT','ACCEPTED_OFFER',source_offer_id,source_offer_version_id,NULL,NULL",
+      "'CONTRACT','ACCEPTED_OFFER',source_offer_id,source_offer_version_id,NULL,NULL",
+      "'ADDENDUM',NULL,NULL,NULL,NULL,id",
+    ])
+      await expect(insertAgreement(columns)).rejects.toMatchObject({
+        code: expect.stringMatching(/^23/u),
+      });
+    await expect(
+      pool.query(
+        "UPDATE contract_reference_counters SET kind='RENEWAL' WHERE kind='PRECONTRACT'",
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query(
+        'INSERT INTO contract_versions(workspace_id,company_id,contract_id,opportunity_id,version_number,created_contract_revision,predecessor_version_id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,commercial_conditions,term_ends_on,created_by_internal_user_id,created_by_workspace_membership_id,created_at) SELECT workspace_id,company_id,contract_id,opportunity_id,2,2,id,pricing_snapshot_id,recipient_client_account_id,recipient_kind,recipient_legal_name,recipient_tax_id,recipient_legal_address,issuing_company_label,scope_note,commercial_conditions,term_ends_on,created_by_internal_user_id,created_by_workspace_membership_id,created_at FROM contract_versions WHERE id=$1',
+        [versionId],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    expect(await agreementCounts()).toMatchObject({
+      contracts: '1',
+      versions: '1',
+    });
+    await command({
+      path: target.base,
+      companyId: fixture.companyId,
+      key: 'c7-guard-main',
+      body: target.source,
+    });
+    await expect(
+      pool.query(
+        "UPDATE contracts SET precontract_id=NULL WHERE kind='CONTRACT'",
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query('DELETE FROM contracts WHERE id=$1', [target.created.id]),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      insertAgreement(
+        "'PRECONTRACT','ACCEPTED_OFFER',source_offer_id,source_offer_version_id,NULL,NULL",
+      ),
+    ).rejects.toMatchObject({
+      code: '23514',
+      message: 'Precontract after Contract',
+    });
+  });
+  it('C7 runs the term-end warning exactly at the UTC date boundary', async () => {
+    instant = new Date('2026-12-31T23:59:59.999Z');
+    const target = await precontractFixture();
+    const { fixture, agreement, versionId } = target;
+    const check = async (key: string) => {
+      const results = record(
+        await command({
+          path: agreement + '/versions/' + versionId + '/quality-checks',
+          companyId: fixture.companyId,
+          key,
+          body: {},
+        }),
+      ).results;
+      if (!Array.isArray(results)) throw new Error('Missing results');
+      return results.find(
+        (item) => record(item).code === 'TERM_END_NOT_PASSED',
+      );
+    };
+    expect(await check('c7-before-boundary')).toEqual({
+      code: 'TERM_END_NOT_PASSED',
+      status: 'PASS',
+    });
+    instant = new Date('2027-01-01T00:00:00.000Z');
+    expect(await check('c7-after-boundary')).toEqual({
+      code: 'TERM_END_NOT_PASSED',
+      status: 'WARNING',
+    });
+  });
   it('C9 creates and reloads DIRECT without Offer read and requires direct review at approval', async () => {
     const fixture = await preparedOffer();
     await grantContract(fixture, 'c9-prepare');
@@ -7629,6 +8513,12 @@ withPostgres('First illustrative Contract REST', () => {
   });
   it.each([
     {
+      baseline: 'C9 / 0061 with Addendum',
+      migration: '0062_contract_precontracts',
+      index: 62,
+      previousTag: '0061_contract_direct_origin',
+    },
+    {
       baseline: 'C8 / 0060 with Addendum',
       migration: '0061_contract_direct_origin',
       index: 61,
@@ -7995,7 +8885,7 @@ withPostgres('First illustrative Contract REST', () => {
             throw error;
           }
         }
-        if (index === 61) {
+        if (index >= 61) {
           await pool.query('BEGIN');
           try {
             const child = (
@@ -8064,8 +8954,8 @@ withPostgres('First illustrative Contract REST', () => {
             guards: unknown;
           }>(
             `SELECT
-        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['direct_reason','parent_contract_id','addendum_ordinal']::text[] ORDER BY id) FROM contracts c) AS contracts,
-        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['change_summary','template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at']::text[] WHEN $4::boolean THEN to_jsonb(v)-'change_summary' ELSE to_jsonb(v)-ARRAY['change_summary','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
+        (SELECT jsonb_agg(to_jsonb(c)-ARRAY['direct_reason','parent_contract_id','addendum_ordinal','precontract_id']::text[] ORDER BY id) FROM contracts c) AS contracts,
+        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['change_summary','template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] WHEN $4::boolean THEN to_jsonb(v)-ARRAY['change_summary','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] ELSE to_jsonb(v)-ARRAY['change_summary','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
         (SELECT jsonb_agg(CASE WHEN $3::boolean THEN to_jsonb(c)-'result_version_id' ELSE to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id','result_project_link_id','result_version_id']::text[] END ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
@@ -8077,6 +8967,7 @@ withPostgres('First illustrative Contract REST', () => {
               index === 53,
               [
                 'contract_versions_template_binding_check',
+                'contracts_precontract_fk',
                 'contracts_parent_ordinal_unique',
                 'contracts_parent_fk',
                 'contracts_source_check',
@@ -9320,6 +10211,78 @@ withPostgres('First illustrative Contract REST', () => {
     return row;
   }
 
+  function preliminaryEntry() {
+    return {
+      preliminaryWorkScope: 'Synthetic preliminary survey\nexactly kept',
+      preliminaryFinancialConditions: 'Synthetic advance capped at cost',
+      preliminaryLimits: 'Synthetic limit until the Contract',
+      termEndsOn: '2026-12-31',
+    };
+  }
+  function precontractFields() {
+    return { kind: 'PRECONTRACT', ...preliminaryEntry() };
+  }
+  async function precontractFixture({ create = true } = {}) {
+    const fixture = await acceptedOffer();
+    await grantContract(fixture, 'c7-fixture-grant');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const source = await contractPayload(fixture);
+    const created = create
+      ? identifiedRecord(
+          await command({
+            path: base,
+            companyId: fixture.companyId,
+            key: 'c7-fixture-create',
+            body: { ...source, ...precontractFields() },
+          }),
+        )
+      : null;
+    return {
+      fixture,
+      base,
+      source,
+      created: created ?? { id: '', version: {} },
+      agreement: created ? base + '/agreements/' + created.id : '',
+      versionId: created ? stringField(record(created.version), 'id') : '',
+    };
+  }
+  async function executePrecontract(target: {
+    fixture: PreparedOffer;
+    agreement: string;
+    versionId: string;
+  }) {
+    const path = target.agreement + '/versions/' + target.versionId;
+    await command({
+      path: path + '/approve',
+      companyId: target.fixture.companyId,
+      key: 'c7-execute-approve',
+      body: {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+      },
+    });
+    await command({
+      path: path + '/signature',
+      companyId: target.fixture.companyId,
+      key: 'c7-execute-sign',
+      body: signaturePayload(),
+    });
+  }
+  async function agreementCounts() {
+    const row = (
+      await pool.query<{
+        contracts: string;
+        versions: string;
+        receipts: string;
+        events: string;
+        counters: string;
+      }>(
+        'SELECT (SELECT count(*) FROM contracts)::text AS contracts,(SELECT count(*) FROM contract_versions)::text AS versions,(SELECT count(*) FROM contract_commands)::text AS receipts,(SELECT count(*) FROM contract_events)::text AS events,(SELECT count(*) FROM contract_reference_counters)::text AS counters',
+      )
+    ).rows[0];
+    if (!row) throw new Error('Missing agreement counts.');
+    return row;
+  }
   async function grantApprover(fixture: PreparedOffer) {
     return command({
       path: '/company-contract-approver-assignments',

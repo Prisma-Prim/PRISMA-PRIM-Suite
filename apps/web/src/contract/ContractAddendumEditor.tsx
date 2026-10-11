@@ -166,10 +166,9 @@ export function ContractAddendumEditor({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const result = await api.request<unknown>(
-        contractPath(opportunityId, contract) +
-          (revising
-            ? '/versions'
-            : '/agreements/' + encodeURIComponent(contract.id) + '/addenda'),
+        revising
+          ? contractPath(opportunityId, contract) + '/versions'
+          : `/contracts/opportunities/${encodeURIComponent(opportunityId)}/agreements/${encodeURIComponent(contract.id)}/addenda`,
         {
           method: 'POST',
           companyContextId: companyId,

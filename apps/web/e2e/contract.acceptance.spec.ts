@@ -323,12 +323,12 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     })
     .click();
   await panel
-    .getByLabel('Special conditions')
+    .getByRole('textbox', { name: 'Special conditions', exact: true })
     .fill(
       'Synthetic Contract special conditions <script>globalThis.contractInjected = true</script>',
     );
-  await panel.getByLabel('Term start').fill('2026-10-01');
-  await panel.getByLabel('Term end').fill('2026-12-31');
+  await panel.getByLabel('Term start', { exact: true }).fill('2026-10-01');
+  await panel.getByLabel('Term end', { exact: true }).fill('2026-12-31');
   const attempts: Array<{ body: string | null; key: string | undefined }> = [];
   const routePattern = '**/api/contracts/opportunities/*';
   await page.route(routePattern, async (route) => {
@@ -355,7 +355,9 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
       'The result is uncertain. Retry the same Contract command.',
     ),
   ).toBeVisible();
-  await expect(panel.getByLabel('Special conditions')).toBeDisabled();
+  await expect(
+    panel.getByRole('textbox', { name: 'Special conditions', exact: true }),
+  ).toBeDisabled();
   await panel.screenshot({
     path: testInfo.outputPath(
       'contract-uncertain-' + suffix.toLowerCase() + '.png',
@@ -2533,6 +2535,523 @@ test('C9 governs a persisted DIRECT Contract without Offer authority', async ({
     path: testInfo.outputPath(
       'c9-real-executed-' + suffix.toLowerCase() + '.png',
     ),
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+test('C7 prepares, executes and references a persisted illustrative Precontract', async ({
+  page,
+  request,
+}, testInfo) => {
+  test.setTimeout(150000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const name = 'Precontract Company ' + suffix;
+  const actor = object(
+    await body(
+      await request.get(api + '/access/current-actor', { headers: preparer }),
+    ),
+  );
+  const membership = text(actor.workspaceMembershipId);
+  const companyId = text(
+    object(
+      await command({
+        request,
+        path: '/companies',
+        data: { displayName: name },
+        key: 'c7-company-' + suffix,
+        administrator: true,
+      }),
+    ).id,
+  );
+  for (const route of [
+    'company-context',
+    'company-director-client',
+    'company-commercial-intake',
+    'company-service-catalogue',
+    'company-pricing-configuration',
+    'company-pricing-user',
+    'company-offer-preparer',
+    'company-offer-approver',
+    'company-contract-preparer',
+    'company-contract-approver',
+    'company-project',
+  ])
+    await command({
+      request,
+      path: '/' + route + '-assignments',
+      data: { workspaceMembershipId: membership, companyId },
+      key: 'c7-grant-' + route + '-' + suffix,
+      administrator: true,
+    });
+  const clientId = text(
+    object(
+      await command({
+        request,
+        path: '/clients',
+        data: {
+          displayName: 'Synthetic Precontract Recipient ' + suffix,
+          taxId: 'SYNTHETIC-C7-OFFER-' + suffix.toUpperCase(),
+          address: '7 Example Street',
+        },
+        key: 'c7-client-' + suffix,
+        companyId,
+      }),
+    ).id,
+  );
+  const intake = object(
+    await command({
+      request,
+      path: '/commercial-intake/requests',
+      data: {
+        originalText: 'Synthetic source for the Precontract browser proof.',
+        subject: 'Precontract Request ' + suffix,
+        clientAccountId: clientId,
+        opportunity: {
+          title: 'Prepare Precontract ' + suffix,
+          scope: 'Synthetic scope',
+          nextAction: 'Start preliminary work',
+        },
+      },
+      key: 'c7-request-' + suffix,
+      companyId,
+    }),
+  );
+  const opportunityId = text(object(intake.initialOpportunity).id);
+  const effectiveFrom = new Date(
+    Date.now() + initialOffset + 60000,
+  ).toISOString();
+  const rule = object(
+    object(
+      await command({
+        request,
+        path: '/pricing-configuration/rule-versions',
+        data: {
+          label: 'Synthetic C7 rule',
+          effectiveFrom,
+          expectedActiveVersionNumber: null,
+        },
+        key: 'c7-rule-' + suffix,
+        companyId,
+      }),
+    ).version,
+  );
+  const definition = object(
+    object(
+      await command({
+        request,
+        path: '/commercial-catalogue/service-definitions',
+        data: {
+          code: 'C7-' + suffix.toUpperCase(),
+          name: 'Illustrative Precontract service',
+          description: null,
+        },
+        key: 'c7-definition-' + suffix,
+        companyId,
+      }),
+    ).definition,
+  );
+  const offering = object(
+    object(
+      await command({
+        request,
+        path: '/commercial-catalogue/offerings',
+        data: {
+          serviceDefinitionId: text(definition.id),
+          commercialLabel: null,
+        },
+        key: 'c7-offering-' + suffix,
+        companyId,
+      }),
+    ).offering,
+  );
+  const tariff = object(
+    object(
+      await command({
+        request,
+        path:
+          '/pricing-configuration/offerings/' +
+          text(offering.id) +
+          '/tariff-versions',
+        data: {
+          unit: 'illustrative-unit',
+          unitAmount: '300.0000',
+          currency: 'EUR',
+          taxRatePercent: '15.00',
+          taxLabel: 'Illustrative tax',
+          effectiveFrom,
+          expectedActiveVersionNumber: null,
+        },
+        key: 'c7-tariff-' + suffix,
+        companyId,
+      }),
+    ).version,
+  );
+  await writeFile(clockFile(), JSON.stringify(initialOffset + 120000));
+  const snapshot = object(
+    await command({
+      request,
+      path: '/pricing/opportunities/' + opportunityId + '/snapshots',
+      data: {
+        pricingRuleVersionNumber: rule.versionNumber,
+        lines: [
+          {
+            offeringId: text(offering.id),
+            tariffVersionNumber: tariff.versionNumber,
+            quantity: '1',
+          },
+        ],
+      },
+      key: 'c7-snapshot-' + suffix,
+      companyId,
+    }),
+  );
+  const offer = object(
+    await command({
+      request,
+      path: '/offers/opportunities/' + opportunityId,
+      data: {
+        pricingSnapshotId: text(snapshot.id),
+        recipient: { kind: 'PRIMARY' },
+        scopeNote: 'Accepted Precontract scope ' + suffix,
+        commercialConditions: 'Accepted Precontract conditions',
+      },
+      key: 'c7-offer-' + suffix,
+      companyId,
+    }),
+  );
+  const versionPath =
+    '/offers/opportunities/' +
+    opportunityId +
+    '/versions/' +
+    text(object(offer.version).id);
+  await command({
+    request,
+    path: versionPath + '/approve',
+    data: { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+    key: 'c7-offer-approve-' + suffix,
+    companyId,
+  });
+  const transmitted = object(
+    await command({
+      request,
+      path: versionPath + '/transmission',
+      data: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      key: 'c7-offer-transmit-' + suffix,
+      companyId,
+    }),
+  );
+  await command({
+    request,
+    path: versionPath + '/client-response',
+    data: {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: text(transmitted.transmittedAt),
+    },
+    key: 'c7-offer-accept-' + suffix,
+    companyId,
+  });
+  // The director records the Client IDNO after the Offer (PRD 19.16 step 1).
+  const clientBefore = object(
+    await body(
+      await request.get(api + '/clients/' + clientId, {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  );
+  expect(
+    (
+      await request.patch(api + '/clients/' + clientId, {
+        headers: {
+          ...preparer,
+          'x-company-context-id': companyId,
+          'idempotency-key': 'c7-idno-' + suffix,
+        },
+        data: {
+          expectedVersion: clientBefore.version,
+          taxId: 'IDNO-C7-' + suffix.toUpperCase(),
+        },
+      })
+    ).status(),
+  ).toBe(200);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?frame=classic#requests');
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(page.getByLabel('Active Company', { exact: true }), {
+    label: name,
+  });
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  const openRequest = () =>
+    page
+      .getByRole('button')
+      .filter({
+        has: page.getByText('Precontract Request ' + suffix, { exact: true }),
+      })
+      .click();
+  await openRequest();
+  const panel = page.getByRole('region', { name: 'Contract', exact: true });
+  const editor = panel.getByRole('region', {
+    name: 'Create Precontract',
+    exact: true,
+  });
+  await editor
+    .getByRole('textbox', { name: 'Preliminary work scope', exact: true })
+    .fill('Synthetic site survey before the Contract');
+  await editor
+    .getByRole('textbox', {
+      name: 'Preliminary financial conditions',
+      exact: true,
+    })
+    .fill('Synthetic advance capped at cost');
+  await editor
+    .getByRole('textbox', { name: 'Limits until the Contract', exact: true })
+    .fill('Synthetic limit: survey only');
+  await editor
+    .getByLabel('Precontract term end', { exact: true })
+    .fill('2099-12-31');
+  await editor.screenshot({
+    path: testInfo.outputPath(
+      'c7-precontract-form-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await editor
+    .getByRole('button', { name: 'Create Precontract', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    panel.getByText('Precontract created.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole('heading', {
+      name: 'Illustrative Precontract',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText('Illustrative reference 1 · Version 1', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByText('Pending approval · Not executed', { exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(
+    panel.getByText('Draft — not approved', { exact: true }),
+  ).toBeVisible();
+  const frame = panel.frameLocator(
+    'iframe[title="Illustrative Contract document"]',
+  );
+  await expect(
+    frame.getByRole('heading', {
+      name: 'Illustrative Precontract',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    frame.getByRole('heading', {
+      name: 'Preliminary work — CL_PRELIMINARY_WORK v1',
+      exact: true,
+    }),
+  ).toBeVisible();
+  const checks = panel.getByRole('region', {
+    name: 'Contract Quality Checks',
+    exact: true,
+  });
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  await expect(checks.getByText('WARNING', { exact: true })).toHaveCount(2);
+  const decision = panel.getByRole('region', {
+    name: 'Contract decision',
+    exact: true,
+  });
+  await expect(decision.getByRole('checkbox')).toHaveCount(2);
+  for (const box of await decision.getByRole('checkbox').all())
+    await box.check();
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    decision.getByText('Approved internally', { exact: true }),
+  ).toBeVisible();
+  const base = '/contracts/opportunities/' + opportunityId;
+  const opened = object(
+    await body(
+      await request.get(api + base, {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      }),
+    ),
+  );
+  const precontractId = text(object(opened.precontract).id);
+  const agreement = base + '/agreements/' + precontractId;
+  const approvedRead = object(
+    object(
+      await body(
+        await request.get(api + agreement, {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  const signingDate = text(
+    object(object(approvedRead.version).decision).decidedAt,
+  ).slice(0, 10);
+  const signatures = panel.getByRole('region', {
+    name: 'Simulated Contract signatures',
+    exact: true,
+  });
+  await signatures
+    .getByLabel('Provider signatory label', { exact: true })
+    .fill('Synthetic provider signatory');
+  await signatures
+    .getByLabel('Client signatory label', { exact: true })
+    .fill('Synthetic Client signatory');
+  await signatures
+    .getByLabel('Provider signing date', { exact: true })
+    .fill(signingDate);
+  await signatures
+    .getByLabel('Client signing date', { exact: true })
+    .fill(signingDate);
+  await signatures
+    .getByRole('button', { name: 'Record both simulated signatures' })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    signatures.getByText('Executed — simulated evidence only', { exact: true }),
+  ).toBeVisible();
+  const late = await request.post(api + agreement + '/versions', {
+    headers: {
+      ...preparer,
+      'x-company-context-id': companyId,
+      'idempotency-key': 'c7-late-' + suffix,
+    },
+    data: {
+      expectedContractRevision: 3,
+      preliminaryWorkScope: 'Late scope',
+      preliminaryFinancialConditions: 'Late conditions',
+      preliminaryLimits: 'Late limits',
+      termEndsOn: '2099-12-31',
+    },
+  });
+  expect(late.status()).toBe(409);
+  expect(await body(late)).toMatchObject({ code: 'CONTRACT_EXECUTED' });
+  const projects = panel.getByRole('region', {
+    name: 'Contract Projects',
+    exact: true,
+  });
+  const creation = projects.getByRole('region', {
+    name: 'Create a preparatory Project',
+    exact: true,
+  });
+  await expect(
+    creation.getByRole('textbox', { name: 'New Project title' }),
+  ).toHaveValue('Prepare Precontract ' + suffix);
+  await creation.getByRole('checkbox').check();
+  await creation
+    .getByRole('button', { name: 'Create and link Project', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    projects.getByText('Prepare Precontract ' + suffix).first(),
+  ).toBeVisible();
+  await command({
+    request,
+    path: agreement + '/addenda',
+    data: {
+      expectedContractRevision: 4,
+      changeSummary: 'Synthetic Precontract change ' + suffix,
+      termEndsOn: '2099-06-30',
+    },
+    key: 'c7-addendum-' + suffix,
+    companyId,
+  });
+  await page.reload();
+  await openRequest();
+  const listed = panel.getByRole('region', {
+    name: 'Precontract',
+    exact: true,
+  });
+  await expect(
+    listed.getByText(
+      'Precontract reference 1 · Version 1 · Approved internally · Executed — simulated evidence only',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await listed
+    .getByRole('button', { name: 'Open Precontract', exact: true })
+    .click();
+  await expect(
+    panel.getByRole('region', { name: 'Addenda', exact: true }),
+  ).toContainText('1');
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c7-precontract-executed-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await panel
+    .getByRole('button', { name: 'Back to the Contract', exact: true })
+    .click();
+  await panel
+    .getByRole('button', { name: 'Create Contract', exact: true })
+    .click();
+  await expect(
+    panel.getByText('Contract created.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole('definition').filter({ hasText: /^1$/u }).first(),
+  ).toBeVisible();
+  await expect(
+    panel.getByRole('term').filter({ hasText: /^Precontract reference$/u }),
+  ).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(panel.locator('iframe')).toHaveAttribute(
+    'srcdoc',
+    /<dt>Precontract reference<\/dt><dd>1<\/dd>/u,
+  );
+  await expect(
+    panel.getByRole('button', { name: 'Create Precontract', exact: true }),
+  ).toHaveCount(0);
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c7-main-contract-reference-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  const refused = await request.post(api + base, {
+    headers: {
+      ...preparer,
+      'x-company-context-id': companyId,
+      'idempotency-key': 'c7-second-precontract-' + suffix,
+    },
+    data: {
+      kind: 'PRECONTRACT',
+      acceptedOfferVersionId: text(object(offer.version).id),
+      preliminaryWorkScope: 'Second scope',
+      preliminaryFinancialConditions: 'Second conditions',
+      preliminaryLimits: 'Second limits',
+      termEndsOn: '2099-12-31',
+    },
+  });
+  expect(refused.status()).toBe(409);
+  expect(await body(refused)).toMatchObject({
+    code: 'CONTRACT_ALREADY_EXISTS',
   });
   expect(
     await page.evaluate(

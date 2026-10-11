@@ -28,13 +28,22 @@ export class ContractProjectLinkStore {
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
 
+  /** The Opportunity main Contract, or an exact agreement by id (PC16). */
   async find(input: {
     actor: ActorContext;
     companyId: string;
     opportunityId: string;
+    contractId?: string;
     lock?: boolean;
   }) {
-    const { actor, companyId, opportunityId, lock = false } = input;
+    const { actor, companyId, opportunityId, contractId, lock = false } = input;
+    if (
+      contractId !== undefined &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+        contractId,
+      )
+    )
+      throw new NotFoundException();
     const query = this.database.connection
       .select({ contract: contracts, version: contractVersions })
       .from(contracts)
@@ -51,7 +60,9 @@ export class ContractProjectLinkStore {
           eq(contracts.workspaceId, actor.workspaceId),
           eq(contracts.companyId, companyId),
           eq(contracts.opportunityId, opportunityId),
-          eq(contracts.kind, 'CONTRACT'),
+          contractId === undefined
+            ? eq(contracts.kind, 'CONTRACT')
+            : eq(contracts.id, contractId),
         ),
       )
       .orderBy(desc(contractVersions.versionNumber))
@@ -66,7 +77,10 @@ export class ContractProjectLinkStore {
   requireExecuted(
     current: Awaited<ReturnType<ContractProjectLinkStore['find']>>,
   ) {
-    if (current.contract.kind !== 'CONTRACT')
+    if (
+      current.contract.kind !== 'CONTRACT' &&
+      current.contract.kind !== 'PRECONTRACT'
+    )
       throw projectLinkConflict('CONTRACT_KIND_NOT_LINKABLE');
     if (current.version.executionState !== 'EXECUTED')
       throw projectLinkConflict('CONTRACT_NOT_EXECUTED');
@@ -213,6 +227,12 @@ export class ContractProjectLinkStore {
   }
 }
 
+/** Agreement-scoped routes name the exact agreement; others keep the main Contract. */
+export function agreementTarget(input: {
+  contractId?: string;
+}): { contractId: string } | Record<string, never> {
+  return input.contractId === undefined ? {} : { contractId: input.contractId };
+}
 export function contractProjectLinkView(row: LinkRow) {
   return {
     id: row.id,

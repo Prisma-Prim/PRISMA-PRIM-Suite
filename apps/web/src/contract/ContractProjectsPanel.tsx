@@ -7,7 +7,7 @@ import {
 } from '../api/authenticated-api-client';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useProjectLifecycleCopy } from '../project/project-lifecycle-localized.copy';
-import type { ContractView } from './contract-response';
+import { contractPath, type ContractView } from './contract-response';
 import { ContractProjectCreatePanel } from './ContractProjectCreatePanel';
 import { useContractProjectsCopy } from './contract-projects.copy';
 import {
@@ -107,7 +107,7 @@ export function ContractProjectsPanel({
         const api = await createAuthenticatedApiClient(identity);
         if (controller.signal.aborted) return;
         const result = await api.request<unknown>(
-          `/contracts/opportunities/${encodeURIComponent(opportunityId)}/project-candidates`,
+          `${contractPath(opportunityId, contract)}/project-candidates`,
           { companyContextId: companyId, signal: controller.signal },
         );
         if (controller.signal.aborted) return;
@@ -183,7 +183,7 @@ export function ContractProjectsPanel({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}/projects`,
+        `${contractPath(opportunityId, contract)}/projects`,
         {
           method: 'POST',
           companyContextId: companyId,
@@ -320,7 +320,7 @@ export function ContractProjectsPanel({
                             {project.otherContracts
                               .map(
                                 (other) =>
-                                  `${copy('reference')} ${other.illustrativeReference}`,
+                                  `${copy(other.kind === 'PRECONTRACT' ? 'precontractReference' : 'reference')} ${other.illustrativeReference}`,
                               )
                               .join(', ')}
                           </span>
@@ -362,6 +362,7 @@ export function ContractProjectsPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               contractId={contract.id}
+              contractKind={contract.kind}
               revision={contract.revision}
               initialTitle={opportunityTitle}
               candidates={load.kind === 'ready' ? load.items : undefined}

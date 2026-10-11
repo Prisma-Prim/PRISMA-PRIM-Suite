@@ -2562,7 +2562,7 @@ function contractEventMetadata(
       return { kind: 'CONTRACT', origin: 'DIRECT' };
     case 'ACCEPTED_OFFER':
       return {
-        kind: 'CONTRACT',
+        kind: source.contractKind,
         origin: 'ACCEPTED_OFFER',
         offerVersionId: source.offerVersionId,
       };

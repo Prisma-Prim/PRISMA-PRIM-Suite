@@ -10,6 +10,15 @@ export const CONTRACT_CLAUSE_VERSIONS = [
   { code: 'CL_CONDITIONS', version: 1 },
   { code: 'CL_GENERAL', version: 1 },
 ] as const;
+export const PRECONTRACT_TEMPLATE_CODE = 'PRECONTRACT_ILLUSTRATIVE';
+export const PRECONTRACT_CLAUSE_VERSIONS = [
+  { code: 'CL_SUBJECT', version: 1 },
+  { code: 'CL_PRICE', version: 1 },
+  { code: 'CL_TERM', version: 1 },
+  { code: 'CL_CONDITIONS', version: 1 },
+  { code: 'CL_PRELIMINARY_WORK', version: 1 },
+  { code: 'CL_GENERAL', version: 1 },
+] as const;
 export const ADDENDUM_CLAUSE_VERSIONS = [
   { code: 'CL_SUBJECT', version: 1 },
   { code: 'CL_PRICE', version: 1 },
@@ -60,8 +69,56 @@ export interface RenderContractRepresentationInput {
   readonly termStartsOn: string | null;
   readonly termEndsOn: string | null;
   readonly specialConditions: string | null;
+  readonly precontractReference: number | null;
   readonly provenance: 'ILLUSTRATIVE';
 }
+export interface RenderPrecontractRepresentationInput extends Omit<
+  RenderContractRepresentationInput,
+  'sourceOffer' | 'termEndsOn' | 'precontractReference'
+> {
+  readonly sourceOffer: {
+    readonly illustrativeReference: number;
+    readonly versionNumber: number;
+  };
+  readonly termEndsOn: string;
+  readonly preliminaryWork: PreliminaryWork;
+}
+export interface PreliminaryWork {
+  readonly scope: string;
+  readonly financialConditions: string;
+  readonly limits: string;
+}
+/** Server-fixed Template binding and kind-specific entered content (PRD 19.7). */
+export function agreementGenerationFields(
+  command:
+    | { readonly kind: 'CONTRACT' }
+    | {
+        readonly kind: 'PRECONTRACT';
+        readonly preliminaryWork: PreliminaryWork;
+      },
+) {
+  return command.kind === 'PRECONTRACT'
+    ? {
+        templateCode: PRECONTRACT_TEMPLATE_CODE,
+        templateVersion: CONTRACT_TEMPLATE_VERSION,
+        clauseVersions: PRECONTRACT_CLAUSE_VERSIONS,
+        preliminaryWorkScope: command.preliminaryWork.scope,
+        preliminaryFinancialConditions:
+          command.preliminaryWork.financialConditions,
+        preliminaryLimits: command.preliminaryWork.limits,
+      }
+    : {
+        templateCode: CONTRACT_TEMPLATE_CODE,
+        templateVersion: CONTRACT_TEMPLATE_VERSION,
+        clauseVersions: CONTRACT_CLAUSE_VERSIONS,
+        preliminaryWorkScope: null,
+        preliminaryFinancialConditions: null,
+        preliminaryLimits: null,
+      };
+}
+type AgreementLayout =
+  | { readonly kind: 'CONTRACT'; readonly precontractReference: number | null }
+  | { readonly kind: 'PRECONTRACT'; readonly preliminaryWork: PreliminaryWork };
 
 export function renderContractRepresentation(
   input: RenderContractRepresentationInput,
@@ -70,9 +127,62 @@ export function renderContractRepresentation(
   if (
     input.templateCode !== CONTRACT_TEMPLATE_CODE ||
     input.templateVersion !== CONTRACT_TEMPLATE_VERSION ||
-    !supportedClauses(input.clauseVersions)
+    !supportedClauses(input.clauseVersions, CONTRACT_CLAUSE_VERSIONS)
   )
     throw new Error('The stored Contract generation binding is unsupported.');
+  const html = renderAgreementHtml(input, {
+    kind: 'CONTRACT',
+    precontractReference: input.precontractReference,
+  });
+  return {
+    templateCode: CONTRACT_TEMPLATE_CODE,
+    templateVersion: CONTRACT_TEMPLATE_VERSION,
+    clauseVersions: CONTRACT_CLAUSE_VERSIONS,
+    html,
+    sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
+  };
+}
+export function renderPrecontractRepresentation(
+  input: RenderPrecontractRepresentationInput,
+) {
+  if (
+    input.templateCode !== PRECONTRACT_TEMPLATE_CODE ||
+    input.templateVersion !== 1 ||
+    !supportedClauses(input.clauseVersions, PRECONTRACT_CLAUSE_VERSIONS)
+  )
+    throw new Error(
+      'The stored Precontract generation binding is unsupported.',
+    );
+  const html = renderAgreementHtml(input, {
+    kind: 'PRECONTRACT',
+    preliminaryWork: input.preliminaryWork,
+  });
+  return {
+    templateCode: PRECONTRACT_TEMPLATE_CODE,
+    templateVersion: 1,
+    clauseVersions: PRECONTRACT_CLAUSE_VERSIONS,
+    html,
+    sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
+  };
+}
+function renderAgreementHtml(
+  input: Omit<
+    RenderContractRepresentationInput,
+    | 'templateCode'
+    | 'templateVersion'
+    | 'clauseVersions'
+    | 'precontractReference'
+  >,
+  layout: AgreementLayout,
+): string {
+  const title =
+    layout.kind === 'CONTRACT'
+      ? 'Illustrative Contract'
+      : 'Illustrative Precontract';
+  const clauses =
+    layout.kind === 'CONTRACT'
+      ? CONTRACT_CLAUSE_VERSIONS
+      : PRECONTRACT_CLAUSE_VERSIONS;
   const currency = escapeHtml(input.currency);
   const rows = input.lines
     .map((line) => {
@@ -84,21 +194,23 @@ export function renderContractRepresentation(
       );
     })
     .join('');
-  const html = [
+  return [
     '<!doctype html>',
     '<html lang="en">',
-    `<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Illustrative Contract</title><style>*,*::before,*::after{box-sizing:border-box}body{margin:0;padding:1rem;font-family:system-ui,sans-serif;color:#172033}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{padding:.5rem;text-align:left;vertical-align:top;border:1px solid #cbd5e1;overflow-wrap:anywhere}dl{display:grid;grid-template-columns:minmax(8rem,1fr) 2fr;gap:.5rem 1rem}dt{font-weight:700}dd{margin:0;overflow-wrap:anywhere}p,dd{white-space:pre-wrap}section{margin-block:1.5rem}@media(max-width:30rem){dl{grid-template-columns:1fr}th,td{font-size:.75rem;padding:.25rem}}</style></head>`,
+    `<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>${title}</title><style>*,*::before,*::after{box-sizing:border-box}body{margin:0;padding:1rem;font-family:system-ui,sans-serif;color:#172033}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{padding:.5rem;text-align:left;vertical-align:top;border:1px solid #cbd5e1;overflow-wrap:anywhere}dl{display:grid;grid-template-columns:minmax(8rem,1fr) 2fr;gap:.5rem 1rem}dt{font-weight:700}dd{margin:0;overflow-wrap:anywhere}p,dd{white-space:pre-wrap}section{margin-block:1.5rem}@media(max-width:30rem){dl{grid-template-columns:1fr}th,td{font-size:.75rem;padding:.25rem}}</style></head>`,
     '<body>',
     '<article aria-labelledby="contract-title">',
-    '<header><p><strong>Provisional illustrative document — cannot be accepted — no legal effect — no official number — not a signed agreement — clauses are placeholders</strong></p><h1 id="contract-title">Illustrative Contract</h1></header>',
-    `<section aria-labelledby="contract-details-title"><h2 id="contract-details-title">Contract details</h2><dl>${details(
+    `<header><p><strong>Provisional illustrative document — cannot be accepted — no legal effect — no official number — not a signed agreement — clauses are placeholders</strong></p><h1 id="contract-title">${title}</h1></header>`,
+    `<section aria-labelledby="contract-details-title"><h2 id="contract-details-title">${layout.kind === 'CONTRACT' ? 'Contract' : 'Precontract'} details</h2><dl>${details(
       [
         ['Issuing Company', input.issuingCompanyLabel],
         ['Recipient legal name', input.recipient.legalName],
         ['Recipient tax ID', input.recipient.taxId],
         ['Recipient legal address', input.recipient.legalAddress],
         [
-          'Illustrative Contract reference',
+          layout.kind === 'CONTRACT'
+            ? 'Illustrative Contract reference'
+            : 'Illustrative Precontract reference',
           String(input.illustrativeReference),
         ],
         ['Contract Version', String(input.versionNumber)],
@@ -115,7 +227,16 @@ export function renderContractRepresentation(
               ],
             ] satisfies [string, string][])
           : ([['Source', 'Direct origin']] satisfies [string, string][])),
-        ['Precontract reference', null],
+        ...(layout.kind === 'CONTRACT'
+          ? ([
+              [
+                'Precontract reference',
+                layout.precontractReference === null
+                  ? null
+                  : String(layout.precontractReference),
+              ],
+            ] satisfies [string, string | null][])
+          : []),
       ],
     )}</dl></section>`,
     clause(
@@ -156,12 +277,35 @@ export function renderContractRepresentation(
         ['Special conditions', input.specialConditions],
       ])}</dl>`,
     ),
+    ...(layout.kind === 'PRECONTRACT'
+      ? [
+          clause(
+            'CL_PRELIMINARY_WORK',
+            'Preliminary work',
+            `<dl>${details([
+              ['Preliminary work scope', layout.preliminaryWork.scope],
+              [
+                'Preliminary financial conditions',
+                layout.preliminaryWork.financialConditions,
+              ],
+              ['Limits until the Contract', layout.preliminaryWork.limits],
+            ])}</dl>`,
+          ),
+        ]
+      : []),
     clause('CL_GENERAL', 'General', ''),
     `<footer><dl>${details([
-      ['Template Version', 'CONTRACT_ILLUSTRATIVE v1 (unapproved)'],
+      [
+        'Template Version',
+        (layout.kind === 'CONTRACT'
+          ? CONTRACT_TEMPLATE_CODE
+          : PRECONTRACT_TEMPLATE_CODE) + ' v1 (unapproved)',
+      ],
       [
         'Clause Versions',
-        'CL_SUBJECT v1, CL_PRICE v1, CL_TERM v1, CL_CONDITIONS v1, CL_GENERAL v1',
+        clauses
+          .map((entry) => entry.code + ' v' + String(entry.version))
+          .join(', '),
       ],
       ['Pricing Snapshot id', input.pricingSnapshotId],
       ['Provenance', input.provenance],
@@ -170,22 +314,18 @@ export function renderContractRepresentation(
     '</body>',
     '</html>',
   ].join('\n');
-  return {
-    templateCode: CONTRACT_TEMPLATE_CODE,
-    templateVersion: CONTRACT_TEMPLATE_VERSION,
-    clauseVersions: CONTRACT_CLAUSE_VERSIONS,
-    html,
-    sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
-  };
 }
-function supportedClauses(value: unknown): boolean {
+function supportedClauses(
+  value: unknown,
+  clauses: ReadonlyArray<{ readonly code: string; readonly version: number }>,
+): boolean {
   return (
     Array.isArray(value) &&
-    value.length === CONTRACT_CLAUSE_VERSIONS.length &&
+    value.length === clauses.length &&
     value.every((entry: unknown, index) => {
       if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
         return false;
-      const expected = CONTRACT_CLAUSE_VERSIONS[index];
+      const expected = clauses[index];
       return (
         expected !== undefined &&
         'code' in entry &&

@@ -27,13 +27,12 @@ import {
   readCreateContractVersionCommand,
   readAddendumCommand,
   readDirectVersionCommand,
+  readPrecontractVersionCommand,
   selectedAddendumSnapshotId,
 } from './contract.validation.js';
 import {
-  CONTRACT_TEMPLATE_CODE,
-  CONTRACT_TEMPLATE_VERSION,
-  CONTRACT_CLAUSE_VERSIONS,
   ADDENDUM_CLAUSE_VERSIONS,
+  agreementGenerationFields,
 } from './contract-representation.js';
 
 type ContractRow = typeof contracts.$inferSelect;
@@ -170,22 +169,7 @@ export async function createContractVersion(
         if (!stored) throw new Error('Missing recorded Contract Version.');
         return createdVersionResult(stored.contract, stored.version);
       }
-      const command =
-        found.contract.kind === 'ADDENDUM'
-          ? {
-              ...readAddendumCommand(input.payload),
-              scopeNote: null,
-              commercialConditions: null,
-            }
-          : found.contract.origin === 'DIRECT'
-            ? readDirectVersionCommand(input.payload)
-            : {
-                ...readCreateContractVersionCommand(input.payload),
-                changeSummary: null,
-                scopeNote: null,
-                commercialConditions: null,
-                pricingSnapshotId: found.version.pricingSnapshotId,
-              };
+      const command = readVersionCommand(found, input.payload);
       const source =
         found.contract.origin !== 'ACCEPTED_OFFER'
           ? null
@@ -262,15 +246,13 @@ export async function createContractVersion(
           termEndsOn: command.termEndsOn,
           specialConditions: command.specialConditions,
           changeSummary: command.changeSummary,
-          templateCode:
-            current.contract.kind === 'ADDENDUM'
-              ? 'ADDENDUM_ILLUSTRATIVE'
-              : CONTRACT_TEMPLATE_CODE,
-          templateVersion: CONTRACT_TEMPLATE_VERSION,
-          clauseVersions:
-            current.contract.kind === 'ADDENDUM'
-              ? ADDENDUM_CLAUSE_VERSIONS
-              : CONTRACT_CLAUSE_VERSIONS,
+          ...(command.generation.kind === 'ADDENDUM'
+            ? {
+                templateCode: 'ADDENDUM_ILLUSTRATIVE',
+                templateVersion: 1,
+                clauseVersions: ADDENDUM_CLAUSE_VERSIONS,
+              }
+            : agreementGenerationFields(command.generation)),
           createdByInternalUserId: actor.internalUserId,
           createdByWorkspaceMembershipId: actor.workspaceMembershipId,
           createdAt,
@@ -322,6 +304,46 @@ export async function createContractVersion(
           'The Contract Version outcome is uncertain. Retry the identical command.',
       });
     });
+}
+/** Kind-specific entered fields; inherited source content stays server-owned. */
+function readVersionCommand(
+  found: { contract: ContractRow; version: VersionRow },
+  payload: unknown,
+) {
+  const inherited = {
+    changeSummary: null,
+    scopeNote: null,
+    commercialConditions: null,
+    pricingSnapshotId: found.version.pricingSnapshotId,
+  };
+  if (found.contract.kind === 'ADDENDUM')
+    return {
+      ...readAddendumCommand(payload),
+      scopeNote: null,
+      commercialConditions: null,
+      generation: { kind: 'ADDENDUM' } as const,
+    };
+  if (found.contract.kind === 'PRECONTRACT') {
+    const entered = readPrecontractVersionCommand(payload);
+    return {
+      ...entered,
+      ...inherited,
+      generation: {
+        kind: 'PRECONTRACT',
+        preliminaryWork: entered.preliminaryWork,
+      } as const,
+    };
+  }
+  if (found.contract.origin === 'DIRECT')
+    return {
+      ...readDirectVersionCommand(payload),
+      generation: { kind: 'CONTRACT' } as const,
+    };
+  return {
+    ...readCreateContractVersionCommand(payload),
+    ...inherited,
+    generation: { kind: 'CONTRACT' } as const,
+  };
 }
 function createdVersionResult(contract: ContractRow, version: VersionRow) {
   return {

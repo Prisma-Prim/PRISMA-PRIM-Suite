@@ -1,9 +1,73 @@
 import { BadRequestException } from '@nestjs/common';
-export interface CreateContractCommand {
+import type { PreliminaryWork } from './contract-representation.js';
+interface AcceptedOfferCreation {
   readonly acceptedOfferVersionId: string;
   readonly termStartsOn: string | null;
-  readonly termEndsOn: string | null;
   readonly specialConditions: string | null;
+}
+export type CreateContractCommand =
+  | (AcceptedOfferCreation & {
+      readonly kind: 'CONTRACT';
+      readonly termEndsOn: string | null;
+    })
+  | (AcceptedOfferCreation & {
+      readonly kind: 'PRECONTRACT';
+      readonly termEndsOn: string;
+      readonly preliminaryWork: PreliminaryWork;
+    });
+const PRELIMINARY_FIELDS = [
+  'preliminaryWorkScope',
+  'preliminaryFinancialConditions',
+  'preliminaryLimits',
+] as const;
+/** Session 20 preliminary work and its required term end (PRD §19.2, PC4). */
+function readPrecontractFields(input: Record<string, unknown>) {
+  const entered = readEnteredContractFields(input);
+  if (entered.termEndsOn === null) throw invalid('termEndsOn');
+  return {
+    ...entered,
+    termEndsOn: entered.termEndsOn,
+    preliminaryWork: {
+      scope: directText(
+        input.preliminaryWorkScope,
+        'preliminaryWorkScope',
+        2000,
+        true,
+      ),
+      financialConditions: directText(
+        input.preliminaryFinancialConditions,
+        'preliminaryFinancialConditions',
+        2000,
+        true,
+      ),
+      limits: directText(
+        input.preliminaryLimits,
+        'preliminaryLimits',
+        2000,
+        true,
+      ),
+    },
+  };
+}
+export function readPrecontractVersionCommand(value: unknown) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw invalid('body');
+  const input = Object.fromEntries(Object.entries(value));
+  for (const key of Object.keys(input))
+    if (
+      ![
+        'expectedContractRevision',
+        'termStartsOn',
+        'termEndsOn',
+        'specialConditions',
+        ...PRELIMINARY_FIELDS,
+      ].includes(key)
+    )
+      throw invalid(key);
+  const { expectedContractRevision } = readCreateContractVersionCommand({
+    expectedContractRevision: input.expectedContractRevision,
+  });
+  return { expectedContractRevision, ...readPrecontractFields(input) };
 }
 export function readCreateContractVersionCommand(value: unknown) {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
@@ -40,13 +104,18 @@ export function readCreateContractCommand(
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw invalid('body');
   const input = Object.fromEntries(Object.entries(value));
+  // An absent kind keeps every delivered main-Contract request unchanged.
+  const kind = input.kind === undefined ? 'CONTRACT' : input.kind;
+  if (kind !== 'CONTRACT' && kind !== 'PRECONTRACT') throw invalid('kind');
   for (const key of Object.keys(input))
     if (
       ![
+        'kind',
         'acceptedOfferVersionId',
         'termStartsOn',
         'termEndsOn',
         'specialConditions',
+        ...(kind === 'PRECONTRACT' ? PRELIMINARY_FIELDS : []),
       ].includes(key)
     )
       throw invalid(key);
@@ -58,7 +127,9 @@ export function readCreateContractCommand(
     )
   )
     throw invalid('acceptedOfferVersionId');
-  return { acceptedOfferVersionId, ...readEnteredContractFields(input) };
+  return kind === 'PRECONTRACT'
+    ? { kind, acceptedOfferVersionId, ...readPrecontractFields(input) }
+    : { kind, acceptedOfferVersionId, ...readEnteredContractFields(input) };
 }
 // Resolve recognizable selected-resource authority before key resolution. Full
 // field validation follows receipt resolution, including malformed identities.

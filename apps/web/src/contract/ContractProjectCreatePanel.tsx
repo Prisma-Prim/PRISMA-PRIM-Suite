@@ -6,6 +6,7 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { useContractProjectCreateCopy } from './contract-project-create.copy';
+import { contractPath, type ContractView } from './contract-response';
 import {
   readCreatedContractProject,
   type ContractProjectLink,
@@ -29,6 +30,7 @@ export function ContractProjectCreatePanel({
   companyId,
   opportunityId,
   contractId,
+  contractKind,
   revision,
   initialTitle,
   candidates,
@@ -42,6 +44,7 @@ export function ContractProjectCreatePanel({
   companyId: string;
   opportunityId: string;
   contractId: string;
+  contractKind: ContractView['kind'];
   revision: number;
   initialTitle: string;
   candidates: readonly ProjectSummary[] | undefined;
@@ -122,7 +125,7 @@ export function ContractProjectCreatePanel({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}/projects/create`,
+        `${contractPath(opportunityId, { id: contractId, kind: contractKind })}/projects/create`,
         {
           method: 'POST',
           companyContextId: companyId,

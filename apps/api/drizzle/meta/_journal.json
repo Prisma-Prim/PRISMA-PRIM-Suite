@@ -435,6 +435,13 @@
       "when": 1791551759264,
       "tag": "0061_contract_direct_origin",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1791704361311,
+      "tag": "0062_contract_precontracts",
+      "breakpoints": true
     }
   ]
 }
