@@ -85,7 +85,7 @@ This PRD decides the complete R3A1 contract below. Later R3A changes and R3B–R
 - Client Request and Opportunity are distinct. One Request may yield no Opportunity or several Opportunities; every Opportunity has one responsible Company.
 - R3A1 creates exactly one Company-owned Request and one same-Company initial Opportunity atomically.
 - A captured Request starts at version 1 whether it has an original Client reference or not. Only a version 1 Request whose stored original Client reference is absent may make the one-time transition in section 20 to version 2 with a Client reference.
-- Opportunity durable status and configurable sales stage remain separate. R3A1 creates status `OPEN` and no sales stage. Section 23 owns outcome status changes.
+- Opportunity durable status and configurable sales stage remain separate. R3A1 creates status `OPEN` and no sales stage. Section 23 owns outcome status changes, and section 24 owns configurable Sales Stages.
 - Original Request text and source metadata are immutable. Interpretation, assessment and correction are later attributed facts.
 - Pricing is deterministic and produces an immutable Pricing Snapshot.
 - Offer identity is durable; each Offer Version is complete and immutable once approved or transmitted.
@@ -314,9 +314,9 @@ Its grant and revocation are attributable through the assignment-lifecycle event
 
 A commercial event is projected only when the actor has an active membership, the server-validated active Company equals the event's responsible Company, that Company scope holds `commercial.activity.read`, and the actor can currently read the event's commercial target: `commercial.request.read` for a Request target and `commercial.opportunity.read` for an Opportunity target. Partial authority fails closed. Without an active Company, commercial events are omitted rather than widened to Workspace scope.
 
-Only the known actions `client_request.created`, `opportunity.created`, `opportunity.next_action.updated`, `opportunity.responsible.changed` and, once section 23 is delivered, `opportunity.outcome.changed` are eligible; `client_request.client_associated` becomes eligible only when its owning implementation is delivered. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice itself adds no producer or lifecycle for any action.
+Only the known actions `client_request.created`, `opportunity.created`, `opportunity.next_action.updated`, `opportunity.responsible.changed` and, once their sections are delivered, `opportunity.outcome.changed` (section 23) and `opportunity.stage.changed` (section 24) are eligible; `client_request.client_associated` becomes eligible only when its owning implementation is delivered. Unknown actions and malformed metadata fail closed. Each action still requires its current target read authority; adding a future action requires its owning contract and explicit validated projection. Event visibility is never broader than target visibility. The reader slice itself adds no producer or lifecycle for any action.
 
-A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target. For `opportunity.responsible.changed` the projection additionally returns the previous and new responsible actor as membership identifier and captured display label, not the version. For `opportunity.outcome.changed` it returns the previous and new status and the loss reason code when present, not the version. Any other metadata shape fails closed.
+A projected event returns its canonical action, the responsible Company, the actor label already used by the Activity Log, the server-authoritative time and a readable target reference. It returns no original request text, source label, subject, next-action text, Opportunity scope or Client-confidential content, and it offers a target link only where the actor may already read that target. For `opportunity.responsible.changed` the projection additionally returns the previous and new responsible actor as membership identifier and captured display label, not the version. For `opportunity.outcome.changed` it returns the previous and new status and the loss reason code when present, not the version. For `opportunity.stage.changed` it returns the previous and new stage labels captured at the change, not the version or identifiers. Any other metadata shape fails closed.
 
 ### 17.4 Error, empty and permission states
 
@@ -1218,3 +1218,93 @@ Provisional choices for Iurie's validation:
 Excluded: Sales Stages; automatic status changes from Offers, Contracts or Projects; user-entered effective dates; reminders for held Opportunities; configurable reason lists; list filters by status; dashboards, conversion reports and forecasting; bulk changes; deletion; transfer between Companies.
 
 Open and not presented as business fact: whether `WON` should later require an Accepted Offer or a signed Contract; whether closing should withdraw open Offers; who besides Iurie may close or reopen an Opportunity; and which disqualification reasons Iurie uses (S04-Q07 was never asked).
+## 24. Approved provisional configurable Sales Stage (SO-2)
+
+This section normalizes one reversible MVP execution choice under the provisional authority of sections 1 and 15. It is not confirmed Iurie business policy. It decides how an authorized user configures a Company's Sales Stages and how an authorized user assigns one to an Opportunity. It is independent of the outcome-status contract (section 23): the outcome status and the stage never change each other, and either contract may be approved and delivered first.
+
+Sources:
+
+- decision record §14.3 and DEC-104: tenant-specific commercial steps are configurable stage definitions, separate from the stable status; the example labels (qualification, technical review, pricing, offer preparation, negotiation) are examples, not mandatory stages;
+- decision record §18.1, DEC-037 precedent and the [UX/Configuration PRD](ux-localization-configuration-prd.md#8-configuration) §8: typed, bounded configuration with stable identifiers, attribution and new versions instead of silent rewriting; a changed label never changes stored meaning;
+- section 7: R3A1 creates no sales stage; sections 16 and 21 never change it, and neither does the outcome-status command;
+- issue #81 session 92 (S04-Q08, Partial): example follow-up steps “apel client, clarificare, negociere, așteptare răspuns, pregătire contract”; session 11: probability may vary by commercial stage, which is excluded here;
+- MASTER §9: stages are configurable and may differ by service type (stated for Projects; service-type variation is deferred here).
+
+The scope, permissions, operations, limits and history rules below are delegated provisional choices. Iurie validates them against a demonstration.
+
+### 24.1 Sales Stage definition
+
+A Sales Stage belongs to exactly one Company. It has:
+
+- a stable server-generated identifier;
+- a label: 1–80 characters with at least one non-whitespace character, stored exactly as submitted; unique within the Company ignoring case, including retired stages;
+- a position in the Company's ordered list;
+- a state, `ACTIVE` or `RETIRED`.
+
+A Company starts with no stage. No default, seed or migration creates one, and an Opportunity without a stage is valid. A Company holds at most 30 stages. Workspace-wide defaults, per-service-type stage lists, localized labels per stage and probabilities are deferred.
+
+### 24.2 Configuration operations
+
+| Operation | Effect                                                                    | Constraint                                  |
+| --------- | ------------------------------------------------------------------------- | ------------------------------------------- |
+| Create    | Adds an `ACTIVE` stage at the end of the list.                            | Label rules; at most 30 stages              |
+| Rename    | Replaces the label; the identifier and every assignment stay unchanged.   | Label rules; a different label              |
+| Move      | Places the stage at a new position; the others keep their relative order. | A position inside the list; a different one |
+| Retire    | `ACTIVE` → `RETIRED`: the stage can no longer be newly assigned.          | —                                           |
+| Restore   | `RETIRED` → `ACTIVE`.                                                     | —                                           |
+
+A stage is never deleted. Retiring a stage leaves every current assignment in place; such an Opportunity shows the stage with a retired marker until someone assigns another stage or clears it. Renaming changes the label shown everywhere for the current assignment, while history keeps the label captured at each event (section 24.5).
+
+The Company's stage list has one configuration revision, starting at 1 and incremented by every committed operation. Each operation carries the observed revision and an idempotency key, and applies the section 16.4 expected-version, durable receipt, replay-before-staleness, revocation, changed-payload and concurrency rules in its own key space. A stale revision returns `STALE_CONFIGURATION`. A rename to the same label, a move to the same position, retiring a retired stage or restoring an active one returns `409 SALES_STAGE_UNCHANGED` and commits nothing; a duplicate label returns field validation `SALES_STAGE_LABEL_TAKEN`; a 31st stage returns `409 SALES_STAGE_LIMIT`.
+
+### 24.3 Permissions
+
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns two captured additions. Both are effective only while the same actor also holds live captured Commercial Intake read (`commercial.request.read`, `commercial.opportunity.read`) and Company context in that Company; partial authority returns the safe denial. Null or unknown captured versions fail closed, and existing assignments never expand in place.
+
+- **Company Sales Stage Configuration v1**, exactly `commercial.sales_stage.configure`: an independent opt-in bundle for the section 24.2 operations. First-tenant configuration grants it only to Iurie's memberships.
+- **Company Commercial Intake v4**: v3 plus `commercial.opportunity.stage.set`. Assigning a stage is routine commercial follow-up, like the next action (section 16.2), so any holder of the captured v4 bundle in the responsible Company may assign or clear a stage. Only revocation followed by a fresh grant captures v4.
+
+Reading the stage list, an Opportunity's current stage and its stage history requires only Commercial Intake read in the responsible Company.
+
+### 24.4 Assigning a stage to an Opportunity
+
+The command carries the Opportunity identifier, the observed Opportunity version, an idempotency key and exactly one business field: an `ACTIVE` stage identifier of the Opportunity's Company, or null to clear the stage. It shares the Opportunity version with sections 16 and 21, and with the outcome-status command once delivered, and applies the section 16.4 rules in its own key space. Submitting the current stage, or null when no stage is assigned, is a no-op that still passes authority, visibility and expected-version checks and stores an unchanged receipt without an event.
+
+A retired, unknown or other-Company stage returns one uniform `409 SALES_STAGE_UNAVAILABLE`. The stage's state is read under a lock that serializes assignment with retirement, so no assignment commits to a stage retired in the same instant.
+
+A material change atomically updates the stage, the incremented version and the last-mutation attribution, and records the history entry, the receipt and one event. Status, title, scope, Request, Client association, next action, responsible actor and Company never change through it. The command is accepted in every outcome status. No Offer, Contract, pricing or Project command reads or changes the stage.
+
+### 24.5 History and Activity
+
+Each material assignment records one durable history entry: previous and new stage identifiers with the labels captured at the change, the resulting Opportunity version, the acting membership with its captured display label, and server time. The Request detail returns it newest first, bounded to the 50 most recent entries.
+
+Events, each attributed to the acting membership and scoped to the Company:
+
+- `opportunity.stage.changed`, targeting the Opportunity, with metadata exactly the resulting version and the previous and new stage, each as identifier and captured label or null;
+- `sales_stage.configured`, targeting the stage, with metadata exactly the operation (`CREATED`, `RENAMED`, `MOVED`, `RETIRED`, `RESTORED`), the resulting configuration revision, and the label after the operation plus the previous label for a rename.
+
+Section 17.3 projects `opportunity.stage.changed` under the same rules as the other Opportunity actions, returning the previous and new stage labels. `sales_stage.configured` is recorded but, like pricing configuration events, not projected in this slice; its projection is deferred. Rejected commands, safe denials, no-ops and exact replays record nothing.
+
+### 24.6 Interface, errors and acceptance
+
+A Sales Stage settings view in the active Company lists the stages in order with their state. Holders of the configuration bundle create, rename, move, retire and restore stages there; other Commercial Intake readers see the list read-only. The Request detail shows the current stage, with a retired marker when applicable, and its history; the Request list shows the stage of each row. Holders of `commercial.opportunity.stage.set` choose among `ACTIVE` stages in order, or clear the stage, through an editor that applies the section 16.6 states and the one-open-editor rule. With no stage configured, the editor explains that a configuration holder must create one first.
+
+Errors: missing identity `401`; missing or legacy bundle, missing prerequisite or invalid Company `403`; unknown, cross-Company or cross-Workspace Opportunity or stage returns the section 16.6 safe not-found or `SALES_STAGE_UNAVAILABLE`; the conflicts named above.
+
+The highest stable seam is the public REST interface against PostgreSQL, then the browser journey from an empty Company: create a stage, assign it, reload, rename it, retire it, see the assignment preserved with its retired marker and history, and fail to assign the retired stage. Acceptance also proves authority and revocation, v3-only denial, Company and Workspace isolation, stale and replay behaviour and desktop and narrow views.
+
+### 24.7 Delivery order, provisional choices and exclusions
+
+A first complete slice may deliver Create, assignment, clearing, history and the reads. Rename, Move, Retire and Restore may follow as separate complete outcomes because, until they exist, no operation can make an assignment unintelligible. Each later operation must preserve every rule above.
+
+Provisional choices for Iurie's validation:
+
+- stages are configured per Company, with no default list;
+- only Iurie configures stages, while every Commercial Intake v4 holder assigns them;
+- labels are unique, at most 30 stages, and no deletion;
+- a retired stage stays on its current Opportunities;
+- assignment is independent of the outcome status.
+
+Excluded: default or seeded stages; Workspace-wide or per-service-type lists; localized stage labels; probabilities, weighting, forecasting and pipeline reports; automatic stage movement from Offers, Contracts or the outcome status; required stages before a status change; reminders; bulk assignment; deletion.
+
+Open and not presented as business fact: Iurie's actual stage vocabulary (S04-Q08 is Partial); whether stages differ by service type; whether closing an Opportunity should clear or freeze its stage.
