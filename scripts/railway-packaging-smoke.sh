@@ -27,6 +27,33 @@ cleanup() {
 }
 trap cleanup EXIT
 
+postgres_image='public.ecr.aws/docker/library/postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24'
+for attempt in 1 2 3 4; do
+  echo "Acquiring pinned PostgreSQL image (attempt $attempt/4, limit 60s)."
+  if timeout --signal=KILL 60s docker pull "$postgres_image" >"$evidence/postgres-pull" 2>&1; then
+    echo 'Pinned PostgreSQL image acquired.'
+    break
+  else
+    pull_status=$?
+  fi
+  cat "$evidence/postgres-pull" >&2
+  if [ "$pull_status" -eq 124 ] || [ "$pull_status" -eq 137 ]; then
+    echo 'PostgreSQL image acquisition timed out; no retry.' >&2
+    exit "$pull_status"
+  fi
+  if ! grep -Fq 'toomanyrequests: Rate exceeded' "$evidence/postgres-pull"; then
+    echo 'PostgreSQL image acquisition failed without the retryable throttle; no retry.' >&2
+    exit "$pull_status"
+  fi
+  if [ "$attempt" -eq 4 ]; then
+    echo 'PostgreSQL image acquisition exhausted four throttled attempts.' >&2
+    exit "$pull_status"
+  fi
+  delay=$(( (5 << (attempt - 1)) + RANDOM % 3 ))
+  echo "PostgreSQL image acquisition throttled; retrying in ${delay}s." >&2
+  sleep "$delay"
+done
+
 # Only synthetic public settings enter the web build. This key names an
 # example.test FAPI host and cannot authenticate with a live Clerk instance.
 publishable_key='pk_live_Y2xlcmsuZXhhbXBsZS50ZXN0JA=='
@@ -42,10 +69,10 @@ fi
 grep -F 'CLERK_PUBLISHABLE_KEY is required' "$evidence/missing-config"
 
 docker network create "$network" >/dev/null
-docker run --detach --name "$postgres" --network "$network" \
+docker run --pull=never --detach --name "$postgres" --network "$network" \
   --network-alias postgres \
   --env POSTGRES_DB=packaging --env POSTGRES_USER=packaging \
-  --env POSTGRES_PASSWORD=packaging public.ecr.aws/docker/library/postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24 >/dev/null
+  --env POSTGRES_PASSWORD=packaging "$postgres_image" >/dev/null
 for attempt in {1..60}; do
   if docker exec "$postgres" pg_isready -U packaging -d packaging >/dev/null 2>&1; then
     break
