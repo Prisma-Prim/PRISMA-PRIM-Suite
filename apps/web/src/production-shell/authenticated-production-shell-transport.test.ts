@@ -538,6 +538,14 @@ describe('the authenticated Activity Log transport', () => {
       'reason text',
       { previousStatus: 'OPEN', newStatus: 'ON_HOLD', reason: 'Budget' },
     ],
+    [
+      'a pair outside the transition table',
+      { previousStatus: 'WON', newStatus: 'LOST', lossReasonCode: 'PRICE' },
+    ],
+    [
+      'a hold of a closed status',
+      { previousStatus: 'WON', newStatus: 'ON_HOLD' },
+    ],
   ])(
     'fails closed on an Opportunity outcome change with %s next to a valid one',
     async (_case, metadata) => {

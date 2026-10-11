@@ -717,10 +717,10 @@ export class CommercialIntakeService {
           message:
             'This status change is not allowed from the current status. Reload the Request.',
         });
-      if (resolution.kind === 'invalid-reason')
+      if (resolution.kind === 'invalid-field')
         throw new BadRequestException({
           code: 'VALIDATION_ERROR',
-          field: 'reason',
+          field: resolution.field,
           message: resolution.message,
         });
       // Refused before any write, so no Opportunity change, history entry,
@@ -1170,14 +1170,14 @@ export class CommercialIntakeService {
     return command;
   }
 
-  // The same safe not-found response as Request detail: an unknown,
-  // cross-Company or cross-Workspace Opportunity is indistinguishable.
   /**
    * Outcome changes lock the owning Request before the Opportunity, the order
    * Offer and direct Contract creation take through
-   * requireReadableOfferOpportunity. The event insert then needs only the
-   * Request this transaction already holds, so a concurrent closure and
-   * creation serialize instead of deadlocking.
+   * requireReadableOfferOpportunity, whose Request FOR UPDATE this lock
+   * conflicts with, so a closure and a creation serialize. NO KEY UPDATE
+   * still admits the KEY SHARE that a next-action or responsible change
+   * holding the Opportunity takes through its event's Request foreign key,
+   * so those siblings finish instead of deadlocking with this command.
    */
   private async lockRequestThenOpportunity(
     actor: ActorContext,
@@ -1205,7 +1205,7 @@ export class CommercialIntakeService {
           eq(clientRequests.id, target.clientRequestId),
         ),
       )
-      .for('update');
+      .for('no key update');
     return this.requireVisibleOpportunity(
       actor,
       companyId,
@@ -1214,6 +1214,8 @@ export class CommercialIntakeService {
     );
   }
 
+  // The same safe not-found response as Request detail: an unknown,
+  // cross-Company or cross-Workspace Opportunity is indistinguishable.
   private async requireVisibleOpportunity(
     actor: ActorContext,
     companyId: string,

@@ -2,6 +2,7 @@ import { readOptionalResponsibleMember } from '../project/project-responsible-re
 import { readLifecycleActivityMetadata } from '../project/project-lifecycle-response';
 import {
   isOpportunityOutcomeStatus,
+  isOutcomeTransition,
   OPPORTUNITY_LOSS_REASON_CODES,
 } from '../commercial-intake/opportunity-outcome';
 import type {
@@ -451,8 +452,8 @@ function opportunityResponsibleChange(
 }
 
 /**
- * An outcome status change: exactly two statuses and, for a loss only, one
- * known loss reason code. Any other shape rejects the page.
+ * An outcome status change: exactly one permitted transition and, for a loss
+ * only, one known loss reason code. Any other shape rejects the page.
  */
 function opportunityOutcomeChange(
   metadata: unknown,
@@ -462,7 +463,7 @@ function opportunityOutcomeChange(
   if (
     !isOpportunityOutcomeStatus(previousStatus) ||
     !isOpportunityOutcomeStatus(newStatus) ||
-    previousStatus === newStatus
+    !isOutcomeTransition(previousStatus, newStatus)
   )
     invalid();
   if (newStatus !== 'LOST') {

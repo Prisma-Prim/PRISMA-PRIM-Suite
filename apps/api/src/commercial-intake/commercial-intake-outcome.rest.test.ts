@@ -753,6 +753,7 @@ describe.skipIf(!databaseUrl)(
       };
       await refused(1, { status: 'OPEN' });
       await refused(1, { status: 'OPEN', reason: 'Already open' });
+      await refused(1, { status: 'OPEN', note: 'Resume' });
       await changed(opportunityId, {
         expectedVersion: 1,
         status: 'ON_HOLD',
@@ -762,6 +763,9 @@ describe.skipIf(!databaseUrl)(
       await changed(opportunityId, { expectedVersion: 2, status: 'WON' });
       await refused(3, { status: 'WON' });
       await refused(3, { status: 'ON_HOLD', reason: 'Pause the work' });
+      // Missing fields do not turn an impossible pair into validation.
+      await refused(3, { status: 'ON_HOLD' });
+      await refused(3, { status: 'LOST' });
       await refused(3, { status: 'LOST', lossReasonCode: 'PRICE' });
       await refused(3, { status: 'DISQUALIFIED', reason: 'Out of scope' });
       await refused(3, { status: 'ARCHIVED', reason: 'Duplicate' });
@@ -776,6 +780,7 @@ describe.skipIf(!databaseUrl)(
         lossReasonCode: 'NO_BUDGET',
       });
       await refused(5, { status: 'LOST', lossReasonCode: 'PRICE' });
+      await refused(5, { status: 'LOST' });
       await refused(5, { status: 'WON' });
       await refused(5, { status: 'ARCHIVED', reason: 'Close it' });
       expect(await opportunityRow(opportunityId)).toMatchObject({
@@ -856,7 +861,6 @@ describe.skipIf(!databaseUrl)(
           },
           'reason',
         ],
-        [{ expectedVersion: 1, status: 'OPEN', note: 'Resume' }, 'note'],
         [
           { expectedVersion: 1, status: 'WON', salesStage: 'Negotiation' },
           'change',
@@ -1232,6 +1236,54 @@ describe.skipIf(!databaseUrl)(
       expect(one?.receipt).toEqual(two?.receipt);
       expect(one?.receipt).toMatchObject({ status: 'OPEN', version: 3 });
       expect(await outcomeEvents(opportunityId)).toHaveLength(2);
+    }, 30_000);
+
+    it('lets a next-action update holding the Opportunity finish before a queued outcome change, which then conflicts as stale', async () => {
+      await grant('ada', MANAGER);
+      // A different member: a request by the same member would queue behind
+      // the other's share lock at actor resolution.
+      await grant('mihai', MANAGER);
+      const opportunityId = opportunityOf(await capture('ada'));
+      const held = await barrier(
+        'SELECT id FROM opportunities WHERE id = $1 FOR UPDATE',
+        [opportunityId],
+      );
+      let released = false;
+      try {
+        const nextAction = request(
+          `/commercial-intake/opportunities/${opportunityId}/next-action`,
+          {
+            subject: 'mihai',
+            method: 'POST',
+            key: randomUUID(),
+            value: { expectedVersion: 1, nextAction: 'Call the Client' },
+          },
+        );
+        await waitForLockWaiters('%from "opportunities"%for no key update%', 1);
+        // The outcome change takes the Request first, then queues on the
+        // Opportunity. The next action, granted the Opportunity first, must
+        // still insert its event, whose Request foreign key needs KEY SHARE.
+        const outcome = change(opportunityId, {
+          expectedVersion: 1,
+          status: 'WON',
+        });
+        await waitForLockWaiters('%', 2);
+        await held.query('COMMIT');
+        released = true;
+        const [updated, conflicted] = await Promise.all([nextAction, outcome]);
+        expect(updated.status).toBe(200);
+        expect(conflicted.status).toBe(409);
+        expect(await body(conflicted)).toMatchObject({ code: 'STALE_VERSION' });
+      } finally {
+        if (!released) await held.query('ROLLBACK');
+        held.release();
+      }
+      expect(await opportunityRow(opportunityId)).toMatchObject({
+        status: 'OPEN',
+        version: 2,
+        next_action: 'Call the Client',
+      });
+      expect(await outcomeEvents(opportunityId)).toHaveLength(0);
     }, 30_000);
 
     it("denies a change waiting on the manager's revocation and every later replay", async () => {

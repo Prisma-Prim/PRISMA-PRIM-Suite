@@ -67,6 +67,17 @@ const TRANSITIONS = {
 >;
 
 /** The transitions offered from `current`, in the section 23.2 order. */
+/** Whether a recorded pair is exactly one of the section 23.2 transitions. */
+export function isOutcomeTransition(
+  from: OpportunityOutcomeStatus,
+  to: OpportunityOutcomeStatus,
+): boolean {
+  return Object.values(TRANSITIONS).some((transition) => {
+    const sources: readonly OpportunityOutcomeStatus[] = transition.from;
+    return transition.to === to && sources.includes(from);
+  });
+}
+
 export function permittedOutcomeTransitions(
   current: OpportunityOutcomeStatus,
 ): OpportunityOutcomeTransition[] {

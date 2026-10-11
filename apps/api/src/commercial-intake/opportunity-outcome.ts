@@ -58,23 +58,19 @@ export const OPPORTUNITY_OUTCOME_TRANSITIONS = {
 >;
 
 /**
- * The requested status and the reason fields as submitted. Only a request for
- * `OPEN` leaves its reason open, because the current status decides whether
- * it resumes a held Opportunity (no reason) or reopens a closed one (reason).
+ * The requested status and each reason field exactly as submitted, or null
+ * when absent. Which fields are required or refused depends on the transition
+ * the current status selects, so they are checked only after the pair is
+ * known to be permitted (section 23.2).
  */
-export type OpportunityOutcomeChange =
-  | {
-      readonly status: 'ON_HOLD' | 'DISQUALIFIED' | 'ARCHIVED';
-      readonly reason: string;
-    }
-  | { readonly status: 'WON' }
-  | {
-      readonly status: 'LOST';
-      readonly lossReasonCode: OpportunityLossReasonCode;
-      /** Required for `OTHER`, optional otherwise. */
-      readonly note: string | null;
-    }
-  | { readonly status: 'OPEN'; readonly reason: string | null };
+export interface OpportunityOutcomeChange {
+  readonly status: OpportunityOutcomeStatus;
+  readonly reason: string | null;
+  readonly lossReasonCode: OpportunityLossReasonCode | null;
+  readonly note: string | null;
+}
+
+export type OpportunityOutcomeField = 'reason' | 'lossReasonCode' | 'note';
 
 /** One committed transition, as its history entry and receipt record it. */
 export interface RecordedOpportunityOutcome {
@@ -91,13 +87,18 @@ export type OutcomeTransitionResolution =
       readonly recorded: RecordedOpportunityOutcome;
     }
   | { readonly kind: 'not-allowed' }
-  | { readonly kind: 'invalid-reason'; readonly message: string };
+  | {
+      readonly kind: 'invalid-field';
+      readonly field: OpportunityOutcomeField;
+      readonly message: string;
+    };
 
 /**
  * Derives the one permitted transition from the current status and the
  * requested change. Requesting the current status, or a pair outside the
- * table, is not allowed; a reason the derived transition does not take, or
- * one it needs but lacks, is field validation.
+ * table, is not allowed whatever fields were supplied; only then does a field
+ * the derived transition refuses, or one it needs but lacks, become field
+ * validation.
  */
 export function resolveOutcomeTransition(
   current: OpportunityOutcomeStatus,
@@ -106,35 +107,59 @@ export function resolveOutcomeTransition(
   const transition = transitionBetween(current, change.status);
   if (!transition) return { kind: 'not-allowed' };
   const base = { previousStatus: current, newStatus: change.status };
-  switch (change.status) {
-    case 'ON_HOLD':
-    case 'DISQUALIFIED':
-    case 'ARCHIVED':
+  const refused = (
+    fields: readonly OpportunityOutcomeField[],
+  ): OutcomeTransitionResolution | undefined => {
+    const field = fields.find((name) => change[name] !== null);
+    return field === undefined
+      ? undefined
+      : {
+          kind: 'invalid-field',
+          field,
+          message: 'This status change does not accept this field.',
+        };
+  };
+  const input: OutcomeTransitionInput = transition.input;
+  switch (input) {
+    case 'none':
+      return refused(['reason', 'lossReasonCode', 'note']) ?? recorded(base);
+    case 'reason': {
+      const unaccepted = refused(['lossReasonCode', 'note']);
+      if (unaccepted) return unaccepted;
+      if (change.reason === null)
+        return {
+          kind: 'invalid-field',
+          field: 'reason',
+          message:
+            change.status === 'OPEN'
+              ? 'Enter a reason for reopening.'
+              : 'Enter a reason.',
+        };
       return recorded({ ...base, reason: change.reason });
-    case 'WON':
-      return recorded(base);
-    case 'LOST':
+    }
+    case 'loss': {
+      const unaccepted = refused(['reason']);
+      if (unaccepted) return unaccepted;
+      if (change.lossReasonCode === null)
+        return {
+          kind: 'invalid-field',
+          field: 'lossReasonCode',
+          message: 'Choose a loss reason.',
+        };
+      if (change.lossReasonCode === 'OTHER' && change.note === null)
+        return {
+          kind: 'invalid-field',
+          field: 'note',
+          message: 'Enter the actual reason for a loss marked Other.',
+        };
       return recorded({
         ...base,
         lossReasonCode: change.lossReasonCode,
         note: change.note,
       });
-    case 'OPEN': {
-      const takesReason = transition.input === 'reason';
-      if (takesReason && change.reason === null)
-        return {
-          kind: 'invalid-reason',
-          message: 'Enter a reason for reopening.',
-        };
-      if (!takesReason && change.reason !== null)
-        return {
-          kind: 'invalid-reason',
-          message: 'Resuming takes no reason.',
-        };
-      return recorded({ ...base, reason: change.reason });
     }
     default: {
-      const exhaustive: never = change;
+      const exhaustive: never = input;
       return exhaustive;
     }
   }

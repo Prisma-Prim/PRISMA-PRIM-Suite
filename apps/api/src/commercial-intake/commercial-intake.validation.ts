@@ -10,6 +10,7 @@ import type {
 import {
   isOpportunityLossReasonCode,
   isOpportunityOutcomeStatus,
+  type OpportunityLossReasonCode,
   type OpportunityOutcomeChange,
   type OpportunityOutcomeStatus,
 } from './opportunity-outcome.js';
@@ -106,10 +107,11 @@ export function readChangeOpportunityResponsibleCommand(
 }
 
 /**
- * Exactly an observed Opportunity version, the requested status and the
- * reason fields that status accepts. Reasons and notes follow the next-action
- * text rule and are stored exactly as submitted; a field the requested
- * transition does not accept must be absent.
+ * Exactly an observed Opportunity version, the requested status and any
+ * supplied reason fields, each well-formed. Reasons and notes follow the
+ * next-action text rule and are stored exactly as submitted. Whether the pair
+ * is permitted, and which fields it requires or refuses, is decided against
+ * the current status by resolveOutcomeTransition.
  */
 export function readChangeOpportunityOutcomeCommand(
   value: unknown,
@@ -127,49 +129,22 @@ function outcomeChange(
   status: OpportunityOutcomeStatus,
   body: Record<string, unknown>,
 ): OpportunityOutcomeChange {
-  switch (status) {
-    case 'ON_HOLD':
-    case 'DISQUALIFIED':
-    case 'ARCHIVED':
-      rejectUnaccepted(body, ['lossReasonCode', 'note']);
-      return { status, reason: requiredString(body.reason, 'reason', 500) };
-    case 'WON':
-      rejectUnaccepted(body, ['reason', 'lossReasonCode', 'note']);
-      return { status };
-    case 'LOST': {
-      rejectUnaccepted(body, ['reason']);
-      const { lossReasonCode } = body;
-      if (!isOpportunityLossReasonCode(lossReasonCode))
-        invalid('lossReasonCode', 'Choose a loss reason.');
-      const note = Object.hasOwn(body, 'note')
-        ? requiredString(body.note, 'note', 500)
-        : null;
-      if (lossReasonCode === 'OTHER' && note === null)
-        invalid('note', 'Enter the actual reason for a loss marked Other.');
-      return { status, lossReasonCode, note };
-    }
-    case 'OPEN':
-      rejectUnaccepted(body, ['lossReasonCode', 'note']);
-      return {
-        status,
-        reason: Object.hasOwn(body, 'reason')
-          ? requiredString(body.reason, 'reason', 500)
-          : null,
-      };
-    default: {
-      const exhaustive: never = status;
-      return exhaustive;
-    }
+  let lossReasonCode: OpportunityLossReasonCode | null = null;
+  if (Object.hasOwn(body, 'lossReasonCode')) {
+    if (!isOpportunityLossReasonCode(body.lossReasonCode))
+      invalid('lossReasonCode', 'Choose a loss reason.');
+    lossReasonCode = body.lossReasonCode;
   }
-}
-
-function rejectUnaccepted(
-  body: Record<string, unknown>,
-  fields: readonly string[],
-): void {
-  const supplied = fields.find((field) => Object.hasOwn(body, field));
-  if (supplied !== undefined)
-    invalid(supplied, 'This status change does not accept this field.');
+  return {
+    status,
+    reason: Object.hasOwn(body, 'reason')
+      ? requiredString(body.reason, 'reason', 500)
+      : null,
+    lossReasonCode,
+    note: Object.hasOwn(body, 'note')
+      ? requiredString(body.note, 'note', 500)
+      : null,
+  };
 }
 
 function observedVersion(value: unknown): number {
