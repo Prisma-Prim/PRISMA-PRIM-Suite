@@ -49,7 +49,7 @@ image/token endpoints for these checks while retaining the existing image versio
 ECR Public remains an external dependency with its own availability and rate
 limits; a local pull does not replace complete GitHub CI on the published head.
 
-`pnpm verify` is the complete local gate: formatting, lint, type-check, the unit and script suites, and the production build. Use it for sensitive changes and difficult diagnosis, or whenever the broader local gate adds useful confidence. Ordinary publication follows the targeted local checks defined in `issue-execution.md`. PostgreSQL-backed API suites run inside `pnpm verify` only when `TEST_DATABASE_URL` names a safe local `_test` database and skip otherwise. `pnpm test` adds the complete API suite and the Playwright journeys; GitHub Actions always runs it with PostgreSQL 17 and Chromium and is the authoritative integration gate before merge.
+`pnpm verify` is the complete local gate: formatting, lint, type-check, the unit and script suites, and the production build. Use it for sensitive changes and difficult diagnosis, or whenever the broader local gate adds useful confidence. Ordinary publication follows the targeted local checks defined in `issue-execution.md`. A documentation-only branch, as classified by `scripts/ci-change-scope.mjs`, uses `pnpm verify:docs`. PostgreSQL-backed API suites run inside `pnpm verify` only when `TEST_DATABASE_URL` names a safe local `_test` database and skip otherwise. `pnpm test` adds the complete API suite and the Playwright journeys; GitHub Actions always runs it with PostgreSQL 17 and Chromium and is the authoritative integration gate before merge.
 
 Narrow seams for targeted runs:
 
