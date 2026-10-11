@@ -442,6 +442,13 @@
       "when": 1791704361311,
       "tag": "0062_contract_precontracts",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1791711398143,
+      "tag": "0063_offer_adjusted_snapshot",
+      "breakpoints": true
     }
   ]
 }

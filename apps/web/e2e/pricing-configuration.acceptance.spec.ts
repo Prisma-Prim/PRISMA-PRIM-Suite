@@ -1065,22 +1065,8 @@ test.describe('Pricing Snapshot and Offer journey', () => {
     if (!adjustedSnapshotValue || !ordinarySnapshotValue)
       throw new Error('Expected adjusted and unadjusted Snapshot options.');
     await page.keyboard.press('Escape');
-    await selectOption(snapshotSelect, adjustedSnapshotValue);
-    await offer.getByRole('button', { name: 'Prepare version 1' }).focus();
-    await expect(
-      offer.getByRole('button', { name: 'Prepare version 1' }),
-    ).toBeFocused();
-    await page.keyboard.press('Enter');
-    await expect(offer.getByRole('alert')).toHaveText(
-      'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
-    );
-    await expect(offer.getByText('Illustrative reference')).toHaveCount(0);
-    await expectNoHorizontalOverflow(page);
-    await page.screenshot({
-      path: testInfo.outputPath(`offer-adjustment-rejected-${suffix}.png`),
-      fullPage: true,
-    });
-
+    // Version 1 uses the unadjusted Snapshot and keeps Template and rule set v1;
+    // the adjusted Snapshot becomes version 2 below (O8).
     await selectOption(snapshotSelect, ordinarySnapshotValue);
     const longScopeNote =
       'Scope <illustrative> & "quoted" — ' + 'long scope detail · '.repeat(60);
@@ -1329,6 +1315,229 @@ test.describe('Pricing Snapshot and Offer journey', () => {
         `offer-document-reopened-${suffix}.png`,
       ),
     });
+
+    // O8: a preparer without adjustment authority creates version 2 from the
+    // adjusted Snapshot. It binds Template v2 and rule set v2 and reprices nothing.
+    await changeAssignment(page, {
+      operation: 'revoke',
+      bundle: 'company-pricing-adjustment',
+      ...target,
+    });
+    assignments.delete('company-pricing-adjustment');
+    assignments.set('company-offer-approver', target);
+    await changeAssignment(page, {
+      operation: 'grant',
+      bundle: 'company-offer-approver',
+      ...target,
+    });
+    await page.reload();
+    await selectCompany(page, companySelect, companyName, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+    await requests
+      .getByRole('button', { name: new RegExp(request.subject, 'u') })
+      .click();
+    const adjustedOffer = page.locator('.offer-panel');
+    await adjustedOffer
+      .getByRole('button', { name: 'Prepare a new version', exact: true })
+      .click();
+    await selectOption(
+      adjustedOffer.getByRole('combobox', {
+        name: 'Pricing Snapshot',
+        exact: true,
+      }),
+      adjustedSnapshotValue,
+    );
+    const successorResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith('/versions'),
+    );
+    const createSuccessor = adjustedOffer.getByRole('button', {
+      name: 'Create new version',
+      exact: true,
+    });
+    await createSuccessor.focus();
+    await expect(createSuccessor).toBeFocused();
+    await page.keyboard.press('Enter');
+    const successor = await successorResponse;
+    expect(successor.status()).toBe(201);
+    expect(await successor.json()).toMatchObject({
+      version: {
+        versionNumber: 2,
+        qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+        qualityRuleSetVersion: 2,
+        representation: { templateVersion: 2 },
+        pricingSnapshot: {
+          id: adjustedSnapshotValue,
+          subtotal: '300.01',
+          taxTotal: '37.02',
+          total: '337.03',
+        },
+      },
+    });
+    const adjustedSummary = adjustedOffer.locator('.offer-summary');
+    await expect(
+      adjustedSummary.getByText('OFFER_ILLUSTRATIVE v2', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      adjustedSummary.getByText('OFFER_QUALITY_ILLUSTRATIVE v2', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      adjustedSummary.getByText(
+        'This version references an adjusted Pricing Snapshot. Each fixed discount is shown as recorded and is not recalculated.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      adjustedSummary.getByText('Draft — not approved', { exact: true }),
+    ).toBeVisible();
+    const adjustedFrameElement = adjustedSummary.getByTitle(
+      'Illustrative Offer representation',
+    );
+    await expect(adjustedFrameElement).toHaveAttribute('sandbox', '');
+    const adjustedHtml = await adjustedFrameElement.getAttribute('srcdoc');
+    const adjustedChecksum = await adjustedSummary
+      .locator('.offer-representation code')
+      .textContent();
+    if (!adjustedHtml || !adjustedChecksum)
+      throw new Error('Expected the exact v2 Offer representation.');
+    expect(
+      createHash('sha256').update(adjustedHtml, 'utf8').digest('hex'),
+    ).toBe(adjustedChecksum);
+    expect(adjustedChecksum).not.toBe(createdChecksum);
+    const adjustedFrame = adjustedSummary.frameLocator(
+      'iframe[title="Illustrative Offer representation"]',
+    );
+    await expect(
+      adjustedFrame.getByText(
+        'Provisional illustrative document — cannot be accepted — no legal effect — no official number',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    const discountRow = adjustedFrame
+      .locator('tr')
+      .filter({ hasText: 'Fixed discount: ' });
+    await expect(discountRow).toHaveCount(1);
+    await expect(discountRow).toContainText(exactReason);
+    await expect(discountRow).toContainText('8.63 EUR');
+    await expect(discountRow).toContainText('1.06 EUR');
+    const adjustedRow = adjustedFrame
+      .locator('tr')
+      .filter({ hasText: 'Adjusted line' });
+    await expect(adjustedRow).toContainText('300.00 EUR');
+    await expect(adjustedRow).toContainText('37.02 EUR');
+    await expect(
+      adjustedFrame.locator('section').filter({ hasText: 'Totals' }),
+    ).toContainText('337.03 EUR');
+    await expect(adjustedFrame.locator('footer')).toContainText(
+      'OFFER_ILLUSTRATIVE v2',
+    );
+    await expectNoFrameHorizontalOverflow(adjustedFrame);
+    await expectNoHorizontalOverflow(page);
+    await captureOfferRepresentation({
+      page,
+      frameElement: adjustedFrameElement,
+      frame: adjustedFrame,
+      viewportScreenshotPath: testInfo.outputPath(
+        `offer-v2-representation-${suffix}.png`,
+      ),
+      documentScreenshotPath: testInfo.outputPath(
+        `offer-v2-document-${suffix}.png`,
+      ),
+    });
+    const adjustedQuality = adjustedOffer.locator('.offer-quality');
+    const adjustedRunResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith('/quality-checks'),
+    );
+    await adjustedQuality
+      .getByRole('button', { name: 'Run Quality Checks', exact: true })
+      .click();
+    const adjustedRun = await adjustedRunResponse;
+    expect(adjustedRun.status()).toBe(201);
+    expect(await adjustedRun.json()).toMatchObject({
+      ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+      ruleSetVersion: 2,
+      results: [
+        { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+        { code: 'CURRENCY_UNCHANGED', status: 'PASS' },
+        { code: 'VALIDITY_OPEN', status: 'PASS' },
+        { code: 'RECIPIENT_AVAILABLE', status: 'PASS' },
+        { code: 'RECIPIENT_IDENTITY_CURRENT', status: 'PASS' },
+        { code: 'RECIPIENT_TAX_ID_RECORDED', status: 'WARNING' },
+        { code: 'PRICING_CLIENT_CONTEXT_COHERENT', status: 'PASS' },
+        { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
+      ],
+    });
+    await expect(
+      adjustedQuality.getByText('OFFER_QUALITY_ILLUSTRATIVE v2'),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await adjustedQuality.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-v2-quality-${suffix}.png`),
+      fullPage: true,
+    });
+    const acknowledgement = adjustedOffer.getByRole('checkbox', {
+      name: 'Recipient tax ID recorded',
+    });
+    await acknowledgement.focus();
+    await page.keyboard.press('Space');
+    await expect(acknowledgement).toBeChecked();
+    const approveAdjusted = adjustedOffer.getByRole('button', {
+      name: 'Approve this version',
+      exact: true,
+    });
+    await approveAdjusted.focus();
+    await page.keyboard.press('Enter');
+    await expect(
+      adjustedOffer.getByText('Version approved.', { exact: true }),
+    ).toBeVisible();
+    await expect(adjustedFrameElement).toHaveAttribute('srcdoc', adjustedHtml);
+    const adjustedTransmission = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith('/transmission'),
+    );
+    await adjustedOffer
+      .getByRole('button', {
+        name: 'Record simulated transmission',
+        exact: true,
+      })
+      .click();
+    const adjustedTransmitted = await adjustedTransmission;
+    expect(adjustedTransmitted.status()).toBe(201);
+    expect(await adjustedTransmitted.json()).toMatchObject({
+      channel: 'SIMULATED',
+      acknowledgedWarningCodes: [],
+      representationSha256: adjustedChecksum,
+      qualityRun: { ruleSetVersion: 2 },
+    });
+    await expect(
+      adjustedOffer.getByText(
+        'Simulated transmission recorded · Client response pending',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(adjustedFrameElement).toHaveAttribute('srcdoc', adjustedHtml);
+    await expectNoHorizontalOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`offer-v2-transmitted-${suffix}.png`),
+      fullPage: true,
+    });
+    // Version 1 keeps its v1 binding and exact bytes.
+    await adjustedOffer
+      .getByRole('button', { name: 'Open version 1', exact: true })
+      .click();
+    await expect(
+      adjustedSummary.getByText('OFFER_QUALITY_ILLUSTRATIVE v1', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(adjustedFrameElement).toHaveAttribute('srcdoc', createdHtml);
     await requests.getByRole('button', { name: 'Open Client dossier' }).click();
     await expect(page.locator('#clients')).toBeFocused();
     await expect(

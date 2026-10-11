@@ -17,7 +17,6 @@ import { pricingSnapshots } from './pricing-configuration.js';
 
 export const OFFER_PROVENANCE = 'ILLUSTRATIVE' as const;
 export const OFFER_TEMPLATE_CODE = 'OFFER_ILLUSTRATIVE' as const;
-export const OFFER_TEMPLATE_VERSION = 1 as const;
 
 /** The durable commercial identity. O1 permits exactly one per Opportunity. */
 export const offers = pgTable(
@@ -325,7 +324,7 @@ export const offerVersions = pgTable(
     check(
       'offer_versions_template_check',
       sql`${table.templateCode} = 'OFFER_ILLUSTRATIVE'
-        AND ${table.templateVersion} = 1`,
+        AND ${table.templateVersion} IN (1, 2)`,
     ),
   ],
 );
@@ -416,7 +415,7 @@ export const offerQualityRuns = pgTable(
     }),
     check(
       'offer_quality_runs_rule_set_check',
-      sql`${table.ruleSet} = 'OFFER_QUALITY_ILLUSTRATIVE' AND ${table.ruleSetVersion} = 1`,
+      sql`${table.ruleSet} = 'OFFER_QUALITY_ILLUSTRATIVE' AND ${table.ruleSetVersion} IN (1, 2)`,
     ),
     check(
       'offer_quality_runs_results_check',
@@ -680,7 +679,7 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
-          AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND ${table.metadata}->>'ruleSetVersion' = '1' AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
+          AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2') AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
           OR (${table.action} = 'offer_version.rejected' AND ${table.metadata}->>'outcome' = 'REJECTED' AND NOT (${table.metadata} ?| ARRAY['ruleSetVersion','acknowledgedWarningCodes'])))
         WHEN ${table.action} = 'offer_version.transmission_recorded' THEN
           ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','channel','provenance','ruleSetVersion','acknowledgedWarningCodes']
@@ -690,7 +689,7 @@ export const offerEvents = pgTable(
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'channel' = 'SIMULATED'
           AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
-          AND ${table.metadata}->>'ruleSetVersion' = '1'
+          AND ${table.metadata}->>'ruleSetVersion' IN ('1','2')
           AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array'
         WHEN ${table.action} = 'offer_version.client_response_recorded' THEN
           ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','evidenceKind','outcome','provenance']

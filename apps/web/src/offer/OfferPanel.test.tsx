@@ -9,13 +9,23 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import {
+  InterfaceLocaleProvider,
+  interfaceLocaleStorageKey,
+  interfaceLocales,
+} from '../localization/interface-locale';
+import { resolveMessage } from '../localization/messages';
+import { offerBindingMessages } from './offer-binding.copy';
 import { OfferPanel } from './OfferPanel';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'offer-preparer',
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  window.localStorage.removeItem(interfaceLocaleStorageKey);
+});
 
 describe('OfferPanel', () => {
   it('re-enables preparation after switching versions and ignores its aborted late reply', async () => {
@@ -138,12 +148,6 @@ describe('OfferPanel', () => {
       code: 'STALE_OFFER_REVISION',
       message:
         'The Offer changed. Reload the Request before creating a version.',
-    },
-    {
-      status: 409,
-      code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED',
-      message:
-        'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
     },
   ])(
     'keeps correctable successor input after $code ($status)',
@@ -1493,14 +1497,14 @@ describe('OfferPanel', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('selects named Snapshots and legal recipients by keyboard after an adjusted Snapshot refusal', async () => {
+  it('selects named Snapshots and legal recipients by keyboard after a correctable refusal', async () => {
     const posts: RequestInit[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = input.toString();
       if (init?.method === 'POST') {
         posts.push(init);
         return posts.length === 1
-          ? response({ code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED' }, 409)
+          ? response({ code: 'OFFER_VALIDATION_ERROR' }, 400)
           : response({
               ...offerView(),
               version: {
@@ -1561,7 +1565,7 @@ describe('OfferPanel', () => {
     fireEvent.keyDown(snapshotSelect, { key: 'Enter' });
     fireEvent.click(screen.getByRole('button', { name: 'Prepare version 1' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The selected Pricing Snapshot contains an adjustment',
+      'Check the selected Snapshot and the entered values.',
     );
     fireEvent.keyDown(snapshotSelect, { key: 'Enter' });
     fireEvent.keyDown(snapshotSelect, { key: 'End' });
@@ -1672,21 +1676,110 @@ describe('OfferPanel', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('explains that an adjusted Snapshot cannot create Offer version 1', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
-      init?.method === 'POST'
-        ? response({ code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED' }, 409)
-        : emptyOfferFetch(input),
+  it.each(interfaceLocales)(
+    'creates version 1 from an adjusted Snapshot and shows its v2 binding in %s',
+    async (locale) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      const posts: RequestInit[] = [];
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        if (input.toString().endsWith('/versions'))
+          return response({
+            versions: [
+              {
+                id: 'version-one',
+                versionNumber: 1,
+                createdAt: '2026-09-27T09:00:00.000Z',
+                supersededByVersionId: null,
+              },
+            ],
+            nextCursor: null,
+          });
+        if (init?.method !== 'POST') return emptyOfferFetch(input);
+        posts.push(init);
+        return response(adjustedOfferView(), 201);
+      });
+      render(
+        <InterfaceLocaleProvider>
+          {panel(actor('company-one'), 'opportunity-one')}
+        </InterfaceLocaleProvider>,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Prepare version 1' }),
+      );
+      const copy = (key: 'ruleSet' | 'adjustedSnapshot') =>
+        resolveMessage(offerBindingMessages, locale, key);
+      expect(await screen.findByText(copy('adjustedSnapshot'))).toBeVisible();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByText('OFFER_ILLUSTRATIVE v2')).toBeVisible();
+      expect(screen.getByText(copy('ruleSet'))).toBeVisible();
+      expect(screen.getByText('OFFER_QUALITY_ILLUSTRATIVE v2')).toBeVisible();
+      expect(
+        screen.getByText(adjustedOfferView().version.representation.sha256),
+      ).toBeVisible();
+      expect(
+        screen.getByTitle('Illustrative Offer representation'),
+      ).toHaveAttribute(
+        'srcdoc',
+        adjustedOfferView().version.representation.html,
+      );
+      expect(posts).toHaveLength(1);
+    },
+  );
+
+  it('shows the v1 rule set without the adjusted notice for an unadjusted version', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({ offer: offerView() }),
     );
     renderPanel(actor('company-one'));
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Prepare version 1' }),
+    expect(
+      await screen.findByText('OFFER_QUALITY_ILLUSTRATIVE v1'),
+    ).toBeVisible();
+    expect(screen.getByText('OFFER_ILLUSTRATIVE v1')).toBeVisible();
+    expect(
+      screen.queryByText(
+        resolveMessage(offerBindingMessages, 'ro', 'adjustedSnapshot'),
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['an unknown Template Version', { templateVersion: 3 }, {}],
+    ['a rule set not bound to the Template', {}, { qualityRuleSetVersion: 1 }],
+    ['an unknown rule set', {}, { qualityRuleSet: 'OTHER' }],
+    ['a missing rule set binding', {}, { qualityRuleSetVersion: undefined }],
+    [
+      'a run of another rule set version',
+      {},
+      { latestQualityRun: { ...qualityRun(), ruleSetVersion: 1 } },
+    ],
+    [
+      'an unknown run rule set version',
+      {},
+      { latestQualityRun: { ...qualityRun(), ruleSetVersion: 3 } },
+    ],
+  ])('fails closed for %s', async (_name, representation, version) => {
+    const offer = adjustedOfferView();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      response({
+        offer: {
+          ...offer,
+          version: {
+            ...offer.version,
+            ...version,
+            representation: {
+              ...offer.version.representation,
+              ...representation,
+            },
+          },
+        },
+      }),
     );
+    renderPanel(actor('company-one'));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
+      'The Offer could not be loaded. Try again.',
     );
     expect(
-      screen.queryByRole('button', { name: 'Retry the same preparation' }),
+      screen.queryByTitle('Illustrative Offer representation'),
     ).not.toBeInTheDocument();
   });
 
@@ -1891,6 +1984,8 @@ function offerView(company = 'Illustrative Company') {
     revision: 1,
     version: {
       id: 'version-one',
+      qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+      qualityRuleSetVersion: 1,
       latestQualityRun: null,
       versionNumber: 1,
       pricingSnapshotId: 'snapshot-one',
@@ -1920,6 +2015,25 @@ function offerView(company = 'Illustrative Company') {
         html: '<!doctype html><html lang="en"><body><h1>Illustrative Offer</h1></body></html>',
         sha256:
           '1161a98c95f65605a37e3c82383cd044335e9be41e00ce8a8559dd553db0c865',
+      },
+    },
+  };
+}
+
+function adjustedOfferView() {
+  const current = offerView();
+  return {
+    ...current,
+    version: {
+      ...current.version,
+      qualityRuleSetVersion: 2,
+      pricingSnapshot: { ...snapshot(), total: '335.08' },
+      representation: {
+        templateCode: 'OFFER_ILLUSTRATIVE',
+        templateVersion: 2,
+        html: '<!doctype html><html lang="en"><body><h1>Illustrative Offer</h1><table><tr><td colspan="4">Fixed discount: Synthetic reason</td></tr></table><p>OFFER_ILLUSTRATIVE v2</p></body></html>',
+        sha256:
+          '2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8091a',
       },
     },
   };

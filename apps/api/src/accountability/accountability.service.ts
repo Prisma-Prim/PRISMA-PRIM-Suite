@@ -1,4 +1,5 @@
 import type { ContractEventSource } from '../contract/contract-source.js';
+import type { OfferQualityRuleSetVersion } from '../offer/offer-quality.js';
 import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
 import type {
   ProjectResponsibleChangedActivityEvent,
@@ -141,6 +142,7 @@ export class AccountabilityService {
     offerVersionId: string;
     versionNumber: number;
     occurredAt: Date;
+    ruleSetVersion: OfferQualityRuleSetVersion;
     acknowledgedWarningCodes: readonly string[];
   }): Promise<void> {
     await this.databaseContext.connection.insert(offerEvents).values({
@@ -158,7 +160,7 @@ export class AccountabilityService {
         versionNumber: input.versionNumber,
         channel: 'SIMULATED',
         provenance: 'ILLUSTRATIVE',
-        ruleSetVersion: 1,
+        ruleSetVersion: input.ruleSetVersion,
         acknowledgedWarningCodes: input.acknowledgedWarningCodes,
       },
     });
@@ -171,9 +173,15 @@ export class AccountabilityService {
     offerVersionId: string;
     versionNumber: number;
     occurredAt: Date;
-    state: 'APPROVED' | 'REJECTED';
-    acknowledgedWarningCodes?: readonly string[];
+    decision:
+      | {
+          state: 'APPROVED';
+          ruleSetVersion: OfferQualityRuleSetVersion;
+          acknowledgedWarningCodes: readonly string[];
+        }
+      | { state: 'REJECTED' };
   }) {
+    const { decision } = input;
     await this.databaseContext.connection.insert(offerEvents).values({
       workspaceId: input.actor.workspaceId,
       companyId: input.companyId,
@@ -183,19 +191,19 @@ export class AccountabilityService {
       actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
       occurredAt: input.occurredAt,
       action:
-        input.state === 'APPROVED'
+        decision.state === 'APPROVED'
           ? 'offer_version.approved'
           : 'offer_version.rejected',
       metadata: {
         offerId: input.offerId,
         offerVersionId: input.offerVersionId,
         versionNumber: input.versionNumber,
-        outcome: input.state,
+        outcome: decision.state,
         provenance: 'ILLUSTRATIVE',
-        ...(input.state === 'APPROVED'
+        ...(decision.state === 'APPROVED'
           ? {
-              ruleSetVersion: 1,
-              acknowledgedWarningCodes: input.acknowledgedWarningCodes,
+              ruleSetVersion: decision.ruleSetVersion,
+              acknowledgedWarningCodes: decision.acknowledgedWarningCodes,
             }
           : {}),
       },

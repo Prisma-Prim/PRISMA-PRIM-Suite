@@ -29,8 +29,6 @@ export const offerCopy = {
   stale: 'The Offer changed. Reload the Request before creating a version.',
   accepted: 'This Offer has been accepted and cannot receive another version.',
   created: 'New Offer version created.',
-  unsupportedAdjustment:
-    'The selected Pricing Snapshot contains an adjustment and cannot be used for an Offer version.',
   reference: 'Illustrative reference',
   version: 'Version',
   issuingCompany: 'Issuing Company',

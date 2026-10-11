@@ -28,7 +28,6 @@ import {
   offerTransmissions,
   offerClientResponses,
   OFFER_TEMPLATE_CODE,
-  OFFER_TEMPLATE_VERSION,
 } from '../database/schema/index.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
@@ -53,6 +52,11 @@ import {
   readOfferClientResponseCommand,
 } from './offer.validation.js';
 import { renderOfferRepresentation } from './offer-representation.js';
+import {
+  offerBindingForSnapshot,
+  storedOfferBinding,
+  type OfferBinding,
+} from './offer-binding.js';
 import {
   evaluateOfferQuality,
   readOfferQualityResults,
@@ -326,7 +330,6 @@ export class OfferService {
           opportunityId: opportunity.id,
           snapshotId: command.pricingSnapshotId,
         });
-        requireUnadjustedOfferSnapshot(snapshot);
         const stored = await this.requireOfferById(
           actor,
           companyId,
@@ -350,7 +353,6 @@ export class OfferService {
         opportunityId: opportunity.id,
         snapshotId: command.pricingSnapshotId,
       });
-      requireUnadjustedOfferSnapshot(snapshot);
       const existing = await this.findOffer(
         actor.workspaceId,
         companyId,
@@ -410,7 +412,7 @@ export class OfferService {
           scopeNote: command.scopeNote,
           commercialConditions: command.commercialConditions,
           templateCode: OFFER_TEMPLATE_CODE,
-          templateVersion: OFFER_TEMPLATE_VERSION,
+          templateVersion: offerBindingForSnapshot(snapshot).templateVersion,
           createdByInternalUserId: actor.internalUserId,
           createdByWorkspaceMembershipId: actor.workspaceMembershipId,
           createdAt,
@@ -518,7 +520,6 @@ export class OfferService {
           opportunityId: opportunity.id,
           snapshotId: command.pricingSnapshotId,
         });
-        requireUnadjustedOfferSnapshot(snapshot);
         if (receipt) {
           if (
             receipt.kind !== 'CREATE_OFFER_VERSION' ||
@@ -615,7 +616,7 @@ export class OfferService {
             scopeNote: command.scopeNote,
             commercialConditions: command.commercialConditions,
             templateCode: OFFER_TEMPLATE_CODE,
-            templateVersion: OFFER_TEMPLATE_VERSION,
+            templateVersion: offerBindingForSnapshot(snapshot).templateVersion,
             createdByInternalUserId: actor.internalUserId,
             createdByWorkspaceMembershipId: actor.workspaceMembershipId,
             createdAt,
@@ -1046,8 +1047,10 @@ export class OfferService {
               },
         recordedIdentity: recipient,
       });
+      const { ruleSetVersion } = storedOfferBinding(target);
       const evaluatedAt = this.clock.now();
       const results = evaluateOfferQuality({
+        ruleSetVersion,
         instant: evaluatedAt,
         validUntil: target.validUntil,
         snapshot: {
@@ -1074,6 +1077,7 @@ export class OfferService {
           offerVersionId: target.id,
           actorInternalUserId: actor.internalUserId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          ruleSetVersion,
           evaluatedAt,
           results,
         })
@@ -1217,6 +1221,7 @@ export class OfferService {
           );
         let approval:
           | {
+              ruleSetVersion: OfferBinding['ruleSetVersion'];
               qualityRunId: string;
               acknowledgedWarningCodes: readonly string[];
               representationSha256: string;
@@ -1245,8 +1250,10 @@ export class OfferService {
                   },
             recordedIdentity: recipient,
           });
+          const { ruleSetVersion } = storedOfferBinding(target);
           decidedAt = this.clock.now();
           const results = evaluateOfferQuality({
+            ruleSetVersion,
             instant: decidedAt,
             validUntil: target.validUntil,
             snapshot: {
@@ -1296,6 +1303,7 @@ export class OfferService {
               offerVersionId: target.id,
               actorInternalUserId: actor.internalUserId,
               actorWorkspaceMembershipId: actor.workspaceMembershipId,
+              ruleSetVersion,
               evaluatedAt: decidedAt,
               results,
             })
@@ -1303,6 +1311,7 @@ export class OfferService {
           if (!run)
             throw new Error('The approval Quality Check run was not recorded.');
           approval = {
+            ruleSetVersion,
             qualityRunId: run.id,
             acknowledgedWarningCodes: command.acknowledgedWarningCodes,
             representationSha256: representation.sha256,
@@ -1320,7 +1329,9 @@ export class OfferService {
             actorInternalUserId: actor.internalUserId,
             actorWorkspaceMembershipId: actor.workspaceMembershipId,
             decidedAt,
-            ...approval,
+            qualityRunId: approval?.qualityRunId,
+            acknowledgedWarningCodes: approval?.acknowledgedWarningCodes,
+            representationSha256: approval?.representationSha256,
             reason: command.kind === 'REJECT' ? command.reason : null,
           })
           .returning();
@@ -1348,8 +1359,13 @@ export class OfferService {
           offerVersionId: target.id,
           versionNumber: target.versionNumber,
           occurredAt: decidedAt,
-          state: decision.state,
-          acknowledgedWarningCodes: approval?.acknowledgedWarningCodes,
+          decision: approval
+            ? {
+                state: 'APPROVED',
+                ruleSetVersion: approval.ruleSetVersion,
+                acknowledgedWarningCodes: approval.acknowledgedWarningCodes,
+              }
+            : { state: 'REJECTED' },
         });
         return this.decisionView(decision);
       })
@@ -1807,10 +1823,12 @@ export class OfferService {
                 },
           recordedIdentity: recipient,
         });
+        const { ruleSetVersion } = storedOfferBinding(target);
         const transmittedAt = this.clock.now();
         if (!Number.isFinite(transmittedAt.getTime()))
           throw new Error('Invalid server instant.');
         const results = evaluateOfferQuality({
+          ruleSetVersion,
           instant: transmittedAt,
           validUntil: target.validUntil,
           snapshot: {
@@ -1872,6 +1890,7 @@ export class OfferService {
             offerVersionId: target.id,
             actorInternalUserId: actor.internalUserId,
             actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            ruleSetVersion,
             evaluatedAt: transmittedAt,
             results,
           })
@@ -1922,6 +1941,7 @@ export class OfferService {
           offerVersionId: target.id,
           versionNumber: target.versionNumber,
           occurredAt: transmittedAt,
+          ruleSetVersion,
           acknowledgedWarningCodes: command.acknowledgedWarningCodes,
         });
         return this.transmissionView(transmission);
@@ -2131,11 +2151,25 @@ export class OfferService {
     const clientResponse = responseRow
       ? this.clientResponseView(responseRow)
       : null;
-    const transmissionState: OfferTransmissionState = transmissionRow
+    const latestQualityRun = latestRun ? qualityRunView(latestRun) : null;
+    const transmission = transmissionRow
+      ? await this.transmissionView(transmissionRow)
+      : null;
+    // Every stored run of a version uses the rule set bound at its creation.
+    const { ruleSetVersion } = storedOfferBinding(version);
+    if (
+      [
+        latestQualityRun,
+        decision?.state === 'APPROVED' ? decision.qualityRun : null,
+        transmission?.qualityRun ?? null,
+      ].some((run) => run !== null && run.ruleSetVersion !== ruleSetVersion)
+    )
+      throw new Error('A stored Offer run does not match its bound rule set.');
+    const transmissionState: OfferTransmissionState = transmission
       ? {
           transmissionState: 'TRANSMITTED',
           ...offerClientResponseState(clientResponse),
-          transmission: await this.transmissionView(transmissionRow),
+          transmission,
         }
       : {
           transmissionState: 'NOT_TRANSMITTED',
@@ -2163,7 +2197,7 @@ export class OfferService {
           version,
           snapshot,
         ),
-        latestQualityRun: latestRun ? qualityRunView(latestRun) : null,
+        latestQualityRun,
         decision,
         decisionState: decision?.state ?? 'PENDING',
         ...transmissionState,
@@ -2300,8 +2334,11 @@ function offerVersionView(
     row.provenance !== 'ILLUSTRATIVE'
   )
     throw new Error('Offer Version 1 has an invalid stored state.');
+  const binding = storedOfferBinding(row);
   return {
     id: row.id,
+    qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+    qualityRuleSetVersion: binding.ruleSetVersion,
     versionNumber: row.versionNumber,
     predecessorVersionId: row.predecessorVersionId,
     supersededByVersionId: row.supersededByVersionId,
@@ -2415,23 +2452,18 @@ function namedConflict(code: string, message: string): ConflictException {
 function qualityRunView(
   row: typeof offerQualityRuns.$inferSelect,
 ): OfferQualityRun {
-  if (row.ruleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' || row.ruleSetVersion !== 1)
+  if (
+    row.ruleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' ||
+    (row.ruleSetVersion !== 1 && row.ruleSetVersion !== 2)
+  )
     throw new Error('Unsupported stored Offer Quality Check rule set.');
   return {
     id: row.id,
     offerVersionId: row.offerVersionId,
     ruleSet: row.ruleSet,
-    ruleSetVersion: 1,
+    ruleSetVersion: row.ruleSetVersion,
     actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
     evaluatedAt: row.evaluatedAt.toISOString(),
     results: readOfferQualityResults(row.results),
   };
-}
-
-function requireUnadjustedOfferSnapshot(snapshot: PricingSnapshotRecord): void {
-  if (snapshot.lines.some((line) => line.adjustment !== null))
-    throw namedConflict(
-      'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED',
-      'Adjusted Pricing Snapshots are not supported by Offer version 1.',
-    );
 }
