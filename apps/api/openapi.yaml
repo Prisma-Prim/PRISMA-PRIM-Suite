@@ -1850,10 +1850,13 @@ paths:
         visibility in the active Company. The response is scoped to the
         current Workspace and Company and uses the same safe not-found for an
         unknown or hidden Opportunity. When an Offer exists, its version binds
-        the persisted `OFFER_ILLUSTRATIVE` v1 Template and returns deterministic
-        English HTML plus the lowercase SHA-256 checksum of those exact UTF-8
-        bytes. Rendering uses only the immutable copied Offer fields and its
-        immutable unadjusted Pricing Snapshot. The read creates no command,
+        the persisted `OFFER_ILLUSTRATIVE` Template and
+        `OFFER_QUALITY_ILLUSTRATIVE` rule set, both v1 for an unadjusted
+        Pricing Snapshot and both v2 when any Snapshot line carries a fixed net
+        discount, and returns deterministic English HTML plus the lowercase
+        SHA-256 checksum of those exact UTF-8 bytes. Rendering uses only the
+        immutable copied Offer fields and its immutable Pricing Snapshot,
+        never repricing it. The read creates no command,
         Offer event, Activity event, file or provider side effect and changes
         no Offer revision.
       tags:
@@ -2101,6 +2104,8 @@ components:
         - createdByWorkspaceMembershipId
         - createdAt
         - representation
+        - qualityRuleSet
+        - qualityRuleSetVersion
       properties:
         id:
           type: string
@@ -2158,6 +2163,13 @@ components:
           format: date-time
         representation:
           $ref: '#/components/schemas/OfferRepresentation'
+        qualityRuleSet:
+          type: string
+          const: OFFER_QUALITY_ILLUSTRATIVE
+        qualityRuleSetVersion:
+          type: integer
+          enum: [1, 2]
+          description: Fixed at version creation together with the Template version.
     OfferRecipientCopy:
       oneOf:
         - $ref: '#/components/schemas/OfferPrimaryRecipientCopy'
@@ -2236,7 +2248,8 @@ components:
           const: OFFER_ILLUSTRATIVE
         templateVersion:
           type: integer
-          const: 1
+          enum: [1, 2]
+          description: 2 exactly when the version's Pricing Snapshot has an adjusted line.
         html:
           type: string
           minLength: 1
@@ -2427,8 +2440,36 @@ components:
         lineTax:
           type: string
         adjustment:
-          type: 'null'
-          description: O2 exposes only the unadjusted Snapshot shape accepted by Offer v1.
+          description: Null for an unadjusted line; otherwise the stored fixed net discount, returned exactly as recorded.
+          oneOf:
+            - type: 'null'
+            - type: object
+              additionalProperties: false
+              required:
+                - type
+                - netReduction
+                - taxReduction
+                - reason
+                - appliedByWorkspaceMembershipId
+                - appliedAt
+              properties:
+                type:
+                  type: string
+                  const: FIXED_NET_DISCOUNT
+                netReduction:
+                  type: string
+                taxReduction:
+                  type: string
+                reason:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                appliedByWorkspaceMembershipId:
+                  type: string
+                  format: uuid
+                appliedAt:
+                  type: string
+                  format: date-time
         netReduction:
           type: string
         taxReduction:

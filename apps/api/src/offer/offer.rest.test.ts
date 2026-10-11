@@ -4671,104 +4671,549 @@ withPostgres('First illustrative Offer REST', () => {
     },
   );
 
-  it.each(['initial', 'successor'])(
-    'rejects an adjusted Snapshot for %s with the canonical conflict and no Offer writes',
-    async (phase) => {
-      const fixture = await preparedOffer();
-      if (phase === 'successor')
-        await postOffer(
-          fixture,
+  describe('adjusted Pricing Snapshots (O8)', () => {
+    it('binds Template v2 and rule set v2 for one, several, mixed and full-line discounts without repricing', async () => {
+      const fixture = await adjustedOfferFixture();
+      const one = await adjustedSnapshot(
+        fixture,
+        [{ line: 'A', netReduction: '8.63' }],
+        'one',
+      );
+      const several = await adjustedSnapshot(
+        fixture,
+        [
+          { line: 'A', netReduction: '8.63' },
+          { line: 'B', netReduction: '10.00' },
+        ],
+        'several',
+      );
+      const mixed = await adjustedSnapshot(
+        fixture,
+        [{ line: 'A' }, { line: 'B', netReduction: '10.00' }],
+        'mixed',
+      );
+      const fullLine = await adjustedSnapshot(
+        fixture,
+        [{ line: 'A' }, { line: 'B', netReduction: '240.00' }],
+        'full-line',
+      );
+      // The preparer prepares from immutable traces without adjustment authority.
+      await pool.query(
+        "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_pricing_adjustment'",
+        [fixture.companyId],
+      );
+      const path = `/offers/opportunities/${fixture.opportunityId}`;
+      const created = identifiedRecord(
+        await command(
+          path,
+          { pricingSnapshotId: one.id, recipient: { kind: 'PRIMARY' } },
+          'adjusted-offer',
+          fixture.companyId,
+        ),
+      );
+      const first = record(created.version);
+      expect(first).toMatchObject({
+        versionNumber: 1,
+        qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+        qualityRuleSetVersion: 2,
+        provisional: true,
+        representation: {
+          templateCode: 'OFFER_ILLUSTRATIVE',
+          templateVersion: 2,
+        },
+        pricingSnapshot: {
+          id: one.id,
+          subtotal: '291.37',
+          taxTotal: '43.71',
+          total: '335.08',
+          lines: [
+            {
+              lineNet: '300.00',
+              lineTax: '45.00',
+              netReduction: '8.63',
+              taxReduction: '1.29',
+              adjustedLineNet: '291.37',
+              adjustedLineTax: '43.71',
+              adjustment: {
+                type: 'FIXED_NET_DISCOUNT',
+                netReduction: '8.63',
+                taxReduction: '1.29',
+                reason: 'Synthetic <discount> & "reason" A',
+              },
+            },
+          ],
+        },
+      });
+      const html = stringField(record(first.representation), 'html');
+      expect(html).toContain(
+        '<tr><td colspan="4">Fixed discount: Synthetic &lt;discount&gt; &amp; &quot;reason&quot; A</td><td>8.63 EUR</td><td>Tax reduction</td><td>1.29 EUR</td></tr>',
+      );
+      expect(html).toContain('<dd>OFFER_ILLUSTRATIVE v2</dd>');
+      expect(html).toContain('<dt>Total</dt><dd>335.08 EUR</dd>');
+      const firstRun = record(
+        await command(
+          `${path}/versions/${stringField(first, 'id')}/quality-checks`,
+          {},
+          'adjusted-run-1',
+          fixture.companyId,
+        ),
+      );
+      expect(firstRun).toMatchObject({
+        ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+        ruleSetVersion: 2,
+      });
+      expect(firstRun.results).toEqual(allPass());
+
+      let revision = 1;
+      for (const [key, snapshot, expected] of [
+        ['several', several, { subtotal: '521.37', taxTotal: '87.41' }],
+        ['mixed', mixed, { subtotal: '530.00', taxTotal: '88.70' }],
+        ['full-line', fullLine, { subtotal: '300.00', taxTotal: '45.00' }],
+      ] as const) {
+        const successor = record(
+          await command(
+            path + '/versions',
+            {
+              expectedOfferRevision: revision,
+              pricingSnapshotId: snapshot.id,
+              recipient: { kind: 'PRIMARY' },
+            },
+            'successor-' + key,
+            fixture.companyId,
+          ),
+        );
+        revision += 1;
+        const version = record(successor.version);
+        expect(version).toMatchObject({
+          qualityRuleSetVersion: 2,
+          representation: { templateVersion: 2 },
+          pricingSnapshot: { id: snapshot.id, ...expected },
+        });
+        const reloaded = record(
+          record(
+            await json(
+              await request(
+                `${path}/versions/${stringField(version, 'id')}`,
+                fixture.companyId,
+              ),
+            ),
+          ).offer,
+        );
+        expect(record(reloaded.version).representation).toEqual(
+          version.representation,
+        );
+        const run = record(
+          await command(
+            `${path}/versions/${stringField(version, 'id')}/quality-checks`,
+            {},
+            'adjusted-run-' + key,
+            fixture.companyId,
+          ),
+        );
+        expect(run).toMatchObject({ ruleSetVersion: 2, results: allPass() });
+      }
+      const fullLineRead = record(
+        record(record(await json(await request(path, fixture.companyId))).offer)
+          .version,
+      );
+      const fullLineHtml = stringField(
+        record(fullLineRead.representation),
+        'html',
+      );
+      expect(fullLineHtml).toContain(
+        '<tr><td colspan="4">Adjusted line</td><td>0.00 EUR</td><td>Adjusted tax</td><td>0.00 EUR</td></tr>',
+      );
+      // An unadjusted Snapshot keeps the v1 binding and v1 bytes.
+      const unadjusted = record(
+        await command(
+          path + '/versions',
           {
+            expectedOfferRevision: revision,
             pricingSnapshotId: fixture.snapshotId,
             recipient: { kind: 'PRIMARY' },
           },
-          'before-adjustment',
+          'successor-unadjusted',
+          fixture.companyId,
+        ),
+      );
+      const v1 = record(unadjusted.version);
+      expect(v1).toMatchObject({
+        qualityRuleSetVersion: 1,
+        representation: { templateVersion: 1 },
+      });
+      expect(stringField(record(v1.representation), 'html')).not.toContain(
+        'Fixed discount',
+      );
+      expect(
+        record(
+          await command(
+            `${path}/versions/${stringField(v1, 'id')}/quality-checks`,
+            {},
+            'unadjusted-run',
+            fixture.companyId,
+          ),
+        ),
+      ).toMatchObject({ ruleSetVersion: 1, results: allPass() });
+      expect(
+        (
+          await pool.query(
+            'SELECT version_number, template_version FROM offer_versions ORDER BY version_number',
+          )
+        ).rows,
+      ).toEqual([
+        { version_number: 1, template_version: 2 },
+        { version_number: 2, template_version: 2 },
+        { version_number: 3, template_version: 2 },
+        { version_number: 4, template_version: 2 },
+        { version_number: 5, template_version: 1 },
+      ]);
+      // The Snapshot trace was read, never rewritten.
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM pricing_snapshot_adjustments',
+          )
+        ).rows,
+      ).toEqual([{ count: 5 }]);
+      const createdEvents = (
+        await pool.query<{ metadata: Record<string, unknown> }>(
+          "SELECT metadata FROM offer_events WHERE action = 'offer_version.created'",
+        )
+      ).rows;
+      expect(createdEvents).toHaveLength(5);
+      for (const { metadata } of createdEvents)
+        expect(Object.keys(metadata).sort()).toEqual(
+          expect.not.arrayContaining(['reason', 'netReduction', 'total']),
         );
+    });
+
+    it('approves, transmits, responds and negotiates a v2 version with rule set version 2 evidence and minimal events', async () => {
+      const fixture = await adjustedOfferFixture();
+      const snapshot = await adjustedSnapshot(
+        fixture,
+        [{ line: 'A', netReduction: '8.63' }],
+        'decision',
+      );
       await command(
-        '/company-pricing-adjustment-assignments',
+        '/company-offer-approver-assignments',
         {
           workspaceMembershipId: fixture.actorMembershipId,
           companyId: fixture.companyId,
         },
-        'grant-adjustment-456',
+        'grant-approver-o8',
       );
-      const adjustedSnapshot = identifiedRecord(
+      const path = `/offers/opportunities/${fixture.opportunityId}`;
+      const offer = record(
         await command(
-          `/pricing/opportunities/${fixture.opportunityId}/snapshots`,
-          {
-            pricingRuleVersionNumber: fixture.ruleVersionNumber,
-            lines: [
-              {
-                offeringId: fixture.offeringId,
-                tariffVersionNumber: fixture.tariffVersionNumber,
-                quantity: '1',
-                adjustment: {
-                  type: 'FIXED_NET_DISCOUNT',
-                  netReduction: '8.63',
-                  reason: 'Synthetic Offer compatibility proof',
-                },
-              },
-            ],
-          },
-          'adjusted-snapshot-456',
+          path,
+          { pricingSnapshotId: snapshot.id, recipient: { kind: 'PRIMARY' } },
+          'decision-offer-o8',
           fixture.companyId,
         ),
       );
-      const body = JSON.stringify({
-        ...(phase === 'successor' ? { expectedOfferRevision: 1 } : {}),
-        pricingSnapshotId: adjustedSnapshot.id,
-        recipient: { kind: 'PRIMARY' },
-      });
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const rejected = await request(
-          `/offers/opportunities/${fixture.opportunityId}${phase === 'successor' ? '/versions' : ''}`,
+      const version = record(offer.version);
+      const base = `${path}/versions/${stringField(version, 'id')}`;
+      const approval = record(
+        await command(
+          base + '/approve',
+          { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+          'approve-o8',
           fixture.companyId,
+        ),
+      );
+      expect(approval).toMatchObject({
+        state: 'APPROVED',
+        qualityRun: { ruleSetVersion: 2, results: allPass() },
+        representationSha256: stringField(
+          record(version.representation),
+          'sha256',
+        ),
+      });
+      const transmission = record(
+        await command(
+          base + '/transmission',
+          { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+          'transmit-o8',
+          fixture.companyId,
+        ),
+      );
+      expect(transmission).toMatchObject({
+        qualityRun: { ruleSetVersion: 2 },
+        representationSha256: approval.representationSha256,
+      });
+      await command(
+        base + '/client-response',
+        {
+          expectedOfferRevision: 3,
+          outcome: 'REJECTED',
+          receivedAt: instant.toISOString(),
+          reason: 'Synthetic refusal of the discounted version',
+        },
+        'respond-o8',
+        fixture.companyId,
+      );
+      const successor = record(
+        await command(
+          path + '/versions',
           {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              'idempotency-key': 'adjusted-snapshot-offer',
-            },
-            body,
+            expectedOfferRevision: 4,
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
           },
+          'negotiate-o8',
+          fixture.companyId,
+        ),
+      );
+      expect(record(successor.version)).toMatchObject({
+        versionNumber: 2,
+        qualityRuleSetVersion: 1,
+        representation: { templateVersion: 1 },
+        differences: expect.arrayContaining([
+          {
+            field: 'total',
+            previous: '335.08',
+            current: '345.00',
+            changed: true,
+          },
+        ]),
+      });
+      const historical = record(
+        record(
+          await json(
+            await request(
+              `${path}/versions/${stringField(version, 'id')}`,
+              fixture.companyId,
+            ),
+          ),
+        ).offer,
+      );
+      expect(record(historical.version)).toMatchObject({
+        qualityRuleSetVersion: 2,
+        representation: version.representation,
+        decision: approval,
+        transmission,
+        clientResponseState: 'REJECTED',
+      });
+      const events = (
+        await pool.query<{ action: string; metadata: Record<string, unknown> }>(
+          "SELECT action, metadata FROM offer_events WHERE action IN ('offer_version.approved','offer_version.transmission_recorded') ORDER BY occurred_at, action",
+        )
+      ).rows;
+      expect(events).toEqual([
+        {
+          action: 'offer_version.approved',
+          metadata: {
+            offerId: offer.id,
+            offerVersionId: version.id,
+            versionNumber: 1,
+            outcome: 'APPROVED',
+            provenance: 'ILLUSTRATIVE',
+            ruleSetVersion: 2,
+            acknowledgedWarningCodes: [],
+          },
+        },
+        {
+          action: 'offer_version.transmission_recorded',
+          metadata: {
+            offerId: offer.id,
+            offerVersionId: version.id,
+            versionNumber: 1,
+            channel: 'SIMULATED',
+            provenance: 'ILLUSTRATIVE',
+            ruleSetVersion: 2,
+            acknowledgedWarningCodes: [],
+          },
+        },
+      ]);
+      const serialized = JSON.stringify(
+        (await pool.query('SELECT metadata FROM offer_events')).rows,
+      );
+      for (const secret of ['8.63', '1.29', '335.08', 'Synthetic <discount>'])
+        expect(serialized).not.toContain(secret);
+    });
+
+    it.each([
+      {
+        name: 'a tampered tax total',
+        sql: "UPDATE pricing_snapshots SET tax_total = '43.70', total = '335.07' WHERE id = $1",
+      },
+      {
+        name: 'a tampered adjusted subtotal',
+        sql: "UPDATE pricing_snapshots SET subtotal = '300.00', total = '343.71' WHERE id = $1",
+      },
+      {
+        name: 'an adjustment instant other than the calculation instant',
+        sql: "UPDATE pricing_snapshot_adjustments SET applied_at = applied_at + interval '1 second' WHERE snapshot_id = $1",
+      },
+    ])(
+      'records PRICING_SNAPSHOT_COHERENT ERROR for $name and refuses approval',
+      async ({ sql }) => {
+        const fixture = await adjustedOfferFixture();
+        const snapshot = await adjustedSnapshot(
+          fixture,
+          [{ line: 'A', netReduction: '8.63' }],
+          'tampered',
         );
-        expect(rejected.status).toBe(409);
-        expect(await json(rejected)).toMatchObject({
-          code: 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED',
+        await command(
+          '/company-offer-approver-assignments',
+          {
+            workspaceMembershipId: fixture.actorMembershipId,
+            companyId: fixture.companyId,
+          },
+          'grant-approver-tamper',
+        );
+        const path = `/offers/opportunities/${fixture.opportunityId}`;
+        const version = record(
+          record(
+            await command(
+              path,
+              {
+                pricingSnapshotId: snapshot.id,
+                recipient: { kind: 'PRIMARY' },
+              },
+              'tamper-offer',
+              fixture.companyId,
+            ),
+          ).version,
+        );
+        await pool.query(sql, [snapshot.id]);
+        const base = `${path}/versions/${stringField(version, 'id')}`;
+        const run = record(
+          await command(
+            base + '/quality-checks',
+            {},
+            'tamper-run',
+            fixture.companyId,
+          ),
+        );
+        expect(run).toMatchObject({ ruleSetVersion: 2 });
+        expect(run.results).toEqual(
+          allPass().map((result) =>
+            result.code === 'PRICING_SNAPSHOT_COHERENT'
+              ? { ...result, status: 'ERROR' }
+              : result,
+          ),
+        );
+        const refused = await decisionRequest(
+          fixture,
+          base + '/approve',
+          { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+          'tamper-approve',
+        );
+        expect(refused.status).toBe(409);
+        expect(await json(refused)).toMatchObject({
+          code: 'QUALITY_CHECK_ERRORS',
         });
-      }
-      const writes = await pool.query<{
-        offers: string;
-        versions: string;
-        receipts: string;
-        events: string;
-        references: string;
-      }>(
-        `SELECT (SELECT count(*) FROM offers) AS offers,
-              (SELECT count(*) FROM offer_versions) AS versions,
-              (SELECT count(*) FROM offer_commands) AS receipts,
-              (SELECT count(*) FROM offer_events) AS events,
-              (SELECT count(*) FROM offer_reference_counters) AS references`,
+      },
+    );
+
+    it('replays an adjusted creation exactly, conflicts a changed payload and denies replay after preparer revocation', async () => {
+      const fixture = await adjustedOfferFixture();
+      const snapshot = await adjustedSnapshot(
+        fixture,
+        [{ line: 'A', netReduction: '8.63' }],
+        'replay',
       );
-      expect(writes.rows[0]).toEqual(
-        phase === 'successor'
-          ? {
-              offers: '1',
-              versions: '1',
-              receipts: '1',
-              events: '2',
-              references: '1',
-            }
-          : {
-              offers: '0',
-              versions: '0',
-              receipts: '0',
-              events: '0',
-              references: '0',
-            },
+      const body = {
+        pricingSnapshotId: snapshot.id,
+        recipient: { kind: 'PRIMARY' },
+      };
+      const created = await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        body,
+        'adjusted-replay',
+        fixture.companyId,
       );
-    },
-  );
+      instant = new Date('2026-09-28T09:00:00.000Z');
+      expect(
+        await command(
+          `/offers/opportunities/${fixture.opportunityId}`,
+          body,
+          'adjusted-replay',
+          fixture.companyId,
+        ),
+      ).toEqual(created);
+      const changed = await postOffer(
+        fixture,
+        { ...body, validityDays: 31 },
+        'adjusted-replay',
+      );
+      expect(changed.status).toBe(409);
+      expect(await json(changed)).toMatchObject({
+        code: 'IDEMPOTENCY_CONFLICT',
+      });
+      await pool.query(
+        "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text = 'company_offer_preparer'",
+        [fixture.companyId],
+      );
+      expect((await postOffer(fixture, body, 'adjusted-replay')).status).toBe(
+        403,
+      );
+      expect(
+        (
+          await pool.query(
+            'SELECT (SELECT count(*) FROM offer_versions)::integer AS versions, (SELECT count(*) FROM offer_events)::integer AS events',
+          )
+        ).rows,
+      ).toEqual([{ versions: 1, events: 2 }]);
+    });
+
+    it('lends the adjusted trace to an Offer reader as version content only and hides it across Companies', async () => {
+      const fixture = await adjustedOfferFixture();
+      const snapshot = await adjustedSnapshot(
+        fixture,
+        [{ line: 'A', netReduction: '8.63' }],
+        'reader',
+      );
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        { pricingSnapshotId: snapshot.id, recipient: { kind: 'PRIMARY' } },
+        'reader-offer',
+        fixture.companyId,
+      );
+      await command(
+        '/company-offer-approver-assignments',
+        {
+          workspaceMembershipId: fixture.actorMembershipId,
+          companyId: fixture.companyId,
+        },
+        'grant-approver-reader',
+      );
+      await pool.query(
+        "UPDATE company_role_assignments SET revoked_at = now() WHERE company_id = $1 AND bundle::text IN ('company_offer_preparer','company_pricing_user','company_pricing_adjustment')",
+        [fixture.companyId],
+      );
+      const read = await request(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        fixture.companyId,
+      );
+      expect(read.status).toBe(200);
+      expect(
+        record(record(record(await json(read)).offer).version).pricingSnapshot,
+      ).toMatchObject({
+        id: snapshot.id,
+        total: '335.08',
+        lines: [{ adjustment: { netReduction: '8.63' } }],
+      });
+      expect(
+        (
+          await request(
+            `/pricing/opportunities/${fixture.opportunityId}/snapshots`,
+            fixture.companyId,
+          )
+        ).status,
+      ).toBe(403);
+      const other = await preparedOffer('-O8OTHER');
+      expect(
+        (
+          await request(
+            `/offers/opportunities/${fixture.opportunityId}`,
+            other.companyId,
+          )
+        ).status,
+      ).toBe(404);
+    });
+  });
 
   it.each(['profile refresh', 'Offer revocation'])(
     'restarts a coherent Offer read after a concurrent %s commits',
@@ -5734,6 +6179,108 @@ withPostgres('First illustrative Offer REST', () => {
     };
   }
 
+  interface AdjustedOfferFixture extends PreparedOffer {
+    readonly secondOfferingId: string;
+    readonly secondTariffVersionNumber: number;
+  }
+
+  /** Two synthetic offerings: A 300.0000 EUR at 15.00 %, B 120.0000 EUR at 19.00 %. */
+  async function adjustedOfferFixture(): Promise<AdjustedOfferFixture> {
+    const fixture = await preparedOffer();
+    const definition = entity(
+      record(
+        await command(
+          '/commercial-catalogue/service-definitions',
+          {
+            code: 'OFFER-456-B',
+            name: 'Second synthetic service',
+            description: null,
+          },
+          'definition-456-b',
+          fixture.companyId,
+        ),
+      ).definition,
+    );
+    const offering = entity(
+      record(
+        await command(
+          '/commercial-catalogue/offerings',
+          { serviceDefinitionId: definition.id, commercialLabel: null },
+          'offering-456-b',
+          fixture.companyId,
+        ),
+      ).offering,
+    );
+    const tariff = published(
+      await command(
+        `/pricing-configuration/offerings/${offering.id}/tariff-versions`,
+        {
+          unit: 'illustrative-unit',
+          unitAmount: '120.0000',
+          currency: 'EUR',
+          taxRatePercent: '19.00',
+          taxLabel: 'Second illustrative tax',
+          effectiveFrom: instant.toISOString(),
+          expectedActiveVersionNumber: null,
+        },
+        'tariff-456-b',
+        fixture.companyId,
+      ),
+    );
+    await command(
+      '/company-pricing-adjustment-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'grant-adjustment-o8',
+    );
+    return {
+      ...fixture,
+      secondOfferingId: offering.id,
+      secondTariffVersionNumber: tariff.versionNumber,
+    };
+  }
+
+  async function adjustedSnapshot(
+    fixture: AdjustedOfferFixture,
+    lines: ReadonlyArray<{ line: 'A' | 'B'; netReduction?: string }>,
+    key: string,
+  ): Promise<Record<string, unknown> & { id: string }> {
+    return identifiedRecord(
+      await command(
+        `/pricing/opportunities/${fixture.opportunityId}/snapshots`,
+        {
+          pricingRuleVersionNumber: fixture.ruleVersionNumber,
+          lines: lines.map(({ line, netReduction }) => ({
+            ...(line === 'A'
+              ? {
+                  offeringId: fixture.offeringId,
+                  tariffVersionNumber: fixture.tariffVersionNumber,
+                  quantity: '1',
+                }
+              : {
+                  offeringId: fixture.secondOfferingId,
+                  tariffVersionNumber: fixture.secondTariffVersionNumber,
+                  quantity: '2',
+                }),
+            ...(netReduction === undefined
+              ? {}
+              : {
+                  adjustment: {
+                    type: 'FIXED_NET_DISCOUNT',
+                    netReduction,
+                    reason: `Synthetic <discount> & "reason" ${line}`,
+                  },
+                }),
+          })),
+        },
+        'adjusted-snapshot-' + key,
+        fixture.companyId,
+      ),
+    );
+  }
+
   async function request(
     path: string,
     companyId?: string,
@@ -5817,6 +6364,19 @@ function countBlockedRequests(
       (waitKind === 'any' ||
         (waitKind === 'client' ? request.clientWrite : request.profileWrite)),
   ).length;
+}
+
+function allPass(): Array<{ code: string; status: 'PASS' | 'ERROR' }> {
+  return [
+    'PRICING_SNAPSHOT_COHERENT',
+    'CURRENCY_UNCHANGED',
+    'VALIDITY_OPEN',
+    'RECIPIENT_AVAILABLE',
+    'RECIPIENT_IDENTITY_CURRENT',
+    'RECIPIENT_TAX_ID_RECORDED',
+    'PRICING_CLIENT_CONTEXT_COHERENT',
+    'PROVISIONAL_MARKER_PRESENT',
+  ].map((code) => ({ code, status: 'PASS' }));
 }
 
 function identifiedRecord(

@@ -11,6 +11,8 @@ export type OfferView = {
   revision: number;
   version: {
     id: string;
+    qualityRuleSet: OfferQualityRunView['ruleSet'];
+    qualityRuleSetVersion: OfferQualityRunView['ruleSetVersion'];
     latestQualityRun: OfferQualityRunView | null;
     versionNumber: number;
     predecessorVersionId: string | null;
@@ -38,7 +40,7 @@ export type OfferView = {
     provisional: true;
     representation: {
       templateCode: 'OFFER_ILLUSTRATIVE';
-      templateVersion: 1;
+      templateVersion: OfferBindingVersion;
       html: string;
       sha256: string;
     };
@@ -126,11 +128,21 @@ export function readOffer(value: unknown): OfferView {
     version.provisional !== true
   )
     invalid();
+  const representation = readRepresentation(version.representation);
+  if (
+    version.qualityRuleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' ||
+    version.qualityRuleSetVersion !== representation.templateVersion
+  )
+    invalid();
+  const binding: OfferQualityRunBinding = {
+    offerVersionId: version.id,
+    ruleSetVersion: representation.templateVersion,
+  };
   const decision =
     version.decision === null ||
     (version.decision === undefined && version.decisionState === 'PENDING')
       ? null
-      : readOfferDecision(version.decision, version.id);
+      : readOfferDecision(version.decision, binding);
   const predecessorVersionId = optionalText(
     version.predecessorVersionId ??
       (version.versionNumber === 1 ? null : undefined),
@@ -150,7 +162,10 @@ export function readOffer(value: unknown): OfferView {
     (decision && decision.offerRevision > root.revision)
   )
     invalid();
-  const representation = readRepresentation(version.representation);
+  const latestQualityRun =
+    version.latestQualityRun === null
+      ? null
+      : readOfferQualityRun(version.latestQualityRun, binding);
   let transmissionState: OfferTransmissionState;
   if (
     version.transmissionState === 'NOT_TRANSMITTED' &&
@@ -172,7 +187,7 @@ export function readOffer(value: unknown): OfferView {
   ) {
     const transmission = readOfferTransmission(
       version.transmission,
-      version.id,
+      binding,
       decision,
     );
     if (
@@ -211,10 +226,9 @@ export function readOffer(value: unknown): OfferView {
     revision: root.revision,
     version: {
       id: version.id,
-      latestQualityRun:
-        version.latestQualityRun === null
-          ? null
-          : readOfferQualityRun(version.latestQualityRun, version.id),
+      qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+      qualityRuleSetVersion: binding.ruleSetVersion,
+      latestQualityRun,
       versionNumber: version.versionNumber,
       predecessorVersionId,
       supersededByVersionId,
@@ -348,8 +362,9 @@ export type OfferDecisionView = {
 
 export function readOfferDecision(
   value: unknown,
-  offerVersionId: string,
+  binding: OfferQualityRunBinding,
 ): OfferDecisionView {
+  const { offerVersionId } = binding;
   const row = record(value);
   if (
     typeof row.id !== 'string' ||
@@ -388,7 +403,7 @@ export function readOfferDecision(
       invalid();
     acknowledgedWarningCodes.push(item);
   }
-  const qualityRun = readOfferQualityRun(row.qualityRun, offerVersionId);
+  const qualityRun = readOfferQualityRun(row.qualityRun, binding);
   const warnings = qualityRun.results
     .filter((result) => result.status === 'WARNING')
     .map((result) => result.code);
@@ -411,9 +426,10 @@ export function readOfferDecision(
 
 export function readOfferTransmission(
   value: unknown,
-  offerVersionId: string,
+  binding: OfferQualityRunBinding,
   approval: OfferDecisionView | null,
 ): OfferTransmissionView {
+  const { offerVersionId } = binding;
   const row = record(value);
   if (
     approval?.state !== 'APPROVED' ||
@@ -440,7 +456,7 @@ export function readOfferTransmission(
       invalid();
     acknowledgedWarningCodes.push(code);
   }
-  const qualityRun = readOfferQualityRun(row.qualityRun, offerVersionId);
+  const qualityRun = readOfferQualityRun(row.qualityRun, binding);
   const newWarnings = qualityRun.results
     .filter(
       (result) =>
@@ -480,11 +496,17 @@ export const offerQualityLabels = {
   PRICING_CLIENT_CONTEXT_COHERENT: 'Pricing Client context coherent',
   PROVISIONAL_MARKER_PRESENT: 'Provisional marker present',
 } as const;
+/** Template and rule set versions are bound together; unknown values fail closed. */
+type OfferBindingVersion = 1 | 2;
+function isOfferBindingVersion(value: unknown): value is OfferBindingVersion {
+  return value === 1 || value === 2;
+}
+
 export type OfferQualityRunView = {
   id: string;
   offerVersionId: string;
   ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
-  ruleSetVersion: 1;
+  ruleSetVersion: OfferBindingVersion;
   actorWorkspaceMembershipId: string;
   evaluatedAt: string;
   results: Array<{
@@ -493,16 +515,25 @@ export type OfferQualityRunView = {
   }>;
 };
 
+/**
+ * The exact Offer Version a run must belong to and the rule set version bound
+ * to that version's Template. A run that names any other value is invalid.
+ */
+export type OfferQualityRunBinding = {
+  offerVersionId: string;
+  ruleSetVersion: OfferBindingVersion;
+};
+
 export function readOfferQualityRun(
   value: unknown,
-  offerVersionId: string,
+  { offerVersionId, ruleSetVersion }: OfferQualityRunBinding,
 ): OfferQualityRunView {
   const run = record(value);
   if (
     typeof run.id !== 'string' ||
     run.offerVersionId !== offerVersionId ||
     run.ruleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' ||
-    run.ruleSetVersion !== 1 ||
+    run.ruleSetVersion !== ruleSetVersion ||
     typeof run.actorWorkspaceMembershipId !== 'string' ||
     typeof run.evaluatedAt !== 'string' ||
     !Number.isFinite(Date.parse(run.evaluatedAt)) ||
@@ -538,7 +569,7 @@ export function readOfferQualityRun(
     id: run.id,
     offerVersionId,
     ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
-    ruleSetVersion: 1,
+    ruleSetVersion,
     actorWorkspaceMembershipId: run.actorWorkspaceMembershipId,
     evaluatedAt: run.evaluatedAt,
     results,
@@ -557,7 +588,7 @@ function readRepresentation(
   const representation = record(value);
   if (
     representation.templateCode !== 'OFFER_ILLUSTRATIVE' ||
-    representation.templateVersion !== 1 ||
+    !isOfferBindingVersion(representation.templateVersion) ||
     typeof representation.html !== 'string' ||
     representation.html.length === 0 ||
     typeof representation.sha256 !== 'string' ||
@@ -566,7 +597,7 @@ function readRepresentation(
     invalid();
   return {
     templateCode: 'OFFER_ILLUSTRATIVE',
-    templateVersion: 1,
+    templateVersion: representation.templateVersion,
     html: representation.html,
     sha256: representation.sha256,
   };

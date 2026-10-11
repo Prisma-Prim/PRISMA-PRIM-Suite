@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   renderOfferRepresentation,
@@ -28,6 +29,8 @@ const input = {
       taxLabel: 'TVA "standard"',
       lineTax: '40.00',
       adjustment: null,
+      adjustedLineNet: '200.00',
+      adjustedLineTax: '40.00',
     },
   ],
   subtotal: '200.00',
@@ -78,7 +81,8 @@ describe('illustrative Offer representation', () => {
 
   it.each([
     { templateCode: 'UNKNOWN', templateVersion: 1 },
-    { templateCode: 'OFFER_ILLUSTRATIVE', templateVersion: 2 },
+    { templateCode: 'OFFER_ILLUSTRATIVE', templateVersion: 3 },
+    { templateCode: 'OFFER_ILLUSTRATIVE', templateVersion: 0 },
   ])('fails closed for an unsupported stored Template binding', (binding) => {
     expect(() => renderOfferRepresentation({ ...input, ...binding })).toThrow(
       'The stored Offer Template Version is unsupported.',
@@ -103,6 +107,92 @@ describe('illustrative Offer representation', () => {
       }),
     ).toThrow(
       'Offer Template Version 1 cannot render an adjusted Pricing Snapshot.',
+    );
+  });
+});
+
+// One adjusted and one unadjusted line; amounts are the stored strings of a
+// hand-computed trace (200.00 - 12.34 = 187.66; tax 40.00 -> 37.53).
+const adjustedInput = {
+  ...input,
+  templateVersion: 2,
+  versionNumber: 2,
+  lines: [
+    {
+      ...input.lines[0],
+      adjustment: {
+        type: 'FIXED_NET_DISCOUNT',
+        netReduction: '12.34',
+        taxReduction: '2.47',
+        reason: 'Remise <spéciale> & "fidélité" \'2026\'',
+        appliedByWorkspaceMembershipId: 'membership-never-rendered',
+        appliedAt: '2026-09-30T07:00:00.000Z',
+      },
+      adjustedLineNet: '187.66',
+      adjustedLineTax: '37.53',
+    },
+    {
+      serviceName: 'Unadjusted follow-up',
+      quantity: '1',
+      unit: 'visit',
+      unitAmount: '50.0000',
+      lineNet: '50.00',
+      taxLabel: 'TVA réduite',
+      lineTax: '4.50',
+      adjustment: null,
+      adjustedLineNet: '50.00',
+      adjustedLineTax: '4.50',
+    },
+  ],
+  subtotal: '237.66',
+  taxTotal: '42.03',
+  total: '279.69',
+} satisfies RenderOfferRepresentationInput;
+
+describe('illustrative Offer representation Template v2', () => {
+  it('renders the v2 golden bytes and checksum in PRD 18.7 order without repricing', () => {
+    const expected = readFileSync('src/offer/offer-v2.golden.txt', 'utf8')
+      .replaceAll('\r\n', '\n')
+      .replace(/\n$/u, '');
+    const representation = renderOfferRepresentation(adjustedInput);
+    expect(representation).toEqual({
+      templateCode: 'OFFER_ILLUSTRATIVE',
+      templateVersion: 2,
+      html: expected,
+      sha256:
+        'd7ffa21e3b9f0ef743fc78c9396f5c849be051f429f175149a04eda9845f01aa',
+    });
+    expect(renderOfferRepresentation(adjustedInput)).toEqual(representation);
+    const rows = representation.html.indexOf('<tbody>');
+    const original = representation.html.indexOf('<td>200.00 EUR</td>', rows);
+    const discount = representation.html.indexOf('Fixed discount:', rows);
+    const adjusted = representation.html.indexOf('Adjusted line', rows);
+    const unadjusted = representation.html.indexOf('Unadjusted follow-up');
+    expect(original).toBeLessThan(discount);
+    expect(discount).toBeLessThan(adjusted);
+    expect(adjusted).toBeLessThan(unadjusted);
+    expect(representation.html.match(/Fixed discount:/gu)).toHaveLength(1);
+    expect(representation.html).not.toContain('membership-never-rendered');
+    expect(representation.html).not.toContain('2026-09-30T07:00:00.000Z');
+    expect(representation.html).not.toContain('<spéciale>');
+  });
+
+  it('renders unadjusted lines exactly as Template v1 rows', () => {
+    const v1Row = /<tbody>(.*)<\/tbody>/u.exec(
+      renderOfferRepresentation({ ...input, lines: [adjustedInput.lines[1]] })
+        .html,
+    )?.[1];
+    expect(v1Row).toMatch(/^<tr><td>Unadjusted follow-up<\/td>/u);
+    expect(renderOfferRepresentation(adjustedInput).html).toContain(
+      `${v1Row ?? 'missing'}</tbody>`,
+    );
+  });
+
+  it('fails closed when a v2 binding has no adjusted line', () => {
+    expect(() =>
+      renderOfferRepresentation({ ...input, templateVersion: 2 }),
+    ).toThrow(
+      'Offer Template Version 2 requires an adjusted Pricing Snapshot.',
     );
   });
 });

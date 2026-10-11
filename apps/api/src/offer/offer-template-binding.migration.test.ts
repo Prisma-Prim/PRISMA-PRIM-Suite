@@ -526,6 +526,8 @@ it.skipIf(!databaseUrl)(
             taxLabel: row.taxLabel,
             lineTax: row.lineTax,
             adjustment: null,
+            adjustedLineNet: row.lineNet,
+            adjustedLineTax: row.lineTax,
           },
         ],
         subtotal: row.subtotal,

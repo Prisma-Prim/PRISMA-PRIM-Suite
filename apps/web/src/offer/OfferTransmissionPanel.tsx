@@ -120,7 +120,10 @@ export function OfferTransmissionPanel({
       } else if (result.status === 'ok') {
         const transmission = readOfferTransmission(
           result.value,
-          offer.version.id,
+          {
+            offerVersionId: offer.version.id,
+            ruleSetVersion: offer.version.qualityRuleSetVersion,
+          },
           offer.version.decision,
         );
         attempt.current = undefined;

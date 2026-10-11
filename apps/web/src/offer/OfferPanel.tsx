@@ -19,6 +19,7 @@ import {
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { offerCopy as copy } from './offer.copy';
+import { useOfferBindingCopy } from './offer-binding.copy';
 import {
   readOffer,
   readOfferDetail,
@@ -120,7 +121,6 @@ export function OfferPanel({
     | 'invalid'
     | 'conflict'
     | 'uncertain'
-    | 'unsupportedAdjustment'
     | 'targetUnavailable'
     | 'stale'
     | 'accepted'
@@ -354,13 +354,11 @@ export function OfferPanel({
       } else if (result.status === 'conflict') {
         attempt.current = undefined;
         setFeedback(
-          conflictCode(result) === 'PRICING_SNAPSHOT_ADJUSTMENT_UNSUPPORTED'
-            ? 'unsupportedAdjustment'
-            : conflictCode(result) === 'STALE_OFFER_REVISION'
-              ? 'stale'
-              : conflictCode(result) === 'OFFER_ACCEPTED'
-                ? 'accepted'
-                : 'conflict',
+          conflictCode(result) === 'STALE_OFFER_REVISION'
+            ? 'stale'
+            : conflictCode(result) === 'OFFER_ACCEPTED'
+              ? 'accepted'
+              : 'conflict',
         );
       } else {
         setFeedback('uncertain');
@@ -549,6 +547,7 @@ export function OfferPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               offerVersionId={view.offer.version.id}
+              qualityRuleSetVersion={view.offer.version.qualityRuleSetVersion}
               initialRun={view.offer.version.latestQualityRun}
               mayRun={
                 !view.offer.version.supersededByVersionId &&
@@ -683,6 +682,7 @@ export function OfferPanel({
 
 function OfferSummary({ offer }: { offer: OfferView }) {
   const version = offer.version;
+  const bindingCopy = useOfferBindingCopy();
   return (
     <div className="offer-summary">
       <strong>{copy.provisional}</strong>
@@ -896,12 +896,21 @@ function OfferSummary({ offer }: { offer: OfferView }) {
             </dd>
           </div>
           <div>
+            <dt>{bindingCopy('ruleSet')}</dt>
+            <dd>
+              {version.qualityRuleSet} v{version.qualityRuleSetVersion}
+            </dd>
+          </div>
+          <div>
             <dt>{copy.checksum}</dt>
             <dd>
               <code>{version.representation.sha256}</code>
             </dd>
           </div>
         </dl>
+        {version.representation.templateVersion === 2 && (
+          <p>{bindingCopy('adjustedSnapshot')}</p>
+        )}
         <iframe
           title={copy.representationFrame}
           sandbox=""

@@ -116,7 +116,10 @@ export function OfferDecisionPanel({
         attempt.current = undefined;
         setState('denied');
       } else if (result.status === 'ok') {
-        const decision = readOfferDecision(result.value, offer.version.id);
+        const decision = readOfferDecision(result.value, {
+          offerVersionId: offer.version.id,
+          ruleSetVersion: offer.version.qualityRuleSetVersion,
+        });
         attempt.current = undefined;
         setState('idle');
         onDecision(decision);

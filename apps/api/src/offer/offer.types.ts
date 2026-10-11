@@ -115,6 +115,9 @@ export type OfferClientResponse = {
 
 export type OfferVersionRecord = {
   readonly id: string;
+  /** Rule set bound at creation with the representation's Template Version. */
+  readonly qualityRuleSet: OfferQualityRun['ruleSet'];
+  readonly qualityRuleSetVersion: OfferQualityRun['ruleSetVersion'];
   readonly versionNumber: number;
   readonly predecessorVersionId: string | null;
   readonly supersededByVersionId: string | null;

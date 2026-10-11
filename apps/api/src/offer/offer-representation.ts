@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { PricingSnapshotLineRecord } from '../pricing-configuration/pricing-snapshot.types.js';
+import { storedOfferBinding, type OfferBinding } from './offer-binding.js';
 
 type OfferRepresentationLine = Pick<
   PricingSnapshotLineRecord,
@@ -11,6 +12,8 @@ type OfferRepresentationLine = Pick<
   | 'taxLabel'
   | 'lineTax'
   | 'adjustment'
+  | 'adjustedLineNet'
+  | 'adjustedLineTax'
 >;
 
 export interface RenderOfferRepresentationInput {
@@ -39,7 +42,7 @@ export interface RenderOfferRepresentationInput {
 
 export interface OfferRepresentation {
   readonly templateCode: 'OFFER_ILLUSTRATIVE';
-  readonly templateVersion: 1;
+  readonly templateVersion: OfferBinding['templateVersion'];
   readonly html: string;
   readonly sha256: string;
 }
@@ -47,34 +50,46 @@ export interface OfferRepresentation {
 export function renderOfferRepresentation(
   input: RenderOfferRepresentationInput,
 ): OfferRepresentation {
-  if (
-    input.templateCode !== 'OFFER_ILLUSTRATIVE' ||
-    input.templateVersion !== 1
-  )
-    throw new Error('The stored Offer Template Version is unsupported.');
-  if (input.lines.some((line) => line.adjustment !== null))
+  const binding = storedOfferBinding(input);
+  const adjusted = input.lines.some((line) => line.adjustment !== null);
+  if (binding.templateVersion === 1 && adjusted)
     throw new Error(
       'Offer Template Version 1 cannot render an adjusted Pricing Snapshot.',
     );
+  if (binding.templateVersion === 2 && !adjusted)
+    throw new Error(
+      'Offer Template Version 2 requires an adjusted Pricing Snapshot.',
+    );
 
-  const html = renderIllustrativeOfferV1(input);
+  const html = renderIllustrativeOffer(input, binding.templateVersion);
   return {
     templateCode: 'OFFER_ILLUSTRATIVE',
-    templateVersion: 1,
+    templateVersion: binding.templateVersion,
     html,
     sha256: createHash('sha256').update(html, 'utf8').digest('hex'),
   };
 }
 
-function renderIllustrativeOfferV1(
+/**
+ * Template v1 bytes are frozen. Template v2 differs only by the adjacent
+ * fixed-discount and adjusted rows of each adjusted line and its footer; it
+ * renders stored Snapshot strings and never derives an amount.
+ */
+function renderIllustrativeOffer(
   input: RenderOfferRepresentationInput,
+  templateVersion: OfferBinding['templateVersion'],
 ): string {
   const currency = escapeHtml(input.currency);
   const lineRows = input.lines
-    .map(
-      (line) =>
-        `<tr><td>${escapeHtml(line.serviceName)}</td><td>${escapeHtml(line.quantity)}</td><td>${escapeHtml(line.unit)}</td><td>${escapeHtml(line.unitAmount)} ${currency}</td><td>${escapeHtml(line.lineNet)} ${currency}</td><td>${escapeHtml(line.taxLabel)}</td><td>${escapeHtml(line.lineTax)} ${currency}</td></tr>`,
-    )
+    .map((line) => {
+      const original = `<tr><td>${escapeHtml(line.serviceName)}</td><td>${escapeHtml(line.quantity)}</td><td>${escapeHtml(line.unit)}</td><td>${escapeHtml(line.unitAmount)} ${currency}</td><td>${escapeHtml(line.lineNet)} ${currency}</td><td>${escapeHtml(line.taxLabel)}</td><td>${escapeHtml(line.lineTax)} ${currency}</td></tr>`;
+      if (templateVersion === 1 || line.adjustment === null) return original;
+      return (
+        original +
+        `<tr><td colspan="4">Fixed discount: ${escapeHtml(line.adjustment.reason)}</td><td>${escapeHtml(line.adjustment.netReduction)} ${currency}</td><td>Tax reduction</td><td>${escapeHtml(line.adjustment.taxReduction)} ${currency}</td></tr>` +
+        `<tr><td colspan="4">Adjusted line</td><td>${escapeHtml(line.adjustedLineNet)} ${currency}</td><td>Adjusted tax</td><td>${escapeHtml(line.adjustedLineTax)} ${currency}</td></tr>`
+      );
+    })
     .join('');
 
   return [
@@ -89,7 +104,7 @@ function renderIllustrativeOfferV1(
     `<section aria-labelledby="offer-totals-title"><h2 id="offer-totals-title">Totals</h2><dl><dt>Subtotal</dt><dd>${escapeHtml(input.subtotal)} ${currency}</dd><dt>Tax total</dt><dd>${escapeHtml(input.taxTotal)} ${currency}</dd><dt>Total</dt><dd>${escapeHtml(input.total)} ${currency}</dd><dt>Currency</dt><dd>${currency}</dd></dl></section>`,
     `<section aria-labelledby="offer-scope-title"><h2 id="offer-scope-title">Scope note</h2><p>${optionalText(input.scopeNote)}</p></section>`,
     `<section aria-labelledby="offer-conditions-title"><h2 id="offer-conditions-title">Commercial conditions</h2><p>${optionalText(input.commercialConditions)}</p></section>`,
-    `<footer><dl><dt>Template Version</dt><dd>OFFER_ILLUSTRATIVE v1</dd><dt>Pricing Snapshot id</dt><dd>${escapeHtml(input.pricingSnapshotId)}</dd><dt>Provenance</dt><dd>${input.provenance}</dd></dl></footer>`,
+    `<footer><dl><dt>Template Version</dt><dd>OFFER_ILLUSTRATIVE v${templateVersion}</dd><dt>Pricing Snapshot id</dt><dd>${escapeHtml(input.pricingSnapshotId)}</dd><dt>Provenance</dt><dd>${input.provenance}</dd></dl></footer>`,
     '</article>',
     '</body>',
     '</html>',
