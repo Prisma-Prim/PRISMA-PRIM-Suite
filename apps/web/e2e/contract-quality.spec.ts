@@ -112,6 +112,8 @@ test('reviews attributed exact-version results, retries by keyboard and reopens 
         taxId: null,
         legalAddress: 'Example Street',
       },
+      qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+      qualityRuleSetVersion: 1,
       issuingCompanyLabel: company.displayName,
       scopeNote: 'Synthetic accepted scope',
       commercialConditions: 'Accepted conditions',

@@ -1,4 +1,4 @@
-import { contractPath, contractQualityContext } from './contract-response';
+import { contractPath, contractQualityRunBinding } from './contract-response';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -137,10 +137,8 @@ export function ContractSignaturePanel({
         setFeedback('denied');
       } else if (result.status === 'ok') {
         const recorded = readContractSignature(result.value, {
-          versionId: contract.version.id,
-          termEndsOn: contract.version.termEndsOn,
+          ...contractQualityRunBinding(contract),
           approval: decision,
-          addendum: contractQualityContext(contract),
         });
         if (recorded.revision !== contract.revision + 1)
           throw new Error('Mismatched signature revision.');

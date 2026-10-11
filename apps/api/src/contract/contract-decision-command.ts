@@ -28,7 +28,7 @@ import {
   readContractWarningCodes,
   type ContractDecision,
 } from './contract-decision.js';
-import { type ContractQualityResult } from './contract-quality.js';
+import { type ContractQualityEvaluation } from './contract-quality.js';
 type ContractRow = typeof contracts.$inferSelect;
 type VersionRow = typeof contractVersions.$inferSelect;
 export interface DecideContractVersionInput {
@@ -58,7 +58,7 @@ export interface DecisionDependencies {
     companyId: string;
     contract: ContractRow;
     version: VersionRow;
-  }) => Promise<{ evaluatedAt: Date; results: ContractQualityResult[] }>;
+  }) => Promise<ContractQualityEvaluation>;
   representationChecksum: (
     actor: ActorContext,
     contract: ContractRow,
@@ -198,9 +198,12 @@ export async function decideContractVersion(
           'The Contract Version already has a decision.',
         );
       const decidedAt = quality?.evaluatedAt ?? dependencies.clock.now();
-      let qualityRunId: string | null = null;
-      let checksum: string | null = null;
-      let warnings: readonly string[] | null = null;
+      let approval: {
+        readonly qualityRunId: string;
+        readonly checksum: string;
+        readonly warnings: readonly string[];
+        readonly ruleSetVersion: ContractQualityEvaluation['ruleSetVersion'];
+      } | null = null;
       if (command.kind === 'APPROVE' && quality) {
         if (quality.results.some((result) => result.status === 'ERROR'))
           throw conflict(
@@ -219,8 +222,7 @@ export async function decideContractVersion(
             'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
             'Acknowledge exactly the current warnings.',
           );
-        warnings = currentWarnings;
-        checksum = await dependencies.representationChecksum(
+        const checksum = await dependencies.representationChecksum(
           actor,
           current.contract,
           current.version,
@@ -234,13 +236,21 @@ export async function decideContractVersion(
             contractVersionId: current.version.id,
             actorInternalUserId: actor.internalUserId,
             actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            ruleSetVersion: quality.ruleSetVersion,
             evaluatedAt: decidedAt,
             results: quality.results,
           })
           .returning();
         if (!run) throw new Error('Missing Contract approval check run.');
-        qualityRunId = run.id;
+        approval = {
+          qualityRunId: run.id,
+          checksum,
+          warnings: currentWarnings,
+          ruleSetVersion: quality.ruleSetVersion,
+        };
       }
+      if ((command.kind === 'APPROVE') !== (approval !== null))
+        throw new Error('Missing Contract approval evidence.');
       const [decision] = await dependencies.databaseContext.connection
         .insert(contractDecisions)
         .values({
@@ -254,9 +264,9 @@ export async function decideContractVersion(
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
           decidedAt,
           reason: command.kind === 'REJECT' ? command.reason : null,
-          qualityRunId,
-          representationChecksum: checksum,
-          acknowledgedWarningCodes: warnings,
+          qualityRunId: approval?.qualityRunId ?? null,
+          representationChecksum: approval?.checksum ?? null,
+          acknowledgedWarningCodes: approval?.warnings ?? null,
         })
         .returning();
       if (!decision) throw new Error('Missing Contract decision.');
@@ -302,10 +312,15 @@ export async function decideContractVersion(
         contractId: current.contract.id,
         contractVersionId: current.version.id,
         versionNumber: current.version.versionNumber,
-        kind: command.kind,
+        decision: approval
+          ? {
+              kind: 'APPROVE',
+              ruleSetVersion: approval.ruleSetVersion,
+              acknowledgedWarningCodes: approval.warnings,
+            }
+          : { kind: 'REJECT' },
         source: contractSource(current.contract),
         pricingSnapshotId: current.version.pricingSnapshotId,
-        acknowledgedWarningCodes: warnings ?? [],
         occurredAt: decidedAt,
       });
       const recorded = await readContractDecision(

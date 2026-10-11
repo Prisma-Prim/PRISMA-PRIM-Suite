@@ -8,6 +8,7 @@ import { contractDecisionMessages } from './contract-decision.copy';
 import { contractSignatureMessages } from './contract-signature.copy';
 import { contractProjectsMessages } from './contract-projects.copy';
 import { contractPrecontractMessages } from './contract-precontract.copy';
+import { contractRuleSetMessages } from './contract-rule-set.copy';
 import { ProjectContracts } from './ProjectContracts';
 import '@testing-library/jest-dom/vitest';
 import {
@@ -3089,7 +3090,167 @@ describe('ContractPanel', () => {
       ).not.toBeInTheDocument(),
     );
   });
+  describe('adjusted Pricing Snapshots (#561)', () => {
+    function renderStored(contract: unknown) {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        input.toString().includes('/offers/')
+          ? acceptedOfferResponse()
+          : response({ contract, precontract: null }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={actor(true)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+    }
+    it.each(interfaceLocales)(
+      'labels the bound rule set v2 and its runs in %s',
+      async (locale) => {
+        window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+        renderStored(adjustedFixture());
+        const label = await screen.findByText(
+          resolveMessage(contractRuleSetMessages, locale, 'ruleSet'),
+        );
+        expect(label.nextElementSibling).toHaveTextContent(
+          'CONTRACT_QUALITY_ILLUSTRATIVE v2',
+        );
+        expect(
+          screen.getByText(
+            resolveMessage(contractRuleSetMessages, locale, 'adjustedSnapshot'),
+          ),
+        ).toBeVisible();
+        const checks = screen.getByRole('region', {
+          name: 'Contract Quality Checks',
+        });
+        expect(
+          within(checks).getByText('CONTRACT_QUALITY_ILLUSTRATIVE v2'),
+        ).toBeVisible();
+        expect(screen.getByText(/335\.08 EUR/u)).toBeVisible();
+      },
+    );
+    it('keeps an unadjusted Contract on v1 without the adjusted notice', async () => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      renderStored({
+        ...fixture(),
+        version: { ...fixture().version, latestQualityRun: qualityRun() },
+      });
+      const label = await screen.findByText('Quality Check rule set');
+      expect(label.nextElementSibling).toHaveTextContent(
+        'CONTRACT_QUALITY_ILLUSTRATIVE v1',
+      );
+      expect(
+        screen.queryByText(/references an adjusted Pricing Snapshot/u),
+      ).not.toBeInTheDocument();
+    });
+    it('keeps an older v1 run readable on a pending version bound to v2', async () => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      const stored = adjustedFixture();
+      renderStored({
+        ...stored,
+        version: { ...stored.version, latestQualityRun: qualityRun() },
+      });
+      const checks = await screen.findByRole('region', {
+        name: 'Contract Quality Checks',
+      });
+      expect(
+        within(checks).getByText('CONTRACT_QUALITY_ILLUSTRATIVE v1'),
+      ).toBeVisible();
+    });
+    it.each([
+      [
+        'an unadjusted version that claims v2',
+        {
+          ...fixture(),
+          version: { ...fixture().version, qualityRuleSetVersion: 2 },
+        },
+      ],
+      [
+        'an adjusted version that claims v1',
+        {
+          ...adjustedFixture(),
+          version: {
+            ...adjustedFixture().version,
+            qualityRuleSetVersion: 1,
+            latestQualityRun: null,
+          },
+        },
+      ],
+      [
+        'an unknown rule set version',
+        {
+          ...adjustedFixture(),
+          version: { ...adjustedFixture().version, qualityRuleSetVersion: 3 },
+        },
+      ],
+      [
+        'a JSON string rule set version',
+        {
+          ...adjustedFixture(),
+          version: { ...adjustedFixture().version, qualityRuleSetVersion: '2' },
+        },
+      ],
+      [
+        'a v2 run on a version bound to v1',
+        {
+          ...fixture(),
+          version: {
+            ...fixture().version,
+            latestQualityRun: { ...qualityRun(), ruleSetVersion: 2 },
+          },
+        },
+      ],
+    ])('fails closed for %s', async (_name, contract) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      renderStored(contract);
+      expect(
+        await screen.findByText('The Contract could not be loaded. Try again.'),
+      ).toBeVisible();
+      expect(
+        screen.queryByText('Synthetic accepted scope'),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
+function adjustedFixture() {
+  const stored = fixture();
+  return {
+    ...stored,
+    version: {
+      ...stored.version,
+      qualityRuleSetVersion: 2,
+      latestQualityRun: { ...qualityRun(), ruleSetVersion: 2 },
+      pricingSnapshot: {
+        ...stored.version.pricingSnapshot,
+        subtotal: '291.37',
+        taxTotal: '43.71',
+        total: '335.08',
+        lines: [
+          {
+            serviceName: 'Illustrative service',
+            quantity: '1',
+            lineNet: '300.00',
+            lineTax: '45.00',
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction: '8.63',
+              taxReduction: '1.29',
+              reason: 'Synthetic discount',
+              appliedByWorkspaceMembershipId: 'member-one',
+              appliedAt: '2026-10-07T08:00:00.000Z',
+            },
+            adjustedLineNet: '291.37',
+            adjustedLineTax: '43.71',
+          },
+        ],
+      },
+    },
+  };
+}
 function actor(prepare: boolean): ActorContext {
   return {
     internalUserId: 'user-one',
@@ -3282,6 +3443,8 @@ function fixture() {
         taxId: 'SYNTHETIC',
         legalAddress: 'Example Street',
       },
+      qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+      qualityRuleSetVersion: 1,
       issuingCompanyLabel: 'Company',
       scopeNote: 'Synthetic accepted scope',
       commercialConditions: 'Accepted conditions',

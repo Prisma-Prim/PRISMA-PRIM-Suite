@@ -1,6 +1,6 @@
-import type { ContractQualityContext } from './contract-quality-response';
 import {
   readContractQualityRun,
+  type ContractQualityRunBinding,
   type ContractQualityRunView,
 } from './contract-quality-response';
 export type ContractDecisionView = {
@@ -18,12 +18,12 @@ export type ContractDecisionView = {
     }
   | { kind: 'REJECT'; reason: string }
 );
+/** An approval run names exactly the rule set bound to the version. */
 export function readContractDecision(
   value: unknown,
-  versionId: string,
-  termEndsOn: string | null,
-  addendum?: ContractQualityContext,
+  binding: ContractQualityRunBinding,
 ): ContractDecisionView {
+  const { versionId } = binding;
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('Invalid Contract decision.');
   const input = Object.fromEntries(Object.entries(value));
@@ -65,12 +65,7 @@ export function readContractDecision(
     return { ...base, kind: 'REJECT', reason };
   }
   if (input.kind === 'APPROVE') {
-    const qualityRun = readContractQualityRun(
-      input.qualityRun,
-      versionId,
-      termEndsOn,
-      addendum,
-    );
+    const qualityRun = readContractQualityRun(input.qualityRun, binding);
     const representationChecksum = text(input.representationChecksum);
     if (
       !/^[0-9a-f]{64}$/u.test(representationChecksum) ||

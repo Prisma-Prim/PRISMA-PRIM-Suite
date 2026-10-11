@@ -1,7 +1,7 @@
-import type { ContractQualityContext } from './contract-quality-response';
 import type { ContractDecisionView } from './contract-decision-response';
 import {
   readContractQualityRun,
+  type ContractQualityRunBinding,
   type ContractQualityRunView,
 } from './contract-quality-response';
 export interface ContractSignatureView {
@@ -22,14 +22,10 @@ export interface ContractSignatureView {
   acknowledgedWarningCodes: readonly string[];
   representationChecksum: string;
 }
+/** A signature run names exactly the rule set bound to the version. */
 export function readContractSignature(
   value: unknown,
-  input: {
-    versionId: string;
-    termEndsOn: string | null;
-    approval: ContractDecisionView | null;
-    addendum?: ContractQualityContext;
-  },
+  input: ContractQualityRunBinding & { approval: ContractDecisionView | null },
 ): ContractSignatureView {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('Invalid Contract signature.');
@@ -63,12 +59,7 @@ export function readContractSignature(
       signedOn > recordedAt.slice(0, 10)
     )
       throw new Error('Invalid Contract signature date range.');
-  const qualityRun = readContractQualityRun(
-    row.qualityRun,
-    input.versionId,
-    input.termEndsOn,
-    input.addendum,
-  );
+  const qualityRun = readContractQualityRun(row.qualityRun, input);
   if (
     qualityRun.actorWorkspaceMembershipId !== actorWorkspaceMembershipId ||
     qualityRun.evaluatedAt !== recordedAt ||

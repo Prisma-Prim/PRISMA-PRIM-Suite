@@ -34,8 +34,10 @@ import type { OfferRecipientCopy } from '../offer/offer.types.js';
 import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import {
+  contractQualityRuleSetVersion,
   evaluateContractQuality,
   requireHeadContractVersion,
+  type ContractQualityEvaluation,
   type ContractQualityRun,
 } from './contract-quality.js';
 import { type ContractDecision } from './contract-decision.js';
@@ -481,12 +483,13 @@ export class ContractService {
             'CONTRACT_VERSION_SUPERSEDED',
             'The Contract Version has been superseded.',
           );
-        const { evaluatedAt, results } = await this.evaluateFreshQuality({
-          actor,
-          companyId,
-          contract,
-          version,
-        });
+        const { evaluatedAt, ruleSetVersion, results } =
+          await this.evaluateFreshQuality({
+            actor,
+            companyId,
+            contract,
+            version,
+          });
         const [run] = await this.databaseContext.connection
           .insert(contractQualityRuns)
           .values({
@@ -496,6 +499,7 @@ export class ContractService {
             contractVersionId: version.id,
             actorInternalUserId: actor.internalUserId,
             actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            ruleSetVersion,
             evaluatedAt,
             results,
           })
@@ -538,7 +542,7 @@ export class ContractService {
     companyId: string;
     contract: ContractRow;
     version: VersionRow;
-  }) {
+  }): Promise<ContractQualityEvaluation> {
     const source =
       contract.origin !== 'ACCEPTED_OFFER'
         ? null
@@ -604,8 +608,10 @@ export class ContractService {
       versionId: version.id,
       headVersionId: head?.id,
     });
+    const ruleSetVersion = contractQualityRuleSetVersion(pricing);
     const evaluatedAt = this.clock.now();
     const results = evaluateContractQuality({
+      ruleSetVersion,
       instant: evaluatedAt,
       companyId,
       partyKey: partyKey(contract.originalClientAccountId, recipient),
@@ -660,7 +666,7 @@ export class ContractService {
             ? { kind: 'DIRECT', companyId: contract.companyId }
             : missingQualitySource(),
     });
-    return { evaluatedAt, results };
+    return { evaluatedAt, ruleSetVersion, results };
   }
 
   async listQualityRuns(input: {

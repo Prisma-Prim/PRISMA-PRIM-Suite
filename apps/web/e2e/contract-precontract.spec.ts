@@ -151,6 +151,8 @@ for (const locale of interfaceLocales)
             taxId: 'SYNTHETIC',
             legalAddress: 'Synthetic address',
           },
+          qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+          qualityRuleSetVersion: 1,
           issuingCompanyLabel: company.displayName,
           scopeNote: 'Accepted scope',
           commercialConditions: null,
