@@ -498,9 +498,9 @@ Four vertical slices, in order. Each is independently testable; later slices are
 1. **R3B1 — shared Service catalogue and Company offering.** The first complete usable slice: define a shared service, record that the active Company offers it, read both. Delivers the Company Service Catalogue bundle.
 2. **R3B2 — effective-dated Tariff and Pricing Rule Versions.** Publication, supersession, validity windows and the immutable-content boundary. Blocked by R3B1 because a tariff has no subject without an offering.
 3. **R3B3 — immutable Pricing Snapshot.** Declared-version selection, the decimal trace, Client context and reopening. Blocked by R3B2 because there is nothing exact to reference before versions exist.
-4. **R3B4 — governed illustrative fixed net discount.** Add one independently authorized fixed net discount per selected line at Snapshot creation, preserve the original and adjusted trace, and reopen it unchanged. Blocked by delivered R3B3. It is a future implementation slice that requires its own approved issue and normal readiness gates after this documentation contract is merged.
+4. **R3B4 — governed illustrative fixed net discount.** Add one independently authorized fixed net discount per selected line at Snapshot creation, preserve the original and adjusted trace, and reopen it unchanged. Blocked by delivered R3B3. Delivered by #458 / #470.
 
-R3B2–R3B4 are blocked by their predecessor's records and grants, not by real business evidence. Nothing in any of the four may be used for a real price. R3B4 does not block Offer O1: O1 continues to consume delivered R3B3 Snapshots, and a later additive Offer-compatibility slice consumes adjusted Snapshots only after R3B4 is delivered.
+R3B2–R3B4 are blocked by their predecessor's records and grants, not by real business evidence. Nothing in any of the four may be used for a real price. R3B4 does not block Offer O1: O1 continues to consume delivered R3B3 Snapshots, and the additive Offer-compatibility slice O8, delivered after R3B4, consumes adjusted Snapshots ([Commercial Workflow PRD section 18.2](release-3-commercial-workflow-prd.md#182-offer-and-offer-version)).
 
 ## 16. Migration and compatibility
 

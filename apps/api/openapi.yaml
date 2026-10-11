@@ -2053,7 +2053,8 @@ components:
           minimum: 1
         revision:
           type: integer
-          const: 1
+          minimum: 1
+          description: Server-owned optimistic-concurrency token, incremented by every committed Offer command except a Quality Check run.
         provisional:
           type: boolean
           const: true
@@ -2088,6 +2089,10 @@ components:
       required:
         - id
         - versionNumber
+        - predecessorVersionId
+        - supersededByVersionId
+        - supersededAt
+        - differences
         - pricingSnapshotId
         - pricingSnapshot
         - recipient
@@ -2097,8 +2102,13 @@ components:
         - scopeNote
         - commercialConditions
         - decisionState
+        - decision
         - transmissionState
+        - transmission
         - clientResponseState
+        - clientResponse
+        - latestQualityRun
+        - validityElapsed
         - provenance
         - provisional
         - createdByWorkspaceMembershipId
@@ -2112,7 +2122,30 @@ components:
           format: uuid
         versionNumber:
           type: integer
-          const: 1
+          minimum: 1
+          description: Server-allocated, monotone per Offer, starting at 1.
+        predecessorVersionId:
+          description: Null for version 1; otherwise the version this one succeeds.
+          oneOf:
+            - type: 'null'
+            - type: string
+              format: uuid
+        supersededByVersionId:
+          description: Lineage metadata written once when a successor is created; never content.
+          oneOf:
+            - type: 'null'
+            - type: string
+              format: uuid
+        supersededAt:
+          oneOf:
+            - type: 'null'
+            - type: string
+              format: date-time
+        differences:
+          type: array
+          description: Field-level differences from the predecessor; empty for version 1.
+          items:
+            $ref: '#/components/schemas/OfferVersionDifference'
         pricingSnapshotId:
           type: string
           format: uuid
@@ -2142,13 +2175,47 @@ components:
               maxLength: 4000
         decisionState:
           type: string
-          const: PENDING
+          enum:
+            - PENDING
+            - APPROVED
+            - REJECTED
+        decision:
+          description: Null while the decision is `PENDING`.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OfferApprovedDecision'
+            - $ref: '#/components/schemas/OfferRejectedDecision'
         transmissionState:
           type: string
-          const: NOT_TRANSMITTED
+          enum:
+            - NOT_TRANSMITTED
+            - TRANSMITTED
+        transmission:
+          description: Null while the version is `NOT_TRANSMITTED`.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OfferTransmission'
         clientResponseState:
           type: string
-          const: NONE
+          description: '`NONE` while not transmitted; `PENDING` once transmitted until a response is recorded.'
+          enum:
+            - NONE
+            - PENDING
+            - ACCEPTED
+            - REJECTED
+            - EXPIRED
+        clientResponse:
+          description: Null until a Client response is recorded.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OfferClientResponse'
+        latestQualityRun:
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/OfferQualityRun'
+        validityElapsed:
+          type: boolean
+          description: Derived at read time; true when the server instant is at or after `validUntil`.
         provenance:
           type: string
           const: ILLUSTRATIVE
@@ -2170,6 +2237,282 @@ components:
           type: integer
           enum: [1, 2]
           description: Fixed at version creation together with the Template version.
+    OfferVersionDifference:
+      type: object
+      additionalProperties: false
+      required:
+        - field
+        - previous
+        - current
+        - changed
+      properties:
+        field:
+          type: string
+        previous:
+          oneOf:
+            - type: 'null'
+            - type: string
+            - type: integer
+        current:
+          oneOf:
+            - type: 'null'
+            - type: string
+            - type: integer
+        changed:
+          type: boolean
+    OfferQualityCode:
+      type: string
+      enum:
+        - PRICING_SNAPSHOT_COHERENT
+        - CURRENCY_UNCHANGED
+        - VALIDITY_OPEN
+        - RECIPIENT_AVAILABLE
+        - RECIPIENT_IDENTITY_CURRENT
+        - RECIPIENT_TAX_ID_RECORDED
+        - PRICING_CLIENT_CONTEXT_COHERENT
+        - PROVISIONAL_MARKER_PRESENT
+    OfferAcknowledgedWarningCodes:
+      type: array
+      uniqueItems: true
+      items:
+        $ref: '#/components/schemas/OfferQualityCode'
+    OfferQualityRun:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - offerVersionId
+        - ruleSet
+        - ruleSetVersion
+        - actorWorkspaceMembershipId
+        - evaluatedAt
+        - results
+      properties:
+        id:
+          type: string
+          format: uuid
+        offerVersionId:
+          type: string
+          format: uuid
+        ruleSet:
+          type: string
+          const: OFFER_QUALITY_ILLUSTRATIVE
+        ruleSetVersion:
+          type: integer
+          enum: [1, 2]
+          description: Equals the version's bound `qualityRuleSetVersion`.
+        actorWorkspaceMembershipId:
+          type: string
+          format: uuid
+        evaluatedAt:
+          type: string
+          format: date-time
+        results:
+          type: array
+          minItems: 8
+          maxItems: 8
+          description: One result per rule, in rule set order.
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - code
+              - status
+            properties:
+              code:
+                $ref: '#/components/schemas/OfferQualityCode'
+              status:
+                type: string
+                enum:
+                  - PASS
+                  - WARNING
+                  - ERROR
+    OfferApprovedDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - offerVersionId
+        - offerRevision
+        - actorWorkspaceMembershipId
+        - decidedAt
+        - state
+        - qualityRun
+        - acknowledgedWarningCodes
+        - representationSha256
+      properties:
+        id:
+          type: string
+          format: uuid
+        offerVersionId:
+          type: string
+          format: uuid
+        offerRevision:
+          type: integer
+          minimum: 1
+        actorWorkspaceMembershipId:
+          type: string
+          format: uuid
+        decidedAt:
+          type: string
+          format: date-time
+        state:
+          type: string
+          const: APPROVED
+        qualityRun:
+          $ref: '#/components/schemas/OfferQualityRun'
+        acknowledgedWarningCodes:
+          $ref: '#/components/schemas/OfferAcknowledgedWarningCodes'
+        representationSha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+    OfferRejectedDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - offerVersionId
+        - offerRevision
+        - actorWorkspaceMembershipId
+        - decidedAt
+        - state
+        - reason
+      properties:
+        id:
+          type: string
+          format: uuid
+        offerVersionId:
+          type: string
+          format: uuid
+        offerRevision:
+          type: integer
+          minimum: 1
+        actorWorkspaceMembershipId:
+          type: string
+          format: uuid
+        decidedAt:
+          type: string
+          format: date-time
+        state:
+          type: string
+          const: REJECTED
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    OfferTransmission:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - offerVersionId
+        - offerRevision
+        - actorWorkspaceMembershipId
+        - transmittedAt
+        - channel
+        - note
+        - qualityRun
+        - acknowledgedWarningCodes
+        - representationSha256
+      properties:
+        id:
+          type: string
+          format: uuid
+        offerVersionId:
+          type: string
+          format: uuid
+        offerRevision:
+          type: integer
+          minimum: 1
+        actorWorkspaceMembershipId:
+          type: string
+          format: uuid
+        transmittedAt:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          const: SIMULATED
+        note:
+          oneOf:
+            - type: 'null'
+            - type: string
+              maxLength: 500
+        qualityRun:
+          $ref: '#/components/schemas/OfferQualityRun'
+        acknowledgedWarningCodes:
+          $ref: '#/components/schemas/OfferAcknowledgedWarningCodes'
+        representationSha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+    OfferClientResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - offerVersionId
+        - offerRevision
+        - actorWorkspaceMembershipId
+        - decidedAt
+        - evidenceKind
+        - outcome
+      properties:
+        id:
+          type: string
+          format: uuid
+        offerVersionId:
+          type: string
+          format: uuid
+        offerRevision:
+          type: integer
+          minimum: 1
+        actorWorkspaceMembershipId:
+          type: string
+          format: uuid
+        decidedAt:
+          type: string
+          format: date-time
+        evidenceKind:
+          type: string
+          const: SIMULATED
+        outcome:
+          type: string
+          enum:
+            - ACCEPTED
+            - REJECTED
+            - EXPIRED
+        receivedAt:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      oneOf:
+        - properties:
+            outcome:
+              const: ACCEPTED
+          required:
+            - receivedAt
+          not:
+            required:
+              - reason
+        - properties:
+            outcome:
+              const: REJECTED
+          required:
+            - receivedAt
+            - reason
+        - properties:
+            outcome:
+              const: EXPIRED
+          allOf:
+            - not:
+                required:
+                  - receivedAt
+            - not:
+                required:
+                  - reason
     OfferRecipientCopy:
       oneOf:
         - $ref: '#/components/schemas/OfferPrimaryRecipientCopy'
