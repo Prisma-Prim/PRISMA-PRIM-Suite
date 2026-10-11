@@ -57,17 +57,22 @@ export const OPPORTUNITY_OUTCOME_TRANSITIONS = {
   }
 >;
 
+/** One reason field as submitted: absent, or a JSON value not yet checked. */
+export type SubmittedOutcomeField =
+  | { readonly supplied: false }
+  | { readonly supplied: true; readonly value: unknown };
+
 /**
- * The requested status and each reason field exactly as submitted, or null
- * when absent. Which fields are required or refused depends on the transition
- * the current status selects, so they are checked only after the pair is
+ * The requested status and each reason field exactly as submitted. Whether a
+ * field is required, refused or well-formed depends on the transition the
+ * current status selects, so every field is checked only after the pair is
  * known to be permitted (section 23.2).
  */
 export interface OpportunityOutcomeChange {
   readonly status: OpportunityOutcomeStatus;
-  readonly reason: string | null;
-  readonly lossReasonCode: OpportunityLossReasonCode | null;
-  readonly note: string | null;
+  readonly reason: SubmittedOutcomeField;
+  readonly lossReasonCode: SubmittedOutcomeField;
+  readonly note: SubmittedOutcomeField;
 }
 
 export type OpportunityOutcomeField = 'reason' | 'lossReasonCode' | 'note';
@@ -110,7 +115,7 @@ export function resolveOutcomeTransition(
   const refused = (
     fields: readonly OpportunityOutcomeField[],
   ): OutcomeTransitionResolution | undefined => {
-    const field = fields.find((name) => change[name] !== null);
+    const field = fields.find((name) => change[name].supplied);
     return field === undefined
       ? undefined
       : {
@@ -126,7 +131,7 @@ export function resolveOutcomeTransition(
     case 'reason': {
       const unaccepted = refused(['lossReasonCode', 'note']);
       if (unaccepted) return unaccepted;
-      if (change.reason === null)
+      if (!change.reason.supplied)
         return {
           kind: 'invalid-field',
           field: 'reason',
@@ -135,28 +140,35 @@ export function resolveOutcomeTransition(
               ? 'Enter a reason for reopening.'
               : 'Enter a reason.',
         };
-      return recorded({ ...base, reason: change.reason });
+      const reason = outcomeText(change.reason.value);
+      if (reason === undefined) return invalidText('reason');
+      return recorded({ ...base, reason });
     }
     case 'loss': {
       const unaccepted = refused(['reason']);
       if (unaccepted) return unaccepted;
-      if (change.lossReasonCode === null)
+      const lossReasonCode = change.lossReasonCode.supplied
+        ? change.lossReasonCode.value
+        : undefined;
+      if (!isOpportunityLossReasonCode(lossReasonCode))
         return {
           kind: 'invalid-field',
           field: 'lossReasonCode',
           message: 'Choose a loss reason.',
         };
-      if (change.lossReasonCode === 'OTHER' && change.note === null)
+      let note: string | null = null;
+      if (change.note.supplied) {
+        const text = outcomeText(change.note.value);
+        if (text === undefined) return invalidText('note');
+        note = text;
+      }
+      if (lossReasonCode === 'OTHER' && note === null)
         return {
           kind: 'invalid-field',
           field: 'note',
           message: 'Enter the actual reason for a loss marked Other.',
         };
-      return recorded({
-        ...base,
-        lossReasonCode: change.lossReasonCode,
-        note: change.note,
-      });
+      return recorded({ ...base, lossReasonCode, note });
     }
     default: {
       const exhaustive: never = input;
@@ -183,6 +195,28 @@ export function isOpportunityLossReasonCode(
   value: unknown,
 ): value is OpportunityLossReasonCode {
   return OPPORTUNITY_LOSS_REASON_CODES.some((code) => code === value);
+}
+
+/**
+ * The section 16.3 text rule, stored exactly as submitted: a string of 1–500
+ * characters with at least one non-whitespace character.
+ */
+function outcomeText(value: unknown): string | undefined {
+  return typeof value === 'string' &&
+    value.trim().length > 0 &&
+    value.length <= 500
+    ? value
+    : undefined;
+}
+
+function invalidText(
+  field: OpportunityOutcomeField,
+): OutcomeTransitionResolution {
+  return {
+    kind: 'invalid-field',
+    field,
+    message: 'Enter between 1 and 500 characters.',
+  };
 }
 
 function transitionBetween(

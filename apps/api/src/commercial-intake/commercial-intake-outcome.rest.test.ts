@@ -763,9 +763,13 @@ describe.skipIf(!databaseUrl)(
       await changed(opportunityId, { expectedVersion: 2, status: 'WON' });
       await refused(3, { status: 'WON' });
       await refused(3, { status: 'ON_HOLD', reason: 'Pause the work' });
-      // Missing fields do not turn an impossible pair into validation.
+      // Missing or malformed fields do not turn an impossible pair into
+      // validation: legality is decided first.
       await refused(3, { status: 'ON_HOLD' });
+      await refused(3, { status: 'ON_HOLD', reason: '' });
       await refused(3, { status: 'LOST' });
+      await refused(3, { status: 'LOST', lossReasonCode: 'EXPENSIVE' });
+      await refused(3, { status: 'DISQUALIFIED', reason: 42 });
       await refused(3, { status: 'LOST', lossReasonCode: 'PRICE' });
       await refused(3, { status: 'DISQUALIFIED', reason: 'Out of scope' });
       await refused(3, { status: 'ARCHIVED', reason: 'Duplicate' });

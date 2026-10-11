@@ -200,24 +200,77 @@ export function isOutcomeHistoryPage(
   );
 }
 
+const HISTORY_ENTRY_FIELDS = [
+  'previousStatus',
+  'newStatus',
+  'lossReasonCode',
+  'reason',
+  'note',
+  'version',
+  'actor',
+  'changedAt',
+] as const;
+
+/**
+ * One recorded transition: exactly the entry fields, a permitted section 23.2
+ * pair, and the reason fields that pair records, nothing else.
+ */
 function isOutcomeHistoryEntry(
   value: unknown,
   isTimestamp: (value: unknown) => value is string,
 ): value is OutcomeHistoryEntry {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).length !== HISTORY_ENTRY_FIELDS.length ||
+    !HISTORY_ENTRY_FIELDS.every((field) => Object.hasOwn(value, field))
+  )
+    return false;
+  const { previousStatus, newStatus, lossReasonCode, reason, note } = value;
+  if (
+    !isOpportunityOutcomeStatus(previousStatus) ||
+    !isOpportunityOutcomeStatus(newStatus)
+  )
+    return false;
+  const input = transitionInputBetween(previousStatus, newStatus);
+  const fieldsMatch =
+    input === 'none'
+      ? lossReasonCode === null && reason === null && note === null
+      : input === 'reason'
+        ? lossReasonCode === null && isValidText(reason) && note === null
+        : input === 'loss'
+          ? isLossReasonCode(lossReasonCode) &&
+            reason === null &&
+            (note === null || isValidText(note)) &&
+            (lossReasonCode !== 'OTHER' || note !== null)
+          : false;
   return (
-    isRecord(value) &&
-    isOpportunityOutcomeStatus(value.previousStatus) &&
-    isOpportunityOutcomeStatus(value.newStatus) &&
-    (value.lossReasonCode === null || isLossReasonCode(value.lossReasonCode)) &&
-    (value.reason === null || typeof value.reason === 'string') &&
-    (value.note === null || typeof value.note === 'string') &&
+    fieldsMatch &&
     typeof value.version === 'number' &&
     Number.isInteger(value.version) &&
+    value.version >= 2 &&
     isRecord(value.actor) &&
+    Object.keys(value.actor).length === 2 &&
     typeof value.actor.workspaceMembershipId === 'string' &&
     typeof value.actor.displayLabel === 'string' &&
+    value.actor.displayLabel.trim().length > 0 &&
     isTimestamp(value.changedAt)
   );
+}
+
+function isValidText(value: unknown): value is string {
+  return typeof value === 'string' && validText(value);
+}
+
+/** The input a recorded pair took, or undefined outside the table. */
+function transitionInputBetween(
+  from: OpportunityOutcomeStatus,
+  to: OpportunityOutcomeStatus,
+): OutcomeTransitionInput | undefined {
+  const transition = Object.values(TRANSITIONS).find((candidate) => {
+    const sources: readonly OpportunityOutcomeStatus[] = candidate.from;
+    return candidate.to === to && sources.includes(from);
+  });
+  return transition?.input;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

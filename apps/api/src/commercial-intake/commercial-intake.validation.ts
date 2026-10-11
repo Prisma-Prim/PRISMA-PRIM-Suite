@@ -8,11 +8,10 @@ import type {
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
 import {
-  isOpportunityLossReasonCode,
   isOpportunityOutcomeStatus,
-  type OpportunityLossReasonCode,
   type OpportunityOutcomeChange,
   type OpportunityOutcomeStatus,
+  type SubmittedOutcomeField,
 } from './opportunity-outcome.js';
 
 const ROOT_FIELDS = new Set([
@@ -107,11 +106,10 @@ export function readChangeOpportunityResponsibleCommand(
 }
 
 /**
- * Exactly an observed Opportunity version, the requested status and any
- * supplied reason fields, each well-formed. Reasons and notes follow the
- * next-action text rule and are stored exactly as submitted. Whether the pair
- * is permitted, and which fields it requires or refuses, is decided against
- * the current status by resolveOutcomeTransition.
+ * Exactly an observed Opportunity version, the requested status and whichever
+ * reason fields were supplied, kept as submitted. Whether the pair is
+ * permitted is decided against the current status by resolveOutcomeTransition
+ * before any reason field is required, refused or checked.
  */
 export function readChangeOpportunityOutcomeCommand(
   value: unknown,
@@ -129,22 +127,21 @@ function outcomeChange(
   status: OpportunityOutcomeStatus,
   body: Record<string, unknown>,
 ): OpportunityOutcomeChange {
-  let lossReasonCode: OpportunityLossReasonCode | null = null;
-  if (Object.hasOwn(body, 'lossReasonCode')) {
-    if (!isOpportunityLossReasonCode(body.lossReasonCode))
-      invalid('lossReasonCode', 'Choose a loss reason.');
-    lossReasonCode = body.lossReasonCode;
-  }
   return {
     status,
-    reason: Object.hasOwn(body, 'reason')
-      ? requiredString(body.reason, 'reason', 500)
-      : null,
-    lossReasonCode,
-    note: Object.hasOwn(body, 'note')
-      ? requiredString(body.note, 'note', 500)
-      : null,
+    reason: submitted(body, 'reason'),
+    lossReasonCode: submitted(body, 'lossReasonCode'),
+    note: submitted(body, 'note'),
   };
+}
+
+function submitted(
+  body: Record<string, unknown>,
+  field: string,
+): SubmittedOutcomeField {
+  return Object.hasOwn(body, field)
+    ? { supplied: true, value: body[field] }
+    : { supplied: false };
 }
 
 function observedVersion(value: unknown): number {
