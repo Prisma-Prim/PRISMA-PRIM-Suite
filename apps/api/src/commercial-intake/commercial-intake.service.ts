@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, lte, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
@@ -701,11 +701,10 @@ export class CommercialIntakeService {
         };
       }
 
-      const current = await this.requireVisibleOpportunity(
+      const current = await this.lockRequestThenOpportunity(
         actor,
         companyId,
         opportunityId,
-        true,
       );
       if (current.version !== command.expectedVersion) throw staleVersion();
       const resolution = resolveOutcomeTransition(
@@ -834,7 +833,9 @@ export class CommercialIntakeService {
           actor,
           companyId,
           opportunityId,
-          beforeVersion,
+          beforeVersion === undefined
+            ? undefined
+            : { kind: 'before', version: beforeVersion },
         );
       },
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
@@ -1026,11 +1027,14 @@ export class CommercialIntakeService {
         ),
       );
     if (!row) throw new NotFoundException();
+    // Bound history to the Opportunity version just read: under READ
+    // COMMITTED a transition committing between the two queries would
+    // otherwise pair the old status with its new history entry.
     const outcomeHistory = await this.outcomeHistoryPage(
       actor,
       companyId,
       row.opportunity.id,
-      undefined,
+      { kind: 'through', version: row.opportunity.version },
     );
     const view = (
       client?: NonNullable<CommercialIntakeDetail['clientReference']>,
@@ -1077,7 +1081,10 @@ export class CommercialIntakeService {
     actor: ActorContext,
     companyId: string,
     opportunityId: string,
-    beforeVersion: number | undefined,
+    bound:
+      | { kind: 'through'; version: number }
+      | { kind: 'before'; version: number }
+      | undefined,
   ): Promise<OpportunityOutcomeHistoryPage> {
     const rows = await this.databaseContext.connection
       .select()
@@ -1087,9 +1094,11 @@ export class CommercialIntakeService {
           eq(opportunityOutcomeHistory.workspaceId, actor.workspaceId),
           eq(opportunityOutcomeHistory.companyId, companyId),
           eq(opportunityOutcomeHistory.opportunityId, opportunityId),
-          beforeVersion === undefined
+          bound === undefined
             ? undefined
-            : lt(opportunityOutcomeHistory.opportunityVersion, beforeVersion),
+            : bound.kind === 'through'
+              ? lte(opportunityOutcomeHistory.opportunityVersion, bound.version)
+              : lt(opportunityOutcomeHistory.opportunityVersion, bound.version),
         ),
       )
       .orderBy(desc(opportunityOutcomeHistory.opportunityVersion))
@@ -1163,6 +1172,48 @@ export class CommercialIntakeService {
 
   // The same safe not-found response as Request detail: an unknown,
   // cross-Company or cross-Workspace Opportunity is indistinguishable.
+  /**
+   * Outcome changes lock the owning Request before the Opportunity, the order
+   * Offer and direct Contract creation take through
+   * requireReadableOfferOpportunity. The event insert then needs only the
+   * Request this transaction already holds, so a concurrent closure and
+   * creation serialize instead of deadlocking.
+   */
+  private async lockRequestThenOpportunity(
+    actor: ActorContext,
+    companyId: string,
+    opportunityId: string,
+  ): Promise<OpportunityRow> {
+    const [target] = await this.databaseContext.connection
+      .select({ clientRequestId: opportunities.clientRequestId })
+      .from(opportunities)
+      .where(
+        and(
+          eq(opportunities.workspaceId, actor.workspaceId),
+          eq(opportunities.companyId, companyId),
+          eq(opportunities.id, opportunityId),
+        ),
+      );
+    if (!target) throw new NotFoundException();
+    await this.databaseContext.connection
+      .select({ id: clientRequests.id })
+      .from(clientRequests)
+      .where(
+        and(
+          eq(clientRequests.workspaceId, actor.workspaceId),
+          eq(clientRequests.companyId, companyId),
+          eq(clientRequests.id, target.clientRequestId),
+        ),
+      )
+      .for('update');
+    return this.requireVisibleOpportunity(
+      actor,
+      companyId,
+      opportunityId,
+      true,
+    );
+  }
+
   private async requireVisibleOpportunity(
     actor: ActorContext,
     companyId: string,

@@ -5625,6 +5625,87 @@ withPostgres('First illustrative Offer REST', () => {
     expect(created.status).toBe(201);
   });
 
+  it('serializes an Opportunity closure with a concurrent Offer creation instead of deadlocking', async () => {
+    const fixture = await preparedOffer();
+    await command(
+      '/company-opportunity-manager-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'grant-opportunity-manager',
+    );
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      const blocker = await barrier.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      const blockerPid = blocker.rows[0]?.pid;
+      if (!blockerPid) throw new Error('Expected a PostgreSQL backend pid.');
+      await barrier.query(
+        `SELECT id FROM client_requests WHERE id =
+           (SELECT client_request_id FROM opportunities WHERE id = $1)
+         FOR UPDATE`,
+        [fixture.opportunityId],
+      );
+      // Offer creation queues first on the held Request, then needs the
+      // Opportunity.
+      const offer = postOffer(
+        fixture,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'offer-during-closure',
+      );
+      await waitForBlockedRequests(blockerPid, 1);
+      // The closure must also queue on that Request. Taking the Opportunity
+      // first would let the Offer, once granted the Request, wait on the
+      // Opportunity while the closure's event insert waits on the Request.
+      const closure = request(
+        `/commercial-intake/opportunities/${fixture.opportunityId}/outcome`,
+        fixture.companyId,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': 'closure-during-offer',
+          },
+          body: JSON.stringify({
+            expectedVersion: 1,
+            status: 'LOST',
+            lossReasonCode: 'PRICE',
+          }),
+        },
+      );
+      for (let attempt = 0; ; attempt += 1) {
+        const waiting = await pool.query<{ count: string }>(
+          `SELECT count(*) AS count FROM pg_stat_activity
+            WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+        );
+        if (Number(waiting.rows[0]?.count) >= 2) break;
+        if (attempt >= 40)
+          throw new Error('Expected the closure to wait behind the Offer.');
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await barrier.query('COMMIT');
+      released = true;
+      const [created, closed] = await Promise.all([offer, closure]);
+      expect([created.status, closed.status]).toEqual([201, 200]);
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+    const state = await pool.query<{ status: string; offers: string }>(
+      `SELECT (SELECT status FROM opportunities WHERE id = $1) AS status,
+              (SELECT count(*) FROM offers) AS offers`,
+      [fixture.opportunityId],
+    );
+    expect(state.rows[0]).toEqual({ status: 'LOST', offers: '1' });
+  });
+
   it('uses the same safe not-found for another Company and an unknown Opportunity', async () => {
     const fixture = await preparedOffer();
     const otherCompany = entity(

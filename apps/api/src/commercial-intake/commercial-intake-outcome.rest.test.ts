@@ -1193,7 +1193,9 @@ describe.skipIf(!databaseUrl)(
           { expectedVersion: 1, status: 'WON' },
           { subject: 'mihai' },
         );
-        await waitForLockWaiters('%from "opportunities"%for no key update%', 2);
+        // The first change holds the Request and waits on the Opportunity;
+        // the second queues on that Request (section 23.4 lock order).
+        await waitForLockWaiters('%', 2);
         await held.query('COMMIT');
         released = true;
         const outcomes = await Promise.all([hold, win]);
