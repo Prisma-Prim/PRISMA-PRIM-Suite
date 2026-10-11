@@ -20,6 +20,7 @@ import {
 } from '../project/project.service.js';
 import {
   ContractProjectLinkStore,
+  agreementTarget,
   contractProjectLinkView,
   projectLinkConflict,
 } from './contract-project-link.store.js';
@@ -44,6 +45,7 @@ export class ContractProjectCreationService {
   async create(input: {
     actor: ActorContext;
     opportunityId: string;
+    contractId?: string;
     payload: unknown;
     idempotencyKey: string | undefined;
   }) {
@@ -67,11 +69,13 @@ export class ContractProjectCreationService {
           actor,
           companyId,
           opportunityId: input.opportunityId,
+          ...agreementTarget(input),
         });
         const command = readCommand(input.payload);
         const fingerprint = commandFingerprint({
           kind: 'CREATE_PROJECT',
           opportunityId: input.opportunityId,
+          ...agreementTarget(input),
           payload: command,
         });
         const receipt = await this.links.command({ actor, companyId, key });
@@ -91,6 +95,7 @@ export class ContractProjectCreationService {
             actor,
             companyId,
             opportunityId: input.opportunityId,
+            ...agreementTarget(input),
             lock: true,
           });
           if (receipt.fingerprint !== fingerprint)
@@ -110,6 +115,7 @@ export class ContractProjectCreationService {
           actor,
           companyId,
           opportunityId: input.opportunityId,
+          ...agreementTarget(input),
           lock: true,
         });
         if (current.contract.revision !== command.expectedContractRevision)

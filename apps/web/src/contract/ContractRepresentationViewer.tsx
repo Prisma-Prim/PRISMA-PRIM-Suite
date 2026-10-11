@@ -4,6 +4,7 @@ import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { contractCopy as copy } from './contract.copy';
+import type { ContractView } from './contract-response';
 
 type DocumentView =
   | { kind: 'closed' | 'loading' | 'denied' | 'error' }
@@ -15,7 +16,7 @@ export function ContractRepresentationViewer({
   opportunityId,
   contractId,
   versionId,
-  agreementId,
+  kind,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -25,7 +26,7 @@ export function ContractRepresentationViewer({
   opportunityId: string;
   contractId: string;
   versionId: string;
-  agreementId?: string;
+  kind: ContractView['kind'];
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
@@ -42,7 +43,7 @@ export function ContractRepresentationViewer({
         const api = await createAuthenticatedApiClient(identity);
         if (signal.aborted) return;
         const result = await api.request<unknown>(
-          `/contracts/opportunities/${encodeURIComponent(opportunityId)}${agreementId ? '/agreements/' + encodeURIComponent(agreementId) : ''}/versions/${encodeURIComponent(versionId)}/representation`,
+          `/contracts/opportunities/${encodeURIComponent(opportunityId)}${kind === 'CONTRACT' ? '' : '/agreements/' + encodeURIComponent(contractId)}/versions/${encodeURIComponent(versionId)}/representation`,
           { companyContextId: companyId, signal },
         );
         if (signal.aborted) return;
@@ -71,7 +72,7 @@ export function ContractRepresentationViewer({
             value: result.value,
             contractId,
             versionId,
-            agreementId,
+            kind,
           }),
         });
       } catch {
@@ -86,7 +87,7 @@ export function ContractRepresentationViewer({
     opportunityId,
     contractId,
     versionId,
-    agreementId,
+    kind,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
@@ -123,17 +124,55 @@ export function ContractRepresentationViewer({
     </section>
   );
 }
+const BINDINGS = {
+  CONTRACT: {
+    templateCode: 'CONTRACT_ILLUSTRATIVE',
+    clauses: [
+      'CL_SUBJECT',
+      'CL_PRICE',
+      'CL_TERM',
+      'CL_CONDITIONS',
+      'CL_GENERAL',
+    ],
+  },
+  PRECONTRACT: {
+    templateCode: 'PRECONTRACT_ILLUSTRATIVE',
+    clauses: [
+      'CL_SUBJECT',
+      'CL_PRICE',
+      'CL_TERM',
+      'CL_CONDITIONS',
+      'CL_PRELIMINARY_WORK',
+      'CL_GENERAL',
+    ],
+  },
+  ADDENDUM: {
+    templateCode: 'ADDENDUM_ILLUSTRATIVE',
+    clauses: [
+      'CL_SUBJECT',
+      'CL_PRICE',
+      'CL_TERM',
+      'CL_CONDITIONS',
+      'CL_CHANGE',
+      'CL_GENERAL',
+    ],
+  },
+} as const satisfies Record<
+  ContractView['kind'],
+  { templateCode: string; clauses: readonly string[] }
+>;
 function readRepresentation({
   value,
   contractId,
   versionId,
-  agreementId,
+  kind,
 }: {
   value: unknown;
   contractId: string;
   versionId: string;
-  agreementId?: string;
+  kind: ContractView['kind'];
 }) {
+  const binding = BINDINGS[kind];
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('Invalid Contract representation.');
   if (
@@ -142,8 +181,7 @@ function readRepresentation({
     !('contractVersionId' in value) ||
     value.contractVersionId !== versionId ||
     !('templateCode' in value) ||
-    value.templateCode !==
-      (agreementId ? 'ADDENDUM_ILLUSTRATIVE' : 'CONTRACT_ILLUSTRATIVE') ||
+    value.templateCode !== binding.templateCode ||
     !('templateVersion' in value) ||
     value.templateVersion !== 1 ||
     !('html' in value) ||
@@ -157,17 +195,10 @@ function readRepresentation({
   if (
     !('clauseVersions' in value) ||
     !Array.isArray(value.clauseVersions) ||
-    value.clauseVersions.length !== (agreementId ? 6 : 5)
+    value.clauseVersions.length !== binding.clauses.length
   )
     throw new Error('Invalid Contract clause bindings.');
-  const codes = [
-    'CL_SUBJECT',
-    'CL_PRICE',
-    'CL_TERM',
-    'CL_CONDITIONS',
-    ...(agreementId ? ['CL_CHANGE'] : []),
-    'CL_GENERAL',
-  ];
+  const codes: readonly string[] = binding.clauses;
   if (
     !value.clauseVersions.every(
       (entry: unknown, index) =>

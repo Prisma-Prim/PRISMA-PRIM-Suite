@@ -137,7 +137,7 @@ it.each([
     ).toEqual({ code: 'PARTY_IDENTITY_MATCHES_SOURCE', status: 'WARNING' });
   },
 );
-it('warns about added preliminary work without adding a runtime Precontract route', () => {
+it('C7 always warns about Precontract preliminary work without other added terms', () => {
   expect(
     evaluateContractQuality({
       ...valid,

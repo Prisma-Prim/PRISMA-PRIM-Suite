@@ -16,7 +16,7 @@ export interface LinkedContract {
   opportunityId: string;
   clientRequestId: string;
   illustrativeReference: number;
-  kind: 'CONTRACT';
+  kind: 'CONTRACT' | 'PRECONTRACT';
   provisional: true;
   linkedAt: string;
 }
@@ -56,8 +56,9 @@ export function readLinkedContracts(value: unknown): LinkedContract[] {
   if (!Array.isArray(row.items)) throw new Error('Invalid linked Contracts.');
   return row.items.map((item: unknown) => {
     const contract = record(item);
+    const kind = contract.kind;
     if (
-      contract.kind !== 'CONTRACT' ||
+      (kind !== 'CONTRACT' && kind !== 'PRECONTRACT') ||
       contract.provisional !== true ||
       typeof contract.illustrativeReference !== 'number' ||
       !Number.isSafeInteger(contract.illustrativeReference) ||
@@ -69,7 +70,7 @@ export function readLinkedContracts(value: unknown): LinkedContract[] {
       opportunityId: text(contract.opportunityId),
       clientRequestId: text(contract.clientRequestId),
       illustrativeReference: contract.illustrativeReference,
-      kind: 'CONTRACT',
+      kind,
       provisional: true,
       linkedAt: instant(contract.linkedAt),
     };

@@ -86,16 +86,14 @@ export class ContractController {
       idempotencyKey,
     });
   }
-  @Get() async read(
+  @Get() read(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,
   ) {
-    return {
-      contract: await this.contracts.read({
-        actor: actorFrom(request),
-        opportunityId,
-      }),
-    };
+    return this.contracts.readOpportunity({
+      actor: actorFrom(request),
+      opportunityId,
+    });
   }
   @Post('versions/:versionId/signature') recordSignature(
     @Req() request: ActorContextRequest,

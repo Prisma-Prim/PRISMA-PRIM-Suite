@@ -7,6 +7,7 @@ import { contractVersionMessages } from './contract-version.copy';
 import { contractDecisionMessages } from './contract-decision.copy';
 import { contractSignatureMessages } from './contract-signature.copy';
 import { contractProjectsMessages } from './contract-projects.copy';
+import { contractPrecontractMessages } from './contract-precontract.copy';
 import { ProjectContracts } from './ProjectContracts';
 import '@testing-library/jest-dom/vitest';
 import {
@@ -48,6 +49,295 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it('C7 creates a Precontract with an identical uncertain retry and opens it as its own agreement', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const precontract = precontractUiFixture();
+    const attempts: Array<{ body: unknown; key: string | null }> = [];
+    const reads: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (init?.method === 'POST') {
+        attempts.push({
+          body: typeof init.body === 'string' && JSON.parse(init.body),
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return attempts.length === 1
+          ? response({}, 500)
+          : response(precontract, 201);
+      }
+      if (path.includes('/offers/')) return acceptedOfferResponse();
+      if (path.endsWith('/versions'))
+        return response({ items: [precontract.version], nextCursor: null });
+      if (path.includes('/agreements/precontract-one')) {
+        reads.push(path);
+        return response({ contract: precontract });
+      }
+      return response({ contract: null, precontract: null });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={actor(true)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    const create = await screen.findByRole('button', {
+      name: 'Create Precontract',
+    });
+    expect(
+      screen.getByRole('button', { name: 'Create Contract' }),
+    ).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Preliminary work scope'), {
+      target: { value: 'Synthetic preliminary scope' },
+    });
+    fireEvent.change(
+      screen.getByLabelText('Preliminary financial conditions'),
+      {
+        target: { value: 'Synthetic advance' },
+      },
+    );
+    fireEvent.change(screen.getByLabelText('Limits until the Contract'), {
+      target: { value: 'Synthetic limit' },
+    });
+    fireEvent.change(screen.getByLabelText('Precontract term end'), {
+      target: { value: '2026-12-31' },
+    });
+    fireEvent.click(create);
+    expect(
+      await screen.findByText(
+        'The Precontract result is uncertain. Retry the same command.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Preliminary work scope')).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Create Contract' }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Retry the same Precontract command',
+      }),
+    );
+    expect(await screen.findByText('Precontract created.')).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts[0]?.body).toEqual({
+      kind: 'PRECONTRACT',
+      acceptedOfferVersionId: 'accepted-version',
+      preliminaryWorkScope: 'Synthetic preliminary scope',
+      preliminaryFinancialConditions: 'Synthetic advance',
+      preliminaryLimits: 'Synthetic limit',
+      termStartsOn: null,
+      termEndsOn: '2026-12-31',
+      specialConditions: null,
+    });
+    expect(
+      screen.getByRole('heading', { name: 'Illustrative Precontract' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Synthetic limit', { selector: 'dd' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Back to the Contract area' }),
+    ).toBeEnabled();
+    expect(reads[0]).toContain(
+      '/contracts/opportunities/opportunity-one/agreements/precontract-one',
+    );
+  });
+  it('C7 lists an existing Precontract instead of offering a second one and opens the main Contract reference', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    let main = false;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = input.toString();
+      if (path.includes('/offers/')) return acceptedOfferResponse();
+      if (path.endsWith('/versions'))
+        return response({ items: [], nextCursor: null });
+      if (path.includes('/agreements/precontract-one'))
+        return response({ contract: precontractUiFixture() });
+      return response({
+        contract: main
+          ? {
+              ...fixture(),
+              precontract: { id: 'precontract-one', illustrativeReference: 4 },
+            }
+          : null,
+        precontract: {
+          id: 'precontract-one',
+          illustrativeReference: 4,
+          versionNumber: 2,
+          decisionState: 'APPROVED',
+          executionState: 'EXECUTED',
+        },
+      });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={actor(true)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    const section = await screen.findByRole('region', { name: 'Precontract' });
+    expect(
+      within(section).getByText(
+        'Illustrative Precontract reference 4 · Version 2 · Approved internally · Executed — simulated evidence only',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Create Precontract' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Create Contract' }),
+    ).toBeVisible();
+    main = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Reload Contract' }));
+    expect(
+      await screen.findByText('Illustrative Precontract reference'),
+    ).toBeVisible();
+    expect(screen.getByText('4', { selector: 'dd' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Open Precontract' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Illustrative Precontract' }),
+    ).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to the Contract area' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Open Precontract' }),
+    ).toBeVisible();
+  });
+  it.each(['PRECONTRACT_AFTER_CONTRACT', 'CONTRACT_ALREADY_EXISTS'] as const)(
+    'C7 presents %s without an uncertain retry and keeps entered values',
+    async (code) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        if (init?.method === 'POST')
+          return response({ code, message: 'Refused.' }, 409);
+        if (input.toString().includes('/offers/'))
+          return acceptedOfferResponse();
+        return response({ contract: null, precontract: null });
+      });
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={actor(true)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      for (const label of [
+        'Preliminary work scope',
+        'Preliminary financial conditions',
+        'Limits until the Contract',
+      ])
+        fireEvent.change(await screen.findByLabelText(label), {
+          target: { value: 'Kept ' + label },
+        });
+      fireEvent.change(screen.getByLabelText('Precontract term end'), {
+        target: { value: '2026-12-31' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Create Precontract' }),
+      );
+      expect(
+        await screen.findByText(
+          code === 'PRECONTRACT_AFTER_CONTRACT'
+            ? 'A Precontract can only be prepared before the Contract.'
+            : 'This Opportunity already has a Precontract. Reload it.',
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: 'Create Precontract' }),
+      ).toBeDisabled();
+      expect(screen.getByLabelText('Limits until the Contract')).toHaveValue(
+        'Kept Limits until the Contract',
+      );
+    },
+  );
+  it('C7 refuses incomplete preliminary work locally and never offers creation to readers', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input) =>
+        input.toString().includes('/offers/')
+          ? acceptedOfferResponse()
+          : response({ contract: null, precontract: null }),
+      );
+    const view = render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={actor(true)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Preliminary work scope'), {
+      target: { value: '   ' },
+    });
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Create Precontract' }),
+    );
+    expect(
+      await screen.findByText(
+        'Check the preliminary work, the term end and the dates.',
+      ),
+    ).toBeVisible();
+    expect(fetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(
+      false,
+    );
+    view.rerender(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={actor(false)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    expect(await screen.findByText(copyEmpty)).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'Create Precontract' }),
+    ).not.toBeInTheDocument();
+  });
+  it.each(interfaceLocales)(
+    'C7 localizes Precontract creation in %s',
+    async (locale) => {
+      assertMessageCoverage('contractPrecontract', contractPrecontractMessages);
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        input.toString().includes('/offers/')
+          ? acceptedOfferResponse()
+          : response({ contract: null, precontract: null }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={actor(true)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const copy = (key: (typeof contractPrecontractMessages.keys)[number]) =>
+        resolveMessage(contractPrecontractMessages, locale, key);
+      expect(
+        await screen.findByRole('button', { name: copy('create') }),
+      ).toBeVisible();
+      for (const key of ['scope', 'financial', 'limits', 'end'] as const)
+        expect(screen.getByLabelText(copy(key))).toBeVisible();
+    },
+  );
   it('C9 creates DIRECT without Offer access and retains an identical uncertain retry', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const preparer = actor(true);
@@ -2927,6 +3217,42 @@ async function fillSignatureFields() {
   fireEvent.change(screen.getByLabelText('Signature note'), {
     target: { value: 'Declared note' },
   });
+}
+const copyEmpty = 'No Contract has been prepared for this Opportunity.';
+function acceptedOfferResponse() {
+  return response({
+    offer: {
+      version: {
+        id: 'accepted-version',
+        clientResponseState: 'ACCEPTED',
+        provenance: 'ILLUSTRATIVE',
+        provisional: true,
+        decisionState: 'APPROVED',
+        supersededByVersionId: null,
+      },
+    },
+  });
+}
+function precontractUiFixture() {
+  const base = fixture();
+  return {
+    ...base,
+    id: 'precontract-one',
+    kind: 'PRECONTRACT',
+    precontract: null,
+    addenda: [],
+    linkedProjects: [],
+    version: {
+      ...base.version,
+      termEndsOn: '2026-12-31',
+      specialConditions: null,
+      preliminaryWork: {
+        scope: 'Synthetic preliminary scope',
+        financialConditions: 'Synthetic advance',
+        limits: 'Synthetic limit',
+      },
+    },
+  };
 }
 function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

@@ -3,8 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   renderContractRepresentation,
   renderAddendumRepresentation,
+  renderPrecontractRepresentation,
   ADDENDUM_CLAUSE_VERSIONS,
+  CONTRACT_CLAUSE_VERSIONS,
+  PRECONTRACT_CLAUSE_VERSIONS,
   type RenderContractRepresentationInput,
+  type RenderPrecontractRepresentationInput,
 } from './contract-representation.js';
 
 // Worked synthetic fixture: expected bytes are a reviewed literal, not a renderer snapshot.
@@ -52,6 +56,7 @@ const input: RenderContractRepresentationInput = {
   termStartsOn: '2026-10-01',
   termEndsOn: null,
   specialConditions: 'Line one\nLine two & three',
+  precontractReference: null,
   provenance: 'ILLUSTRATIVE',
 };
 describe('Exact illustrative Contract representation', () => {
@@ -224,3 +229,84 @@ it('C9 renders direct source and exact entered content deterministically without
   expect(rendered.html).not.toContain('Accepted Offer');
   expect(rendered.html).toContain('Illustrative');
 });
+
+describe('C7 illustrative Precontract representation', () => {
+  const precontract: RenderPrecontractRepresentationInput = {
+    ...input,
+    templateCode: 'PRECONTRACT_ILLUSTRATIVE',
+    clauseVersions: PRECONTRACT_CLAUSE_VERSIONS,
+    illustrativeReference: 1,
+    sourceOffer: { illustrativeReference: 4, versionNumber: 2 },
+    termStartsOn: null,
+    termEndsOn: '2026-12-31',
+    specialConditions: null,
+    preliminaryWork: {
+      scope: 'Survey <site>\nexactly kept',
+      financialConditions: 'Advance & cost cap',
+      limits: "Stops at the 'Contract'",
+    },
+  };
+  it('matches literal golden bytes and digest in PRD 19.7 order', () => {
+    const rendered = renderPrecontractRepresentation(precontract);
+    expect(rendered.html).toBe(
+      readFileSync('src/contract/precontract-v1.golden.txt', 'utf8')
+        .replaceAll('\r\n', '\n')
+        .replace(/\n$/u, ''),
+    );
+    expect(rendered.sha256).toBe(PRECONTRACT_GOLDEN_SHA256);
+    expect(renderPrecontractRepresentation(precontract)).toEqual(rendered);
+    expect(rendered).toMatchObject({
+      templateCode: 'PRECONTRACT_ILLUSTRATIVE',
+      templateVersion: 1,
+      clauseVersions: PRECONTRACT_CLAUSE_VERSIONS,
+    });
+    const order = [
+      'not a signed agreement — clauses are placeholders',
+      '<h1 id="contract-title">Illustrative Precontract</h1>',
+      '<dt>Illustrative Precontract reference</dt><dd>1</dd>',
+      '<dt>Source accepted Offer reference</dt><dd>4</dd>',
+      'CL_SUBJECT v1</h2>',
+      'CL_PRICE v1</h2>',
+      'CL_TERM v1</h2>',
+      'CL_CONDITIONS v1</h2>',
+      'CL_PRELIMINARY_WORK v1</h2>',
+      'CL_GENERAL v1</h2>',
+      '<dd>PRECONTRACT_ILLUSTRATIVE v1 (unapproved)</dd>',
+      '<dd>CL_SUBJECT v1, CL_PRICE v1, CL_TERM v1, CL_CONDITIONS v1, CL_PRELIMINARY_WORK v1, CL_GENERAL v1</dd>',
+      '<dt>Pricing Snapshot id</dt><dd>snapshot-golden</dd>',
+    ].map((fragment) => rendered.html.indexOf(fragment));
+    expect(order.every((index) => index >= 0)).toBe(true);
+    expect([...order].sort((left, right) => left - right)).toEqual(order);
+    expect(rendered.html).not.toContain('<dt>Precontract reference</dt>');
+    expect(rendered.html).not.toContain('Draft — not approved');
+  });
+  it.each([
+    { templateCode: 'CONTRACT_ILLUSTRATIVE' },
+    { templateVersion: 2 },
+    { clauseVersions: CONTRACT_CLAUSE_VERSIONS },
+    { clauseVersions: [...PRECONTRACT_CLAUSE_VERSIONS].reverse() },
+  ])('refuses unsupported stored bindings %j', (binding) => {
+    expect(() =>
+      renderPrecontractRepresentation({ ...precontract, ...binding }),
+    ).toThrow('unsupported');
+  });
+  it('renders the recorded Precontract reference only in the main Contract row', () => {
+    const golden = renderContractRepresentation(input);
+    const referenced = renderContractRepresentation({
+      ...input,
+      precontractReference: 3,
+    });
+    expect(golden.html).toContain(
+      '<dt>Precontract reference</dt><dd>Not recorded</dd>',
+    );
+    expect(referenced.html).toBe(
+      golden.html.replace(
+        '<dt>Precontract reference</dt><dd>Not recorded</dd>',
+        '<dt>Illustrative Precontract reference</dt><dd>3</dd>',
+      ),
+    );
+    expect(referenced.sha256).not.toBe(golden.sha256);
+  });
+});
+const PRECONTRACT_GOLDEN_SHA256 =
+  '09e236ea00896d43db3dfd7e1615820909f769028158c6d68c8695118581dea0';

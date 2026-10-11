@@ -1,17 +1,22 @@
 import type { contracts } from '../database/schema/index.js';
 export type ContractEventSource =
   | { kind: 'DIRECT' }
-  | { kind: 'ACCEPTED_OFFER'; offerVersionId: string }
+  | {
+      kind: 'ACCEPTED_OFFER';
+      contractKind: 'CONTRACT' | 'PRECONTRACT';
+      offerVersionId: string;
+    }
   | { kind: 'ADDENDUM'; parentContractId: string; addendumOrdinal: number };
 export function contractSource(
   contract: typeof contracts.$inferSelect,
 ): ContractEventSource {
   if (
-    contract.kind === 'CONTRACT' &&
+    (contract.kind === 'CONTRACT' || contract.kind === 'PRECONTRACT') &&
     contract.parentContractId === null &&
     contract.addendumOrdinal === null
   ) {
     if (
+      contract.kind === 'CONTRACT' &&
       contract.origin === 'DIRECT' &&
       contract.sourceOfferId === null &&
       contract.sourceOfferVersionId === null &&
@@ -24,10 +29,12 @@ export function contractSource(
       contract.origin === 'ACCEPTED_OFFER' &&
       contract.sourceOfferId &&
       contract.sourceOfferVersionId &&
-      contract.directReason === null
+      contract.directReason === null &&
+      (contract.kind === 'CONTRACT' || contract.precontractId === null)
     )
       return {
         kind: 'ACCEPTED_OFFER',
+        contractKind: contract.kind,
         offerVersionId: contract.sourceOfferVersionId,
       };
   }
@@ -37,6 +44,7 @@ export function contractSource(
     contract.sourceOfferId === null &&
     contract.sourceOfferVersionId === null &&
     contract.directReason === null &&
+    contract.precontractId === null &&
     contract.parentContractId &&
     contract.addendumOrdinal !== null &&
     contract.addendumOrdinal > 0

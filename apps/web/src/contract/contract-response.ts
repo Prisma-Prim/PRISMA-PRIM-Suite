@@ -22,6 +22,9 @@ interface ContentDifference {
     | 'termStartsOn'
     | 'termEndsOn'
     | 'specialConditions'
+    | 'preliminaryWorkScope'
+    | 'preliminaryFinancialConditions'
+    | 'preliminaryLimits'
     | 'changeSummary'
     | 'scopeNote'
     | 'commercialConditions';
@@ -37,6 +40,18 @@ export type ContractVersionDifference =
       beforeSnapshot: { id: string; currency: string; total: string } | null;
       afterSnapshot: { id: string; currency: string; total: string } | null;
     };
+export interface PreliminaryWorkView {
+  scope: string;
+  financialConditions: string;
+  limits: string;
+}
+export interface PrecontractSummary {
+  id: string;
+  illustrativeReference: number;
+  versionNumber: number;
+  decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
+  executionState: 'NOT_EXECUTED' | 'EXECUTED';
+}
 interface ContractContent {
   addenda: Array<{
     id: string;
@@ -72,6 +87,7 @@ interface ContractContent {
     termStartsOn: string | null;
     termEndsOn: string | null;
     specialConditions: string | null;
+    preliminaryWork: PreliminaryWorkView | null;
     changeSummary: string | null;
     pricingSnapshotId: string | null;
     pricingSnapshot: {
@@ -99,6 +115,17 @@ export type ContractView = ContractContent &
         parentContractId: null;
         addendumOrdinal: null;
         parent: null;
+        precontract: PrecontractReference | null;
+        sourceOfferVersionId: string;
+        sourceOffer: { illustrativeReference: number; versionNumber: number };
+      }
+    | {
+        kind: 'PRECONTRACT';
+        origin: 'ACCEPTED_OFFER';
+        parentContractId: null;
+        addendumOrdinal: null;
+        parent: null;
+        precontract: null;
         sourceOfferVersionId: string;
         sourceOffer: { illustrativeReference: number; versionNumber: number };
       }
@@ -109,6 +136,7 @@ export type ContractView = ContractContent &
         parentContractId: null;
         addendumOrdinal: null;
         parent: null;
+        precontract: PrecontractReference | null;
         sourceOfferVersionId: null;
         sourceOffer: null;
       }
@@ -117,6 +145,7 @@ export type ContractView = ContractContent &
         origin: null;
         parentContractId: string;
         addendumOrdinal: number;
+        precontract: null;
         parent: {
           id: string;
           kind: 'CONTRACT' | 'PRECONTRACT';
@@ -128,9 +157,48 @@ export type ContractView = ContractContent &
         sourceOffer: null;
       }
   );
+interface PrecontractReference {
+  id: string;
+  illustrativeReference: number;
+}
 export function readContractDetail(value: unknown): ContractView | null {
   const input = record(value);
   return input.contract === null ? null : readContract(input.contract);
+}
+/** The Opportunity's main Contract and its Precontract summary (PRD 19.13). */
+export function readOpportunityContracts(value: unknown): {
+  contract: ContractView | null;
+  precontract: PrecontractSummary | null;
+} {
+  const input = record(value);
+  const contract = readContractDetail(value);
+  if (contract && contract.kind !== 'CONTRACT')
+    throw new Error('Invalid main Contract kind.');
+  if (input.precontract === null || input.precontract === undefined) {
+    if (contract?.precontract) throw new Error('Missing recorded Precontract.');
+    return { contract, precontract: null };
+  }
+  const summary = record(input.precontract);
+  const decisionState = summary.decisionState,
+    executionState = summary.executionState;
+  if (
+    (decisionState !== 'PENDING' &&
+      decisionState !== 'APPROVED' &&
+      decisionState !== 'REJECTED') ||
+    (executionState !== 'NOT_EXECUTED' && executionState !== 'EXECUTED') ||
+    (executionState === 'EXECUTED' && decisionState !== 'APPROVED')
+  )
+    throw new Error('Invalid Precontract summary state.');
+  const precontract: PrecontractSummary = {
+    id: string(summary.id),
+    illustrativeReference: positiveInteger(summary.illustrativeReference),
+    versionNumber: positiveInteger(summary.versionNumber),
+    decisionState,
+    executionState,
+  };
+  if (contract && contract.precontract?.id !== precontract.id)
+    throw new Error('Mismatched recorded Precontract.');
+  return { contract, precontract };
 }
 export function readContract(value: unknown): ContractView {
   const input = record(value),
@@ -141,6 +209,15 @@ export function readContract(value: unknown): ContractView {
       version.pricingSnapshot === null ? null : record(version.pricingSnapshot);
   const isAddendum = input.kind === 'ADDENDUM';
   const isDirect = input.kind === 'CONTRACT' && input.origin === 'DIRECT';
+  const isPrecontract = input.kind === 'PRECONTRACT';
+  const preliminaryWork =
+    version.preliminaryWork === null || version.preliminaryWork === undefined
+      ? null
+      : readPreliminaryWork(version.preliminaryWork);
+  const precontract =
+    input.precontract === null || input.precontract === undefined
+      ? null
+      : readPrecontractReference(input.precontract);
   const parent = isAddendum ? readParent(input.parent) : null;
   const addendum = isAddendum
     ? { pricingSnapshotId: nullableString(version.pricingSnapshotId) }
@@ -149,7 +226,7 @@ export function readContract(value: unknown): ContractView {
       : undefined;
   if (
     !(
-      (input.kind === 'CONTRACT' &&
+      ((input.kind === 'CONTRACT' || isPrecontract) &&
         input.origin === 'ACCEPTED_OFFER' &&
         sourceOffer !== null &&
         snapshot !== null) ||
@@ -202,7 +279,10 @@ export function readContract(value: unknown): ContractView {
     input.illustrativeReference < 1 ||
     (snapshot === null
       ? version.pricingSnapshotId !== null
-      : string(version.pricingSnapshotId) !== string(snapshot.id))
+      : string(version.pricingSnapshotId) !== string(snapshot.id)) ||
+    isPrecontract !== (preliminaryWork !== null) ||
+    (isPrecontract && version.termEndsOn === null) ||
+    (input.kind !== 'CONTRACT' && precontract !== null)
   )
     throw new Error('Invalid Contract response.');
   const createdRevision =
@@ -305,6 +385,7 @@ export function readContract(value: unknown): ContractView {
       termStartsOn: nullableDate(version.termStartsOn),
       termEndsOn: nullableDate(version.termEndsOn),
       specialConditions: nullableString(version.specialConditions),
+      preliminaryWork,
       changeSummary: isAddendum ? string(version.changeSummary) : null,
       pricingSnapshotId: nullableString(version.pricingSnapshotId),
       pricingSnapshot: snapshot
@@ -334,6 +415,7 @@ export function readContract(value: unknown): ContractView {
       parentContractId: parent.id,
       parent,
       addendumOrdinal: positiveInteger(input.addendumOrdinal),
+      precontract: null,
       sourceOfferVersionId: null,
       sourceOffer: null,
     };
@@ -346,13 +428,12 @@ export function readContract(value: unknown): ContractView {
       parentContractId: null,
       parent: null,
       addendumOrdinal: null,
+      precontract,
       sourceOfferVersionId: null,
       sourceOffer: null,
     };
   if (!sourceOffer) throw new Error('Missing Contract Offer source.');
-  return {
-    ...content,
-    kind: 'CONTRACT',
+  const accepted = {
     origin: 'ACCEPTED_OFFER',
     parentContractId: null,
     parent: null,
@@ -362,6 +443,32 @@ export function readContract(value: unknown): ContractView {
       illustrativeReference: positiveInteger(sourceOffer.illustrativeReference),
       versionNumber: positiveInteger(sourceOffer.versionNumber),
     },
+  } as const;
+  return isPrecontract
+    ? { ...content, ...accepted, kind: 'PRECONTRACT', precontract: null }
+    : { ...content, ...accepted, kind: 'CONTRACT', precontract };
+}
+function readPreliminaryWork(value: unknown): PreliminaryWorkView {
+  const input = record(value);
+  if (Object.keys(input).length !== 3)
+    throw new Error('Invalid preliminary work.');
+  return {
+    scope: boundedText(input.scope),
+    financialConditions: boundedText(input.financialConditions),
+    limits: boundedText(input.limits),
+  };
+}
+function boundedText(value: unknown): string {
+  const text = string(value);
+  if (text.length > 2000 || !text.trim())
+    throw new Error('Invalid preliminary work text.');
+  return text;
+}
+function readPrecontractReference(value: unknown): PrecontractReference {
+  const input = record(value);
+  return {
+    id: string(input.id),
+    illustrativeReference: positiveInteger(input.illustrativeReference),
   };
 }
 function readContractDifferences(value: unknown): ContractVersionDifference[] {
@@ -378,6 +485,9 @@ function readContractDifferences(value: unknown): ContractVersionDifference[] {
       field !== 'termStartsOn' &&
       field !== 'termEndsOn' &&
       field !== 'specialConditions' &&
+      field !== 'preliminaryWorkScope' &&
+      field !== 'preliminaryFinancialConditions' &&
+      field !== 'preliminaryLimits' &&
       field !== 'changeSummary' &&
       field !== 'scopeNote' &&
       field !== 'commercialConditions'
@@ -510,7 +620,7 @@ export function contractPath(
   opportunityId: string,
   contract: Pick<ContractView, 'id' | 'kind'>,
 ) {
-  return `/contracts/opportunities/${encodeURIComponent(opportunityId)}${contract.kind === 'ADDENDUM' ? '/agreements/' + encodeURIComponent(contract.id) : ''}`;
+  return `/contracts/opportunities/${encodeURIComponent(opportunityId)}${contract.kind === 'CONTRACT' ? '' : '/agreements/' + encodeURIComponent(contract.id)}`;
 }
 export function contractQualityContext(contract: ContractView) {
   return contract.kind === 'ADDENDUM'

@@ -15,10 +15,57 @@ import {
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
 import { ContractService } from './contract.service.js';
+import { ContractProjectsService } from './contract-projects.service.js';
+import { ContractProjectCreationService } from './contract-project-creation.service.js';
 @Controller('contracts/opportunities/:opportunityId/agreements/:contractId')
 @UseGuards(ActorContextAdapter)
 export class ContractAgreementsController {
-  constructor(private readonly contracts: ContractService) {}
+  constructor(
+    private readonly contracts: ContractService,
+    private readonly projects: ContractProjectsService,
+    private readonly projectCreation: ContractProjectCreationService,
+  ) {}
+  @Get('project-candidates') candidates(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('contractId') contractId: string,
+  ) {
+    return this.projects.candidates({
+      actor: actorFrom(request),
+      opportunityId,
+      contractId,
+    });
+  }
+  @Post('projects') linkProject(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('contractId') contractId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.projects.link({
+      actor: actorFrom(request),
+      opportunityId,
+      contractId,
+      payload,
+      idempotencyKey,
+    });
+  }
+  @Post('projects/create') createProject(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('contractId') contractId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.projectCreation.create({
+      actor: actorFrom(request),
+      opportunityId,
+      contractId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post('addenda') createAddendum(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,

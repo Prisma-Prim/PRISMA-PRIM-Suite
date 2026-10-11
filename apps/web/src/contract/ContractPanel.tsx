@@ -1,4 +1,6 @@
 import { ContractDirectEditor } from './ContractDirectEditor';
+import { ContractPrecontractEditor } from './ContractPrecontractEditor';
+import { useContractPrecontractCopy } from './contract-precontract.copy';
 import { useContractDirectCopy } from './contract-direct.copy';
 import { ContractAddendumEditor } from './ContractAddendumEditor';
 import { useContractAddendumCopy } from './contract-addendum.copy';
@@ -25,13 +27,19 @@ import {
   readAcceptedOfferSource,
   readContract,
   readContractDetail,
+  readOpportunityContracts,
   type ContractView,
+  type PrecontractSummary,
 } from './contract-response';
 import './contract.css';
 import { ContractRepresentationViewer } from './ContractRepresentationViewer';
 type View =
   | { kind: 'loading' }
-  | { kind: 'empty'; acceptedVersionId: string | null }
+  | {
+      kind: 'empty';
+      acceptedVersionId: string | null;
+      precontract: PrecontractSummary | null;
+    }
   | {
       kind: 'ready';
       contract: ContractView;
@@ -70,12 +78,17 @@ export function ContractPanel({
   onOpenProject?: (projectId: string) => void;
 }) {
   const addendumCopy = useContractAddendumCopy();
+  const precontractCopy = useContractPrecontractCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
+  const versionCopy = useContractVersionCopy();
   const [agreementId, setAgreementId] = useState<string | null>(null);
   const [addendumSuccessId, setAddendumSuccessId] = useState<string | null>(
     null,
   );
+  const [precontractSuccessId, setPrecontractSuccessId] = useState<
+    string | null
+  >(null);
   const companyId = actor.activeCompany?.id;
   const context = actor.activeCompany;
   const mayRead = Boolean(
@@ -150,6 +163,7 @@ export function ContractPanel({
     [projectLinkProtected, setProjectLinkProtected] = useState(false),
     [versionProtected, setVersionProtected] = useState(false),
     [addendumProtected, setAddendumProtected] = useState(false),
+    [precontractProtected, setPrecontractProtected] = useState(false),
     [termStartsOn, setStart] = useState(''),
     [termEndsOn, setEnd] = useState(''),
     [specialConditions, setConditions] = useState('');
@@ -158,6 +172,7 @@ export function ContractPanel({
   const locked =
     running ||
     addendumProtected ||
+    precontractProtected ||
     versionProtected ||
     decisionProtected ||
     signatureProtected ||
@@ -198,7 +213,12 @@ export function ContractPanel({
         setView({ kind: 'error' });
         return;
       }
-      const contract = readContractDetail(result.value);
+      // The Opportunity read also names its Precontract; exact reads name one agreement.
+      const opened =
+        agreementId === null && versionId === undefined
+          ? readOpportunityContracts(result.value)
+          : { contract: readContractDetail(result.value), precontract: null };
+      const contract = opened.contract;
       if (contract) {
         if (
           contract.companyId !== companyId ||
@@ -227,7 +247,11 @@ export function ContractPanel({
         }
         acceptedVersionId = readAcceptedOfferSource(source.value);
       }
-      setView({ kind: 'empty', acceptedVersionId });
+      setView({
+        kind: 'empty',
+        acceptedVersionId,
+        precontract: opened.precontract,
+      });
     } catch {
       if (!signal.aborted) setView({ kind: 'error' });
     }
@@ -253,11 +277,13 @@ export function ContractPanel({
   useEffect(() => {
     setAgreementId(null);
     setAddendumSuccessId(null);
+    setPrecontractSuccessId(null);
   }, [opportunityId, companyId, actor.workspaceId, identity]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
       running ||
+      precontractProtected ||
       !mayPrepare ||
       !companyId ||
       view.kind !== 'empty' ||
@@ -338,6 +364,15 @@ export function ContractPanel({
     }
   }
   if (!mayRead) return null;
+  // The Precontract a ready main Contract records, or the Opportunity's listed one.
+  const linkedPrecontractId =
+    view.kind === 'ready'
+      ? view.contract.kind === 'CONTRACT'
+        ? (view.contract.precontract?.id ?? null)
+        : null
+      : view.kind === 'empty'
+        ? (view.precontract?.id ?? null)
+        : null;
   return (
     <section className="contract-panel" aria-label={copy.title}>
       <h4>{copy.title}</h4>
@@ -349,6 +384,65 @@ export function ContractPanel({
       {view.kind === 'empty' && (
         <>
           <p>{copy.empty}</p>
+          {view.precontract && (
+            <section
+              className="contract-precontract"
+              aria-label={precontractCopy('section')}
+            >
+              <h5>{precontractCopy('section')}</h5>
+              <p>
+                {precontractCopy('reference')}{' '}
+                {view.precontract.illustrativeReference} ·{' '}
+                {versionCopy('versionLabel')} {view.precontract.versionNumber} ·{' '}
+                {decisionCopy(
+                  view.precontract.decisionState === 'APPROVED'
+                    ? 'approved'
+                    : view.precontract.decisionState === 'REJECTED'
+                      ? 'rejected'
+                      : 'pending',
+                )}{' '}
+                ·{' '}
+                {view.precontract.executionState === 'EXECUTED'
+                  ? signatureCopy('executed')
+                  : signatureCopy('pending')}
+              </p>
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => setAgreementId(linkedPrecontractId)}
+              >
+                {precontractCopy('open')}
+              </button>
+            </section>
+          )}
+          {!view.precontract &&
+            view.acceptedVersionId &&
+            mayPrepare &&
+            companyId && (
+              <ContractPrecontractEditor
+                key={stamp + ':precontract-create'}
+                identity={identity}
+                companyId={companyId}
+                opportunityId={opportunityId}
+                acceptedVersionId={view.acceptedVersionId}
+                protectedCommand={
+                  running ||
+                  feedback === 'uncertain' ||
+                  qualityProtected ||
+                  decisionProtected ||
+                  signatureProtected ||
+                  projectLinkProtected ||
+                  addendumProtected ||
+                  versionProtected
+                }
+                reject={reject}
+                onProtectionChange={setPrecontractProtected}
+                onCreated={(id) => {
+                  setPrecontractSuccessId(id);
+                  setAgreementId(id);
+                }}
+              />
+            )}
           {!view.acceptedVersionId && !mayPrepareDirect && (
             <p>{copy.awaiting}</p>
           )}
@@ -393,17 +487,45 @@ export function ContractPanel({
                 disabled={locked}
                 onClick={() => {
                   setAddendumSuccessId(null);
-                  setAgreementId(null);
+                  setAgreementId(
+                    view.contract.parent?.kind === 'PRECONTRACT'
+                      ? view.contract.parent.id
+                      : null,
+                  );
                 }}
               >
                 {addendumCopy('back')}
               </button>
             )}
+            {view.contract.kind === 'PRECONTRACT' && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => {
+                  setPrecontractSuccessId(null);
+                  setAgreementId(null);
+                }}
+              >
+                {precontractCopy('back')}
+              </button>
+            )}
             {addendumSuccessId === view.contract.id && (
               <p role="status">{addendumCopy('success')}</p>
             )}
+            {precontractSuccessId === view.contract.id && (
+              <p role="status">{precontractCopy('success')}</p>
+            )}
             <ContractSummary contract={view.contract} />
-            {view.contract.kind === 'CONTRACT' &&
+            {linkedPrecontractId && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => setAgreementId(linkedPrecontractId)}
+              >
+                {precontractCopy('open')}
+              </button>
+            )}
+            {view.contract.kind !== 'ADDENDUM' &&
               view.contract.version.executionState === 'EXECUTED' && (
                 <section aria-label={addendumCopy('title')}>
                   <h5>{addendumCopy('title')}</h5>
@@ -588,9 +710,7 @@ export function ContractPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               contractId={view.contract.id}
-              agreementId={
-                view.contract.kind === 'ADDENDUM' ? view.contract.id : undefined
-              }
+              kind={view.contract.kind}
               versionId={view.contract.version.id}
               onCompanyContextRejected={onCompanyContextRejected}
               onActorRevalidated={onActorRevalidated}
@@ -686,7 +806,7 @@ export function ContractPanel({
                 )
               }
             />
-            {view.contract.kind === 'CONTRACT' && (
+            {view.contract.kind !== 'ADDENDUM' && (
               <ContractProjectsPanel
                 key={stamp + ':projects:' + view.contract.id}
                 identity={identity}
@@ -764,7 +884,7 @@ export function ContractPanel({
               opportunityId={opportunityId}
               versionId={view.contract.version.id}
               agreementId={
-                view.contract.kind === 'ADDENDUM' ? view.contract.id : undefined
+                view.contract.kind === 'CONTRACT' ? undefined : view.contract.id
               }
               addendum={contractQualityContext(view.contract)}
               termEndsOn={view.contract.version.termEndsOn}
@@ -842,7 +962,7 @@ export function ContractPanel({
               onChange={(event) => setConditions(event.target.value)}
             />
           </label>
-          <button type="submit" disabled={running}>
+          <button type="submit" disabled={running || precontractProtected}>
             {running
               ? copy.running
               : feedback === 'uncertain'
@@ -876,11 +996,13 @@ function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
   const directCopy = useContractDirectCopy();
   const addendumCopy = useContractAddendumCopy();
+  const precontractCopy = useContractPrecontractCopy();
   const versionCopy = useContractVersionCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
   return (
     <>
+      {contract.kind === 'PRECONTRACT' && <h5>{precontractCopy('title')}</h5>}
       {contract.kind === 'ADDENDUM' && (
         <>
           <h5>
@@ -952,6 +1074,14 @@ function ContractSummary({ contract }: { contract: ContractView }) {
         </dd>
         {contract.kind === 'CONTRACT' && (
           <>
+            <dt>{precontractCopy('reference')}</dt>
+            <dd>
+              {contract.precontract?.illustrativeReference ?? copy.missing}
+            </dd>
+          </>
+        )}
+        {contract.kind !== 'ADDENDUM' && (
+          <>
             <dt>
               {contract.origin === 'DIRECT' ? directCopy('scope') : copy.scope}
             </dt>
@@ -966,6 +1096,16 @@ function ContractSummary({ contract }: { contract: ContractView }) {
             <dd>{version.termStartsOn ?? copy.missing}</dd>
             <dt>{copy.conditions}</dt>
             <dd>{version.specialConditions ?? copy.missing}</dd>
+          </>
+        )}
+        {version.preliminaryWork && (
+          <>
+            <dt>{precontractCopy('scope')}</dt>
+            <dd>{version.preliminaryWork.scope}</dd>
+            <dt>{precontractCopy('financial')}</dt>
+            <dd>{version.preliminaryWork.financialConditions}</dd>
+            <dt>{precontractCopy('limits')}</dt>
+            <dd>{version.preliminaryWork.limits}</dd>
           </>
         )}
         <dt>{contract.kind === 'ADDENDUM' ? addendumCopy('end') : copy.end}</dt>

@@ -24,6 +24,8 @@ import { ContractProjectsService } from './contract-projects.service.js';
 import {
   renderContractRepresentation,
   renderAddendumRepresentation,
+  renderPrecontractRepresentation,
+  type PreliminaryWork,
 } from './contract-representation.js';
 import { contractVersionDifferences } from './contract-version-differences.js';
 type ContractRow = typeof contracts.$inferSelect;
@@ -71,6 +73,43 @@ export class ContractVersionReader {
       if (input.versionId !== undefined && input.versionId !== found.version.id)
         throw new NotFoundException();
       return this.view(input.actor, found.contract, found.version);
+    });
+  }
+
+  /** Both main agreements of one Opportunity for the Request detail (PRD 19.13). */
+  async readOpportunity(input: { actor: ActorContext; opportunityId: string }) {
+    return this.databaseContext.transaction(async () => {
+      const companyId = await this.authorization.requireContractAccess(
+        input.actor,
+        ['commercial.contract.read'],
+        true,
+      );
+      const opportunity = await this.intake.requireReadableOfferOpportunity(
+        input.actor,
+        input.opportunityId,
+        false,
+      );
+      const target = {
+        actor: input.actor,
+        companyId,
+        opportunityId: opportunity.id,
+      };
+      const contract = await this.find(target);
+      const precontract = await this.findPrecontract(target);
+      return {
+        contract: contract
+          ? await this.view(input.actor, contract.contract, contract.version)
+          : null,
+        precontract: precontract
+          ? {
+              id: precontract.contract.id,
+              illustrativeReference: precontract.contract.illustrativeReference,
+              versionNumber: precontract.version.versionNumber,
+              decisionState: precontract.version.decisionState,
+              executionState: precontract.version.executionState,
+            }
+          : null,
+      };
     });
   }
 
@@ -214,6 +253,40 @@ export class ContractVersionReader {
     return found;
   }
 
+  /** Head of the Opportunity Precontract, at most one per Opportunity (PC2). */
+  async findPrecontract({
+    actor,
+    companyId,
+    opportunityId,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+  }) {
+    const [found] = await this.databaseContext.connection
+      .select({ contract: contracts, version: contractVersions })
+      .from(contracts)
+      .innerJoin(
+        contractVersions,
+        and(
+          eq(contractVersions.workspaceId, contracts.workspaceId),
+          eq(contractVersions.companyId, contracts.companyId),
+          eq(contractVersions.contractId, contracts.id),
+        ),
+      )
+      .where(
+        and(
+          eq(contracts.workspaceId, actor.workspaceId),
+          eq(contracts.companyId, companyId),
+          eq(contracts.opportunityId, opportunityId),
+          eq(contracts.kind, 'PRECONTRACT'),
+        ),
+      )
+      .orderBy(desc(contractVersions.versionNumber))
+      .limit(1);
+    return found;
+  }
+
   async view(actor: ActorContext, contract: ContractRow, version: VersionRow) {
     const source = contractSource(contract);
     if (
@@ -301,6 +374,22 @@ export class ContractVersionReader {
       contract.kind === 'ADDENDUM'
         ? await this.addendumSource(actor, contract)
         : null;
+    const precontract =
+      contract.precontractId === null
+        ? null
+        : await this.find({
+            actor,
+            companyId: contract.companyId,
+            opportunityId: contract.opportunityId,
+            contractId: contract.precontractId,
+          });
+    if (
+      contract.precontractId !== null &&
+      (contract.kind !== 'CONTRACT' ||
+        precontract?.contract.kind !== 'PRECONTRACT')
+    )
+      throw new Error('Invalid recorded Precontract reference.');
+    const preliminaryWork = recordedPreliminaryWork(version);
     const clientReference = await this.intake.readPricingClientProjection(
       actor,
       contract.originalClientAccountId,
@@ -355,6 +444,12 @@ export class ContractVersionReader {
       sourceOffer,
       parentContractId: contract.parentContractId,
       addendumOrdinal: contract.addendumOrdinal,
+      precontract: precontract
+        ? {
+            id: precontract.contract.id,
+            illustrativeReference: precontract.contract.illustrativeReference,
+          }
+        : null,
       parent: parent
         ? {
             id: parent.contract.id,
@@ -404,10 +499,13 @@ export class ContractVersionReader {
                 termEndsOn: version.termEndsOn,
                 snapshot: pricingSnapshot,
               })
-            : (sourceOffer || source.kind === 'DIRECT') &&
+            : contract.kind === 'PRECONTRACT' &&
+                sourceOffer &&
                 pricingSnapshot &&
-                version.pricingSnapshotId
-              ? renderContractRepresentation({
+                version.pricingSnapshotId &&
+                version.termEndsOn &&
+                preliminaryWork
+              ? renderPrecontractRepresentation({
                   templateCode: version.templateCode,
                   templateVersion: version.templateVersion,
                   clauseVersions: version.clauseVersions,
@@ -428,9 +526,39 @@ export class ContractVersionReader {
                   termStartsOn: version.termStartsOn,
                   termEndsOn: version.termEndsOn,
                   specialConditions: version.specialConditions,
+                  preliminaryWork,
                   provenance: 'ILLUSTRATIVE',
                 })
-              : missingRepresentation(),
+              : contract.kind === 'CONTRACT' &&
+                  (sourceOffer || source.kind === 'DIRECT') &&
+                  pricingSnapshot &&
+                  version.pricingSnapshotId
+                ? renderContractRepresentation({
+                    templateCode: version.templateCode,
+                    templateVersion: version.templateVersion,
+                    clauseVersions: version.clauseVersions,
+                    illustrativeReference: contract.illustrativeReference,
+                    versionNumber: version.versionNumber,
+                    issuingCompanyLabel: version.issuingCompanyLabel,
+                    recipient,
+                    createdAt: version.createdAt.toISOString(),
+                    sourceOffer,
+                    pricingSnapshotId: version.pricingSnapshotId,
+                    lines: pricingSnapshot.lines,
+                    subtotal: pricingSnapshot.subtotal,
+                    taxTotal: pricingSnapshot.taxTotal,
+                    total: pricingSnapshot.total,
+                    currency: pricingSnapshot.currency,
+                    scopeNote: version.scopeNote,
+                    commercialConditions: version.commercialConditions,
+                    termStartsOn: version.termStartsOn,
+                    termEndsOn: version.termEndsOn,
+                    specialConditions: version.specialConditions,
+                    precontractReference:
+                      precontract?.contract.illustrativeReference ?? null,
+                    provenance: 'ILLUSTRATIVE',
+                  })
+                : missingRepresentation(),
         decision,
         signature,
         latestQualityRun: latestRun
@@ -446,6 +574,7 @@ export class ContractVersionReader {
         termStartsOn: version.termStartsOn,
         termEndsOn: version.termEndsOn,
         specialConditions: version.specialConditions,
+        preliminaryWork,
         changeSummary: version.changeSummary,
         decisionState: version.decisionState,
         executionState: version.executionState,
@@ -537,6 +666,20 @@ export function recordedRecipient(version: VersionRow): OfferRecipientCopy {
       additionalLegalEntityId: version.recipientAdditionalLegalEntityId,
     };
   throw new Error('Invalid recorded Contract party.');
+}
+
+/** Precontract-only content; the database binds it to the Precontract Template. */
+export function recordedPreliminaryWork(
+  version: VersionRow,
+): PreliminaryWork | null {
+  const scope = version.preliminaryWorkScope,
+    financialConditions = version.preliminaryFinancialConditions,
+    limits = version.preliminaryLimits;
+  if (scope === null && financialConditions === null && limits === null)
+    return null;
+  if (scope === null || financialConditions === null || limits === null)
+    throw new Error('Invalid recorded preliminary work.');
+  return { scope, financialConditions, limits };
 }
 
 function missingRepresentation(): never {

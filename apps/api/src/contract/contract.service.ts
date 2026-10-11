@@ -57,11 +57,7 @@ import {
   recordedRecipient,
 } from './contract-version-reader.js';
 import { readCreateContractCommand } from './contract.validation.js';
-import {
-  CONTRACT_TEMPLATE_CODE,
-  CONTRACT_TEMPLATE_VERSION,
-  CONTRACT_CLAUSE_VERSIONS,
-} from './contract-representation.js';
+import { agreementGenerationFields } from './contract-representation.js';
 
 type ContractRow = typeof contracts.$inferSelect;
 type VersionRow = typeof contractVersions.$inferSelect;
@@ -179,22 +175,29 @@ export class ContractService {
             actor,
             companyId,
             opportunityId: opportunity.id,
+            contractId: receipt.resultContractId,
             versionId: initialVersion.id,
           });
           if (!existing || existing.contract.id !== receipt.resultContractId)
             throw new Error('Missing recorded Contract.');
           return this.versions.view(actor, existing.contract, existing.version);
         }
-        if (
-          await this.versions.find({
-            actor,
-            companyId,
-            opportunityId: opportunity.id,
-          })
-        )
+        const target = { actor, companyId, opportunityId: opportunity.id };
+        const mainContract = await this.versions.find(target);
+        const precontract = await this.versions.findPrecontract(target);
+        // PRD 19.4 refusal order: an existing agreement of the requested kind
+        // precedes the Precontract-after-Contract rule (PC2).
+        if (command.kind === 'CONTRACT' ? mainContract : precontract)
           throw conflict(
             'CONTRACT_ALREADY_EXISTS',
-            'This Opportunity already has a Contract.',
+            command.kind === 'CONTRACT'
+              ? 'This Opportunity already has a Contract.'
+              : 'This Opportunity already has a Precontract.',
+          );
+        if (command.kind === 'PRECONTRACT' && mainContract)
+          throw conflict(
+            'PRECONTRACT_AFTER_CONTRACT',
+            'A Precontract can be prepared only before the Contract.',
           );
         const createdAt = this.clock.now();
         const [counter] = await this.databaseContext.connection
@@ -202,7 +205,7 @@ export class ContractService {
           .values({
             workspaceId: actor.workspaceId,
             companyId,
-            kind: 'CONTRACT',
+            kind: command.kind,
             currentReference: 1,
           })
           .onConflictDoUpdate({
@@ -231,8 +234,13 @@ export class ContractService {
             opportunityId: opportunity.id,
             clientRequestId: source.clientRequestId,
             originalClientAccountId: source.originalClientAccountId,
+            kind: command.kind,
             sourceOfferId: source.offerId,
             sourceOfferVersionId: source.offerVersionId,
+            precontractId:
+              command.kind === 'CONTRACT'
+                ? (precontract?.contract.id ?? null)
+                : null,
             illustrativeReference: counter.currentReference,
           })
           .returning();
@@ -259,9 +267,7 @@ export class ContractService {
             termStartsOn: command.termStartsOn,
             termEndsOn: command.termEndsOn,
             specialConditions: command.specialConditions,
-            templateCode: CONTRACT_TEMPLATE_CODE,
-            templateVersion: CONTRACT_TEMPLATE_VERSION,
-            clauseVersions: CONTRACT_CLAUSE_VERSIONS,
+            ...agreementGenerationFields(command),
           })
           .returning();
         if (!version) throw new Error('Contract Version was not recorded.');
@@ -284,6 +290,7 @@ export class ContractService {
           illustrativeReference: contract.illustrativeReference,
           source: {
             kind: 'ACCEPTED_OFFER',
+            contractKind: command.kind,
             offerVersionId: source.offerVersionId,
           },
           pricingSnapshotId: source.pricingSnapshotId,
@@ -617,7 +624,7 @@ export class ContractService {
       termStartsOn: version.termStartsOn,
       termEndsOn: version.termEndsOn,
       specialConditions: version.specialConditions,
-      preliminaryWork: null,
+      preliminaryWork: version.preliminaryWorkScope,
       provenance: version.provenance,
       provisional: version.provenance === 'ILLUSTRATIVE',
       source: parent
@@ -792,6 +799,11 @@ export class ContractService {
 
   async read(input: Parameters<ContractVersionReader['read']>[0]) {
     return this.versions.read(input);
+  }
+  async readOpportunity(
+    input: Parameters<ContractVersionReader['readOpportunity']>[0],
+  ) {
+    return this.versions.readOpportunity(input);
   }
   async listVersions(
     input: Parameters<ContractVersionReader['listVersions']>[0],

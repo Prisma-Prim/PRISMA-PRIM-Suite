@@ -14,6 +14,9 @@ export function contractVersionDifferences(
     'termStartsOn',
     'termEndsOn',
     'specialConditions',
+    'preliminaryWorkScope',
+    'preliminaryFinancialConditions',
+    'preliminaryLimits',
     'changeSummary',
   ] as const;
   return fields.flatMap((field) =>
