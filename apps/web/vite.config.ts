@@ -20,6 +20,13 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       exclude: [...configDefaults.exclude, 'e2e/**'],
       setupFiles: ['./src/test/setup.ts'],
+      // App-level jsdom renders time out at 5 s when every core runs a
+      // worker (#571). Half the cores keeps the same wall time locally and
+      // is a no-op on 2-vCPU CI runners, where Vitest already uses one.
+      maxWorkers: '50%',
+      // Full App renders under a second concurrent suite still approach 5 s;
+      // 15 s keeps them stable while a genuine hang still fails.
+      testTimeout: 15_000,
     },
   };
 });
