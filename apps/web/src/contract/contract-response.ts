@@ -3,7 +3,10 @@ import {
   type ContractDecisionView,
 } from './contract-decision-response';
 import {
-  readContractQualityRun,
+  isContractQualityRuleSetVersion,
+  readRecordedContractQualityRun,
+  type ContractQualityRunBinding,
+  type ContractQualityRuleSetVersion,
   type ContractQualityRunView,
 } from './contract-quality-response';
 import {
@@ -70,6 +73,9 @@ interface ContractContent {
   version: {
     decisionState: 'PENDING' | 'APPROVED' | 'REJECTED';
     decision: ContractDecisionView | null;
+    /** Bound from the immutable Snapshot: an adjusted one binds version 2. */
+    qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE';
+    qualityRuleSetVersion: ContractQualityRuleSetVersion;
     latestQualityRun: ContractQualityRunView | null;
     id: string;
     versionNumber: number;
@@ -301,15 +307,32 @@ export function readContract(value: unknown): ContractView {
     (version.versionNumber === 1 && predecessorVersionId !== null)
   )
     throw new Error('Invalid Contract lineage.');
+  // The server binds rule set v2 exactly when the immutable Snapshot has an
+  // adjusted line; any other pairing or unknown version fails closed.
+  const qualityRuleSetVersion = version.qualityRuleSetVersion;
+  if (
+    version.qualityRuleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
+    !isContractQualityRuleSetVersion(qualityRuleSetVersion) ||
+    qualityRuleSetVersion !==
+      (snapshot !== null &&
+      snapshotLines(snapshot.lines).some((line) => {
+        const adjustment = record(line).adjustment;
+        return adjustment !== null && adjustment !== undefined;
+      })
+        ? 2
+        : 1)
+  )
+    throw new Error('Invalid Contract Quality Check binding.');
+  const binding: ContractQualityRunBinding = {
+    versionId: string(version.id),
+    termEndsOn: nullableDate(version.termEndsOn),
+    ...(addendum ? { addendum } : {}),
+    ruleSetVersion: qualityRuleSetVersion,
+  };
   const decision =
     version.decision === null || version.decision === undefined
       ? null
-      : readContractDecision(
-          version.decision,
-          string(version.id),
-          nullableDate(version.termEndsOn),
-          addendum,
-        );
+      : readContractDecision(version.decision, binding);
   if (
     (version.decisionState === 'PENDING' &&
       (decision !== null ||
@@ -329,10 +352,8 @@ export function readContract(value: unknown): ContractView {
       ? ({
           executionState: 'EXECUTED',
           signature: readContractSignature(version.signature, {
-            versionId: string(version.id),
-            termEndsOn: nullableDate(version.termEndsOn),
+            ...binding,
             approval: decision,
-            addendum,
           }),
         } as const)
       : ({ executionState: 'NOT_EXECUTED', signature: null } as const);
@@ -365,15 +386,12 @@ export function readContract(value: unknown): ContractView {
       predecessorVersionId,
       supersededByVersionId,
       differences: readContractDifferences(version.differences ?? []),
+      qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+      qualityRuleSetVersion,
       latestQualityRun:
         version.latestQualityRun === null
           ? null
-          : readContractQualityRun(
-              version.latestQualityRun,
-              string(version.id),
-              nullableDate(version.termEndsOn),
-              addendum,
-            ),
+          : readRecordedContractQualityRun(version.latestQualityRun, binding),
       recipient: {
         legalName: string(recipient.legalName),
         taxId: nullableString(recipient.taxId),
@@ -628,6 +646,18 @@ export function contractQualityContext(contract: ContractView) {
     : contract.origin === 'DIRECT'
       ? ({ origin: 'DIRECT' } as const)
       : undefined;
+}
+/** What every run of the displayed head version must match. */
+export function contractQualityRunBinding(
+  contract: ContractView,
+): ContractQualityRunBinding {
+  const addendum = contractQualityContext(contract);
+  return {
+    versionId: contract.version.id,
+    termEndsOn: contract.version.termEndsOn,
+    ...(addendum ? { addendum } : {}),
+    ruleSetVersion: contract.version.qualityRuleSetVersion,
+  };
 }
 
 function readSnapshotDifference(value: unknown, id: string | null) {

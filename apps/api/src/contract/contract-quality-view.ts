@@ -16,7 +16,7 @@ export function qualityRunView(
 ): ContractQualityRun {
   if (
     row.ruleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
-    row.ruleSetVersion !== 1 ||
+    (row.ruleSetVersion !== 1 && row.ruleSetVersion !== 2) ||
     row.contractVersionId !== version.id
   )
     throw new Error('Unsupported stored Contract Quality Check rule set.');

@@ -1,5 +1,4 @@
 import { useContractDirectCopy } from './contract-direct.copy';
-import type { ContractQualityContext } from './contract-quality-response';
 import { useContractAddendumCopy } from './contract-addendum.copy';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
@@ -15,6 +14,8 @@ import {
 import {
   readContractQualityRun,
   readContractQualityHistory,
+  readRecordedContractQualityRun,
+  type ContractQualityRunBinding,
   type ContractQualityRunView,
 } from './contract-quality-response';
 type State =
@@ -32,10 +33,8 @@ export function ContractQualityPanel({
   identity,
   companyId,
   opportunityId,
-  versionId,
   agreementId,
-  addendum,
-  termEndsOn,
+  binding,
   initialRun,
   mayRun,
   reject,
@@ -46,10 +45,8 @@ export function ContractQualityPanel({
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  versionId: string;
   agreementId?: string;
-  addendum?: ContractQualityContext;
-  termEndsOn: string | null;
+  binding: ContractQualityRunBinding;
   initialRun: ContractQualityRunView | null;
   mayRun: boolean;
   protectedDecision?: boolean;
@@ -80,7 +77,7 @@ export function ContractQualityPanel({
     },
     [onProtectionChange],
   );
-  const base = `/contracts/opportunities/${encodeURIComponent(opportunityId)}${agreementId ? '/agreements/' + encodeURIComponent(agreementId) : ''}/versions/${encodeURIComponent(versionId)}/quality-checks`;
+  const base = `/contracts/opportunities/${encodeURIComponent(opportunityId)}${agreementId ? '/agreements/' + encodeURIComponent(agreementId) : ''}/versions/${encodeURIComponent(binding.versionId)}/quality-checks`;
   async function execute(
     action:
       | { kind: 'run' }
@@ -137,21 +134,13 @@ export function ContractQualityPanel({
         setState('denied');
       } else if (result.status === 'ok') {
         if (action.kind === 'history')
-          setHistory(
-            readContractQualityHistory(
-              result.value,
-              versionId,
-              termEndsOn,
-              addendum,
-            ),
-          );
+          setHistory(readContractQualityHistory(result.value, binding));
         else {
-          const recorded = readContractQualityRun(
-            result.value,
-            versionId,
-            termEndsOn,
-            addendum,
-          );
+          // A new run names the bound rule set; a reopened run may predate v2.
+          const recorded =
+            action.kind === 'run'
+              ? readContractQualityRun(result.value, binding)
+              : readRecordedContractQualityRun(result.value, binding);
           if (action.kind === 'reopen' && recorded.id !== action.id)
             throw new Error('Mismatched Contract run.');
           setRun(recorded);

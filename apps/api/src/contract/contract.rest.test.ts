@@ -10045,6 +10045,721 @@ withPostgres('First illustrative Contract REST', () => {
       ).rows[0]?.count,
     ).toBe('0');
   });
+  describe('adjusted Pricing Snapshots (#561)', () => {
+    // Synthetic fixed discount of 8.63 on 300.00 at 15.00 %: adjusted line
+    // 291.37 + 43.71 tax = 335.08, tax reduction 1.29. Never a real price.
+    const SECRETS = ['8.63', '1.29', '335.08', 'Synthetic <discount>'];
+    const ACCEPTED_OFFER_CODES = [
+      'SOURCE_COMPANY_MATCHES',
+      'PARTY_AVAILABLE',
+      'PARTY_MATCHES_SOURCE',
+      'PARTY_IDENTITY_MATCHES_SOURCE',
+      'PARTY_IDENTITY_CURRENT',
+      'PARTY_TAX_ID_RECORDED',
+      'PRICE_MATCHES_ACCEPTED_OFFER',
+      'PRICING_SNAPSHOT_COHERENT',
+      'CONDITIONS_MATCH_ACCEPTED_OFFER',
+      'ADDED_CONDITIONS_CONFIRMED',
+      'PROVISIONAL_MARKER_PRESENT',
+    ];
+    it('checks, approves and signs a Contract over an adjusted accepted Snapshot under rule set v2 while an unadjusted Contract keeps v1', async () => {
+      const fixture = await adjustedAcceptedOffer();
+      await grantContract(fixture, 'cadj-grant');
+      await grantApprover(fixture);
+      const base = '/contracts/opportunities/' + fixture.opportunityId;
+      const traceBefore = await snapshotTrace(fixture.snapshotId);
+      const created = record(
+        await command({
+          path: base,
+          companyId: fixture.companyId,
+          key: 'cadj-create',
+          body: await contractPayload(fixture),
+        }),
+      );
+      const version = record(created.version);
+      expect(version).toMatchObject({
+        pricingSnapshotId: fixture.snapshotId,
+        qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+        qualityRuleSetVersion: 2,
+        representation: {
+          templateCode: 'CONTRACT_ILLUSTRATIVE',
+          templateVersion: 1,
+        },
+      });
+      const representation = record(version.representation);
+      const html = String(representation.html);
+      expect(html).toContain(
+        'Fixed discount: Synthetic &lt;discount&gt; &amp; &quot;reason&quot;',
+      );
+      expect(html).toContain('335.08 EUR');
+      const versionPath = base + '/versions/' + stringField(version, 'id');
+      const run = record(
+        await command({
+          path: versionPath + '/quality-checks',
+          companyId: fixture.companyId,
+          key: 'cadj-run',
+          body: {},
+        }),
+      );
+      expect(run).toMatchObject({
+        ruleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+        ruleSetVersion: 2,
+      });
+      expect(run.results).toEqual(
+        ACCEPTED_OFFER_CODES.map((code) => ({ code, status: 'PASS' })),
+      );
+      const approval = record(
+        await command({
+          path: versionPath + '/approve',
+          companyId: fixture.companyId,
+          key: 'cadj-approve',
+          body: { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+        }),
+      );
+      expect(approval).toMatchObject({
+        kind: 'APPROVE',
+        representationChecksum: representation.sha256,
+        qualityRun: { ruleSetVersion: 2 },
+      });
+      const signature = record(
+        await command({
+          path: versionPath + '/signature',
+          companyId: fixture.companyId,
+          key: 'cadj-sign',
+          body: signaturePayload(),
+        }),
+      );
+      expect(signature).toMatchObject({
+        representationChecksum: representation.sha256,
+        qualityRun: { ruleSetVersion: 2 },
+      });
+      const executed = record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      );
+      expect(record(executed.version)).toMatchObject({
+        qualityRuleSetVersion: 2,
+        executionState: 'EXECUTED',
+        representation: { sha256: representation.sha256 },
+        decision: { qualityRun: { ruleSetVersion: 2 } },
+        signature: { qualityRun: { ruleSetVersion: 2 } },
+        latestQualityRun: { ruleSetVersion: 2 },
+      });
+      expect(
+        (
+          await pool.query<{ version: number }>(
+            'SELECT rule_set_version AS version FROM contract_quality_runs ORDER BY sequence',
+          )
+        ).rows.map((row) => row.version),
+      ).toEqual([2, 2, 2]);
+      const events = (
+        await pool.query<{ action: string; metadata: unknown }>(
+          "SELECT action,metadata FROM contract_events WHERE action IN ('contract_version.approved','contract_version.signature_recorded') ORDER BY action",
+        )
+      ).rows;
+      expect(
+        events.map((event) => [
+          event.action,
+          record(event.metadata).ruleSetVersion,
+        ]),
+      ).toEqual([
+        ['contract_version.approved', 2],
+        ['contract_version.signature_recorded', 2],
+      ]);
+      const serialized = JSON.stringify(
+        (await pool.query('SELECT metadata FROM contract_events')).rows,
+      );
+      for (const secret of SECRETS) expect(serialized).not.toContain(secret);
+      expect(await snapshotTrace(fixture.snapshotId)).toEqual(traceBefore);
+
+      // An unadjusted Contract keeps rule set v1 and its v1 evidence.
+      const plain = await acceptedOffer({ suffix: '-plain' });
+      await grantContract(plain, 'cadj-plain-grant');
+      await grantApprover(plain);
+      const plainBase = '/contracts/opportunities/' + plain.opportunityId;
+      const plainVersion = record(
+        record(
+          await command({
+            path: plainBase,
+            companyId: plain.companyId,
+            key: 'cadj-plain-create',
+            body: await contractPayload(plain),
+          }),
+        ).version,
+      );
+      expect(plainVersion).toMatchObject({
+        qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+        qualityRuleSetVersion: 1,
+      });
+      expect(String(record(plainVersion.representation).html)).not.toContain(
+        'Fixed discount',
+      );
+      const plainPath =
+        plainBase + '/versions/' + stringField(plainVersion, 'id');
+      expect(
+        await command({
+          path: plainPath + '/approve',
+          companyId: plain.companyId,
+          key: 'cadj-plain-approve',
+          body: { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 1 } });
+      expect(
+        (
+          await pool.query<{ metadata: unknown }>(
+            "SELECT metadata FROM contract_events WHERE company_id=$1 AND action='contract_version.approved'",
+            [plain.companyId],
+          )
+        ).rows.map((row) => record(row.metadata).ruleSetVersion),
+      ).toEqual([1]);
+    });
+    it('C7 prepares, approves and signs a Precontract over an adjusted accepted Snapshot under rule set v2', async () => {
+      const fixture = await adjustedAcceptedOffer();
+      await grantContract(fixture, 'cadj-c7-grant');
+      await grantApprover(fixture);
+      const base = '/contracts/opportunities/' + fixture.opportunityId;
+      const created = identifiedRecord(
+        await command({
+          path: base,
+          companyId: fixture.companyId,
+          key: 'cadj-c7-create',
+          body: { ...(await contractPayload(fixture)), ...precontractFields() },
+        }),
+      );
+      const version = record(created.version);
+      expect(version).toMatchObject({
+        qualityRuleSetVersion: 2,
+        representation: { templateCode: 'PRECONTRACT_ILLUSTRATIVE' },
+      });
+      expect(String(record(version.representation).html)).toContain(
+        'Fixed discount: Synthetic',
+      );
+      const versionPath =
+        base +
+        '/agreements/' +
+        created.id +
+        '/versions/' +
+        stringField(version, 'id');
+      expect(
+        await command({
+          path: versionPath + '/approve',
+          companyId: fixture.companyId,
+          key: 'cadj-c7-approve',
+          body: {
+            expectedContractRevision: 1,
+            acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+          },
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      expect(
+        await command({
+          path: versionPath + '/signature',
+          companyId: fixture.companyId,
+          key: 'cadj-c7-sign',
+          body: signaturePayload(),
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      expect(await decisionEventRuleSets(created.id)).toEqual([
+        ['contract_version.approved', 2],
+        ['contract_version.signature_recorded', 2],
+      ]);
+    });
+    it('C9 and C8 bind v2 for a direct Contract and an Addendum that select adjusted Snapshots, and v1 for an Addendum without one', async () => {
+      const fixture = await adjustedSnapshotFixture();
+      await grantContract(fixture, 'cadj-c9-grant');
+      await grantApprover(fixture);
+      const base = '/contracts/opportunities/' + fixture.opportunityId;
+      const direct = identifiedRecord(
+        await command({
+          path: base + '/direct',
+          companyId: fixture.companyId,
+          key: 'cadj-c9-create',
+          body: {
+            recipient: { kind: 'PRIMARY' },
+            pricingSnapshotId: fixture.snapshotId,
+            directReason: 'Synthetic direct reason',
+            scopeNote: 'Synthetic direct scope',
+          },
+        }),
+      );
+      const directVersion = record(direct.version);
+      expect(directVersion).toMatchObject({ qualityRuleSetVersion: 2 });
+      const agreement = base + '/agreements/' + direct.id;
+      const directPath =
+        agreement + '/versions/' + stringField(directVersion, 'id');
+      expect(
+        await command({
+          path: directPath + '/approve',
+          companyId: fixture.companyId,
+          key: 'cadj-c9-approve',
+          body: {
+            expectedContractRevision: 1,
+            acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+          },
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      expect(
+        await command({
+          path: directPath + '/signature',
+          companyId: fixture.companyId,
+          key: 'cadj-c9-sign',
+          body: signaturePayload(),
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      const addendumSnapshot = await adjustedSnapshot(
+        fixture,
+        '20.00',
+        'addendum',
+      );
+      const addendum = identifiedRecord(
+        await command({
+          path: agreement + '/addenda',
+          companyId: fixture.companyId,
+          key: 'cadj-c8-create',
+          body: {
+            expectedContractRevision: 3,
+            changeSummary: 'Synthetic adjusted change',
+            pricingSnapshotId: addendumSnapshot.id,
+          },
+        }),
+      );
+      const addendumVersion = record(addendum.version);
+      expect(addendumVersion).toMatchObject({ qualityRuleSetVersion: 2 });
+      const addendumPath =
+        base +
+        '/agreements/' +
+        addendum.id +
+        '/versions/' +
+        stringField(addendumVersion, 'id');
+      expect(
+        await command({
+          path: addendumPath + '/approve',
+          companyId: fixture.companyId,
+          key: 'cadj-c8-approve',
+          body: { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      expect(
+        await command({
+          path: addendumPath + '/signature',
+          companyId: fixture.companyId,
+          key: 'cadj-c8-sign',
+          body: signaturePayload(),
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      expect(await decisionEventRuleSets(addendum.id)).toEqual([
+        ['contract_version.approved', 2],
+        ['contract_version.signature_recorded', 2],
+      ]);
+      const unpriced = identifiedRecord(
+        await command({
+          path: agreement + '/addenda',
+          companyId: fixture.companyId,
+          key: 'cadj-c8-unpriced',
+          body: {
+            expectedContractRevision: 3,
+            changeSummary: 'Synthetic change without a Snapshot',
+          },
+        }),
+      );
+      const unpricedVersion = record(unpriced.version);
+      expect(unpricedVersion).toMatchObject({ qualityRuleSetVersion: 1 });
+      expect(
+        await command({
+          path:
+            base +
+            '/agreements/' +
+            unpriced.id +
+            '/versions/' +
+            stringField(unpricedVersion, 'id') +
+            '/quality-checks',
+          companyId: fixture.companyId,
+          key: 'cadj-c8-unpriced-run',
+          body: {},
+        }),
+      ).toMatchObject({ ruleSetVersion: 1 });
+    });
+    it.each([
+      {
+        name: 'a tampered tax total',
+        sql: "UPDATE pricing_snapshots SET tax_total = '43.70', total = '335.07' WHERE id = $1",
+      },
+      {
+        name: 'a tampered adjusted subtotal',
+        sql: "UPDATE pricing_snapshots SET subtotal = '300.00', total = '343.71' WHERE id = $1",
+      },
+      {
+        name: 'an adjustment instant other than the calculation instant',
+        sql: "UPDATE pricing_snapshot_adjustments SET applied_at = applied_at + interval '1 second' WHERE snapshot_id = $1",
+      },
+    ])(
+      'records PRICING_SNAPSHOT_COHERENT ERROR under v2 for $name and refuses approval',
+      async ({ sql }) => {
+        const fixture = await adjustedAcceptedOffer();
+        await grantContract(fixture, 'cadj-tamper-grant');
+        await grantApprover(fixture);
+        const base = '/contracts/opportunities/' + fixture.opportunityId;
+        const version = record(
+          record(
+            await command({
+              path: base,
+              companyId: fixture.companyId,
+              key: 'cadj-tamper-create',
+              body: await contractPayload(fixture),
+            }),
+          ).version,
+        );
+        await pool.query(sql, [fixture.snapshotId]);
+        const traceBefore = await snapshotTrace(fixture.snapshotId);
+        const versionId = stringField(version, 'id');
+        const run = record(
+          await command({
+            path: base + '/versions/' + versionId + '/quality-checks',
+            companyId: fixture.companyId,
+            key: 'cadj-tamper-run',
+            body: {},
+          }),
+        );
+        expect(run).toMatchObject({ ruleSetVersion: 2 });
+        expect(run.results).toEqual(
+          ACCEPTED_OFFER_CODES.map((code) => ({
+            code,
+            status: code === 'PRICING_SNAPSHOT_COHERENT' ? 'ERROR' : 'PASS',
+          })),
+        );
+        const refused = await decisionRequest(
+          fixture,
+          versionId,
+          'approve',
+          { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+          'cadj-tamper-approve',
+        );
+        expect(refused.status).toBe(409);
+        expect(await json(refused)).toMatchObject({
+          code: 'QUALITY_CHECK_ERRORS',
+        });
+        expect(await snapshotTrace(fixture.snapshotId)).toEqual(traceBefore);
+      },
+    );
+    it('refuses signature with QUALITY_CHECK_ERRORS when the adjusted trace becomes incoherent after approval', async () => {
+      const fixture = await adjustedAcceptedOffer();
+      await grantContract(fixture, 'cadj-late-grant');
+      await grantApprover(fixture);
+      const base = '/contracts/opportunities/' + fixture.opportunityId;
+      const versionId = stringField(
+        record(
+          record(
+            await command({
+              path: base,
+              companyId: fixture.companyId,
+              key: 'cadj-late-create',
+              body: await contractPayload(fixture),
+            }),
+          ).version,
+        ),
+        'id',
+      );
+      expect(
+        (
+          await decisionRequest(
+            fixture,
+            versionId,
+            'approve',
+            { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+            'cadj-late-approve',
+          )
+        ).status,
+      ).toBe(201);
+      await pool.query(
+        "UPDATE pricing_snapshot_adjustments SET applied_at = applied_at + interval '1 second' WHERE snapshot_id = $1",
+        [fixture.snapshotId],
+      );
+      const before = await signatureCounts();
+      const refused = await signatureRequest(
+        fixture,
+        versionId,
+        signaturePayload(),
+        'cadj-late-sign',
+      );
+      expect(refused.status).toBe(409);
+      expect(await json(refused)).toMatchObject({
+        code: 'QUALITY_CHECK_ERRORS',
+      });
+      expect(await signatureCounts()).toEqual(before);
+    });
+    it('C6 re-derives rule set v2 for a revision from its unchanged adjusted source', async () => {
+      const fixture = await adjustedAcceptedOffer();
+      await grantContract(fixture, 'cadj-c6-grant');
+      const base = '/contracts/opportunities/' + fixture.opportunityId;
+      await command({
+        path: base,
+        companyId: fixture.companyId,
+        key: 'cadj-c6-create',
+        body: await contractPayload(fixture),
+      });
+      const revised = await reviseRequest(
+        { fixture },
+        {
+          expectedContractRevision: 1,
+          specialConditions: 'Synthetic revised conditions',
+        },
+        'cadj-c6-revise',
+      );
+      expect(revised.status).toBe(201);
+      const version = record(
+        record(
+          record(
+            await json(
+              await request({ path: base, companyId: fixture.companyId }),
+            ),
+          ).contract,
+        ).version,
+      );
+      expect(version).toMatchObject({
+        versionNumber: 2,
+        pricingSnapshotId: fixture.snapshotId,
+        qualityRuleSetVersion: 2,
+      });
+      const run = record(
+        await command({
+          path:
+            base +
+            '/versions/' +
+            stringField(version, 'id') +
+            '/quality-checks',
+          companyId: fixture.companyId,
+          key: 'cadj-c6-run',
+          body: {},
+        }),
+      );
+      expect(run).toMatchObject({ ruleSetVersion: 2 });
+      expect(run.results).toEqual(
+        ACCEPTED_OFFER_CODES.map((code) => ({
+          code,
+          status: code === 'ADDED_CONDITIONS_CONFIRMED' ? 'WARNING' : 'PASS',
+        })),
+      );
+    });
+    it('keeps an older v1 run of a pending adjusted version readable and binds its next run to v2', async () => {
+      const fixture = await adjustedAcceptedOffer();
+      await grantContract(fixture, 'cadj-legacy-grant');
+      await grantApprover(fixture);
+      const base = '/contracts/opportunities/' + fixture.opportunityId;
+      const version = record(
+        record(
+          await command({
+            path: base,
+            companyId: fixture.companyId,
+            key: 'cadj-legacy-create',
+            body: await contractPayload(fixture),
+          }),
+        ).version,
+      );
+      const versionId = stringField(version, 'id');
+      // A run recorded before rule set v2 existed: v1 could only report ERROR.
+      const legacy = ACCEPTED_OFFER_CODES.map((code) => ({
+        code,
+        status: code === 'PRICING_SNAPSHOT_COHERENT' ? 'ERROR' : 'PASS',
+      }));
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          'ALTER TABLE contract_quality_runs DISABLE TRIGGER contract_quality_runs_bound_rule_set',
+        );
+        await client.query(
+          'INSERT INTO contract_quality_runs (workspace_id,company_id,contract_id,contract_version_id,rule_set_version,actor_internal_user_id,actor_workspace_membership_id,evaluated_at,results) SELECT workspace_id,company_id,contract_id,id,1,created_by_internal_user_id,created_by_workspace_membership_id,created_at,$2 FROM contract_versions WHERE id=$1',
+          [versionId, JSON.stringify(legacy)],
+        );
+        await client.query(
+          'ALTER TABLE contract_quality_runs ENABLE TRIGGER contract_quality_runs_bound_rule_set',
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+      const reread = record(
+        record(
+          await json(
+            await request({ path: base, companyId: fixture.companyId }),
+          ),
+        ).contract,
+      );
+      expect(record(reread.version)).toMatchObject({
+        qualityRuleSetVersion: 2,
+        latestQualityRun: { ruleSetVersion: 1, results: legacy },
+      });
+      const history = record(
+        await json(
+          await request({
+            path: base + '/versions/' + versionId + '/quality-checks',
+            companyId: fixture.companyId,
+          }),
+        ),
+      );
+      expect(history.items).toMatchObject([{ ruleSetVersion: 1 }]);
+      expect(
+        await command({
+          path: base + '/versions/' + versionId + '/approve',
+          companyId: fixture.companyId,
+          key: 'cadj-legacy-approve',
+          body: { expectedContractRevision: 1, acknowledgedWarningCodes: [] },
+        }),
+      ).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      expect(
+        (
+          await pool.query<{ version: number }>(
+            'SELECT rule_set_version AS version FROM contract_quality_runs ORDER BY sequence',
+          )
+        ).rows.map((row) => row.version),
+      ).toEqual([1, 2]);
+    });
+    it('replays a v2 approval exactly and keeps permission and Company boundaries', async () => {
+      const fixture = await adjustedAcceptedOffer();
+      await grantContract(fixture, 'cadj-replay-grant');
+      await grantApprover(fixture);
+      const base = '/contracts/opportunities/' + fixture.opportunityId;
+      const versionId = stringField(
+        record(
+          record(
+            await command({
+              path: base,
+              companyId: fixture.companyId,
+              key: 'cadj-replay-create',
+              body: await contractPayload(fixture),
+            }),
+          ).version,
+        ),
+        'id',
+      );
+      const body = {
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: [],
+      };
+      const first = await decisionRequest(
+        fixture,
+        versionId,
+        'approve',
+        body,
+        'cadj-replay-approve',
+      );
+      expect(first.status).toBe(201);
+      const approved = await json(first);
+      expect(approved).toMatchObject({ qualityRun: { ruleSetVersion: 2 } });
+      const replay = await decisionRequest(
+        fixture,
+        versionId,
+        'approve',
+        body,
+        'cadj-replay-approve',
+      );
+      expect(replay.status).toBe(201);
+      expect(await json(replay)).toEqual(approved);
+      const other = await preparedOffer('-other');
+      await grantContract(other, 'cadj-other-grant');
+      const crossCompany = await request({
+        path: base,
+        companyId: other.companyId,
+      });
+      expect(crossCompany.status).toBe(404);
+      const revoked = await request({
+        path:
+          '/company-contract-approver-assignments/' +
+          fixture.actorMembershipId +
+          '/' +
+          fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'cadj-revoke-approver' },
+        },
+      });
+      expect(revoked.status).toBe(200);
+      const denied = await decisionRequest(
+        fixture,
+        versionId,
+        'approve',
+        body,
+        'cadj-replay-approve',
+      );
+      expect(denied.status).toBe(403);
+      expect(
+        (
+          await pool.query<{ count: string }>(
+            "SELECT count(*)::text AS count FROM contract_events WHERE action='contract_version.approved'",
+          )
+        ).rows[0]?.count,
+      ).toBe('1');
+    });
+  });
+  async function adjustedSnapshotFixture(): Promise<PreparedOffer> {
+    const fixture = await preparedOffer();
+    await command({
+      path: '/company-pricing-adjustment-assignments',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      key: 'cadj-grant-adjustment',
+    });
+    const snapshot = await adjustedSnapshot(fixture, '8.63', 'first');
+    return { ...fixture, snapshotId: snapshot.id };
+  }
+  async function adjustedAcceptedOffer(): Promise<PreparedOffer> {
+    return acceptedOffer({ prepared: await adjustedSnapshotFixture() });
+  }
+  async function adjustedSnapshot(
+    fixture: PreparedOffer,
+    netReduction: string,
+    key: string,
+  ) {
+    return identifiedRecord(
+      await command({
+        path: `/pricing/opportunities/${fixture.opportunityId}/snapshots`,
+        body: {
+          pricingRuleVersionNumber: fixture.ruleVersionNumber,
+          lines: [
+            {
+              offeringId: fixture.offeringId,
+              tariffVersionNumber: fixture.tariffVersionNumber,
+              quantity: '1',
+              adjustment: {
+                type: 'FIXED_NET_DISCOUNT',
+                netReduction,
+                reason: 'Synthetic <discount> & "reason"',
+              },
+            },
+          ],
+        },
+        key: 'cadj-snapshot-' + key,
+        companyId: fixture.companyId,
+      }),
+    );
+  }
+  async function snapshotTrace(snapshotId: string) {
+    return (
+      await pool.query(
+        'SELECT (SELECT to_jsonb(s) FROM pricing_snapshots s WHERE s.id=$1) AS snapshot,(SELECT jsonb_agg(to_jsonb(l) ORDER BY l.line_number) FROM pricing_snapshot_lines l WHERE l.snapshot_id=$1) AS lines,(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.id) FROM pricing_snapshot_adjustments a WHERE a.snapshot_id=$1) AS adjustments',
+        [snapshotId],
+      )
+    ).rows;
+  }
+  async function decisionEventRuleSets(contractId: string) {
+    return (
+      await pool.query<{ action: string; metadata: unknown }>(
+        "SELECT action,metadata FROM contract_events WHERE contract_id=$1 AND action IN ('contract_version.approved','contract_version.signature_recorded') ORDER BY action",
+        [contractId],
+      )
+    ).rows.map((event) => [
+      event.action,
+      record(event.metadata).ruleSetVersion,
+    ]);
+  }
   async function projectLinkFixture() {
     const target = await approvedSignatureFixture();
     expect(

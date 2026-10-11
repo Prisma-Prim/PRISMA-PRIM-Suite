@@ -154,6 +154,8 @@ it('opens a recorded Contract from its Request without Offer or Client authority
                 taxId: 'SYNTHETIC',
                 legalAddress: 'Example Street',
               },
+              qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+              qualityRuleSetVersion: 1,
               issuingCompanyLabel: 'Company',
               scopeNote: 'Synthetic accepted scope',
               commercialConditions: 'Accepted conditions',

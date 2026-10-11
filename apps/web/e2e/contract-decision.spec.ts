@@ -106,6 +106,8 @@ function contract(id: string, decision: unknown, latest: unknown) {
         taxId: 'SYNTHETIC',
         legalAddress: 'Example Street',
       },
+      qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+      qualityRuleSetVersion: 1,
       issuingCompanyLabel: company.displayName,
       scopeNote: 'Synthetic accepted scope',
       commercialConditions: 'Synthetic conditions',

@@ -20,6 +20,7 @@ import { PricingSnapshotService } from '../pricing-configuration/pricing-snapsho
 import { readContractDecision } from './contract-decision-command.js';
 import { readContractSignature } from './contract-signature-command.js';
 import { qualityRunView } from './contract-quality-view.js';
+import { contractQualityRuleSetVersion } from './contract-quality.js';
 import { ContractProjectsService } from './contract-projects.service.js';
 import {
   renderContractRepresentation,
@@ -362,6 +363,27 @@ export class ContractVersionReader {
             opportunityId: contract.opportunityId,
             contractVersionId: version.id,
           });
+    // Approval and signature runs use the rule set bound to the immutable
+    // Snapshot. Only an older run recorded before rule set v2 existed may name
+    // version 1 on a version bound to version 2; nothing else is readable.
+    const qualityRuleSetVersion =
+      contractQualityRuleSetVersion(pricingSnapshot);
+    const latestQualityRun = latestRun
+      ? qualityRunView(latestRun, version, contract)
+      : null;
+    if (
+      [
+        decision?.kind === 'APPROVE' ? decision.qualityRun : null,
+        signature?.qualityRun ?? null,
+      ].some(
+        (run) => run !== null && run.ruleSetVersion !== qualityRuleSetVersion,
+      ) ||
+      (latestQualityRun !== null &&
+        latestQualityRun.ruleSetVersion > qualityRuleSetVersion)
+    )
+      throw new Error(
+        'A stored Contract run does not match its bound rule set.',
+      );
     const sourceOffer =
       source.kind !== 'ACCEPTED_OFFER'
         ? null
@@ -472,6 +494,8 @@ export class ContractVersionReader {
       ...(clientReference ? { clientReference } : {}),
       version: {
         id: version.id,
+        qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE' as const,
+        qualityRuleSetVersion,
         createdContractRevision: version.createdContractRevision,
         predecessorVersionId: version.predecessorVersionId,
         supersededByVersionId: version.supersededByVersionId,
@@ -561,9 +585,7 @@ export class ContractVersionReader {
                 : missingRepresentation(),
         decision,
         signature,
-        latestQualityRun: latestRun
-          ? qualityRunView(latestRun, version, contract)
-          : null,
+        latestQualityRun,
         versionNumber: version.versionNumber,
         recipient,
         issuingCompanyLabel: version.issuingCompanyLabel,

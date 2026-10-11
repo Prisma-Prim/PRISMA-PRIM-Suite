@@ -1,9 +1,11 @@
 import { ConflictException } from '@nestjs/common';
 import type { OfferRecipientCopy } from '../offer/offer.types.js';
 import {
+  coherentAdjustedSnapshot,
   coherentSnapshot,
-  type OfferQualitySnapshot,
+  type OfferAdjustedQualitySnapshot,
 } from '../offer/offer-quality.js';
+import type { PricingSnapshotLineRecord } from '../pricing-configuration/pricing-snapshot.types.js';
 
 type Identity = Pick<
   OfferRecipientCopy,
@@ -29,7 +31,28 @@ type Source =
       readonly parentExecutionState: 'EXECUTED' | 'NOT_EXECUTED';
       readonly currency: string | null;
     };
+/**
+ * `CONTRACT_QUALITY_ILLUSTRATIVE` versions (PRD sections 19.5 and 18.5). Version
+ * 2 keeps every code, severity and applicability of version 1 and differs only
+ * in checking the stored fixed-discount trace of an adjusted Snapshot.
+ */
+export type ContractQualityRuleSetVersion = 1 | 2;
+/**
+ * The binding of a new run, derived by the server from the version's immutable
+ * Snapshot and never accepted as input: any adjusted line binds v2; otherwise,
+ * including a version without a Snapshot, v1. Migration 0064 enforces it.
+ */
+export function contractQualityRuleSetVersion(
+  snapshot: {
+    readonly lines: ReadonlyArray<
+      Pick<PricingSnapshotLineRecord, 'adjustment'>
+    >;
+  } | null,
+): ContractQualityRuleSetVersion {
+  return snapshot?.lines.some((line) => line.adjustment !== null) ? 2 : 1;
+}
 export interface ContractQualityInput {
+  readonly ruleSetVersion: ContractQualityRuleSetVersion;
   readonly instant: Date;
   readonly companyId: string;
   readonly partyKey: string;
@@ -37,7 +60,7 @@ export interface ContractQualityInput {
   readonly partyAvailable: boolean;
   readonly partyIdentityCurrent: boolean;
   readonly snapshotId: string | null;
-  readonly snapshot: OfferQualitySnapshot | null;
+  readonly snapshot: OfferAdjustedQualitySnapshot | null;
   readonly scopeNote: string | null;
   readonly commercialConditions: string | null;
   readonly termStartsOn: string | null;
@@ -74,12 +97,21 @@ export interface ContractQualityRun {
   readonly id: string;
   readonly contractVersionId: string;
   readonly ruleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE';
-  readonly ruleSetVersion: 1;
+  readonly ruleSetVersion: ContractQualityRuleSetVersion;
   readonly actorWorkspaceMembershipId: string;
   readonly evaluatedAt: string;
   readonly results: readonly ContractQualityResult[];
 }
-/** Stable pure ruleset seam for the delivered Contract origins and Addenda. */
+/** One fresh evaluation at a fenced server instant under the bound version. */
+export interface ContractQualityEvaluation {
+  readonly evaluatedAt: Date;
+  readonly ruleSetVersion: ContractQualityRuleSetVersion;
+  readonly results: ContractQualityResult[];
+}
+/**
+ * Stable pure rule set seam for the delivered Contract origins and Addenda.
+ * The owning command supplies one fenced server instant and the bound version.
+ */
 export function evaluateContractQuality(
   input: ContractQualityInput,
 ): ContractQualityResult[] {
@@ -104,13 +136,21 @@ export function evaluateContractQuality(
     'PARTY_TAX_ID_RECORDED',
     input.identity.taxId !== null && input.identity.taxId.length > 0,
   );
+  // One immutable Snapshot carries one set of lines, totals and stored
+  // adjustments, so services, value, tax and adjustments are identical.
   if (source.kind === 'ACCEPTED_OFFER')
     check(
       'PRICE_MATCHES_ACCEPTED_OFFER',
       input.snapshotId === source.snapshotId,
     );
+  // Version 2 reuses the Offer v2 trace check; it never reprices or writes.
   if (input.snapshotId !== null)
-    check('PRICING_SNAPSHOT_COHERENT', coherentSnapshot(input.snapshot));
+    check(
+      'PRICING_SNAPSHOT_COHERENT',
+      input.ruleSetVersion === 1
+        ? coherentSnapshot(input.snapshot)
+        : coherentAdjustedSnapshot(input.snapshot),
+    );
   if (source.kind === 'ACCEPTED_OFFER') {
     check(
       'CONDITIONS_MATCH_ACCEPTED_OFFER',

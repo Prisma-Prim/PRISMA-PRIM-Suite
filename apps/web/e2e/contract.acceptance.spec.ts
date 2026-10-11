@@ -3061,6 +3061,400 @@ test('C7 prepares, executes and references a persisted illustrative Precontract'
     ),
   ).toBe(true);
 });
+test('#561 checks, approves and executes a Contract over an adjusted accepted Snapshot under rule set v2', async ({
+  page,
+  request,
+}, testInfo) => {
+  test.setTimeout(120000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const tag = suffix.toLowerCase();
+  const name = 'Adjusted Contract Company ' + suffix;
+  const membership = text(
+    object(
+      await body(
+        await request.get(api + '/access/current-actor', { headers: preparer }),
+      ),
+    ).workspaceMembershipId,
+  );
+  const companyId = text(
+    object(
+      await command({
+        request,
+        path: '/companies',
+        data: { displayName: name },
+        key: 'c561-company-' + suffix,
+        administrator: true,
+      }),
+    ).id,
+  );
+  for (const route of [
+    'company-context',
+    'company-director-client',
+    'company-commercial-intake',
+    'company-service-catalogue',
+    'company-pricing-configuration',
+    'company-pricing-user',
+    'company-pricing-adjustment',
+    'company-offer-preparer',
+    'company-offer-approver',
+    'company-contract-preparer',
+    'company-contract-approver',
+  ])
+    await command({
+      request,
+      path: '/' + route + '-assignments',
+      data: { workspaceMembershipId: membership, companyId },
+      key: 'c561-grant-' + route + '-' + suffix,
+      administrator: true,
+    });
+  const client = object(
+    await command({
+      request,
+      path: '/clients',
+      data: {
+        displayName: 'Synthetic adjusted Recipient ' + suffix,
+        taxId: 'SYNTHETIC-C561-' + suffix.toUpperCase(),
+        address: '1 Example Street',
+      },
+      key: 'c561-client-' + suffix,
+      companyId,
+    }),
+  );
+  const opportunityId = text(
+    object(
+      object(
+        await command({
+          request,
+          path: '/commercial-intake/requests',
+          data: {
+            originalText: 'Synthetic source for the adjusted Contract proof.',
+            subject: 'Adjusted Contract Request ' + suffix,
+            clientAccountId: text(client.id),
+            opportunity: {
+              title: 'Prepare adjusted Contract ' + suffix,
+              scope: 'Synthetic scope',
+              nextAction: 'Prepare the adjusted Contract',
+            },
+          },
+          key: 'c561-request-' + suffix,
+          companyId,
+        }),
+      ).initialOpportunity,
+    ).id,
+  );
+  const effectiveFrom = new Date(
+    Date.now() + initialOffset + 60000,
+  ).toISOString();
+  const rule = object(
+    object(
+      await command({
+        request,
+        path: '/pricing-configuration/rule-versions',
+        data: {
+          label: 'Synthetic adjusted rule',
+          effectiveFrom,
+          expectedActiveVersionNumber: null,
+        },
+        key: 'c561-rule-' + suffix,
+        companyId,
+      }),
+    ).version,
+  );
+  const offering = object(
+    object(
+      await command({
+        request,
+        path: '/commercial-catalogue/offerings',
+        data: {
+          serviceDefinitionId: text(
+            object(
+              object(
+                await command({
+                  request,
+                  path: '/commercial-catalogue/service-definitions',
+                  data: {
+                    code: 'C561-' + suffix.toUpperCase(),
+                    name: 'Illustrative adjusted service',
+                    description: null,
+                  },
+                  key: 'c561-definition-' + suffix,
+                  companyId,
+                }),
+              ).definition,
+            ).id,
+          ),
+          commercialLabel: null,
+        },
+        key: 'c561-offering-' + suffix,
+        companyId,
+      }),
+    ).offering,
+  );
+  const tariff = object(
+    object(
+      await command({
+        request,
+        path:
+          '/pricing-configuration/offerings/' +
+          text(offering.id) +
+          '/tariff-versions',
+        data: {
+          unit: 'illustrative-unit',
+          unitAmount: '300.0000',
+          currency: 'EUR',
+          taxRatePercent: '15.00',
+          taxLabel: 'Illustrative tax',
+          effectiveFrom,
+          expectedActiveVersionNumber: null,
+        },
+        key: 'c561-tariff-' + suffix,
+        companyId,
+      }),
+    ).version,
+  );
+  await writeFile(clockFile(), JSON.stringify(initialOffset + 120000));
+  // Synthetic fixed discount: 300.00 - 8.63 = 291.37 + 43.71 tax = 335.08.
+  const snapshot = object(
+    await command({
+      request,
+      path: '/pricing/opportunities/' + opportunityId + '/snapshots',
+      data: {
+        pricingRuleVersionNumber: rule.versionNumber,
+        lines: [
+          {
+            offeringId: text(offering.id),
+            tariffVersionNumber: tariff.versionNumber,
+            quantity: '1',
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction: '8.63',
+              reason: 'Synthetic acceptance discount',
+            },
+          },
+        ],
+      },
+      key: 'c561-snapshot-' + suffix,
+      companyId,
+    }),
+  );
+  const offer = object(
+    await command({
+      request,
+      path: '/offers/opportunities/' + opportunityId,
+      data: {
+        pricingSnapshotId: text(snapshot.id),
+        recipient: { kind: 'PRIMARY' },
+        scopeNote: 'Adjusted accepted scope ' + suffix,
+        commercialConditions: 'Adjusted accepted conditions',
+      },
+      key: 'c561-offer-' + suffix,
+      companyId,
+    }),
+  );
+  const offerPath =
+    '/offers/opportunities/' +
+    opportunityId +
+    '/versions/' +
+    text(object(offer.version).id);
+  await command({
+    request,
+    path: offerPath + '/approve',
+    data: { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
+    key: 'c561-offer-approve-' + suffix,
+    companyId,
+  });
+  const transmitted = object(
+    await command({
+      request,
+      path: offerPath + '/transmission',
+      data: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
+      key: 'c561-offer-transmit-' + suffix,
+      companyId,
+    }),
+  );
+  await command({
+    request,
+    path: offerPath + '/client-response',
+    data: {
+      expectedOfferRevision: 3,
+      outcome: 'ACCEPTED',
+      receivedAt: text(transmitted.transmittedAt),
+    },
+    key: 'c561-offer-accept-' + suffix,
+    companyId,
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?frame=classic#requests');
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(page.getByLabel('Active Company', { exact: true }), {
+    label: name,
+  });
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await page
+    .getByRole('button')
+    .filter({
+      has: page.getByText('Adjusted Contract Request ' + suffix, {
+        exact: true,
+      }),
+    })
+    .click();
+  const panel = page.getByRole('region', { name: 'Contract', exact: true });
+  const create = panel.getByRole('button', {
+    name: 'Create Contract',
+    exact: true,
+  });
+  await create.focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    panel.getByText('Pending approval · Not executed', { exact: true }),
+  ).toBeVisible();
+  const ruleSetLabel = panel.getByText('Quality Check rule set', {
+    exact: true,
+  });
+  await expect(ruleSetLabel).toBeVisible();
+  await expect(
+    ruleSetLabel.locator('xpath=following-sibling::dd[1]'),
+  ).toHaveText('CONTRACT_QUALITY_ILLUSTRATIVE v2');
+  await expect(
+    panel.getByText(
+      'This version references an adjusted Pricing Snapshot. Each fixed discount is shown as recorded and is not recalculated.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(panel.getByText(/Total: 335\.08 EUR/u)).toBeVisible();
+  await panel.screenshot({
+    path: testInfo.outputPath('c561-created-' + tag + '.png'),
+  });
+  const documentButton = panel.getByRole('button', {
+    name: 'Open exact Contract document',
+  });
+  await documentButton.focus();
+  await page.keyboard.press('Enter');
+  const frame = panel.frameLocator(
+    'iframe[title="Illustrative Contract document"]',
+  );
+  const discount = frame.locator('tr').filter({ hasText: 'Fixed discount: ' });
+  await expect(discount).toHaveCount(1);
+  await expect(discount).toContainText('Synthetic acceptance discount');
+  await expect(discount).toContainText('8.63 EUR');
+  await expect(discount).toContainText('1.29 EUR');
+  await expect(frame.locator('footer')).toContainText(
+    'CONTRACT_ILLUSTRATIVE v1 (unapproved)',
+  );
+  const documentElement = panel.locator('iframe');
+  const recordedHtml = await documentElement.getAttribute('srcdoc');
+  const recordedChecksum = await panel
+    .locator('.contract-representation code')
+    .textContent();
+  expect(recordedChecksum).toMatch(/^[a-f0-9]{64}$/u);
+  expect(
+    await frame
+      .locator('html')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  await documentElement.screenshot({
+    path: testInfo.outputPath('c561-document-' + tag + '.png'),
+  });
+  const checks = panel.getByRole('region', {
+    name: 'Contract Quality Checks',
+    exact: true,
+  });
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    checks.getByText('All Contract Quality Checks passed.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    checks.getByText('CONTRACT_QUALITY_ILLUSTRATIVE v2', { exact: true }),
+  ).toBeVisible();
+  await checks.screenshot({
+    path: testInfo.outputPath('c561-quality-' + tag + '.png'),
+  });
+  const decision = panel.getByRole('region', {
+    name: 'Contract decision',
+    exact: true,
+  });
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    decision.getByText('Decision recorded.', { exact: true }),
+  ).toBeVisible();
+  const signatures = panel.getByRole('region', {
+    name: 'Simulated Contract signatures',
+    exact: true,
+  });
+  await signatures
+    .getByRole('textbox', { name: 'Provider signatory label', exact: true })
+    .fill('Synthetic adjusted provider');
+  await signatures
+    .getByRole('textbox', { name: 'Client signatory label', exact: true })
+    .fill('Synthetic adjusted client');
+  const signedOn = new Date(Date.now() + initialOffset + 120000)
+    .toISOString()
+    .slice(0, 10);
+  await signatures
+    .getByLabel('Provider signing date', { exact: true })
+    .fill(signedOn);
+  await signatures
+    .getByLabel('Client signing date', { exact: true })
+    .fill(signedOn);
+  await signatures
+    .getByRole('button', {
+      name: 'Record both simulated signatures',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    signatures.getByText('Both simulated signatures recorded.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    fullPage: true,
+    path: testInfo.outputPath('c561-executed-' + tag + '.png'),
+  });
+  const executed = object(
+    object(
+      object(
+        await body(
+          await request.get(api + '/contracts/opportunities/' + opportunityId, {
+            headers: { ...preparer, 'x-company-context-id': companyId },
+          }),
+        ),
+      ).contract,
+    ).version,
+  );
+  expect(executed).toMatchObject({
+    qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+    qualityRuleSetVersion: 2,
+    executionState: 'EXECUTED',
+    decision: {
+      representationChecksum: recordedChecksum,
+      qualityRun: { ruleSetVersion: 2 },
+    },
+    signature: {
+      representationChecksum: recordedChecksum,
+      qualityRun: { ruleSetVersion: 2 },
+    },
+  });
+});
 async function command({
   request,
   path,

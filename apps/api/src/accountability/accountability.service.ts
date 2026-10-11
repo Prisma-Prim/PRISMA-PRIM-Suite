@@ -1,3 +1,4 @@
+import type { ContractQualityRuleSetVersion } from '../contract/contract-quality.js';
 import type { ContractEventSource } from '../contract/contract-source.js';
 import type { OfferQualityRuleSetVersion } from '../offer/offer-quality.js';
 import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
@@ -300,19 +301,25 @@ export class AccountabilityService {
     contractId: string;
     contractVersionId: string;
     versionNumber: number;
-    kind: 'APPROVE' | 'REJECT';
+    decision:
+      | {
+          kind: 'APPROVE';
+          ruleSetVersion: ContractQualityRuleSetVersion;
+          acknowledgedWarningCodes: readonly string[];
+        }
+      | { kind: 'REJECT' };
     source: ContractEventSource;
     pricingSnapshotId: string | null;
-    acknowledgedWarningCodes: readonly string[];
     occurredAt: Date;
   }): Promise<void> {
+    const { decision } = input;
     await this.databaseContext.connection.insert(contractEvents).values({
       workspaceId: input.actor.workspaceId,
       companyId: input.companyId,
       contractId: input.contractId,
       contractVersionId: input.contractVersionId,
       action:
-        input.kind === 'APPROVE'
+        decision.kind === 'APPROVE'
           ? 'contract_version.approved'
           : 'contract_version.rejected',
       actorInternalUserId: input.actor.internalUserId,
@@ -327,10 +334,10 @@ export class AccountabilityService {
         ...(input.pricingSnapshotId === null
           ? {}
           : { pricingSnapshotId: input.pricingSnapshotId }),
-        ...(input.kind === 'APPROVE'
+        ...(decision.kind === 'APPROVE'
           ? {
-              ruleSetVersion: 1,
-              acknowledgedWarningCodes: input.acknowledgedWarningCodes,
+              ruleSetVersion: decision.ruleSetVersion,
+              acknowledgedWarningCodes: decision.acknowledgedWarningCodes,
             }
           : {}),
       },
@@ -345,6 +352,7 @@ export class AccountabilityService {
     versionNumber: number;
     source: ContractEventSource;
     pricingSnapshotId: string | null;
+    ruleSetVersion: ContractQualityRuleSetVersion;
     acknowledgedWarningCodes: readonly string[];
     occurredAt: Date;
   }): Promise<void> {
@@ -366,7 +374,7 @@ export class AccountabilityService {
         ...(input.pricingSnapshotId === null
           ? {}
           : { pricingSnapshotId: input.pricingSnapshotId }),
-        ruleSetVersion: 1,
+        ruleSetVersion: input.ruleSetVersion,
         acknowledgedWarningCodes: input.acknowledgedWarningCodes,
         evidenceKind: 'SIMULATED',
       },

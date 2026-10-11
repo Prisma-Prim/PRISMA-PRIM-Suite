@@ -1,11 +1,18 @@
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
+  evaluateOfferQuality,
+  type OfferAdjustedQualitySnapshot,
+} from '../offer/offer-quality.js';
+import {
+  contractQualityRuleSetVersion,
   evaluateContractQuality,
   requireHeadContractVersion,
   readContractQualityResults,
   contractQualityCodes,
   type ContractQualityInput,
 } from './contract-quality.js';
+const CALCULATED_BY = 'membership-calculator';
+const CALCULATED_AT = '2026-10-07T11:00:00.000Z';
 const identity = {
   legalName: 'Synthetic party',
   taxId: 'SYNTHETIC-ID',
@@ -14,6 +21,8 @@ const identity = {
 const snapshot = {
   belongsToOffer: true,
   currency: 'EUR',
+  calculatedByWorkspaceMembershipId: CALCULATED_BY,
+  calculatedAt: CALCULATED_AT,
   lines: [
     {
       currency: 'EUR',
@@ -25,13 +34,19 @@ const snapshot = {
       rawLineTax: '40.0000000',
       lineTax: '40.00',
       adjustment: null,
+      netReduction: '0.00',
+      taxReduction: '0.00',
+      adjustedLineNet: '200.00',
+      adjustedRawLineTax: '40.0000000',
+      adjustedLineTax: '40.00',
     },
   ],
   subtotal: '200.00',
   taxTotal: '40.00',
   total: '240.00',
-};
+} satisfies OfferAdjustedQualitySnapshot;
 const valid = {
+  ruleSetVersion: 1,
   instant: new Date('2026-10-07T23:59:59.999Z'),
   companyId: 'company',
   partyKey: 'PRIMARY:client',
@@ -329,4 +344,156 @@ it('C9 validates persisted direct results and never accepts a PASS for the requi
   expect(results.map((item) => item.code)).not.toContain(
     'PRICE_MATCHES_ACCEPTED_OFFER',
   );
+});
+
+// Hand-computed trace (Pricing PRD section 8.2), HALF_UP at scale 2:
+// 100.0000 x 2.000 at 20.00 % = 200.00 + 40.00; minus 12.34 -> 187.66,
+// raw tax 37.5320000 -> 37.53, tax reduction 2.47, total 225.19.
+const adjustedLine = {
+  ...snapshot.lines[0],
+  adjustment: {
+    type: 'FIXED_NET_DISCOUNT',
+    netReduction: '12.34',
+    taxReduction: '2.47',
+    reason: 'Synthetic discount',
+    appliedByWorkspaceMembershipId: CALCULATED_BY,
+    appliedAt: CALCULATED_AT,
+  },
+  netReduction: '12.34',
+  taxReduction: '2.47',
+  adjustedLineNet: '187.66',
+  adjustedRawLineTax: '37.5320000',
+  adjustedLineTax: '37.53',
+} satisfies OfferAdjustedQualitySnapshot['lines'][number];
+const adjusted = {
+  ...snapshot,
+  lines: [adjustedLine],
+  subtotal: '187.66',
+  taxTotal: '37.53',
+  total: '225.19',
+} satisfies OfferAdjustedQualitySnapshot;
+const adjustedValid = {
+  ...valid,
+  ruleSetVersion: 2,
+  snapshot: adjusted,
+} satisfies ContractQualityInput;
+
+function contractCoherence(input: ContractQualityInput) {
+  return evaluateContractQuality(input).find(
+    (item) => item.code === 'PRICING_SNAPSHOT_COHERENT',
+  )?.status;
+}
+function offerCoherence(snapshot: OfferAdjustedQualitySnapshot) {
+  return evaluateOfferQuality({
+    ruleSetVersion: 2,
+    instant: valid.instant,
+    validUntil: new Date('2026-10-31T00:00:00.000Z'),
+    snapshot,
+    previousTransmittedCurrency: null,
+    recipientAvailable: true,
+    recipientIdentityCurrent: true,
+    recipientTaxId: 'SYNTHETIC-ID',
+    pricingClientContextCoherent: true,
+    provenance: 'ILLUSTRATIVE',
+    provisional: true,
+  }).find((item) => item.code === 'PRICING_SNAPSHOT_COHERENT')?.status;
+}
+
+describe('Contract Quality Checks rule set v2', () => {
+  it('binds v2 only when the immutable Snapshot has an adjusted line', () => {
+    expect(contractQualityRuleSetVersion(null)).toBe(1);
+    expect(contractQualityRuleSetVersion(snapshot)).toBe(1);
+    expect(contractQualityRuleSetVersion(adjusted)).toBe(2);
+    expect(
+      contractQualityRuleSetVersion({
+        lines: [snapshot.lines[0], adjustedLine],
+      }),
+    ).toBe(2);
+  });
+
+  it.each([
+    ['accepted Offer', valid.source],
+    ['direct', { kind: 'DIRECT', companyId: 'company' }],
+    ['Addendum', parent],
+  ] satisfies [string, ContractQualityInput['source']][])(
+    'keeps the v1 codes, severities and applicability for a %s source',
+    (_name, source) => {
+      const v1 = evaluateContractQuality({ ...valid, source });
+      const v2 = evaluateContractQuality({ ...adjustedValid, source });
+      expect(v2).toEqual(v1);
+      expect(
+        readContractQualityResults(
+          v2,
+          v1.map((item) => item.code),
+        ),
+      ).toEqual(v2);
+    },
+  );
+
+  it('fails closed when a Snapshot is checked under the other rule set', () => {
+    expect(contractCoherence({ ...valid, snapshot: adjusted })).toBe('ERROR');
+    expect(contractCoherence({ ...adjustedValid, snapshot })).toBe('ERROR');
+    expect(contractCoherence({ ...adjustedValid, snapshot: null })).toBe(
+      'ERROR',
+    );
+  });
+
+  it('requires the accepted Offer Snapshot itself, so adjustments are identical', () => {
+    const price = (input: ContractQualityInput) =>
+      evaluateContractQuality(input).find(
+        (item) => item.code === 'PRICE_MATCHES_ACCEPTED_OFFER',
+      )?.status;
+    expect(price(adjustedValid)).toBe('PASS');
+    // Equal amounts in another Snapshot are not the accepted Offer's price.
+    expect(price({ ...adjustedValid, snapshotId: 'equal-copy' })).toBe('ERROR');
+  });
+
+  const withLine = (
+    changes: Partial<OfferAdjustedQualitySnapshot['lines'][number]>,
+  ): OfferAdjustedQualitySnapshot => ({
+    ...adjusted,
+    lines: [{ ...adjustedLine, ...changes }],
+  });
+  const withAdjustment = (
+    changes: Partial<NonNullable<(typeof adjustedLine)['adjustment']>>,
+  ) => withLine({ adjustment: { ...adjustedLine.adjustment, ...changes } });
+  it.each([
+    ['the adjusted subtotal', { ...adjusted, subtotal: '200.00' }],
+    ['the tax total', { ...adjusted, taxTotal: '37.52' }],
+    ['the total', { ...adjusted, total: '225.18' }],
+    ['the line net reduction', withLine({ netReduction: '12.35' })],
+    ['the line tax reduction', withLine({ taxReduction: '2.46' })],
+    ['the adjusted line net', withLine({ adjustedLineNet: '187.67' })],
+    ['the adjusted raw tax', withLine({ adjustedRawLineTax: '37.5330000' })],
+    ['the adjusted line tax', withLine({ adjustedLineTax: '37.54' })],
+    ['the original line net', withLine({ lineNet: '199.00' })],
+    ['the stored net reduction', withAdjustment({ netReduction: '12.30' })],
+    ['the stored tax reduction', withAdjustment({ taxReduction: '2.40' })],
+    ['an empty reason', withAdjustment({ reason: ' ' })],
+    [
+      'the applying actor',
+      withAdjustment({ appliedByWorkspaceMembershipId: 'other' }),
+    ],
+    [
+      'the applying instant',
+      withAdjustment({ appliedAt: '2026-10-07T11:00:01.000Z' }),
+    ],
+    ['a foreign Opportunity', { ...adjusted, belongsToOffer: false }],
+    ['a mixed currency', withLine({ currency: 'MDL' })],
+  ])(
+    'records ERROR for a tampered %s, exactly as Offer v2 coherence does',
+    (_name, tampered) => {
+      expect(contractCoherence({ ...adjustedValid, snapshot: tampered })).toBe(
+        'ERROR',
+      );
+      expect(offerCoherence(tampered)).toBe('ERROR');
+    },
+  );
+
+  it('agrees with Offer v2 coherence on the coherent trace and never writes to it', () => {
+    const before = structuredClone(adjusted);
+    expect(contractCoherence(adjustedValid)).toBe('PASS');
+    expect(offerCoherence(adjusted)).toBe('PASS');
+    expect(adjusted).toEqual(before);
+  });
 });

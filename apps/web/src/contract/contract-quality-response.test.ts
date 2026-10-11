@@ -2,6 +2,8 @@ import { expect, it } from 'vitest';
 import {
   readContractQualityRun,
   readContractQualityHistory,
+  readRecordedContractQualityRun,
+  type ContractQualityRunBinding,
 } from './contract-quality-response';
 const run = {
   id: 'run-one',
@@ -24,16 +26,37 @@ const run = {
     { code: 'PROVISIONAL_MARKER_PRESENT', status: 'PASS' },
   ],
 };
+const v1: ContractQualityRunBinding = {
+  versionId: 'version-one',
+  termEndsOn: null,
+  ruleSetVersion: 1,
+};
+const v2: ContractQualityRunBinding = { ...v1, ruleSetVersion: 2 };
 it('validates complete exact-version attribution and runtime applicability', () => {
-  expect(readContractQualityRun(run, 'version-one', null)).toEqual(run);
-  expect(() => readContractQualityRun(run, 'version-two', null)).toThrow();
+  expect(readContractQualityRun(run, v1)).toEqual(run);
   expect(() =>
-    readContractQualityRun(run, 'version-one', '2026-10-07'),
+    readContractQualityRun(run, { ...v1, versionId: 'version-two' }),
   ).toThrow();
+  expect(() =>
+    readContractQualityRun(run, { ...v1, termEndsOn: '2026-10-07' }),
+  ).toThrow();
+});
+it('accepts rule set v2 with the v1 codes and severities only where the version binds it', () => {
+  const adjusted = { ...run, ruleSetVersion: 2 };
+  expect(readContractQualityRun(adjusted, v2)).toEqual(adjusted);
+  expect(readRecordedContractQualityRun(adjusted, v2)).toEqual(adjusted);
+  // A new, approval or signature run names exactly the bound rule set.
+  expect(() => readContractQualityRun(adjusted, v1)).toThrow();
+  expect(() => readContractQualityRun(run, v2)).toThrow();
+  // An older v1 run may predate v2 on an adjusted version; never the reverse.
+  expect(readRecordedContractQualityRun(run, v2)).toEqual(run);
+  expect(() => readRecordedContractQualityRun(adjusted, v1)).toThrow();
 });
 it.each([
   { ...run, ruleSet: 'UNKNOWN' },
-  { ...run, ruleSetVersion: 2 },
+  { ...run, ruleSetVersion: 3 },
+  { ...run, ruleSetVersion: '1' },
+  { ...run, ruleSetVersion: 0 },
   { ...run, actorWorkspaceMembershipId: '' },
   { ...run, evaluatedAt: '2026-99-99' },
   { ...run, results: [] },
@@ -56,22 +79,27 @@ it.each([
     ],
   },
 ])('rejects malformed or unknown run evidence', (value) => {
-  expect(() => readContractQualityRun(value, 'version-one', null)).toThrow();
+  expect(() => readContractQualityRun(value, v1)).toThrow();
+  expect(() => readRecordedContractQualityRun(value, v2)).toThrow();
 });
-it('rejects unbounded, duplicate or cursor-mismatched history pages', () => {
+it('rejects unbounded, duplicate, cursor-mismatched or unbound history pages', () => {
+  expect(
+    readContractQualityHistory({ items: [run], nextCursor: 'run-one' }, v1),
+  ).toEqual({ items: [run], nextCursor: 'run-one' });
   expect(
     readContractQualityHistory(
-      { items: [run], nextCursor: 'run-one' },
-      'version-one',
-      null,
-    ),
-  ).toEqual({ items: [run], nextCursor: 'run-one' });
+      {
+        items: [{ ...run, id: 'run-two', ruleSetVersion: 2 }, run],
+        nextCursor: null,
+      },
+      v2,
+    ).items.map((item) => item.ruleSetVersion),
+  ).toEqual([2, 1]);
   for (const page of [
     { items: [run, run], nextCursor: null },
     { items: Array.from({ length: 26 }, () => run), nextCursor: null },
     { items: [run], nextCursor: 'other' },
+    { items: [{ ...run, ruleSetVersion: 2 }], nextCursor: null },
   ])
-    expect(() =>
-      readContractQualityHistory(page, 'version-one', null),
-    ).toThrow();
+    expect(() => readContractQualityHistory(page, v1)).toThrow();
 });

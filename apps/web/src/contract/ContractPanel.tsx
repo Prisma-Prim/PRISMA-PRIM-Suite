@@ -4,7 +4,8 @@ import { useContractPrecontractCopy } from './contract-precontract.copy';
 import { useContractDirectCopy } from './contract-direct.copy';
 import { ContractAddendumEditor } from './ContractAddendumEditor';
 import { useContractAddendumCopy } from './contract-addendum.copy';
-import { contractQualityContext } from './contract-response';
+import { contractQualityRunBinding } from './contract-response';
+import { useContractRuleSetCopy } from './contract-rule-set.copy';
 import { useContractVersionCopy } from './contract-version.copy';
 import { ContractVersionPanel } from './ContractVersionPanel';
 import { ContractVersionHistory } from './ContractVersionHistory';
@@ -882,12 +883,10 @@ export function ContractPanel({
               identity={identity}
               companyId={companyId}
               opportunityId={opportunityId}
-              versionId={view.contract.version.id}
               agreementId={
                 view.contract.kind === 'CONTRACT' ? undefined : view.contract.id
               }
-              addendum={contractQualityContext(view.contract)}
-              termEndsOn={view.contract.version.termEndsOn}
+              binding={contractQualityRunBinding(view.contract)}
               initialRun={view.contract.version.latestQualityRun}
               mayRun={
                 !view.contract.version.supersededByVersionId &&
@@ -1000,6 +999,7 @@ function ContractSummary({ contract }: { contract: ContractView }) {
   const versionCopy = useContractVersionCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
+  const ruleSetCopy = useContractRuleSetCopy();
   return (
     <>
       {contract.kind === 'PRECONTRACT' && <h5>{precontractCopy('title')}</h5>}
@@ -1110,7 +1110,14 @@ function ContractSummary({ contract }: { contract: ContractView }) {
         )}
         <dt>{contract.kind === 'ADDENDUM' ? addendumCopy('end') : copy.end}</dt>
         <dd>{version.termEndsOn ?? copy.missing}</dd>
+        <dt>{ruleSetCopy('ruleSet')}</dt>
+        <dd>
+          {version.qualityRuleSet} v{version.qualityRuleSetVersion}
+        </dd>
       </dl>
+      {version.qualityRuleSetVersion === 2 && (
+        <p>{ruleSetCopy('adjustedSnapshot')}</p>
+      )}
       {version.pricingSnapshot ? (
         <>
           <div className="contract-price">

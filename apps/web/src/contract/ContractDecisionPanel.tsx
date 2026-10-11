@@ -1,6 +1,6 @@
 import { useContractDirectCopy } from './contract-direct.copy';
 import { useContractAddendumCopy } from './contract-addendum.copy';
-import { contractPath, contractQualityContext } from './contract-response';
+import { contractPath, contractQualityRunBinding } from './contract-response';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -133,9 +133,7 @@ export function ContractDecisionPanel({
       } else if (result.status === 'ok') {
         const recorded = readContractDecision(
           result.value,
-          contract.version.id,
-          contract.version.termEndsOn,
-          contractQualityContext(contract),
+          contractQualityRunBinding(contract),
         );
         if (
           recorded.kind !==

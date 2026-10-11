@@ -215,6 +215,7 @@ export async function recordContractSignature(
           contractVersionId: current.version.id,
           actorInternalUserId: actor.internalUserId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          ruleSetVersion: quality.ruleSetVersion,
           evaluatedAt: quality.evaluatedAt,
           results: quality.results,
         })
@@ -284,6 +285,7 @@ export async function recordContractSignature(
         versionNumber: current.version.versionNumber,
         source: contractSource(current.contract),
         pricingSnapshotId: current.version.pricingSnapshotId,
+        ruleSetVersion: quality.ruleSetVersion,
         acknowledgedWarningCodes: warnings,
         occurredAt: quality.evaluatedAt,
       });

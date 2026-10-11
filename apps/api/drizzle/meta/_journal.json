@@ -449,6 +449,13 @@
       "when": 1791711398143,
       "tag": "0063_offer_adjusted_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1791719945423,
+      "tag": "0064_contract_adjusted_snapshot",
+      "breakpoints": true
     }
   ]
 }
