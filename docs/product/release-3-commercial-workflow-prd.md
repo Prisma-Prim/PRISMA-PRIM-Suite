@@ -69,6 +69,7 @@ A shared Client Account may be associated when the actor can already read it thr
 6. As a reviewer, I want illustrative inputs and derived artifacts unmistakably provisional.
 7. As an approver, I want Offer and Contract decisions attached to exact immutable versions.
 8. As an operational user, I want accepted work linked to an authorized Project without blind duplicate creation.
+9. As a commercial manager, I want to record that an Opportunity is on hold, won, lost, disqualified or archived, with its reason, and to reopen it, so that the Company knows which cases are still pursued and why the others ended; every change stays in a consultable history (section 23).
 
 ## 6. Release boundary
 
@@ -1146,23 +1147,23 @@ An Opportunity has exactly one outcome status:
 
 No other transition exists. The server derives the transition from the current status and the requested status.
 
-| Transition | From → to                                            | Required input                       |
-| ---------- | ---------------------------------------------------- | ------------------------------------ |
-| Hold       | `OPEN` → `ON_HOLD`                                   | A reason                             |
-| Resume     | `ON_HOLD` → `OPEN`                                   | —                                    |
-| Win        | `OPEN` or `ON_HOLD` → `WON`                          | —                                    |
-| Lose       | `OPEN` or `ON_HOLD` → `LOST`                         | A loss reason code; an optional note |
-| Disqualify | `OPEN` or `ON_HOLD` → `DISQUALIFIED`                 | A reason                             |
-| Archive    | `OPEN` or `ON_HOLD` → `ARCHIVED`                     | A reason                             |
-| Reopen     | `WON`, `LOST`, `DISQUALIFIED` or `ARCHIVED` → `OPEN` | A reason                             |
+| Transition | From → to                                            | Required input                                   |
+| ---------- | ---------------------------------------------------- | ------------------------------------------------ |
+| Hold       | `OPEN` → `ON_HOLD`                                   | A reason                                         |
+| Resume     | `ON_HOLD` → `OPEN`                                   | —                                                |
+| Win        | `OPEN` or `ON_HOLD` → `WON`                          | —                                                |
+| Lose       | `OPEN` or `ON_HOLD` → `LOST`                         | A loss reason code; a note, required for `OTHER` |
+| Disqualify | `OPEN` or `ON_HOLD` → `DISQUALIFIED`                 | A reason                                         |
+| Archive    | `OPEN` or `ON_HOLD` → `ARCHIVED`                     | A reason                                         |
+| Reopen     | `WON`, `LOST`, `DISQUALIFIED` or `ARCHIVED` → `OPEN` | A reason                                         |
 
 Reopen exists so that a mistaken closure or a returning Client is corrected by new history instead of rewriting the old one (M03-R105). Requesting the current status, or any pair outside the table, returns `409 OUTCOME_TRANSITION_NOT_ALLOWED` and changes nothing.
 
-**Loss reason codes**, from session 8: `PRICE`, `DEADLINE`, `COMPETITOR`, `NO_BUDGET`, `POSTPONED`, `CLIENT_WITHDREW`, `OTHER`, `UNKNOWN`. The list is fixed in this slice; making it configurable is deferred.
+**Loss reason codes**, from session 8: `PRICE`, `DEADLINE`, `COMPETITOR`, `NO_BUDGET`, `POSTPONED`, `CLIENT_WITHDREW`, `OTHER`, `UNKNOWN`. The list is fixed in this slice; making it configurable is deferred. `OTHER` requires a note that states the actual reason, so a known reason is never reduced to a generic code; `UNKNOWN` needs none.
 
 **Reasons and notes** follow the section 16.3 text rule: 1–500 characters with at least one non-whitespace character, stored exactly as submitted. A field that the transition does not accept must be absent; supplying it returns field validation.
 
-**Dates.** The server records the transition time. The Opportunity exposes its current status and the time it entered that status. A user-entered effective date is deferred.
+**Dates.** The server records the transition time. The Opportunity exposes its current status and the time it entered that status. A user-entered effective date is deferred. Every existing Opportunity has been `OPEN` since its creation because no earlier command could change its status, so the migration sets its status-entered time to its capture time; no other historical value is derived and no history entry is created for that initial state.
 
 ### 23.3 Permission
 
@@ -1191,7 +1192,7 @@ An exact replay of a direct Contract creation committed before the closure retur
 
 ### 23.6 History and Activity
 
-Each committed transition records one durable history entry: previous and new status, loss reason code, reason or note text, resulting version, acting membership with its display label captured at the change, and server time. The Request detail returns the history newest first, bounded to the 50 most recent entries, to any holder of Commercial Intake read in the responsible Company. Entries are never edited or deleted.
+Each committed transition records one durable history entry: previous and new status, loss reason code, reason or note text, resulting version, acting membership with its display label captured at the change, and server time. The Request detail returns the 50 most recent entries newest first, with an opaque cursor; an outcome-history read returns each older page of at most 50 entries from that cursor, so every entry and its text stays consultable. Both reads require only Commercial Intake read in the responsible Company and apply the same safe not-found. Entries are never edited or deleted.
 
 One committed transition records one `opportunity.outcome.changed` event attributed to the acting membership, scoped to the responsible Company and targeting the Opportunity. Its metadata is exactly the resulting version, the previous and new status and the loss reason code when present; it contains no reason or note text. Section 17.3 projects it under the same rules as the other Opportunity actions, returning the previous and new status and the loss reason code. Rejected commands, safe denials and exact replays record nothing.
 
