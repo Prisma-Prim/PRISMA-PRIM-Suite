@@ -6,6 +6,7 @@ import test from 'node:test';
 const gate = fileURLToPath(new URL('./verify-ci-results.mjs', import.meta.url));
 const successfulResults = {
   checks: { result: 'success' },
+  scope: { result: 'success', outputs: { docs_only: 'false' } },
   api: { result: 'success' },
   web_unit: { result: 'success' },
   browser: { result: 'success' },
@@ -52,6 +53,34 @@ for (const job of Object.keys(successfulResults)) {
     assert.match(child.stderr, new RegExp(`${job}: missing`));
   });
 }
+
+test('quality accepts skipped heavy families only after a successful docs-only scope', () => {
+  const heavy = [
+    'api',
+    'web_unit',
+    'browser',
+    'acceptance',
+    'build',
+    'packaging',
+  ];
+  const skippedHeavy = Object.fromEntries(
+    heavy.map((job) => [job, { result: 'skipped' }]),
+  );
+  const docsOnly = invoke({
+    checks: { result: 'success' },
+    scope: { result: 'success', outputs: { docs_only: 'true' } },
+    ...skippedHeavy,
+  });
+  assert.equal(docsOnly.status, 0, docsOnly.stderr);
+  const failedScope = invoke({
+    checks: { result: 'success' },
+    scope: { result: 'failure', outputs: { docs_only: 'true' } },
+    ...skippedHeavy,
+  });
+  assert.equal(failedScope.status, 1);
+  assert.match(failedScope.stderr, /scope: failure/);
+  assert.match(failedScope.stderr, /api: skipped/);
+});
 
 for (const input of [undefined, '', '{', 'null', '[]', '"success"']) {
   test(`quality rejects malformed results ${String(input)}`, () => {

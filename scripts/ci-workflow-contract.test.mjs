@@ -130,10 +130,11 @@ function stepBody(job, step) {
 }
 
 // The literal graph is the issue's required coverage, independent of the gate implementation.
-test('independent test families and packaging share only the fast prerequisite', async () => {
+test('independent test families and packaging share only the fast prerequisite and the scope', async () => {
   const jobs = jobsIn(await readWorkflow());
   assert.deepEqual(Object.keys(jobs), [
     'checks',
+    'scope',
     'api',
     'web_unit',
     'browser',
@@ -143,6 +144,7 @@ test('independent test families and packaging share only the fast prerequisite',
     'quality',
   ]);
   assert.doesNotMatch(jobs.checks, /\bneeds:|\bif:/);
+  assert.doesNotMatch(jobs.scope, /\bneeds:|\bif:/);
   for (const job of [
     'api',
     'web_unit',
@@ -151,12 +153,17 @@ test('independent test families and packaging share only the fast prerequisite',
     'build',
     'packaging',
   ]) {
-    assert.match(jobs[job], /^ {4}needs: checks$/m);
-    assert.doesNotMatch(jobs[job], /^ {4}if:/m);
+    assert.match(jobs[job], /^ {4}needs: \[checks, scope\]$/m);
+    // A heavy family is skipped only for a docs-only change; any other
+    // scope answer, including a missing one, runs it.
+    assert.match(
+      jobs[job],
+      /^ {4}if: \$\{\{ needs\.scope\.outputs\.docs_only != 'true' \}\}$/m,
+    );
   }
   assert.match(
     jobs.quality,
-    /^ {4}needs: \[checks, api, web_unit, browser, acceptance, build, packaging\]$/m,
+    /^ {4}needs: \[checks, scope, api, web_unit, browser, acceptance, build, packaging\]$/m,
   );
   assert.match(jobs.quality, /^ {4}if: \$\{\{ always\(\) \}\}$/m);
   const gate = stepBody(jobs.quality, 'Require every verification result');
@@ -198,6 +205,7 @@ test('a controlled failing dependency prevents the workflow aggregate command fr
   assert.equal(dependency.status, 1);
   const results = {
     checks: { result: 'success' },
+    scope: { result: 'success', outputs: { docs_only: 'false' } },
     api: { result: dependency.status === 0 ? 'success' : 'failure' },
     web_unit: { result: 'success' },
     browser: { result: 'success' },
@@ -228,6 +236,10 @@ test('CI fails formatting first, then lint, types and the complete script suite'
     ['Lint', 'run: pnpm lint'],
     ['Type-check', 'run: pnpm typecheck'],
     ['Test scripts', 'run: pnpm test:scripts'],
+    [
+      'Test documentation contracts',
+      'run: pnpm --filter @prisma-prim/api exec vitest run src/demonstration',
+    ],
   ];
   const positions = [];
   for (const [step, command] of requiredSteps) {
@@ -335,4 +347,26 @@ test('database jobs own isolated PostgreSQL services and matching environment ch
   assert.match(setup, /chromium:\n {4}description:[^\n]+\n {4}default: 'true'/);
   assert.match(setup, /if: \$\{\{ inputs\.postgres == 'true' \}\}/);
   assert.match(setup, /if: \$\{\{ inputs\.chromium == 'true' \}\}/);
+});
+
+test('the scope job classifies the exact pull request commits with full history', async () => {
+  const { scope } = jobsIn(await readWorkflow());
+  assert.match(
+    scope,
+    /^ {4}outputs:\n {6}docs_only: \$\{\{ steps\.classify\.outputs\.docs_only \}\}$/m,
+  );
+  assert.match(stepBody(scope, 'Check out repository'), /fetch-depth: 0/);
+  const classify = stepBody(scope, 'Classify changed files');
+  assert.match(classify, /id: classify\n/);
+  assert.match(classify, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
+  assert.match(
+    classify,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.match(
+    classify,
+    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  );
+  assert.match(classify, /run: node scripts\/ci-change-scope\.mjs\n/);
+  assert.doesNotMatch(classify, /\bif:/);
 });

@@ -13,6 +13,7 @@
     "agent:doctor:web": "node scripts/agent-doctor.mjs --profile web",
     "agent:doctor:web-postgres": "node scripts/agent-doctor.mjs --profile web-postgres",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build",
+    "verify:docs": "pnpm format:check && pnpm test:scripts && pnpm --filter @prisma-prim/api exec vitest run src/demonstration",
     "postgres:managed": "node scripts/managed-postgres.mjs",
     "build": "pnpm --recursive build",
     "dev": "pnpm --parallel --filter @prisma-prim/api --filter @prisma-prim/web dev",

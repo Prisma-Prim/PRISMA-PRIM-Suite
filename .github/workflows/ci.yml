@@ -42,8 +42,36 @@ jobs:
       - name: Test scripts
         run: pnpm test:scripts
 
+      - name: Test documentation contracts
+        run: pnpm --filter @prisma-prim/api exec vitest run src/demonstration
+
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      docs_only: ${{ steps.classify.outputs.docs_only }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Classify changed files
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/ci-change-scope.mjs
+
   api:
-    needs: checks
+    needs: [checks, scope]
+    if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -80,7 +108,8 @@ jobs:
         run: pnpm --filter @prisma-prim/api test
 
   web_unit:
-    needs: checks
+    needs: [checks, scope]
+    if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -100,7 +129,8 @@ jobs:
         run: pnpm --filter @prisma-prim/web exec vitest run
 
   browser:
-    needs: checks
+    needs: [checks, scope]
+    if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -129,7 +159,8 @@ jobs:
           retention-days: 14
 
   acceptance:
-    needs: checks
+    needs: [checks, scope]
+    if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -179,7 +210,8 @@ jobs:
           retention-days: 14
 
   build:
-    needs: checks
+    needs: [checks, scope]
+    if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -196,7 +228,8 @@ jobs:
         run: pnpm build
 
   packaging:
-    needs: checks
+    needs: [checks, scope]
+    if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -221,7 +254,7 @@ jobs:
         run: bash scripts/railway-packaging-smoke.sh
 
   quality:
-    needs: [checks, api, web_unit, browser, acceptance, build, packaging]
+    needs: [checks, scope, api, web_unit, browser, acceptance, build, packaging]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
