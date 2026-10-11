@@ -73,11 +73,11 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
 
-The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the future governed illustrative fixed net discount created atomically with a new Snapshot. It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
+The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the governed illustrative fixed net discount created atomically with a new Snapshot (delivered by #458 / #470). It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
 
 The Confirmed-Cost Profitability Estimate PRD owns a separate manual-input first journey finalized in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497): immutable cost/price/result versions and exact Director decisions with independent opt-in assignments. Approval changes no existing illustrative record or Offer and does not claim runtime delivery. Its implementation child and readiness are owned by the live tracker.
 
-R3B4 is an additive future slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; after R3B4 delivery, a separately approved Offer compatibility slice reads and renders the immutable adjustment trace without repricing it.
+R3B4 is an additive slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; the delivered Offer compatibility slice O8 and its Contract follow-up read, check and render the immutable adjustment trace without repricing it ([Commercial Workflow PRD sections 18.2 and 19.5](release-3-commercial-workflow-prd.md#182-offer-and-offer-version)).
 
 ## 7. Other later releases
 
