@@ -48,7 +48,7 @@ const serverVersions = {
   contractApprover: 'v1',
   pricingAdjustment: 'v1',
   reader: 'v1',
-  manager: 'v1',
+  manager: 'v2',
   project: 'v2',
   approver: 'v1',
 } as const;
@@ -528,8 +528,8 @@ describe('CompanyContextAccess', () => {
       assignment: { bundle: 'Company Pricing Configuration', version: 'V1' },
     },
     {
-      name: 'a v2 Opportunity Manager version',
-      assignment: { bundle: 'Company Opportunity Manager', version: 'v2' },
+      name: 'a v3 Opportunity Manager version',
+      assignment: { bundle: 'Company Opportunity Manager', version: 'v3' },
     },
     {
       name: 'a null Opportunity Manager version',
@@ -1625,7 +1625,7 @@ describe('CompanyContextAccess', () => {
     expect(commands[0]?.key).not.toBe(commands[1]?.key);
   });
 
-  it('grants and revokes Company Opportunity Manager v1 with its prerequisites stated', async () => {
+  it('grants and revokes Company Opportunity Manager v2 with its prerequisites stated', async () => {
     let active = false;
     const commands: { method: string; path: string; key: string | null }[] = [];
     vi.stubGlobal(
@@ -1646,7 +1646,7 @@ describe('CompanyContextAccess', () => {
               workspaceMembershipId: memberId,
               companyId,
               bundle: 'Company Opportunity Manager',
-              permissionSetVersion: 'v1',
+              permissionSetVersion: 'v2',
               active,
             },
             { status: active ? 201 : 200 },
@@ -1668,7 +1668,7 @@ describe('CompanyContextAccess', () => {
     expect(bundleSelect).toHaveTextContent('Company Opportunity Manager');
     expect(
       screen.getByText(
-        'Company Opportunity Manager v1 changes the responsible actor only; Company context and Commercial Intake read are authorized separately.',
+        'Company Opportunity Manager v2 changes the responsible actor and the outcome status; Company context and Commercial Intake read are authorized separately.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(
@@ -1677,7 +1677,7 @@ describe('CompanyContextAccess', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
     await screen.findByText('Access granted. Server state refreshed.');
     expect(screen.getByText(/Current server state:/)).toHaveTextContent(
-      /^Current server state: Granted — captured version v1$/,
+      /^Current server state: Granted — captured version v2$/,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
     await screen.findByText('Access revoked. Server state refreshed.');

@@ -2,10 +2,17 @@ import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import type {
   AssociateClientCommand,
+  ChangeOpportunityOutcomeCommand,
   ChangeOpportunityResponsibleCommand,
   CreateCommercialIntakeCommand,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
+import {
+  isOpportunityLossReasonCode,
+  isOpportunityOutcomeStatus,
+  type OpportunityOutcomeChange,
+  type OpportunityOutcomeStatus,
+} from './opportunity-outcome.js';
 
 const ROOT_FIELDS = new Set([
   'originalText',
@@ -24,6 +31,13 @@ const CLIENT_ASSOCIATION_FIELDS = new Set([
 const RESPONSIBLE_CHANGE_FIELDS = new Set([
   'expectedVersion',
   'workspaceMembershipId',
+]);
+const OUTCOME_CHANGE_FIELDS = new Set([
+  'expectedVersion',
+  'status',
+  'reason',
+  'lossReasonCode',
+  'note',
 ]);
 const MEMBERSHIP_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -89,6 +103,73 @@ export function readChangeOpportunityResponsibleCommand(
     expectedVersion,
     workspaceMembershipId: workspaceMembershipId.toLowerCase(),
   };
+}
+
+/**
+ * Exactly an observed Opportunity version, the requested status and the
+ * reason fields that status accepts. Reasons and notes follow the next-action
+ * text rule and are stored exactly as submitted; a field the requested
+ * transition does not accept must be absent.
+ */
+export function readChangeOpportunityOutcomeCommand(
+  value: unknown,
+): ChangeOpportunityOutcomeCommand {
+  const body = record(value, 'change');
+  rejectExtraFields(body, OUTCOME_CHANGE_FIELDS, 'change');
+  const expectedVersion = observedVersion(body.expectedVersion);
+  const { status } = body;
+  if (!isOpportunityOutcomeStatus(status))
+    invalid('status', 'Choose a supported outcome status.');
+  return { expectedVersion, change: outcomeChange(status, body) };
+}
+
+function outcomeChange(
+  status: OpportunityOutcomeStatus,
+  body: Record<string, unknown>,
+): OpportunityOutcomeChange {
+  switch (status) {
+    case 'ON_HOLD':
+    case 'DISQUALIFIED':
+    case 'ARCHIVED':
+      rejectUnaccepted(body, ['lossReasonCode', 'note']);
+      return { status, reason: requiredString(body.reason, 'reason', 500) };
+    case 'WON':
+      rejectUnaccepted(body, ['reason', 'lossReasonCode', 'note']);
+      return { status };
+    case 'LOST': {
+      rejectUnaccepted(body, ['reason']);
+      const { lossReasonCode } = body;
+      if (!isOpportunityLossReasonCode(lossReasonCode))
+        invalid('lossReasonCode', 'Choose a loss reason.');
+      const note = Object.hasOwn(body, 'note')
+        ? requiredString(body.note, 'note', 500)
+        : null;
+      if (lossReasonCode === 'OTHER' && note === null)
+        invalid('note', 'Enter the actual reason for a loss marked Other.');
+      return { status, lossReasonCode, note };
+    }
+    case 'OPEN':
+      rejectUnaccepted(body, ['lossReasonCode', 'note']);
+      return {
+        status,
+        reason: Object.hasOwn(body, 'reason')
+          ? requiredString(body.reason, 'reason', 500)
+          : null,
+      };
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
+}
+
+function rejectUnaccepted(
+  body: Record<string, unknown>,
+  fields: readonly string[],
+): void {
+  const supplied = fields.find((field) => Object.hasOwn(body, field));
+  if (supplied !== undefined)
+    invalid(supplied, 'This status change does not accept this field.');
 }
 
 function observedVersion(value: unknown): number {

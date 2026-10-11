@@ -72,6 +72,8 @@ it('opens a recorded Contract from its Request without Offer or Client authority
       scope: null,
       nextAction: 'Read Contract',
       status: 'OPEN',
+      statusEnteredAt: '2026-10-03T06:00:00.000Z',
+      outcomeHistory: { entries: [] },
       responsibleWorkspaceMembershipId: 'member-one',
       responsibleActor: {
         workspaceMembershipId: 'member-one',
@@ -122,6 +124,7 @@ it('opens a recorded Contract from its Request without Offer or Client authority
               subject: detail.subject,
               capturedAt: detail.capturedAt,
               initialOpportunity: {
+                status: 'OPEN',
                 title: 'Opportunity',
                 nextAction: 'Read Contract',
                 responsibleActor: detail.initialOpportunity.responsibleActor,

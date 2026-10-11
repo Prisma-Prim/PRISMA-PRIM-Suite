@@ -122,6 +122,7 @@ function requestRow() {
     subject,
     capturedAt: '2026-09-24T10:05:00.000Z',
     initialOpportunity: {
+      status: 'OPEN',
       title: 'Audit readiness',
       nextAction: 'Call the director',
       responsibleActor: {
@@ -151,6 +152,8 @@ function requestDetail() {
       scope: null,
       nextAction: 'Call the director',
       status: 'OPEN',
+      statusEnteredAt: '2026-09-24T10:05:00.000Z',
+      outcomeHistory: { entries: [] },
       responsibleWorkspaceMembershipId: membershipId,
       responsibleActor: {
         workspaceMembershipId: membershipId,

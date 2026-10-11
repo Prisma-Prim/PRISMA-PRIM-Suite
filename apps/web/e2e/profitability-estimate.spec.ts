@@ -49,6 +49,8 @@ function requestDetail() {
       scope: null,
       nextAction: 'Prepare a confirmed-cost estimate',
       status: 'OPEN',
+      statusEnteredAt: '2026-10-01T08:00:00.000Z',
+      outcomeHistory: { entries: [] },
       responsibleWorkspaceMembershipId:
         actorContextFixture.workspaceMembershipId,
       responsibleActor: {
@@ -224,6 +226,7 @@ test('independent administration → Contributor → uncertain exact retry → M
               subject: detail.subject,
               capturedAt: detail.capturedAt,
               initialOpportunity: {
+                status: 'OPEN',
                 title: detail.initialOpportunity.title,
                 nextAction: detail.initialOpportunity.nextAction,
                 responsibleActor: detail.initialOpportunity.responsibleActor,
@@ -530,6 +533,7 @@ test('safe history failure, stale reload, strategic loss and keyboard locale con
               subject: detail.subject,
               capturedAt: detail.capturedAt,
               initialOpportunity: {
+                status: 'OPEN',
                 title: detail.initialOpportunity.title,
                 nextAction: detail.initialOpportunity.nextAction,
                 responsibleActor: detail.initialOpportunity.responsibleActor,

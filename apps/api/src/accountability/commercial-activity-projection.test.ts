@@ -61,6 +61,7 @@ describe('commercial Activity projection rules', () => {
       'opportunity.created',
       'opportunity.next_action.updated',
       'opportunity.responsible.changed',
+      'opportunity.outcome.changed',
     ]);
   });
 
@@ -83,6 +84,7 @@ describe('commercial Activity projection rules', () => {
       'opportunity.created',
       'opportunity.next_action.updated',
       'opportunity.responsible.changed',
+      'opportunity.outcome.changed',
     ]);
   });
 
@@ -211,6 +213,118 @@ describe('commercial Activity projection rules', () => {
         readCommercialActivity({
           action: 'opportunity.next_action.updated',
           metadata: { opportunityVersion: 2, before, after },
+        }),
+      ).toBeUndefined();
+    });
+  });
+
+  describe('the outcome status change', () => {
+    it('projects the previous and new status and a loss code, not the version', () => {
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.outcome.changed',
+          metadata: {
+            opportunityVersion: 2,
+            previousStatus: 'OPEN',
+            newStatus: 'ON_HOLD',
+          },
+        }),
+      ).toEqual({
+        action: 'opportunity.outcome.changed',
+        metadata: { previousStatus: 'OPEN', newStatus: 'ON_HOLD' },
+      });
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.outcome.changed',
+          metadata: {
+            opportunityVersion: 7,
+            previousStatus: 'ON_HOLD',
+            newStatus: 'LOST',
+            lossReasonCode: 'COMPETITOR',
+          },
+        }),
+      ).toEqual({
+        action: 'opportunity.outcome.changed',
+        metadata: {
+          previousStatus: 'ON_HOLD',
+          newStatus: 'LOST',
+          lossReasonCode: 'COMPETITOR',
+        },
+      });
+      expect(commercialActivityTargetOf('opportunity.outcome.changed')).toBe(
+        'opportunity',
+      );
+    });
+
+    it.each([
+      ['a missing version', { previousStatus: 'OPEN', newStatus: 'WON' }],
+      [
+        'the first version',
+        { opportunityVersion: 1, previousStatus: 'OPEN', newStatus: 'WON' },
+      ],
+      [
+        'the current status requested again',
+        { opportunityVersion: 2, previousStatus: 'OPEN', newStatus: 'OPEN' },
+      ],
+      [
+        'a pair outside the table',
+        {
+          opportunityVersion: 2,
+          previousStatus: 'WON',
+          newStatus: 'LOST',
+          lossReasonCode: 'PRICE',
+        },
+      ],
+      [
+        'an unknown status',
+        { opportunityVersion: 2, previousStatus: 'OPEN', newStatus: 'CLOSED' },
+      ],
+      [
+        'a loss without its code',
+        { opportunityVersion: 2, previousStatus: 'OPEN', newStatus: 'LOST' },
+      ],
+      [
+        'an unknown loss code',
+        {
+          opportunityVersion: 2,
+          previousStatus: 'OPEN',
+          newStatus: 'LOST',
+          lossReasonCode: 'EXPENSIVE',
+        },
+      ],
+      [
+        'a loss code on another status',
+        {
+          opportunityVersion: 2,
+          previousStatus: 'OPEN',
+          newStatus: 'WON',
+          lossReasonCode: 'PRICE',
+        },
+      ],
+      [
+        'reason text',
+        {
+          opportunityVersion: 2,
+          previousStatus: 'OPEN',
+          newStatus: 'ON_HOLD',
+          reason: 'Budget freeze',
+        },
+      ],
+      [
+        'note text',
+        {
+          opportunityVersion: 2,
+          previousStatus: 'OPEN',
+          newStatus: 'LOST',
+          lossReasonCode: 'OTHER',
+          note: 'Merged',
+        },
+      ],
+    ])('fails closed on %s', (_case, metadata) => {
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.outcome.changed',
+          metadata,
         }),
       ).toBeUndefined();
     });

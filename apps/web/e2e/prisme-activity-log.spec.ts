@@ -214,6 +214,8 @@ test('opens the Request of a commercial event from the Classic Activity Log with
             scope: null,
             nextAction: 'Confirm the audit window',
             status: 'OPEN',
+            statusEnteredAt: '2026-09-24T10:05:00.000Z',
+            outcomeHistory: { entries: [] },
             responsibleWorkspaceMembershipId:
               actorContextFixture.workspaceMembershipId,
             responsibleActor: {

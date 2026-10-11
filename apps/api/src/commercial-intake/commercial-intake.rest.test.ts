@@ -123,6 +123,8 @@ withPostgres('Company commercial intake REST', () => {
         scope: body.opportunity.scope,
         nextAction: body.opportunity.nextAction,
         status: 'OPEN',
+        // Capture enters OPEN without an outcome history entry.
+        outcomeHistory: { entries: [] },
         responsibleWorkspaceMembershipId: actor.workspaceMembershipId,
         responsibleActor: {
           workspaceMembershipId: actor.workspaceMembershipId,
@@ -164,6 +166,7 @@ withPostgres('Company commercial intake REST', () => {
           initialOpportunity: {
             title: body.opportunity.title,
             nextAction: body.opportunity.nextAction,
+            status: 'OPEN',
             responsibleActor: {
               workspaceMembershipId: actor.workspaceMembershipId,
               displayName: actor.displayName,

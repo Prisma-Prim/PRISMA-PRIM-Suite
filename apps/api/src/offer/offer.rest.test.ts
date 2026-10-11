@@ -5557,6 +5557,74 @@ withPostgres('First illustrative Offer REST', () => {
     expect(created.illustrativeReference).toBe(1);
   });
 
+  it('refuses a new Offer in every non-OPEN outcome status and creates it once the Opportunity is open again', async () => {
+    const fixture = await preparedOffer();
+    await command(
+      '/company-opportunity-manager-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'grant-opportunity-manager',
+    );
+    let version = 1;
+    async function changeOutcome(change: Record<string, unknown>) {
+      const response = await request(
+        `/commercial-intake/opportunities/${fixture.opportunityId}/outcome`,
+        fixture.companyId,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': `outcome-${version}`,
+          },
+          body: JSON.stringify({ expectedVersion: version, ...change }),
+        },
+      );
+      expect(response.status).toBe(200);
+      version += 1;
+    }
+    const creation = {
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'PRIMARY' },
+      scopeNote: 'Illustrative preparation scope.',
+    };
+    for (const [close, reopen] of [
+      [
+        { status: 'ON_HOLD', reason: 'Client asked to wait' },
+        { status: 'OPEN' },
+      ],
+      [{ status: 'WON' }, { status: 'OPEN', reason: 'Declared too early' }],
+      [
+        { status: 'LOST', lossReasonCode: 'PRICE' },
+        { status: 'OPEN', reason: 'Client returned' },
+      ],
+      [
+        { status: 'DISQUALIFIED', reason: 'Outside our scope' },
+        { status: 'OPEN', reason: 'Scope confirmed' },
+      ],
+      [
+        { status: 'ARCHIVED', reason: 'Duplicate Request' },
+        { status: 'OPEN', reason: 'Not a duplicate' },
+      ],
+    ] satisfies Array<[Record<string, unknown>, Record<string, unknown>]>) {
+      await changeOutcome(close);
+      const refused = await postOffer(
+        fixture,
+        creation,
+        `refused-${String(close.status)}`,
+      );
+      expect(refused.status).toBe(409);
+      expect(await json(refused)).toMatchObject({
+        code: 'OPPORTUNITY_NOT_OPEN',
+      });
+      await expectNoOfferWrites();
+      await changeOutcome(reopen);
+    }
+    const created = await postOffer(fixture, creation, 'created-when-open');
+    expect(created.status).toBe(201);
+  });
+
   it('uses the same safe not-found for another Company and an unknown Opportunity', async () => {
     const fixture = await preparedOffer();
     const otherCompany = entity(

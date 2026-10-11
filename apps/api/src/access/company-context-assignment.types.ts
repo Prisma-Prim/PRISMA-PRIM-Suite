@@ -24,6 +24,7 @@ import type {
 import type {
   CompanyCommercialIntakePermissionSetVersion,
   CompanyDirectorClientPermissionSetVersion,
+  CompanyOpportunityManagerPermissionSetVersion,
   CompanyProjectPermissionSetVersion,
   DocumentPermissionSetVersion,
 } from './company-permissions.js';
@@ -95,7 +96,7 @@ export type CompanyContextAssignmentRecord =
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL;
-      permissionSetVersion: 'v1';
+      permissionSetVersion: CompanyOpportunityManagerPermissionSetVersion;
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL;

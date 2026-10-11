@@ -145,6 +145,41 @@ describe('commercial history in the Activity Log', () => {
     ).toBeInTheDocument();
   });
 
+  it('names the previous and new status and the loss reason of an Opportunity outcome change', async () => {
+    stubTransport([
+      {
+        id: 'event-4',
+        action: 'opportunity.outcome.changed',
+        occurredAt: '2026-09-21T10:08:00.000Z',
+        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+        target: {
+          type: 'opportunity',
+          opportunityId: OPPORTUNITY_ID,
+          clientRequestId: REQUEST_ID,
+          companyId: COMPANY_ID,
+        },
+        metadata: {
+          previousStatus: 'ON_HOLD',
+          newStatus: 'LOST',
+          lossReasonCode: 'COMPETITOR',
+        },
+      },
+    ]);
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    const entry = (
+      await screen.findByText(
+        'Ada Ionescu changed the status of an Opportunity (On hold → Lost: Competitor)',
+      )
+    ).closest('li');
+    if (!entry) throw new Error('Expected the Activity entry.');
+    expect(entry).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
+    expect(
+      within(entry).getByRole('button', { name: 'Open Request' }),
+    ).toBeInTheDocument();
+  });
+
   it('shows the existing empty state when the authorized Company has no event', async () => {
     stubTransport([]);
 

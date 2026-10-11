@@ -49,6 +49,38 @@ export function readCommercialIntakeCursor(
   return { capturedAt, id: decoded.id };
 }
 
+/**
+ * The opaque cursor of one outcome history page: the version of the oldest
+ * entry already returned. Every entry's version is at least 2.
+ */
+export function readOutcomeHistoryCursor(value: unknown): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || value.length === 0) invalidHistoryPage();
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+  } catch {
+    invalidHistoryPage();
+  }
+  if (
+    typeof decoded !== 'object' ||
+    decoded === null ||
+    Array.isArray(decoded) ||
+    Object.keys(decoded).length !== 1 ||
+    !('beforeVersion' in decoded) ||
+    typeof decoded.beforeVersion !== 'number' ||
+    !Number.isInteger(decoded.beforeVersion) ||
+    decoded.beforeVersion < 2 ||
+    decoded.beforeVersion > 2_147_483_647
+  )
+    invalidHistoryPage();
+  return decoded.beforeVersion;
+}
+
+export function outcomeHistoryCursor(beforeVersion: number): string {
+  return Buffer.from(JSON.stringify({ beforeVersion })).toString('base64url');
+}
+
 export function commercialIntakeCursor(value: CommercialIntakeCursor): string {
   return Buffer.from(
     JSON.stringify({
@@ -56,6 +88,13 @@ export function commercialIntakeCursor(value: CommercialIntakeCursor): string {
       id: value.id,
     }),
   ).toString('base64url');
+}
+
+function invalidHistoryPage(): never {
+  throw new BadRequestException({
+    code: 'INVALID_PAGE',
+    message: 'Reload the Request and try again.',
+  });
 }
 
 function invalidPage(): never {

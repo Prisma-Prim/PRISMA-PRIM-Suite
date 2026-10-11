@@ -116,18 +116,52 @@ export const COMPANY_OPPORTUNITY_MANAGER_BUNDLE =
   'company_opportunity_manager' as const;
 export const COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL =
   'Company Opportunity Manager' as const;
-// The opt-in manager bundle replaces an Opportunity's responsible actor only.
+// The opt-in manager bundle replaces an Opportunity's responsible actor.
 // Company context and Commercial Intake read are prerequisites it never grants.
 export const COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS = [
   'commercial.opportunity.assign',
 ] as const;
+// Captured v2 adds the outcome status change. Existing v1 assignments never
+// expand in place; only a fresh grant captures v2.
+export const COMPANY_OPPORTUNITY_MANAGER_V2_PERMISSIONS = [
+  ...COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS,
+  'commercial.opportunity.outcome.change',
+] as const;
 export type CompanyOpportunityManagerPermission =
-  (typeof COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS)[number];
+  (typeof COMPANY_OPPORTUNITY_MANAGER_V2_PERMISSIONS)[number];
+export type CompanyOpportunityManagerPermissionSetVersion = 'v1' | 'v2';
 // Never inherited: a null or unknown captured version resolves to nothing.
 export function opportunityManagerPermissionsFor(
   version: unknown,
 ): readonly CompanyOpportunityManagerPermission[] {
-  return version === 'v1' ? COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS : [];
+  switch (version) {
+    case 'v1':
+      return COMPANY_OPPORTUNITY_MANAGER_V1_PERMISSIONS;
+    case 'v2':
+      return COMPANY_OPPORTUNITY_MANAGER_V2_PERMISSIONS;
+    default:
+      return [];
+  }
+}
+export function isOpportunityManagerPermissionSetVersion(
+  version: unknown,
+): version is CompanyOpportunityManagerPermissionSetVersion {
+  return version === 'v1' || version === 'v2';
+}
+const COMPANY_OPPORTUNITY_MANAGER_PERMISSION_SET_VERSIONS = [
+  'v1',
+  'v2',
+] as const satisfies readonly CompanyOpportunityManagerPermissionSetVersion[];
+/**
+ * Every captured Opportunity Manager version whose permission set includes
+ * `required`, so a later version carrying it is accepted.
+ */
+export function opportunityManagerVersionsWith(
+  required: CompanyOpportunityManagerPermission,
+): CompanyOpportunityManagerPermissionSetVersion[] {
+  return COMPANY_OPPORTUNITY_MANAGER_PERMISSION_SET_VERSIONS.filter((version) =>
+    opportunityManagerPermissionsFor(version).includes(required),
+  );
 }
 export const COMPANY_SERVICE_CATALOGUE_BUNDLE =
   'company_service_catalogue' as const;

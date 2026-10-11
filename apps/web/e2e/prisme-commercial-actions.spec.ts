@@ -209,6 +209,8 @@ function requestDetail(nextAction: string, version: number) {
       scope: null,
       nextAction,
       status: 'OPEN',
+      statusEnteredAt: '2026-09-26T08:00:00.000Z',
+      outcomeHistory: { entries: [] },
       responsibleWorkspaceMembershipId:
         actorContextFixture.workspaceMembershipId,
       responsibleActor: {
@@ -227,6 +229,7 @@ function requestListItem(request: ReturnType<typeof requestDetail>) {
     subject: request.subject,
     capturedAt: request.capturedAt,
     initialOpportunity: {
+      status: 'OPEN',
       title: request.initialOpportunity.title,
       nextAction: request.initialOpportunity.nextAction,
       responsibleActor: request.initialOpportunity.responsibleActor,

@@ -503,6 +503,58 @@ describe('the authenticated Activity Log transport', () => {
     });
   });
 
+  it('keeps the previous and new status and a loss code of an Opportunity outcome change', async () => {
+    const held = event(
+      'event-outcome-held',
+      'opportunity.outcome.changed',
+      opportunityTarget,
+      { previousStatus: 'OPEN', newStatus: 'ON_HOLD' },
+    );
+    const lost = event(
+      'event-outcome-lost',
+      'opportunity.outcome.changed',
+      opportunityTarget,
+      { previousStatus: 'ON_HOLD', newStatus: 'LOST', lossReasonCode: 'PRICE' },
+    );
+    const { result } = await loadActivityLog({ events: [lost, held] });
+
+    expect(result).toEqual({ status: 'ok', value: { events: [lost, held] } });
+  });
+
+  it.each<[string, Record<string, unknown> | undefined]>([
+    ['no metadata', undefined],
+    ['an unknown status', { previousStatus: 'OPEN', newStatus: 'CLOSED' }],
+    ['the same status twice', { previousStatus: 'OPEN', newStatus: 'OPEN' }],
+    ['a loss without its code', { previousStatus: 'OPEN', newStatus: 'LOST' }],
+    [
+      'an unknown loss code',
+      { previousStatus: 'OPEN', newStatus: 'LOST', lossReasonCode: 'COST' },
+    ],
+    [
+      'a loss code on a win',
+      { previousStatus: 'OPEN', newStatus: 'WON', lossReasonCode: 'PRICE' },
+    ],
+    [
+      'reason text',
+      { previousStatus: 'OPEN', newStatus: 'ON_HOLD', reason: 'Budget' },
+    ],
+  ])(
+    'fails closed on an Opportunity outcome change with %s next to a valid one',
+    async (_case, metadata) => {
+      const valid = event(
+        'event-outcome-valid',
+        'opportunity.outcome.changed',
+        opportunityTarget,
+        { previousStatus: 'OPEN', newStatus: 'WON' },
+      );
+      const { result } = await loadActivityLog({
+        events: [valid, { ...valid, id: 'event-outcome-malformed', metadata }],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
+
   it.each<[string, unknown]>([
     ['no metadata', { ...opportunityResponsibleChanged, metadata: undefined }],
     [

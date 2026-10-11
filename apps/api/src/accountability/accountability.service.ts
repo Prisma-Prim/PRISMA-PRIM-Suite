@@ -1,6 +1,10 @@
 import type { ContractQualityRuleSetVersion } from '../contract/contract-quality.js';
 import type { ContractEventSource } from '../contract/contract-source.js';
 import type { OfferQualityRuleSetVersion } from '../offer/offer-quality.js';
+import type {
+  OpportunityLossReasonCode,
+  OpportunityOutcomeStatus,
+} from '../commercial-intake/opportunity-outcome.js';
 import type { TaskEvent, TaskEventMeaning } from '../task/task.types.js';
 import type {
   ProjectResponsibleChangedActivityEvent,
@@ -736,6 +740,41 @@ export class AccountabilityService {
             workspaceMembershipId: input.after.workspaceMembershipId,
             displayLabel: input.after.displayLabel,
           },
+        },
+      });
+  }
+
+  // Records one committed outcome status transition. Metadata carries exactly
+  // the resulting version, the previous and new status and, for a loss, its
+  // reason code; never reason or note text. The caller commits it with the
+  // transition, its history entry and its receipt.
+  async recordOpportunityOutcomeChanged(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+    opportunityVersion: number;
+    previousStatus: OpportunityOutcomeStatus;
+    newStatus: OpportunityOutcomeStatus;
+    lossReasonCode: OpportunityLossReasonCode | null;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        clientRequestId: input.clientRequestId,
+        opportunityId: input.opportunityId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        action: 'opportunity.outcome.changed',
+        metadata: {
+          opportunityVersion: input.opportunityVersion,
+          previousStatus: input.previousStatus,
+          newStatus: input.newStatus,
+          ...(input.lossReasonCode === null
+            ? {}
+            : { lossReasonCode: input.lossReasonCode }),
         },
       });
   }

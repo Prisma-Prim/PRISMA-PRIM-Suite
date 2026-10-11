@@ -107,6 +107,8 @@ function requestDetail(
       scope: null,
       nextAction: 'Arrange a qualification call',
       status: 'OPEN',
+      statusEnteredAt: '2026-09-26T08:00:00.000Z',
+      outcomeHistory: { entries: [] },
       responsibleWorkspaceMembershipId: responsible.workspaceMembershipId,
       responsibleActor: responsible,
       createdAt: '2026-09-26T08:00:00.000Z',
@@ -124,6 +126,7 @@ function listPage(
         subject: 'Solicitare audit request-1',
         capturedAt: '2026-09-26T08:00:00.000Z',
         initialOpportunity: {
+          status: 'OPEN',
           title: 'Prepare request-1',
           nextAction: 'Arrange a qualification call',
           responsibleActor: responsible,

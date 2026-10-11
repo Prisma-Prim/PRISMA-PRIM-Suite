@@ -2,6 +2,10 @@ import type { TaskEvent } from '../project/task-response';
 import type { ResponsibleMember } from '../project/project-responsible-response';
 import type { ProjectLifecycleActivityMetadata } from '../project/project-lifecycle-response';
 import type { ActorContext } from '../access-types';
+import type {
+  OpportunityLossReasonCode,
+  OpportunityOutcomeStatus,
+} from '../commercial-intake/opportunity-outcome';
 
 export interface VisibleCompany {
   id: string;
@@ -278,6 +282,28 @@ export interface OpportunityResponsibleChangedActivityLogEvent {
   metadata: { before: ResponsibleMember; after: ResponsibleMember };
 }
 
+/**
+ * A changed Opportunity outcome status: the previous and new status and, for
+ * a loss, its reason code. It never carries the reason or note text.
+ */
+export interface OpportunityOutcomeChangedActivityLogEvent {
+  id: string;
+  action: 'opportunity.outcome.changed';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: OpportunityResponsibleChangedActivityLogEvent['target'];
+  metadata:
+    | {
+        previousStatus: OpportunityOutcomeStatus;
+        newStatus: Exclude<OpportunityOutcomeStatus, 'LOST'>;
+      }
+    | {
+        previousStatus: OpportunityOutcomeStatus;
+        newStatus: 'LOST';
+        lossReasonCode: OpportunityLossReasonCode;
+      };
+}
+
 /** Before and after keep only a membership identifier and its captured label. */
 export interface ProjectResponsibleChangedActivityLogEvent {
   id: string;
@@ -321,6 +347,7 @@ export type ActivityLogEvent =
   | TaskActivityLogEvent
   | ProjectResponsibleChangedActivityLogEvent
   | OpportunityResponsibleChangedActivityLogEvent
+  | OpportunityOutcomeChangedActivityLogEvent
   | ProjectLifecycleChangedActivityLogEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent

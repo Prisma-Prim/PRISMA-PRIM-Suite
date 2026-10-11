@@ -71,8 +71,9 @@ export class CommercialIntakeController {
 }
 
 // The Opportunity mutations after R3A1, each at an observed version: replace
-// the next action, or replace the responsible actor within the Company. No
-// Opportunity-level read exists besides the eligible responsible actors.
+// the next action, replace the responsible actor within the Company, or change
+// the outcome status. The only Opportunity-level reads are the eligible
+// responsible actors and the older pages of the outcome history.
 @Controller('commercial-intake/opportunities')
 @UseGuards(ActorContextAdapter)
 export class CommercialIntakeOpportunityController {
@@ -107,6 +108,35 @@ export class CommercialIntakeOpportunityController {
       opportunityId,
       body,
       idempotencyKey,
+    );
+  }
+
+  @Post(':opportunityId/outcome')
+  @HttpCode(200)
+  changeOutcome(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId', new ParseUUIDPipe()) opportunityId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.intake.changeOutcome(
+      actorFrom(request),
+      opportunityId,
+      body,
+      idempotencyKey,
+    );
+  }
+
+  @Get(':opportunityId/outcome-history')
+  outcomeHistory(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId', new ParseUUIDPipe()) opportunityId: string,
+    @Query('cursor') cursor: unknown,
+  ) {
+    return this.intake.outcomeHistory(
+      actorFrom(request),
+      opportunityId,
+      cursor,
     );
   }
 

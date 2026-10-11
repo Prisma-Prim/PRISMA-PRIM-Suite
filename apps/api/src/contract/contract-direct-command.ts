@@ -11,6 +11,7 @@ import type { CompanyContextAuthorization } from '../access/company-context-auth
 import type { AccountabilityService } from '../accountability/accountability.service.js';
 import type { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import type { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
+import type { OpportunityOutcomeStatus } from '../commercial-intake/opportunity-outcome.js';
 import type { DatabaseContext } from '../database/database-context.js';
 import type { OfferService } from '../offer/offer.service.js';
 import type { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
@@ -32,6 +33,8 @@ import {
   CONTRACT_TEMPLATE_VERSION,
   CONTRACT_CLAUSE_VERSIONS,
 } from './contract-representation.js';
+const CLOSED_OPPORTUNITY_STATUSES: ReadonlySet<OpportunityOutcomeStatus> =
+  new Set(['LOST', 'DISQUALIFIED', 'ARCHIVED']);
 interface DirectContractDependencies {
   databaseContext: DatabaseContext;
   authorization: CompanyContextAuthorization;
@@ -164,6 +167,11 @@ export async function createDirectContract(
           existing.version,
         );
       }
+      // Only a new creation is refused once the Opportunity is closed without
+      // a win (Commercial Workflow PRD section 23.5); the exact replay above
+      // still returns a creation committed before the closure.
+      if (CLOSED_OPPORTUNITY_STATUSES.has(opportunity.status))
+        throw conflict('OPPORTUNITY_CLOSED', 'The Opportunity is closed.');
       if (
         await dependencies.versions.find({
           actor,

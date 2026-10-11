@@ -64,7 +64,10 @@ import {
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialIntakeVersionsWith,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  isOpportunityManagerPermissionSetVersion,
   opportunityManagerPermissionsFor,
+  opportunityManagerVersionsWith,
+  type CompanyOpportunityManagerPermission,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
   pricingAdjustmentPermissionsFor,
   type CompanyPricingAdjustmentPermission,
@@ -689,32 +692,64 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
-  // Reassignment needs the live captured Company Opportunity Manager v1, a live
-  // Commercial Intake version carrying both reads and live Company context, all
-  // in the same active Company. A locked read serializes the command against
-  // revocation of any of them and suspension of the actor. It leaves the
-  // Company row unlocked: the command later share-locks its target member
-  // before that row, the order Company assignment administration uses, so a
-  // concurrent grant or revocation for the target cannot deadlock with it.
+  // Reassignment needs the live captured Company Opportunity Manager v1 or v2.
   async requireOpportunityAssign(
     actor: ActorContext,
     lock = false,
   ): Promise<string> {
+    return this.requireOpportunityManagerPermission(
+      actor,
+      'commercial.opportunity.assign',
+      lock,
+    );
+  }
+
+  // The outcome status change exists only in captured Company Opportunity
+  // Manager v2, so a legacy v1 assignment fails closed.
+  async requireOpportunityOutcomeChange(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    return this.requireOpportunityManagerPermission(
+      actor,
+      'commercial.opportunity.outcome.change',
+      lock,
+    );
+  }
+
+  // A manager permission needs a live captured Opportunity Manager version
+  // carrying it, a live Commercial Intake version carrying both reads and
+  // live Company context, all in the same active Company. A locked read
+  // serializes the command against revocation of any of them and suspension
+  // of the actor. It leaves the Company row unlocked: reassignment later
+  // share-locks its target member before that row, the order Company
+  // assignment administration uses, so a concurrent grant or revocation for
+  // the target cannot deadlock with it.
+  private async requireOpportunityManagerPermission(
+    actor: ActorContext,
+    permission: CompanyOpportunityManagerPermission,
+    lock: boolean,
+  ): Promise<string> {
     const company = actor.activeCompany;
     const intakePermissions = company?.commercialIntakePermissions ?? [];
     if (
-      !company?.opportunityManagerPermissions?.includes(
-        'commercial.opportunity.assign',
-      ) ||
+      !company?.opportunityManagerPermissions?.includes(permission) ||
       COMMERCIAL_INTAKE_READ_PERMISSIONS.some(
-        (permission) => !intakePermissions.includes(permission),
+        (required) => !intakePermissions.includes(required),
       )
     )
       throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
       company.id,
-      capturedGrant(COMPANY_OPPORTUNITY_MANAGER_BUNDLE),
+      // One array parameter keeps this locked read's text short enough for
+      // pg_stat_activity to show its locking clause.
+      sql`(${eq(
+        companyRoleAssignments.bundle,
+        COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+      )} AND ${companyRoleAssignments.permissionSetVersion} = ANY(${sql.param(
+        opportunityManagerVersionsWith(permission),
+      )}))`,
       lock,
       'member-rows',
     );
@@ -1281,17 +1316,19 @@ export class CompanyContextAuthorization {
         ];
         company.commercialActivityPermissionSetVersion = 'v1';
       }
-      // The manager bundle carries reassignment only and never contributes
-      // Company context; its prerequisites are evaluated separately.
+      // The manager bundle carries reassignment and, from v2, the outcome
+      // status change. It never contributes Company context; its
+      // prerequisites are evaluated separately.
       if (
         row.bundle === COMPANY_OPPORTUNITY_MANAGER_BUNDLE &&
-        row.permissionSetVersion === 'v1'
+        isOpportunityManagerPermissionSetVersion(row.permissionSetVersion)
       ) {
         company.opportunityManagerPermissions = [
           ...opportunityManagerPermissionsFor(row.permissionSetVersion),
         ];
         company.opportunityManagerPermissionAssignmentId = row.assignmentId;
-        company.opportunityManagerPermissionSetVersion = 'v1';
+        company.opportunityManagerPermissionSetVersion =
+          row.permissionSetVersion;
       }
       if (
         row.bundle === COMPANY_SERVICE_CATALOGUE_BUNDLE &&
@@ -1421,7 +1458,6 @@ function capturedGrant(
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
     | typeof COMPANY_PRICING_USER_BUNDLE
-    | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
     | typeof COMPANY_OFFER_PREPARER_BUNDLE

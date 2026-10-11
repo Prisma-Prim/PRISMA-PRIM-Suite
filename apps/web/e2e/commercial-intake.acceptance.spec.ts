@@ -836,6 +836,233 @@ test('changes the responsible actor of a Request within its Company through the 
   }
 });
 
+test('changes, reloads and consults the outcome status of an Opportunity through the real API and PostgreSQL', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const subject = `Outcome status request — ${suffix}`;
+  const originalText = `Exact source of the ${suffix} outcome status.`;
+  await grantOpportunityManager(page);
+  await grantOfferPreparer(page);
+  try {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const company = page.getByLabel('Active Company', { exact: true });
+    const navigation = page.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    const intake = page.locator('.commercial-intake-workspace');
+    const status = (label: string) =>
+      intake
+        .locator('p')
+        .filter({ hasText: new RegExp(`^Status: ${label} · Since`, 'u') });
+    await selectCompany(page, company, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+    await captureRequest(page, intake, {
+      originalText,
+      subject,
+      opportunityTitle: `Qualify the ${suffix} outcome`,
+      nextAction: 'Call the Client back',
+    });
+    await expect(status('Open')).toBeVisible();
+    await expect(
+      intake.getByText('No status change recorded yet.', { exact: true }),
+    ).toBeVisible();
+
+    async function changeStatus(
+      transition: string,
+      fields: { reason?: string; lossReason?: string; note?: string } = {},
+    ): Promise<void> {
+      await intake.getByRole('button', { name: 'Change status' }).click();
+      await selectOption(intake.getByLabel('Status change', { exact: true }), {
+        label: transition,
+      });
+      if (fields.reason !== undefined)
+        await intake.getByLabel('Reason', { exact: true }).fill(fields.reason);
+      else
+        await expect(intake.getByLabel('Reason', { exact: true })).toHaveCount(
+          0,
+        );
+      if (fields.lossReason !== undefined)
+        await selectOption(intake.getByLabel('Loss reason', { exact: true }), {
+          label: fields.lossReason,
+        });
+      if (fields.note !== undefined)
+        await intake
+          .getByLabel('Note (required for Other)', { exact: true })
+          .fill(fields.note);
+      await expect(
+        intake.getByRole('button', { name: 'Edit next action' }),
+      ).toBeDisabled();
+      const change = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          /\/api\/commercial-intake\/opportunities\/[^/]+\/outcome$/u.test(
+            new URL(response.url()).pathname,
+          ),
+      );
+      await intake.getByRole('button', { name: 'Save status' }).click();
+      expect((await change).status()).toBe(200);
+      await expect(
+        intake.getByRole('alert').filter({ hasText: /^Status changed\.$/u }),
+      ).toBeVisible();
+    }
+
+    await changeStatus('Put on hold', {
+      reason: 'The Client postponed the audit',
+    });
+    await expect(status('On hold')).toBeVisible();
+    await changeStatus('Resume');
+    await expect(status('Open')).toBeVisible();
+    await intake.getByRole('button', { name: 'Change status' }).click();
+    await selectOption(intake.getByLabel('Status change', { exact: true }), {
+      label: 'Mark as lost',
+    });
+    await capture(
+      page,
+      testInfo,
+      `commercial-outcome-editor-${suffix.toLowerCase()}.png`,
+    );
+    await intake
+      .locator('.commercial-intake-outcome')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
+    await changeStatus('Mark as lost', {
+      lossReason: 'Competitor',
+      note: 'They chose a local auditor',
+    });
+    await expect(status('Lost')).toBeVisible();
+
+    await page.reload();
+    const row = intake.getByRole('button').filter({
+      has: page.getByText(subject, { exact: true }),
+    });
+    await expect(row.getByText('Status: Lost', { exact: true })).toBeVisible();
+    await row.click();
+    await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
+    await expect(status('Lost')).toBeVisible();
+    const history = intake.getByRole('list', { name: 'Status history' });
+    const entries = history.getByRole('listitem');
+    await expect(entries).toHaveCount(3);
+    await expect(entries.nth(0)).toContainText('Open → Lost');
+    await expect(entries.nth(0)).toContainText('Loss reason: Competitor');
+    await expect(entries.nth(0)).toContainText(
+      'Note: They chose a local auditor',
+    );
+    await expect(entries.nth(0)).toContainText(/Ada Ionescu · [0-9A-Z]+/u);
+    await expect(entries.nth(1)).toContainText('On hold → Open');
+    await expect(entries.nth(2)).toContainText('Open → On hold');
+    await expect(entries.nth(2)).toContainText(
+      'Reason: The Client postponed the audit',
+    );
+    await capture(
+      page,
+      testInfo,
+      `commercial-outcome-history-${suffix.toLowerCase()}.png`,
+    );
+
+    // A closed Opportunity refuses a new Offer.
+    const opportunityId = await findOpportunityId(page, subject);
+    const offer = await page.request.post(
+      `http://127.0.0.1:4174/api/offers/opportunities/${opportunityId}`,
+      {
+        headers: {
+          ...apiIdentityHeaders,
+          'x-company-context-id': requiredEnvironment(
+            'ACCEPTANCE_PRIMARY_COMPANY_ID',
+          ),
+          'content-type': 'application/json',
+          'idempotency-key': `acceptance-closed-offer-${crypto.randomUUID()}`,
+        },
+        data: { recipient: { kind: 'PRIMARY' } },
+      },
+    );
+    expect(offer.status()).toBe(409);
+    expect(await offer.json()).toMatchObject({ code: 'OPPORTUNITY_NOT_OPEN' });
+
+    // A closed Opportunity offers only Reopen, which asks for a reason.
+    await intake.getByRole('button', { name: 'Change status' }).click();
+    const choices = await openSelect(
+      intake.getByLabel('Status change', { exact: true }),
+    );
+    await expect(choices.getByRole('option')).toHaveText([
+      'Select a status change',
+      'Reopen',
+    ]);
+    await choices.getByRole('option', { name: 'Reopen', exact: true }).click();
+    await intake
+      .getByLabel('Reason', { exact: true })
+      .fill('The Client came back');
+    const reopened = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        /\/api\/commercial-intake\/opportunities\/[^/]+\/outcome$/u.test(
+          new URL(response.url()).pathname,
+        ),
+    );
+    await intake.getByRole('button', { name: 'Save status' }).click();
+    expect((await reopened).status()).toBe(200);
+    await expect(status('Open')).toBeVisible();
+    await expect(entries).toHaveCount(4);
+
+    await grantCommercialActivityReader(page);
+    try {
+      await page.reload();
+      await navigate(page, navigation, 'Activity Log', narrow);
+      const entry = page
+        .locator('.activity-log .activity-log-list > li')
+        .filter({
+          hasText:
+            'Ada Ionescu changed the status of an Opportunity (Open → Lost: Competitor)',
+        })
+        .first();
+      await expect(entry).toBeVisible();
+      await expect(entry).not.toContainText('local auditor');
+      await expectNoHorizontalOverflow(page);
+    } finally {
+      await revokeCommercialActivityReader(page);
+    }
+  } finally {
+    await revokeOfferPreparer(page);
+    await revokeOpportunityManager(page);
+  }
+});
+
+async function grantOfferPreparer(page: Page): Promise<void> {
+  const response = await page.request.post(
+    'http://127.0.0.1:4174/api/company-offer-preparer-assignments',
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-grant-offer-${crypto.randomUUID()}`,
+      },
+      data: {
+        workspaceMembershipId: requiredEnvironment(
+          'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+        ),
+        companyId: requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID'),
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function revokeOfferPreparer(page: Page): Promise<void> {
+  const response = await page.request.delete(
+    `http://127.0.0.1:4174/api/company-offer-preparer-assignments/${requiredEnvironment('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID')}/${requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID')}`,
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'idempotency-key': `acceptance-revoke-offer-${crypto.randomUUID()}`,
+      },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
+
 const colleagueIdentityHeaders = {
   'x-test-external-provider': 'local-demo',
   'x-test-external-subject': 'responsible-colleague',

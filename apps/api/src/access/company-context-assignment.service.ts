@@ -46,6 +46,8 @@ import {
   COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   isCommercialIntakePermissionSetVersion,
   isProjectPermissionSetVersion,
+  isOpportunityManagerPermissionSetVersion,
+  type CompanyOpportunityManagerPermissionSetVersion,
   type CompanyCommercialIntakePermissionSetVersion,
   type CompanyProjectPermissionSetVersion,
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
@@ -120,6 +122,7 @@ type BundleDefinition = {
     | DocumentPermissionSetVersion
     | CompanyCommercialIntakePermissionSetVersion
     | CompanyProjectPermissionSetVersion
+    | CompanyOpportunityManagerPermissionSetVersion
     | null;
 };
 
@@ -225,10 +228,12 @@ const PROFITABILITY_DIRECTOR_BUNDLE: BundleDefinition = {
   label: COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+// A fresh grant captures v2; existing v1 assignments keep their captured
+// version until explicitly revoked and granted again.
 const OPPORTUNITY_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
   label: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 // The opt-in lifecycle approver exists only as captured v1.
 const PROJECT_APPROVER_BUNDLE: BundleDefinition = {
@@ -1613,12 +1618,16 @@ function assignmentRecord(
         permissionSetVersion: 'v1',
       };
     case COMPANY_OPPORTUNITY_MANAGER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
+      if (
+        !isOpportunityManagerPermissionSetVersion(
+          assignment.permissionSetVersion,
+        )
+      )
         throw new Error('Invalid Company Opportunity Manager version.');
       return {
         ...base,
         bundle: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
+        permissionSetVersion: assignment.permissionSetVersion,
       };
     case COMPANY_PROJECT_APPROVER_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')

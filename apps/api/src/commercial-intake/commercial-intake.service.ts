@@ -1,15 +1,17 @@
 import { createHash } from 'node:crypto';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
+import { memberDisplayLabel } from '../access/member-authority.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
@@ -17,16 +19,21 @@ import {
   clientRequests,
   commercialIntakeCommands,
   commercialIntakeNextActionCommands,
+  commercialIntakeOutcomeCommands,
   commercialIntakeResponsibleCommands,
   internalUsers,
   opportunities,
+  opportunityOutcomeHistory,
 } from '../database/schema/index.js';
 import {
   commercialIntakeCursor,
+  outcomeHistoryCursor,
   readCommercialIntakeCursor,
   readCommercialIntakeLimit,
+  readOutcomeHistoryCursor,
 } from './commercial-intake-pagination.js';
 import type {
+  ChangeOpportunityOutcomeCommand,
   ChangeOpportunityResponsibleCommand,
   CommercialIntakeDetail,
   CommercialIntakeListClientProjection,
@@ -34,6 +41,9 @@ import type {
   CommercialIntakeListPage,
   CreateCommercialIntakeCommand,
   OpportunityNextActionUpdateResult,
+  OpportunityOutcomeChangeResult,
+  OpportunityOutcomeHistoryEntry,
+  OpportunityOutcomeHistoryPage,
   OpportunityResponsibleCandidatePage,
   OpportunityResponsibleChangeResult,
   ReadablePricingOpportunity,
@@ -43,10 +53,12 @@ import type {
 } from './commercial-intake.types.js';
 import {
   MAXIMUM_OPPORTUNITY_VERSION,
+  readChangeOpportunityOutcomeCommand,
   readChangeOpportunityResponsibleCommand,
   readCreateCommercialIntakeCommand,
   readUpdateOpportunityNextActionCommand,
 } from './commercial-intake.validation.js';
+import { resolveOutcomeTransition } from './opportunity-outcome.js';
 
 type ClientRequestRow = typeof clientRequests.$inferSelect;
 type OpportunityRow = typeof opportunities.$inferSelect;
@@ -54,6 +66,11 @@ type NextActionCommandRow =
   typeof commercialIntakeNextActionCommands.$inferSelect;
 type ResponsibleCommandRow =
   typeof commercialIntakeResponsibleCommands.$inferSelect;
+type OutcomeCommandRow = typeof commercialIntakeOutcomeCommands.$inferSelect;
+type OutcomeHistoryRow = typeof opportunityOutcomeHistory.$inferSelect;
+
+// Section 23.6: the Request detail and each older page carry at most 50.
+const OUTCOME_HISTORY_PAGE_SIZE = 50;
 
 const UUID_GRAMMAR =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -157,6 +174,7 @@ export class CommercialIntakeService {
         request,
         opportunity,
         responsibleDisplayName,
+        outcomeHistory: { entries: [] },
         client: clientReference,
       });
     });
@@ -629,6 +647,201 @@ export class CommercialIntakeService {
   }
 
   /**
+   * Changes the outcome status of one Company-owned Opportunity through one
+   * section 23.2 transition. It shares the Opportunity version with the
+   * next-action update and the reassignment, records one history entry, one
+   * receipt and one event, and changes nothing else about the Opportunity,
+   * its Request or its Client association.
+   */
+  async changeOutcome(
+    actor: ActorContext,
+    opportunityId: string,
+    value: unknown,
+    key: string | undefined,
+  ): Promise<OpportunityOutcomeChangeResult> {
+    await this.authorization.requireOpportunityOutcomeChange(actor);
+    const command = readChangeOpportunityOutcomeCommand(value);
+    const idempotencyKey = requireIdempotencyKey(key);
+    const fingerprint = outcomeFingerprint(opportunityId, command);
+    return this.databaseContext.transaction(async () => {
+      // Authority is re-read under a share lock so a concurrent revocation
+      // or suspension commits either before this check or after this write.
+      const companyId =
+        await this.authorization.requireOpportunityOutcomeChange(actor, true);
+      await this.lockOutcomeCommand(actor, companyId, idempotencyKey);
+      const replay = await this.findOutcomeCommand(
+        actor,
+        companyId,
+        idempotencyKey,
+      );
+      if (replay) {
+        if (replay.fingerprint !== fingerprint)
+          throw new ConflictException({
+            code: 'IDEMPOTENCY_CONFLICT',
+            message:
+              'Idempotency-Key was already used for another outcome status change.',
+          });
+        // An exact retry resolves before its now-stale observed version or
+        // its now-current status could be rejected: target visibility is
+        // rechecked, then the recorded receipt returns without a second write.
+        const current = await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          false,
+        );
+        return {
+          receipt: outcomeReceiptView(replay),
+          request: await this.loadDetail(
+            actor,
+            companyId,
+            current.clientRequestId,
+            false,
+          ),
+        };
+      }
+
+      const current = await this.requireVisibleOpportunity(
+        actor,
+        companyId,
+        opportunityId,
+        true,
+      );
+      if (current.version !== command.expectedVersion) throw staleVersion();
+      const resolution = resolveOutcomeTransition(
+        current.status,
+        command.change,
+      );
+      if (resolution.kind === 'not-allowed')
+        throw new ConflictException({
+          code: 'OUTCOME_TRANSITION_NOT_ALLOWED',
+          message:
+            'This status change is not allowed from the current status. Reload the Request.',
+        });
+      if (resolution.kind === 'invalid-reason')
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          field: 'reason',
+          message: resolution.message,
+        });
+      // Refused before any write, so no Opportunity change, history entry,
+      // event or receipt commits and the key stays unused.
+      if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
+        throw versionExhausted();
+
+      const { recorded } = resolution;
+      const resultVersion = current.version + 1;
+      const [updated] = await this.databaseContext.connection
+        .update(opportunities)
+        .set({
+          status: recorded.newStatus,
+          version: resultVersion,
+          lastUpdatedByInternalUserId: actor.internalUserId,
+          lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+          lastUpdatedAt: sql`now()`,
+        })
+        .where(
+          and(
+            eq(opportunities.workspaceId, actor.workspaceId),
+            eq(opportunities.companyId, companyId),
+            eq(opportunities.id, opportunityId),
+            eq(opportunities.version, command.expectedVersion),
+          ),
+        )
+        .returning();
+      if (!updated) throw staleVersion();
+      await this.databaseContext.connection
+        .insert(opportunityOutcomeHistory)
+        .values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          opportunityId: updated.id,
+          opportunityVersion: updated.version,
+          previousStatus: recorded.previousStatus,
+          newStatus: recorded.newStatus,
+          lossReasonCode: recorded.lossReasonCode,
+          reason: recorded.reason,
+          note: recorded.note,
+          actorInternalUserId: actor.internalUserId,
+          actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          actorDisplayLabel: memberDisplayLabel(
+            actor.displayName,
+            actor.workspaceMembershipId,
+          ),
+        });
+      await this.accountability.recordOpportunityOutcomeChanged({
+        actor,
+        companyId,
+        clientRequestId: updated.clientRequestId,
+        opportunityId: updated.id,
+        opportunityVersion: updated.version,
+        previousStatus: recorded.previousStatus,
+        newStatus: recorded.newStatus,
+        lossReasonCode: recorded.lossReasonCode,
+      });
+      const [receipt] = await this.databaseContext.connection
+        .insert(commercialIntakeOutcomeCommands)
+        .values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          idempotencyKey,
+          fingerprint,
+          opportunityId: updated.id,
+          expectedVersion: command.expectedVersion,
+          resultVersion,
+          previousStatus: recorded.previousStatus,
+          newStatus: recorded.newStatus,
+        })
+        .returning();
+      if (!receipt)
+        throw new Error('The outcome status command was not recorded.');
+      return {
+        receipt: outcomeReceiptView(receipt),
+        request: await this.loadDetail(
+          actor,
+          companyId,
+          updated.clientRequestId,
+          false,
+        ),
+      };
+    });
+  }
+
+  /**
+   * One older page of a visible Opportunity's outcome history, newest first.
+   * Commercial Intake read is the only authority required.
+   */
+  async outcomeHistory(
+    actor: ActorContext,
+    opportunityId: string,
+    cursorInput: unknown,
+  ): Promise<OpportunityOutcomeHistoryPage> {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+    );
+    const beforeVersion = readOutcomeHistoryCursor(cursorInput);
+    return this.databaseContext.transaction(
+      async () => {
+        await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          false,
+        );
+        return this.outcomeHistoryPage(
+          actor,
+          companyId,
+          opportunityId,
+          beforeVersion,
+        );
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
+  }
+
+  /**
    * The members who may become responsible for one visible Opportunity. The
    * same authority as the command is required; Access owns eligibility.
    */
@@ -727,6 +940,7 @@ export class CommercialIntakeService {
             initialOpportunity: {
               title: opportunity.title,
               nextAction: opportunity.nextAction,
+              status: opportunity.status,
               responsibleActor: {
                 workspaceMembershipId:
                   opportunity.responsibleWorkspaceMembershipId,
@@ -812,6 +1026,12 @@ export class CommercialIntakeService {
         ),
       );
     if (!row) throw new NotFoundException();
+    const outcomeHistory = await this.outcomeHistoryPage(
+      actor,
+      companyId,
+      row.opportunity.id,
+      undefined,
+    );
     const view = (
       client?: NonNullable<CommercialIntakeDetail['clientReference']>,
     ): CommercialIntakeDetail =>
@@ -819,6 +1039,7 @@ export class CommercialIntakeService {
         request: row.request,
         opportunity: row.opportunity,
         responsibleDisplayName: row.responsibleDisplayName,
+        outcomeHistory,
         ...(client ? { client } : {}),
       });
     if (!row.request.clientAccountId) return view();
@@ -850,6 +1071,37 @@ export class CommercialIntakeService {
       return view();
     }
     return view(clientReferenceView(row.request.clientAccountId, reference));
+  }
+
+  private async outcomeHistoryPage(
+    actor: ActorContext,
+    companyId: string,
+    opportunityId: string,
+    beforeVersion: number | undefined,
+  ): Promise<OpportunityOutcomeHistoryPage> {
+    const rows = await this.databaseContext.connection
+      .select()
+      .from(opportunityOutcomeHistory)
+      .where(
+        and(
+          eq(opportunityOutcomeHistory.workspaceId, actor.workspaceId),
+          eq(opportunityOutcomeHistory.companyId, companyId),
+          eq(opportunityOutcomeHistory.opportunityId, opportunityId),
+          beforeVersion === undefined
+            ? undefined
+            : lt(opportunityOutcomeHistory.opportunityVersion, beforeVersion),
+        ),
+      )
+      .orderBy(desc(opportunityOutcomeHistory.opportunityVersion))
+      .limit(OUTCOME_HISTORY_PAGE_SIZE + 1);
+    const entries = rows.slice(0, OUTCOME_HISTORY_PAGE_SIZE);
+    const last = entries.at(-1);
+    return {
+      entries: entries.map(outcomeHistoryEntryView),
+      ...(rows.length > OUTCOME_HISTORY_PAGE_SIZE && last
+        ? { nextCursor: outcomeHistoryCursor(last.opportunityVersion) }
+        : {}),
+    };
   }
 
   private async recordClientReference(actor: ActorContext, clientId: string) {
@@ -1057,6 +1309,45 @@ export class CommercialIntakeService {
     return command;
   }
 
+  private async lockOutcomeCommand(
+    actor: ActorContext,
+    companyId: string,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const lockKey = JSON.stringify([
+      'commercial-intake.change-outcome',
+      actor.workspaceId,
+      companyId,
+      actor.workspaceMembershipId,
+      idempotencyKey,
+    ]);
+    await this.databaseContext.connection.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+    );
+  }
+
+  private async findOutcomeCommand(
+    actor: ActorContext,
+    companyId: string,
+    idempotencyKey: string,
+  ): Promise<OutcomeCommandRow | undefined> {
+    const [command] = await this.databaseContext.connection
+      .select()
+      .from(commercialIntakeOutcomeCommands)
+      .where(
+        and(
+          eq(commercialIntakeOutcomeCommands.workspaceId, actor.workspaceId),
+          eq(commercialIntakeOutcomeCommands.companyId, companyId),
+          eq(
+            commercialIntakeOutcomeCommands.actorWorkspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(commercialIntakeOutcomeCommands.idempotencyKey, idempotencyKey),
+        ),
+      );
+    return command;
+  }
+
   private async findNextActionCommand(
     actor: ActorContext,
     companyId: string,
@@ -1108,6 +1399,51 @@ function responsibleFingerprint(
       }),
     )
     .digest('hex');
+}
+
+// The requested change exactly as submitted, so any changed field conflicts.
+function outcomeFingerprint(
+  opportunityId: string,
+  command: ChangeOpportunityOutcomeCommand,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        opportunityId,
+        expectedVersion: command.expectedVersion,
+        change: command.change,
+      }),
+    )
+    .digest('hex');
+}
+
+function outcomeReceiptView(
+  command: OutcomeCommandRow,
+): OpportunityOutcomeChangeResult['receipt'] {
+  return {
+    opportunityId: command.opportunityId,
+    previousStatus: command.previousStatus,
+    status: command.newStatus,
+    version: command.resultVersion,
+  };
+}
+
+function outcomeHistoryEntryView(
+  row: OutcomeHistoryRow,
+): OpportunityOutcomeHistoryEntry {
+  return {
+    previousStatus: row.previousStatus,
+    newStatus: row.newStatus,
+    lossReasonCode: row.lossReasonCode,
+    reason: row.reason,
+    note: row.note,
+    version: row.opportunityVersion,
+    actor: {
+      workspaceMembershipId: row.actorWorkspaceMembershipId,
+      displayLabel: row.actorDisplayLabel,
+    },
+    changedAt: row.changedAt.toISOString(),
+  };
 }
 
 function responsibleReceiptView(
@@ -1165,11 +1501,13 @@ function detailView({
   request,
   opportunity,
   responsibleDisplayName,
+  outcomeHistory,
   client,
 }: {
   request: ClientRequestRow;
   opportunity: OpportunityRow;
   responsibleDisplayName: string;
+  outcomeHistory: OpportunityOutcomeHistoryPage;
   client?: NonNullable<CommercialIntakeDetail['clientReference']>;
 }): CommercialIntakeDetail {
   if (
@@ -1205,6 +1543,12 @@ function detailView({
       scope: opportunity.scope,
       nextAction: opportunity.nextAction,
       status: opportunity.status,
+      // The newest history entry records when the current status was entered;
+      // without one the Opportunity has been OPEN since its capture.
+      statusEnteredAt:
+        outcomeHistory.entries[0]?.changedAt ??
+        opportunity.createdAt.toISOString(),
+      outcomeHistory,
       responsibleWorkspaceMembershipId:
         opportunity.responsibleWorkspaceMembershipId,
       responsibleActor: {
