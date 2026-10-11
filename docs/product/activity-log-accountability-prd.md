@@ -223,6 +223,8 @@ Retention and authorized export require a later policy based on business and leg
   provisional reassignment adds `opportunity.responsible.changed`. The approved
   one-time Client-association contract adds `client_request.client_associated`
   to that projection only when its owning implementation is delivered.
+  The approved provisional outcome status contract adds
+  `opportunity.outcome.changed`, without reason or note text, once delivered.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
