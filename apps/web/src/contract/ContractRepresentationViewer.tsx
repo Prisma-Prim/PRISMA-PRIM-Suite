@@ -4,7 +4,23 @@ import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { contractCopy as copy } from './contract.copy';
+import { useContractDecisionCopy } from './contract-decision.copy';
 import type { ContractView } from './contract-response';
+import { useContractSignatureCopy } from './contract-signature.copy';
+
+type ContractVersionState = Pick<
+  ContractView['version'],
+  'decisionState' | 'executionState'
+>;
+const DECISION_LABELS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+} as const satisfies Record<ContractVersionState['decisionState'], string>;
+const EXECUTION_LABELS = {
+  NOT_EXECUTED: 'pending',
+  EXECUTED: 'executed',
+} as const satisfies Record<ContractVersionState['executionState'], string>;
 
 type DocumentView =
   | { kind: 'closed' | 'loading' | 'denied' | 'error' }
@@ -16,6 +32,7 @@ export function ContractRepresentationViewer({
   opportunityId,
   contractId,
   versionId,
+  versionState,
   kind,
   onCompanyContextRejected,
   onActorRevalidated,
@@ -26,11 +43,15 @@ export function ContractRepresentationViewer({
   opportunityId: string;
   contractId: string;
   versionId: string;
+  /** The viewed version's own recorded state, shown outside the exact bytes. */
+  versionState: ContractVersionState;
   kind: ContractView['kind'];
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const decisionCopy = useContractDecisionCopy();
+  const signatureCopy = useContractSignatureCopy();
   const [view, setView] = useState<DocumentView>({ kind: 'closed' });
   const [requestNumber, setRequestNumber] = useState(0);
   useEffect(() => {
@@ -109,7 +130,10 @@ export function ContractRepresentationViewer({
       )}
       {view.kind === 'ready' && (
         <>
-          <p>{copy.draft}</p>
+          <p>
+            {decisionCopy(DECISION_LABELS[versionState.decisionState])} ·{' '}
+            {signatureCopy(EXECUTION_LABELS[versionState.executionState])}
+          </p>
           <p>
             {copy.checksum}: <code>{view.sha256}</code>
           </p>

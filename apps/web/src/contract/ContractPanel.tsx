@@ -713,6 +713,7 @@ export function ContractPanel({
               contractId={view.contract.id}
               kind={view.contract.kind}
               versionId={view.contract.version.id}
+              versionState={view.contract.version}
               onCompanyContextRejected={onCompanyContextRejected}
               onActorRevalidated={onActorRevalidated}
               onWorkspaceAccessRejected={onWorkspaceAccessRejected}

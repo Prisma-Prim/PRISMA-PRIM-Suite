@@ -2737,20 +2737,17 @@ describe('ContractPanel', () => {
             : { contract: fixture() },
         ),
       );
-    render(
-      <ContractPanel
-        actor={actor(false)}
-        identity={identity}
-        opportunityId="opportunity-one"
-        onCompanyContextRejected={() => undefined}
-      />,
-    );
+    renderEnglishReader();
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Open exact Contract document',
       }),
     );
-    expect(await screen.findByText('Draft — not approved')).toBeVisible();
+    expect(
+      await within(documentRegion()).findByText(
+        'Pending approval · Not executed',
+      ),
+    ).toBeVisible();
     const document = screen.getByTitle('Illustrative Contract document');
     expect(document).toHaveAttribute('srcdoc', representation().html);
     expect(document).toHaveAttribute('sandbox', '');
@@ -2769,6 +2766,153 @@ describe('ContractPanel', () => {
         path.toString().endsWith('/representation'),
       ),
     ).toHaveLength(2);
+  });
+  it.each([
+    {
+      state: 'pending',
+      contract: fixture,
+      label: 'Pending approval · Not executed',
+    },
+    {
+      state: 'rejected',
+      contract: rejectedUiFixture,
+      label: 'Rejected internally · Not executed',
+    },
+    {
+      state: 'approved',
+      contract: approvedUiFixture,
+      label: 'Approved internally · Not executed',
+    },
+    {
+      state: 'executed',
+      contract: executedUiFixture,
+      label: 'Approved internally · Executed — simulated evidence only',
+    },
+  ])(
+    'labels the opened document with its $state version state and unchanged checksum',
+    async ({ contract, label }) => {
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        response(
+          input.toString().endsWith('/representation')
+            ? representation()
+            : { contract: contract() },
+        ),
+      );
+      renderEnglishReader();
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Open exact Contract document',
+        }),
+      );
+      const viewer = documentRegion();
+      expect(await within(viewer).findByText(label)).toBeVisible();
+      expect(within(viewer).getByText(representation().sha256)).toBeVisible();
+      expect(
+        within(viewer).queryByText(/legally signed|Draft — not approved/u),
+      ).not.toBeInTheDocument();
+    },
+  );
+  it('labels a reopened superseded version with its own recorded state', async () => {
+    const stored = fixture();
+    const current = {
+      ...stored,
+      revision: 3,
+      version: {
+        ...stored.version,
+        id: 'version-two',
+        versionNumber: 2,
+        createdContractRevision: 3,
+        predecessorVersionId: 'version-one',
+        differences: [],
+      },
+    };
+    const rejected = rejectedUiFixture();
+    const superseded = {
+      ...rejected,
+      revision: 3,
+      version: { ...rejected.version, supersededByVersionId: 'version-two' },
+    };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = input.toString();
+      if (path.endsWith('/versions'))
+        return response({
+          items: [
+            { id: 'version-two', versionNumber: 2 },
+            { id: 'version-one', versionNumber: 1 },
+          ],
+          nextCursor: null,
+        });
+      if (path.endsWith('/versions/version-one/representation'))
+        return response(representation());
+      if (path.endsWith('/versions/version-two/representation'))
+        return response({
+          ...representation(),
+          contractVersionId: 'version-two',
+          sha256: '2'.repeat(64),
+        });
+      if (path.endsWith('/versions/version-one'))
+        return response({ contract: superseded });
+      return response({ contract: current });
+    });
+    renderEnglishReader();
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open exact Contract document',
+      }),
+    );
+    expect(
+      await within(documentRegion()).findByText(
+        'Pending approval · Not executed',
+      ),
+    ).toBeVisible();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open Contract Version 1' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open exact Contract document',
+      }),
+    );
+    const viewer = documentRegion();
+    expect(
+      await within(viewer).findByText('Rejected internally · Not executed'),
+    ).toBeVisible();
+    expect(within(viewer).getByText(representation().sha256)).toBeVisible();
+    expect(
+      within(viewer).queryByText('Pending approval · Not executed'),
+    ).not.toBeInTheDocument();
+  });
+  it('labels the reopened document with the reloaded state of the same version and its unchanged checksum', async () => {
+    const reads = [fixture(), approvedUiFixture(), executedUiFixture()];
+    let current = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      response(
+        input.toString().endsWith('/representation')
+          ? representation()
+          : { contract: reads[current] },
+      ),
+    );
+    renderEnglishReader();
+    for (const [index, label] of [
+      'Pending approval · Not executed',
+      'Approved internally · Not executed',
+      'Approved internally · Executed — simulated evidence only',
+    ].entries()) {
+      if (index > 0) {
+        current = index;
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Reload Contract' }),
+        );
+      }
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Open exact Contract document',
+        }),
+      );
+      const viewer = documentRegion();
+      expect(await within(viewer).findByText(label)).toBeVisible();
+      expect(within(viewer).getByText(representation().sha256)).toBeVisible();
+    }
   });
   it.each([
     'opportunity',
@@ -3363,6 +3507,42 @@ function approvedUiFixture() {
       },
     },
   };
+}
+function rejectedUiFixture() {
+  const stored = fixture();
+  return {
+    ...stored,
+    revision: 2,
+    version: {
+      ...stored.version,
+      decisionState: 'REJECTED',
+      decision: {
+        id: 'rejection-one',
+        contractVersionId: 'version-one',
+        revision: 2,
+        kind: 'REJECT',
+        actorWorkspaceMembershipId: 'member-one',
+        decidedAt: '2026-10-07T09:00:00.000Z',
+        reason: 'Synthetic rejection',
+      },
+    },
+  };
+}
+function renderEnglishReader() {
+  window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+  return render(
+    <InterfaceLocaleProvider>
+      <ContractPanel
+        actor={actor(false)}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />
+    </InterfaceLocaleProvider>,
+  );
+}
+function documentRegion() {
+  return screen.getByRole('region', { name: 'Illustrative Contract document' });
 }
 async function fillSignatureFields() {
   fireEvent.change(await screen.findByLabelText('Provider signatory label'), {

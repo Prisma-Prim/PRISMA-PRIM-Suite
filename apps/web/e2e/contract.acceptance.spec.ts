@@ -416,6 +416,15 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   ).toBeVisible();
   await expect(frame.locator('script')).toHaveCount(0);
   const documentElement = panel.locator('iframe');
+  const documentRegion = panel.getByRole('region', {
+    name: 'Illustrative Contract document',
+    exact: true,
+  });
+  await expect(
+    documentRegion.getByText('Pending approval · Not executed', {
+      exact: true,
+    }),
+  ).toBeVisible();
   const recordedHtml = await documentElement.getAttribute('srcdoc');
   const recordedChecksum = await panel
     .locator('.contract-representation code')
@@ -937,6 +946,14 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     .getByRole('button', { name: 'Open exact Contract document', exact: true })
     .click();
   await expect(documentElement).toHaveAttribute('srcdoc', recordedHtml ?? '');
+  await expect(panel.locator('.contract-representation code')).toHaveText(
+    recordedChecksum ?? '',
+  );
+  await expect(
+    documentRegion.getByText('Approved internally · Not executed', {
+      exact: true,
+    }),
+  ).toBeVisible();
   await decision.screenshot({
     path: testInfo.outputPath(
       'contract-approved-real-' + suffix.toLowerCase() + '.png',
@@ -1085,6 +1102,13 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(panel.locator('.contract-representation code')).toHaveText(
     recordedChecksum ?? '',
   );
+  await expect(
+    documentRegion.getByText(
+      'Approved internally · Executed — simulated evidence only',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(documentRegion.getByText(/legally signed/u)).toHaveCount(0);
   const executedRead = object(
     object(
       await body(
@@ -2843,7 +2867,12 @@ test('C7 prepares, executes and references a persisted illustrative Precontract'
     .getByRole('button', { name: 'Open exact Contract document', exact: true })
     .click();
   await expect(
-    panel.getByText('Draft — not approved', { exact: true }),
+    panel
+      .getByRole('region', {
+        name: 'Illustrative Contract document',
+        exact: true,
+      })
+      .getByText('Pending approval · Not executed', { exact: true }),
   ).toBeVisible();
   const frame = panel.frameLocator(
     'iframe[title="Illustrative Contract document"]',
