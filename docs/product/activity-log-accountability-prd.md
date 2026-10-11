@@ -225,6 +225,8 @@ Retention and authorized export require a later policy based on business and leg
   to that projection only when its owning implementation is delivered.
   The approved provisional outcome status contract adds
   `opportunity.outcome.changed`, without reason or note text, once delivered.
+  The approved provisional Sales Stage contract adds `opportunity.stage.changed`
+  and `sales_stage.configured` once delivered, both under that projection.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
