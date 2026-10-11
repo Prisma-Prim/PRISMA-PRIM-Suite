@@ -1,3 +1,4 @@
+import { contractSource } from './contract-source.js';
 import {
   ConflictException,
   HttpException,
@@ -25,6 +26,7 @@ import { commandFingerprint } from '../pricing-configuration/pricing-configurati
 import {
   readCreateContractVersionCommand,
   readAddendumCommand,
+  readDirectVersionCommand,
   selectedAddendumSnapshotId,
 } from './contract.validation.js';
 import {
@@ -110,13 +112,23 @@ export async function createContractVersion(
               }
             : null;
       if (!selection) throw new Error('Invalid recorded Contract party.');
-      const recipient = await dependencies.clients.lockOfferRecipient(
-        actor,
-        found.contract.originalClientAccountId,
-        selection,
-      );
+      // DIRECT receipts require current authority, then replay before current identity validation.
+      if (found.contract.origin === 'DIRECT')
+        await dependencies.clients.readProjectReferences(
+          actor,
+          [found.contract.originalClientAccountId],
+          true,
+        );
+      const initialRecipient =
+        found.contract.origin === 'DIRECT'
+          ? null
+          : await dependencies.clients.lockOfferRecipient(
+              actor,
+              found.contract.originalClientAccountId,
+              selection,
+            );
       const selectedSnapshotId =
-        found.contract.kind === 'ADDENDUM'
+        found.contract.origin === 'DIRECT' || found.contract.kind === 'ADDENDUM'
           ? selectedAddendumSnapshotId(input.payload)
           : null;
       if (selectedSnapshotId !== null)
@@ -168,16 +180,31 @@ export async function createContractVersion(
         if (!stored) throw new Error('Missing recorded Contract Version.');
         return createdVersionResult(stored.contract, stored.version);
       }
+      const recipient =
+        initialRecipient ??
+        (await dependencies.clients.lockOfferRecipient(
+          actor,
+          found.contract.originalClientAccountId,
+          selection,
+        ));
       const command =
         found.contract.kind === 'ADDENDUM'
-          ? readAddendumCommand(input.payload)
-          : {
-              ...readCreateContractVersionCommand(input.payload),
-              changeSummary: null,
-              pricingSnapshotId: found.version.pricingSnapshotId,
-            };
+          ? {
+              ...readAddendumCommand(input.payload),
+              scopeNote: null,
+              commercialConditions: null,
+            }
+          : found.contract.origin === 'DIRECT'
+            ? readDirectVersionCommand(input.payload)
+            : {
+                ...readCreateContractVersionCommand(input.payload),
+                changeSummary: null,
+                scopeNote: null,
+                commercialConditions: null,
+                pricingSnapshotId: found.version.pricingSnapshotId,
+              };
       const source =
-        found.contract.kind === 'ADDENDUM'
+        found.contract.origin !== 'ACCEPTED_OFFER'
           ? null
           : await dependencies.offers.inspectContractQualitySource({
               actor,
@@ -244,8 +271,10 @@ export async function createContractVersion(
           recipientTaxId: recipient.recipient.taxId,
           recipientLegalAddress: recipient.recipient.legalAddress,
           issuingCompanyLabel: current.version.issuingCompanyLabel,
-          scopeNote: source?.scopeNote ?? null,
-          commercialConditions: source?.commercialConditions ?? null,
+          scopeNote: source ? source.scopeNote : command.scopeNote,
+          commercialConditions: source
+            ? source.commercialConditions
+            : command.commercialConditions,
           termStartsOn: command.termStartsOn,
           termEndsOn: command.termEndsOn,
           specialConditions: command.specialConditions,
@@ -295,16 +324,7 @@ export async function createContractVersion(
         contractVersionId: version.id,
         versionNumber: version.versionNumber,
         predecessorVersionNumber: current.version.versionNumber,
-        offerVersionId: current.contract.sourceOfferVersionId,
-        ...(current.contract.parentContractId &&
-        current.contract.addendumOrdinal
-          ? {
-              addendum: {
-                parentContractId: current.contract.parentContractId,
-                addendumOrdinal: current.contract.addendumOrdinal,
-              },
-            }
-          : {}),
+        source: contractSource(current.contract),
         pricingSnapshotId: version.pricingSnapshotId,
         occurredAt: createdAt,
       });

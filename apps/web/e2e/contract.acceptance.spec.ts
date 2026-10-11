@@ -637,7 +637,15 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   await expect(panel.locator('.contract-representation code')).toHaveText(
     recordedChecksum ?? '',
   );
-  await page.waitForLoadState('networkidle');
+  await expect(
+    frame.getByRole('heading', { name: 'Illustrative Contract', exact: true }),
+  ).toBeVisible();
+  await documentElement.scrollIntoViewIfNeeded();
+  await expect(documentElement).toBeInViewport();
+  await frame.locator('footer').scrollIntoViewIfNeeded();
+  await expect(
+    frame.locator('footer').getByText(text(snapshot.id), { exact: false }),
+  ).toBeVisible();
   const rejectionIntake = object(
     await command({
       request,
@@ -2046,6 +2054,489 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+test('C9 governs a persisted DIRECT Contract without Offer authority', async ({
+  page,
+  request,
+}, testInfo) => {
+  test.setTimeout(120000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const name = 'Direct Contract Company ' + suffix;
+  const actor = object(
+    await body(
+      await request.get(api + '/access/current-actor', { headers: preparer }),
+    ),
+  );
+  const membership = text(actor.workspaceMembershipId);
+  const company = object(
+    await command({
+      request: request,
+      path: '/companies',
+      data: { displayName: name },
+      key: 'c9-company-' + suffix,
+      companyId: undefined,
+      administrator: true,
+    }),
+  );
+  const companyId = text(company.id);
+  for (const route of [
+    'company-context',
+    'company-director-client',
+    'company-commercial-intake',
+    'company-service-catalogue',
+    'company-pricing-configuration',
+    'company-pricing-user',
+    'company-contract-preparer',
+    'company-contract-approver',
+  ])
+    await command({
+      request: request,
+      path: '/' + route + '-assignments',
+      data: { workspaceMembershipId: membership, companyId },
+      key: 'c9-grant-' + route + '-' + suffix,
+      companyId: undefined,
+      administrator: true,
+    });
+  const client = object(
+    await command({
+      request: request,
+      path: '/clients',
+      data: {
+        displayName: 'Synthetic Contract Recipient ' + suffix,
+        taxId: 'SYNTHETIC-C9-' + suffix.toUpperCase(),
+        address: '1 Example Street',
+      },
+      key: 'c9-client-' + suffix,
+      companyId: companyId,
+    }),
+  );
+  const intake = object(
+    await command({
+      request: request,
+      path: '/commercial-intake/requests',
+      data: {
+        originalText: 'Synthetic source for the Contract browser proof.',
+        subject: 'Direct Contract Request ' + suffix,
+        clientAccountId: text(client.id),
+        opportunity: {
+          title: 'Prepare Contract ' + suffix,
+          scope: 'Synthetic scope',
+          nextAction: 'Prepare the first Contract',
+        },
+      },
+      key: 'c9-request-' + suffix,
+      companyId: companyId,
+    }),
+  );
+  const opportunityId = text(object(intake.initialOpportunity).id);
+  const effectiveFrom = new Date(
+    Date.now() + initialOffset + 60000,
+  ).toISOString();
+  const rule = object(
+    object(
+      await command({
+        request: request,
+        path: '/pricing-configuration/rule-versions',
+        data: {
+          label: 'Synthetic C9 rule',
+          effectiveFrom,
+          expectedActiveVersionNumber: null,
+        },
+        key: 'c9-rule-' + suffix,
+        companyId: companyId,
+      }),
+    ).version,
+  );
+  const definition = object(
+    object(
+      await command({
+        request: request,
+        path: '/commercial-catalogue/service-definitions',
+        data: {
+          code: 'C9-' + suffix.toUpperCase(),
+          name: 'Illustrative Contract service',
+          description: null,
+        },
+        key: 'c9-definition-' + suffix,
+        companyId: companyId,
+      }),
+    ).definition,
+  );
+  const offering = object(
+    object(
+      await command({
+        request: request,
+        path: '/commercial-catalogue/offerings',
+        data: {
+          serviceDefinitionId: text(definition.id),
+          commercialLabel: null,
+        },
+        key: 'c9-offering-' + suffix,
+        companyId: companyId,
+      }),
+    ).offering,
+  );
+  const tariff = object(
+    object(
+      await command({
+        request: request,
+        path:
+          '/pricing-configuration/offerings/' +
+          text(offering.id) +
+          '/tariff-versions',
+        data: {
+          unit: 'illustrative-unit',
+          unitAmount: '300.0000',
+          currency: 'EUR',
+          taxRatePercent: '15.00',
+          taxLabel: 'Illustrative tax',
+          effectiveFrom,
+          expectedActiveVersionNumber: null,
+        },
+        key: 'c9-tariff-' + suffix,
+        companyId: companyId,
+      }),
+    ).version,
+  );
+  await writeFile(clockFile(), JSON.stringify(initialOffset + 120000));
+  const snapshot = object(
+    await command({
+      request: request,
+      path: '/pricing/opportunities/' + opportunityId + '/snapshots',
+      data: {
+        pricingRuleVersionNumber: rule.versionNumber,
+        lines: [
+          {
+            offeringId: text(offering.id),
+            tariffVersionNumber: tariff.versionNumber,
+            quantity: '1',
+          },
+        ],
+      },
+      key: 'c9-snapshot-' + suffix,
+      companyId: companyId,
+    }),
+  );
+  const secondSnapshot = object(
+    await command({
+      request,
+      path: '/pricing/opportunities/' + opportunityId + '/snapshots',
+      companyId,
+      key: 'c9-second-snapshot-' + suffix,
+      data: {
+        pricingRuleVersionNumber: rule.versionNumber,
+        lines: [
+          {
+            offeringId: text(offering.id),
+            tariffVersionNumber: tariff.versionNumber,
+            quantity: '2',
+          },
+        ],
+      },
+    }),
+  );
+  expect(
+    (
+      await request.get(api + '/offers/opportunities/' + opportunityId, {
+        headers: { ...preparer, 'x-company-context-id': companyId },
+      })
+    ).status(),
+  ).toBe(403);
+  const calls: string[] = [];
+  page.on('request', (sent) => calls.push(new URL(sent.url()).pathname));
+  await page.goto('/?frame=classic#requests');
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(page.getByLabel('Active Company', { exact: true }), {
+    label: name,
+  });
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  const openRequest = () =>
+    page
+      .getByRole('button')
+      .filter({
+        has: page.getByText('Direct Contract Request ' + suffix, {
+          exact: true,
+        }),
+      })
+      .click();
+  await openRequest();
+  const panel = page.getByRole('region', { name: 'Contract', exact: true });
+  await panel
+    .getByRole('textbox', { name: 'Internal direct reason', exact: true })
+    .fill('Exact internal reason ' + suffix);
+  await panel
+    .getByRole('textbox', { name: 'Direct scope', exact: true })
+    .fill('Exact direct scope ' + suffix);
+  await selectOption(
+    panel.getByRole('combobox', { name: 'Pricing Snapshot', exact: true }),
+    {
+      value: text(snapshot.id),
+    },
+  );
+  const base = '/contracts/opportunities/' + opportunityId,
+    attempts: Array<{ body: string | null; key: string | undefined }> = [];
+  await page.route('**/api' + base + '/direct', async (route) => {
+    const sent = route.request();
+    attempts.push({
+      body: sent.postData(),
+      key: sent.headers()['idempotency-key'],
+    });
+    if (attempts.length === 1) {
+      expect((await route.fetch()).status()).toBe(201);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  await panel
+    .getByRole('button', { name: 'Create direct Contract', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    panel.getByText(
+      'The direct Contract result is uncertain. Retry the identical command.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await panel
+    .getByRole('button', {
+      name: 'Retry identical direct Contract command',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(panel.getByText('Direct origin', { exact: true })).toBeVisible();
+  expect(attempts[1]).toEqual(attempts[0]);
+  await page.unroute('**/api' + base + '/direct');
+  const read = async () =>
+    object(
+      object(
+        await body(
+          await request.get(api + base, {
+            headers: { ...preparer, 'x-company-context-id': companyId },
+          }),
+        ),
+      ).contract,
+    );
+  const initial = await read(),
+    initialVersion = object(initial.version),
+    initialRepresentation = object(initialVersion.representation);
+  expect(initial.origin).toBe('DIRECT');
+  expect(initial.sourceOfferVersionId).toBeNull();
+  expect(initialVersion.pricingSnapshotId).toBe(snapshot.id);
+  expect(text(initialRepresentation.html)).not.toContain(
+    'Exact internal reason',
+  );
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c9-real-created-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  await panel
+    .getByRole('textbox', { name: 'Direct scope', exact: true })
+    .fill('Revised direct scope ' + suffix);
+  await panel
+    .getByRole('textbox', {
+      name: 'Direct commercial conditions (optional)',
+      exact: true,
+    })
+    .fill('Revised exact conditions');
+  await selectOption(
+    panel.getByRole('combobox', { name: 'Pricing Snapshot', exact: true }),
+    {
+      value: text(secondSnapshot.id),
+    },
+  );
+  const revision = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().endsWith(base + '/versions'),
+  );
+  await panel
+    .getByRole('button', {
+      name: 'Create new direct Contract Version',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  expect((await revision).status()).toBe(201);
+  await expect(
+    panel
+      .getByRole('definition')
+      .filter({ hasText: new RegExp('^Revised direct scope ' + suffix + '$') }),
+  ).toBeVisible();
+  const revised = await read(),
+    revisedVersion = object(revised.version),
+    versionId = text(revisedVersion.id),
+    representation = object(revisedVersion.representation);
+  expect(revised.directReason).toBe(initial.directReason);
+  expect(revisedVersion.pricingSnapshotId).toBe(secondSnapshot.id);
+  expect(object(revisedVersion.pricingSnapshot).total).toBe('690.00');
+  expect(revisedVersion.differences).toEqual(
+    expect.arrayContaining([
+      {
+        field: 'scopeNote',
+        before: 'Exact direct scope ' + suffix,
+        after: 'Revised direct scope ' + suffix,
+      },
+      expect.objectContaining({
+        field: 'pricingSnapshotId',
+        before: snapshot.id,
+        after: secondSnapshot.id,
+        afterSnapshot: expect.objectContaining({
+          currency: 'EUR',
+          total: '690.00',
+        }),
+      }),
+    ]),
+  );
+  const predecessor = object(
+    object(
+      await body(
+        await request.get(api + base + '/versions/' + text(initialVersion.id), {
+          headers: { ...preparer, 'x-company-context-id': companyId },
+        }),
+      ),
+    ).contract,
+  );
+  expect(object(predecessor.version).representation).toEqual(
+    initialRepresentation,
+  );
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  const frame = panel.frameLocator(
+    'iframe[title="Illustrative Contract document"]',
+  );
+  await expect(frame.getByText('Direct origin', { exact: true })).toBeVisible();
+  await expect(frame.locator('body')).not.toContainText(
+    'Exact internal reason',
+  );
+  await expect(frame.locator('footer')).toContainText(text(secondSnapshot.id));
+  await expect(panel.locator('iframe')).toHaveAttribute(
+    'srcdoc',
+    text(representation.html),
+  );
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c9-real-revised-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  const checks = panel.getByRole('region', {
+    name: 'Contract Quality Checks',
+    exact: true,
+  });
+  await checks
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    checks.getByText('Direct origin requires review', { exact: true }),
+  ).toBeVisible();
+  const decision = panel.getByRole('region', {
+    name: 'Contract decision',
+    exact: true,
+  });
+  const refused = page.waitForResponse((response) =>
+    response.url().endsWith('/versions/' + versionId + '/approve'),
+  );
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .click();
+  expect((await refused).status()).toBe(409);
+  await decision
+    .getByRole('checkbox', {
+      name: 'I acknowledge this warning: Direct origin requires review',
+      exact: true,
+    })
+    .check();
+  await decision
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    decision.getByText('Decision recorded.', { exact: true }),
+  ).toBeVisible();
+  const signatures = panel.getByRole('region', {
+    name: 'Simulated Contract signatures',
+    exact: true,
+  });
+  await signatures
+    .getByRole('textbox', { name: 'Provider signatory label', exact: true })
+    .fill('Synthetic direct provider');
+  await signatures
+    .getByRole('textbox', { name: 'Client signatory label', exact: true })
+    .fill('Synthetic direct client');
+  const signedOn = new Date(Date.now() + initialOffset + 120000)
+    .toISOString()
+    .slice(0, 10);
+  await signatures
+    .getByLabel('Provider signing date', { exact: true })
+    .fill(signedOn);
+  await signatures
+    .getByLabel('Client signing date', { exact: true })
+    .fill(signedOn);
+  await signatures
+    .getByRole('button', {
+      name: 'Record both simulated signatures',
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press('Enter');
+  await expect(
+    signatures.getByText('Both simulated signatures recorded.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const executed = await read();
+  expect(object(executed.version).executionState).toBe('EXECUTED');
+  expect(object(executed.version).representation).toEqual(representation);
+  expect(
+    object(object(executed.version).signature).representationChecksum,
+  ).toBe(representation.sha256);
+  for (const route of ['company-director-client', 'company-pricing-user'])
+    expect(
+      (
+        await request.delete(
+          api + '/' + route + '-assignments/' + membership + '/' + companyId,
+          {
+            headers: {
+              ...owner,
+              'idempotency-key': 'c9-real-revoke-' + route + '-' + suffix,
+            },
+          },
+        )
+      ).status(),
+    ).toBe(200);
+  await page.reload();
+  await openRequest();
+  await expect(panel.getByText('Direct origin', { exact: true })).toBeVisible();
+  await panel
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  await expect(panel.locator('iframe')).toHaveAttribute(
+    'srcdoc',
+    text(representation.html),
+  );
+  expect(object((await read()).version).representation).toEqual(representation);
+  expect(calls.some((path) => path.includes('/offers/'))).toBe(false);
+  await panel.screenshot({
+    path: testInfo.outputPath(
+      'c9-real-executed-' + suffix.toLowerCase() + '.png',
+    ),
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
 });

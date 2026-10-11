@@ -22,7 +22,9 @@ interface ContentDifference {
     | 'termStartsOn'
     | 'termEndsOn'
     | 'specialConditions'
-    | 'changeSummary';
+    | 'changeSummary'
+    | 'scopeNote'
+    | 'commercialConditions';
   before: string | null;
   after: string | null;
 }
@@ -93,6 +95,7 @@ export type ContractView = ContractContent &
   (
     | {
         kind: 'CONTRACT';
+        origin: 'ACCEPTED_OFFER';
         parentContractId: null;
         addendumOrdinal: null;
         parent: null;
@@ -100,7 +103,18 @@ export type ContractView = ContractContent &
         sourceOffer: { illustrativeReference: number; versionNumber: number };
       }
     | {
+        kind: 'CONTRACT';
+        origin: 'DIRECT';
+        directReason: string;
+        parentContractId: null;
+        addendumOrdinal: null;
+        parent: null;
+        sourceOfferVersionId: null;
+        sourceOffer: null;
+      }
+    | {
         kind: 'ADDENDUM';
+        origin: null;
         parentContractId: string;
         addendumOrdinal: number;
         parent: {
@@ -126,16 +140,33 @@ export function readContract(value: unknown): ContractView {
     snapshot =
       version.pricingSnapshot === null ? null : record(version.pricingSnapshot);
   const isAddendum = input.kind === 'ADDENDUM';
+  const isDirect = input.kind === 'CONTRACT' && input.origin === 'DIRECT';
   const parent = isAddendum ? readParent(input.parent) : null;
   const addendum = isAddendum
     ? { pricingSnapshotId: nullableString(version.pricingSnapshotId) }
-    : undefined;
+    : isDirect
+      ? ({ origin: 'DIRECT' } as const)
+      : undefined;
   if (
     !(
       (input.kind === 'CONTRACT' &&
         input.origin === 'ACCEPTED_OFFER' &&
         sourceOffer !== null &&
         snapshot !== null) ||
+      (isDirect &&
+        input.sourceOfferId === null &&
+        input.sourceOfferVersionId === null &&
+        sourceOffer === null &&
+        snapshot !== null &&
+        input.parentContractId === null &&
+        input.addendumOrdinal === null &&
+        input.parent === null &&
+        typeof input.directReason === 'string' &&
+        input.directReason.trim().length > 0 &&
+        input.directReason.length <= 500 &&
+        typeof version.scopeNote === 'string' &&
+        version.scopeNote.trim().length > 0 &&
+        version.scopeNote.length <= 2000) ||
       (isAddendum &&
         input.origin === null &&
         input.sourceOfferVersionId === null &&
@@ -299,9 +330,22 @@ export function readContract(value: unknown): ContractView {
     return {
       ...content,
       kind: 'ADDENDUM',
+      origin: null,
       parentContractId: parent.id,
       parent,
       addendumOrdinal: positiveInteger(input.addendumOrdinal),
+      sourceOfferVersionId: null,
+      sourceOffer: null,
+    };
+  if (isDirect)
+    return {
+      ...content,
+      kind: 'CONTRACT',
+      origin: 'DIRECT',
+      directReason: string(input.directReason),
+      parentContractId: null,
+      parent: null,
+      addendumOrdinal: null,
       sourceOfferVersionId: null,
       sourceOffer: null,
     };
@@ -309,6 +353,7 @@ export function readContract(value: unknown): ContractView {
   return {
     ...content,
     kind: 'CONTRACT',
+    origin: 'ACCEPTED_OFFER',
     parentContractId: null,
     parent: null,
     addendumOrdinal: null,
@@ -333,7 +378,9 @@ function readContractDifferences(value: unknown): ContractVersionDifference[] {
       field !== 'termStartsOn' &&
       field !== 'termEndsOn' &&
       field !== 'specialConditions' &&
-      field !== 'changeSummary'
+      field !== 'changeSummary' &&
+      field !== 'scopeNote' &&
+      field !== 'commercialConditions'
     )
       throw new Error('Invalid Contract difference field.');
     const before = nullableString(row.before),
@@ -468,7 +515,9 @@ export function contractPath(
 export function contractQualityContext(contract: ContractView) {
   return contract.kind === 'ADDENDUM'
     ? { pricingSnapshotId: contract.version.pricingSnapshotId }
-    : undefined;
+    : contract.origin === 'DIRECT'
+      ? ({ origin: 'DIRECT' } as const)
+      : undefined;
 }
 
 function readSnapshotDifference(value: unknown, id: string | null) {

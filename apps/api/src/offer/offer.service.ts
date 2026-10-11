@@ -178,6 +178,42 @@ export class OfferService {
     };
   }
 
+  async hasAcceptedContractSource(input: {
+    actor: ActorContext;
+    opportunityId: string;
+  }): Promise<boolean> {
+    const companyId = await this.authorization.requireContractAccess(
+      input.actor,
+      ['commercial.contract.prepare'],
+      true,
+    );
+    await this.intake.requireReadableOfferOpportunity(
+      input.actor,
+      input.opportunityId,
+      true,
+    );
+    const [accepted] = await this.databaseContext.connection
+      .select({ id: offers.id })
+      .from(offers)
+      .innerJoin(
+        offerClientResponses,
+        and(
+          eq(offerClientResponses.workspaceId, offers.workspaceId),
+          eq(offerClientResponses.companyId, offers.companyId),
+          eq(offerClientResponses.offerId, offers.id),
+        ),
+      )
+      .where(
+        and(
+          eq(offers.workspaceId, input.actor.workspaceId),
+          eq(offers.companyId, companyId),
+          eq(offers.opportunityId, input.opportunityId),
+          eq(offerClientResponses.outcome, 'ACCEPTED'),
+        ),
+      )
+      .limit(1);
+    return accepted !== undefined;
+  }
   /** Recorded accepted source only; no pricing or live-Client projection locks. */
   async resolveAcceptedContractSource(input: {
     actor: ActorContext;

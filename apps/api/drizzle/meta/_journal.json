@@ -428,6 +428,13 @@
       "when": 1791539335525,
       "tag": "0060_contract_addenda",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1791551759264,
+      "tag": "0061_contract_direct_origin",
+      "breakpoints": true
     }
   ]
 }

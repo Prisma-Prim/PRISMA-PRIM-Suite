@@ -308,3 +308,25 @@ it('refuses a constructed superseded target with the canonical command policy', 
     }),
   ).not.toThrow();
 });
+
+it('C9 validates persisted direct results and never accepts a PASS for the required review', () => {
+  const results = evaluateContractQuality({
+      ...valid,
+      source: { kind: 'DIRECT', companyId: 'company' },
+    }),
+    codes = contractQualityCodes(null, { kind: 'DIRECT' });
+  expect(readContractQualityResults(results, codes)).toEqual(results);
+  expect(() =>
+    readContractQualityResults(
+      results.map((item) =>
+        item.code === 'DIRECT_ORIGIN_REVIEWED'
+          ? { ...item, status: 'PASS' }
+          : item,
+      ),
+      codes,
+    ),
+  ).toThrow();
+  expect(results.map((item) => item.code)).not.toContain(
+    'PRICE_MATCHES_ACCEPTED_OFFER',
+  );
+});

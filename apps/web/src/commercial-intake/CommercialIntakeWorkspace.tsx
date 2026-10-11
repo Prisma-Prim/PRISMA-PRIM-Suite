@@ -2136,6 +2136,7 @@ function RequestDetail({
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
       <ContractPanel
+        currentClientId={request.clientReference?.currentClientId}
         onOpenProject={onOpenProject}
         opportunityTitle={request.initialOpportunity.title}
         key={

@@ -48,6 +48,190 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it('C9 creates DIRECT without Offer access and retains an identical uncertain retry', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const preparer = actor(true);
+    if (!preparer.activeCompany) throw new Error('Missing Company');
+    preparer.activeCompany.offerPermissions = [];
+    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
+    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
+    preparer.activeCompany.pricingUserPermissions = [
+      'commercial.pricing.snapshot.read',
+    ];
+    const direct = {
+      ...fixture(),
+      origin: 'DIRECT',
+      directReason: ' Internal reason ',
+      sourceOfferId: null,
+      sourceOfferVersionId: null,
+      sourceOffer: null,
+      parent: null,
+      parentContractId: null,
+      addendumOrdinal: null,
+    };
+    const attempts: Array<{ body: unknown; key: string | null }> = [];
+    const calls: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      calls.push(path);
+      if (path.endsWith('/direct') && init?.method === 'POST') {
+        attempts.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return attempts.length === 1
+          ? response({}, 500)
+          : response(direct, 201);
+      }
+      if (path.includes('/snapshots'))
+        return response({
+          items: [
+            {
+              id: 'snapshot-one',
+              currency: 'EUR',
+              total: '345.00',
+              committedAt: '2026-10-07T09:00:00.000Z',
+            },
+          ],
+        });
+      if (path.endsWith('/legal-entities'))
+        return response({ clientVersion: 1, legalEntities: [] });
+      if (path.endsWith('/representation')) return response(representation());
+      if (path.endsWith('/versions'))
+        return response({ items: [direct.version], nextCursor: null });
+      return response({ contract: null });
+    });
+    render(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          actor={preparer}
+          identity={identity}
+          opportunityId="opportunity-one"
+          currentClientId="client-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Internal direct reason'), {
+      target: { value: ' Internal reason ' },
+    });
+    fireEvent.change(screen.getByLabelText('Direct scope'), {
+      target: { value: ' Exact scope ' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create direct Contract' }),
+    );
+    expect(
+      await screen.findByText(
+        'The direct Contract result is uncertain. Retry the identical command.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Internal direct reason')).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Retry identical direct Contract command',
+      }),
+    );
+    expect(await screen.findByText('Direct origin')).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(calls.some((path) => path.includes('/offers/'))).toBe(false);
+  });
+  it('C9 suppresses a late direct creation after independent Snapshot authority changes', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const preparer = actor(true);
+    if (!preparer.activeCompany) throw new Error('Missing Company');
+    preparer.activeCompany.offerPermissions = [];
+    preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
+    preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
+    preparer.activeCompany.pricingUserPermissions = [
+      'commercial.pricing.snapshot.read',
+    ];
+    let resolveLate: ((value: Response) => void) | undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (path.endsWith('/direct') && init?.method === 'POST')
+        return new Promise<Response>((resolve) => {
+          resolveLate = resolve;
+        });
+      if (path.includes('/snapshots'))
+        return response({
+          items: [
+            {
+              id: 'snapshot-one',
+              currency: 'EUR',
+              total: '345.00',
+              committedAt: '2026-10-07T09:00:00.000Z',
+            },
+          ],
+          nextCursor: null,
+        });
+      if (path.endsWith('/legal-entities'))
+        return response({ clientVersion: 1, legalEntities: [] });
+      return response({ contract: null });
+    });
+    const props = {
+      identity,
+      opportunityId: 'opportunity-one',
+      currentClientId: 'client-one',
+      onCompanyContextRejected: () => undefined,
+    };
+    const view = render(
+      <InterfaceLocaleProvider>
+        <ContractPanel {...props} actor={preparer} />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Internal direct reason'), {
+      target: { value: 'Internal reason' },
+    });
+    fireEvent.change(screen.getByLabelText('Direct scope'), {
+      target: { value: 'Exact scope' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create direct Contract' }),
+    );
+    await waitFor(() => expect(resolveLate).toBeDefined());
+    view.rerender(
+      <InterfaceLocaleProvider>
+        <ContractPanel
+          {...props}
+          actor={{
+            ...preparer,
+            activeCompany: {
+              ...preparer.activeCompany,
+              pricingUserPermissions: [],
+            },
+          }}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText('Internal direct reason'),
+      ).not.toBeInTheDocument(),
+    );
+    await act(async () => {
+      resolveLate?.(
+        response(
+          {
+            ...fixture(),
+            origin: 'DIRECT',
+            directReason: 'Internal reason',
+            sourceOfferId: null,
+            sourceOfferVersionId: null,
+            sourceOffer: null,
+            parent: null,
+            parentContractId: null,
+            addendumOrdinal: null,
+          },
+          201,
+        ),
+      );
+    });
+    expect(
+      screen.queryByText('Direct origin', { exact: true }),
+    ).not.toBeInTheDocument();
+  });
   it('C8 keeps exact uncertain Addendum creation and opens its own optional-price content', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const parent = { ...executedUiFixture(), addenda: [] };
@@ -2021,28 +2205,37 @@ describe('ContractPanel', () => {
       screen.queryByRole('button', { name: 'Create Contract' }),
     ).not.toBeInTheDocument();
   });
-  it.each([
-    'QUALITY_CHECK_ERRORS',
-    'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
-    'STALE_CONTRACT_REVISION',
-    'CONTRACT_VERSION_ALREADY_DECIDED',
-  ])(
-    'preserves reason text on %s and disables stale decisions',
-    async (code) => {
+  it.each(
+    (
+      [
+        ['QUALITY_CHECK_ERRORS', 'errors'],
+        ['QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED', 'warnings'],
+        ['STALE_CONTRACT_REVISION', 'stale'],
+        ['CONTRACT_VERSION_ALREADY_DECIDED', 'already'],
+      ] as const
+    ).flatMap(([code, message]) =>
+      (['history', 'history error'] as const).map(
+        (history) => [code, message, history] as const,
+      ),
+    ),
+  )(
+    'preserves reason text on %s (%s) beside %s and disables stale decisions',
+    async (code, message, history) => {
       const current = actor(false);
       if (!current.activeCompany) throw new Error('Missing Company');
       current.activeCompany.contractPermissions = [
         'commercial.contract.read',
         'commercial.contract.approve',
       ];
-      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
-        response(
-          input.toString().endsWith('/approve')
-            ? { code }
-            : { contract: fixture() },
-          input.toString().endsWith('/approve') ? 409 : 200,
-        ),
-      );
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+        const path = input.toString();
+        if (path.endsWith('/approve')) return response({ code }, 409);
+        if (path.endsWith('/versions'))
+          return history === 'history'
+            ? response({ items: [fixture().version], nextCursor: null })
+            : response({ code: 'SERVICE_UNAVAILABLE' }, 503);
+        return response({ contract: fixture() });
+      });
       render(
         <ContractPanel
           actor={current}
@@ -2051,17 +2244,41 @@ describe('ContractPanel', () => {
           onCompanyContextRejected={() => undefined}
         />,
       );
-      const approve = await screen.findByRole('button', {
+      const decision = await screen.findByRole('region', {
+        name: resolveMessage(contractDecisionMessages, 'ro', 'title'),
+      });
+      const approve = await within(decision).findByRole('button', {
         name: resolveMessage(contractDecisionMessages, 'ro', 'approve'),
       });
-      const reason = screen.getByRole('textbox', {
+      const reason = within(decision).getByRole('textbox', {
         name: resolveMessage(contractDecisionMessages, 'ro', 'reason'),
       });
+      const historyRegion = screen.getByRole('region', {
+        name: resolveMessage(contractVersionMessages, 'ro', 'history'),
+      });
+      if (history === 'history error')
+        expect(
+          await within(historyRegion).findByRole('alert'),
+        ).toHaveTextContent(
+          resolveMessage(contractVersionMessages, 'ro', 'error'),
+        );
+      else
+        expect(
+          await within(historyRegion).findByRole('button', {
+            name: `${resolveMessage(contractVersionMessages, 'ro', 'version')} 1`,
+          }),
+        ).toBeInTheDocument();
       fireEvent.change(reason, {
         target: { value: 'Synthetic entered reason' },
       });
       fireEvent.click(approve);
-      expect(await screen.findByRole('alert')).toBeInTheDocument();
+      expect(await within(decision).findByRole('alert')).toHaveTextContent(
+        resolveMessage(contractDecisionMessages, 'ro', message),
+      );
+      expect(within(decision).getAllByRole('alert')).toHaveLength(1);
+      expect(within(historyRegion).queryAllByRole('alert')).toHaveLength(
+        history === 'history error' ? 1 : 0,
+      );
       expect(reason).toHaveValue('Synthetic entered reason');
       if (
         code === 'STALE_CONTRACT_REVISION' ||

@@ -9,6 +9,8 @@ export function contractVersionDifferences(
     'recipientTaxId',
     'recipientLegalAddress',
     'pricingSnapshotId',
+    'scopeNote',
+    'commercialConditions',
     'termStartsOn',
     'termEndsOn',
     'specialConditions',
