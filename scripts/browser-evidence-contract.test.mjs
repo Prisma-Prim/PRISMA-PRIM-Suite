@@ -91,7 +91,7 @@ test('CI uploads every evidence directory independently, including after failure
     );
     assert.ok(
       upload.includes(
-        `name: browser-evidence-part-${family}-\${{ github.run_id }}`,
+        `name: browser-evidence-part-${family}-\${{ matrix.shard }}-\${{ github.run_id }}`,
       ),
     );
     assert.match(upload, /overwrite: true/u);
