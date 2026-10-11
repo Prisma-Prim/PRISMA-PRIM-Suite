@@ -1347,11 +1347,11 @@ A projected event returns the section 17.3 fields: canonical action, responsible
 - **Offer events:** the Offer's illustrative reference and the version number; for a Client response, its outcome (`ACCEPTED`, `REJECTED` or `EXPIRED`); for a transmission or response, the simulated provenance marker.
 - **Contract events:** the kind (`CONTRACT`, `PRECONTRACT` or `ADDENDUM`), the illustrative reference and the version number; for a signature, the simulated provenance marker; for a Project link, whether the Project was created and the Project's reference.
 
-Nothing else is returned: no amount, condition, scope, reason, note, signatory label, user-entered date, party identity, Snapshot content or warning text. A reference that the current target no longer resolves is shown as unavailable rather than guessed.
+Nothing else is returned: no amount, condition, scope, reason, note, signatory label, user-entered date, party identity, Snapshot content or warning text. An event whose Offer, Contract, owning Opportunity or linked Project can no longer be resolved is omitted entirely, because its read authority cannot be established; it is never shown with an unavailable reference.
 
 ### 25.3 Navigation
 
-Each projected event offers one link, only when the actor may currently read the target: it opens the Request detail of the Opportunity that owns the Offer or Contract, with the exact Offer Version or Contract Version the event concerns selected, including a superseded version. A link to an unreadable or vanished target is not offered, and opening a link after authority was lost returns the existing safe denial or not-found.
+Each projected event offers one link to its target, which section 25.1 has already proven readable: it opens the Request detail of the Opportunity that owns the Offer or Contract, with the exact Offer Version or Contract Version the event concerns selected, including a superseded version. Opening a link after authority was lost returns the existing safe denial or not-found.
 
 ### 25.4 Compatibility, testing and delivery
 
