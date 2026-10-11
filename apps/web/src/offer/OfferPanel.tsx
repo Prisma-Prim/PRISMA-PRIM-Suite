@@ -547,6 +547,7 @@ export function OfferPanel({
               companyId={companyId}
               opportunityId={opportunityId}
               offerVersionId={view.offer.version.id}
+              qualityRuleSetVersion={view.offer.version.qualityRuleSetVersion}
               initialRun={view.offer.version.latestQualityRun}
               mayRun={
                 !view.offer.version.supersededByVersionId &&

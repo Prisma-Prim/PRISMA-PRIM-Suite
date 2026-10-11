@@ -1224,6 +1224,95 @@ describe('OfferPanel', () => {
     expect(screen.getByText('WARNING')).toBeVisible();
   });
 
+  it('fails closed when a Quality Check response is bound to another rule set version', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/quality-checks')
+        ? response({ ...qualityRun(), ruleSetVersion: 2 })
+        : response({ offer: offerView() }),
+    );
+    renderPanel(actor('company-one'));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Run Quality Checks' }),
+    );
+    expect(
+      await screen.findByText(
+        'The outcome is uncertain. Retry sends the exact same command and key.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText('Checks completed with warnings.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('OFFER_QUALITY_ILLUSTRATIVE v2')).toBeNull();
+  });
+
+  it('fails closed when an approval carries a run of another rule set version', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (input.toString().endsWith('/approve'))
+        return response({
+          ...approvedOfferView().version.decision,
+          qualityRun: { ...qualityRun(), ruleSetVersion: 2 },
+        });
+      return response({
+        offer: {
+          ...offerView(),
+          version: { ...offerView().version, latestQualityRun: qualityRun() },
+        },
+      });
+    });
+    renderPanel(
+      actorWithOfferPermissions('company-one', [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+      ]),
+    );
+    fireEvent.click(
+      await screen.findByRole('checkbox', {
+        name: 'Recipient tax ID recorded',
+      }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Approve this version' }),
+    );
+    expect(
+      await screen.findByText(
+        'The outcome is uncertain. Retry sends the exact same decision, values and key.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText('Version approved.')).not.toBeInTheDocument();
+    expect(screen.queryByText('OFFER_QUALITY_ILLUSTRATIVE v2')).toBeNull();
+  });
+
+  it('fails closed when a transmission carries a run of another rule set version', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+      input.toString().endsWith('/transmission')
+        ? response({
+            ...transmissionView(),
+            qualityRun: {
+              ...transmissionView().qualityRun,
+              ruleSetVersion: 2,
+            },
+          })
+        : response({ offer: approvedOfferView() }),
+    );
+    renderPanel(actor('company-one'));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Record simulated transmission',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        'The outcome is uncertain. Retry sends the exact same transmission, values and key.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(
+        'Simulated transmission recorded · Client response pending',
+      ),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('OFFER_QUALITY_ILLUSTRATIVE v2')).toBeNull();
+  });
+
   it('keeps one identical Quality Check attempt after an uncertain response and reopens the stored result', async () => {
     const attempts: RequestInit[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {

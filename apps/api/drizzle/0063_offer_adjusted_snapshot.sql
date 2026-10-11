@@ -74,4 +74,23 @@ END;
 $$;
 --> statement-breakpoint
 CREATE TRIGGER offer_quality_runs_bound_rule_set BEFORE INSERT ON offer_quality_runs
-FOR EACH ROW EXECUTE FUNCTION guard_offer_quality_run_binding();
+FOR EACH ROW EXECUTE FUNCTION guard_offer_quality_run_binding();--> statement-breakpoint
+-- Approval and transmission events name the rule set bound to their version. Insert-only:
+-- delivered events are immutable and already carry rule set v1 for Template v1 versions.
+CREATE FUNCTION guard_offer_event_rule_set_binding() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.action IN ('offer_version.approved', 'offer_version.transmission_recorded')
+     AND NOT EXISTS (
+       SELECT 1 FROM offer_versions bound
+        WHERE bound.workspace_id = NEW.workspace_id AND bound.company_id = NEW.company_id
+          AND bound.offer_id = NEW.offer_id AND bound.id = NEW.offer_version_id
+          AND bound.template_version::text = NEW.metadata->>'ruleSetVersion'
+     ) THEN
+    RAISE EXCEPTION 'Offer events record the rule set bound to their version.' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER offer_events_bound_rule_set BEFORE INSERT ON offer_events
+FOR EACH ROW EXECUTE FUNCTION guard_offer_event_rule_set_binding();

@@ -43,7 +43,7 @@ const PASSING = [
 ].map((code) => ({ code, status: 'PASS' }));
 
 it.skipIf(!databaseUrl)(
-  'admits only Offer Template v2, rule set v2 and ruleSetVersion 2 events while preserving delivered v1 evidence',
+  'admits only Offer Template v2, rule set v2 and version-bound ruleSetVersion events while preserving delivered v1 evidence',
   async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     const database = await createIsolatedPostgresTestDatabase({
@@ -248,16 +248,18 @@ it.skipIf(!databaseUrl)(
           ruleSetVersion,
           acknowledgedWarningCodes: [],
         });
-      const transmitted = (ruleSetVersion: unknown) =>
-        insertEvent(first, 'offer_version.transmission_recorded', {
+      const transmitted = (target: typeof first, ruleSetVersion: unknown) =>
+        insertEvent(target, 'offer_version.transmission_recorded', {
           channel: 'SIMULATED',
           ruleSetVersion,
           acknowledgedWarningCodes: [],
         });
       await approved(first, 1);
-      await transmitted(1);
+      await transmitted(first, 1);
       // Rule set v2 and Template v2 are refused before the O8 migration.
-      await expect(transmitted(2)).rejects.toMatchObject({ code: '23514' });
+      await expect(transmitted(first, 2)).rejects.toMatchObject({
+        code: '23514',
+      });
 
       const evidence = () =>
         Promise.all(
@@ -340,9 +342,17 @@ it.skipIf(!databaseUrl)(
         await expect(
           insertRun(versionId, ruleSetVersion),
         ).rejects.toMatchObject({ code: '23514' });
-      await transmitted(2);
+      // Events must name the rule set bound to their own version.
+      for (const refused of [
+        () => transmitted(first, 2),
+        () => approved(first, 2),
+        () => transmitted(second, 1),
+        () => approved(second, 1),
+      ])
+        await expect(refused()).rejects.toMatchObject({ code: '23514' });
+      await transmitted(second, 2);
       for (const invalid of [3, 0, '2.0', null])
-        await expect(transmitted(invalid)).rejects.toMatchObject({
+        await expect(transmitted(second, invalid)).rejects.toMatchObject({
           code: '23514',
         });
       for (const invalid of [3, '1.5', null])
@@ -350,6 +360,17 @@ it.skipIf(!databaseUrl)(
           code: '23514',
         });
       await approved(second, 2);
+      // Delivered v1 events stay valid under the binding the upgrade enforces.
+      expect(
+        (
+          await query(
+            `SELECT count(*)::int AS unbound FROM offer_events event
+               JOIN offer_versions bound ON bound.id = event.offer_version_id
+              WHERE event.metadata ? 'ruleSetVersion'
+                AND event.metadata->>'ruleSetVersion' <> bound.template_version::text`,
+          )
+        ).rows,
+      ).toEqual([{ unbound: 0 }]);
       expect(
         (
           await query(

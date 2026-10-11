@@ -314,7 +314,6 @@ describe('Offer Quality Checks rule set v2', () => {
         total: '54.50',
       }),
     ],
-    ['no discount', valid.snapshot],
   ])('reproduces the stored trace and totals for %s', (_name, snapshot) => {
     const results = evaluateOfferQuality({
       ...valid,
@@ -487,6 +486,7 @@ describe('Offer Quality Checks rule set v2', () => {
       ),
     ],
     ['another Opportunity', { ...one, belongsToOffer: false }],
+    ['a Snapshot without any adjusted line', valid.snapshot],
   ])('records ERROR for an incoherent trace: %s', (_name, snapshot) => {
     expect(coherence(snapshot)).toEqual({
       code: 'PRICING_SNAPSHOT_COHERENT',

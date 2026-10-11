@@ -27,6 +27,7 @@ export function OfferQualityPanel({
   companyId,
   opportunityId,
   offerVersionId,
+  qualityRuleSetVersion,
   initialRun,
   mayRun,
   reject,
@@ -36,6 +37,7 @@ export function OfferQualityPanel({
   companyId: string;
   opportunityId: string;
   offerVersionId: string;
+  qualityRuleSetVersion: OfferQualityRunView['ruleSetVersion'];
   initialRun: OfferQualityRunView | null;
   mayRun: boolean;
   onRun?: (run: OfferQualityRunView) => void;
@@ -82,7 +84,10 @@ export function OfferQualityPanel({
         setRun(null);
         setState('denied');
       } else if (result.status === 'ok') {
-        const recorded = readOfferQualityRun(result.value, offerVersionId);
+        const recorded = readOfferQualityRun(result.value, {
+          offerVersionId,
+          ruleSetVersion: qualityRuleSetVersion,
+        });
         setRun(recorded);
         onRun?.(recorded);
         attempt.current = undefined;

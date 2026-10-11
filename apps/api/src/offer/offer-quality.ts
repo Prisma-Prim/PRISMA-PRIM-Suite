@@ -189,11 +189,18 @@ const FIXED_NET_DISCOUNT_GRAMMAR = /^(0|[1-9][0-9]{0,21})\.[0-9]{2}$/u;
  * Rule set v2 coherence. Recomputing the stored strings in memory checks the
  * immutable trace (Pricing PRD sections 8.1-8.2); it never writes, applies or
  * changes an adjustment. Shared Contract coherence above stays unchanged.
+ * Rule set v2 is bound only to adjusted Snapshots, so a Snapshot without any
+ * adjusted line is incoherent here, mirroring Template v2.
  */
 export function coherentAdjustedSnapshot(
   snapshot: OfferAdjustedQualitySnapshot | null,
 ): boolean {
-  if (!snapshot || !coherentOriginalTrace(snapshot)) return false;
+  if (
+    !snapshot ||
+    !snapshot.lines.some((line) => line.adjustment !== null) ||
+    !coherentOriginalTrace(snapshot)
+  )
+    return false;
   try {
     const adjusted = applyPricingAdjustments(
       snapshot.lines.map((line) => ({
