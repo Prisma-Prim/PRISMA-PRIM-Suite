@@ -70,6 +70,7 @@ A shared Client Account may be associated when the actor can already read it thr
 7. As an approver, I want Offer and Contract decisions attached to exact immutable versions.
 8. As an operational user, I want accepted work linked to an authorized Project without blind duplicate creation.
 9. As a commercial manager, I want to record that an Opportunity is on hold, won, lost, disqualified or archived, with its reason, and to reopen it, so that the Company knows which cases are still pursued and why the others ended; every change stays in a consultable history (section 23).
+10. As a commercial manager, I want to define my Company's own Sales Stages, and as a commercial user I want to place an Opportunity on one of them, so that the team sees where each case stands in our practice without changing its outcome status; renamed or retired stages stay intelligible in the history (section 24).
 
 ## 6. Release boundary
 
@@ -1276,7 +1277,7 @@ A material change atomically updates the stage, the incremented version and the 
 
 ### 24.5 History and Activity
 
-Each material assignment records one durable history entry: previous and new stage identifiers with the labels captured at the change, the resulting Opportunity version, the acting membership with its captured display label, and server time. The Request detail returns it newest first, bounded to the 50 most recent entries.
+Each material assignment records one durable history entry: previous and new stage identifiers with the labels captured at the change, the resulting Opportunity version, the acting membership with its captured display label, and server time. The Request detail returns the 50 most recent entries newest first, with an opaque cursor; a stage-history read returns each older page of at most 50 entries from that cursor. Both reads require only Commercial Intake read in the responsible Company and apply the same safe not-found.
 
 Events, each attributed to the acting membership and scoped to the Company:
 
