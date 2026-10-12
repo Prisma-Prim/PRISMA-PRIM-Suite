@@ -125,6 +125,12 @@ test('runs pristine migrations and the requested verification against disposable
     container.args.some((argument) => argument.includes('/tmp/')),
     false,
   );
+  // Enough shared lock memory for parallel per-file test databases (#571).
+  assert.deepEqual(container.args.slice(-3), [
+    'postgres:17-alpine',
+    '-c',
+    'max_locks_per_transaction=256',
+  ]);
   assert.deepEqual(resourceRemovals(adapter), [
     'prisma-prim-postgres-test-run-42',
     'prisma-prim-postgres-test-run-42-data',
