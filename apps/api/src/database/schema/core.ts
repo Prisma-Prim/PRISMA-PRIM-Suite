@@ -1,4 +1,8 @@
-import { sql } from 'drizzle-orm';
+import { sql, type SQL, type SQLWrapper } from 'drizzle-orm';
+import {
+  COMPANY_ROLE_BUNDLES,
+  type CompanyRoleBundle,
+} from '../../access/company-permissions.js';
 import type { ClientContact } from '../../client/client.types.js';
 import type {
   ClientLegalEntityFieldChanges,
@@ -271,6 +275,61 @@ export const companies = pgTable(
   ],
 );
 
+// drizzle-kit compares CHECK text byte for byte. Migration 0065 captured the
+// dedicated multi-version clauses in this order, with the first one wrapped
+// over three lines; reproducing that layout keeps the derived constraint free
+// of drift. Bundles not listed here follow in registry order. The next
+// migration that rewrites this constraint may drop both layout facts.
+const CAPTURED_DEDICATED_CLAUSE_ORDER: readonly string[] = [
+  'company_director_client_access',
+  'company_document_registrar',
+  'company_commercial_intake',
+  'company_project_access',
+  'company_opportunity_manager',
+] satisfies readonly CompanyRoleBundle[];
+const CAPTURED_WRAPPED_CLAUSE: string =
+  'company_director_client_access' satisfies CompanyRoleBundle;
+
+/**
+ * Each registered bundle accepts exactly its captured versions; an
+ * unversioned bundle accepts only NULL. Bundles whose only version is `v1`
+ * share one clause, every other versioned bundle has its own.
+ */
+function capturedPermissionSetVersionCheck(
+  bundleColumn: SQLWrapper,
+  versionColumn: SQLWrapper,
+): SQL {
+  const literals = (values: readonly string[]) =>
+    sql.raw(values.map((value) => `'${value}'`).join(', '));
+  const bundle = sql`${bundleColumn}::text`;
+  const bundles = Object.entries(COMPANY_ROLE_BUNDLES).map(
+    ([id, { versions }]) => ({ id, versions: Object.keys(versions) }),
+  );
+  const versioned = bundles.filter(({ versions }) => versions.length > 0);
+  const singleV1 = versioned.filter(
+    ({ versions }) => versions.length === 1 && versions[0] === 'v1',
+  );
+  const capturedPosition = ({ id }: { id: string }) => {
+    const position = CAPTURED_DEDICATED_CLAUSE_ORDER.indexOf(id);
+    return position === -1 ? CAPTURED_DEDICATED_CLAUSE_ORDER.length : position;
+  };
+  const dedicated = versioned
+    .filter((entry) => !singleV1.includes(entry))
+    .sort((left, right) => capturedPosition(left) - capturedPosition(right));
+  const ids = (entries: readonly { id: string }[]) =>
+    literals(entries.map(({ id }) => id));
+  const wrap = sql.raw('\n          AND ');
+  const clauses = [
+    ...dedicated.map(({ id, versions }) => {
+      const and = id === CAPTURED_WRAPPED_CLAUSE ? wrap : sql.raw(' AND ');
+      return sql`(${bundle} = ${literals([id])}${and}${versionColumn} IS NOT NULL${and}${versionColumn} IN (${literals(versions)}))`;
+    }),
+    sql`(${bundle} IN (${ids(singleV1)}) AND ${versionColumn} IS NOT NULL AND ${versionColumn} = 'v1')`,
+    sql`(${bundle} NOT IN (${ids(versioned)})${wrap}${versionColumn} IS NULL)`,
+  ];
+  return sql`(${sql.raw('\n        ')}${sql.join(clauses, sql.raw('\n        OR\n        '))}${sql.raw('\n      )')}`;
+}
+
 export const companyRoleAssignments = pgTable(
   'company_role_assignments',
   {
@@ -325,24 +384,10 @@ export const companyRoleAssignments = pgTable(
     }),
     check(
       'company_role_assignments_permission_set_version_check',
-      sql`(
-        (${table.bundle}::text = 'company_director_client_access'
-          AND ${table.permissionSetVersion} IS NOT NULL
-          AND ${table.permissionSetVersion} IN ('v1', 'v2'))
-        OR
-        (${table.bundle}::text = 'company_document_registrar' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2', 'v3'))
-        OR
-        (${table.bundle}::text = 'company_commercial_intake' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2', 'v3'))
-        OR
-        (${table.bundle}::text = 'company_project_access' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
-        OR
-        (${table.bundle}::text = 'company_opportunity_manager' AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} IN ('v1', 'v2'))
-        OR
-        (${table.bundle}::text IN ('company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director') AND ${table.permissionSetVersion} IS NOT NULL AND ${table.permissionSetVersion} = 'v1')
-        OR
-        (${table.bundle}::text NOT IN ('company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director')
-          AND ${table.permissionSetVersion} IS NULL)
-      )`,
+      capturedPermissionSetVersionCheck(
+        table.bundle,
+        table.permissionSetVersion,
+      ),
     ),
   ],
 );
