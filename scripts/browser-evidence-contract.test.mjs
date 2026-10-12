@@ -178,7 +178,7 @@ test('each shard keeps its own Playwright run metadata in the merged evidence', 
     assert.ok(
       body.includes(`apps/web/test-results/${family}/.last-run.json`) &&
         body.includes(
-          `apps/web/test-results/${family}/.last-run-shard-\${{ matrix.shard }}.json`,
+          `apps/web/test-results/${family}/last-run-shard-\${{ matrix.shard }}.json`,
         ),
     );
   }

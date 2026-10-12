@@ -163,12 +163,12 @@ jobs:
 
       - name: Namespace browser run metadata
         if: ${{ always() && github.event_name == 'pull_request' }}
-        # Every shard writes Playwright's browser/.last-run.json; keep one
+        # Every shard writes Playwright's browser/.last-run.json; keep one visible
         # per shard so the merged evidence does not keep only the last writer.
         run: |
           if [ -f apps/web/test-results/browser/.last-run.json ]; then
             mv apps/web/test-results/browser/.last-run.json \
-              "apps/web/test-results/browser/.last-run-shard-${{ matrix.shard }}.json"
+              "apps/web/test-results/browser/last-run-shard-${{ matrix.shard }}.json"
           fi
 
       - name: Upload browser evidence
@@ -232,12 +232,12 @@ jobs:
 
       - name: Namespace acceptance run metadata
         if: ${{ always() && github.event_name == 'pull_request' }}
-        # Every shard writes Playwright's acceptance/.last-run.json; keep one
+        # Every shard writes Playwright's acceptance/.last-run.json; keep one visible
         # per shard so the merged evidence does not keep only the last writer.
         run: |
           if [ -f apps/web/test-results/acceptance/.last-run.json ]; then
             mv apps/web/test-results/acceptance/.last-run.json \
-              "apps/web/test-results/acceptance/.last-run-shard-${{ matrix.shard }}.json"
+              "apps/web/test-results/acceptance/last-run-shard-${{ matrix.shard }}.json"
           fi
 
       - name: Upload acceptance evidence
