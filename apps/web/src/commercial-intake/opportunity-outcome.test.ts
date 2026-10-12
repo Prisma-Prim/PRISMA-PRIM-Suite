@@ -86,6 +86,7 @@ describe('outcome history boundary', () => {
       { newStatus: 'ON_HOLD', reason: 'Wait', lossReasonCode: 'PRICE' },
     ],
     ['the initial version', { version: 1 }],
+    ['a version above the database integer', { version: 2_147_483_648 }],
     ['an extra field', { extra: true }],
     ['a blank actor label', { actor: { ...actor, displayLabel: ' ' } }],
   ])('rejects %s', (_case, overrides) => {

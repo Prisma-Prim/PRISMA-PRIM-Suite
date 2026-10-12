@@ -34,6 +34,7 @@ import {
   isOpportunityOutcomeStatus,
   isOutcomeTransition,
   isConsistentOutcomeSnapshot,
+  isOpportunityVersion,
   isOutcomeHistoryPage,
   outcomeCommandBody,
   type OpportunityOutcomeStatus,
@@ -2682,8 +2683,7 @@ function isInitialOpportunity(
       value.responsibleWorkspaceMembershipId &&
     typeof value.createdAt === 'string' &&
     typeof value.version === 'number' &&
-    Number.isInteger(value.version) &&
-    value.version >= 1 &&
+    isOpportunityVersion(value.version, 1) &&
     isConsistentOutcomeSnapshot({
       status: value.status,
       statusEnteredAt: value.statusEnteredAt,
@@ -2749,8 +2749,7 @@ function isOutcomeChangeResult(
     isOpportunityOutcomeStatus(receipt.status) &&
     isOutcomeTransition(receipt.previousStatus, receipt.status) &&
     typeof receipt.version === 'number' &&
-    Number.isSafeInteger(receipt.version) &&
-    receipt.version >= 2 &&
+    isOpportunityVersion(receipt.version, 2) &&
     receipt.opportunityId === opportunityId &&
     submitted !== undefined &&
     receipt.previousStatus === previousStatus &&

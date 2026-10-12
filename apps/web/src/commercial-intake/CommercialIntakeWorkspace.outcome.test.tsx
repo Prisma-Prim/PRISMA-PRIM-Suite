@@ -440,6 +440,7 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     ['another target status than submitted', { status: 'WON' }],
     ['another starting status than shown', { previousStatus: 'ON_HOLD' }],
     ['another result version than submitted', { version: 3 }],
+    ['a version above the database integer', { version: 2_147_483_648 }],
   ])(
     'keeps the command for an explicit retry when a success carries %s',
     async (_case, receiptOverrides) => {

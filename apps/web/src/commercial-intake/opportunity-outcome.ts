@@ -185,6 +185,19 @@ function isLossReasonCode(value: unknown): value is OpportunityLossReasonCode {
   return OPPORTUNITY_LOSS_REASON_CODES.some((code) => code === value);
 }
 
+/** The PostgreSQL integer column bound of every Opportunity version. */
+export const MAXIMUM_OPPORTUNITY_VERSION = 2_147_483_647;
+
+/** Whether a value is an Opportunity version the database can hold. */
+export function isOpportunityVersion(value: unknown, minimum: 1 | 2): boolean {
+  return (
+    typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= minimum &&
+    value <= MAXIMUM_OPPORTUNITY_VERSION
+  );
+}
+
 /** The section 23.6 page bound. */
 export const OUTCOME_HISTORY_PAGE_SIZE = 50;
 
@@ -324,8 +337,7 @@ function isOutcomeHistoryEntry(
   return (
     fieldsMatch &&
     typeof value.version === 'number' &&
-    Number.isInteger(value.version) &&
-    value.version >= 2 &&
+    isOpportunityVersion(value.version, 2) &&
     isRecord(value.actor) &&
     Object.keys(value.actor).length === 2 &&
     typeof value.actor.workspaceMembershipId === 'string' &&
