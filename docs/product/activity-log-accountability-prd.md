@@ -139,7 +139,7 @@ Metadata carries only the affected Version number plus the source or superseded 
 
 Projection follows `document.corrected`: only in the recording Company, to actors with current Document metadata read and the original Client/Company visibility, inside the existing newest-first bounded page. Failed, denied and replayed commands create none. The section 20 correction history of the Document Registry PRD remains limited to `document.corrected`.
 
-For the approved [provisional Opportunity next-action update](release-3-commercial-workflow-prd.md#16-approved-provisional-opportunity-next-action-update-306),
+For the approved [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306),
 one committed material update creates exactly one
 `opportunity.next_action.updated` event in the same transaction as the new
 next-action value, the incremented Opportunity version and the durable command
@@ -153,15 +153,15 @@ trimming or normalization, so a no-op here is a byte-identical resubmission
 rather than the normalized comparison used by Tasks. Recording this event grants
 no read of it.
 
-For the approved [provisional Opportunity reassignment](release-3-commercial-workflow-prd.md#21-approved-provisional-opportunity-reassignment-399), one committed material change creates exactly one `opportunity.responsible.changed` event in the same transaction as the new responsible actor, the incremented shared Opportunity version and the durable receipt. It retains the acting membership, server time, responsible Company and Opportunity target; its metadata carries only the resulting version and the previous and new responsible actor (membership identifier and captured display label), with no email or commercial text. Rejected commands, denials, no-ops and exact replays create none. The commercial projection of section 17.3 returns the two responsible actors.
+For the approved [provisional Opportunity reassignment](release-3-commercial-21-opportunity-reassignment.md#21-approved-provisional-opportunity-reassignment-399), one committed material change creates exactly one `opportunity.responsible.changed` event in the same transaction as the new responsible actor, the incremented shared Opportunity version and the durable receipt. It retains the acting membership, server time, responsible Company and Opportunity target; its metadata carries only the resulting version and the previous and new responsible actor (membership identifier and captured display label), with no email or commercial text. Rejected commands, denials, no-ops and exact replays create none. The commercial projection of section 17.3 returns the two responsible actors.
 
-The separately approved [provisional Company commercial Activity read](release-3-commercial-workflow-prd.md#17-approved-provisional-company-commercial-activity-read-306)
+The separately approved [provisional Company commercial Activity read](release-3-commercial-17-commercial-activity-read.md#17-approved-provisional-company-commercial-activity-read-306)
 owns the first authorized projection of commercial events, which the intake
 slice deliberately left unprojected. A commercial event appears only inside the
 existing dated, bounded page, in the server-validated active Company that owns
 it, for an actor holding the independent opt-in commercial Activity bundle who
 also retains current read authority for that event's target: Request or
-Opportunity read for intake events, and, under [Commercial Workflow PRD section 25](release-3-commercial-workflow-prd.md#251-projected-actions-and-authority),
+Opportunity read for intake events, and, under [Commercial Workflow PRD section 25](release-3-commercial-25-offer-contract-history.md#251-projected-actions-and-authority),
 the complete Offer or Contract read prerequisite (including current Opportunity
 read) for Offer and Contract events, plus current Project read for a
 Contract–Project link. Partial authority and an absent active Company omit the event rather
@@ -174,7 +174,7 @@ event-mutation route.
 
 For the approved additional Client Legal Entities ([Shared Client PRD section 20](release-1-shared-client-prd.md#20-approved-provisional-additional-client-legal-entities-393)), one committed registration creates `client_legal_entity.registered` and one committed material correction creates `client_legal_entity.corrected`. Each event targets the owning Client Account in the acting Company, in the same transaction as the record change, the Client version increment and the receipt. Metadata carries the entity identifier and the recorded or previous-and-new shared identity values only. Projection follows the delivered `client.corrected` rule: only in the recording Company, and only to actors who can currently read that Client there. Failed commands, no-ops and exact replays create no event.
 
-For the [provisional one-time Client association after Request capture](release-3-commercial-workflow-prd.md#20-approved-provisional-one-time-client-association-after-request-capture-450),
+For the [provisional one-time Client association after Request capture](release-3-commercial-20-client-association.md#20-approved-provisional-one-time-client-association-after-request-capture-450),
 one successful association creates exactly one
 `client_request.client_associated` event in the same transaction as the stored
 original Client reference, Request version 2 and durable command receipt. It
