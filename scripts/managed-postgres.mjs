@@ -683,6 +683,11 @@ export function createManagedPostgresRunner(
                 '--health-retries',
                 String(readinessAttempts),
                 'postgres:17-alpine',
+                // Parallel REST files each create and migrate a database;
+                // the default 64 locks per transaction runs out of shared
+                // lock memory on many-core hosts (#571).
+                '-c',
+                'max_locks_per_transaction=256',
               ],
               { timeoutMilliseconds: infrastructureTimeoutMilliseconds },
             ),
