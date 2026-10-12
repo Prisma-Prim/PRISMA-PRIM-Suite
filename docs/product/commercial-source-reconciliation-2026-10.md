@@ -33,7 +33,7 @@ The remaining three comparison dossiers are inventoried in E03 but their legacy 
 
 ## 2. Authority and substitutions
 
-The [Commercial Workflow PRD §22](release-3-commercial-workflow-prd.md#22-controlled-commercial-evidence-october-2026-493) owns the consequence of the acceptance/numbering evidence and the unresolved alternatives. The [confirmed-cost PRD §3](release-3-confirmed-cost-profitability-estimate-prd.md#3-controlled-source-provenance-and-handling) owns pricing-source handling. The [Governed Documents PRD §14](governed-documents-prd.md#14-evidence-dependencies) owns the distinction between received examples and approved reusable Templates/clauses.
+The [Commercial Workflow PRD §22](release-3-commercial-22-controlled-evidence-2026-10.md#22-controlled-commercial-evidence-october-2026-493) owns the consequence of the acceptance/numbering evidence and the unresolved alternatives. The [confirmed-cost PRD §3](release-3-confirmed-cost-profitability-estimate-prd.md#3-controlled-source-provenance-and-handling) owns pricing-source handling. The [Governed Documents PRD §14](governed-documents-prd.md#14-evidence-dependencies) owns the distinction between received examples and approved reusable Templates/clauses.
 
 The [substitution register](first-tenant-substitution-register.md#october-2026-received-materials) records only the reduced material requests. Its `decision` and `decision_ref` remain unchanged: Iurie has not accepted or corrected the demonstration rows through the trial-decision protocol. No historical interview coverage status changes.
 

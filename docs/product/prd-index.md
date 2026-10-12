@@ -65,11 +65,11 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 ## 6. Release 3 capability PRDs
 
-| Capability PRD                                                                                  | Document status                                               | Depends on                                                                                                                   |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| [Commercial Workflow](release-3-commercial-workflow-prd.md)                                     | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
-| [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md)                     | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration                                     |
-| [Confirmed-Cost Profitability Estimate](release-3-confirmed-cost-profitability-estimate-prd.md) | Approved — bounded first journey; runtime not delivered       | Commercial Workflow; Illustrative Deterministic Pricing; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
+| Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md): core sections 1–15 and an index of one file per capability (sections 16–25) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
+| [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md)                                                              | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration                                     |
+| [Confirmed-Cost Profitability Estimate](release-3-confirmed-cost-profitability-estimate-prd.md)                                          | Approved — bounded first journey; runtime not delivered       | Commercial Workflow; Illustrative Deterministic Pricing; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
 
 The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates.
 
@@ -77,7 +77,7 @@ The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Servi
 
 The Confirmed-Cost Profitability Estimate PRD owns a separate manual-input first journey finalized in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497): immutable cost/price/result versions and exact Director decisions with independent opt-in assignments. Approval changes no existing illustrative record or Offer and does not claim runtime delivery. Its implementation child and readiness are owned by the live tracker.
 
-R3B4 is an additive slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; the delivered Offer compatibility slice O8 and its Contract follow-up read, check and render the immutable adjustment trace without repricing it ([Commercial Workflow PRD sections 18.2 and 19.5](release-3-commercial-workflow-prd.md#182-offer-and-offer-version)).
+R3B4 is an additive slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; the delivered Offer compatibility slice O8 and its Contract follow-up read, check and render the immutable adjustment trace without repricing it ([Commercial Workflow PRD sections 18.2 and 19.5](release-3-commercial-18-offers.md#182-offer-and-offer-version)).
 
 ## 7. Other later releases
 
