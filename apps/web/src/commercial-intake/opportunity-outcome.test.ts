@@ -190,6 +190,21 @@ describe('outcome history boundary', () => {
     ).toBe(false);
   });
 
+  it('rejects an empty older-page cursor', () => {
+    expect(
+      isOutcomeHistoryPage(
+        { entries: [entry({})], nextCursor: '' },
+        isTimestamp,
+      ),
+    ).toBe(false);
+    expect(
+      isOutcomeHistoryPage(
+        { entries: [entry({})], nextCursor: 'opaque-1' },
+        isTimestamp,
+      ),
+    ).toBe(true);
+  });
+
   it('rejects an entry missing a field', () => {
     const withoutNote: Record<string, unknown> = entry({});
     delete withoutNote.note;

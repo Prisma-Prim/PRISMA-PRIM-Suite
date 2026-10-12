@@ -201,7 +201,11 @@ export function isOutcomeHistoryPage(
     !isRecord(value) ||
     !Array.isArray(value.entries) ||
     value.entries.length > OUTCOME_HISTORY_PAGE_SIZE ||
-    !(value.nextCursor === undefined || typeof value.nextCursor === 'string')
+    // An absent cursor ends the history; an empty one is malformed.
+    !(
+      value.nextCursor === undefined ||
+      (typeof value.nextCursor === 'string' && value.nextCursor.length > 0)
+    )
   )
     return false;
   const entries: unknown[] = value.entries;
