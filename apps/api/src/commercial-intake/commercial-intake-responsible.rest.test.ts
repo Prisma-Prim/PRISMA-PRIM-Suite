@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { versionedCommandProtocolScenarios } from '../command/versioned-command-protocol.js';
 import {
   createIsolatedPostgresTestDatabase,
   type IsolatedPostgresTestDatabase,
@@ -1696,6 +1697,50 @@ describe.skipIf(!databaseUrl)(
         ),
       ).toMatchObject({ outcome: 'updated', version: 2 });
       expect(await responsibleEvents(opportunityId)).toHaveLength(1);
+    });
+
+    describe('shared versioned command protocol', () => {
+      for (const scenario of versionedCommandProtocolScenarios({
+        acceptedStatus: 200,
+        receipt: (value) => object(value).receipt,
+        arrange: async () => {
+          const ada = await grant('ada', MANAGER);
+          const members = {
+            first: await grant('ion', ELIGIBLE),
+            second: await grant('maria', ELIGIBLE),
+          };
+          const opportunityId = opportunityOf(await capture('ada'));
+          const version = async () =>
+            Number((await opportunityRow(opportunityId)).version);
+          return {
+            payload: ({ expectedVersion, variant }) => ({
+              expectedVersion,
+              workspaceMembershipId: members[variant],
+            }),
+            submit: async ({ value, key }) => {
+              const response = await reassign(opportunityId, value, { key });
+              return { status: response.status, body: await body(response) };
+            },
+            version,
+            writes: async () => ({
+              opportunity: await opportunityRow(opportunityId),
+              receipts: await receipts(opportunityId),
+              events: await responsibleEvents(opportunityId),
+            }),
+            changeLater: async () => {
+              const response = await updateNextAction(opportunityId, {
+                expectedVersion: await version(),
+                nextAction: 'Send the audit questionnaire',
+              });
+              expect(response.status).toBe(200);
+            },
+            revokeAuthority: async () => {
+              await revoke('manager', ada);
+            },
+          };
+        },
+      }))
+        it(scenario.name, scenario.run);
     });
   },
 );

@@ -14,6 +14,11 @@ import { CompanyContextAuthorization } from '../access/company-context-authoriza
 import { memberDisplayLabel } from '../access/member-authority.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
+import {
+  idempotencyConflict,
+  runIdempotentCommand,
+  staleVersionConflict,
+} from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   clientRequests,
@@ -33,7 +38,6 @@ import {
   readOutcomeHistoryCursor,
 } from './commercial-intake-pagination.js';
 import type {
-  ChangeOpportunityOutcomeCommand,
   ChangeOpportunityResponsibleCommand,
   CommercialIntakeDetail,
   CommercialIntakeListClientProjection,
@@ -58,6 +62,12 @@ import {
   readCreateCommercialIntakeCommand,
   readUpdateOpportunityNextActionCommand,
 } from './commercial-intake.validation.js';
+import {
+  nextActionFingerprint,
+  opportunityCommandLockParts,
+  outcomeFingerprint,
+  responsibleFingerprint,
+} from './opportunity-command.js';
 import { resolveOutcomeTransition } from './opportunity-outcome.js';
 
 type ClientRequestRow = typeof clientRequests.$inferSelect;
@@ -369,54 +379,95 @@ export class CommercialIntakeService {
     const command = readUpdateOpportunityNextActionCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = nextActionFingerprint(opportunityId, command);
-    return this.databaseContext.transaction(async () => {
-      // Authority is re-read under a share lock so a concurrent revocation
-      // or suspension commits either before this check or after this write.
-      const companyId = await this.authorization.requireCommercialIntakeAccess(
-        actor,
-        'update-next-action',
-        true,
-      );
-      await this.lockNextActionCommand(actor, companyId, idempotencyKey);
-      const replay = await this.findNextActionCommand(
-        actor,
-        companyId,
-        idempotencyKey,
-      );
-      if (replay) {
-        if (replay.fingerprint !== fingerprint)
-          throw new ConflictException({
-            code: 'IDEMPOTENCY_CONFLICT',
-            message: 'Idempotency-Key was already used for another update.',
-          });
-        // An exact retry resolves before its now-stale observed version
-        // could be rejected: target visibility is rechecked, then the
-        // recorded receipt returns without a second write or event.
+    return runIdempotentCommand(this.databaseContext, {
+      fingerprint,
+      authorize: () =>
+        this.authorization.requireCommercialIntakeAccess(
+          actor,
+          'update-next-action',
+          true,
+        ),
+      lockParts: (companyId) =>
+        opportunityCommandLockParts({
+          command: 'commercial-intake.update-next-action',
+          actor,
+          companyId,
+          idempotencyKey,
+        }),
+      findReceipt: (companyId) =>
+        this.findNextActionCommand(actor, companyId, idempotencyKey),
+      conflict: () =>
+        idempotencyConflict(
+          'Idempotency-Key was already used for another update.',
+        ),
+      replay: (companyId, receipt) =>
+        this.replayOpportunityReceipt(
+          actor,
+          companyId,
+          opportunityId,
+          receiptView(receipt),
+        ),
+      execute: async (companyId) => {
         const current = await this.requireVisibleOpportunity(
           actor,
           companyId,
           opportunityId,
-          false,
+          true,
         );
-        return {
-          receipt: receiptView(replay),
-          request: await this.loadDetail(
+        if (current.version !== command.expectedVersion) throw staleVersion();
+        if (current.nextAction === command.nextAction) {
+          const receipt = await this.recordNextActionCommand({
             actor,
             companyId,
-            current.clientRequestId,
-            false,
-          ),
-        };
-      }
+            opportunityId,
+            idempotencyKey,
+            fingerprint,
+            command,
+            outcome: 'unchanged',
+            resultVersion: current.version,
+          });
+          return {
+            receipt: receiptView(receipt),
+            request: await this.loadDetail(
+              actor,
+              companyId,
+              current.clientRequestId,
+              false,
+            ),
+          };
+        }
+        // Refused before any write, so no Opportunity change, event or
+        // receipt commits and the key stays unused.
+        if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
+          throw versionExhausted();
 
-      const current = await this.requireVisibleOpportunity(
-        actor,
-        companyId,
-        opportunityId,
-        true,
-      );
-      if (current.version !== command.expectedVersion) throw staleVersion();
-      if (current.nextAction === command.nextAction) {
+        const resultVersion = current.version + 1;
+        const [updated] = await this.databaseContext.connection
+          .update(opportunities)
+          .set({
+            nextAction: command.nextAction,
+            version: resultVersion,
+            lastUpdatedByInternalUserId: actor.internalUserId,
+            lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+            lastUpdatedAt: sql`now()`,
+          })
+          .where(
+            and(
+              eq(opportunities.workspaceId, actor.workspaceId),
+              eq(opportunities.companyId, companyId),
+              eq(opportunities.id, opportunityId),
+              eq(opportunities.version, command.expectedVersion),
+            ),
+          )
+          .returning();
+        if (!updated) throw staleVersion();
+        await this.accountability.recordOpportunityNextActionUpdated({
+          actor,
+          companyId,
+          clientRequestId: updated.clientRequestId,
+          opportunityId: updated.id,
+          opportunityVersion: updated.version,
+        });
         const receipt = await this.recordNextActionCommand({
           actor,
           companyId,
@@ -424,70 +475,19 @@ export class CommercialIntakeService {
           idempotencyKey,
           fingerprint,
           command,
-          outcome: 'unchanged',
-          resultVersion: current.version,
+          outcome: 'updated',
+          resultVersion,
         });
         return {
           receipt: receiptView(receipt),
           request: await this.loadDetail(
             actor,
             companyId,
-            current.clientRequestId,
+            updated.clientRequestId,
             false,
           ),
         };
-      }
-      // Refused before any write, so no Opportunity change, event or
-      // receipt commits and the key stays unused.
-      if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
-        throw versionExhausted();
-
-      const resultVersion = current.version + 1;
-      const [updated] = await this.databaseContext.connection
-        .update(opportunities)
-        .set({
-          nextAction: command.nextAction,
-          version: resultVersion,
-          lastUpdatedByInternalUserId: actor.internalUserId,
-          lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
-          lastUpdatedAt: sql`now()`,
-        })
-        .where(
-          and(
-            eq(opportunities.workspaceId, actor.workspaceId),
-            eq(opportunities.companyId, companyId),
-            eq(opportunities.id, opportunityId),
-            eq(opportunities.version, command.expectedVersion),
-          ),
-        )
-        .returning();
-      if (!updated) throw staleVersion();
-      await this.accountability.recordOpportunityNextActionUpdated({
-        actor,
-        companyId,
-        clientRequestId: updated.clientRequestId,
-        opportunityId: updated.id,
-        opportunityVersion: updated.version,
-      });
-      const receipt = await this.recordNextActionCommand({
-        actor,
-        companyId,
-        opportunityId,
-        idempotencyKey,
-        fingerprint,
-        command,
-        outcome: 'updated',
-        resultVersion,
-      });
-      return {
-        receipt: receiptView(receipt),
-        request: await this.loadDetail(
-          actor,
-          companyId,
-          updated.clientRequestId,
-          false,
-        ),
-      };
+      },
     });
   }
 
@@ -507,147 +507,132 @@ export class CommercialIntakeService {
     const command = readChangeOpportunityResponsibleCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = responsibleFingerprint(opportunityId, command);
-    return this.databaseContext.transaction(async () => {
-      // Authority is re-read under a share lock so a concurrent revocation
-      // or suspension commits either before this check or after this write.
-      const companyId = await this.authorization.requireOpportunityAssign(
-        actor,
-        true,
-      );
-      await this.lockResponsibleCommand(actor, companyId, idempotencyKey);
-      const replay = await this.findResponsibleCommand(
-        actor,
-        companyId,
-        idempotencyKey,
-      );
-      if (replay) {
-        if (replay.fingerprint !== fingerprint)
-          throw new ConflictException({
-            code: 'IDEMPOTENCY_CONFLICT',
-            message:
-              'Idempotency-Key was already used for another responsible actor change.',
-          });
-        // An exact retry resolves before its now-stale observed version
-        // could be rejected: target visibility is rechecked, then the
-        // recorded receipt returns without a second write or event.
+    return runIdempotentCommand(this.databaseContext, {
+      fingerprint,
+      authorize: () => this.authorization.requireOpportunityAssign(actor, true),
+      lockParts: (companyId) =>
+        opportunityCommandLockParts({
+          command: 'commercial-intake.change-responsible',
+          actor,
+          companyId,
+          idempotencyKey,
+        }),
+      findReceipt: (companyId) =>
+        this.findResponsibleCommand(actor, companyId, idempotencyKey),
+      conflict: () =>
+        idempotencyConflict(
+          'Idempotency-Key was already used for another responsible actor change.',
+        ),
+      replay: (companyId, receipt) =>
+        this.replayOpportunityReceipt(
+          actor,
+          companyId,
+          opportunityId,
+          responsibleReceiptView(receipt),
+        ),
+      execute: async (companyId) => {
         const current = await this.requireVisibleOpportunity(
           actor,
           companyId,
           opportunityId,
-          false,
+          true,
         );
-        return {
-          receipt: responsibleReceiptView(replay),
-          request: await this.loadDetail(
+        if (current.version !== command.expectedVersion) throw staleVersion();
+        const receipt = {
+          actor,
+          companyId,
+          opportunityId,
+          idempotencyKey,
+          fingerprint,
+          command,
+        };
+        // Naming the current responsible actor is a no-op that needs no
+        // eligibility check: nothing changes, so nothing is granted either.
+        if (
+          current.responsibleWorkspaceMembershipId ===
+          command.workspaceMembershipId
+        )
+          return {
+            receipt: responsibleReceiptView(
+              await this.recordResponsibleCommand({
+                ...receipt,
+                outcome: 'unchanged',
+                resultVersion: current.version,
+              }),
+            ),
+            request: await this.loadDetail(
+              actor,
+              companyId,
+              current.clientRequestId,
+              false,
+            ),
+          };
+        // Refused before any write, so no Opportunity change, event or
+        // receipt commits and the key stays unused.
+        if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
+          throw versionExhausted();
+        const after = await this.responsibleAccess.requireEligibleMember(
+          actor,
+          companyId,
+          command.workspaceMembershipId,
+        );
+        const before = {
+          workspaceMembershipId: current.responsibleWorkspaceMembershipId,
+          displayLabel: await this.responsibleAccess.recordedLabel(
             actor,
-            companyId,
-            current.clientRequestId,
-            false,
+            current.responsibleWorkspaceMembershipId,
           ),
         };
-      }
 
-      const current = await this.requireVisibleOpportunity(
-        actor,
-        companyId,
-        opportunityId,
-        true,
-      );
-      if (current.version !== command.expectedVersion) throw staleVersion();
-      const receipt = {
-        actor,
-        companyId,
-        opportunityId,
-        idempotencyKey,
-        fingerprint,
-        command,
-      };
-      // Naming the current responsible actor is a no-op that needs no
-      // eligibility check: nothing changes, so nothing is granted either.
-      if (
-        current.responsibleWorkspaceMembershipId ===
-        command.workspaceMembershipId
-      )
+        const resultVersion = current.version + 1;
+        const [updated] = await this.databaseContext.connection
+          .update(opportunities)
+          .set({
+            responsibleInternalUserId: after.internalUserId,
+            responsibleWorkspaceMembershipId: after.workspaceMembershipId,
+            version: resultVersion,
+            lastUpdatedByInternalUserId: actor.internalUserId,
+            lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+            lastUpdatedAt: sql`now()`,
+          })
+          .where(
+            and(
+              eq(opportunities.workspaceId, actor.workspaceId),
+              eq(opportunities.companyId, companyId),
+              eq(opportunities.id, opportunityId),
+              eq(opportunities.version, command.expectedVersion),
+            ),
+          )
+          .returning();
+        if (!updated) throw staleVersion();
+        await this.accountability.recordOpportunityResponsibleChanged({
+          actor,
+          companyId,
+          clientRequestId: updated.clientRequestId,
+          opportunityId: updated.id,
+          opportunityVersion: updated.version,
+          before,
+          after: {
+            workspaceMembershipId: after.workspaceMembershipId,
+            displayLabel: after.displayLabel,
+          },
+        });
         return {
           receipt: responsibleReceiptView(
             await this.recordResponsibleCommand({
               ...receipt,
-              outcome: 'unchanged',
-              resultVersion: current.version,
+              outcome: 'updated',
+              resultVersion,
             }),
           ),
           request: await this.loadDetail(
             actor,
             companyId,
-            current.clientRequestId,
+            updated.clientRequestId,
             false,
           ),
         };
-      // Refused before any write, so no Opportunity change, event or
-      // receipt commits and the key stays unused.
-      if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
-        throw versionExhausted();
-      const after = await this.responsibleAccess.requireEligibleMember(
-        actor,
-        companyId,
-        command.workspaceMembershipId,
-      );
-      const before = {
-        workspaceMembershipId: current.responsibleWorkspaceMembershipId,
-        displayLabel: await this.responsibleAccess.recordedLabel(
-          actor,
-          current.responsibleWorkspaceMembershipId,
-        ),
-      };
-
-      const resultVersion = current.version + 1;
-      const [updated] = await this.databaseContext.connection
-        .update(opportunities)
-        .set({
-          responsibleInternalUserId: after.internalUserId,
-          responsibleWorkspaceMembershipId: after.workspaceMembershipId,
-          version: resultVersion,
-          lastUpdatedByInternalUserId: actor.internalUserId,
-          lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
-          lastUpdatedAt: sql`now()`,
-        })
-        .where(
-          and(
-            eq(opportunities.workspaceId, actor.workspaceId),
-            eq(opportunities.companyId, companyId),
-            eq(opportunities.id, opportunityId),
-            eq(opportunities.version, command.expectedVersion),
-          ),
-        )
-        .returning();
-      if (!updated) throw staleVersion();
-      await this.accountability.recordOpportunityResponsibleChanged({
-        actor,
-        companyId,
-        clientRequestId: updated.clientRequestId,
-        opportunityId: updated.id,
-        opportunityVersion: updated.version,
-        before,
-        after: {
-          workspaceMembershipId: after.workspaceMembershipId,
-          displayLabel: after.displayLabel,
-        },
-      });
-      return {
-        receipt: responsibleReceiptView(
-          await this.recordResponsibleCommand({
-            ...receipt,
-            outcome: 'updated',
-            resultVersion,
-          }),
-        ),
-        request: await this.loadDetail(
-          actor,
-          companyId,
-          updated.clientRequestId,
-          false,
-        ),
-      };
+      },
     });
   }
 
@@ -668,147 +653,137 @@ export class CommercialIntakeService {
     const command = readChangeOpportunityOutcomeCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = outcomeFingerprint(opportunityId, command);
-    return this.databaseContext.transaction(async () => {
-      // Authority is re-read under a share lock so a concurrent revocation
-      // or suspension commits either before this check or after this write.
-      const companyId =
-        await this.authorization.requireOpportunityOutcomeChange(actor, true);
-      await this.lockOutcomeCommand(actor, companyId, idempotencyKey);
-      const replay = await this.findOutcomeCommand(
-        actor,
-        companyId,
-        idempotencyKey,
-      );
-      if (replay) {
-        if (replay.fingerprint !== fingerprint)
-          throw new ConflictException({
-            code: 'IDEMPOTENCY_CONFLICT',
-            message:
-              'Idempotency-Key was already used for another outcome status change.',
-          });
-        // An exact retry resolves before its now-stale observed version or
-        // its now-current status could be rejected: target visibility is
-        // rechecked, then the recorded receipt returns without a second write.
-        const current = await this.requireVisibleOpportunity(
+    return runIdempotentCommand(this.databaseContext, {
+      fingerprint,
+      authorize: () =>
+        this.authorization.requireOpportunityOutcomeChange(actor, true),
+      lockParts: (companyId) =>
+        opportunityCommandLockParts({
+          command: 'commercial-intake.change-outcome',
+          actor,
+          companyId,
+          idempotencyKey,
+        }),
+      findReceipt: (companyId) =>
+        this.findOutcomeCommand(actor, companyId, idempotencyKey),
+      conflict: () =>
+        idempotencyConflict(
+          'Idempotency-Key was already used for another outcome status change.',
+        ),
+      // A replay also resolves before its now-current status could be
+      // rejected as a disallowed transition.
+      replay: (companyId, receipt) =>
+        this.replayOpportunityReceipt(
           actor,
           companyId,
           opportunityId,
-          false,
-        );
-        return {
-          receipt: outcomeReceiptView(replay),
-          request: await this.loadDetail(
-            actor,
-            companyId,
-            current.clientRequestId,
-            false,
-          ),
-        };
-      }
-
-      const current = await this.lockRequestThenOpportunity(
-        actor,
-        companyId,
-        opportunityId,
-      );
-      if (current.version !== command.expectedVersion) throw staleVersion();
-      const resolution = resolveOutcomeTransition(
-        current.status,
-        command.change,
-      );
-      if (resolution.kind === 'not-allowed')
-        throw new ConflictException({
-          code: 'OUTCOME_TRANSITION_NOT_ALLOWED',
-          message:
-            'This status change is not allowed from the current status. Reload the Request.',
-        });
-      if (resolution.kind === 'invalid-field')
-        throw new BadRequestException({
-          code: 'VALIDATION_ERROR',
-          field: resolution.field,
-          message: resolution.message,
-        });
-      // Refused before any write, so no Opportunity change, history entry,
-      // event or receipt commits and the key stays unused.
-      if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
-        throw versionExhausted();
-
-      const { recorded } = resolution;
-      const resultVersion = current.version + 1;
-      const [updated] = await this.databaseContext.connection
-        .update(opportunities)
-        .set({
-          status: recorded.newStatus,
-          version: resultVersion,
-          lastUpdatedByInternalUserId: actor.internalUserId,
-          lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
-          lastUpdatedAt: sql`now()`,
-        })
-        .where(
-          and(
-            eq(opportunities.workspaceId, actor.workspaceId),
-            eq(opportunities.companyId, companyId),
-            eq(opportunities.id, opportunityId),
-            eq(opportunities.version, command.expectedVersion),
-          ),
-        )
-        .returning();
-      if (!updated) throw staleVersion();
-      await this.databaseContext.connection
-        .insert(opportunityOutcomeHistory)
-        .values({
-          workspaceId: actor.workspaceId,
+          outcomeReceiptView(receipt),
+        ),
+      execute: async (companyId) => {
+        const current = await this.lockRequestThenOpportunity(
+          actor,
           companyId,
+          opportunityId,
+        );
+        if (current.version !== command.expectedVersion) throw staleVersion();
+        const resolution = resolveOutcomeTransition(
+          current.status,
+          command.change,
+        );
+        if (resolution.kind === 'not-allowed')
+          throw new ConflictException({
+            code: 'OUTCOME_TRANSITION_NOT_ALLOWED',
+            message:
+              'This status change is not allowed from the current status. Reload the Request.',
+          });
+        if (resolution.kind === 'invalid-field')
+          throw new BadRequestException({
+            code: 'VALIDATION_ERROR',
+            field: resolution.field,
+            message: resolution.message,
+          });
+        // Refused before any write, so no Opportunity change, history entry,
+        // event or receipt commits and the key stays unused.
+        if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
+          throw versionExhausted();
+
+        const { recorded } = resolution;
+        const resultVersion = current.version + 1;
+        const [updated] = await this.databaseContext.connection
+          .update(opportunities)
+          .set({
+            status: recorded.newStatus,
+            version: resultVersion,
+            lastUpdatedByInternalUserId: actor.internalUserId,
+            lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+            lastUpdatedAt: sql`now()`,
+          })
+          .where(
+            and(
+              eq(opportunities.workspaceId, actor.workspaceId),
+              eq(opportunities.companyId, companyId),
+              eq(opportunities.id, opportunityId),
+              eq(opportunities.version, command.expectedVersion),
+            ),
+          )
+          .returning();
+        if (!updated) throw staleVersion();
+        await this.databaseContext.connection
+          .insert(opportunityOutcomeHistory)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            opportunityId: updated.id,
+            opportunityVersion: updated.version,
+            previousStatus: recorded.previousStatus,
+            newStatus: recorded.newStatus,
+            lossReasonCode: recorded.lossReasonCode,
+            reason: recorded.reason,
+            note: recorded.note,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            actorDisplayLabel: memberDisplayLabel(
+              actor.displayName,
+              actor.workspaceMembershipId,
+            ),
+          });
+        await this.accountability.recordOpportunityOutcomeChanged({
+          actor,
+          companyId,
+          clientRequestId: updated.clientRequestId,
           opportunityId: updated.id,
           opportunityVersion: updated.version,
           previousStatus: recorded.previousStatus,
           newStatus: recorded.newStatus,
           lossReasonCode: recorded.lossReasonCode,
-          reason: recorded.reason,
-          note: recorded.note,
-          actorInternalUserId: actor.internalUserId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          actorDisplayLabel: memberDisplayLabel(
-            actor.displayName,
-            actor.workspaceMembershipId,
-          ),
         });
-      await this.accountability.recordOpportunityOutcomeChanged({
-        actor,
-        companyId,
-        clientRequestId: updated.clientRequestId,
-        opportunityId: updated.id,
-        opportunityVersion: updated.version,
-        previousStatus: recorded.previousStatus,
-        newStatus: recorded.newStatus,
-        lossReasonCode: recorded.lossReasonCode,
-      });
-      const [receipt] = await this.databaseContext.connection
-        .insert(commercialIntakeOutcomeCommands)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey,
-          fingerprint,
-          opportunityId: updated.id,
-          expectedVersion: command.expectedVersion,
-          resultVersion,
-          previousStatus: recorded.previousStatus,
-          newStatus: recorded.newStatus,
-        })
-        .returning();
-      if (!receipt)
-        throw new Error('The outcome status command was not recorded.');
-      return {
-        receipt: outcomeReceiptView(receipt),
-        request: await this.loadDetail(
-          actor,
-          companyId,
-          updated.clientRequestId,
-          false,
-        ),
-      };
+        const [receipt] = await this.databaseContext.connection
+          .insert(commercialIntakeOutcomeCommands)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            idempotencyKey,
+            fingerprint,
+            opportunityId: updated.id,
+            expectedVersion: command.expectedVersion,
+            resultVersion,
+            previousStatus: recorded.previousStatus,
+            newStatus: recorded.newStatus,
+          })
+          .returning();
+        if (!receipt)
+          throw new Error('The outcome status command was not recorded.');
+        return {
+          receipt: outcomeReceiptView(receipt),
+          request: await this.loadDetail(
+            actor,
+            companyId,
+            updated.clientRequestId,
+            false,
+          ),
+        };
+      },
     });
   }
 
@@ -1219,6 +1194,32 @@ export class CommercialIntakeService {
     );
   }
 
+  // An exact retry resolves before its now-stale observed version could be
+  // rejected: target visibility is rechecked, then the recorded receipt
+  // returns without a second write or event.
+  private async replayOpportunityReceipt<Receipt>(
+    actor: ActorContext,
+    companyId: string,
+    opportunityId: string,
+    receipt: Receipt,
+  ): Promise<{ receipt: Receipt; request: CommercialIntakeDetail }> {
+    const current = await this.requireVisibleOpportunity(
+      actor,
+      companyId,
+      opportunityId,
+      false,
+    );
+    return {
+      receipt,
+      request: await this.loadDetail(
+        actor,
+        companyId,
+        current.clientRequestId,
+        false,
+      ),
+    };
+  }
+
   // The same safe not-found response as Request detail: an unknown,
   // cross-Company or cross-Workspace Opportunity is indistinguishable.
   private async requireVisibleOpportunity(
@@ -1275,23 +1276,6 @@ export class CommercialIntakeService {
     return receipt;
   }
 
-  private async lockNextActionCommand(
-    actor: ActorContext,
-    companyId: string,
-    idempotencyKey: string,
-  ): Promise<void> {
-    const lockKey = JSON.stringify([
-      'commercial-intake.update-next-action',
-      actor.workspaceId,
-      companyId,
-      actor.workspaceMembershipId,
-      idempotencyKey,
-    ]);
-    await this.databaseContext.connection.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-    );
-  }
-
   private async recordResponsibleCommand(input: {
     actor: ActorContext;
     companyId: string;
@@ -1322,23 +1306,6 @@ export class CommercialIntakeService {
     return receipt;
   }
 
-  private async lockResponsibleCommand(
-    actor: ActorContext,
-    companyId: string,
-    idempotencyKey: string,
-  ): Promise<void> {
-    const lockKey = JSON.stringify([
-      'commercial-intake.change-responsible',
-      actor.workspaceId,
-      companyId,
-      actor.workspaceMembershipId,
-      idempotencyKey,
-    ]);
-    await this.databaseContext.connection.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-    );
-  }
-
   private async findResponsibleCommand(
     actor: ActorContext,
     companyId: string,
@@ -1365,23 +1332,6 @@ export class CommercialIntakeService {
         ),
       );
     return command;
-  }
-
-  private async lockOutcomeCommand(
-    actor: ActorContext,
-    companyId: string,
-    idempotencyKey: string,
-  ): Promise<void> {
-    const lockKey = JSON.stringify([
-      'commercial-intake.change-outcome',
-      actor.workspaceId,
-      companyId,
-      actor.workspaceMembershipId,
-      idempotencyKey,
-    ]);
-    await this.databaseContext.connection.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-    );
   }
 
   private async findOutcomeCommand(
@@ -1427,52 +1377,6 @@ export class CommercialIntakeService {
       );
     return command;
   }
-}
-
-function nextActionFingerprint(
-  opportunityId: string,
-  command: UpdateOpportunityNextActionCommand,
-): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        opportunityId,
-        expectedVersion: command.expectedVersion,
-        nextAction: command.nextAction,
-      }),
-    )
-    .digest('hex');
-}
-
-function responsibleFingerprint(
-  opportunityId: string,
-  command: ChangeOpportunityResponsibleCommand,
-): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        opportunityId,
-        expectedVersion: command.expectedVersion,
-        workspaceMembershipId: command.workspaceMembershipId,
-      }),
-    )
-    .digest('hex');
-}
-
-// The requested change exactly as submitted, so any changed field conflicts.
-function outcomeFingerprint(
-  opportunityId: string,
-  command: ChangeOpportunityOutcomeCommand,
-): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify({
-        opportunityId,
-        expectedVersion: command.expectedVersion,
-        change: command.change,
-      }),
-    )
-    .digest('hex');
 }
 
 function outcomeReceiptView(
@@ -1527,10 +1431,7 @@ function receiptView(
 }
 
 function staleVersion(): ConflictException {
-  return new ConflictException({
-    code: 'STALE_VERSION',
-    message: 'Reload the Request before retrying.',
-  });
+  return staleVersionConflict('Reload the Request before retrying.');
 }
 
 function versionExhausted(): ConflictException {

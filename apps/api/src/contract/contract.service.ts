@@ -31,7 +31,7 @@ import {
 } from '../database/schema/index.js';
 import { OfferService } from '../offer/offer.service.js';
 import type { OfferRecipientCopy } from '../offer/offer.types.js';
-import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import {
   contractQualityRuleSetVersion,

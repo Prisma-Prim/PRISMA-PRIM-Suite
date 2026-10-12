@@ -26,7 +26,7 @@ import { ClientOperationalReferenceService } from '../client/client-operational-
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { contracts, contractProjectLinks } from '../database/schema/index.js';
-import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import { ProjectService } from '../project/project.service.js';
 import { isOpenProjectStatus } from '../project/project-status.js';
 

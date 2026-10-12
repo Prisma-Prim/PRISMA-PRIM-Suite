@@ -30,7 +30,7 @@ import {
   OFFER_TEMPLATE_CODE,
 } from '../database/schema/index.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
-import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import type { PricingSnapshotRecord } from '../pricing-configuration/pricing-snapshot.types.js';
 import { offerClientResponseState } from './offer.types.js';
 import type {

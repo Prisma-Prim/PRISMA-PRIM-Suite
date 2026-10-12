@@ -7,6 +7,7 @@ import { CompanyContextAuthorization } from '../access/company-context-authoriza
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { CommercialCatalogueService } from '../commercial-catalogue/commercial-catalogue.service.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { tariffVersions } from '../database/schema/index.js';
 import {
@@ -16,7 +17,6 @@ import {
 } from './pricing-configuration-pagination.js';
 import {
   assertNever,
-  commandFingerprint,
   findPublicationReceipt,
   idempotencyConflict,
   lockPublicationCommand,

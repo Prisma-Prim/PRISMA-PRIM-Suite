@@ -22,7 +22,7 @@ import {
   contractCommands,
   contractDecisions,
 } from '../database/schema/index.js';
-import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import {
   readContractDecisionCommand,
   readContractWarningCodes,
