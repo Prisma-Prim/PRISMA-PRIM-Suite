@@ -157,3 +157,29 @@ test('acceptance failures retain first-attempt evidence without a retry', async 
     'the isolated evidence probe must run once per run, in acceptance shard 1, after a failed product test, but not after cancellation or skipped tests',
   );
 });
+
+test('each shard keeps its own Playwright run metadata in the merged evidence', async () => {
+  const workflow = (await readFile(workflowUrl, 'utf8')).replaceAll(
+    '\r\n',
+    '\n',
+  );
+  for (const family of ['browser', 'acceptance']) {
+    const start = workflow.indexOf(
+      `- name: Namespace ${family} run metadata\n`,
+    );
+    assert.notEqual(start, -1, `missing ${family} metadata step`);
+    const upload = workflow.indexOf(`- name: Upload ${family} evidence\n`);
+    assert.ok(start < upload, 'metadata is renamed before the upload');
+    const body = workflow.slice(start, upload);
+    assert.match(
+      body,
+      /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+    );
+    assert.ok(
+      body.includes(`apps/web/test-results/${family}/.last-run.json`) &&
+        body.includes(
+          `apps/web/test-results/${family}/.last-run-shard-\${{ matrix.shard }}.json`,
+        ),
+    );
+  }
+});
