@@ -22,6 +22,7 @@ async function imageSources() {
   return Promise.all(
     [
       '../.github/workflows/ci.yml',
+      './ci-start-postgres.sh',
       '../deploy/railway/api.Dockerfile',
       '../deploy/railway/web.Dockerfile',
       './railway-packaging-smoke.sh',
@@ -34,14 +35,14 @@ async function imageSources() {
   );
 }
 
-function requireOfficialImageSources([workflow, api, web, smoke]) {
-  const services = [...workflow.matchAll(/^ +image: (\S+)$/gm)].map(
-    (match) => match[1],
+function requireOfficialImageSources([workflow, ciPostgres, api, web, smoke]) {
+  // The database jobs start PostgreSQL through ci-start-postgres.sh, which
+  // pins the same official image; the workflow itself declares no image.
+  assert.deepEqual([...workflow.matchAll(/^ +image: (\S+)$/gm)], []);
+  assert.equal(
+    /^postgres_image='([^']+)'$/m.exec(ciPostgres)?.[1],
+    officialImages.postgres,
   );
-  assert.deepEqual(services, [
-    officialImages.postgres,
-    officialImages.postgres,
-  ]);
   for (const [dockerfile, expected] of [
     [api, [officialImages.node, officialImages.node]],
     [web, [officialImages.node, officialImages.nginx]],
@@ -108,7 +109,7 @@ test('the image-source guard rejects Docker Hub reintroduced at every image refe
       rejected += 1;
     }
   }
-  assert.equal(rejected, 7);
+  assert.equal(rejected, 6);
 });
 
 function jobsIn(workflow) {
@@ -336,16 +337,13 @@ test('sharded families cover every shard and the complete API suite', async () =
   assert.doesNotMatch(jobs.acceptance, /max-parallel/);
 });
 
-test('database jobs own isolated PostgreSQL services and matching environment checks', async () => {
+test('database jobs start the cached pinned PostgreSQL and keep matching environment checks', async () => {
   const jobs = jobsIn(await readWorkflow());
   for (const [job, doctor] of [
     ['api', 'postgres'],
     ['acceptance', 'web-postgres'],
   ]) {
-    assert.match(
-      jobs[job],
-      /services:\n {6}postgres:\n {8}image: public\.ecr\.aws\/docker\/library\/postgres:17-alpine@sha256:[a-f0-9]{64}\n/,
-    );
+    assert.doesNotMatch(jobs[job], /\bservices:/);
     for (const [variable, database] of [
       ['DATABASE_URL', 'prisma_prim_dev'],
       ['TEST_DATABASE_URL', 'prisma_prim_test'],
@@ -357,6 +355,10 @@ test('database jobs own isolated PostgreSQL services and matching environment ch
         ),
       );
     }
+    assert.doesNotMatch(
+      stepBody(jobs[job], 'Set up repository verification'),
+      /postgres: 'false'/,
+    );
     assert.match(
       stepBody(jobs[job], 'Verify supported agent environment'),
       new RegExp(`run: pnpm agent:doctor:${doctor}\\n`),
@@ -392,6 +394,34 @@ test('database jobs own isolated PostgreSQL services and matching environment ch
   assert.match(setup, /chromium:\n {4}description:[^\n]+\n {4}default: 'true'/);
   assert.match(setup, /if: \$\{\{ inputs\.postgres == 'true' \}\}/);
   assert.match(setup, /if: \$\{\{ inputs\.chromium == 'true' \}\}/);
+  // One cached image per pinned script: restore, start, then save only a
+  // freshly pulled archive, all before the test database is provisioned.
+  const order = [
+    '- name: Restore PostgreSQL image',
+    '- name: Start PostgreSQL',
+    '- name: Save PostgreSQL image',
+    '- name: Provision isolated test database',
+  ].map((step) => setup.indexOf(step));
+  assert.ok(order.every((index) => index !== -1));
+  assert.deepEqual(
+    [...order].sort((left, right) => left - right),
+    order,
+  );
+  assert.match(setup, /uses: actions\/cache\/restore@v4/);
+  assert.match(setup, /uses: actions\/cache\/save@v4/);
+  assert.equal(
+    [
+      ...setup.matchAll(
+        /key: postgres-image-\$\{\{ hashFiles\('scripts\/ci-start-postgres\.sh'\) \}\}/g,
+      ),
+    ].length,
+    2,
+  );
+  assert.match(setup, /run: bash scripts\/ci-start-postgres\.sh/);
+  assert.match(
+    setup,
+    /if: \$\{\{ inputs\.postgres == 'true' && steps\.start_postgres\.outputs\.saved == 'true' \}\}/,
+  );
 });
 
 test('the scope job classifies the exact pull request commits with full history', async () => {
