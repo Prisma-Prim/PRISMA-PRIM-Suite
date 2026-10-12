@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -217,22 +216,9 @@ function pricingCommandReceipt(row: ReceiptRow): PricingCommandReceipt {
   }
 }
 
-// The fingerprint covers the Company, any target and the payload exactly as
-// submitted, strings included. It is computed before validation so a replay
-// is recognized without re-running any later step of the command.
-export function commandFingerprint(value: Record<string, unknown>): string {
-  return createHash('sha256').update(stableJson(value)).digest('hex');
-}
-
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
-  if (typeof value === 'object' && value !== null)
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
-      .join(',')}}`;
-  return JSON.stringify(value) ?? 'null';
-}
+// Contract REST tests still import the fingerprint from here; the command
+// module owns it.
+export { commandFingerprint } from '../command/idempotent-command.js';
 
 export function idempotencyConflict(): ConflictException {
   return new ConflictException({

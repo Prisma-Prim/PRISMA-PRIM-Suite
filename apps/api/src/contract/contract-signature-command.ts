@@ -17,7 +17,7 @@ import {
   contractSignatures,
   contractQualityRuns,
 } from '../database/schema/index.js';
-import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import {
   readContractDecision,
   type DecisionDependencies,

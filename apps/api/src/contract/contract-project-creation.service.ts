@@ -13,7 +13,7 @@ import {
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
 import { DatabaseContext } from '../database/database-context.js';
-import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import {
   ProjectService,
   readProjectTitle,

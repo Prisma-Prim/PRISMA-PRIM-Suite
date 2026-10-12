@@ -6,6 +6,7 @@ import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { pricingRuleVersions } from '../database/schema/index.js';
 import {
@@ -15,7 +16,6 @@ import {
 } from './pricing-configuration-pagination.js';
 import {
   assertNever,
-  commandFingerprint,
   findPublicationReceipt,
   idempotencyConflict,
   lockPublicationCommand,

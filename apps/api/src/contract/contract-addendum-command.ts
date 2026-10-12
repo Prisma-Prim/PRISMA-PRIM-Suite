@@ -21,7 +21,7 @@ import {
   contractCommands,
   contractReferenceCounters,
 } from '../database/schema/index.js';
-import { commandFingerprint } from '../pricing-configuration/pricing-configuration-publication.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import type { ContractVersionReader } from './contract-version-reader.js';
 import {
   readAddendumCommand,

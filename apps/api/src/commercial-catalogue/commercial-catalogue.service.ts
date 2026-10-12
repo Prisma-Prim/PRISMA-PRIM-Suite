@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import {
   ConflictException,
   Injectable,
@@ -8,6 +7,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   CATALOGUE_PROVENANCE,
@@ -62,7 +62,7 @@ export class CommercialCatalogueService {
         true,
       );
       const idempotencyKey = requireIdempotencyKey(key);
-      const fingerprint = commandFingerprint(companyId, value);
+      const fingerprint = commandFingerprint({ companyId, payload: value });
       // A Service Definition creation has no target record: the Workspace
       // itself is the scope, so there is no target readability to revalidate.
       await this.lockCommand(actor, companyId, idempotencyKey);
@@ -209,7 +209,7 @@ export class CommercialCatalogueService {
         true,
       );
       const idempotencyKey = requireIdempotencyKey(key);
-      const fingerprint = commandFingerprint(companyId, value);
+      const fingerprint = commandFingerprint({ companyId, payload: value });
       // The command's target is the Service Definition it names. Its current
       // readability in the actor's Workspace is revalidated before any replay,
       // so a receipt never discloses a target the actor may no longer read.
@@ -592,25 +592,6 @@ function requireSameCommand(
       code: 'IDEMPOTENCY_CONFLICT',
       message: 'Idempotency-Key was already used for another command.',
     });
-}
-
-// The fingerprint covers the Company and the payload exactly as submitted.
-// It is computed before validation so a replay is recognized without
-// re-running any later step of the command.
-function commandFingerprint(companyId: string, payload: unknown): string {
-  return createHash('sha256')
-    .update(stableJson({ companyId, payload }))
-    .digest('hex');
-}
-
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
-  if (typeof value === 'object' && value !== null)
-    return `{${Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
-      .join(',')}}`;
-  return JSON.stringify(value) ?? 'null';
 }
 
 function definitionView(row: ServiceDefinitionRow): ServiceDefinitionRecord {

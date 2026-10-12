@@ -14,6 +14,7 @@ import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { CommercialCatalogueService } from '../commercial-catalogue/commercial-catalogue.service.js';
 import type { CompanyServiceOfferingRecord } from '../commercial-catalogue/commercial-catalogue.types.js';
 import { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
+import { commandFingerprint } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   pricingRuleVersions,
@@ -39,7 +40,6 @@ import type {
   PricingSnapshotRecord,
 } from './pricing-snapshot.types.js';
 import {
-  commandFingerprint,
   findPublicationReceipt,
   idempotencyConflict,
   lockPublicationCommand,
