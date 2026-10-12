@@ -187,6 +187,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
+      # Shard 1 owns the deliberate evidence probe; a failing shard 2 must
+      # not cancel it, so acceptance shards always run to completion.
+      fail-fast: false
       matrix:
         shard: [1, 2]
     services:

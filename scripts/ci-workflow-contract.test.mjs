@@ -326,12 +326,14 @@ test('sharded families cover every shard and the complete API suite', async () =
     jobs.browser,
     /^ {4}strategy:\n {6}matrix:\n {8}shard: \[1, 2, 3\]$/m,
   );
+  // Acceptance shards never cancel each other: shard 1 owns the probe.
   assert.match(
     jobs.acceptance,
-    /^ {4}strategy:\n {6}matrix:\n {8}shard: \[1, 2\]$/m,
+    /^ {4}strategy:\n(?: {6}#[^\n]*\n)* {6}fail-fast: false\n {6}matrix:\n {8}shard: \[1, 2\]$/m,
   );
-  for (const job of ['api', 'browser', 'acceptance'])
+  for (const job of ['api', 'browser'])
     assert.doesNotMatch(jobs[job], /fail-fast: false|max-parallel/);
+  assert.doesNotMatch(jobs.acceptance, /max-parallel/);
 });
 
 test('database jobs own isolated PostgreSQL services and matching environment checks', async () => {
