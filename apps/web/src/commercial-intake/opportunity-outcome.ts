@@ -209,10 +209,19 @@ export function isOutcomeHistoryPage(
   )
     return false;
   const entries: unknown[] = value.entries;
-  return entries.every(
-    (entry, index) =>
-      isOutcomeHistoryEntry(entry, isTimestamp) &&
-      (index === 0 || isOlderEntry(entry, entries[index - 1])),
+  // A cursor continues from this page's oldest entry, so an empty page has
+  // none; a page without a cursor is complete, so it ends at the creation
+  // status OPEN.
+  if (entries.length === 0) return value.nextCursor === undefined;
+  const oldest = entries.at(-1);
+  return (
+    entries.every(
+      (entry, index) =>
+        isOutcomeHistoryEntry(entry, isTimestamp) &&
+        (index === 0 || isOlderEntry(entry, entries[index - 1])),
+    ) &&
+    (value.nextCursor !== undefined ||
+      (isRecord(oldest) && oldest.previousStatus === 'OPEN'))
   );
 }
 

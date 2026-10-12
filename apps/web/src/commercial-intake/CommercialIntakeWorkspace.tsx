@@ -170,6 +170,8 @@ type OutcomeRetry = {
   opportunityId: string;
   body: string;
   key: string;
+  /** The status shown when the command was built: the receipt starts here. */
+  previousStatus: OpportunityOutcomeStatus;
 };
 
 type RequestPage = { items: RequestListItem[]; nextCursor?: string };
@@ -1245,6 +1247,9 @@ export function CommercialIntakeWorkspace({
       outcomeEdit.kind === 'uncertain' ? outcomeRetry.current : undefined;
     const opportunityId =
       preservedRetry?.opportunityId ?? selected.request.initialOpportunity.id;
+    const previousStatus =
+      preservedRetry?.previousStatus ??
+      selected.request.initialOpportunity.status;
     let command: string;
     if (preservedRetry) command = preservedRetry.body;
     else {
@@ -1265,7 +1270,12 @@ export function CommercialIntakeWorkspace({
       previous.body === command
         ? previous.key
         : crypto.randomUUID();
-    outcomeRetry.current = { opportunityId, body: command, key };
+    outcomeRetry.current = {
+      opportunityId,
+      body: command,
+      key,
+      previousStatus,
+    };
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
@@ -1320,7 +1330,11 @@ export function CommercialIntakeWorkspace({
       }
       if (
         result.status === 200 &&
-        isOutcomeChangeResult(result.body, opportunityId, command)
+        isOutcomeChangeResult(result.body, {
+          opportunityId,
+          command,
+          previousStatus,
+        })
       ) {
         applyOpportunityResponse({
           request: result.body.request,
@@ -2712,10 +2726,14 @@ const OUTCOME_RECEIPT_FIELDS = [
  */
 function isOutcomeChangeResult(
   value: unknown,
-  opportunityId: string,
-  command: string,
+  sent: {
+    opportunityId: string;
+    command: string;
+    previousStatus: OpportunityOutcomeStatus;
+  },
 ): value is OutcomeChangeResult {
-  const submitted = submittedOutcome(command);
+  const { opportunityId, previousStatus } = sent;
+  const submitted = submittedOutcome(sent.command);
   if (
     !isRecord(value) ||
     Object.keys(value).length !== 2 ||
@@ -2735,6 +2753,7 @@ function isOutcomeChangeResult(
     receipt.version >= 2 &&
     receipt.opportunityId === opportunityId &&
     submitted !== undefined &&
+    receipt.previousStatus === previousStatus &&
     receipt.status === submitted.status &&
     receipt.version === submitted.expectedVersion + 1 &&
     isClientRequest(value.request) &&

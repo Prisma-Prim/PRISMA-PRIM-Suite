@@ -438,6 +438,7 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     ['an extra receipt field', { extra: true }],
     ['another Opportunity', { opportunityId: 'another-opportunity' }],
     ['another target status than submitted', { status: 'WON' }],
+    ['another starting status than shown', { previousStatus: 'ON_HOLD' }],
     ['another result version than submitted', { version: 3 }],
   ])(
     'keeps the command for an explicit retry when a success carries %s',

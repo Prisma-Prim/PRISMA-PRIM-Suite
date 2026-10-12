@@ -104,10 +104,18 @@ describe('outcome history boundary', () => {
     expect(isOutcomeHistoryPage(page([at(2), at(3)]), isTimestamp)).toBe(false);
     expect(isOutcomeHistoryPage(page([at(2), at(2)]), isTimestamp)).toBe(false);
     const fiftyOne = Array.from({ length: 51 }, (_, index) => at(60 - index));
-    expect(isOutcomeHistoryPage(page(fiftyOne), isTimestamp)).toBe(false);
-    expect(isOutcomeHistoryPage(page(fiftyOne.slice(0, 50)), isTimestamp)).toBe(
-      true,
-    );
+    expect(
+      isOutcomeHistoryPage(
+        { entries: fiftyOne, nextCursor: 'opaque-1' },
+        isTimestamp,
+      ),
+    ).toBe(false);
+    expect(
+      isOutcomeHistoryPage(
+        { entries: fiftyOne.slice(0, 50), nextCursor: 'opaque-1' },
+        isTimestamp,
+      ),
+    ).toBe(true);
   });
 
   it('rejects entries that do not connect', () => {
@@ -187,6 +195,30 @@ describe('outcome history boundary', () => {
     );
     expect(
       continuesOutcomeHistory([newest], [{ ...hold, newStatus: 'WON' }]),
+    ).toBe(false);
+  });
+
+  it('requires a complete history to start at OPEN and an empty page to end it', () => {
+    const won = entry({
+      previousStatus: 'ON_HOLD',
+      newStatus: 'WON',
+      version: 3,
+    });
+    const hold = entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version: 2 });
+    expect(isOutcomeHistoryPage(page([won]), isTimestamp)).toBe(false);
+    expect(
+      isOutcomeHistoryPage(
+        { entries: [won], nextCursor: 'opaque-1' },
+        isTimestamp,
+      ),
+    ).toBe(true);
+    expect(isOutcomeHistoryPage(page([won, hold]), isTimestamp)).toBe(true);
+    expect(isOutcomeHistoryPage(page([]), isTimestamp)).toBe(true);
+    expect(
+      isOutcomeHistoryPage(
+        { entries: [], nextCursor: 'opaque-1' },
+        isTimestamp,
+      ),
     ).toBe(false);
   });
 
