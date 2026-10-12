@@ -100,6 +100,7 @@ test('a real git diff with a space-prefixed root path is not docs-only', () => {
 const success = { result: 'success' };
 const skipped = { result: 'skipped' };
 const heavy = [
+  'postgres_image',
   'api',
   'web_unit',
   'browser',
@@ -121,16 +122,16 @@ test('the gate accepts skipped heavy jobs only after a successful docs-only scop
   assert.deepEqual(unsuccessfulJobs(results(fullRun, success)), []);
   assert.deepEqual(unsuccessfulJobs(results(docsOnly, skipped)), []);
   assert.deepEqual(unsuccessfulJobs(results(docsOnly, success)), []);
-  assert.equal(unsuccessfulJobs(results(fullRun, skipped)).length, 6);
+  assert.equal(unsuccessfulJobs(results(fullRun, skipped)).length, 7);
   assert.equal(
     unsuccessfulJobs(results({ result: 'success' }, skipped)).length,
-    6,
+    7,
   );
   const failedScope = unsuccessfulJobs(
     results({ result: 'failure', outputs: { docs_only: 'true' } }, skipped),
   );
   assert.ok(failedScope.includes('scope: failure'));
-  assert.equal(failedScope.length, 7);
+  assert.equal(failedScope.length, 8);
   const docsFailure = results(docsOnly, skipped);
   docsFailure.api = { result: 'failure' };
   assert.deepEqual(unsuccessfulJobs(docsFailure), ['api: failure']);

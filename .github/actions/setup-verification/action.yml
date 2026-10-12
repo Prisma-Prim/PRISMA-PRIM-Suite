@@ -25,6 +25,22 @@ runs:
       shell: bash
       run: pnpm install --frozen-lockfile
 
+    # Database shards share the one image archive the postgres_image job
+    # cached, instead of each pulling from the throttled public registry.
+    - name: Restore PostgreSQL image
+      if: ${{ inputs.postgres == 'true' }}
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/postgres-image/postgres.tar
+        key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
+
+    - name: Start PostgreSQL
+      if: ${{ inputs.postgres == 'true' }}
+      shell: bash
+      env:
+        POSTGRES_IMAGE_ARCHIVE: ${{ runner.temp }}/postgres-image/postgres.tar
+      run: bash scripts/ci-start-postgres.sh start
+
     - name: Provision isolated test database
       if: ${{ inputs.postgres == 'true' }}
       shell: bash

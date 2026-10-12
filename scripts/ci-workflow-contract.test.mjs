@@ -22,6 +22,7 @@ async function imageSources() {
   return Promise.all(
     [
       '../.github/workflows/ci.yml',
+      './ci-start-postgres.sh',
       '../deploy/railway/api.Dockerfile',
       '../deploy/railway/web.Dockerfile',
       './railway-packaging-smoke.sh',
@@ -34,14 +35,14 @@ async function imageSources() {
   );
 }
 
-function requireOfficialImageSources([workflow, api, web, smoke]) {
-  const services = [...workflow.matchAll(/^ +image: (\S+)$/gm)].map(
-    (match) => match[1],
+function requireOfficialImageSources([workflow, ciPostgres, api, web, smoke]) {
+  // The database jobs start PostgreSQL through ci-start-postgres.sh, which
+  // pins the same official image; the workflow itself declares no image.
+  assert.deepEqual([...workflow.matchAll(/^ +image: (\S+)$/gm)], []);
+  assert.equal(
+    /^postgres_image='([^']+)'$/m.exec(ciPostgres)?.[1],
+    officialImages.postgres,
   );
-  assert.deepEqual(services, [
-    officialImages.postgres,
-    officialImages.postgres,
-  ]);
   for (const [dockerfile, expected] of [
     [api, [officialImages.node, officialImages.node]],
     [web, [officialImages.node, officialImages.nginx]],
@@ -108,7 +109,7 @@ test('the image-source guard rejects Docker Hub reintroduced at every image refe
       rejected += 1;
     }
   }
-  assert.equal(rejected, 7);
+  assert.equal(rejected, 6);
 });
 
 function jobsIn(workflow) {
@@ -135,6 +136,7 @@ test('independent test families and packaging share only the fast prerequisite a
   assert.deepEqual(Object.keys(jobs), [
     'checks',
     'scope',
+    'postgres_image',
     'api',
     'web_unit',
     'browser',
@@ -145,6 +147,25 @@ test('independent test families and packaging share only the fast prerequisite a
   ]);
   assert.doesNotMatch(jobs.checks, /\bneeds:|\bif:/);
   assert.doesNotMatch(jobs.scope, /\bneeds:|\bif:/);
+  // One job per run acquires the PostgreSQL image for the database jobs.
+  assert.match(jobs.postgres_image, /^ {4}needs: scope$/m);
+  assert.match(
+    jobs.postgres_image,
+    /^ {4}if: \$\{\{ needs\.scope\.outputs\.docs_only != 'true' \}\}$/m,
+  );
+  for (const job of ['api', 'acceptance', 'packaging'])
+    assert.match(jobs[job], /^ {4}needs: \[checks, scope, postgres_image\]$/m);
+  for (const job of ['web_unit', 'browser', 'build'])
+    assert.match(jobs[job], /^ {4}needs: \[checks, scope\]$/m);
+  // Packaging loads the run's cached image instead of pulling it again.
+  assert.match(
+    stepBody(jobs.packaging, 'Restore PostgreSQL image'),
+    /uses: actions\/cache\/restore@v4/,
+  );
+  assert.match(
+    stepBody(jobs.packaging, 'Prove production image packaging'),
+    /POSTGRES_IMAGE_ARCHIVE: \$\{\{ runner\.temp \}\}\/postgres-image\/postgres\.tar/,
+  );
   for (const job of [
     'api',
     'web_unit',
@@ -153,7 +174,6 @@ test('independent test families and packaging share only the fast prerequisite a
     'build',
     'packaging',
   ]) {
-    assert.match(jobs[job], /^ {4}needs: \[checks, scope\]$/m);
     // A heavy family is skipped only for a docs-only change; any other
     // scope answer, including a missing one, runs it.
     assert.match(
@@ -162,8 +182,8 @@ test('independent test families and packaging share only the fast prerequisite a
     );
   }
   assert.match(
-    jobs.quality,
-    /^ {4}needs: \[checks, scope, api, web_unit, browser, acceptance, build, packaging\]$/m,
+    jobs.quality.replaceAll(/\s+/g, ' '),
+    / needs: \[ checks, scope, postgres_image, api, web_unit, browser, acceptance, build, packaging, \] /,
   );
   assert.match(jobs.quality, /^ {4}if: \$\{\{ always\(\) \}\}$/m);
   const gate = stepBody(jobs.quality, 'Require every verification result');
@@ -336,16 +356,13 @@ test('sharded families cover every shard and the complete API suite', async () =
   assert.doesNotMatch(jobs.acceptance, /max-parallel/);
 });
 
-test('database jobs own isolated PostgreSQL services and matching environment checks', async () => {
+test('database jobs start the cached pinned PostgreSQL and keep matching environment checks', async () => {
   const jobs = jobsIn(await readWorkflow());
   for (const [job, doctor] of [
     ['api', 'postgres'],
     ['acceptance', 'web-postgres'],
   ]) {
-    assert.match(
-      jobs[job],
-      /services:\n {6}postgres:\n {8}image: public\.ecr\.aws\/docker\/library\/postgres:17-alpine@sha256:[a-f0-9]{64}\n/,
-    );
+    assert.doesNotMatch(jobs[job], /\bservices:/);
     for (const [variable, database] of [
       ['DATABASE_URL', 'prisma_prim_dev'],
       ['TEST_DATABASE_URL', 'prisma_prim_test'],
@@ -357,6 +374,10 @@ test('database jobs own isolated PostgreSQL services and matching environment ch
         ),
       );
     }
+    assert.doesNotMatch(
+      stepBody(jobs[job], 'Set up repository verification'),
+      /postgres: 'false'/,
+    );
     assert.match(
       stepBody(jobs[job], 'Verify supported agent environment'),
       new RegExp(`run: pnpm agent:doctor:${doctor}\\n`),
@@ -392,6 +413,42 @@ test('database jobs own isolated PostgreSQL services and matching environment ch
   assert.match(setup, /chromium:\n {4}description:[^\n]+\n {4}default: 'true'/);
   assert.match(setup, /if: \$\{\{ inputs\.postgres == 'true' \}\}/);
   assert.match(setup, /if: \$\{\{ inputs\.chromium == 'true' \}\}/);
+  // Database jobs restore the run's cached image, then start it, before the
+  // test database is provisioned; they never save it.
+  const order = [
+    '- name: Restore PostgreSQL image',
+    '- name: Start PostgreSQL',
+    '- name: Provision isolated test database',
+  ].map((step) => setup.indexOf(step));
+  assert.ok(order.every((index) => index !== -1));
+  assert.deepEqual(
+    [...order].sort((left, right) => left - right),
+    order,
+  );
+  assert.match(setup, /uses: actions\/cache\/restore@v4/);
+  assert.doesNotMatch(setup, /actions\/cache\/save/);
+  const cacheKey =
+    /key: postgres-image-\$\{\{ hashFiles\('scripts\/ci-start-postgres\.sh'\) \}\}/g;
+  assert.equal([...setup.matchAll(cacheKey)].length, 1);
+  assert.match(setup, /run: bash scripts\/ci-start-postgres\.sh start\n/);
+
+  // The postgres_image job looks the image up without downloading it and,
+  // only on a miss, acquires and saves it under the same key.
+  const image = jobs.postgres_image;
+  const lookup = stepBody(image, 'Look up cached PostgreSQL image');
+  assert.match(lookup, /id: lookup\n/);
+  assert.match(lookup, /uses: actions\/cache\/restore@v4/);
+  assert.match(lookup, /lookup-only: true/);
+  const acquire = stepBody(image, 'Acquire PostgreSQL image');
+  assert.match(acquire, /run: bash scripts\/ci-start-postgres\.sh acquire\n/);
+  const save = stepBody(image, 'Save PostgreSQL image');
+  assert.match(save, /uses: actions\/cache\/save@v4/);
+  for (const step of [acquire, save])
+    assert.match(
+      step,
+      /if: \$\{\{ steps\.lookup\.outputs\.cache-hit != 'true' \}\}/,
+    );
+  assert.equal([...image.matchAll(cacheKey)].length, 2);
 });
 
 test('the scope job classifies the exact pull request commits with full history', async () => {

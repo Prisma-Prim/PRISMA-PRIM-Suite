@@ -7,6 +7,7 @@ const gate = fileURLToPath(new URL('./verify-ci-results.mjs', import.meta.url));
 const successfulResults = {
   checks: { result: 'success' },
   scope: { result: 'success', outputs: { docs_only: 'false' } },
+  postgres_image: { result: 'success' },
   api: { result: 'success' },
   web_unit: { result: 'success' },
   browser: { result: 'success' },
@@ -56,6 +57,7 @@ for (const job of Object.keys(successfulResults)) {
 
 test('quality accepts skipped heavy families only after a successful docs-only scope', () => {
   const heavy = [
+    'postgres_image',
     'api',
     'web_unit',
     'browser',
