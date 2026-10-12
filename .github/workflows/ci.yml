@@ -212,7 +212,9 @@ jobs:
         run: pnpm --filter @prisma-prim/web test:browser:acceptance --shard=${{ matrix.shard }}/2
 
       - name: Verify acceptance failure evidence
-        if: ${{ !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
+        # One probe per run: two shards would write the same probe paths and
+        # the merged evidence would keep only the last writer.
+        if: ${{ matrix.shard == 1 && !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
         run: node scripts/verify-acceptance-evidence.mjs
 
       - name: Upload acceptance evidence

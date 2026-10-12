@@ -153,7 +153,7 @@ test('acceptance failures retain first-attempt evidence without a retry', async 
   );
   assert.match(
     probeStep,
-    /if: \$\{\{ !cancelled\(\) && \(steps\.repository_tests\.outcome == 'success' \|\| steps\.repository_tests\.outcome == 'failure'\) \}\}/u,
-    'the isolated evidence probe must run after a failed product test, but not after cancellation or skipped tests',
+    /if: \$\{\{ matrix\.shard == 1 && !cancelled\(\) && \(steps\.repository_tests\.outcome == 'success' \|\| steps\.repository_tests\.outcome == 'failure'\) \}\}/u,
+    'the isolated evidence probe must run once per run, in acceptance shard 1, after a failed product test, but not after cancellation or skipped tests',
   );
 });
