@@ -190,7 +190,8 @@ export const OUTCOME_HISTORY_PAGE_SIZE = 50;
 
 /**
  * Proves one history page at the response boundary: at most 50 valid entries,
- * newest first with strictly descending versions; anything else fails.
+ * newest first with strictly descending versions, each older entry ending in
+ * the status the next newer entry started from; anything else fails.
  */
 export function isOutcomeHistoryPage(
   value: unknown,
@@ -212,9 +213,12 @@ export function isOutcomeHistoryPage(
 }
 
 function isOlderEntry(entry: OutcomeHistoryEntry, newer: unknown): boolean {
-  return isRecord(newer) && typeof newer.version === 'number'
-    ? entry.version < newer.version
-    : false;
+  return (
+    isRecord(newer) &&
+    typeof newer.version === 'number' &&
+    entry.version < newer.version &&
+    entry.newStatus === newer.previousStatus
+  );
 }
 
 const HISTORY_ENTRY_FIELDS = [

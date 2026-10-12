@@ -26,27 +26,33 @@ describe('outcome history boundary', () => {
       isOutcomeHistoryPage(
         page(
           [
-            entry({}),
-            entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version: 3 }),
+            entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version: 2 }),
             entry({
               previousStatus: 'ON_HOLD',
               newStatus: 'OPEN',
-              version: 4,
+              version: 3,
             }),
-            entry({ newStatus: 'LOST', lossReasonCode: 'PRICE', version: 5 }),
+            entry({ version: 4 }),
             entry({
-              newStatus: 'LOST',
-              lossReasonCode: 'OTHER',
-              note: 'Merged with a group',
-              version: 6,
+              previousStatus: 'WON',
+              newStatus: 'OPEN',
+              reason: 'Declared too early',
+              version: 5,
             }),
+            entry({ newStatus: 'LOST', lossReasonCode: 'PRICE', version: 6 }),
             entry({
               previousStatus: 'LOST',
               newStatus: 'OPEN',
               reason: 'Client returned',
               version: 7,
             }),
-            // A page is newest first.
+            entry({
+              newStatus: 'LOST',
+              lossReasonCode: 'OTHER',
+              note: 'Merged with a group',
+              version: 8,
+            }),
+            // A page is newest first and forms one connected chain.
           ].reverse(),
         ),
         isTimestamp,
@@ -84,16 +90,32 @@ describe('outcome history boundary', () => {
   });
 
   it('rejects pages that are too long, out of order or with duplicate versions', () => {
+    // Alternating hold and resume keeps a connected chain at any length.
     const at = (version: number) =>
-      entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version });
+      version % 2 === 0
+        ? entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version })
+        : entry({ previousStatus: 'ON_HOLD', newStatus: 'OPEN', version });
     expect(isOutcomeHistoryPage(page([at(3), at(2)]), isTimestamp)).toBe(true);
     expect(isOutcomeHistoryPage(page([at(2), at(3)]), isTimestamp)).toBe(false);
-    expect(isOutcomeHistoryPage(page([at(3), at(3)]), isTimestamp)).toBe(false);
+    expect(isOutcomeHistoryPage(page([at(2), at(2)]), isTimestamp)).toBe(false);
     const fiftyOne = Array.from({ length: 51 }, (_, index) => at(60 - index));
     expect(isOutcomeHistoryPage(page(fiftyOne), isTimestamp)).toBe(false);
     expect(isOutcomeHistoryPage(page(fiftyOne.slice(0, 50)), isTimestamp)).toBe(
       true,
     );
+  });
+
+  it('rejects entries that do not connect', () => {
+    // Older v2 ends ON_HOLD, but newer v3 starts from OPEN.
+    expect(
+      isOutcomeHistoryPage(
+        page([
+          entry({ newStatus: 'LOST', lossReasonCode: 'PRICE', version: 3 }),
+          entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version: 2 }),
+        ]),
+        isTimestamp,
+      ),
+    ).toBe(false);
   });
 
   it('rejects an entry missing a field', () => {

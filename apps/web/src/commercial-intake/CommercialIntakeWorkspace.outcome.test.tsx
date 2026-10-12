@@ -254,7 +254,8 @@ describe('CommercialIntakeWorkspace outcome status', () => {
           requestDetail({
             status: 'LOST',
             statusEnteredAt: lostEntry.changedAt,
-            entries: [lostEntry, holdEntry],
+            // Newest first, as one chain: held, then lost from the hold.
+            entries: [{ ...lostEntry, previousStatus: 'ON_HOLD' }, holdEntry],
             version: 3,
           }),
         ),
@@ -272,7 +273,7 @@ describe('CommercialIntakeWorkspace outcome status', () => {
       name: copy.outcomeHistory,
     });
     const [lost, held] = within(history).getAllByRole('listitem');
-    expect(lost).toHaveTextContent('Open → Lost');
+    expect(lost).toHaveTextContent('On hold → Lost');
     expect(lost).toHaveTextContent('Ada · 1A');
     expect(lost).toHaveTextContent('Loss reason: Competitor');
     expect(lost).toHaveTextContent('Note: They chose a local auditor.');
