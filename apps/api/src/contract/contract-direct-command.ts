@@ -74,21 +74,6 @@ export async function createDirectContract(
           input.opportunityId,
           true,
         );
-      if (!opportunity.originalClientAccountId)
-        throw conflict('CONTRACT_CLIENT_REQUIRED', 'A Client is required.');
-      await dependencies.clients.readProjectReferences(
-        actor,
-        [opportunity.originalClientAccountId],
-        true,
-      );
-      const selectedSnapshotId = selectedAddendumSnapshotId(input.payload);
-      if (selectedSnapshotId !== null)
-        await dependencies.pricing.resolveOfferSnapshot({
-          actor,
-          companyId,
-          opportunityId: opportunity.id,
-          snapshotId: selectedSnapshotId,
-        });
       const fingerprint = commandFingerprint({
         kind: 'CREATE_DIRECT',
         opportunityId: opportunity.id,
@@ -111,6 +96,27 @@ export async function createDirectContract(
             eq(contractCommands.idempotencyKey, idempotencyKey),
           ),
         );
+      // Only a new creation is refused once the Opportunity is closed without
+      // a win (Commercial Workflow PRD section 23.5), and before any other
+      // creation prerequisite; an exact replay still returns a creation
+      // committed before the closure.
+      if (!receipt && CLOSED_OPPORTUNITY_STATUSES.has(opportunity.status))
+        throw conflict('OPPORTUNITY_CLOSED', 'The Opportunity is closed.');
+      if (!opportunity.originalClientAccountId)
+        throw conflict('CONTRACT_CLIENT_REQUIRED', 'A Client is required.');
+      await dependencies.clients.readProjectReferences(
+        actor,
+        [opportunity.originalClientAccountId],
+        true,
+      );
+      const selectedSnapshotId = selectedAddendumSnapshotId(input.payload);
+      if (selectedSnapshotId !== null)
+        await dependencies.pricing.resolveOfferSnapshot({
+          actor,
+          companyId,
+          opportunityId: opportunity.id,
+          snapshotId: selectedSnapshotId,
+        });
       if (receipt) {
         if (
           receipt.kind !== 'CREATE' ||
@@ -167,11 +173,6 @@ export async function createDirectContract(
           existing.version,
         );
       }
-      // Only a new creation is refused once the Opportunity is closed without
-      // a win (Commercial Workflow PRD section 23.5); the exact replay above
-      // still returns a creation committed before the closure.
-      if (CLOSED_OPPORTUNITY_STATUSES.has(opportunity.status))
-        throw conflict('OPPORTUNITY_CLOSED', 'The Opportunity is closed.');
       if (
         await dependencies.versions.find({
           actor,

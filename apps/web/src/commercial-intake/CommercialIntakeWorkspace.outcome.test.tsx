@@ -435,6 +435,7 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     ['a pair outside the table', { previousStatus: 'WON', status: 'LOST' }],
     ['the initial version', { version: 1 }],
     ['an extra receipt field', { extra: true }],
+    ['another Opportunity', { opportunityId: 'another-opportunity' }],
   ])(
     'keeps the command for an explicit retry when a success carries %s',
     async (_case, receiptOverrides) => {

@@ -1468,6 +1468,37 @@ withPostgres('First illustrative Contract REST', () => {
     expect(await json(existing)).toMatchObject({
       code: 'CONTRACT_ALREADY_EXISTS',
     });
+
+    // The closed status decides before the Client prerequisite.
+    const clientless = record(
+      await command({
+        path: '/commercial-intake/requests',
+        companyId: fixture.companyId,
+        key: 'so2-clientless-request',
+        body: {
+          originalText: 'Synthetic Request without a Client',
+          subject: 'No Client',
+          opportunity: { title: 'No Client', nextAction: 'Prepare' },
+        },
+      }),
+    );
+    const closedWithoutClient = {
+      ...fixture,
+      opportunityId: stringField(record(clientless.initialOpportunity), 'id'),
+    };
+    await changeOutcome(closedWithoutClient, {
+      status: 'ARCHIVED',
+      reason: 'Duplicate Request',
+    });
+    const refusedClientless = await send(
+      closedWithoutClient,
+      'so2-clientless-closed',
+      body,
+    );
+    expect(refusedClientless.status).toBe(409);
+    expect(await json(refusedClientless)).toMatchObject({
+      code: 'OPPORTUNITY_CLOSED',
+    });
   });
 
   it.each(['direct', 'accepted', 'duplicate'] as const)(

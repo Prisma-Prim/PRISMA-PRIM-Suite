@@ -5623,6 +5623,50 @@ withPostgres('First illustrative Offer REST', () => {
     }
     const created = await postOffer(fixture, creation, 'created-when-open');
     expect(created.status).toBe(201);
+
+    // The status decides before the Client prerequisite of a new creation.
+    const clientless = record(
+      await command(
+        '/commercial-intake/requests',
+        {
+          originalText: 'Synthetic Request without a Client',
+          subject: 'No Client',
+          opportunity: FOLLOW_ON_OPPORTUNITIES.reference,
+        },
+        'clientless-request',
+        fixture.companyId,
+      ),
+    );
+    const clientlessId = stringField(
+      record(clientless.initialOpportunity),
+      'id',
+    );
+    const archived = await request(
+      `/commercial-intake/opportunities/${clientlessId}/outcome`,
+      fixture.companyId,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'archive-clientless',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          status: 'ARCHIVED',
+          reason: 'Duplicate Request',
+        }),
+      },
+    );
+    expect(archived.status).toBe(200);
+    const refusedClientless = await postOffer(
+      { ...fixture, opportunityId: clientlessId },
+      creation,
+      'clientless-closed',
+    );
+    expect(refusedClientless.status).toBe(409);
+    expect(await json(refusedClientless)).toMatchObject({
+      code: 'OPPORTUNITY_NOT_OPEN',
+    });
   });
 
   it('refuses a creation queued behind a closure that commits while it waits', async () => {

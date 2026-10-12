@@ -1317,7 +1317,10 @@ export function CommercialIntakeWorkspace({
         setFeedback(copy.outcomeValidation);
         return;
       }
-      if (result.status === 200 && isOutcomeChangeResult(result.body)) {
+      if (
+        result.status === 200 &&
+        isOutcomeChangeResult(result.body, opportunityId)
+      ) {
         applyOpportunityResponse({
           request: result.body.request,
           responseRevision: startedUnderProjection,
@@ -2692,12 +2695,17 @@ const OUTCOME_RECEIPT_FIELDS = [
 ] as const;
 
 /**
- * A committed outcome change: exactly the receipt fields, one permitted
- * section 23.2 transition and a resulting version above the initial one. A
- * malformed success keeps the command for an explicit retry instead of
- * settling it.
+ * A committed outcome change for the requested Opportunity: exactly the
+ * receipt fields, one permitted section 23.2 transition, a resulting version
+ * above the initial one, and the receipt and returned Request both naming the
+ * command's Opportunity. Status and version may differ from the refreshed
+ * Request after an exact replay; identities never may. Anything else keeps the
+ * command for an explicit retry instead of settling it.
  */
-function isOutcomeChangeResult(value: unknown): value is OutcomeChangeResult {
+function isOutcomeChangeResult(
+  value: unknown,
+  opportunityId: string,
+): value is OutcomeChangeResult {
   if (
     !isRecord(value) ||
     Object.keys(value).length !== 2 ||
@@ -2715,7 +2723,9 @@ function isOutcomeChangeResult(value: unknown): value is OutcomeChangeResult {
     typeof receipt.version === 'number' &&
     Number.isSafeInteger(receipt.version) &&
     receipt.version >= 2 &&
-    isClientRequest(value.request)
+    receipt.opportunityId === opportunityId &&
+    isClientRequest(value.request) &&
+    value.request.initialOpportunity.id === opportunityId
   );
 }
 
