@@ -258,17 +258,20 @@ test('CI fails formatting first, then lint, types and the complete script suite'
 test('every test family, host build and production packaging remains unconditional', async () => {
   const jobs = jobsIn(await readWorkflow());
   for (const [job, step, command] of [
-    ['api', 'Test API', 'pnpm --filter @prisma-prim/api test'],
     [
       'web_unit',
       'Test Web unit',
       'pnpm --filter @prisma-prim/web exec vitest run',
     ],
-    ['browser', 'Test browser', 'pnpm --filter @prisma-prim/web test:browser'],
+    [
+      'browser',
+      'Test browser',
+      'pnpm --filter @prisma-prim/web test:browser --shard=${{ matrix.shard }}/3',
+    ],
     [
       'acceptance',
       'Test acceptance',
-      'pnpm --filter @prisma-prim/web test:browser:acceptance',
+      'pnpm --filter @prisma-prim/web test:browser:acceptance --shard=${{ matrix.shard }}/2',
     ],
     ['build', 'Build', 'pnpm build'],
     [
@@ -289,6 +292,48 @@ test('every test family, host build and production packaging remains uncondition
     assert.ok(configuration.includes(`pnpm --dir .railway ${command}\n`));
   }
   assert.doesNotMatch(configuration, /\bif:/);
+});
+
+test('sharded families cover every shard and the complete API suite', async () => {
+  const jobs = jobsIn(await readWorkflow());
+  assert.match(
+    jobs.api,
+    /^ {4}strategy:\n {6}matrix:\n {8}part: \['1\/3', '2\/3', '3\/3', serial\]$/m,
+  );
+  const api = stepBody(jobs.api, 'Test API');
+  assert.match(api, /API_TEST_PART: \$\{\{ matrix\.part \}\}/);
+  // The serial PostgreSQL files and every parallel shard together are
+  // exactly the package's complete `test` script.
+  assert.ok(
+    api.includes('pnpm --filter @prisma-prim/api test:postgres:serial'),
+  );
+  assert.ok(
+    api.includes(
+      'pnpm --filter @prisma-prim/api test:parallel --shard="$API_TEST_PART"',
+    ),
+  );
+  const apiPackage = JSON.parse(
+    await readFile(
+      new URL('../apps/api/package.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  assert.equal(
+    apiPackage.scripts.test,
+    'pnpm test:parallel && pnpm test:postgres:serial',
+  );
+  assert.match(
+    jobs.browser,
+    /^ {4}strategy:\n {6}matrix:\n {8}shard: \[1, 2, 3\]$/m,
+  );
+  // Acceptance shards never cancel each other: shard 1 owns the probe.
+  assert.match(
+    jobs.acceptance,
+    /^ {4}strategy:\n(?: {6}#[^\n]*\n)* {6}fail-fast: false\n {6}matrix:\n {8}shard: \[1, 2\]$/m,
+  );
+  for (const job of ['api', 'browser'])
+    assert.doesNotMatch(jobs[job], /fail-fast: false|max-parallel/);
+  assert.doesNotMatch(jobs.acceptance, /max-parallel/);
 });
 
 test('database jobs own isolated PostgreSQL services and matching environment checks', async () => {

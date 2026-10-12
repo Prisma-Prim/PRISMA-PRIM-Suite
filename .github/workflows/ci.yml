@@ -74,6 +74,9 @@ jobs:
     if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      matrix:
+        part: ['1/3', '2/3', '3/3', serial]
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
@@ -105,7 +108,14 @@ jobs:
         run: pnpm agent:doctor:postgres
 
       - name: Test API
-        run: pnpm --filter @prisma-prim/api test
+        env:
+          API_TEST_PART: ${{ matrix.part }}
+        run: |
+          if [ "$API_TEST_PART" = serial ]; then
+            pnpm --filter @prisma-prim/api test:postgres:serial
+          else
+            pnpm --filter @prisma-prim/api test:parallel --shard="$API_TEST_PART"
+          fi
 
   web_unit:
     needs: [checks, scope]
@@ -133,6 +143,9 @@ jobs:
     if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -146,13 +159,23 @@ jobs:
         run: pnpm agent:doctor:web
 
       - name: Test browser
-        run: pnpm --filter @prisma-prim/web test:browser
+        run: pnpm --filter @prisma-prim/web test:browser --shard=${{ matrix.shard }}/3
+
+      - name: Namespace browser run metadata
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        # Every shard writes Playwright's browser/.last-run.json; keep one visible
+        # per shard so the merged evidence does not keep only the last writer.
+        run: |
+          if [ -f apps/web/test-results/browser/.last-run.json ]; then
+            mv apps/web/test-results/browser/.last-run.json \
+              "apps/web/test-results/browser/last-run-shard-${{ matrix.shard }}.json"
+          fi
 
       - name: Upload browser evidence
         if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: browser-evidence-part-browser-${{ github.run_id }}
+          name: browser-evidence-part-browser-${{ matrix.shard }}-${{ github.run_id }}
           overwrite: true
           path: apps/web/test-results/
           if-no-files-found: warn
@@ -163,6 +186,12 @@ jobs:
     if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      # Shard 1 owns the deliberate evidence probe; a failing shard 2 must
+      # not cancel it, so acceptance shards always run to completion.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     services:
       postgres:
         image: public.ecr.aws/docker/library/postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
@@ -193,17 +222,29 @@ jobs:
 
       - name: Test acceptance
         id: repository_tests
-        run: pnpm --filter @prisma-prim/web test:browser:acceptance
+        run: pnpm --filter @prisma-prim/web test:browser:acceptance --shard=${{ matrix.shard }}/2
 
       - name: Verify acceptance failure evidence
-        if: ${{ !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
+        # One probe per run: two shards would write the same probe paths and
+        # the merged evidence would keep only the last writer.
+        if: ${{ matrix.shard == 1 && !cancelled() && (steps.repository_tests.outcome == 'success' || steps.repository_tests.outcome == 'failure') }}
         run: node scripts/verify-acceptance-evidence.mjs
+
+      - name: Namespace acceptance run metadata
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        # Every shard writes Playwright's acceptance/.last-run.json; keep one visible
+        # per shard so the merged evidence does not keep only the last writer.
+        run: |
+          if [ -f apps/web/test-results/acceptance/.last-run.json ]; then
+            mv apps/web/test-results/acceptance/.last-run.json \
+              "apps/web/test-results/acceptance/last-run-shard-${{ matrix.shard }}.json"
+          fi
 
       - name: Upload acceptance evidence
         if: ${{ always() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
-          name: browser-evidence-part-acceptance-${{ github.run_id }}
+          name: browser-evidence-part-acceptance-${{ matrix.shard }}-${{ github.run_id }}
           overwrite: true
           path: apps/web/test-results/
           if-no-files-found: warn
