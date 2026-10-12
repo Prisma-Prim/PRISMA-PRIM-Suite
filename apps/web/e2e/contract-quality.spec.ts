@@ -47,6 +47,8 @@ const detail = {
     scope: null,
     nextAction: 'Review Contract checks',
     status: 'OPEN',
+    statusEnteredAt: '2026-10-07T06:00:00.000Z',
+    outcomeHistory: { entries: [] },
     responsibleWorkspaceMembershipId: 'member-one',
     responsibleActor: {
       workspaceMembershipId: 'member-one',
@@ -158,6 +160,7 @@ test('reviews attributed exact-version results, retries by keyboard and reopens 
               subject: detail.subject,
               capturedAt: detail.capturedAt,
               initialOpportunity: {
+                status: 'OPEN',
                 title: detail.initialOpportunity.title,
                 nextAction: detail.initialOpportunity.nextAction,
                 responsibleActor: detail.initialOpportunity.responsibleActor,

@@ -38,6 +38,8 @@ const detail = {
     scope: null,
     nextAction: 'Original next action',
     status: 'OPEN',
+    statusEnteredAt: '2026-10-03T06:00:00.000Z',
+    outcomeHistory: { entries: [] },
     responsibleWorkspaceMembershipId: 'member-1',
     responsibleActor: { workspaceMembershipId: 'member-1', displayName: 'Ada' },
     createdAt: '2026-10-03T06:00:00.000Z',
@@ -154,6 +156,7 @@ function transport() {
               capturedAt: detail.capturedAt,
               ...listClient,
               initialOpportunity: {
+                status: 'OPEN',
                 title: detail.initialOpportunity.title,
                 nextAction: detail.initialOpportunity.nextAction,
                 responsibleActor: detail.initialOpportunity.responsibleActor,

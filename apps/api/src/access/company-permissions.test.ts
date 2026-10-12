@@ -7,6 +7,8 @@ import {
   commercialIntakePermissionsFor,
   commercialIntakeVersionsWith,
   opportunityManagerPermissionsFor,
+  opportunityManagerVersionsWith,
+  isOpportunityManagerPermissionSetVersion,
   companyDirectorClientPermissionsFor,
   documentApproverPermissionsFor,
   documentPermissionsFor,
@@ -70,10 +72,28 @@ describe('Company Opportunity Manager permission sets', () => {
     ]);
   });
 
-  it.each([null, undefined, '', 'V1', 'v2', 1])(
+  it('resolves captured v2 as v1 plus the outcome status change', () => {
+    expect(opportunityManagerPermissionsFor('v2')).toEqual([
+      'commercial.opportunity.assign',
+      'commercial.opportunity.outcome.change',
+    ]);
+    expect(isOpportunityManagerPermissionSetVersion('v2')).toBe(true);
+  });
+
+  it('accepts reassignment from v1 and v2 but the outcome change from v2 only', () => {
+    expect(
+      opportunityManagerVersionsWith('commercial.opportunity.assign'),
+    ).toEqual(['v1', 'v2']);
+    expect(
+      opportunityManagerVersionsWith('commercial.opportunity.outcome.change'),
+    ).toEqual(['v2']);
+  });
+
+  it.each([null, undefined, '', 'V1', 'V2', 'v3', 1])(
     'fails closed for an unsupported version: %s',
     (version) => {
       expect(opportunityManagerPermissionsFor(version)).toEqual([]);
+      expect(isOpportunityManagerPermissionSetVersion(version)).toBe(false);
     },
   );
 
@@ -93,7 +113,7 @@ describe('Company Opportunity Manager permission sets', () => {
     ];
     for (const permissions of others) {
       expect(permissions).not.toContain('commercial.opportunity.assign');
-      for (const permission of opportunityManagerPermissionsFor('v1'))
+      for (const permission of opportunityManagerPermissionsFor('v2'))
         expect(permissions).not.toContain(permission);
     }
   });

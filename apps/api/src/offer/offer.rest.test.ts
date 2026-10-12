@@ -5557,6 +5557,287 @@ withPostgres('First illustrative Offer REST', () => {
     expect(created.illustrativeReference).toBe(1);
   });
 
+  it('refuses a new Offer in every non-OPEN outcome status and creates it once the Opportunity is open again', async () => {
+    const fixture = await preparedOffer();
+    await command(
+      '/company-opportunity-manager-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'grant-opportunity-manager',
+    );
+    let version = 1;
+    async function changeOutcome(change: Record<string, unknown>) {
+      const response = await request(
+        `/commercial-intake/opportunities/${fixture.opportunityId}/outcome`,
+        fixture.companyId,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': `outcome-${version}`,
+          },
+          body: JSON.stringify({ expectedVersion: version, ...change }),
+        },
+      );
+      expect(response.status).toBe(200);
+      version += 1;
+    }
+    const creation = {
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'PRIMARY' },
+      scopeNote: 'Illustrative preparation scope.',
+    };
+    for (const [close, reopen] of [
+      [
+        { status: 'ON_HOLD', reason: 'Client asked to wait' },
+        { status: 'OPEN' },
+      ],
+      [{ status: 'WON' }, { status: 'OPEN', reason: 'Declared too early' }],
+      [
+        { status: 'LOST', lossReasonCode: 'PRICE' },
+        { status: 'OPEN', reason: 'Client returned' },
+      ],
+      [
+        { status: 'DISQUALIFIED', reason: 'Outside our scope' },
+        { status: 'OPEN', reason: 'Scope confirmed' },
+      ],
+      [
+        { status: 'ARCHIVED', reason: 'Duplicate Request' },
+        { status: 'OPEN', reason: 'Not a duplicate' },
+      ],
+    ] satisfies Array<[Record<string, unknown>, Record<string, unknown>]>) {
+      await changeOutcome(close);
+      const refused = await postOffer(
+        fixture,
+        creation,
+        `refused-${String(close.status)}`,
+      );
+      expect(refused.status).toBe(409);
+      expect(await json(refused)).toMatchObject({
+        code: 'OPPORTUNITY_NOT_OPEN',
+      });
+      await expectNoOfferWrites();
+      await changeOutcome(reopen);
+    }
+    const created = await postOffer(fixture, creation, 'created-when-open');
+    expect(created.status).toBe(201);
+
+    // The status decides before the Client prerequisite of a new creation.
+    const clientless = record(
+      await command(
+        '/commercial-intake/requests',
+        {
+          originalText: 'Synthetic Request without a Client',
+          subject: 'No Client',
+          opportunity: FOLLOW_ON_OPPORTUNITIES.reference,
+        },
+        'clientless-request',
+        fixture.companyId,
+      ),
+    );
+    const clientlessId = stringField(
+      record(clientless.initialOpportunity),
+      'id',
+    );
+    const archived = await request(
+      `/commercial-intake/opportunities/${clientlessId}/outcome`,
+      fixture.companyId,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'archive-clientless',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          status: 'ARCHIVED',
+          reason: 'Duplicate Request',
+        }),
+      },
+    );
+    expect(archived.status).toBe(200);
+    const refusedClientless = await postOffer(
+      { ...fixture, opportunityId: clientlessId },
+      creation,
+      'clientless-closed',
+    );
+    expect(refusedClientless.status).toBe(409);
+    expect(await json(refusedClientless)).toMatchObject({
+      code: 'OPPORTUNITY_NOT_OPEN',
+    });
+  });
+
+  it('refuses a creation queued behind a closure that commits while it waits', async () => {
+    const fixture = await preparedOffer();
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      const blocker = await barrier.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      const blockerPid = blocker.rows[0]?.pid;
+      if (!blockerPid) throw new Error('Expected a PostgreSQL backend pid.');
+      // Stands in for an outcome change: it holds the Request, then closes
+      // the Opportunity after the creation has read it and queued.
+      await barrier.query(
+        `SELECT id FROM client_requests WHERE id =
+           (SELECT client_request_id FROM opportunities WHERE id = $1)
+         FOR NO KEY UPDATE`,
+        [fixture.opportunityId],
+      );
+      const creation = postOffer(
+        fixture,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'queued-behind-closure',
+      );
+      await waitForBlockedRequests(blockerPid, 1);
+      await barrier.query(
+        "UPDATE opportunities SET status = 'ARCHIVED' WHERE id = $1",
+        [fixture.opportunityId],
+      );
+      await barrier.query('COMMIT');
+      released = true;
+      const refused = await creation;
+      expect(refused.status).toBe(409);
+      expect(await json(refused)).toMatchObject({
+        code: 'OPPORTUNITY_NOT_OPEN',
+      });
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+    await expectNoOfferWrites();
+  });
+
+  it('replays an Offer created while open after the Opportunity has closed', async () => {
+    const fixture = await preparedOffer();
+    await command(
+      '/company-opportunity-manager-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'grant-opportunity-manager',
+    );
+    const creation = {
+      pricingSnapshotId: fixture.snapshotId,
+      recipient: { kind: 'PRIMARY' },
+    };
+    const created = await postOffer(fixture, creation, 'created-before-loss');
+    expect(created.status).toBe(201);
+    const original = record(await json(created));
+    const lost = await request(
+      `/commercial-intake/opportunities/${fixture.opportunityId}/outcome`,
+      fixture.companyId,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'lose-after-offer',
+        },
+        body: JSON.stringify({
+          expectedVersion: 1,
+          status: 'LOST',
+          lossReasonCode: 'PRICE',
+        }),
+      },
+    );
+    expect(lost.status).toBe(200);
+    const replayed = await postOffer(fixture, creation, 'created-before-loss');
+    expect(replayed.status).toBe(201);
+    expect(record(await json(replayed)).id).toBe(original.id);
+    const fresh = await postOffer(fixture, creation, 'created-after-loss');
+    expect(fresh.status).toBe(409);
+    expect(await json(fresh)).toMatchObject({ code: 'OPPORTUNITY_NOT_OPEN' });
+  });
+
+  it('serializes an Opportunity closure with a concurrent Offer creation instead of deadlocking', async () => {
+    const fixture = await preparedOffer();
+    await command(
+      '/company-opportunity-manager-assignments',
+      {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      'grant-opportunity-manager',
+    );
+    const barrier = await pool.connect();
+    let released = false;
+    try {
+      await barrier.query('BEGIN');
+      const blocker = await barrier.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      const blockerPid = blocker.rows[0]?.pid;
+      if (!blockerPid) throw new Error('Expected a PostgreSQL backend pid.');
+      await barrier.query(
+        `SELECT id FROM client_requests WHERE id =
+           (SELECT client_request_id FROM opportunities WHERE id = $1)
+         FOR UPDATE`,
+        [fixture.opportunityId],
+      );
+      // Offer creation queues first on the held Request, then needs the
+      // Opportunity.
+      const offer = postOffer(
+        fixture,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'offer-during-closure',
+      );
+      await waitForBlockedRequests(blockerPid, 1);
+      // The closure must also queue on that Request. Taking the Opportunity
+      // first would let the Offer, once granted the Request, wait on the
+      // Opportunity while the closure's event insert waits on the Request.
+      const closure = request(
+        `/commercial-intake/opportunities/${fixture.opportunityId}/outcome`,
+        fixture.companyId,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': 'closure-during-offer',
+          },
+          body: JSON.stringify({
+            expectedVersion: 1,
+            status: 'LOST',
+            lossReasonCode: 'PRICE',
+          }),
+        },
+      );
+      for (let attempt = 0; ; attempt += 1) {
+        const waiting = await pool.query<{ count: string }>(
+          `SELECT count(*) AS count FROM pg_stat_activity
+            WHERE datname = current_database() AND wait_event_type = 'Lock'`,
+        );
+        if (Number(waiting.rows[0]?.count) >= 2) break;
+        if (attempt >= 40)
+          throw new Error('Expected the closure to wait behind the Offer.');
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      await barrier.query('COMMIT');
+      released = true;
+      const [created, closed] = await Promise.all([offer, closure]);
+      expect([created.status, closed.status]).toEqual([201, 200]);
+    } finally {
+      if (!released) await barrier.query('ROLLBACK');
+      barrier.release();
+    }
+    const state = await pool.query<{ status: string; offers: string }>(
+      `SELECT (SELECT status FROM opportunities WHERE id = $1) AS status,
+              (SELECT count(*) FROM offers) AS offers`,
+      [fixture.opportunityId],
+    );
+    expect(state.rows[0]).toEqual({ status: 'LOST', offers: '1' });
+  });
+
   it('uses the same safe not-found for another Company and an unknown Opportunity', async () => {
     const fixture = await preparedOffer();
     const otherCompany = entity(

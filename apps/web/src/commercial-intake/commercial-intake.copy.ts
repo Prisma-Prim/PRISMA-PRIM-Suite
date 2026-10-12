@@ -74,7 +74,65 @@ export const commercialIntakeCopy = {
   // Indexing these by the validated identifier makes an unmapped variant a
   // type error instead of a missing or invented label.
   sourceKindLabels: { MANUAL_TEXT: 'Manual text' },
-  opportunityStatusLabels: { OPEN: 'Open' },
+  opportunityStatusLabels: {
+    OPEN: 'Open',
+    ON_HOLD: 'On hold',
+    WON: 'Won',
+    LOST: 'Lost',
+    DISQUALIFIED: 'Disqualified',
+    ARCHIVED: 'Archived',
+  },
+  statusEnteredAt: 'Since',
+  // The outcome status change offers only the transitions permitted from
+  // the current status, each named by what it does.
+  outcomeTransitionLabels: {
+    hold: 'Put on hold',
+    resume: 'Resume',
+    win: 'Mark as won',
+    lose: 'Mark as lost',
+    disqualify: 'Disqualify',
+    archive: 'Archive',
+    reopen: 'Reopen',
+  },
+  lossReasonLabels: {
+    PRICE: 'Price',
+    DEADLINE: 'Deadline',
+    COMPETITOR: 'Competitor',
+    NO_BUDGET: 'No budget',
+    POSTPONED: 'Postponed',
+    CLIENT_WITHDREW: 'Client withdrew',
+    OTHER: 'Other',
+    UNKNOWN: 'Unknown',
+  },
+  changeOutcome: 'Change status',
+  outcomeTransition: 'Status change',
+  outcomeSelectTransition: 'Select a status change',
+  outcomeReason: 'Reason',
+  outcomeLossReason: 'Loss reason',
+  outcomeSelectLossReason: 'Select a loss reason',
+  outcomeNote: 'Note (required for Other)',
+  saveOutcome: 'Save status',
+  cancelOutcome: 'Cancel',
+  retryOutcome: 'Retry update',
+  outcomeSaving: 'Saving status…',
+  outcomeChanged: 'Status changed.',
+  outcomeValidation:
+    'Choose a status change and enter its required fields, each between 1 and 500 characters.',
+  outcomeConflict:
+    'This Opportunity changed since you loaded it. Reload the Request before changing the status.',
+  outcomeDenied:
+    'You no longer have permission to change the status of this Opportunity.',
+  outcomeUncertain:
+    'The status change did not complete. Retry to confirm the result.',
+  outcomeHistory: 'Status history',
+  outcomeHistoryEmpty: 'No status change recorded yet.',
+  outcomeHistoryChange: (previous: string, next: string) =>
+    `${previous} → ${next}`,
+  outcomeHistoryNote: 'Note',
+  outcomeHistoryOlder: 'Show older status changes',
+  outcomeHistoryOlderLoading: 'Loading older status changes…',
+  outcomeHistoryOlderError:
+    'Older status changes could not be loaded. Try again.',
   responsible: 'Responsible actor',
   opportunityVersion: 'Version',
   editNextAction: 'Edit next action',
@@ -135,16 +193,23 @@ export const commercialIntakeCopy = {
     'opportunity.next_action.updated': 'updated an Opportunity next action',
     'opportunity.responsible.changed':
       'changed the responsible actor of an Opportunity',
+    'opportunity.outcome.changed': 'changed the status of an Opportunity',
   },
   // The previous and new responsible actor, as the change captured them.
   activityResponsibleChange: (before: string, after: string) =>
     `(${before} → ${after})`,
+  // The previous and new status and, for a loss, its reason label; never the
+  // reason or note text.
+  activityOutcomeChange: (previous: string, next: string, loss?: string) =>
+    loss ? `(${previous} → ${next}: ${loss})` : `(${previous} → ${next})`,
   activityRequestTarget: 'Client Request',
   activityOpportunityTarget: 'Opportunity',
   // Offered on a commercial Activity event; it names no event content.
   activityOpenRequest: 'Open Request',
   requestedAfterNextActionEdit:
     'The requested Client Request opens after the next-action edit is saved or cancelled.',
+  requestedAfterOutcomeEdit:
+    'The requested Client Request opens after the status change is saved or cancelled.',
   requestedAfterResponsibleEdit:
     'The requested Client Request opens after the responsible actor change is saved or cancelled.',
   requestedAfterCapture:

@@ -1343,6 +1343,164 @@ withPostgres('First illustrative Contract REST', () => {
     ).toBe(403);
     expect(await c6Counts()).toEqual(before);
   });
+  it('SO-2 refuses a new direct Contract on a closed Opportunity, accepts ON_HOLD and WON, and replays a creation committed before the closure', async () => {
+    const fixture = await preparedOffer();
+    const won = await preparedOffer('-won');
+    for (const target of [fixture, won]) {
+      await grantContract(target, 'so2-contract-' + target.companyId);
+      await command({
+        path: '/company-opportunity-manager-assignments',
+        body: {
+          workspaceMembershipId: target.actorMembershipId,
+          companyId: target.companyId,
+        },
+        key: 'so2-manager-' + target.companyId,
+      });
+    }
+    const versions = new Map<string, number>();
+    async function changeOutcome(
+      target: PreparedOffer,
+      change: Record<string, unknown>,
+    ) {
+      const expectedVersion = versions.get(target.opportunityId) ?? 1;
+      const response = await request({
+        path:
+          '/commercial-intake/opportunities/' +
+          target.opportunityId +
+          '/outcome',
+        companyId: target.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key':
+              'so2-outcome-' + target.opportunityId + expectedVersion,
+          },
+          body: JSON.stringify({ expectedVersion, ...change }),
+        },
+      });
+      expect(response.status).toBe(200);
+      versions.set(target.opportunityId, expectedVersion + 1);
+    }
+    const body = {
+      recipient: { kind: 'PRIMARY' },
+      pricingSnapshotId: fixture.snapshotId,
+      directReason: 'Governed direct exception',
+      scopeNote: 'Direct scope',
+    };
+    const send = (target: PreparedOffer, key: string, payload: unknown) =>
+      request({
+        path: '/contracts/opportunities/' + target.opportunityId + '/direct',
+        companyId: target.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify(payload),
+        },
+      });
+
+    // A held Opportunity accepts the creation; a won one does too.
+    await changeOutcome(fixture, {
+      status: 'ON_HOLD',
+      reason: 'Client asked to wait',
+    });
+    const created = record(
+      await command({
+        path: '/contracts/opportunities/' + fixture.opportunityId + '/direct',
+        companyId: fixture.companyId,
+        key: 'so2-created',
+        body,
+      }),
+    );
+    await changeOutcome(won, { status: 'WON' });
+    expect(
+      (
+        await send(won, 'so2-won', {
+          ...body,
+          pricingSnapshotId: won.snapshotId,
+        })
+      ).status,
+    ).toBe(201);
+
+    await changeOutcome(fixture, {
+      status: 'LOST',
+      lossReasonCode: 'COMPETITOR',
+    });
+    const counts = await c6Counts();
+    // The exact replay of the creation committed before the closure returns
+    // its receipt; only a new creation is refused.
+    const replay = await send(fixture, 'so2-created', body);
+    expect(replay.status).toBe(201);
+    expect(record(record(await json(replay)).version).id).toBe(
+      record(created.version).id,
+    );
+    for (const [close, reopen] of [
+      [
+        { status: 'LOST', lossReasonCode: 'COMPETITOR' },
+        { status: 'OPEN', reason: 'Client returned' },
+      ],
+      [
+        { status: 'DISQUALIFIED', reason: 'Outside our scope' },
+        { status: 'OPEN', reason: 'Scope confirmed' },
+      ],
+      [
+        { status: 'ARCHIVED', reason: 'Duplicate Request' },
+        { status: 'OPEN', reason: 'Not a duplicate' },
+      ],
+    ] satisfies Array<[Record<string, unknown>, Record<string, unknown>]>) {
+      if (close.status !== 'LOST') await changeOutcome(fixture, close);
+      const refused = await send(
+        fixture,
+        'so2-new-' + String(close.status),
+        body,
+      );
+      expect(refused.status).toBe(409);
+      expect(await json(refused)).toMatchObject({ code: 'OPPORTUNITY_CLOSED' });
+      expect(await c6Counts()).toEqual(counts);
+      await changeOutcome(fixture, reopen);
+    }
+    // Open again, a new creation reaches the existing-Contract rule instead.
+    const existing = await send(fixture, 'so2-new-open', body);
+    expect(existing.status).toBe(409);
+    expect(await json(existing)).toMatchObject({
+      code: 'CONTRACT_ALREADY_EXISTS',
+    });
+
+    // The closed status decides before the Client prerequisite.
+    const clientless = record(
+      await command({
+        path: '/commercial-intake/requests',
+        companyId: fixture.companyId,
+        key: 'so2-clientless-request',
+        body: {
+          originalText: 'Synthetic Request without a Client',
+          subject: 'No Client',
+          opportunity: { title: 'No Client', nextAction: 'Prepare' },
+        },
+      }),
+    );
+    const closedWithoutClient = {
+      ...fixture,
+      opportunityId: stringField(record(clientless.initialOpportunity), 'id'),
+    };
+    await changeOutcome(closedWithoutClient, {
+      status: 'ARCHIVED',
+      reason: 'Duplicate Request',
+    });
+    const refusedClientless = await send(
+      closedWithoutClient,
+      'so2-clientless-closed',
+      body,
+    );
+    expect(refusedClientless.status).toBe(409);
+    expect(await json(refusedClientless)).toMatchObject({
+      code: 'OPPORTUNITY_CLOSED',
+    });
+  });
+
   it.each(['direct', 'accepted', 'duplicate'] as const)(
     'C9 serializes %s creation precedence at the Request boundary',
     async (winner) => {

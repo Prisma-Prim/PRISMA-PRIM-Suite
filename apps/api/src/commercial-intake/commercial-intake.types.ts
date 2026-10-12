@@ -1,3 +1,9 @@
+import type {
+  OpportunityLossReasonCode,
+  OpportunityOutcomeChange,
+  OpportunityOutcomeStatus,
+} from './opportunity-outcome.js';
+
 export interface CreateCommercialIntakeCommand {
   readonly originalText: string;
   readonly sourceLabel: string | null;
@@ -26,6 +32,36 @@ export interface AssociateClientCommand {
 export interface ChangeOpportunityResponsibleCommand {
   readonly expectedVersion: number;
   readonly workspaceMembershipId: string;
+}
+
+/** The observed version, the requested status and its reason fields. */
+export interface ChangeOpportunityOutcomeCommand {
+  readonly expectedVersion: number;
+  readonly change: OpportunityOutcomeChange;
+}
+
+/**
+ * One committed outcome status transition (section 23.6). The reason or note
+ * stays consultable here; the acting member keeps the label captured then.
+ */
+export interface OpportunityOutcomeHistoryEntry {
+  readonly previousStatus: OpportunityOutcomeStatus;
+  readonly newStatus: OpportunityOutcomeStatus;
+  readonly lossReasonCode: OpportunityLossReasonCode | null;
+  readonly reason: string | null;
+  readonly note: string | null;
+  readonly version: number;
+  readonly actor: {
+    readonly workspaceMembershipId: string;
+    readonly displayLabel: string;
+  };
+  readonly changedAt: string;
+}
+
+/** At most 50 entries, newest first; the opaque cursor reads older ones. */
+export interface OpportunityOutcomeHistoryPage {
+  readonly entries: readonly OpportunityOutcomeHistoryEntry[];
+  readonly nextCursor?: string;
 }
 
 /**
@@ -60,7 +96,9 @@ export interface CommercialIntakeDetail {
     readonly title: string;
     readonly scope: string | null;
     readonly nextAction: string;
-    readonly status: 'OPEN';
+    readonly status: OpportunityOutcomeStatus;
+    readonly statusEnteredAt: string;
+    readonly outcomeHistory: OpportunityOutcomeHistoryPage;
     readonly responsibleWorkspaceMembershipId: string;
     readonly responsibleActor: CommercialIntakeResponsibleActor;
     readonly createdAt: string;
@@ -101,6 +139,18 @@ export interface OpportunityResponsibleChangeResult {
   readonly request: CommercialIntakeDetail;
 }
 
+// The receipt confirms the one transition a command committed; `request` is
+// the current permission-filtered state, refreshed separately from it.
+export interface OpportunityOutcomeChangeResult {
+  readonly receipt: {
+    readonly opportunityId: string;
+    readonly previousStatus: OpportunityOutcomeStatus;
+    readonly status: OpportunityOutcomeStatus;
+    readonly version: number;
+  };
+  readonly request: CommercialIntakeDetail;
+}
+
 /** Eligible members only: a membership identifier and a label, never email. */
 export interface OpportunityResponsibleCandidatePage {
   readonly members: ReadonlyArray<{
@@ -131,6 +181,7 @@ export type CommercialIntakeListItem = {
   readonly initialOpportunity: {
     readonly title: string;
     readonly nextAction: string;
+    readonly status: OpportunityOutcomeStatus;
     readonly responsibleActor: CommercialIntakeResponsibleActor;
   };
 } & CommercialIntakeListClientProjection;
@@ -147,7 +198,7 @@ export interface ReadablePricingOpportunity {
 }
 
 export interface ReadableOfferOpportunity extends ReadablePricingOpportunity {
-  readonly status: 'OPEN';
+  readonly status: OpportunityOutcomeStatus;
 }
 
 export type CommercialClientProjection = NonNullable<

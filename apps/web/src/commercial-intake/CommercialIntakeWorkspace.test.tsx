@@ -56,6 +56,8 @@ const createdRequest = {
     scope: 'Initial discussion to identify the requested work',
     nextAction: 'Arrange a qualification call',
     status: 'OPEN',
+    statusEnteredAt: '2026-09-20T10:00:00.000Z',
+    outcomeHistory: { entries: [] },
     responsibleWorkspaceMembershipId: 'membership-1',
     responsibleActor: {
       workspaceMembershipId: 'membership-1',
@@ -125,6 +127,7 @@ function listItem(index: number) {
     subject: `Client Request ${index}`,
     capturedAt: `2026-09-20T10:00:00.000Z`,
     initialOpportunity: {
+      status: 'OPEN',
       title: `Opportunity ${index}`,
       nextAction: `Follow up Request ${index}`,
       responsibleActor: {
@@ -165,6 +168,7 @@ const filterableItems = [
     subject: 'Quality process preparation',
     capturedAt: '2026-09-20T10:00:00.000Z',
     initialOpportunity: {
+      status: 'OPEN',
       title: 'Prepare quality process review',
       nextAction: 'Arrange a qualification call',
       responsibleActor: {
@@ -178,6 +182,7 @@ const filterableItems = [
     subject: 'Annual audit support',
     capturedAt: '2026-09-19T10:00:00.000Z',
     initialOpportunity: {
+      status: 'OPEN',
       title: 'Plan the annual audit',
       nextAction: 'Confirm the audit window',
       responsibleActor: {
@@ -191,6 +196,7 @@ const filterableItems = [
     subject: null,
     capturedAt: '2026-09-18T10:00:00.000Z',
     initialOpportunity: {
+      status: 'OPEN',
       title: 'Operator training programme',
       nextAction: 'Propose training dates',
       responsibleActor: {
@@ -267,6 +273,7 @@ function requestListPage(
         subject: createdRequest.subject,
         capturedAt: createdRequest.capturedAt,
         initialOpportunity: {
+          status: 'OPEN',
           title: createdRequest.initialOpportunity.title,
           nextAction,
           responsibleActor: {
@@ -380,6 +387,7 @@ describe('CommercialIntakeWorkspace', () => {
                 subject: createdRequest.subject,
                 capturedAt: createdRequest.capturedAt,
                 initialOpportunity: {
+                  status: 'OPEN',
                   title: createdRequest.initialOpportunity.title,
                   nextAction: createdRequest.initialOpportunity.nextAction,
                   responsibleActor: {
@@ -446,6 +454,7 @@ describe('CommercialIntakeWorkspace', () => {
       subject: createdRequest.subject,
       capturedAt: createdRequest.capturedAt,
       initialOpportunity: {
+        status: 'OPEN',
         title: createdRequest.initialOpportunity.title,
         nextAction: createdRequest.initialOpportunity.nextAction,
         responsibleActor: createdRequest.initialOpportunity.responsibleActor,
@@ -909,6 +918,7 @@ describe('CommercialIntakeWorkspace', () => {
                   subject: 'Private Company request',
                   capturedAt: createdRequest.capturedAt,
                   initialOpportunity: {
+                    status: 'OPEN',
                     title: 'Private opportunity',
                     nextAction: 'Private next action',
                     responsibleActor: {
@@ -1012,6 +1022,7 @@ describe('CommercialIntakeWorkspace', () => {
                 subject: createdRequest.subject,
                 capturedAt: createdRequest.capturedAt,
                 initialOpportunity: {
+                  status: 'OPEN',
                   title: createdRequest.initialOpportunity.title,
                   nextAction: createdRequest.initialOpportunity.nextAction,
                   responsibleActor: {
@@ -1056,6 +1067,7 @@ describe('CommercialIntakeWorkspace', () => {
                 subject: createdRequest.subject,
                 capturedAt: createdRequest.capturedAt,
                 initialOpportunity: {
+                  status: 'OPEN',
                   title: createdRequest.initialOpportunity.title,
                   nextAction: createdRequest.initialOpportunity.nextAction,
                   responsibleActor: {
@@ -1089,7 +1101,10 @@ describe('CommercialIntakeWorkspace', () => {
     });
 
     expect(within(detail).getByText('Manual text')).toBeVisible();
-    expect(within(detail).getByText('Status: Open')).toBeVisible();
+    expect(within(detail).getByText(/^Status: Open · Since/u)).toBeVisible();
+    expect(
+      within(detail).getByText(commercialIntakeCopy.outcomeHistoryEmpty),
+    ).toBeVisible();
     expect(within(detail).getByText(commercialIntakeCopy.client)).toBeVisible();
     expect(within(detail).getByText('Managed Client')).toBeVisible();
     expect(within(detail).getByText(createdRequest.originalText)).toBeVisible();

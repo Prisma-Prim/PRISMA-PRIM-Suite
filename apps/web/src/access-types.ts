@@ -99,9 +99,11 @@ export interface ActorContext {
     pricingAdjustmentPermissionSetVersion?: 'v1';
     commercialActivityPermissions?: Array<'commercial.activity.read'>;
     commercialActivityPermissionSetVersion?: 'v1';
-    opportunityManagerPermissions?: Array<'commercial.opportunity.assign'>;
+    opportunityManagerPermissions?: Array<
+      'commercial.opportunity.assign' | 'commercial.opportunity.outcome.change'
+    >;
     opportunityManagerPermissionAssignmentId?: string;
-    opportunityManagerPermissionSetVersion?: 'v1';
+    opportunityManagerPermissionSetVersion?: 'v1' | 'v2';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'

@@ -9,9 +9,14 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import {
+  OPPORTUNITY_LOSS_REASON_CODES,
+  OPPORTUNITY_OUTCOME_STATUSES,
+} from '../../commercial-intake/opportunity-outcome.js';
 import { clientAccounts, companies, workspaceMemberships } from './core.js';
 
 export const clientRequests = pgTable(
@@ -121,7 +126,10 @@ export const opportunities = pgTable(
     title: text('title').notNull(),
     scope: text('scope'),
     nextAction: text('next_action').notNull(),
-    status: text('status', { enum: ['OPEN'] })
+    // The outcome status (Commercial Workflow PRD section 23). Capture enters
+    // OPEN at the capture time; each later status is entered at the time of
+    // its outcome history entry.
+    status: text('status', { enum: OPPORTUNITY_OUTCOME_STATUSES })
       .default('OPEN')
       .notNull(),
     responsibleInternalUserId: uuid('responsible_internal_user_id').notNull(),
@@ -133,8 +141,9 @@ export const opportunities = pgTable(
       .notNull(),
     version: integer('version').default(1).notNull(),
     // Server-owned trace of the last material Opportunity mutation: a
-    // next-action update or a responsible-actor change. All stay null while
-    // the Opportunity is still at its captured version 1.
+    // next-action update, a responsible-actor change or an outcome status
+    // change. All stay null while the Opportunity is still at its captured
+    // version 1.
     lastUpdatedByInternalUserId: uuid('last_updated_by_internal_user_id'),
     lastUpdatedByWorkspaceMembershipId: uuid(
       'last_updated_by_workspace_membership_id',
@@ -207,7 +216,10 @@ export const opportunities = pgTable(
         workspaceMemberships.internalUserId,
       ],
     }),
-    check('opportunities_status_check', sql`${table.status} = 'OPEN'`),
+    check(
+      'opportunities_status_check',
+      sql`${table.status} IN ('OPEN', 'ON_HOLD', 'WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED')`,
+    ),
     check('opportunities_version_check', sql`${table.version} >= 1`),
     check(
       'opportunities_last_update_check',
@@ -422,6 +434,195 @@ export const commercialIntakeResponsibleCommands = pgTable(
   ],
 );
 
+// The append-only outcome history of section 23.6: one entry per committed
+// status transition, with its resulting Opportunity version. Capture's initial
+// OPEN state has no entry. Entries are never edited or deleted.
+export const opportunityOutcomeHistory = pgTable(
+  'opportunity_outcome_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    opportunityVersion: integer('opportunity_version').notNull(),
+    previousStatus: text('previous_status', {
+      enum: OPPORTUNITY_OUTCOME_STATUSES,
+    }).notNull(),
+    newStatus: text('new_status', {
+      enum: OPPORTUNITY_OUTCOME_STATUSES,
+    }).notNull(),
+    lossReasonCode: text('loss_reason_code', {
+      enum: OPPORTUNITY_LOSS_REASON_CODES,
+    }),
+    reason: text('reason'),
+    note: text('note'),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    actorDisplayLabel: text('actor_display_label').notNull(),
+    changedAt: timestamp('changed_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    // A constraint, not only an index, so each receipt can reference it; it
+    // also serves the newest-first history pages.
+    unique('opportunity_outcome_history_version_unique').on(
+      table.workspaceId,
+      table.opportunityId,
+      table.opportunityVersion,
+    ),
+    foreignKey({
+      name: 'opportunity_outcome_history_opportunity_fk',
+      columns: [table.workspaceId, table.companyId, table.opportunityId],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'opportunity_outcome_history_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorWorkspaceMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'opportunity_outcome_history_version_check',
+      sql`${table.opportunityVersion} >= 2`,
+    ),
+    // Exactly the section 23.2 transitions; no other pair exists.
+    check(
+      'opportunity_outcome_history_transition_check',
+      sql`(
+        (${table.previousStatus} = 'OPEN' AND ${table.newStatus} IN ('ON_HOLD', 'WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED'))
+        OR (${table.previousStatus} = 'ON_HOLD' AND ${table.newStatus} IN ('OPEN', 'WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED'))
+        OR (${table.previousStatus} IN ('WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED') AND ${table.newStatus} = 'OPEN')
+      )`,
+    ),
+    // Lose carries a loss reason code and an optional note, required for
+    // OTHER. Hold, Disqualify, Archive and Reopen carry a reason; Resume and
+    // Win carry nothing. Text follows the section 16.3 rule.
+    check(
+      'opportunity_outcome_history_input_check',
+      sql`(
+        (${table.newStatus} = 'LOST'
+          AND ${table.lossReasonCode} IS NOT NULL
+          AND ${table.reason} IS NULL
+          AND (${table.lossReasonCode} <> 'OTHER' OR ${table.note} IS NOT NULL))
+        OR
+        ((${table.newStatus} IN ('ON_HOLD', 'DISQUALIFIED', 'ARCHIVED')
+            OR (${table.newStatus} = 'OPEN' AND ${table.previousStatus} <> 'ON_HOLD'))
+          AND ${table.lossReasonCode} IS NULL
+          AND ${table.note} IS NULL
+          AND ${table.reason} IS NOT NULL)
+        OR
+        ((${table.newStatus} = 'WON'
+            OR (${table.newStatus} = 'OPEN' AND ${table.previousStatus} = 'ON_HOLD'))
+          AND ${table.lossReasonCode} IS NULL
+          AND ${table.note} IS NULL
+          AND ${table.reason} IS NULL)
+      )
+      AND (${table.reason} IS NULL OR (length(${table.reason}) BETWEEN 1 AND 500 AND length(btrim(${table.reason})) > 0))
+      AND (${table.note} IS NULL OR (length(${table.note}) BETWEEN 1 AND 500 AND length(btrim(${table.note})) > 0))`,
+    ),
+    // Only the fixed section 23.2 loss reason codes.
+    check(
+      'opportunity_outcome_history_loss_reason_check',
+      sql`${table.lossReasonCode} IS NULL OR ${table.lossReasonCode} IN ('PRICE', 'DEADLINE', 'COMPETITOR', 'NO_BUDGET', 'POSTPONED', 'CLIENT_WITHDREW', 'OTHER', 'UNKNOWN')`,
+    ),
+    check(
+      'opportunity_outcome_history_actor_label_check',
+      sql`length(btrim(${table.actorDisplayLabel})) > 0`,
+    ),
+  ],
+);
+
+// Durable receipt of one outcome status command, in its own key space. It
+// shares the Opportunity version with the next-action update and the
+// reassignment. Requesting the current status is refused, so every receipt
+// records a transition and references the history entry it produced.
+export const commercialIntakeOutcomeCommands = pgTable(
+  'commercial_intake_outcome_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    expectedVersion: integer('expected_version').notNull(),
+    resultVersion: integer('result_version').notNull(),
+    previousStatus: text('previous_status', {
+      enum: OPPORTUNITY_OUTCOME_STATUSES,
+    }).notNull(),
+    newStatus: text('new_status', {
+      enum: OPPORTUNITY_OUTCOME_STATUSES,
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('commercial_intake_outcome_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex('commercial_intake_outcome_commands_version_unique').on(
+      table.workspaceId,
+      table.opportunityId,
+      table.resultVersion,
+    ),
+    foreignKey({
+      name: 'commercial_intake_outcome_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_outcome_commands_opportunity_fk',
+      columns: [table.workspaceId, table.companyId, table.opportunityId],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_outcome_commands_history_fk',
+      columns: [table.workspaceId, table.opportunityId, table.resultVersion],
+      foreignColumns: [
+        opportunityOutcomeHistory.workspaceId,
+        opportunityOutcomeHistory.opportunityId,
+        opportunityOutcomeHistory.opportunityVersion,
+      ],
+    }),
+    check(
+      'commercial_intake_outcome_commands_version_check',
+      sql`${table.expectedVersion} >= 1 AND ${table.resultVersion} = (${table.expectedVersion})::bigint + 1`,
+    ),
+    check(
+      'commercial_intake_outcome_commands_transition_check',
+      sql`(
+        (${table.previousStatus} = 'OPEN' AND ${table.newStatus} IN ('ON_HOLD', 'WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED'))
+        OR (${table.previousStatus} = 'ON_HOLD' AND ${table.newStatus} IN ('OPEN', 'WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED'))
+        OR (${table.previousStatus} IN ('WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED') AND ${table.newStatus} = 'OPEN')
+      )`,
+    ),
+  ],
+);
+
 export const commercialIntakeCommands = pgTable(
   'commercial_intake_commands',
   {
@@ -480,6 +681,7 @@ export const commercialIntakeEvents = pgTable(
         'opportunity.created',
         'opportunity.next_action.updated',
         'opportunity.responsible.changed',
+        'opportunity.outcome.changed',
       ],
     }).notNull(),
     clientRequestId: uuid('client_request_id').notNull(),
@@ -517,10 +719,21 @@ export const commercialIntakeEvents = pgTable(
         sql`(${table.metadata} ->> 'opportunityVersion')`,
       )
       .where(sql`${table.action} = 'opportunity.responsible.changed'`),
+    // Exactly one outcome status change event per resulting version.
+    uniqueIndex('commercial_intake_events_outcome_version_unique')
+      .on(
+        table.workspaceId,
+        table.opportunityId,
+        sql`(${table.metadata} ->> 'opportunityVersion')`,
+      )
+      .where(sql`${table.action} = 'opportunity.outcome.changed'`),
     // Update metadata carries the resulting version only: one integer key,
     // never previous or new text. A responsible-actor change additionally
     // carries exactly the previous and new responsible actor, each a
     // membership identifier and a non-blank captured label, and they differ.
+    // An outcome status change carries exactly the previous and new status of
+    // one section 23.2 transition, plus the loss reason code of a loss; never
+    // reason or note text.
     check(
       'commercial_intake_events_action_metadata_check',
       sql`(
@@ -557,6 +770,31 @@ export const commercialIntakeEvents = pgTable(
           AND length(btrim(${table.metadata} #>> '{after,displayLabel}')) > 0
           AND ${table.metadata} #>> '{before,workspaceMembershipId}'
             <> ${table.metadata} #>> '{after,workspaceMembershipId}') IS TRUE)
+        OR
+        ((${table.action} = 'opportunity.outcome.changed'
+          AND jsonb_typeof(${table.metadata} -> 'opportunityVersion') = 'number'
+          AND (${table.metadata} ->> 'opportunityVersion')::integer >= 2
+          AND (
+            (${table.metadata} ->> 'previousStatus' = 'OPEN'
+              AND ${table.metadata} ->> 'newStatus' IN ('ON_HOLD', 'WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED'))
+            OR (${table.metadata} ->> 'previousStatus' = 'ON_HOLD'
+              AND ${table.metadata} ->> 'newStatus' IN ('OPEN', 'WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED'))
+            OR (${table.metadata} ->> 'previousStatus' IN ('WON', 'LOST', 'DISQUALIFIED', 'ARCHIVED')
+              AND ${table.metadata} ->> 'newStatus' = 'OPEN'))
+          AND (
+            (${table.metadata} ->> 'newStatus' = 'LOST'
+              AND ${table.metadata} ->> 'lossReasonCode' IN ('PRICE', 'DEADLINE', 'COMPETITOR', 'NO_BUDGET', 'POSTPONED', 'CLIENT_WITHDREW', 'OTHER', 'UNKNOWN')
+              AND ${table.metadata} = jsonb_build_object(
+                'opportunityVersion', (${table.metadata} ->> 'opportunityVersion')::integer,
+                'previousStatus', ${table.metadata} ->> 'previousStatus',
+                'newStatus', 'LOST',
+                'lossReasonCode', ${table.metadata} ->> 'lossReasonCode'))
+            OR
+            (${table.metadata} ->> 'newStatus' <> 'LOST'
+              AND ${table.metadata} = jsonb_build_object(
+                'opportunityVersion', (${table.metadata} ->> 'opportunityVersion')::integer,
+                'previousStatus', ${table.metadata} ->> 'previousStatus',
+                'newStatus', ${table.metadata} ->> 'newStatus')))) IS TRUE)
       )`,
     ),
     foreignKey({

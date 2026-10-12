@@ -18,7 +18,7 @@ const CAPTURED_VERSIONS = {
   'Company Offer Approver': ['v1'],
   'Company Pricing Adjustment': ['v1'],
   'Company Commercial Activity Reader': ['v1'],
-  'Company Opportunity Manager': ['v1'],
+  'Company Opportunity Manager': ['v1', 'v2'],
   'Company Project Approver': ['v1'],
   'Company Profitability Contributor': ['v1'],
   'Company Profitability Director': ['v1'],

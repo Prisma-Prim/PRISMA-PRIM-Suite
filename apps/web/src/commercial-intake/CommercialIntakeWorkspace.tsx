@@ -22,7 +22,25 @@ import {
   type ResponsibleEdit,
   type ResponsibleEditor,
 } from './OpportunityResponsible';
+import {
+  OpportunityOutcome,
+  OpportunityOutcomeHistory,
+  type OlderOutcomeHistory,
+  type OutcomeEditor,
+} from './OpportunityOutcome';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import {
+  EMPTY_OUTCOME_DRAFT,
+  isOpportunityOutcomeStatus,
+  isOutcomeTransition,
+  isConsistentOutcomeSnapshot,
+  isOpportunityVersion,
+  isOutcomeHistoryPage,
+  outcomeCommandBody,
+  type OpportunityOutcomeStatus,
+  type OutcomeEdit,
+  type OutcomeHistoryPage,
+} from './opportunity-outcome';
 import { RequestClientAssociation } from './RequestClientAssociation';
 import './commercial-intake.css';
 
@@ -39,6 +57,7 @@ type RequestListItem = {
   initialOpportunity: {
     title: string;
     nextAction: string;
+    status: OpportunityOutcomeStatus;
     responsibleActor: ResponsibleActor;
   };
 } & RequestListClientProjection;
@@ -65,7 +84,9 @@ type ClientRequest = {
     title: string;
     scope: string | null;
     nextAction: string;
-    status: 'OPEN';
+    status: OpportunityOutcomeStatus;
+    statusEnteredAt: string;
+    outcomeHistory: OutcomeHistoryPage;
     responsibleWorkspaceMembershipId: string;
     responsibleActor: ResponsibleActor;
     createdAt: string;
@@ -86,9 +107,10 @@ type ClientRestriction = { clientDossierId: string; displayName: string };
 type RequestedRequest = { clientRequestId: string; requestId: number };
 
 // What the one shared in-flight controller serves: an ordinary detail read, or
-// a capture, next-action or responsible-actor command until the reads that
-// follow its outcome end.
-type InFlight = 'none' | 'read' | 'capture' | 'next-action' | 'responsible';
+// a capture, next-action, responsible-actor or outcome status command until
+// the reads that follow its outcome end.
+type InFlight =
+  'none' | 'read' | 'capture' | 'next-action' | 'responsible' | 'outcome';
 type AssociationProtection = 'idle' | 'loading' | 'uncertain';
 
 type NextActionUpdateResult = {
@@ -132,6 +154,25 @@ type ResponsibleRetry = {
   expectedVersion: number;
   workspaceMembershipId: string;
   key: string;
+};
+
+type OutcomeChangeResult = {
+  receipt: {
+    opportunityId: string;
+    previousStatus: OpportunityOutcomeStatus;
+    status: OpportunityOutcomeStatus;
+    version: number;
+  };
+  request: ClientRequest;
+};
+
+// An explicit retry resends exactly this body with its key.
+type OutcomeRetry = {
+  opportunityId: string;
+  body: string;
+  key: string;
+  /** The status shown when the command was built: the receipt starts here. */
+  previousStatus: OpportunityOutcomeStatus;
 };
 
 type RequestPage = { items: RequestListItem[]; nextCursor?: string };
@@ -248,6 +289,9 @@ export function CommercialIntakeWorkspace({
   const [responsibleEdit, setResponsibleEdit] = useState<ResponsibleEdit>({
     kind: 'idle',
   });
+  const [outcomeEdit, setOutcomeEdit] = useState<OutcomeEdit>({
+    kind: 'idle',
+  });
   const listRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
   const clientSearchRequest = useRef<AbortController | undefined>(undefined);
@@ -263,6 +307,9 @@ export function CommercialIntakeWorkspace({
   // eligible-member read of an open responsible-actor editor.
   const responsibleCommand = useRef<AbortController | undefined>(undefined);
   const membersRequest = useRef<AbortController | undefined>(undefined);
+  const outcomeRetry = useRef<OutcomeRetry | undefined>(undefined);
+  // The outcome status save whose response has not arrived yet.
+  const outcomeCommand = useRef<AbortController | undefined>(undefined);
   // The ordinary detail read in flight, if any; never a command.
   const detailRead = useRef<AbortController | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
@@ -273,9 +320,12 @@ export function CommercialIntakeWorkspace({
     nextActionEdit.kind === 'uncertain';
   const responsibleEditOpen =
     responsibleEdit.kind !== 'idle' && responsibleEdit.kind !== 'conflict';
-  // At most one Opportunity editor is open; either one is protected work.
+  const outcomeEditOpen =
+    outcomeEdit.kind !== 'idle' && outcomeEdit.kind !== 'conflict';
+  // At most one Opportunity editor is open; any one is protected work.
   const opportunityEditInProgress = useRef(false);
-  opportunityEditInProgress.current = nextActionEditOpen || responsibleEditOpen;
+  opportunityEditInProgress.current =
+    nextActionEditOpen || responsibleEditOpen || outcomeEditOpen;
   const associationInProgress = useRef(false);
   associationInProgress.current = associationProtection !== 'idle';
   const protectedWork =
@@ -285,9 +335,11 @@ export function CommercialIntakeWorkspace({
         ? 'next-action-edit'
         : responsibleEditOpen || inFlight === 'responsible'
           ? 'responsible-edit'
-          : inFlight === 'capture' || captureUncertain
-            ? 'capture'
-            : undefined;
+          : outcomeEditOpen || inFlight === 'outcome'
+            ? 'outcome-edit'
+            : inFlight === 'capture' || captureUncertain
+              ? 'capture'
+              : undefined;
   const listDenied = useRef(false);
   listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
@@ -375,6 +427,21 @@ export function CommercialIntakeWorkspace({
     actor.activeCompany?.opportunityManagerPermissionSetVersion,
     canChangeResponsible,
   ]);
+  // The outcome status change needs captured manager v2 and both Intake
+  // reads; the server also requires live Company context.
+  const canChangeOutcome =
+    actor.activeCompany?.opportunityManagerPermissions?.includes(
+      'commercial.opportunity.outcome.change',
+    ) === true &&
+    intakePermissions.includes('commercial.request.read') &&
+    intakePermissions.includes('commercial.opportunity.read');
+  const outcomeAuthority = JSON.stringify([
+    actor.workspaceMembershipId,
+    companyId,
+    actor.activeCompany?.opportunityManagerPermissionAssignmentId,
+    actor.activeCompany?.opportunityManagerPermissionSetVersion,
+    canChangeOutcome,
+  ]);
 
   const request = useCallback(
     async ({
@@ -444,7 +511,8 @@ export function CommercialIntakeWorkspace({
         | 'client-search'
         | 'client-association'
         | 'next-action-update'
-        | 'responsible-update' = 'intake',
+        | 'responsible-update'
+        | 'outcome-update' = 'intake',
     ): Promise<'ok' | 'retained' | 'rejected'> => {
       if (signal.aborted) return 'rejected';
       if (result.status === 401) {
@@ -487,12 +555,14 @@ export function CommercialIntakeWorkspace({
           setNextActionEdit({ kind: 'idle' });
           setAssociationProtection('idle');
           setResponsibleEdit({ kind: 'idle' });
+          setOutcomeEdit({ kind: 'idle' });
           setInFlight('none');
           setCaptureUncertain(false);
           setRequestToOpen(undefined);
           retry.current = undefined;
           nextActionRetry.current = undefined;
           responsibleRetry.current = undefined;
+          outcomeRetry.current = undefined;
           listRequest.current?.abort();
           commandRequest.current?.abort();
           membersRequest.current?.abort();
@@ -568,10 +638,12 @@ export function CommercialIntakeWorkspace({
     retry.current = undefined;
     nextActionRetry.current = undefined;
     responsibleRetry.current = undefined;
+    outcomeRetry.current = undefined;
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     setAssociationProtection('idle');
     setResponsibleEdit({ kind: 'idle' });
+    setOutcomeEdit({ kind: 'idle' });
     setFeedback('');
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
@@ -614,6 +686,8 @@ export function CommercialIntakeWorkspace({
     nextActionRetry.current = undefined;
     setResponsibleEdit({ kind: 'idle' });
     responsibleRetry.current = undefined;
+    setOutcomeEdit({ kind: 'idle' });
+    outcomeRetry.current = undefined;
   }, [clientRestriction]);
 
   // The shell owns the requested Request. A new one supersedes any older or
@@ -758,6 +832,39 @@ export function CommercialIntakeWorkspace({
       setFeedback(copy.responsibleDenied);
   }, [canChangeResponsible, responsibleEdit.kind]);
 
+  // Losing outcome authority keeps the read-only detail, but retires the
+  // draft, the pending command and any in-flight save, so a later regrant can
+  // neither restore nor replay them.
+  useEffect(() => {
+    if (canChangeOutcome) return;
+    outcomeRetry.current = undefined;
+    const save = outcomeCommand.current;
+    outcomeCommand.current = undefined;
+    if (save && !save.signal.aborted) {
+      save.abort();
+      setInFlight('none');
+    }
+    if (outcomeEdit.kind === 'idle') return;
+    setOutcomeEdit({ kind: 'idle' });
+    if (outcomeEdit.kind !== 'conflict') setFeedback(copy.outcomeDenied);
+  }, [canChangeOutcome, outcomeEdit.kind]);
+
+  // Another captured manager assignment is a new authority: like a remount
+  // keyed on it, it retires every outcome draft and command.
+  const readOutcomeAuthority = useRef(outcomeAuthority);
+  useEffect(() => {
+    if (readOutcomeAuthority.current === outcomeAuthority) return;
+    readOutcomeAuthority.current = outcomeAuthority;
+    outcomeRetry.current = undefined;
+    const save = outcomeCommand.current;
+    outcomeCommand.current = undefined;
+    if (save && !save.signal.aborted) {
+      save.abort();
+      setInFlight('none');
+    }
+    setOutcomeEdit({ kind: 'idle' });
+  }, [outcomeAuthority]);
+
   // Another captured manager assignment is a new authority: like a remount
   // keyed on it, it retires every responsible-actor draft and command.
   const readResponsibleAuthority = useRef(responsibleAuthority);
@@ -850,6 +957,8 @@ export function CommercialIntakeWorkspace({
       nextActionRetry.current = undefined;
       setResponsibleEdit({ kind: 'idle' });
       responsibleRetry.current = undefined;
+      setOutcomeEdit({ kind: 'idle' });
+      outcomeRetry.current = undefined;
       membersRequest.current?.abort();
     }
     try {
@@ -871,6 +980,8 @@ export function CommercialIntakeWorkspace({
         nextActionRetry.current = undefined;
         setResponsibleEdit({ kind: 'idle' });
         responsibleRetry.current = undefined;
+        setOutcomeEdit({ kind: 'idle' });
+        outcomeRetry.current = undefined;
       } else setFeedback(copy.error);
     } catch {
       if (!controller.signal.aborted) setFeedback(copy.error);
@@ -889,6 +1000,8 @@ export function CommercialIntakeWorkspace({
     nextActionRetry.current = undefined;
     setResponsibleEdit({ kind: 'idle' });
     responsibleRetry.current = undefined;
+    setOutcomeEdit({ kind: 'idle' });
+    outcomeRetry.current = undefined;
     setInFlight('none');
   }
 
@@ -899,6 +1012,8 @@ export function CommercialIntakeWorkspace({
     nextActionRetry.current = undefined;
     setResponsibleEdit({ kind: 'idle' });
     responsibleRetry.current = undefined;
+    setOutcomeEdit({ kind: 'idle' });
+    outcomeRetry.current = undefined;
     setSelected(undefined);
     setFeedback(copy.nextActionMissing);
     await loadRequests(companyContextId);
@@ -1121,6 +1236,151 @@ export function CommercialIntakeWorkspace({
       if (!controller.signal.aborted) setInFlight('none');
     }
   }
+
+  async function saveOutcome(): Promise<void> {
+    if (!companyId || !selected || pending) return;
+    if (outcomeEdit.kind !== 'editing' && outcomeEdit.kind !== 'uncertain')
+      return;
+    const { draft } = outcomeEdit;
+    // An uncertain outcome resends exactly its payload, observed version and
+    // key; a new draft builds its body from the shown version.
+    const preservedRetry =
+      outcomeEdit.kind === 'uncertain' ? outcomeRetry.current : undefined;
+    const opportunityId =
+      preservedRetry?.opportunityId ?? selected.request.initialOpportunity.id;
+    const previousStatus =
+      preservedRetry?.previousStatus ??
+      selected.request.initialOpportunity.status;
+    let command: string;
+    if (preservedRetry) command = preservedRetry.body;
+    else {
+      const body = outcomeCommandBody(
+        draft,
+        selected.request.initialOpportunity.version,
+      );
+      if (!body) {
+        setFeedback(copy.outcomeValidation);
+        return;
+      }
+      command = JSON.stringify(body);
+    }
+    const previous = outcomeRetry.current;
+    const key =
+      previous &&
+      previous.opportunityId === opportunityId &&
+      previous.body === command
+        ? previous.key
+        : crypto.randomUUID();
+    outcomeRetry.current = {
+      opportunityId,
+      body: command,
+      key,
+      previousStatus,
+    };
+    commandRequest.current?.abort();
+    const controller = new AbortController();
+    commandRequest.current = controller;
+    outcomeCommand.current = controller;
+    const startedUnderProjection = clientProjection.current.revision;
+    setOutcomeEdit({ kind: 'saving', draft });
+    setInFlight('outcome');
+    setFeedback('');
+    try {
+      const result = await request({
+        path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/outcome`,
+        companyContextId: companyId,
+        signal: controller.signal,
+        method: 'POST',
+        body: command,
+        idempotencyKey: key,
+      });
+      if (outcomeCommand.current === controller)
+        outcomeCommand.current = undefined;
+      if (controller.signal.aborted) return;
+      const access = await handleAccess(
+        result,
+        companyId,
+        controller.signal,
+        'outcome-update',
+      );
+      if (controller.signal.aborted) return;
+      if (access === 'retained') {
+        // Outcome authority was lost while read authority remains: the draft
+        // and pending command are dropped, the read-only detail stays.
+        setOutcomeEdit({ kind: 'idle' });
+        outcomeRetry.current = undefined;
+        setFeedback(copy.outcomeDenied);
+        return;
+      }
+      if (access === 'rejected') return;
+      if (result.status === 404) {
+        await closeMissingOpportunity(companyId);
+        return;
+      }
+      if (result.status === 409) {
+        setOutcomeEdit({ kind: 'conflict' });
+        outcomeRetry.current = undefined;
+        setFeedback(copy.outcomeConflict);
+        return;
+      }
+      if (result.status === 400) {
+        setOutcomeEdit({ kind: 'editing', draft });
+        outcomeRetry.current = undefined;
+        setFeedback(copy.outcomeValidation);
+        return;
+      }
+      if (
+        result.status === 200 &&
+        isOutcomeChangeResult(result.body, {
+          opportunityId,
+          command,
+          previousStatus,
+        })
+      ) {
+        applyOpportunityResponse({
+          request: result.body.request,
+          responseRevision: startedUnderProjection,
+        });
+        setOutcomeEdit({ kind: 'idle' });
+        outcomeRetry.current = undefined;
+        setFeedback(copy.outcomeChanged);
+        await onActivityRecorded();
+        if (!controller.signal.aborted) await loadRequests(companyId);
+        return;
+      }
+      setOutcomeEdit({ kind: 'uncertain', draft });
+      setFeedback(copy.outcomeUncertain);
+    } catch {
+      if (!controller.signal.aborted) {
+        setOutcomeEdit({ kind: 'uncertain', draft });
+        setFeedback(copy.outcomeUncertain);
+      }
+    } finally {
+      if (!controller.signal.aborted) setInFlight('none');
+    }
+  }
+
+  // One older page of the shown Opportunity's outcome history. Only Commercial
+  // Intake read is needed; a lost read authority clears the scoped content.
+  const loadOlderOutcomeHistory: OlderOutcomeHistory = async (cursor) => {
+    if (!companyId || !selected) return undefined;
+    const controller = new AbortController();
+    try {
+      const result = await request({
+        path: `/commercial-intake/opportunities/${encodeURIComponent(selected.request.initialOpportunity.id)}/outcome-history?cursor=${encodeURIComponent(cursor)}`,
+        companyContextId: companyId,
+        signal: controller.signal,
+      });
+      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+        return undefined;
+      return result.status === 200 &&
+        isOutcomeHistoryPage(result.body, isDisplayableTimestamp)
+        ? result.body
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  };
 
   async function saveNextAction(): Promise<void> {
     if (!companyId || !selected || pending) return;
@@ -1397,7 +1657,9 @@ export function CommercialIntakeWorkspace({
               ? copy.requestedAfterClientAssociation
               : protectedWork === 'responsible-edit'
                 ? copy.requestedAfterResponsibleEdit
-                : copy.requestedAfterNextActionEdit}
+                : protectedWork === 'outcome-edit'
+                  ? copy.requestedAfterOutcomeEdit
+                  : copy.requestedAfterNextActionEdit}
         </p>
       ) : null}
       {selected && visibleRequest ? (
@@ -1419,7 +1681,9 @@ export function CommercialIntakeWorkspace({
               ? {
                   edit: responsibleEdit,
                   current: selected.request.initialOpportunity.responsibleActor,
-                  blocked: nextActionEdit.kind !== 'idle',
+                  blocked:
+                    nextActionEdit.kind !== 'idle' ||
+                    outcomeEdit.kind !== 'idle',
                   onOpen: () => void openResponsibleEditor(),
                   onSelect: (workspaceMembershipId) =>
                     setResponsibleEdit((current) =>
@@ -1444,7 +1708,9 @@ export function CommercialIntakeWorkspace({
             canEditNextAction
               ? {
                   edit: nextActionEdit,
-                  blocked: responsibleEdit.kind !== 'idle',
+                  blocked:
+                    responsibleEdit.kind !== 'idle' ||
+                    outcomeEdit.kind !== 'idle',
                   onEdit: () => {
                     setFeedback('');
                     setNextActionEdit({
@@ -1468,6 +1734,39 @@ export function CommercialIntakeWorkspace({
                 }
               : undefined
           }
+          outcome={
+            canChangeOutcome
+              ? {
+                  edit: outcomeEdit,
+                  current: selected.request.initialOpportunity.status,
+                  blocked:
+                    nextActionEdit.kind !== 'idle' ||
+                    responsibleEdit.kind !== 'idle',
+                  onOpen: () => {
+                    setFeedback('');
+                    outcomeRetry.current = undefined;
+                    setOutcomeEdit({
+                      kind: 'editing',
+                      draft: EMPTY_OUTCOME_DRAFT,
+                    });
+                  },
+                  onDraftChange: (draft) =>
+                    setOutcomeEdit((current) =>
+                      current.kind === 'editing'
+                        ? { ...current, draft }
+                        : current,
+                    ),
+                  onSave: () => void saveOutcome(),
+                  onCancel: () => {
+                    setOutcomeEdit({ kind: 'idle' });
+                    outcomeRetry.current = undefined;
+                    setFeedback('');
+                  },
+                  onReload: () => void selectRequest(selected.request.id, true),
+                }
+              : undefined
+          }
+          loadOlderOutcomeHistory={loadOlderOutcomeHistory}
           clientAssociation={
             companyId &&
             canAssociateClient &&
@@ -1479,7 +1778,9 @@ export function CommercialIntakeWorkspace({
                 requestId={selected.request.id}
                 expectedVersion={selected.request.version}
                 clientIdentityRevision={clientIdentityRevision}
-                blocked={nextActionEditOpen || responsibleEditOpen}
+                blocked={
+                  nextActionEditOpen || responsibleEditOpen || outcomeEditOpen
+                }
                 request={request}
                 handleAccess={handleAccess}
                 onProtectionChange={setAssociationProtection}
@@ -1899,6 +2200,10 @@ function RequestList({
               <strong>{item.subject ?? copy.title}</strong>
               <span>{item.initialOpportunity.title}</span>
               <small>
+                {copy.status}:{' '}
+                {copy.opportunityStatusLabels[item.initialOpportunity.status]}
+              </small>
+              <small>
                 {copy.nextAction}: {item.initialOpportunity.nextAction}
               </small>
               <small>
@@ -1987,6 +2292,8 @@ function RequestDetail({
   onOpenClientDossier,
   responsible,
   nextAction,
+  outcome,
+  loadOlderOutcomeHistory,
   clientAssociation,
   onCompanyContextRejected,
   onActorRevalidated,
@@ -2003,6 +2310,9 @@ function RequestDetail({
   /** Offered only with reassignment authority and the Intake reads. */
   responsible: ResponsibleEditor | undefined;
   nextAction: NextActionEditor | undefined;
+  /** Offered only with the outcome permission and the Intake reads. */
+  outcome: OutcomeEditor | undefined;
+  loadOlderOutcomeHistory: OlderOutcomeHistory;
   clientAssociation: ReactNode;
   clientAuthority: string;
   onCompanyContextRejected: (companyContextId: string) => void;
@@ -2099,7 +2409,22 @@ function RequestDetail({
         <p>
           {copy.status}:{' '}
           {copy.opportunityStatusLabels[request.initialOpportunity.status]}
+          {' · '}
+          {copy.statusEnteredAt}{' '}
+          <time dateTime={request.initialOpportunity.statusEnteredAt}>
+            {formatApplicationDateTime(
+              request.initialOpportunity.statusEnteredAt,
+            )}
+          </time>
         </p>
+        {outcome ? (
+          <OpportunityOutcome editor={outcome} pending={pending} />
+        ) : null}
+        <OpportunityOutcomeHistory
+          key={`${request.initialOpportunity.id}:${request.initialOpportunity.version}`}
+          page={request.initialOpportunity.outcomeHistory}
+          loadOlder={loadOlderOutcomeHistory}
+        />
         <p>
           {copy.opportunityVersion}: {request.initialOpportunity.version}
         </p>
@@ -2261,6 +2586,7 @@ function isRequestListItem(value: unknown): value is RequestListItem {
     isRecord(value.initialOpportunity) &&
     typeof value.initialOpportunity.title === 'string' &&
     typeof value.initialOpportunity.nextAction === 'string' &&
+    isOpportunityOutcomeStatus(value.initialOpportunity.status) &&
     isResponsibleActor(value.initialOpportunity.responsibleActor)
   );
 }
@@ -2348,15 +2674,23 @@ function isInitialOpportunity(
     typeof value.title === 'string' &&
     isNullableString(value.scope) &&
     typeof value.nextAction === 'string' &&
-    value.status === 'OPEN' &&
+    isOpportunityOutcomeStatus(value.status) &&
+    isDisplayableTimestamp(value.statusEnteredAt) &&
+    isOutcomeHistoryPage(value.outcomeHistory, isDisplayableTimestamp) &&
     typeof value.responsibleWorkspaceMembershipId === 'string' &&
     isResponsibleActor(value.responsibleActor) &&
     value.responsibleActor.workspaceMembershipId ===
       value.responsibleWorkspaceMembershipId &&
     typeof value.createdAt === 'string' &&
     typeof value.version === 'number' &&
-    Number.isInteger(value.version) &&
-    value.version >= 1
+    isOpportunityVersion(value.version, 1) &&
+    isConsistentOutcomeSnapshot({
+      status: value.status,
+      statusEnteredAt: value.statusEnteredAt,
+      createdAt: value.createdAt,
+      version: value.version,
+      outcomeHistory: value.outcomeHistory,
+    })
   );
 }
 
@@ -2373,6 +2707,75 @@ function isNextActionUpdateResult(
     (receipt.outcome === 'updated' || receipt.outcome === 'unchanged') &&
     isClientRequest(value.request)
   );
+}
+
+const OUTCOME_RECEIPT_FIELDS = [
+  'opportunityId',
+  'previousStatus',
+  'status',
+  'version',
+] as const;
+
+/**
+ * A committed outcome change for the requested Opportunity: exactly the
+ * receipt fields, one permitted section 23.2 transition, a resulting version
+ * above the initial one, and the receipt and returned Request both naming the
+ * command's Opportunity. Status and version may differ from the refreshed
+ * Request after an exact replay; identities never may. Anything else keeps the
+ * command for an explicit retry instead of settling it.
+ */
+function isOutcomeChangeResult(
+  value: unknown,
+  sent: {
+    opportunityId: string;
+    command: string;
+    previousStatus: OpportunityOutcomeStatus;
+  },
+): value is OutcomeChangeResult {
+  const { opportunityId, previousStatus } = sent;
+  const submitted = submittedOutcome(sent.command);
+  if (
+    !isRecord(value) ||
+    Object.keys(value).length !== 2 ||
+    !isRecord(value.receipt)
+  )
+    return false;
+  const receipt = value.receipt;
+  return (
+    Object.keys(receipt).length === OUTCOME_RECEIPT_FIELDS.length &&
+    OUTCOME_RECEIPT_FIELDS.every((field) => Object.hasOwn(receipt, field)) &&
+    typeof receipt.opportunityId === 'string' &&
+    isOpportunityOutcomeStatus(receipt.previousStatus) &&
+    isOpportunityOutcomeStatus(receipt.status) &&
+    isOutcomeTransition(receipt.previousStatus, receipt.status) &&
+    typeof receipt.version === 'number' &&
+    isOpportunityVersion(receipt.version, 2) &&
+    receipt.opportunityId === opportunityId &&
+    submitted !== undefined &&
+    receipt.previousStatus === previousStatus &&
+    receipt.status === submitted.status &&
+    receipt.version === submitted.expectedVersion + 1 &&
+    isClientRequest(value.request) &&
+    value.request.initialOpportunity.id === opportunityId
+  );
+}
+
+/** The status and observed version of the exact command body sent. */
+function submittedOutcome(
+  command: string,
+): { status: OpportunityOutcomeStatus; expectedVersion: number } | undefined {
+  let body: unknown;
+  try {
+    body = JSON.parse(command);
+  } catch {
+    return undefined;
+  }
+  return isRecord(body) &&
+    isOpportunityOutcomeStatus(body.status) &&
+    typeof body.expectedVersion === 'number' &&
+    Number.isSafeInteger(body.expectedVersion)
+    ? { status: body.status, expectedVersion: body.expectedVersion }
+    : undefined;
 }
 
 function isResponsibleCandidates(

@@ -220,7 +220,7 @@ it.skipIf(!databaseUrl)(
 
       for (const [bundle, version] of [
         ['company_offer_preparer', 'v2'],
-        ['company_opportunity_manager', 'v2'],
+        ['company_opportunity_manager', 'v3'],
         ['company_director_client_access', 'v3'],
         ['company_project_access', 'v3'],
       ])

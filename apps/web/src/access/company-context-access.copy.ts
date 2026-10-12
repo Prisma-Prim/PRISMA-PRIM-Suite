@@ -36,7 +36,7 @@ export const companyContextAccessCopy = {
     'Company Offer Preparer v1 grants Offer read and preparation plus Pricing Snapshot read. Company context, Commercial Intake read and Client read must already be authorized separately.',
   opportunityManagerBundle: 'Company Opportunity Manager',
   opportunityManagerPrerequisites:
-    'Company Opportunity Manager v1 changes the responsible actor only; Company context and Commercial Intake read are authorized separately.',
+    'Company Opportunity Manager v2 changes the responsible actor and the outcome status; Company context and Commercial Intake read are authorized separately.',
   pricingAdjustmentBundle: 'Company Pricing Adjustment',
   pricingAdjustmentPrerequisites:
     'Company Pricing Adjustment v1 grants only the application of a fixed net discount during a Pricing calculation. Company context, Opportunity visibility and Company Pricing User access must already be authorized separately.',

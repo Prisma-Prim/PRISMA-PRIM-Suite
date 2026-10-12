@@ -513,6 +513,7 @@ describe.skipIf(!databaseUrl)(
       expect(object(listed[0]?.initialOpportunity)).toEqual({
         title: 'Prepare the ISO 9001 audit',
         nextAction: 'Arrange a qualification call',
+        status: 'OPEN',
         responsibleActor: {
           workspaceMembershipId: ion,
           displayName: DISPLAY_NAMES.ion,
@@ -577,7 +578,7 @@ describe.skipIf(!databaseUrl)(
       });
     });
 
-    it('administers captured Company Opportunity Manager v1 with one lifecycle event per actual change and no other authority', async () => {
+    it('administers captured Company Opportunity Manager v2 with one lifecycle event per actual change and no other authority', async () => {
       const ada = (await membership('ada')).workspaceMembershipId;
       const key = randomUUID();
       const granted = await command(
@@ -591,7 +592,7 @@ describe.skipIf(!databaseUrl)(
         companyId,
         active: true,
         bundle: 'Company Opportunity Manager',
-        permissionSetVersion: 'v1',
+        permissionSetVersion: 'v2',
       });
       expect(
         await command(
@@ -624,8 +625,9 @@ describe.skipIf(!databaseUrl)(
       const company = object(actor.activeCompany);
       expect(company.opportunityManagerPermissions).toEqual([
         'commercial.opportunity.assign',
+        'commercial.opportunity.outcome.change',
       ]);
-      expect(company.opportunityManagerPermissionSetVersion).toBe('v1');
+      expect(company.opportunityManagerPermissionSetVersion).toBe('v2');
       expect(company.opportunityManagerPermissionAssignmentId).toBe(granted.id);
       for (const absent of [
         'commercialIntakePermissions',
@@ -702,7 +704,7 @@ describe.skipIf(!databaseUrl)(
         `SELECT permission_set_version FROM company_role_assignments
           WHERE bundle = 'company_opportunity_manager'`,
       );
-      expect(rows.rows).toEqual([{ permission_set_version: 'v1' }]);
+      expect(rows.rows).toEqual([{ permission_set_version: 'v2' }]);
     });
 
     it.each([

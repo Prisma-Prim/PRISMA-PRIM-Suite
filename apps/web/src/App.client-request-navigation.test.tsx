@@ -100,6 +100,7 @@ function requestRow(id: string, subject: string, clientDossierId?: string) {
       ? {}
       : { clientDossierId, clientDisplayName: sharedName }),
     initialOpportunity: {
+      status: 'OPEN',
       title: `${subject} Opportunity`,
       nextAction: `Follow up ${subject}`,
       responsibleActor: {
@@ -136,6 +137,8 @@ function requestDetail(
       scope: null,
       nextAction: `Follow up ${subject}`,
       status: 'OPEN',
+      statusEnteredAt: '2026-09-20T10:00:00.000Z',
+      outcomeHistory: { entries: [] },
       responsibleWorkspaceMembershipId: membershipId,
       responsibleActor: {
         workspaceMembershipId: membershipId,

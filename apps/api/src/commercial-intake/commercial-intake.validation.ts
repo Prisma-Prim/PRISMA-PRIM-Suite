@@ -2,10 +2,17 @@ import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 import type {
   AssociateClientCommand,
+  ChangeOpportunityOutcomeCommand,
   ChangeOpportunityResponsibleCommand,
   CreateCommercialIntakeCommand,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
+import {
+  isOpportunityOutcomeStatus,
+  type OpportunityOutcomeChange,
+  type OpportunityOutcomeStatus,
+  type SubmittedOutcomeField,
+} from './opportunity-outcome.js';
 
 const ROOT_FIELDS = new Set([
   'originalText',
@@ -24,6 +31,13 @@ const CLIENT_ASSOCIATION_FIELDS = new Set([
 const RESPONSIBLE_CHANGE_FIELDS = new Set([
   'expectedVersion',
   'workspaceMembershipId',
+]);
+const OUTCOME_CHANGE_FIELDS = new Set([
+  'expectedVersion',
+  'status',
+  'reason',
+  'lossReasonCode',
+  'note',
 ]);
 const MEMBERSHIP_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -89,6 +103,45 @@ export function readChangeOpportunityResponsibleCommand(
     expectedVersion,
     workspaceMembershipId: workspaceMembershipId.toLowerCase(),
   };
+}
+
+/**
+ * Exactly an observed Opportunity version, the requested status and whichever
+ * reason fields were supplied, kept as submitted. Whether the pair is
+ * permitted is decided against the current status by resolveOutcomeTransition
+ * before any reason field is required, refused or checked.
+ */
+export function readChangeOpportunityOutcomeCommand(
+  value: unknown,
+): ChangeOpportunityOutcomeCommand {
+  const body = record(value, 'change');
+  rejectExtraFields(body, OUTCOME_CHANGE_FIELDS, 'change');
+  const expectedVersion = observedVersion(body.expectedVersion);
+  const { status } = body;
+  if (!isOpportunityOutcomeStatus(status))
+    invalid('status', 'Choose a supported outcome status.');
+  return { expectedVersion, change: outcomeChange(status, body) };
+}
+
+function outcomeChange(
+  status: OpportunityOutcomeStatus,
+  body: Record<string, unknown>,
+): OpportunityOutcomeChange {
+  return {
+    status,
+    reason: submitted(body, 'reason'),
+    lossReasonCode: submitted(body, 'lossReasonCode'),
+    note: submitted(body, 'note'),
+  };
+}
+
+function submitted(
+  body: Record<string, unknown>,
+  field: string,
+): SubmittedOutcomeField {
+  return Object.hasOwn(body, field)
+    ? { supplied: true, value: body[field] }
+    : { supplied: false };
 }
 
 function observedVersion(value: unknown): number {

@@ -290,18 +290,6 @@ export class OfferService {
         opportunityId,
         true,
       );
-      if (opportunity.status !== 'OPEN') {
-        throw namedConflict(
-          'OPPORTUNITY_NOT_OPEN',
-          'The Opportunity is not open.',
-        );
-      }
-      if (!opportunity.originalClientAccountId) {
-        throw namedConflict(
-          'OFFER_CLIENT_REQUIRED',
-          'The Request must have a readable Client before creating an Offer.',
-        );
-      }
       const fingerprint = commandFingerprint({
         opportunityId: opportunity.id,
         payload: value,
@@ -318,6 +306,9 @@ export class OfferService {
             'IDEMPOTENCY_CONFLICT',
             'Idempotency-Key was already used for another Offer command.',
           );
+        // A committed creation proves the association; it is never removed.
+        if (!opportunity.originalClientAccountId)
+          throw new Error('Missing Client of a recorded Offer creation.');
         const command = readCreateOfferCommand(value);
         await this.clients.lockOfferRecipient(
           actor,
@@ -337,6 +328,21 @@ export class OfferService {
           1,
         );
         return this.offerView(actor, stored.offer, stored.version, snapshot);
+      }
+      // Only a new creation needs an open Opportunity: the exact replay above
+      // returns an Offer committed before a later outcome change. The status
+      // decides before any other creation prerequisite (section 23.5).
+      if (opportunity.status !== 'OPEN') {
+        throw namedConflict(
+          'OPPORTUNITY_NOT_OPEN',
+          'The Opportunity is not open.',
+        );
+      }
+      if (!opportunity.originalClientAccountId) {
+        throw namedConflict(
+          'OFFER_CLIENT_REQUIRED',
+          'The Request must have a readable Client before creating an Offer.',
+        );
       }
       const command = readCreateOfferCommand(value);
       // Snapshot's live Client projection takes a share lock. Acquire the

@@ -74,6 +74,8 @@ function detail(id: string) {
       scope: null,
       nextAction: 'Review exact Contract',
       status: 'OPEN',
+      statusEnteredAt: '2026-10-07T06:00:00.000Z',
+      outcomeHistory: { entries: [] },
       responsibleWorkspaceMembershipId: 'member-one',
       responsibleActor: {
         workspaceMembershipId: 'member-one',
@@ -174,6 +176,7 @@ for (const locale of interfaceLocales)
               subject: detail(id).subject,
               capturedAt: detail(id).capturedAt,
               initialOpportunity: {
+                status: 'OPEN',
                 title: detail(id).initialOpportunity.title,
                 nextAction: 'Review exact Contract',
                 responsibleActor:

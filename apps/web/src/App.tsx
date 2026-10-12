@@ -804,6 +804,16 @@ function activityDescription(
     ...invitationActivityActionLabels,
   };
   const description = `${actorName} ${actionLabels[event.action]}`;
+  if (event.action === 'opportunity.outcome.changed') {
+    const { metadata } = event;
+    return `${description} ${commercialIntakeCopy.activityOutcomeChange(
+      commercialIntakeCopy.opportunityStatusLabels[metadata.previousStatus],
+      commercialIntakeCopy.opportunityStatusLabels[metadata.newStatus],
+      metadata.newStatus === 'LOST'
+        ? commercialIntakeCopy.lossReasonLabels[metadata.lossReasonCode]
+        : undefined,
+    )}`;
+  }
   return event.action === 'opportunity.responsible.changed'
     ? `${description} ${commercialIntakeCopy.activityResponsibleChange(
         event.metadata.before.displayLabel,

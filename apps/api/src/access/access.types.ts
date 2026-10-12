@@ -13,6 +13,7 @@ import type {
   CompanyPricingAdjustmentPermission,
   CompanyCommercialActivityPermission,
   CompanyOpportunityManagerPermission,
+  CompanyOpportunityManagerPermissionSetVersion,
   CompanyProfitabilityContributorPermission,
   CompanyProfitabilityDirectorPermission,
   CompanyProjectPermission,
@@ -77,7 +78,7 @@ export interface ActiveCompanyContext {
   commercialActivityPermissionSetVersion?: 'v1';
   opportunityManagerPermissions?: CompanyOpportunityManagerPermission[];
   opportunityManagerPermissionAssignmentId?: string;
-  opportunityManagerPermissionSetVersion?: 'v1';
+  opportunityManagerPermissionSetVersion?: CompanyOpportunityManagerPermissionSetVersion;
   profitabilityContributorPermissions?: CompanyProfitabilityContributorPermission[];
   profitabilityContributorPermissionAssignmentId?: string;
   profitabilityContributorPermissionSetVersion?: 'v1';

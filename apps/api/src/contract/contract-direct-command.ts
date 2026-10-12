@@ -11,6 +11,7 @@ import type { CompanyContextAuthorization } from '../access/company-context-auth
 import type { AccountabilityService } from '../accountability/accountability.service.js';
 import type { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import type { CommercialIntakeService } from '../commercial-intake/commercial-intake.service.js';
+import type { OpportunityOutcomeStatus } from '../commercial-intake/opportunity-outcome.js';
 import type { DatabaseContext } from '../database/database-context.js';
 import type { OfferService } from '../offer/offer.service.js';
 import type { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
@@ -32,6 +33,8 @@ import {
   CONTRACT_TEMPLATE_VERSION,
   CONTRACT_CLAUSE_VERSIONS,
 } from './contract-representation.js';
+const CLOSED_OPPORTUNITY_STATUSES: ReadonlySet<OpportunityOutcomeStatus> =
+  new Set(['LOST', 'DISQUALIFIED', 'ARCHIVED']);
 interface DirectContractDependencies {
   databaseContext: DatabaseContext;
   authorization: CompanyContextAuthorization;
@@ -71,21 +74,6 @@ export async function createDirectContract(
           input.opportunityId,
           true,
         );
-      if (!opportunity.originalClientAccountId)
-        throw conflict('CONTRACT_CLIENT_REQUIRED', 'A Client is required.');
-      await dependencies.clients.readProjectReferences(
-        actor,
-        [opportunity.originalClientAccountId],
-        true,
-      );
-      const selectedSnapshotId = selectedAddendumSnapshotId(input.payload);
-      if (selectedSnapshotId !== null)
-        await dependencies.pricing.resolveOfferSnapshot({
-          actor,
-          companyId,
-          opportunityId: opportunity.id,
-          snapshotId: selectedSnapshotId,
-        });
       const fingerprint = commandFingerprint({
         kind: 'CREATE_DIRECT',
         opportunityId: opportunity.id,
@@ -108,6 +96,27 @@ export async function createDirectContract(
             eq(contractCommands.idempotencyKey, idempotencyKey),
           ),
         );
+      // Only a new creation is refused once the Opportunity is closed without
+      // a win (Commercial Workflow PRD section 23.5), and before any other
+      // creation prerequisite; an exact replay still returns a creation
+      // committed before the closure.
+      if (!receipt && CLOSED_OPPORTUNITY_STATUSES.has(opportunity.status))
+        throw conflict('OPPORTUNITY_CLOSED', 'The Opportunity is closed.');
+      if (!opportunity.originalClientAccountId)
+        throw conflict('CONTRACT_CLIENT_REQUIRED', 'A Client is required.');
+      await dependencies.clients.readProjectReferences(
+        actor,
+        [opportunity.originalClientAccountId],
+        true,
+      );
+      const selectedSnapshotId = selectedAddendumSnapshotId(input.payload);
+      if (selectedSnapshotId !== null)
+        await dependencies.pricing.resolveOfferSnapshot({
+          actor,
+          companyId,
+          opportunityId: opportunity.id,
+          snapshotId: selectedSnapshotId,
+        });
       if (receipt) {
         if (
           receipt.kind !== 'CREATE' ||

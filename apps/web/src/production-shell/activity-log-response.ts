@@ -1,9 +1,15 @@
 import { readOptionalResponsibleMember } from '../project/project-responsible-response';
 import { readLifecycleActivityMetadata } from '../project/project-lifecycle-response';
+import {
+  isOpportunityOutcomeStatus,
+  isOutcomeTransition,
+  OPPORTUNITY_LOSS_REASON_CODES,
+} from '../commercial-intake/opportunity-outcome';
 import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
   DocumentVersionActivityLogEvent,
+  OpportunityOutcomeChangedActivityLogEvent,
   OpportunityResponsibleChangedActivityLogEvent,
   OrdinaryActivityLogEvent,
   ProjectResponsibleChangedActivityLogEvent,
@@ -91,6 +97,7 @@ const targetTypes = {
   'opportunity.created': 'opportunity',
   'opportunity.next_action.updated': 'opportunity',
   'opportunity.responsible.changed': 'opportunity',
+  'opportunity.outcome.changed': 'opportunity',
 } as const satisfies Record<ActivityAction, ActivityLogEvent['target']['type']>;
 
 /**
@@ -228,6 +235,13 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         action,
         target: opportunityTarget(target),
         metadata: opportunityResponsibleChange(value.metadata),
+      };
+    case 'opportunity.outcome.changed':
+      return {
+        ...recorded(value),
+        action,
+        target: opportunityTarget(target),
+        metadata: opportunityOutcomeChange(value.metadata),
       };
     default:
       return {
@@ -435,6 +449,32 @@ function opportunityResponsibleChange(
   )
     invalid();
   return { before, after };
+}
+
+/**
+ * An outcome status change: exactly one permitted transition and, for a loss
+ * only, one known loss reason code. Any other shape rejects the page.
+ */
+function opportunityOutcomeChange(
+  metadata: unknown,
+): OpportunityOutcomeChangedActivityLogEvent['metadata'] {
+  if (!isRecord(metadata)) invalid();
+  const { previousStatus, newStatus, lossReasonCode } = metadata;
+  if (
+    !isOpportunityOutcomeStatus(previousStatus) ||
+    !isOpportunityOutcomeStatus(newStatus) ||
+    !isOutcomeTransition(previousStatus, newStatus)
+  )
+    invalid();
+  if (newStatus !== 'LOST') {
+    if (Object.keys(metadata).length !== 2) invalid();
+    return { previousStatus, newStatus };
+  }
+  const code = OPPORTUNITY_LOSS_REASON_CODES.find(
+    (candidate) => candidate === lossReasonCode,
+  );
+  if (!code || Object.keys(metadata).length !== 3) invalid();
+  return { previousStatus, newStatus, lossReasonCode: code };
 }
 
 /**
