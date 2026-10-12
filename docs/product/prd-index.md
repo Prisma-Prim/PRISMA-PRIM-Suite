@@ -77,7 +77,7 @@ The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Servi
 
 The Confirmed-Cost Profitability Estimate PRD owns a separate manual-input first journey finalized in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497): immutable cost/price/result versions and exact Director decisions with independent opt-in assignments. Approval changes no existing illustrative record or Offer and does not claim runtime delivery. Its implementation child and readiness are owned by the live tracker.
 
-R3B4 is an additive slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; the delivered Offer compatibility slice O8 and its Contract follow-up read, check and render the immutable adjustment trace without repricing it ([Commercial Workflow PRD sections 18.2 and 19.5](release-3-commercial-18-offers.md#182-offer-and-offer-version)).
+R3B4 is an additive slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; the delivered Offer compatibility slice O8 and its Contract follow-up read, check and render the immutable adjustment trace without repricing it (Commercial Workflow PRD [section 18.2](release-3-commercial-18-offers.md#182-offer-and-offer-version) and [section 19.5](release-3-commercial-19-contracts.md#195-quality-checks-and-offer-concordance)).
 
 ## 7. Other later releases
 
