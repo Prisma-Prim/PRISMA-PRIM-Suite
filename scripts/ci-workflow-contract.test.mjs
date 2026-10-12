@@ -136,6 +136,7 @@ test('independent test families and packaging share only the fast prerequisite a
   assert.deepEqual(Object.keys(jobs), [
     'checks',
     'scope',
+    'postgres_image',
     'api',
     'web_unit',
     'browser',
@@ -146,6 +147,16 @@ test('independent test families and packaging share only the fast prerequisite a
   ]);
   assert.doesNotMatch(jobs.checks, /\bneeds:|\bif:/);
   assert.doesNotMatch(jobs.scope, /\bneeds:|\bif:/);
+  // One job per run acquires the PostgreSQL image for the database jobs.
+  assert.match(jobs.postgres_image, /^ {4}needs: scope$/m);
+  assert.match(
+    jobs.postgres_image,
+    /^ {4}if: \$\{\{ needs\.scope\.outputs\.docs_only != 'true' \}\}$/m,
+  );
+  for (const job of ['api', 'acceptance'])
+    assert.match(jobs[job], /^ {4}needs: \[checks, scope, postgres_image\]$/m);
+  for (const job of ['web_unit', 'browser', 'build', 'packaging'])
+    assert.match(jobs[job], /^ {4}needs: \[checks, scope\]$/m);
   for (const job of [
     'api',
     'web_unit',
@@ -154,7 +165,6 @@ test('independent test families and packaging share only the fast prerequisite a
     'build',
     'packaging',
   ]) {
-    assert.match(jobs[job], /^ {4}needs: \[checks, scope\]$/m);
     // A heavy family is skipped only for a docs-only change; any other
     // scope answer, including a missing one, runs it.
     assert.match(
@@ -163,8 +173,8 @@ test('independent test families and packaging share only the fast prerequisite a
     );
   }
   assert.match(
-    jobs.quality,
-    /^ {4}needs: \[checks, scope, api, web_unit, browser, acceptance, build, packaging\]$/m,
+    jobs.quality.replaceAll(/\s+/g, ' '),
+    / needs: \[ checks, scope, postgres_image, api, web_unit, browser, acceptance, build, packaging, \] /,
   );
   assert.match(jobs.quality, /^ {4}if: \$\{\{ always\(\) \}\}$/m);
   const gate = stepBody(jobs.quality, 'Require every verification result');
@@ -394,12 +404,11 @@ test('database jobs start the cached pinned PostgreSQL and keep matching environ
   assert.match(setup, /chromium:\n {4}description:[^\n]+\n {4}default: 'true'/);
   assert.match(setup, /if: \$\{\{ inputs\.postgres == 'true' \}\}/);
   assert.match(setup, /if: \$\{\{ inputs\.chromium == 'true' \}\}/);
-  // One cached image per pinned script: restore, start, then save only a
-  // freshly pulled archive, all before the test database is provisioned.
+  // Database jobs restore the run's cached image, then start it, before the
+  // test database is provisioned; they never save it.
   const order = [
     '- name: Restore PostgreSQL image',
     '- name: Start PostgreSQL',
-    '- name: Save PostgreSQL image',
     '- name: Provision isolated test database',
   ].map((step) => setup.indexOf(step));
   assert.ok(order.every((index) => index !== -1));
@@ -408,20 +417,29 @@ test('database jobs start the cached pinned PostgreSQL and keep matching environ
     order,
   );
   assert.match(setup, /uses: actions\/cache\/restore@v4/);
-  assert.match(setup, /uses: actions\/cache\/save@v4/);
-  assert.equal(
-    [
-      ...setup.matchAll(
-        /key: postgres-image-\$\{\{ hashFiles\('scripts\/ci-start-postgres\.sh'\) \}\}/g,
-      ),
-    ].length,
-    2,
-  );
-  assert.match(setup, /run: bash scripts\/ci-start-postgres\.sh/);
-  assert.match(
-    setup,
-    /if: \$\{\{ inputs\.postgres == 'true' && steps\.start_postgres\.outputs\.saved == 'true' \}\}/,
-  );
+  assert.doesNotMatch(setup, /actions\/cache\/save/);
+  const cacheKey =
+    /key: postgres-image-\$\{\{ hashFiles\('scripts\/ci-start-postgres\.sh'\) \}\}/g;
+  assert.equal([...setup.matchAll(cacheKey)].length, 1);
+  assert.match(setup, /run: bash scripts\/ci-start-postgres\.sh start\n/);
+
+  // The postgres_image job looks the image up without downloading it and,
+  // only on a miss, acquires and saves it under the same key.
+  const image = jobs.postgres_image;
+  const lookup = stepBody(image, 'Look up cached PostgreSQL image');
+  assert.match(lookup, /id: lookup\n/);
+  assert.match(lookup, /uses: actions\/cache\/restore@v4/);
+  assert.match(lookup, /lookup-only: true/);
+  const acquire = stepBody(image, 'Acquire PostgreSQL image');
+  assert.match(acquire, /run: bash scripts\/ci-start-postgres\.sh acquire\n/);
+  const save = stepBody(image, 'Save PostgreSQL image');
+  assert.match(save, /uses: actions\/cache\/save@v4/);
+  for (const step of [acquire, save])
+    assert.match(
+      step,
+      /if: \$\{\{ steps\.lookup\.outputs\.cache-hit != 'true' \}\}/,
+    );
+  assert.equal([...image.matchAll(cacheKey)].length, 2);
 });
 
 test('the scope job classifies the exact pull request commits with full history', async () => {

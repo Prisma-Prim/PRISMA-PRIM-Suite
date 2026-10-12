@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const alwaysRequiredJobs = ['checks', 'scope'];
 // Skippable only when the scope job succeeded and reported a docs-only change.
 const heavyJobs = [
+  'postgres_image',
   'api',
   'web_unit',
   'browser',
