@@ -189,7 +189,8 @@ describe('outcome history boundary', () => {
       version: 2,
     }) as OutcomeHistoryEntry;
     expect(continuesOutcomeHistory([newest], [hold])).toBe(true);
-    expect(continuesOutcomeHistory([newest], [])).toBe(true);
+    expect(continuesOutcomeHistory([newest], [])).toBe(false);
+    expect(continuesOutcomeHistory([], [hold])).toBe(true);
     expect(continuesOutcomeHistory([newest], [{ ...hold, version: 3 }])).toBe(
       false,
     );

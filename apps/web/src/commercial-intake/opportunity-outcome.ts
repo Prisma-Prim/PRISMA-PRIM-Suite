@@ -263,7 +263,9 @@ export function continuesOutcomeHistory(
 ): boolean {
   const tail = shown.at(-1);
   const head = older[0];
-  if (!tail || !head) return true;
+  if (!tail) return true;
+  // A cursor promised older entries, so an empty continuation is malformed.
+  if (!head) return false;
   return head.version < tail.version && head.newStatus === tail.previousStatus;
 }
 
