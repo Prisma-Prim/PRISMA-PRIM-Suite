@@ -50,7 +50,7 @@ type RequestListClientProjection =
   | { clientDisplayName: string; clientDossierId?: string }
   | { clientDisplayName?: undefined; clientDossierId?: undefined };
 
-type RequestListItem = {
+export type RequestListItem = {
   id: string;
   subject: string | null;
   capturedAt: string;
@@ -62,7 +62,7 @@ type RequestListItem = {
   };
 } & RequestListClientProjection;
 
-type ClientRequest = {
+export type ClientRequest = {
   id: string;
   companyId: string;
   sourceKind: 'MANUAL_TEXT';

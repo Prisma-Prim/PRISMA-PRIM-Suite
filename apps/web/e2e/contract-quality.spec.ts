@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from '../src/test/commercial-intake-responses';
 const company = { id: 'company-one', displayName: 'Synthetic Company' };
 const actor = {
   internalUserId: 'user-one',
@@ -29,35 +33,24 @@ const actor = {
     commercialIntakePermissionSetVersion: 'v1',
   },
 } satisfies ActorContext;
-const detail = {
+const detail = buildClientRequest({
   id: 'request-one',
   companyId: company.id,
-  sourceKind: 'MANUAL_TEXT',
-  sourceLabel: null,
-  reportedReceivedAt: null,
   subject: 'Contract checks Request',
   originalText: 'Synthetic captured evidence',
   capturedByWorkspaceMembershipId: 'member-one',
   capturedAt: '2026-10-07T06:00:00.000Z',
-  version: 1,
   clientAssociationStatus: 'hidden',
   initialOpportunity: {
     id: 'opportunity-one',
     title: 'Contract checks Opportunity',
-    scope: null,
     nextAction: 'Review Contract checks',
-    status: 'OPEN',
-    statusEnteredAt: '2026-10-07T06:00:00.000Z',
-    outcomeHistory: { entries: [] },
-    responsibleWorkspaceMembershipId: 'member-one',
     responsibleActor: {
       workspaceMembershipId: 'member-one',
       displayName: 'Reader',
     },
-    createdAt: '2026-10-07T06:00:00.000Z',
-    version: 1,
   },
-};
+});
 function run(id: string, current: boolean) {
   return {
     id,
@@ -154,19 +147,7 @@ test('reviews attributed exact-version results, retries by keyboard and reopens 
     if (path.endsWith('/commercial-intake/requests'))
       return route.fulfill({
         json: {
-          items: [
-            {
-              id: detail.id,
-              subject: detail.subject,
-              capturedAt: detail.capturedAt,
-              initialOpportunity: {
-                status: 'OPEN',
-                title: detail.initialOpportunity.title,
-                nextAction: detail.initialOpportunity.nextAction,
-                responsibleActor: detail.initialOpportunity.responsibleActor,
-              },
-            },
-          ],
+          items: [requestListItemFor(detail)],
         },
       });
     if (path.endsWith('/commercial-intake/requests/request-one'))

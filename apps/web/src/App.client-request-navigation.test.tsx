@@ -11,6 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  buildClientRequest,
+  buildRequestListItem,
+} from './test/commercial-intake-responses';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -92,15 +96,11 @@ function actorFor(companyId: string, state: Transport): ActorContext {
 }
 
 function requestRow(id: string, subject: string, clientDossierId?: string) {
-  return {
+  const row = buildRequestListItem({
     id,
     subject,
     capturedAt: '2026-09-20T10:00:00.000Z',
-    ...(clientDossierId === undefined
-      ? {}
-      : { clientDossierId, clientDisplayName: sharedName }),
     initialOpportunity: {
-      status: 'OPEN',
       title: `${subject} Opportunity`,
       nextAction: `Follow up ${subject}`,
       responsibleActor: {
@@ -108,7 +108,10 @@ function requestRow(id: string, subject: string, clientDossierId?: string) {
         displayName: 'Resolver',
       },
     },
-  };
+  });
+  return clientDossierId === undefined
+    ? row
+    : { ...row, clientDossierId, clientDisplayName: sharedName };
 }
 
 function requestDetail(
@@ -116,17 +119,13 @@ function requestDetail(
   subject: string,
   clientReference?: { originalClientId: string; currentClientId?: string },
 ) {
-  return {
+  return buildClientRequest({
     id,
     companyId: companyA.id,
-    sourceKind: 'MANUAL_TEXT',
-    sourceLabel: null,
-    reportedReceivedAt: null,
     subject,
     originalText: `Original source of ${subject}`,
     capturedByWorkspaceMembershipId: membershipId,
     capturedAt: '2026-09-20T10:00:00.000Z',
-    version: 1,
     clientAssociationStatus: clientReference ? 'visible' : 'absent',
     ...(clientReference
       ? { clientReference: { ...clientReference, displayName: sharedName } }
@@ -134,20 +133,13 @@ function requestDetail(
     initialOpportunity: {
       id: `opportunity-${id}`,
       title: `${subject} Opportunity`,
-      scope: null,
       nextAction: `Follow up ${subject}`,
-      status: 'OPEN',
-      statusEnteredAt: '2026-09-20T10:00:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId: membershipId,
       responsibleActor: {
         workspaceMembershipId: membershipId,
         displayName: 'Resolver',
       },
-      createdAt: '2026-09-20T10:00:00.000Z',
-      version: 1,
     },
-  };
+  });
 }
 
 function respond(value: unknown, status = 200) {

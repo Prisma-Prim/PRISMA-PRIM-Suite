@@ -11,6 +11,11 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import {
+  buildClientRequest,
+  buildRequestListItem,
+  requestListItemFor,
+} from '../test/commercial-intake-responses';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy } from './commercial-intake.copy';
@@ -37,35 +42,29 @@ const actor: ActorContext = {
   },
 };
 
+// The reported time stays a string so assertions can format it.
 const createdRequest = {
-  id: 'request-1',
-  companyId: 'company-1',
-  sourceKind: 'MANUAL_TEXT',
-  sourceLabel: 'Manual entry from a phone request',
-  reportedReceivedAt: '2026-09-20T09:30:00.000Z',
-  subject: 'Quality process preparation',
-  originalText:
-    'Please help us prepare our internal quality processes before our planned review.',
-  capturedByWorkspaceMembershipId: 'membership-1',
-  capturedAt: '2026-09-20T10:00:00.000Z',
-  version: 1,
-  clientAssociationStatus: 'absent',
-  initialOpportunity: {
-    id: 'opportunity-1',
-    title: 'Prepare quality process review',
-    scope: 'Initial discussion to identify the requested work',
-    nextAction: 'Arrange a qualification call',
-    status: 'OPEN',
-    statusEnteredAt: '2026-09-20T10:00:00.000Z',
-    outcomeHistory: { entries: [] },
-    responsibleWorkspaceMembershipId: 'membership-1',
-    responsibleActor: {
-      workspaceMembershipId: 'membership-1',
-      displayName: 'Iurie',
+  ...buildClientRequest({
+    id: 'request-1',
+    companyId: 'company-1',
+    sourceLabel: 'Manual entry from a phone request',
+    subject: 'Quality process preparation',
+    originalText:
+      'Please help us prepare our internal quality processes before our planned review.',
+    capturedByWorkspaceMembershipId: 'membership-1',
+    capturedAt: '2026-09-20T10:00:00.000Z',
+    initialOpportunity: {
+      id: 'opportunity-1',
+      title: 'Prepare quality process review',
+      scope: 'Initial discussion to identify the requested work',
+      nextAction: 'Arrange a qualification call',
+      responsibleActor: {
+        workspaceMembershipId: 'membership-1',
+        displayName: 'Iurie',
+      },
     },
-    createdAt: '2026-09-20T10:00:00.000Z',
-    version: 1,
-  },
+  }),
+  reportedReceivedAt: '2026-09-20T09:30:00.000Z',
 };
 
 type WorkspaceProps = {
@@ -122,12 +121,11 @@ function actorForCompany(id: string, displayName: string): ActorContext {
 }
 
 function listItem(index: number) {
-  return {
+  return buildRequestListItem({
     id: `request-${index}`,
     subject: `Client Request ${index}`,
     capturedAt: `2026-09-20T10:00:00.000Z`,
     initialOpportunity: {
-      status: 'OPEN',
       title: `Opportunity ${index}`,
       nextAction: `Follow up Request ${index}`,
       responsibleActor: {
@@ -135,7 +133,7 @@ function listItem(index: number) {
         displayName: 'Iurie',
       },
     },
-  };
+  });
 }
 
 const newestPage = Array.from({ length: 25 }, (_, index) => listItem(index));
@@ -163,12 +161,11 @@ const unnormalized = {
 };
 
 const filterableItems = [
-  {
+  buildRequestListItem({
     id: 'request-quality',
     subject: 'Quality process preparation',
     capturedAt: '2026-09-20T10:00:00.000Z',
     initialOpportunity: {
-      status: 'OPEN',
       title: 'Prepare quality process review',
       nextAction: 'Arrange a qualification call',
       responsibleActor: {
@@ -176,13 +173,12 @@ const filterableItems = [
         displayName: 'Iurie',
       },
     },
-  },
-  {
+  }),
+  buildRequestListItem({
     id: 'request-audit',
     subject: 'Annual audit support',
     capturedAt: '2026-09-19T10:00:00.000Z',
     initialOpportunity: {
-      status: 'OPEN',
       title: 'Plan the annual audit',
       nextAction: 'Confirm the audit window',
       responsibleActor: {
@@ -190,13 +186,12 @@ const filterableItems = [
         displayName: 'Ada Ionescu',
       },
     },
-  },
-  {
+  }),
+  buildRequestListItem({
     id: 'request-training',
     subject: null,
     capturedAt: '2026-09-18T10:00:00.000Z',
     initialOpportunity: {
-      status: 'OPEN',
       title: 'Operator training programme',
       nextAction: 'Propose training dates',
       responsibleActor: {
@@ -204,7 +199,7 @@ const filterableItems = [
         displayName: 'Mihai Rusu',
       },
     },
-  },
+  }),
 ];
 
 function filterInput(): HTMLElement {
@@ -268,20 +263,9 @@ function requestListPage(
 ) {
   return Response.json({
     items: [
-      {
-        id: createdRequest.id,
-        subject: createdRequest.subject,
-        capturedAt: createdRequest.capturedAt,
-        initialOpportunity: {
-          status: 'OPEN',
-          title: createdRequest.initialOpportunity.title,
-          nextAction,
-          responsibleActor: {
-            workspaceMembershipId: 'membership-1',
-            displayName: 'Iurie',
-          },
-        },
-      },
+      requestListItemFor(createdRequest, {
+        initialOpportunity: { nextAction },
+      }),
     ],
   });
 }
@@ -381,22 +365,7 @@ describe('CommercialIntakeWorkspace', () => {
         .mockResolvedValueOnce(Response.json(createdRequest, { status: 201 }))
         .mockResolvedValueOnce(
           Response.json({
-            items: [
-              {
-                id: createdRequest.id,
-                subject: createdRequest.subject,
-                capturedAt: createdRequest.capturedAt,
-                initialOpportunity: {
-                  status: 'OPEN',
-                  title: createdRequest.initialOpportunity.title,
-                  nextAction: createdRequest.initialOpportunity.nextAction,
-                  responsibleActor: {
-                    workspaceMembershipId: 'membership-1',
-                    displayName: 'Iurie',
-                  },
-                },
-              },
-            ],
+            items: [requestListItemFor(createdRequest)],
           }),
         )
         .mockResolvedValueOnce(Response.json(createdRequest)),
@@ -449,17 +418,7 @@ describe('CommercialIntakeWorkspace', () => {
   });
 
   it('shows the responsible actor and server capture time in the list and the reopened detail', async () => {
-    const listed = {
-      id: createdRequest.id,
-      subject: createdRequest.subject,
-      capturedAt: createdRequest.capturedAt,
-      initialOpportunity: {
-        status: 'OPEN',
-        title: createdRequest.initialOpportunity.title,
-        nextAction: createdRequest.initialOpportunity.nextAction,
-        responsibleActor: createdRequest.initialOpportunity.responsibleActor,
-      },
-    };
+    const listed = requestListItemFor(createdRequest);
     vi.stubGlobal(
       'fetch',
       vi
@@ -913,12 +872,11 @@ describe('CommercialIntakeWorkspace', () => {
           .mockResolvedValueOnce(
             Response.json({
               items: [
-                {
+                buildRequestListItem({
                   id: 'request-1',
                   subject: 'Private Company request',
                   capturedAt: createdRequest.capturedAt,
                   initialOpportunity: {
-                    status: 'OPEN',
                     title: 'Private opportunity',
                     nextAction: 'Private next action',
                     responsibleActor: {
@@ -926,7 +884,7 @@ describe('CommercialIntakeWorkspace', () => {
                       displayName: 'Iurie',
                     },
                   },
-                },
+                }),
               ],
             }),
           )
@@ -1016,22 +974,7 @@ describe('CommercialIntakeWorkspace', () => {
         .fn()
         .mockResolvedValueOnce(
           Response.json({
-            items: [
-              {
-                id: createdRequest.id,
-                subject: createdRequest.subject,
-                capturedAt: createdRequest.capturedAt,
-                initialOpportunity: {
-                  status: 'OPEN',
-                  title: createdRequest.initialOpportunity.title,
-                  nextAction: createdRequest.initialOpportunity.nextAction,
-                  responsibleActor: {
-                    workspaceMembershipId: 'membership-1',
-                    displayName: 'Iurie',
-                  },
-                },
-              },
-            ],
+            items: [requestListItemFor(createdRequest)],
           }),
         )
         .mockResolvedValueOnce(
@@ -1061,22 +1004,7 @@ describe('CommercialIntakeWorkspace', () => {
         .fn()
         .mockResolvedValueOnce(
           Response.json({
-            items: [
-              {
-                id: createdRequest.id,
-                subject: createdRequest.subject,
-                capturedAt: createdRequest.capturedAt,
-                initialOpportunity: {
-                  status: 'OPEN',
-                  title: createdRequest.initialOpportunity.title,
-                  nextAction: createdRequest.initialOpportunity.nextAction,
-                  responsibleActor: {
-                    workspaceMembershipId: 'membership-1',
-                    displayName: 'Iurie',
-                  },
-                },
-              },
-            ],
+            items: [requestListItemFor(createdRequest)],
           }),
         )
         .mockResolvedValueOnce(

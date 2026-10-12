@@ -10,6 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from './test/commercial-intake-responses';
 import { changeValue } from './test/select-option';
 import { commercialIntakeCopy as copy } from './commercial-intake/commercial-intake.copy';
 
@@ -20,31 +24,26 @@ const client = {
   displayName: 'Selected Client',
   relatedToActiveCompany: true,
 };
+// The Request subject stays a string so assertions can name its article.
 const detail = {
-  id: 'request-1',
-  companyId: company.id,
-  sourceKind: 'MANUAL_TEXT',
-  sourceLabel: null,
-  reportedReceivedAt: null,
+  ...buildClientRequest({
+    id: 'request-1',
+    companyId: company.id,
+    originalText: 'Original captured text',
+    capturedByWorkspaceMembershipId: 'member-1',
+    capturedAt: '2026-10-03T06:00:00.000Z',
+    clientAssociationStatus: 'absent',
+    initialOpportunity: {
+      id: 'opportunity-1',
+      title: 'Saved Opportunity',
+      nextAction: 'Original next action',
+      responsibleActor: {
+        workspaceMembershipId: 'member-1',
+        displayName: 'Ada',
+      },
+    },
+  }),
   subject: 'Saved Request',
-  originalText: 'Original captured text',
-  capturedByWorkspaceMembershipId: 'member-1',
-  capturedAt: '2026-10-03T06:00:00.000Z',
-  version: 1,
-  clientAssociationStatus: 'absent',
-  initialOpportunity: {
-    id: 'opportunity-1',
-    title: 'Saved Opportunity',
-    scope: null,
-    nextAction: 'Original next action',
-    status: 'OPEN',
-    statusEnteredAt: '2026-10-03T06:00:00.000Z',
-    outcomeHistory: { entries: [] },
-    responsibleWorkspaceMembershipId: 'member-1',
-    responsibleActor: { workspaceMembershipId: 'member-1', displayName: 'Ada' },
-    createdAt: '2026-10-03T06:00:00.000Z',
-    version: 1,
-  },
 };
 const associated = {
   receipt: { requestId: detail.id, version: 2, outcome: 'associated' },
@@ -149,20 +148,7 @@ function transport() {
       }
       if (path.includes('/commercial-intake/requests?'))
         return Response.json({
-          items: [
-            {
-              id: detail.id,
-              subject: detail.subject,
-              capturedAt: detail.capturedAt,
-              ...listClient,
-              initialOpportunity: {
-                status: 'OPEN',
-                title: detail.initialOpportunity.title,
-                nextAction: detail.initialOpportunity.nextAction,
-                responsibleActor: detail.initialOpportunity.responsibleActor,
-              },
-            },
-          ],
+          items: [requestListItemFor(detail, listClient)],
         });
       if (path.endsWith('/commercial-intake/requests/request-1'))
         return detailResponse();

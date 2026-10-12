@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from '../src/test/commercial-intake-responses';
 
 const company = {
   id: '00000000-0000-4000-8000-000000000359',
@@ -54,7 +58,7 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
       }
       return route.fulfill({
         json: {
-          items: [requestListItem(currentRequest)],
+          items: [requestListItemFor(currentRequest)],
           nextCursor: 'older-requests',
         },
       });
@@ -190,51 +194,27 @@ test('keeps commercial Request actions clear and operable in Prisme', async ({
 });
 
 function requestDetail(nextAction: string, version: number) {
-  return {
+  return buildClientRequest({
     id: requestId,
     companyId: company.id,
-    sourceKind: 'MANUAL_TEXT',
     sourceLabel: 'Manual commercial intake',
-    reportedReceivedAt: null,
     subject: 'Commercial Request action hierarchy',
     originalText:
       'An existing commercial Request needs a qualification review.',
     capturedByWorkspaceMembershipId: actorContextFixture.workspaceMembershipId,
     capturedAt: '2026-09-26T08:00:00.000Z',
-    version: 1,
     clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: opportunityId,
       title: 'Qualify the commercial Request',
-      scope: null,
       nextAction,
-      status: 'OPEN',
-      statusEnteredAt: '2026-09-26T08:00:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId:
-        actorContextFixture.workspaceMembershipId,
       responsibleActor: {
         workspaceMembershipId: actorContextFixture.workspaceMembershipId,
         displayName: actorContextFixture.displayName,
       },
-      createdAt: '2026-09-26T08:00:00.000Z',
       version,
     },
-  };
-}
-
-function requestListItem(request: ReturnType<typeof requestDetail>) {
-  return {
-    id: request.id,
-    subject: request.subject,
-    capturedAt: request.capturedAt,
-    initialOpportunity: {
-      status: 'OPEN',
-      title: request.initialOpportunity.title,
-      nextAction: request.initialOpportunity.nextAction,
-      responsibleActor: request.initialOpportunity.responsibleActor,
-    },
-  };
+  });
 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
