@@ -273,7 +273,7 @@ jobs:
         run: pnpm build
 
   packaging:
-    needs: [checks, scope]
+    needs: [checks, scope, postgres_image]
     if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -295,7 +295,15 @@ jobs:
           pnpm --dir .railway typecheck
           pnpm --dir .railway test
 
+      - name: Restore PostgreSQL image
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/postgres-image/postgres.tar
+          key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
+
       - name: Prove production image packaging
+        env:
+          POSTGRES_IMAGE_ARCHIVE: ${{ runner.temp }}/postgres-image/postgres.tar
         run: bash scripts/railway-packaging-smoke.sh
 
   quality:

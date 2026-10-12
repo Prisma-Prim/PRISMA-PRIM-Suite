@@ -18,7 +18,7 @@ const script = fileURLToPath(
   new URL('./railway-packaging-smoke.sh', import.meta.url),
 );
 
-function smoke(scenario) {
+function smoke(scenario, environment = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'packaging-test-'));
   const log = join(directory, 'commands.jsonl');
   const boundary = `${'#!' + process.execPath}
@@ -74,6 +74,7 @@ if (args[0] === 'port') console.log(args.includes('4317/tcp') ? '127.0.0.1:4317'
         PATH: `${directory}:${process.env.PATH}`,
         COMMAND_LOG: log,
         SCENARIO: JSON.stringify(scenario),
+        ...environment,
       },
       encoding: 'utf8',
       timeout: 15_000,
@@ -291,3 +292,31 @@ for (const [later, status] of [
     }
   });
 }
+
+test('packaging loads the cached PostgreSQL archive and never pulls it', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'packaging-archive-'));
+  const archive = join(directory, 'postgres.tar');
+  writeFileSync(archive, 'archived image');
+  try {
+    const result = smoke({}, { POSTGRES_IMAGE_ARCHIVE: archive });
+    assert.equal(result.status, 0, result.stderr);
+    const docker = result.commands.filter(([command]) => command === 'docker');
+    assert.deepEqual(
+      docker.find(([, operation]) => operation === 'load'),
+      ['docker', 'load', '--input', archive],
+    );
+    assert.equal(
+      docker.filter(([, operation]) => operation === 'pull').length,
+      0,
+    );
+    const postgres = docker.find(
+      ([, operation, ...rest]) =>
+        operation === 'run' &&
+        rest.includes('prisma-prim-ci/postgres:17-pinned'),
+    );
+    assert.ok(postgres, 'PostgreSQL runs from the loaded local tag');
+    assert.ok(postgres.includes('--pull=never'));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

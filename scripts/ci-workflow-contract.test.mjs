@@ -153,10 +153,19 @@ test('independent test families and packaging share only the fast prerequisite a
     jobs.postgres_image,
     /^ {4}if: \$\{\{ needs\.scope\.outputs\.docs_only != 'true' \}\}$/m,
   );
-  for (const job of ['api', 'acceptance'])
+  for (const job of ['api', 'acceptance', 'packaging'])
     assert.match(jobs[job], /^ {4}needs: \[checks, scope, postgres_image\]$/m);
-  for (const job of ['web_unit', 'browser', 'build', 'packaging'])
+  for (const job of ['web_unit', 'browser', 'build'])
     assert.match(jobs[job], /^ {4}needs: \[checks, scope\]$/m);
+  // Packaging loads the run's cached image instead of pulling it again.
+  assert.match(
+    stepBody(jobs.packaging, 'Restore PostgreSQL image'),
+    /uses: actions\/cache\/restore@v4/,
+  );
+  assert.match(
+    stepBody(jobs.packaging, 'Prove production image packaging'),
+    /POSTGRES_IMAGE_ARCHIVE: \$\{\{ runner\.temp \}\}\/postgres-image\/postgres\.tar/,
+  );
   for (const job of [
     'api',
     'web_unit',
