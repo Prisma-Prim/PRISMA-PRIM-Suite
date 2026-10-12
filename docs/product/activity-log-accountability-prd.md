@@ -160,8 +160,11 @@ owns the first authorized projection of commercial events, which the intake
 slice deliberately left unprojected. A commercial event appears only inside the
 existing dated, bounded page, in the server-validated active Company that owns
 it, for an actor holding the independent opt-in commercial Activity bundle who
-also retains current read authority for that event's Request or Opportunity
-target. Partial authority and an absent active Company omit the event rather
+also retains current read authority for that event's target: Request or
+Opportunity read for intake events, and, under [Commercial Workflow PRD section 25](release-3-commercial-workflow-prd.md#251-projected-actions-and-authority),
+the complete Offer or Contract read prerequisite (including current Opportunity
+read) for Offer and Contract events, plus current Project read for a
+Contract–Project link. Partial authority and an absent active Company omit the event rather
 than widening it to Workspace scope. The projection returns the canonical action,
 responsible Company, existing actor label, server time and a target reference
 that is linked only where the target is already readable; it returns no request
@@ -227,6 +230,8 @@ Retention and authorized export require a later policy based on business and leg
   `opportunity.outcome.changed`, without reason or note text, once delivered.
   The approved provisional Sales Stage contract adds `opportunity.stage.changed`
   and `sales_stage.configured` once delivered, both under that projection.
+  The approved provisional Offer and Contract history contract projects the
+  recorded Offer and Contract event families under the same rule once delivered.
 - A generic event bus or observability platform is not required.
 - Later filtering, retention controls and exports require separate PRDs/issues.
 
