@@ -3,8 +3,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { changeValue, selectOptionLabels } from '../test/select-option';
+import {
+  buildClientRequest,
+  buildOutcomeHistoryEntry,
+  requestListItemFor,
+} from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import type {
+  OpportunityOutcomeStatus,
+  OutcomeHistoryEntry,
+} from './opportunity-outcome';
 
 const ada = {
   workspaceMembershipId: 'membership-ada',
@@ -61,7 +70,7 @@ const manager = actorWith('v2');
 const legacyManager = actorWith('v1');
 const reader = actorWith(null);
 
-const lostEntry = {
+const lostEntry = buildOutcomeHistoryEntry({
   previousStatus: 'OPEN',
   newStatus: 'LOST',
   lossReasonCode: 'COMPETITOR',
@@ -70,17 +79,15 @@ const lostEntry = {
   version: 3,
   actor: { workspaceMembershipId: 'membership-ada', displayLabel: 'Ada · 1A' },
   changedAt: '2026-10-02T09:00:00.000Z',
-};
-const holdEntry = {
+});
+const holdEntry = buildOutcomeHistoryEntry({
   previousStatus: 'OPEN',
   newStatus: 'ON_HOLD',
-  lossReasonCode: null,
   reason: 'Budget review until March',
-  note: null,
   version: 2,
   actor: { workspaceMembershipId: 'membership-ada', displayLabel: 'Ada · 1A' },
   changedAt: '2026-10-01T09:00:00.000Z',
-};
+});
 
 function requestDetail({
   status = 'OPEN',
@@ -89,28 +96,21 @@ function requestDetail({
   nextCursor,
   version = 1,
 }: {
-  status?: string;
+  status?: OpportunityOutcomeStatus;
   statusEnteredAt?: string;
-  entries?: unknown[];
+  entries?: OutcomeHistoryEntry[];
   nextCursor?: string;
   version?: number;
 } = {}) {
-  return {
+  return buildClientRequest({
     id: 'request-1',
-    companyId: 'company-1',
-    sourceKind: 'MANUAL_TEXT',
-    sourceLabel: null,
-    reportedReceivedAt: null,
     subject: 'Solicitare audit request-1',
     originalText: 'Exact source of request-1.',
     capturedByWorkspaceMembershipId: ada.workspaceMembershipId,
     capturedAt: '2026-09-26T08:00:00.000Z',
-    version: 1,
-    clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: 'opportunity-request-1',
       title: 'Prepare request-1',
-      scope: null,
       nextAction: 'Arrange a qualification call',
       status,
       statusEnteredAt,
@@ -118,27 +118,15 @@ function requestDetail({
         entries,
         ...(nextCursor === undefined ? {} : { nextCursor }),
       },
-      responsibleWorkspaceMembershipId: ada.workspaceMembershipId,
       responsibleActor: ada,
-      createdAt: '2026-09-26T08:00:00.000Z',
       version,
     },
-  };
+  });
 }
-function listPage(status = 'OPEN') {
+function listPage(status: OpportunityOutcomeStatus = 'OPEN') {
   return {
     items: [
-      {
-        id: 'request-1',
-        subject: 'Solicitare audit request-1',
-        capturedAt: '2026-09-26T08:00:00.000Z',
-        initialOpportunity: {
-          title: 'Prepare request-1',
-          nextAction: 'Arrange a qualification call',
-          status,
-          responsibleActor: ada,
-        },
-      },
+      requestListItemFor(requestDetail(), { initialOpportunity: { status } }),
     ],
   };
 }

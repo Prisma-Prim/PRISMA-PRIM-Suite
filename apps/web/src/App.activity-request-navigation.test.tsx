@@ -11,6 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from './test/commercial-intake-responses';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -117,52 +121,28 @@ function commercialEvents(companyId: string) {
 }
 
 function requestRow() {
-  return {
-    id: requestId,
-    subject,
-    capturedAt: '2026-09-24T10:05:00.000Z',
-    initialOpportunity: {
-      status: 'OPEN',
-      title: 'Audit readiness',
-      nextAction: 'Call the director',
-      responsibleActor: {
-        workspaceMembershipId: membershipId,
-        displayName: 'Ada Ionescu',
-      },
-    },
-  };
+  return requestListItemFor(requestDetail());
 }
 
 function requestDetail() {
-  return {
+  return buildClientRequest({
     id: requestId,
     companyId: companyA.id,
-    sourceKind: 'MANUAL_TEXT',
-    sourceLabel: null,
-    reportedReceivedAt: null,
     subject,
     originalText: `Original source of ${subject}`,
     capturedByWorkspaceMembershipId: membershipId,
     capturedAt: '2026-09-24T10:05:00.000Z',
-    version: 1,
-    clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: opportunityId,
       title: 'Audit readiness',
-      scope: null,
       nextAction: 'Call the director',
-      status: 'OPEN',
-      statusEnteredAt: '2026-09-24T10:05:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId: membershipId,
       responsibleActor: {
         workspaceMembershipId: membershipId,
         displayName: 'Ada Ionescu',
       },
-      createdAt: '2026-09-24T10:05:00.000Z',
       version: 2,
     },
-  };
+  });
 }
 
 function respond(value: unknown, status = 200) {

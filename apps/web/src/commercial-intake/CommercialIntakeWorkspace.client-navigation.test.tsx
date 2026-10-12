@@ -10,6 +10,10 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import {
+  buildClientRequest,
+  buildRequestListItem,
+} from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 
@@ -78,15 +82,11 @@ const associationClient = {
 };
 
 function row(id: string, subject: string, clientDossierId?: string) {
-  return {
+  const item = buildRequestListItem({
     id,
     subject,
     capturedAt: '2026-09-20T10:00:00.000Z',
-    ...(clientDossierId === undefined
-      ? {}
-      : { clientDossierId, clientDisplayName: sharedName }),
     initialOpportunity: {
-      status: 'OPEN',
       title: `${subject} Opportunity`,
       nextAction: `Follow up ${subject}`,
       responsibleActor: {
@@ -94,7 +94,10 @@ function row(id: string, subject: string, clientDossierId?: string) {
         displayName: 'Iurie',
       },
     },
-  };
+  });
+  return clientDossierId === undefined
+    ? item
+    : { ...item, clientDossierId, clientDisplayName: sharedName };
 }
 
 /** Two same-named dossiers, a Request without a Client, in server order. */
@@ -117,37 +120,27 @@ function detail(
   },
   opportunity: { nextAction?: string; version?: number } = {},
 ) {
-  return {
+  return buildClientRequest({
     id,
     companyId: companyA.id,
-    sourceKind: 'MANUAL_TEXT',
-    sourceLabel: null,
-    reportedReceivedAt: null,
     subject,
     originalText: `Original source of ${subject}`,
     capturedByWorkspaceMembershipId: 'membership-1',
     capturedAt: '2026-09-20T10:00:00.000Z',
-    version: 1,
     clientAssociationStatus:
       clientReference === undefined ? 'absent' : 'visible',
     ...(clientReference === undefined ? {} : { clientReference }),
     initialOpportunity: {
       id: `opportunity-${id}`,
       title: `${subject} Opportunity`,
-      scope: null,
       nextAction: opportunity.nextAction ?? `Follow up ${subject}`,
-      status: 'OPEN',
-      statusEnteredAt: '2026-09-20T10:00:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId: 'membership-1',
       responsibleActor: {
         workspaceMembershipId: 'membership-1',
         displayName: 'Iurie',
       },
-      createdAt: '2026-09-20T10:00:00.000Z',
       version: opportunity.version ?? 1,
     },
-  };
+  });
 }
 
 function firstDetail(currentClientId = firstDossier.clientDossierId) {

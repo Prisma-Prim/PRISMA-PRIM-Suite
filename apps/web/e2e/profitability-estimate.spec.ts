@@ -9,6 +9,10 @@ import {
   syntheticVersion,
 } from '../src/profitability-estimate/profitability.fixture';
 import { actorContextFixture } from './actor-context.fixture';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from '../src/test/commercial-intake-responses';
 
 const company = {
   id: '00000000-0000-4000-8000-000000000498',
@@ -29,38 +33,26 @@ const scope = {
   opportunityId,
 };
 function requestDetail() {
-  return {
+  return buildClientRequest({
     id: requestId,
     subject: 'Synthetic confirmed-cost request',
     companyId: company.id,
-    sourceKind: 'MANUAL_TEXT',
     clientAssociationStatus: 'absent',
     sourceLabel: 'Synthetic manual intake',
-    reportedReceivedAt: null,
-    scope: null,
     originalText:
       'Synthetic qualification request, unrelated to any real Client.',
     capturedByWorkspaceMembershipId: actorContextFixture.workspaceMembershipId,
     capturedAt: '2026-10-01T08:00:00.000Z',
-    version: 1,
     initialOpportunity: {
       id: opportunityId,
       title: 'Synthetic confirmed-cost opportunity',
-      scope: null,
       nextAction: 'Prepare a confirmed-cost estimate',
-      status: 'OPEN',
-      statusEnteredAt: '2026-10-01T08:00:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId:
-        actorContextFixture.workspaceMembershipId,
       responsibleActor: {
         workspaceMembershipId: actorContextFixture.workspaceMembershipId,
         displayName: actorContextFixture.displayName,
       },
-      createdAt: '2026-10-01T08:00:00.000Z',
-      version: 1,
     },
-  };
+  });
 }
 function actor(contributor: boolean, director: boolean): ActorContext {
   return {
@@ -220,19 +212,7 @@ test('independent administration → Contributor → uncertain exact retry → M
       const detail = requestDetail();
       return route.fulfill({
         json: {
-          items: [
-            {
-              id: detail.id,
-              subject: detail.subject,
-              capturedAt: detail.capturedAt,
-              initialOpportunity: {
-                status: 'OPEN',
-                title: detail.initialOpportunity.title,
-                nextAction: detail.initialOpportunity.nextAction,
-                responsibleActor: detail.initialOpportunity.responsibleActor,
-              },
-            },
-          ],
+          items: [requestListItemFor(detail)],
         },
       });
     }
@@ -527,19 +507,7 @@ test('safe history failure, stale reload, strategic loss and keyboard locale con
       const detail = requestDetail();
       return route.fulfill({
         json: {
-          items: [
-            {
-              id: detail.id,
-              subject: detail.subject,
-              capturedAt: detail.capturedAt,
-              initialOpportunity: {
-                status: 'OPEN',
-                title: detail.initialOpportunity.title,
-                nextAction: detail.initialOpportunity.nextAction,
-                responsibleActor: detail.initialOpportunity.responsibleActor,
-              },
-            },
-          ],
+          items: [requestListItemFor(detail)],
         },
       });
     }

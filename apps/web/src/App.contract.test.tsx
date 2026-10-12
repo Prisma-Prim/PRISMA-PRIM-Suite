@@ -3,6 +3,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from './test/commercial-intake-responses';
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -54,35 +58,24 @@ it('opens a recorded Contract from its Request without Offer or Client authority
       commercialIntakePermissionSetVersion: 'v1',
     },
   };
-  const detail = {
+  const detail = buildClientRequest({
     id: 'request-one',
     companyId: company.id,
-    sourceKind: 'MANUAL_TEXT',
-    sourceLabel: null,
-    reportedReceivedAt: null,
     subject: 'Contract Request',
     originalText: 'Recorded request evidence',
     capturedByWorkspaceMembershipId: 'member-one',
     capturedAt: '2026-10-03T06:00:00.000Z',
-    version: 1,
     clientAssociationStatus: 'hidden',
     initialOpportunity: {
       id: 'opportunity-one',
       title: 'Opportunity',
-      scope: null,
       nextAction: 'Read Contract',
-      status: 'OPEN',
-      statusEnteredAt: '2026-10-03T06:00:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId: 'member-one',
       responsibleActor: {
         workspaceMembershipId: 'member-one',
         displayName: 'Reader',
       },
-      createdAt: '2026-10-03T06:00:00.000Z',
-      version: 1,
     },
-  };
+  });
   const paths: string[] = [];
   let denyRepresentation = false;
   let latestActor = actor;
@@ -118,19 +111,7 @@ it('opens a recorded Contract from its Request without Offer or Client authority
       if (path.endsWith('/companies')) return Response.json([company]);
       if (path.includes('/commercial-intake/requests?'))
         return Response.json({
-          items: [
-            {
-              id: detail.id,
-              subject: detail.subject,
-              capturedAt: detail.capturedAt,
-              initialOpportunity: {
-                status: 'OPEN',
-                title: 'Opportunity',
-                nextAction: 'Read Contract',
-                responsibleActor: detail.initialOpportunity.responsibleActor,
-              },
-            },
-          ],
+          items: [requestListItemFor(detail)],
         });
       if (path.endsWith('/commercial-intake/requests/request-one'))
         return Response.json(detail);

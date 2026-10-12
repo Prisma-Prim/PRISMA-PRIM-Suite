@@ -3,6 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { changeValue, selectOptionLabels } from '../test/select-option';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 
@@ -89,50 +93,26 @@ function requestDetail(
   responsible: { workspaceMembershipId: string; displayName: string } = ada,
   version = 1,
 ) {
-  return {
+  return buildClientRequest({
     id,
-    companyId: 'company-1',
-    sourceKind: 'MANUAL_TEXT',
-    sourceLabel: null,
-    reportedReceivedAt: null,
     subject: `Solicitare audit ${id}`,
     originalText: `Exact source of ${id}.`,
     capturedByWorkspaceMembershipId: ada.workspaceMembershipId,
     capturedAt: '2026-09-26T08:00:00.000Z',
-    version: 1,
-    clientAssociationStatus: 'absent',
     initialOpportunity: {
       id: `opportunity-${id}`,
       title: `Prepare ${id}`,
-      scope: null,
       nextAction: 'Arrange a qualification call',
-      status: 'OPEN',
-      statusEnteredAt: '2026-09-26T08:00:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId: responsible.workspaceMembershipId,
       responsibleActor: responsible,
-      createdAt: '2026-09-26T08:00:00.000Z',
       version,
     },
-  };
+  });
 }
 function listPage(
   responsible: { workspaceMembershipId: string; displayName: string } = ada,
 ) {
   return {
-    items: [
-      {
-        id: 'request-1',
-        subject: 'Solicitare audit request-1',
-        capturedAt: '2026-09-26T08:00:00.000Z',
-        initialOpportunity: {
-          status: 'OPEN',
-          title: 'Prepare request-1',
-          nextAction: 'Arrange a qualification call',
-          responsibleActor: responsible,
-        },
-      },
-    ],
+    items: [requestListItemFor(requestDetail('request-1', responsible))],
   };
 }
 function changeResult(

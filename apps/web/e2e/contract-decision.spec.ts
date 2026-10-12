@@ -3,6 +3,10 @@ import type { ActorContext } from '../src/access-types';
 import { contractDecisionMessages } from '../src/contract/contract-decision.copy';
 import { resolveMessage } from '../src/localization/messages';
 import { interfaceLocales } from '../src/localization/interface-locale';
+import {
+  buildClientRequest,
+  requestListItemFor,
+} from '../src/test/commercial-intake-responses';
 const company = { id: 'company-one', displayName: 'Synthetic Company' };
 const actor = {
   internalUserId: 'user-one',
@@ -56,35 +60,24 @@ function run(opportunity: string, errors = false) {
   };
 }
 function detail(id: string) {
-  return {
+  return buildClientRequest({
     id: 'request-' + id,
     companyId: company.id,
-    sourceKind: 'MANUAL_TEXT',
-    sourceLabel: null,
-    reportedReceivedAt: null,
     subject: 'Synthetic ' + id + ' Request',
     originalText: 'Synthetic captured evidence',
     capturedByWorkspaceMembershipId: 'member-one',
     capturedAt: '2026-10-07T06:00:00.000Z',
-    version: 1,
     clientAssociationStatus: 'hidden',
     initialOpportunity: {
       id,
       title: 'Synthetic ' + id + ' Opportunity',
-      scope: null,
       nextAction: 'Review exact Contract',
-      status: 'OPEN',
-      statusEnteredAt: '2026-10-07T06:00:00.000Z',
-      outcomeHistory: { entries: [] },
-      responsibleWorkspaceMembershipId: 'member-one',
       responsibleActor: {
         workspaceMembershipId: 'member-one',
         displayName: 'Approver',
       },
-      createdAt: '2026-10-07T06:00:00.000Z',
-      version: 1,
     },
-  };
+  });
 }
 function contract(id: string, decision: unknown, latest: unknown) {
   return {
@@ -171,18 +164,9 @@ for (const locale of interfaceLocales)
       if (path.endsWith('/commercial-intake/requests'))
         return route.fulfill({
           json: {
-            items: ['approve', 'reject'].map((id) => ({
-              id: 'request-' + id,
-              subject: detail(id).subject,
-              capturedAt: detail(id).capturedAt,
-              initialOpportunity: {
-                status: 'OPEN',
-                title: detail(id).initialOpportunity.title,
-                nextAction: 'Review exact Contract',
-                responsibleActor:
-                  detail(id).initialOpportunity.responsibleActor,
-              },
-            })),
+            items: ['approve', 'reject'].map((id) =>
+              requestListItemFor(detail(id)),
+            ),
           },
         });
       if (path.includes('/commercial-intake/requests/request-'))

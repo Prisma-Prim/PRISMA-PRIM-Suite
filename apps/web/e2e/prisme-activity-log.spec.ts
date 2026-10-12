@@ -2,6 +2,7 @@ import { enterClassicCompatibility } from './classic-compatibility';
 import { selectOption } from './select-option';
 import { expect, test } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
+import { buildClientRequest } from '../src/test/commercial-intake-responses';
 
 const events = [
   {
@@ -195,37 +196,26 @@ test('opens the Request of a commercial event from the Classic Activity Log with
     if (path === `/api/commercial-intake/requests/${requestId}`) {
       detailReads.push(path);
       return route.fulfill({
-        json: {
+        json: buildClientRequest({
           id: requestId,
           companyId: company.id,
-          sourceKind: 'MANUAL_TEXT',
-          sourceLabel: null,
-          reportedReceivedAt: null,
           subject,
           originalText: `Original source of ${subject}`,
           capturedByWorkspaceMembershipId:
             actorContextFixture.workspaceMembershipId,
           capturedAt: '2026-09-24T10:05:00.000Z',
-          version: 1,
           clientAssociationStatus: 'absent',
           initialOpportunity: {
             id: '00000000-0000-4000-8000-000000000360',
             title: 'Audit readiness',
-            scope: null,
             nextAction: 'Confirm the audit window',
-            status: 'OPEN',
-            statusEnteredAt: '2026-09-24T10:05:00.000Z',
-            outcomeHistory: { entries: [] },
-            responsibleWorkspaceMembershipId:
-              actorContextFixture.workspaceMembershipId,
             responsibleActor: {
               workspaceMembershipId: actorContextFixture.workspaceMembershipId,
               displayName: actorContextFixture.displayName,
             },
-            createdAt: '2026-09-24T10:05:00.000Z',
             version: 2,
           },
-        },
+        }),
       });
     }
     return route.fulfill({ status: 404 });
