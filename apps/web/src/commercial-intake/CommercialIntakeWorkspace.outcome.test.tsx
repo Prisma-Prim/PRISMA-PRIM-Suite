@@ -437,6 +437,8 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     ['the initial version', { version: 1 }],
     ['an extra receipt field', { extra: true }],
     ['another Opportunity', { opportunityId: 'another-opportunity' }],
+    ['another target status than submitted', { status: 'WON' }],
+    ['another result version than submitted', { version: 3 }],
   ])(
     'keeps the command for an explicit retry when a success carries %s',
     async (_case, receiptOverrides) => {
@@ -475,7 +477,21 @@ describe('CommercialIntakeWorkspace outcome status', () => {
       [listPath]: [reply(listPage())],
       [detailPath]: [
         reply(requestDetail()),
-        reply(requestDetail({ status: 'WON', version: 2 })),
+        reply(
+          requestDetail({
+            status: 'WON',
+            statusEnteredAt: '2026-10-03T09:00:00.000Z',
+            entries: [
+              {
+                ...holdEntry,
+                newStatus: 'WON',
+                reason: null,
+                changedAt: '2026-10-03T09:00:00.000Z',
+              },
+            ],
+            version: 2,
+          }),
+        ),
       ],
       [outcomePath]: [reply({ code: 'STALE_VERSION' }, 409)],
     });
@@ -543,7 +559,7 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     expect(transitionSelect()).toHaveTextContent(copy.outcomeSelectTransition);
   });
 
-  it('blocks the outcome editor while a Client-association draft is open', async () => {
+  it('lets the outcome editor take over an unsubmitted Client-association draft, as the other Opportunity editors do', async () => {
     stubRoutes({
       [listPath]: [reply(listPage())],
       [detailPath]: [reply(requestDetail())],
@@ -564,13 +580,16 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     const detail = await openRequest();
     const search = within(detail).getByLabelText(copy.clientSearch);
     fireEvent.change(search, { target: { value: 'Synthetic' } });
-    expect(
+    // Same rule as next action and reassignment: opening an Opportunity
+    // editor keeps the association draft but disables its controls.
+    fireEvent.click(
       within(detail).getByRole('button', { name: copy.changeOutcome }),
+    );
+    expect(search).toBeDisabled();
+    expect(search).toHaveValue('Synthetic');
+    expect(
+      within(detail).getByRole('button', { name: copy.editNextAction }),
     ).toBeDisabled();
-    fireEvent.change(search, { target: { value: '' } });
-    expect(
-      within(detail).getByRole('button', { name: copy.changeOutcome }),
-    ).toBeEnabled();
   });
 
   it('reads each older history page from its opaque cursor', async () => {
@@ -581,7 +600,8 @@ describe('CommercialIntakeWorkspace outcome status', () => {
           requestDetail({
             status: 'LOST',
             statusEnteredAt: lostEntry.changedAt,
-            entries: [lostEntry],
+            // The older page continues this chain: held, then lost.
+            entries: [{ ...lostEntry, previousStatus: 'ON_HOLD' }],
             nextCursor: 'opaque-1',
             version: 3,
           }),

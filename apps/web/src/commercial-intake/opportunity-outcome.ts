@@ -212,6 +212,48 @@ export function isOutcomeHistoryPage(
   );
 }
 
+/**
+ * The status read with a Request agrees with its newest history entry: that
+ * entry ends in the current status, is not newer than the Opportunity and
+ * sets the time the status was entered. Without history the Opportunity is
+ * still OPEN since its creation.
+ */
+export function isConsistentOutcomeSnapshot(snapshot: {
+  status: OpportunityOutcomeStatus;
+  statusEnteredAt: string;
+  createdAt: string;
+  version: number;
+  outcomeHistory: OutcomeHistoryPage;
+}): boolean {
+  const [newest] = snapshot.outcomeHistory.entries;
+  if (!newest)
+    return (
+      snapshot.status === 'OPEN' &&
+      sameInstant(snapshot.statusEnteredAt, snapshot.createdAt)
+    );
+  return (
+    newest.newStatus === snapshot.status &&
+    newest.version <= snapshot.version &&
+    sameInstant(snapshot.statusEnteredAt, newest.changedAt)
+  );
+}
+
+function sameInstant(left: string, right: string): boolean {
+  const leftTime = Date.parse(left);
+  return !Number.isNaN(leftTime) && leftTime === Date.parse(right);
+}
+
+/** Whether an older page continues the chronology already shown. */
+export function continuesOutcomeHistory(
+  shown: readonly OutcomeHistoryEntry[],
+  older: readonly OutcomeHistoryEntry[],
+): boolean {
+  const tail = shown.at(-1);
+  const head = older[0];
+  if (!tail || !head) return true;
+  return head.version < tail.version && head.newStatus === tail.previousStatus;
+}
+
 function isOlderEntry(entry: OutcomeHistoryEntry, newer: unknown): boolean {
   return (
     isRecord(newer) &&

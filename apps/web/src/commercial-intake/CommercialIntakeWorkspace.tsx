@@ -33,6 +33,7 @@ import {
   EMPTY_OUTCOME_DRAFT,
   isOpportunityOutcomeStatus,
   isOutcomeTransition,
+  isConsistentOutcomeSnapshot,
   isOutcomeHistoryPage,
   outcomeCommandBody,
   type OpportunityOutcomeStatus,
@@ -271,8 +272,6 @@ export function CommercialIntakeWorkspace({
   const [inFlight, setInFlight] = useState<InFlight>('none');
   const [associationProtection, setAssociationProtection] =
     useState<AssociationProtection>('idle');
-  // A searched or selected Client not yet associated is an open editor too.
-  const [associationDraft, setAssociationDraft] = useState(false);
   const pending = inFlight !== 'none' || associationProtection !== 'idle';
   // A capture that ended without a confirmed result keeps its payload and key
   // for an exact retry until a later attempt settles it.
@@ -324,9 +323,6 @@ export function CommercialIntakeWorkspace({
   const opportunityEditInProgress = useRef(false);
   opportunityEditInProgress.current =
     nextActionEditOpen || responsibleEditOpen || outcomeEditOpen;
-  // Section 23.7: the outcome editor shares the one-open-editor rule with
-  // Client association, so an association draft or command blocks it.
-  const associationOpen = associationDraft || associationProtection !== 'idle';
   const associationInProgress = useRef(false);
   associationInProgress.current = associationProtection !== 'idle';
   const protectedWork =
@@ -1324,7 +1320,7 @@ export function CommercialIntakeWorkspace({
       }
       if (
         result.status === 200 &&
-        isOutcomeChangeResult(result.body, opportunityId)
+        isOutcomeChangeResult(result.body, opportunityId, command)
       ) {
         applyOpportunityResponse({
           request: result.body.request,
@@ -1730,8 +1726,7 @@ export function CommercialIntakeWorkspace({
                   current: selected.request.initialOpportunity.status,
                   blocked:
                     nextActionEdit.kind !== 'idle' ||
-                    responsibleEdit.kind !== 'idle' ||
-                    associationOpen,
+                    responsibleEdit.kind !== 'idle',
                   onOpen: () => {
                     setFeedback('');
                     outcomeRetry.current = undefined;
@@ -1774,7 +1769,6 @@ export function CommercialIntakeWorkspace({
                 request={request}
                 handleAccess={handleAccess}
                 onProtectionChange={setAssociationProtection}
-                onDraftChange={setAssociationDraft}
                 onAssociated={async (value, startedUnderRevision) => {
                   if (
                     !isClientRequest(value) ||
@@ -2675,7 +2669,14 @@ function isInitialOpportunity(
     typeof value.createdAt === 'string' &&
     typeof value.version === 'number' &&
     Number.isInteger(value.version) &&
-    value.version >= 1
+    value.version >= 1 &&
+    isConsistentOutcomeSnapshot({
+      status: value.status,
+      statusEnteredAt: value.statusEnteredAt,
+      createdAt: value.createdAt,
+      version: value.version,
+      outcomeHistory: value.outcomeHistory,
+    })
   );
 }
 
@@ -2712,7 +2713,9 @@ const OUTCOME_RECEIPT_FIELDS = [
 function isOutcomeChangeResult(
   value: unknown,
   opportunityId: string,
+  command: string,
 ): value is OutcomeChangeResult {
+  const submitted = submittedOutcome(command);
   if (
     !isRecord(value) ||
     Object.keys(value).length !== 2 ||
@@ -2731,9 +2734,30 @@ function isOutcomeChangeResult(
     Number.isSafeInteger(receipt.version) &&
     receipt.version >= 2 &&
     receipt.opportunityId === opportunityId &&
+    submitted !== undefined &&
+    receipt.status === submitted.status &&
+    receipt.version === submitted.expectedVersion + 1 &&
     isClientRequest(value.request) &&
     value.request.initialOpportunity.id === opportunityId
   );
+}
+
+/** The status and observed version of the exact command body sent. */
+function submittedOutcome(
+  command: string,
+): { status: OpportunityOutcomeStatus; expectedVersion: number } | undefined {
+  let body: unknown;
+  try {
+    body = JSON.parse(command);
+  } catch {
+    return undefined;
+  }
+  return isRecord(body) &&
+    isOpportunityOutcomeStatus(body.status) &&
+    typeof body.expectedVersion === 'number' &&
+    Number.isSafeInteger(body.expectedVersion)
+    ? { status: body.status, expectedVersion: body.expectedVersion }
+    : undefined;
 }
 
 function isResponsibleCandidates(

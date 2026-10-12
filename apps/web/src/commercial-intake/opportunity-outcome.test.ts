@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isOutcomeHistoryPage } from './opportunity-outcome';
+import {
+  continuesOutcomeHistory,
+  isConsistentOutcomeSnapshot,
+  isOutcomeHistoryPage,
+  type OutcomeHistoryEntry,
+} from './opportunity-outcome';
 
 const isTimestamp = (value: unknown): value is string =>
   typeof value === 'string' && !Number.isNaN(Date.parse(value));
@@ -115,6 +120,73 @@ describe('outcome history boundary', () => {
         ]),
         isTimestamp,
       ),
+    ).toBe(false);
+  });
+
+  it('requires the status to agree with its newest history entry', () => {
+    const lost = entry({
+      newStatus: 'LOST',
+      lossReasonCode: 'PRICE',
+      version: 3,
+      changedAt: '2026-10-02T09:00:00.000Z',
+    }) as OutcomeHistoryEntry;
+    const snapshot = {
+      status: 'LOST' as const,
+      statusEnteredAt: '2026-10-02T09:00:00.000Z',
+      createdAt: '2026-09-26T08:00:00.000Z',
+      version: 4,
+      outcomeHistory: { entries: [lost] },
+    };
+    expect(isConsistentOutcomeSnapshot(snapshot)).toBe(true);
+    expect(isConsistentOutcomeSnapshot({ ...snapshot, status: 'WON' })).toBe(
+      false,
+    );
+    expect(isConsistentOutcomeSnapshot({ ...snapshot, version: 2 })).toBe(
+      false,
+    );
+    expect(
+      isConsistentOutcomeSnapshot({
+        ...snapshot,
+        statusEnteredAt: '2026-10-05T09:00:00.000Z',
+      }),
+    ).toBe(false);
+    const fresh = {
+      ...snapshot,
+      status: 'OPEN' as const,
+      statusEnteredAt: snapshot.createdAt,
+      outcomeHistory: { entries: [] },
+    };
+    expect(isConsistentOutcomeSnapshot(fresh)).toBe(true);
+    expect(isConsistentOutcomeSnapshot({ ...fresh, status: 'LOST' })).toBe(
+      false,
+    );
+    expect(
+      isConsistentOutcomeSnapshot({
+        ...fresh,
+        statusEnteredAt: '2026-10-01T00:00:00.000Z',
+      }),
+    ).toBe(false);
+  });
+
+  it('accepts an older page only when it continues the shown chronology', () => {
+    const newest = entry({
+      previousStatus: 'ON_HOLD',
+      newStatus: 'LOST',
+      lossReasonCode: 'PRICE',
+      version: 3,
+    }) as OutcomeHistoryEntry;
+    const hold = entry({
+      newStatus: 'ON_HOLD',
+      reason: 'Waiting',
+      version: 2,
+    }) as OutcomeHistoryEntry;
+    expect(continuesOutcomeHistory([newest], [hold])).toBe(true);
+    expect(continuesOutcomeHistory([newest], [])).toBe(true);
+    expect(continuesOutcomeHistory([newest], [{ ...hold, version: 3 }])).toBe(
+      false,
+    );
+    expect(
+      continuesOutcomeHistory([newest], [{ ...hold, newStatus: 'WON' }]),
     ).toBe(false);
   });
 

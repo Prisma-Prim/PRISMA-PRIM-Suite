@@ -4,6 +4,7 @@ import { Select } from '../presentation/Select';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import {
   OPPORTUNITY_LOSS_REASON_CODES,
+  continuesOutcomeHistory,
   outcomeTransitionInput,
   permittedOutcomeTransitions,
   type OpportunityOutcomeStatus,
@@ -222,7 +223,11 @@ export function OpportunityOutcomeHistory({
     setOlder((current) => ({ ...current, state: 'loading' }));
     const result = await loadOlder(cursor);
     setOlder((current) =>
-      result
+      result &&
+      continuesOutcomeHistory(
+        [...page.entries, ...current.entries],
+        result.entries,
+      )
         ? {
             entries: [...current.entries, ...result.entries],
             nextCursor: result.nextCursor,
