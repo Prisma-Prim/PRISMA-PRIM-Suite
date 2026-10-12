@@ -185,19 +185,36 @@ function isLossReasonCode(value: unknown): value is OpportunityLossReasonCode {
   return OPPORTUNITY_LOSS_REASON_CODES.some((code) => code === value);
 }
 
-/** Proves one history page at the response boundary; anything else fails. */
+/** The section 23.6 page bound. */
+export const OUTCOME_HISTORY_PAGE_SIZE = 50;
+
+/**
+ * Proves one history page at the response boundary: at most 50 valid entries,
+ * newest first with strictly descending versions; anything else fails.
+ */
 export function isOutcomeHistoryPage(
   value: unknown,
   isTimestamp: (value: unknown) => value is string,
 ): value is OutcomeHistoryPage {
-  return (
-    isRecord(value) &&
-    Array.isArray(value.entries) &&
-    value.entries.every((entry: unknown) =>
-      isOutcomeHistoryEntry(entry, isTimestamp),
-    ) &&
-    (value.nextCursor === undefined || typeof value.nextCursor === 'string')
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.entries) ||
+    value.entries.length > OUTCOME_HISTORY_PAGE_SIZE ||
+    !(value.nextCursor === undefined || typeof value.nextCursor === 'string')
+  )
+    return false;
+  const entries: unknown[] = value.entries;
+  return entries.every(
+    (entry, index) =>
+      isOutcomeHistoryEntry(entry, isTimestamp) &&
+      (index === 0 || isOlderEntry(entry, entries[index - 1])),
   );
+}
+
+function isOlderEntry(entry: OutcomeHistoryEntry, newer: unknown): boolean {
+  return isRecord(newer) && typeof newer.version === 'number'
+    ? entry.version < newer.version
+    : false;
 }
 
 const HISTORY_ENTRY_FIELDS = [

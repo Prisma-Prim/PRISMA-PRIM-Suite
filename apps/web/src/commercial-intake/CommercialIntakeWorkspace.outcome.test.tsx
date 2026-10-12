@@ -542,6 +542,36 @@ describe('CommercialIntakeWorkspace outcome status', () => {
     expect(transitionSelect()).toHaveTextContent(copy.outcomeSelectTransition);
   });
 
+  it('blocks the outcome editor while a Client-association draft is open', async () => {
+    stubRoutes({
+      [listPath]: [reply(listPage())],
+      [detailPath]: [reply(requestDetail())],
+    });
+    const associating: ActorContext = {
+      ...manager,
+      activeCompany: manager.activeCompany && {
+        ...manager.activeCompany,
+        clientPermissions: ['client.read'],
+        commercialIntakePermissions: [
+          ...intakePermissions,
+          'commercial.request.client.associate',
+        ],
+        commercialIntakePermissionSetVersion: 'v3',
+      },
+    };
+    renderWorkspace(associating);
+    const detail = await openRequest();
+    const search = within(detail).getByLabelText(copy.clientSearch);
+    fireEvent.change(search, { target: { value: 'Synthetic' } });
+    expect(
+      within(detail).getByRole('button', { name: copy.changeOutcome }),
+    ).toBeDisabled();
+    fireEvent.change(search, { target: { value: '' } });
+    expect(
+      within(detail).getByRole('button', { name: copy.changeOutcome }),
+    ).toBeEnabled();
+  });
+
   it('reads each older history page from its opaque cursor', async () => {
     const transport = stubRoutes({
       [listPath]: [reply(listPage('LOST'))],

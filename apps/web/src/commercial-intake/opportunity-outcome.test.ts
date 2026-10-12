@@ -24,28 +24,31 @@ describe('outcome history boundary', () => {
   it('accepts every permitted transition with exactly its recorded fields', () => {
     expect(
       isOutcomeHistoryPage(
-        page([
-          entry({}),
-          entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version: 3 }),
-          entry({
-            previousStatus: 'ON_HOLD',
-            newStatus: 'OPEN',
-            version: 4,
-          }),
-          entry({ newStatus: 'LOST', lossReasonCode: 'PRICE', version: 5 }),
-          entry({
-            newStatus: 'LOST',
-            lossReasonCode: 'OTHER',
-            note: 'Merged with a group',
-            version: 6,
-          }),
-          entry({
-            previousStatus: 'LOST',
-            newStatus: 'OPEN',
-            reason: 'Client returned',
-            version: 7,
-          }),
-        ]),
+        page(
+          [
+            entry({}),
+            entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version: 3 }),
+            entry({
+              previousStatus: 'ON_HOLD',
+              newStatus: 'OPEN',
+              version: 4,
+            }),
+            entry({ newStatus: 'LOST', lossReasonCode: 'PRICE', version: 5 }),
+            entry({
+              newStatus: 'LOST',
+              lossReasonCode: 'OTHER',
+              note: 'Merged with a group',
+              version: 6,
+            }),
+            entry({
+              previousStatus: 'LOST',
+              newStatus: 'OPEN',
+              reason: 'Client returned',
+              version: 7,
+            }),
+            // A page is newest first.
+          ].reverse(),
+        ),
         isTimestamp,
       ),
     ).toBe(true);
@@ -77,6 +80,19 @@ describe('outcome history boundary', () => {
   ])('rejects %s', (_case, overrides) => {
     expect(isOutcomeHistoryPage(page([entry(overrides)]), isTimestamp)).toBe(
       false,
+    );
+  });
+
+  it('rejects pages that are too long, out of order or with duplicate versions', () => {
+    const at = (version: number) =>
+      entry({ newStatus: 'ON_HOLD', reason: 'Waiting', version });
+    expect(isOutcomeHistoryPage(page([at(3), at(2)]), isTimestamp)).toBe(true);
+    expect(isOutcomeHistoryPage(page([at(2), at(3)]), isTimestamp)).toBe(false);
+    expect(isOutcomeHistoryPage(page([at(3), at(3)]), isTimestamp)).toBe(false);
+    const fiftyOne = Array.from({ length: 51 }, (_, index) => at(60 - index));
+    expect(isOutcomeHistoryPage(page(fiftyOne), isTimestamp)).toBe(false);
+    expect(isOutcomeHistoryPage(page(fiftyOne.slice(0, 50)), isTimestamp)).toBe(
+      true,
     );
   });
 

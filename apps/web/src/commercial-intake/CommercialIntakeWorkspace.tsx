@@ -271,6 +271,8 @@ export function CommercialIntakeWorkspace({
   const [inFlight, setInFlight] = useState<InFlight>('none');
   const [associationProtection, setAssociationProtection] =
     useState<AssociationProtection>('idle');
+  // A searched or selected Client not yet associated is an open editor too.
+  const [associationDraft, setAssociationDraft] = useState(false);
   const pending = inFlight !== 'none' || associationProtection !== 'idle';
   // A capture that ended without a confirmed result keeps its payload and key
   // for an exact retry until a later attempt settles it.
@@ -322,6 +324,9 @@ export function CommercialIntakeWorkspace({
   const opportunityEditInProgress = useRef(false);
   opportunityEditInProgress.current =
     nextActionEditOpen || responsibleEditOpen || outcomeEditOpen;
+  // Section 23.7: the outcome editor shares the one-open-editor rule with
+  // Client association, so an association draft or command blocks it.
+  const associationOpen = associationDraft || associationProtection !== 'idle';
   const associationInProgress = useRef(false);
   associationInProgress.current = associationProtection !== 'idle';
   const protectedWork =
@@ -1725,7 +1730,8 @@ export function CommercialIntakeWorkspace({
                   current: selected.request.initialOpportunity.status,
                   blocked:
                     nextActionEdit.kind !== 'idle' ||
-                    responsibleEdit.kind !== 'idle',
+                    responsibleEdit.kind !== 'idle' ||
+                    associationOpen,
                   onOpen: () => {
                     setFeedback('');
                     outcomeRetry.current = undefined;
@@ -1768,6 +1774,7 @@ export function CommercialIntakeWorkspace({
                 request={request}
                 handleAccess={handleAccess}
                 onProtectionChange={setAssociationProtection}
+                onDraftChange={setAssociationDraft}
                 onAssociated={async (value, startedUnderRevision) => {
                   if (
                     !isClientRequest(value) ||

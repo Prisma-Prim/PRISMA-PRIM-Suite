@@ -56,6 +56,7 @@ export function RequestClientAssociation({
   handleAccess,
   onAssociated,
   onProtectionChange = () => undefined,
+  onDraftChange = () => undefined,
 }: {
   identity: BrowserIdentity;
   companyId: string;
@@ -71,6 +72,8 @@ export function RequestClientAssociation({
     identityRevision: number,
   ) => Promise<boolean> | boolean;
   onProtectionChange?: (state: 'idle' | 'loading' | 'uncertain') => void;
+  /** Whether a search or a selected Client is an unsubmitted association draft. */
+  onDraftChange?: (active: boolean) => void;
 }) {
   const [query, setQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -95,6 +98,21 @@ export function RequestClientAssociation({
       onProtectionChange('idle');
     },
     [onProtectionChange],
+  );
+
+  const draftActive =
+    query.trim().length > 0 ||
+    selectedClientId.length > 0 ||
+    search.kind !== 'idle';
+  useEffect(() => {
+    onDraftChange(draftActive);
+  }, [draftActive, onDraftChange]);
+
+  useEffect(
+    () => () => {
+      onDraftChange(false);
+    },
+    [onDraftChange],
   );
 
   useEffect(() => {
