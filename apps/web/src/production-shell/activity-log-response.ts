@@ -9,6 +9,8 @@ import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
   DocumentVersionActivityLogEvent,
+  OfferActivityLogEvent,
+  OfferVersionActivityTarget,
   OpportunityOutcomeChangedActivityLogEvent,
   OpportunityResponsibleChangedActivityLogEvent,
   OrdinaryActivityLogEvent,
@@ -98,6 +100,12 @@ const targetTypes = {
   'opportunity.next_action.updated': 'opportunity',
   'opportunity.responsible.changed': 'opportunity',
   'opportunity.outcome.changed': 'opportunity',
+  'offer.created': 'offer',
+  'offer_version.created': 'offer_version',
+  'offer_version.approved': 'offer_version',
+  'offer_version.rejected': 'offer_version',
+  'offer_version.transmission_recorded': 'offer_version',
+  'offer_version.client_response_recorded': 'offer_version',
 } as const satisfies Record<ActivityAction, ActivityLogEvent['target']['type']>;
 
 /**
@@ -243,12 +251,95 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         target: opportunityTarget(target),
         metadata: opportunityOutcomeChange(value.metadata),
       };
+    case 'offer.created':
+    case 'offer_version.created':
+    case 'offer_version.approved':
+    case 'offer_version.rejected':
+    case 'offer_version.transmission_recorded':
+    case 'offer_version.client_response_recorded':
+      return offerEvent(value, action, target);
     default:
       return {
         ...recorded(value),
         action,
         target: ordinaryTarget(targetTypes[action], target),
       };
+  }
+}
+
+/**
+ * An Offer event names its Offer by illustrative reference and, for a version
+ * event, the exact version it concerns. Its metadata is exactly empty, the
+ * simulated channel of a transmission, or the outcome and simulated evidence
+ * of a Client response; any other shape rejects the page.
+ */
+function offerEvent(
+  event: Record<string, unknown>,
+  action: OfferActivityLogEvent['action'],
+  target: Record<string, unknown>,
+): OfferActivityLogEvent {
+  const { metadata } = event;
+  if (!isRecord(metadata)) invalid();
+  const reference = {
+    illustrativeReference: positiveInteger(target.illustrativeReference),
+    opportunityId: identifier(target.opportunityId),
+    clientRequestId: identifier(target.clientRequestId),
+    companyId: identifier(target.companyId),
+  };
+  if (action === 'offer.created') {
+    if (Object.keys(metadata).length !== 0) invalid();
+    return {
+      ...recorded(event),
+      action,
+      target: { type: 'offer', ...reference },
+      metadata: {},
+    };
+  }
+  const version: OfferVersionActivityTarget = {
+    type: 'offer_version',
+    offerVersionId: identifier(target.offerVersionId),
+    versionNumber: positiveInteger(target.versionNumber),
+    ...reference,
+  };
+  switch (action) {
+    case 'offer_version.created':
+    case 'offer_version.approved':
+    case 'offer_version.rejected':
+      if (Object.keys(metadata).length !== 0) invalid();
+      return { ...recorded(event), action, target: version, metadata: {} };
+    case 'offer_version.transmission_recorded':
+      if (
+        Object.keys(metadata).length !== 1 ||
+        metadata.channel !== 'SIMULATED'
+      )
+        invalid();
+      return {
+        ...recorded(event),
+        action,
+        target: version,
+        metadata: { channel: 'SIMULATED' },
+      };
+    case 'offer_version.client_response_recorded': {
+      const { outcome } = metadata;
+      if (
+        Object.keys(metadata).length !== 2 ||
+        metadata.evidenceKind !== 'SIMULATED' ||
+        (outcome !== 'ACCEPTED' &&
+          outcome !== 'REJECTED' &&
+          outcome !== 'EXPIRED')
+      )
+        invalid();
+      return {
+        ...recorded(event),
+        action,
+        target: version,
+        metadata: { outcome, evidenceKind: 'SIMULATED' },
+      };
+    }
+    default: {
+      const exhaustive: never = action;
+      return exhaustive;
+    }
   }
 }
 

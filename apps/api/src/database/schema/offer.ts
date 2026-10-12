@@ -581,7 +581,7 @@ export const offerCommands = pgTable(
   ],
 );
 
-/** O1 events stay recorded and deliberately have no public projection. */
+/** Recorded Offer events, projected only by the commercial Activity read (PRD section 25). */
 export const offerEvents = pgTable(
   'offer_events',
   {

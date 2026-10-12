@@ -65,6 +65,7 @@ export function OfferPanel({
   actor,
   identity,
   opportunityId,
+  requestedVersionId,
   currentClientId,
   clientDisplayName,
   onCompanyContextRejected,
@@ -74,6 +75,11 @@ export function OfferPanel({
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
+  /**
+   * The exact Offer Version to open instead of the head, superseded or not.
+   * The Offer read decides what is shown; nothing else is requested.
+   */
+  requestedVersionId?: string;
   currentClientId?: string;
   clientDisplayName?: string;
   onCompanyContextRejected: (companyId: string) => void;
@@ -168,7 +174,11 @@ export function OfferPanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       const offerResult = await api.request<unknown>(
-        `/offers/opportunities/${encodeURIComponent(opportunityId)}`,
+        `/offers/opportunities/${encodeURIComponent(opportunityId)}${
+          requestedVersionId === undefined
+            ? ''
+            : `/versions/${encodeURIComponent(requestedVersionId)}`
+        }`,
         { companyContextId: companyId, signal: request.signal },
       );
       if (request.signal.aborted) return;
@@ -181,6 +191,15 @@ export function OfferPanel({
         return;
       }
       const offer = readOfferDetail(offerResult.value);
+      if (requestedVersionId !== undefined) {
+        // A requested version is shown only as exactly that version.
+        setView(
+          offer?.version.id === requestedVersionId
+            ? { kind: 'offer', offer }
+            : { kind: 'error' },
+        );
+        return;
+      }
       if (offer !== null) {
         setView({ kind: 'offer', offer });
         return;
@@ -230,6 +249,7 @@ export function OfferPanel({
     mayRead,
     opportunityId,
     reject,
+    requestedVersionId,
   ]);
 
   useEffect(() => {

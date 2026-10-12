@@ -304,6 +304,61 @@ export interface OpportunityOutcomeChangedActivityLogEvent {
       };
 }
 
+/** The Offer an event concerns and the Request detail that shows it. */
+interface OfferActivityTargetReference {
+  /** The Offer's immutable illustrative reference. */
+  illustrativeReference: number;
+  opportunityId: string;
+  clientRequestId: string;
+  companyId: string;
+}
+
+/** The exact Offer Version an event concerns, superseded or not. */
+export type OfferVersionActivityTarget = {
+  type: 'offer_version';
+  offerVersionId: string;
+  versionNumber: number;
+} & OfferActivityTargetReference;
+
+/**
+ * A recorded Offer event: its target reference, a Client response's outcome
+ * and the simulated marker of a transmission or response. It never carries an
+ * amount, condition, scope, reason, note, date, party identity, Snapshot
+ * content or warning.
+ */
+export type OfferActivityLogEvent = {
+  id: string;
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+} & (
+  | {
+      action: 'offer.created';
+      target: { type: 'offer' } & OfferActivityTargetReference;
+      metadata: Record<string, never>;
+    }
+  | {
+      action:
+        | 'offer_version.created'
+        | 'offer_version.approved'
+        | 'offer_version.rejected';
+      target: OfferVersionActivityTarget;
+      metadata: Record<string, never>;
+    }
+  | {
+      action: 'offer_version.transmission_recorded';
+      target: OfferVersionActivityTarget;
+      metadata: { channel: 'SIMULATED' };
+    }
+  | {
+      action: 'offer_version.client_response_recorded';
+      target: OfferVersionActivityTarget;
+      metadata: {
+        outcome: 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+        evidenceKind: 'SIMULATED';
+      };
+    }
+);
+
 /** Before and after keep only a membership identifier and its captured label. */
 export interface ProjectResponsibleChangedActivityLogEvent {
   id: string;
@@ -341,7 +396,9 @@ export interface ProjectLifecycleChangedActivityLogEvent {
 /**
  * One entry of a proved `/activity-log` page (see `activityLogPageResponse`).
  * The shell lists these entries and presents no metadata except the proved
- * before and after of a Project or Opportunity responsible change.
+ * before and after of a Project or Opportunity responsible change, an
+ * Opportunity outcome change, and an Offer event's response outcome and
+ * simulated marker.
  */
 export type ActivityLogEvent =
   | TaskActivityLogEvent
@@ -353,6 +410,7 @@ export type ActivityLogEvent =
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent
   | CommercialActivityLogEvent
+  | OfferActivityLogEvent
   | DocumentRegisteredActivityLogEvent
   | DocumentCorrectedActivityLogEvent
   | DocumentVersionActivityLogEvent;

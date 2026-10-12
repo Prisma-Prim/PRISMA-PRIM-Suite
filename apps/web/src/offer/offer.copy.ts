@@ -217,3 +217,30 @@ export const offerDecisionCopy = {
   approvedViewer: 'Approved internally',
   rejectedViewer: 'Rejected internally',
 } as const;
+
+// Offer history in the commercial Activity Log names the action, the Offer's
+// illustrative reference and version, a Client response outcome and the
+// simulated marker only; never Offer content.
+export const offerActivityCopy = {
+  actionLabels: {
+    'offer.created': 'created an illustrative Offer',
+    'offer_version.created': 'created an Offer Version',
+    'offer_version.approved': 'approved an Offer Version',
+    'offer_version.rejected': 'rejected an Offer Version',
+    'offer_version.transmission_recorded':
+      'recorded the transmission of an Offer Version',
+    'offer_version.client_response_recorded':
+      'recorded the Client response to an Offer Version',
+  },
+  responseOutcomes: {
+    ACCEPTED: 'Accepted',
+    REJECTED: 'Rejected by the Client',
+    EXPIRED: 'Expired',
+  },
+  offerTarget: (reference: number) => `Illustrative Offer ${reference}`,
+  versionTarget: (reference: number, versionNumber: number) =>
+    `Illustrative Offer ${reference} · version ${versionNumber}`,
+  simulated: 'Simulated',
+  openOffer: 'Open Offer',
+  openVersion: 'Open Offer Version',
+} as const;

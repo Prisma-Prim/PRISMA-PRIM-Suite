@@ -26,6 +26,19 @@ const opportunityTarget = {
   clientRequestId: 'request-358',
   companyId,
 };
+const offerTarget = {
+  type: 'offer',
+  illustrativeReference: 7,
+  opportunityId: 'opportunity-358',
+  clientRequestId: 'request-358',
+  companyId,
+};
+const offerVersionTarget = {
+  ...offerTarget,
+  type: 'offer_version',
+  offerVersionId: 'offer-version-2',
+  versionNumber: 2,
+};
 const roleAssignmentTarget = {
   type: 'company_role_assignment',
   assignmentId: 'assignment-1',
@@ -557,6 +570,126 @@ describe('the authenticated Activity Log transport', () => {
       );
       const { result } = await loadActivityLog({
         events: [valid, { ...valid, id: 'event-outcome-malformed', metadata }],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
+
+  it('keeps the Offer reference, exact version, outcome and simulated marker of Offer events', async () => {
+    const events = [
+      event(
+        'event-offer-response',
+        'offer_version.client_response_recorded',
+        offerVersionTarget,
+        { outcome: 'ACCEPTED', evidenceKind: 'SIMULATED' },
+      ),
+      event(
+        'event-offer-transmission',
+        'offer_version.transmission_recorded',
+        offerVersionTarget,
+        { channel: 'SIMULATED' },
+      ),
+      event(
+        'event-offer-approved',
+        'offer_version.approved',
+        offerVersionTarget,
+      ),
+      event('event-offer-rejected', 'offer_version.rejected', {
+        ...offerVersionTarget,
+        offerVersionId: 'offer-version-1',
+        versionNumber: 1,
+      }),
+      event('event-offer-version', 'offer_version.created', offerVersionTarget),
+      event('event-offer', 'offer.created', offerTarget),
+    ];
+    const { result } = await loadActivityLog({ events });
+
+    expect(result).toEqual({ status: 'ok', value: { events } });
+  });
+
+  it.each<[string, unknown]>([
+    [
+      'a version event on the Offer target',
+      event('event-offer-malformed', 'offer_version.approved', offerTarget),
+    ],
+    [
+      'an Offer creation on a version target',
+      event('event-offer-malformed', 'offer.created', offerVersionTarget),
+    ],
+    [
+      'a missing illustrative reference',
+      event('event-offer-malformed', 'offer.created', {
+        ...offerTarget,
+        illustrativeReference: undefined,
+      }),
+    ],
+    [
+      'a missing Request',
+      event('event-offer-malformed', 'offer_version.created', {
+        ...offerVersionTarget,
+        clientRequestId: undefined,
+      }),
+    ],
+    [
+      'a missing version number',
+      event('event-offer-malformed', 'offer_version.created', {
+        ...offerVersionTarget,
+        versionNumber: 0,
+      }),
+    ],
+    [
+      'an amount',
+      event(
+        'event-offer-malformed',
+        'offer_version.approved',
+        offerVersionTarget,
+        {
+          amount: '345.00',
+        },
+      ),
+    ],
+    [
+      'a transmission without its simulated channel',
+      event(
+        'event-offer-malformed',
+        'offer_version.transmission_recorded',
+        offerVersionTarget,
+        { channel: 'EMAIL' },
+      ),
+    ],
+    [
+      'a transmission note',
+      event(
+        'event-offer-malformed',
+        'offer_version.transmission_recorded',
+        offerVersionTarget,
+        { channel: 'SIMULATED', note: 'Synthetic note' },
+      ),
+    ],
+    [
+      'an unknown Client response outcome',
+      event(
+        'event-offer-malformed',
+        'offer_version.client_response_recorded',
+        offerVersionTarget,
+        { outcome: 'WITHDRAWN', evidenceKind: 'SIMULATED' },
+      ),
+    ],
+    [
+      'a Client response reason',
+      event(
+        'event-offer-malformed',
+        'offer_version.client_response_recorded',
+        offerVersionTarget,
+        { outcome: 'REJECTED', evidenceKind: 'SIMULATED', reason: 'Price' },
+      ),
+    ],
+  ])(
+    'fails closed on an Offer event with %s next to a valid one',
+    async (_case, malformed) => {
+      const { result } = await loadActivityLog({
+        events: [event('event-offer', 'offer.created', offerTarget), malformed],
       });
 
       expect(result).toEqual({ status: 'error' });

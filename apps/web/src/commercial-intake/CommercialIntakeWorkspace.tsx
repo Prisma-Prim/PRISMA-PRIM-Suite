@@ -103,8 +103,22 @@ type SelectedRequest = {
 /** One dossier identity restricting the loaded rows, as the shell requested. */
 type ClientRestriction = { clientDossierId: string; displayName: string };
 
-/** One Request detail the shell requested; `requestId` numbers each request. */
-type RequestedRequest = { clientRequestId: string; requestId: number };
+/**
+ * One Request detail the shell requested, optionally with the exact Offer
+ * Version to select in it; `requestId` numbers each request.
+ */
+type RequestedRequest = {
+  clientRequestId: string;
+  offerVersionId?: string;
+  requestId: number;
+};
+
+/** The Offer Version a requested Request detail opens with selected. */
+type RequestedOfferVersion = {
+  clientRequestId: string;
+  offerVersionId: string;
+  requestId: number;
+};
 
 // What the one shared in-flight controller serves: an ordinary detail read, or
 // a capture, next-action, responsible-actor or outcome status command until
@@ -281,6 +295,9 @@ export function CommercialIntakeWorkspace({
   const [captureUncertain, setCaptureUncertain] = useState(false);
   // The latest requested Request not opened yet.
   const [requestToOpen, setRequestToOpen] = useState<RequestedRequest>();
+  // The Offer Version the latest opened request selects in its Request detail.
+  const [requestedOfferVersion, setRequestedOfferVersion] =
+    useState<RequestedOfferVersion>();
   // Local view state over the already loaded rows; it never reaches the API.
   const [filter, setFilter] = useState('');
   const [nextActionEdit, setNextActionEdit] = useState<NextActionEdit>({
@@ -703,7 +720,13 @@ export function CommercialIntakeWorkspace({
     if (!requestToOpen || protectedWork) return;
     setRequestToOpen(undefined);
     setSelected(undefined);
-    void selectRequest(requestToOpen.clientRequestId);
+    const { clientRequestId, offerVersionId, requestId } = requestToOpen;
+    setRequestedOfferVersion(
+      offerVersionId === undefined
+        ? undefined
+        : { clientRequestId, offerVersionId, requestId },
+    );
+    void selectRequest(clientRequestId);
   }, [requestToOpen, protectedWork]);
 
   // Retire capture-only Client work and reread rows after an authority or
@@ -993,6 +1016,7 @@ export function CommercialIntakeWorkspace({
 
   function closeDetail(): void {
     commandRequest.current?.abort();
+    setRequestedOfferVersion(undefined);
     membersRequest.current?.abort();
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
@@ -1668,6 +1692,11 @@ export function CommercialIntakeWorkspace({
           actor={actor}
           identity={identity}
           request={visibleRequest}
+          requestedOfferVersion={
+            requestedOfferVersion?.clientRequestId === visibleRequest.id
+              ? requestedOfferVersion
+              : undefined
+          }
           clientAuthority={clientReadAuthority}
           onBack={closeDetail}
           pending={pending}
@@ -1975,6 +2004,7 @@ export function CommercialIntakeWorkspace({
             onSelect={(id) => {
               // Choosing a row is newer than a Request held behind a capture.
               setRequestToOpen(undefined);
+              setRequestedOfferVersion(undefined);
               void selectRequest(id);
             }}
             onReload={() => companyId && void loadRequests(companyId)}
@@ -2287,6 +2317,7 @@ function RequestDetail({
   actor,
   identity,
   request,
+  requestedOfferVersion,
   onBack,
   pending,
   onOpenClientDossier,
@@ -2303,6 +2334,8 @@ function RequestDetail({
   onOpenProject?: (projectId: string) => void;
   identity: BrowserIdentity;
   request: ClientRequest;
+  /** Opens the Offer with this exact version selected instead of its head. */
+  requestedOfferVersion: RequestedOfferVersion | undefined;
   onBack: () => void;
   pending: boolean;
   /** Offered only for a current dossier identity, never a name or original id. */
@@ -2450,10 +2483,11 @@ function RequestDetail({
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
       <OfferPanel
-        key={`offer:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
+        key={`offer:${requestedOfferVersion?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}
+        requestedVersionId={requestedOfferVersion?.offerVersionId}
         currentClientId={request.clientReference?.currentClientId}
         clientDisplayName={request.clientReference?.displayName}
         onCompanyContextRejected={onCompanyContextRejected}
