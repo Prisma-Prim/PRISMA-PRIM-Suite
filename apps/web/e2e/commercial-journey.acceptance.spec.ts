@@ -189,6 +189,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
   const sessions: Page[] = [];
   let clientRequestId = '';
   let opportunityId = '';
+  let projectId = '';
   // The Access labels of both responsible actors, as the change records them.
   let adaLabel = '';
   let ionLabel = '';
@@ -810,10 +811,22 @@ test('follows one commercial case from Request to signed agreement, Project and 
       exact: true,
     });
 
-    async function approveAndSign(agreementPath: string): Promise<void> {
-      await expect(
-        checks.getByText('No Contract Quality Check run yet.', { exact: true }),
-      ).toBeVisible();
+    /**
+     * Runs the checks, approves and signs the open agreement version,
+     * reloading through `reopen` after each durable step so that every state
+     * is read back from PostgreSQL before the next command relies on it.
+     */
+    async function approveAndSign(
+      agreementPath: string,
+      reopen: () => Promise<void>,
+    ): Promise<void> {
+      const recordedIdno = checks
+        .getByRole('listitem')
+        .filter({ hasText: 'IDNO / tax code is recorded' });
+      const noRun = checks.getByText('No Contract Quality Check run yet.', {
+        exact: true,
+      });
+      await expect(noRun).toBeVisible();
       await checks
         .getByRole('button', {
           name: 'Run Contract Quality Checks',
@@ -821,11 +834,10 @@ test('follows one commercial case from Request to signed agreement, Project and 
         })
         .click();
       // The recorded IDNO clears the only blocking agreement check.
-      await expect(
-        checks
-          .getByRole('listitem')
-          .filter({ hasText: 'IDNO / tax code is recorded' }),
-      ).toContainText('PASS');
+      await expect(recordedIdno).toContainText('PASS');
+      await reopen();
+      await expect(noRun).toHaveCount(0);
+      await expect(recordedIdno).toContainText('PASS');
       for (const box of await decision.getByRole('checkbox').all())
         await box.check();
       await decision
@@ -834,6 +846,10 @@ test('follows one commercial case from Request to signed agreement, Project and 
           exact: true,
         })
         .click();
+      await expect(
+        decision.getByText('Approved internally', { exact: true }),
+      ).toBeVisible();
+      await reopen();
       await expect(
         decision.getByText('Approved internally', { exact: true }),
       ).toBeVisible();
@@ -862,11 +878,13 @@ test('follows one commercial case from Request to signed agreement, Project and 
           exact: true,
         })
         .click();
-      await expect(
-        signatures.getByText('Executed — simulated evidence only', {
-          exact: true,
-        }),
-      ).toBeVisible();
+      const executed = signatures.getByText(
+        'Executed — simulated evidence only',
+        { exact: true },
+      );
+      await expect(executed).toBeVisible();
+      await reopen();
+      await expect(executed).toBeVisible();
     }
 
     const contractsPath = `/contracts/opportunities/${opportunityId}`;
@@ -915,13 +933,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
           ).precontract,
         ).id,
       );
-      await approveAndSign(`${contractsPath}/agreements/${precontractId}`);
-      await reopenPrecontract(journey);
-      await expect(
-        signatures.getByText('Executed — simulated evidence only', {
-          exact: true,
-        }),
-      ).toBeVisible();
+      await approveAndSign(`${contractsPath}/agreements/${precontractId}`, () =>
+        reopenPrecontract(journey),
+      );
 
       const creation = projects.getByRole('region', {
         name: 'Create a preparatory Project',
@@ -1020,13 +1034,11 @@ test('follows one commercial case from Request to signed agreement, Project and 
           ).contract,
         ).id,
       );
-      await approveAndSign(`${contractsPath}/agreements/${mainContractId}`);
-      await reopenRequest(journey);
-      await expect(
-        signatures.getByText('Executed — simulated evidence only', {
-          exact: true,
-        }),
-      ).toBeVisible();
+      // The Request detail opens the current Contract Version by default.
+      await approveAndSign(
+        `${contractsPath}/agreements/${mainContractId}`,
+        () => reopenRequest(journey),
+      );
 
       const candidate = projects.getByRole('radio', {
         name: new RegExp(opportunityTitle, 'u'),
@@ -1069,11 +1081,11 @@ test('follows one commercial case from Request to signed agreement, Project and 
         path: '/projects',
       });
       if (!Array.isArray(projectList)) throw new Error('Expected Projects');
-      expect(
-        projectList.filter(
-          (project) => object(project).title === opportunityTitle,
-        ),
-      ).toHaveLength(1);
+      const journeyProjects = projectList
+        .map((project) => object(project))
+        .filter((project) => project.title === opportunityTitle);
+      expect(journeyProjects).toHaveLength(1);
+      projectId = text(object(journeyProjects[0]).id);
     });
 
     await test.step('8. prepare, approve and sign Addendum 1', async () => {
@@ -1103,6 +1115,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       if (!Array.isArray(addenda)) throw new Error('Expected Addenda');
       await approveAndSign(
         `${contractsPath}/agreements/${text(object(addenda[0]).id)}`,
+        () => reopenAddendum(journey),
       );
       await contract
         .getByRole('button', {
@@ -1422,12 +1435,30 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ).toHaveCount(0);
         await otherPage.keyboard.press('Escape');
 
+        // BIC's Project list, which the member may read, excludes the
+        // journey's Project (PRD 19.16: Project link, count and reference).
+        const projectsListed = otherPage.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            /^\/api\/projects$/u.test(new URL(response.url()).pathname),
+        );
+        await openSection(otherJourney, 'Projects');
+        expect((await projectsListed).status()).toBe(200);
+        const otherProjects = otherPage.locator('.project-workspace');
+        await expect(
+          otherProjects.getByRole('heading', { name: 'Projects', exact: true }),
+        ).toBeVisible();
+        await expect(otherProjects).not.toContainText(opportunityTitle);
+        await expect(otherProjects).not.toContainText(clientName);
+
         // Direct identifiers reveal nothing either.
         for (const context of [companyId, otherCompanyId])
           for (const path of [
             `/commercial-intake/requests?limit=25`,
             `/offers/opportunities/${opportunityId}`,
             `/contracts/opportunities/${opportunityId}`,
+            '/projects',
+            `/projects/${projectId}`,
           ]) {
             const response = await request.get(`${apiOrigin}/api${path}`, {
               headers: { ...identities.other, 'x-company-context-id': context },
@@ -1435,12 +1466,16 @@ test('follows one commercial case from Request to signed agreement, Project and 
             const body = await response.text();
             expect(body).not.toContain(subject);
             expect(body).not.toContain(opportunityTitle);
+            expect(body).not.toContain(projectId);
             if (context === companyId)
               // The journey Company is not a valid active Company for the
-              // BIC member: the safe denial, for the list read as well.
+              // BIC member: the safe denial, for the list reads as well.
               expect(response.status(), `${context} ${path}`).toBe(403);
-            else if (path.startsWith('/commercial-intake'))
-              // BIC's own Request list reads, without the journey case.
+            else if (
+              path.startsWith('/commercial-intake') ||
+              path === '/projects'
+            )
+              // BIC's own lists read, without the journey case or Project.
               expect(response.status(), path).toBe(200);
             else expect([403, 404], path).toContain(response.status());
           }
@@ -1508,6 +1543,16 @@ async function reopenPrecontract(journey: Journey): Promise<void> {
   await contract
     .getByRole('region', { name: 'Precontract', exact: true })
     .getByRole('button', { name: 'Open Precontract', exact: true })
+    .click();
+}
+
+/** Reloads, reopens the Request and selects Addendum 1 of its Contract. */
+async function reopenAddendum(journey: Journey): Promise<void> {
+  await reopenRequest(journey);
+  await journey.page
+    .getByRole('region', { name: 'Contract', exact: true })
+    .getByRole('region', { name: 'Addenda', exact: true })
+    .getByRole('button', { name: 'Open Addendum 1', exact: true })
     .click();
 }
 
