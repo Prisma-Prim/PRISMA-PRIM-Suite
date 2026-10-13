@@ -31,7 +31,10 @@ import { clientWorkspaceCopy } from './client/client-workspace.copy';
 import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
 import { clientLegalEntitiesCopy } from './client/client-legal-entities.copy';
-import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
+import {
+  CommercialIntakeWorkspace,
+  type RequestedVersion,
+} from './commercial-intake/CommercialIntakeWorkspace';
 import {
   useSalesStageCopy,
   type SalesStageCopy,
@@ -44,6 +47,7 @@ import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import { offerActivityCopy } from './offer/offer.copy';
 import type { SalesStageConfiguredActivityLogEvent } from './production-shell/company-context-transitions';
+import { contractActivityCopy } from './contract/contract.copy';
 import { OperationalHome } from './operational-home/OperationalHome';
 import {
   useProductionShellContext,
@@ -80,8 +84,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedRequest, setRequestedRequest] = useState<{
     requestsMount: string;
     clientRequestId: string;
-    /** The exact Offer Version to select in the Request detail, if any. */
-    offerVersionId?: string;
+    /** The exact version to select in the Request detail, if any. */
+    version?: RequestedVersion;
     requestId: number;
   }>();
   const [requestedDocument, setRequestedDocument] = useState<
@@ -255,11 +259,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     : undefined;
   // The shell owns one requested Request for the Requests workspace it offers.
   const openRequest = canAccessCommercial
-    ? (clientRequestId: string, offerVersionId?: string) => {
+    ? (clientRequestId: string, version?: RequestedVersion) => {
         setRequestedRequest((current) => ({
           requestsMount,
           clientRequestId,
-          offerVersionId,
+          version,
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('requests');
@@ -691,20 +695,22 @@ function requestsMountOf(sessionGeneration: number, actor: ActorContext) {
 /**
  * The Request a commercial event may open inside the active Company: its own
  * Request, the containing Request the server derived for an Opportunity event
- * only while the actor can read Requests, or the Request owning an Offer, with
- * the exact Offer Version an Offer event concerns. Other targets open nothing.
+ * only while the actor can read Requests, or the Request owning an Offer or
+ * Contract, with the exact Offer Version or Contract Version the event
+ * concerns. Other targets open nothing.
  */
 function requestOpenedBy(
   event: ActivityLogEvent,
   activeCompanyId: string | undefined,
 ):
-  | { clientRequestId: string; offerVersionId?: string; label: string }
+  | { clientRequestId: string; version?: RequestedVersion; label: string }
   | undefined {
   const { target } = event;
   if (
     (target.type !== 'client_request' &&
       target.type !== 'opportunity' &&
-      target.type !== 'offer_version') ||
+      target.type !== 'offer_version' &&
+      target.type !== 'contract_version') ||
     target.companyId !== activeCompanyId ||
     target.clientRequestId === undefined
   )
@@ -713,8 +719,22 @@ function requestOpenedBy(
     case 'offer_version':
       return {
         clientRequestId: target.clientRequestId,
-        offerVersionId: target.offerVersionId,
+        version: {
+          type: 'offer_version',
+          offerVersionId: target.offerVersionId,
+        },
         label: offerActivityCopy.openVersion,
+      };
+    case 'contract_version':
+      return {
+        clientRequestId: target.clientRequestId,
+        version: {
+          type: 'contract_version',
+          contractId: target.contractId,
+          contractVersionId: target.contractVersionId,
+          kind: target.kind,
+        },
+        label: contractActivityCopy.openVersion,
       };
     default:
       return {
@@ -733,7 +753,7 @@ function ActivityLog({
   activeCompanyId: string | undefined;
   /** Present only while the shell offers the Requests section. */
   onOpenRequest:
-    ((clientRequestId: string, offerVersionId?: string) => void) | undefined;
+    ((clientRequestId: string, version?: RequestedVersion) => void) | undefined;
 }) {
   const invitationActivityActionLabels =
     useWorkspaceInvitationsCopy().activityActionLabels;
@@ -785,7 +805,7 @@ function ActivityLog({
                       onClick={() =>
                         onOpenRequest(
                           openedRequest.clientRequestId,
-                          openedRequest.offerVersionId,
+                          openedRequest.version,
                         )
                       }
                     >
@@ -844,6 +864,7 @@ function activityDescription(
     ...clientUnionCopy.actionLabels,
     ...commercialIntakeCopy.activityActionLabels,
     ...offerActivityCopy.actionLabels,
+    ...contractActivityCopy.actionLabels,
     ...invitationActivityActionLabels,
     'opportunity.stage.changed': stageCopy('activityStageChanged'),
     'sales_stage.configured': stageCopy('activitySalesStageConfigured'),
@@ -940,6 +961,24 @@ function activityTargetDescription(
     }
     case 'sales_stage':
       return stageCopy('salesStageSettings');
+    case 'contract_version': {
+      const version = contractActivityCopy.versionTarget(
+        contractActivityCopy.kinds[event.target.kind],
+        event.target.illustrativeReference,
+        event.target.versionNumber,
+      );
+      switch (event.action) {
+        case 'contract_version.signature_recorded':
+          return `${version} · ${contractActivityCopy.simulated}`;
+        case 'contract_project.linked':
+          return `${version} — ${contractActivityCopy.linkedProject(
+            event.metadata.project.projectTitle,
+            event.metadata.created,
+          )}`;
+        default:
+          return version;
+      }
+    }
     case 'company_role_assignment':
       return `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`;
     case 'client_company_relationship':

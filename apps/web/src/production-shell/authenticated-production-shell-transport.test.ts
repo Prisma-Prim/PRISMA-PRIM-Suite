@@ -40,6 +40,26 @@ const offerVersionTarget = {
   offerVersionId: 'offer-version-2',
   versionNumber: 2,
 };
+const firstContractVersionTarget = {
+  type: 'contract_version',
+  contractId: 'contract-1',
+  contractVersionId: 'contract-version-1',
+  kind: 'CONTRACT',
+  illustrativeReference: 4,
+  versionNumber: 1,
+  opportunityId: 'opportunity-358',
+  clientRequestId: 'request-358',
+  companyId,
+};
+const contractVersionTarget = {
+  ...firstContractVersionTarget,
+  contractVersionId: 'contract-version-2',
+  versionNumber: 2,
+};
+const linkedProject = {
+  created: true,
+  project: { projectId: 'project-1', projectTitle: 'Synthetic Project' },
+};
 const roleAssignmentTarget = {
   type: 'company_role_assignment',
   assignmentId: 'assignment-1',
@@ -805,6 +825,163 @@ describe('the authenticated Activity Log transport', () => {
       const { result } = await loadActivityLog({
         events: [
           event('event-offer', 'offer.created', firstOfferVersionTarget),
+          malformed,
+        ],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
+
+  it('keeps the kind, reference, exact version, simulated marker and linked Project of Contract events', async () => {
+    const events = [
+      event(
+        'event-contract-link',
+        'contract_project.linked',
+        contractVersionTarget,
+        linkedProject,
+      ),
+      event(
+        'event-contract-signature',
+        'contract_version.signature_recorded',
+        contractVersionTarget,
+        { evidenceKind: 'SIMULATED' },
+      ),
+      event(
+        'event-contract-approved',
+        'contract_version.approved',
+        contractVersionTarget,
+      ),
+      event(
+        'event-contract-rejected',
+        'contract_version.rejected',
+        firstContractVersionTarget,
+      ),
+      event(
+        'event-contract-version',
+        'contract_version.created',
+        contractVersionTarget,
+      ),
+      event('event-contract', 'contract.created', firstContractVersionTarget),
+      event('event-precontract', 'contract.created', {
+        ...firstContractVersionTarget,
+        contractId: 'precontract-1',
+        kind: 'PRECONTRACT',
+      }),
+      event('event-addendum', 'contract.created', {
+        ...firstContractVersionTarget,
+        contractId: 'addendum-1',
+        kind: 'ADDENDUM',
+      }),
+    ];
+    const { result } = await loadActivityLog({ events });
+
+    expect(result).toEqual({ status: 'ok', value: { events } });
+  });
+
+  it.each<[string, unknown]>([
+    [
+      'a Contract creation on a later version',
+      event(
+        'event-contract-malformed',
+        'contract.created',
+        contractVersionTarget,
+      ),
+    ],
+    [
+      'an unknown kind',
+      event('event-contract-malformed', 'contract_version.created', {
+        ...contractVersionTarget,
+        kind: 'LEASE',
+      }),
+    ],
+    [
+      'a missing Contract',
+      event('event-contract-malformed', 'contract_version.created', {
+        ...contractVersionTarget,
+        contractId: undefined,
+      }),
+    ],
+    [
+      'a missing Request',
+      event('event-contract-malformed', 'contract_version.created', {
+        ...contractVersionTarget,
+        clientRequestId: undefined,
+      }),
+    ],
+    [
+      'an Offer target',
+      event('event-contract-malformed', 'contract_version.created', {
+        ...offerVersionTarget,
+      }),
+    ],
+    [
+      'an amount',
+      event(
+        'event-contract-malformed',
+        'contract_version.approved',
+        contractVersionTarget,
+        { amount: '345.00' },
+      ),
+    ],
+    [
+      'a signature without its simulated evidence',
+      event(
+        'event-contract-malformed',
+        'contract_version.signature_recorded',
+        contractVersionTarget,
+        { evidenceKind: 'SIGNED' },
+      ),
+    ],
+    [
+      'a signatory label',
+      event(
+        'event-contract-malformed',
+        'contract_version.signature_recorded',
+        contractVersionTarget,
+        { evidenceKind: 'SIMULATED', providerSignatoryLabel: 'Provider' },
+      ),
+    ],
+    [
+      'a Project link without its Project',
+      event(
+        'event-contract-malformed',
+        'contract_project.linked',
+        contractVersionTarget,
+        { created: true },
+      ),
+    ],
+    [
+      'a Project link with a textual creation flag',
+      event(
+        'event-contract-malformed',
+        'contract_project.linked',
+        contractVersionTarget,
+        { ...linkedProject, created: 'true' },
+      ),
+    ],
+    [
+      'a Project link with Project content',
+      event(
+        'event-contract-malformed',
+        'contract_project.linked',
+        contractVersionTarget,
+        {
+          ...linkedProject,
+          project: { ...linkedProject.project, status: 'preparatory' },
+        },
+      ),
+    ],
+  ])(
+    'fails closed on a Contract event with %s next to a valid one',
+    async (_case, malformed) => {
+      const { result } = await loadActivityLog({
+        events: [
+          event(
+            'event-contract',
+            'contract.created',
+            firstContractVersionTarget,
+          ),
           malformed,
         ],
       });

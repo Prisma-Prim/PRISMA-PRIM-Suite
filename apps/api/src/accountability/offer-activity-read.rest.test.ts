@@ -336,6 +336,72 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
     }
   });
 
+  it('fills the page with valid events past more than a page of newer rows that fail closed', async () => {
+    const setup = await preparedCompany();
+    const offer = await createdOffer(setup, 'bounded');
+    const valid = offerEvents(await activityLog(OWNER, setup.companyId));
+    expect(valid).toHaveLength(2);
+
+    // Sixty newer recorded approvals, each on its own successor version, that
+    // the database shape admits; all but the newest acknowledge an unknown
+    // warning code. The disposable fixture bypasses the lineage triggers.
+    const recordedAt = tick();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL session_replication_role = replica');
+      await client.query(
+        `INSERT INTO offer_versions
+         SELECT (jsonb_populate_record(v, jsonb_build_object(
+           'id', md5($2 || g)::uuid,
+           'version_number', g,
+           'predecessor_version_id',
+             CASE WHEN g = 2 THEN v.id ELSE md5($2 || (g - 1))::uuid END
+         ))).*
+         FROM offer_versions v, generate_series(2, 61) g
+         WHERE v.id = $1`,
+        [offer.v1.id, `bounded-${offer.offerId}-`],
+      );
+      await client.query(
+        `INSERT INTO offer_events (workspace_id, company_id, action, offer_id,
+           offer_version_id, actor_internal_user_id,
+           actor_workspace_membership_id, occurred_at, metadata)
+         SELECT e.workspace_id, e.company_id, 'offer_version.approved',
+           e.offer_id, v.id, e.actor_internal_user_id,
+           e.actor_workspace_membership_id,
+           $2::timestamptz + v.version_number * interval '1 second',
+           jsonb_build_object(
+             'offerId', e.offer_id::text,
+             'offerVersionId', v.id::text,
+             'versionNumber', v.version_number,
+             'provenance', 'ILLUSTRATIVE',
+             'outcome', 'APPROVED',
+             'ruleSetVersion', 1,
+             'acknowledgedWarningCodes', CASE WHEN v.version_number = 61
+               THEN '[]'::jsonb ELSE '["UNKNOWN_CODE"]'::jsonb END)
+         FROM offer_events e
+         JOIN offer_versions v
+           ON v.offer_id = e.offer_id AND v.version_number > 1
+         WHERE e.offer_id = $1 AND e.action = 'offer.created'`,
+        [offer.offerId, recordedAt.toISOString()],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    const page = offerEvents(await activityLog(OWNER, setup.companyId));
+    expect(page).toHaveLength(3);
+    expect(page[0]).toMatchObject({
+      action: 'offer_version.approved',
+      target: { versionNumber: 61 },
+    });
+    expect(page.slice(1)).toEqual(valid);
+  });
+
   interface PreparedCompany {
     companyId: string;
     ownerMembershipId: string;

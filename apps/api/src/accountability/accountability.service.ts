@@ -26,11 +26,13 @@ import {
   inArray,
   isNotNull,
   isNull,
+  ne,
   notInArray,
   or,
   sql,
+  type SQL,
 } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   taskEvents,
@@ -64,6 +66,9 @@ import {
   opportunities,
   clientRequests,
   contractEvents,
+  contractProjectLinks,
+  contracts,
+  contractVersions,
   profitabilityEstimateEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
@@ -80,12 +85,17 @@ import {
   eligibleOfferActivityActions,
   readOfferActivity,
 } from './offer-activity-projection.js';
+import {
+  eligibleContractActivityActions,
+  readContractActivity,
+} from './contract-activity-projection.js';
 import { readClientCorrectionChanges } from './client-correction-history.js';
 import type {
   ActivityLogPage,
   ClientCorrectionHistoryRead,
   CommercialActivityEvent,
   OfferActivityEvent,
+  ContractActivityEvent,
   DocumentRegisteredActivityEvent,
   DocumentCorrectedActivityEvent,
   DocumentProjectActivityEvent,
@@ -101,6 +111,54 @@ import {
 
 const INITIAL_PAGE_SIZE = 50;
 const CLIENT_CORRECTION_HISTORY_PAGE_SIZE = 20;
+
+/** The exact server time, as PostgreSQL renders it, and id of a page's last row. */
+interface DatedEventCursor {
+  occurredAt: string;
+  id: string;
+}
+
+/**
+ * The rows strictly older than the cursor in the newest-first
+ * `(occurredAt, id)` order of a dated event source, or every row without one.
+ */
+function olderThan(
+  occurredAt: AnyPgColumn,
+  id: AnyPgColumn,
+  after: DatedEventCursor | undefined,
+): SQL | undefined {
+  return after === undefined
+    ? undefined
+    : sql`(${occurredAt}, ${id}) < (${after.occurredAt}::timestamptz, ${after.id}::uuid)`;
+}
+
+/**
+ * The newest projectable events of one dated source, up to the page size. The
+ * limit applies to projected events: a row rejected by its projection never
+ * takes the place of an older valid event. Each read returns at most one
+ * page of rows strictly older than the cursor, newest first.
+ */
+async function projectedPage<
+  Row extends { id: string; cursorAt: string },
+  Event,
+>(
+  read: (after: DatedEventCursor | undefined) => Promise<Row[]>,
+  project: (row: Row) => Event | undefined,
+): Promise<Event[]> {
+  const events: Event[] = [];
+  let after: DatedEventCursor | undefined;
+  for (;;) {
+    const rows = await read(after);
+    for (const row of rows) {
+      const event = project(row);
+      if (event !== undefined) events.push(event);
+      if (events.length === INITIAL_PAGE_SIZE) return events;
+    }
+    const last = rows.at(-1);
+    if (!last || rows.length < INITIAL_PAGE_SIZE) return events;
+    after = { occurredAt: last.cursorAt, id: last.id };
+  }
+}
 
 @Injectable()
 export class AccountabilityService {
@@ -1020,55 +1078,63 @@ export class AccountabilityService {
         action !== 'sales_stage.configured',
     );
     if (actions.length === 0) return [];
-    const rows = await this.databaseContext.connection
-      .select({
-        id: commercialIntakeEvents.id,
-        action: commercialIntakeEvents.action,
-        metadata: commercialIntakeEvents.metadata,
-        companyId: commercialIntakeEvents.companyId,
-        clientRequestId: commercialIntakeEvents.clientRequestId,
-        opportunityId: commercialIntakeEvents.opportunityId,
-        occurredAt: commercialIntakeEvents.occurredAt,
-        internalUserId: internalUsers.id,
-        displayName: internalUsers.displayName,
-      })
-      .from(commercialIntakeEvents)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(
-            workspaceMemberships.workspaceId,
-            commercialIntakeEvents.workspaceId,
-          ),
-          eq(
-            workspaceMemberships.id,
-            commercialIntakeEvents.actorWorkspaceMembershipId,
-          ),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        eq(internalUsers.id, workspaceMemberships.internalUserId),
-      )
-      .where(
-        and(
-          eq(commercialIntakeEvents.workspaceId, actor.workspaceId),
-          eq(commercialIntakeEvents.companyId, company.id),
-          or(
-            ...actions.map((action) =>
-              eq(sql<string>`${commercialIntakeEvents.action}::text`, action),
+    const read = (after: DatedEventCursor | undefined) =>
+      this.databaseContext.connection
+        .select({
+          id: commercialIntakeEvents.id,
+          cursorAt: sql<string>`${commercialIntakeEvents.occurredAt}::text`,
+          action: commercialIntakeEvents.action,
+          metadata: commercialIntakeEvents.metadata,
+          companyId: commercialIntakeEvents.companyId,
+          clientRequestId: commercialIntakeEvents.clientRequestId,
+          opportunityId: commercialIntakeEvents.opportunityId,
+          occurredAt: commercialIntakeEvents.occurredAt,
+          internalUserId: internalUsers.id,
+          displayName: internalUsers.displayName,
+        })
+        .from(commercialIntakeEvents)
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(
+              workspaceMemberships.workspaceId,
+              commercialIntakeEvents.workspaceId,
+            ),
+            eq(
+              workspaceMemberships.id,
+              commercialIntakeEvents.actorWorkspaceMembershipId,
             ),
           ),
-        ),
-      )
-      .orderBy(
-        desc(commercialIntakeEvents.occurredAt),
-        desc(commercialIntakeEvents.id),
-      )
-      .limit(INITIAL_PAGE_SIZE);
-    return rows.flatMap((row) => {
+        )
+        .innerJoin(
+          internalUsers,
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+        )
+        .where(
+          and(
+            eq(commercialIntakeEvents.workspaceId, actor.workspaceId),
+            eq(commercialIntakeEvents.companyId, company.id),
+            or(
+              ...actions.map((action) =>
+                eq(sql<string>`${commercialIntakeEvents.action}::text`, action),
+              ),
+            ),
+            olderThan(
+              commercialIntakeEvents.occurredAt,
+              commercialIntakeEvents.id,
+              after,
+            ),
+          ),
+        )
+        .orderBy(
+          desc(commercialIntakeEvents.occurredAt),
+          desc(commercialIntakeEvents.id),
+        )
+        .limit(INITIAL_PAGE_SIZE);
+    return projectedPage(read, (row) => {
       const recorded = readCommercialActivity(row);
-      if (!recorded || recorded.action === 'sales_stage.configured') return [];
+      if (!recorded || recorded.action === 'sales_stage.configured')
+        return undefined;
       const projected: CommercialActivityEvent = {
         ...recorded,
         id: row.id,
@@ -1079,7 +1145,7 @@ export class AccountabilityService {
         },
         target: commercialActivityTarget(company, recorded.action, row),
       };
-      return [projected];
+      return projected;
     });
   }
 
@@ -1099,89 +1165,92 @@ export class AccountabilityService {
     if (!actor.active || !company) return [];
     const actions = eligibleOfferActivityActions(company);
     if (actions.length === 0) return [];
-    const rows = await this.databaseContext.connection
-      .select({
-        id: offerEvents.id,
-        action: offerEvents.action,
-        metadata: offerEvents.metadata,
-        companyId: offerEvents.companyId,
-        offerId: offerEvents.offerId,
-        offerVersionId: offerEvents.offerVersionId,
-        occurredAt: offerEvents.occurredAt,
-        illustrativeReference: offers.illustrativeReference,
-        resolvedOfferVersionId: offerVersions.id,
-        versionNumber: offerVersions.versionNumber,
-        opportunityId: opportunities.id,
-        clientRequestId: clientRequests.id,
-        internalUserId: internalUsers.id,
-        displayName: internalUsers.displayName,
-      })
-      .from(offerEvents)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(workspaceMemberships.workspaceId, offerEvents.workspaceId),
-          eq(workspaceMemberships.id, offerEvents.actorWorkspaceMembershipId),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        eq(internalUsers.id, workspaceMemberships.internalUserId),
-      )
-      .innerJoin(
-        offers,
-        and(
-          eq(offers.workspaceId, offerEvents.workspaceId),
-          eq(offers.companyId, offerEvents.companyId),
-          eq(offers.id, offerEvents.offerId),
-        ),
-      )
-      .innerJoin(
-        opportunities,
-        and(
-          eq(opportunities.workspaceId, offers.workspaceId),
-          eq(opportunities.companyId, offers.companyId),
-          eq(opportunities.clientRequestId, offers.clientRequestId),
-          eq(opportunities.id, offers.opportunityId),
-        ),
-      )
-      .innerJoin(
-        clientRequests,
-        and(
-          eq(clientRequests.workspaceId, opportunities.workspaceId),
-          eq(clientRequests.companyId, opportunities.companyId),
-          eq(clientRequests.id, opportunities.clientRequestId),
-        ),
-      )
-      .leftJoin(
-        offerVersions,
-        and(
-          eq(offerVersions.workspaceId, offerEvents.workspaceId),
-          eq(offerVersions.companyId, offerEvents.companyId),
-          eq(offerVersions.offerId, offerEvents.offerId),
-          or(
-            eq(offerVersions.id, offerEvents.offerVersionId),
-            and(
-              eq(offerEvents.action, 'offer.created'),
-              isNull(offerEvents.offerVersionId),
-              eq(offerVersions.versionNumber, 1),
+    const read = (after: DatedEventCursor | undefined) =>
+      this.databaseContext.connection
+        .select({
+          id: offerEvents.id,
+          cursorAt: sql<string>`${offerEvents.occurredAt}::text`,
+          action: offerEvents.action,
+          metadata: offerEvents.metadata,
+          companyId: offerEvents.companyId,
+          offerId: offerEvents.offerId,
+          offerVersionId: offerEvents.offerVersionId,
+          occurredAt: offerEvents.occurredAt,
+          illustrativeReference: offers.illustrativeReference,
+          resolvedOfferVersionId: offerVersions.id,
+          versionNumber: offerVersions.versionNumber,
+          opportunityId: opportunities.id,
+          clientRequestId: clientRequests.id,
+          internalUserId: internalUsers.id,
+          displayName: internalUsers.displayName,
+        })
+        .from(offerEvents)
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(workspaceMemberships.workspaceId, offerEvents.workspaceId),
+            eq(workspaceMemberships.id, offerEvents.actorWorkspaceMembershipId),
+          ),
+        )
+        .innerJoin(
+          internalUsers,
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+        )
+        .innerJoin(
+          offers,
+          and(
+            eq(offers.workspaceId, offerEvents.workspaceId),
+            eq(offers.companyId, offerEvents.companyId),
+            eq(offers.id, offerEvents.offerId),
+          ),
+        )
+        .innerJoin(
+          opportunities,
+          and(
+            eq(opportunities.workspaceId, offers.workspaceId),
+            eq(opportunities.companyId, offers.companyId),
+            eq(opportunities.clientRequestId, offers.clientRequestId),
+            eq(opportunities.id, offers.opportunityId),
+          ),
+        )
+        .innerJoin(
+          clientRequests,
+          and(
+            eq(clientRequests.workspaceId, opportunities.workspaceId),
+            eq(clientRequests.companyId, opportunities.companyId),
+            eq(clientRequests.id, opportunities.clientRequestId),
+          ),
+        )
+        .leftJoin(
+          offerVersions,
+          and(
+            eq(offerVersions.workspaceId, offerEvents.workspaceId),
+            eq(offerVersions.companyId, offerEvents.companyId),
+            eq(offerVersions.offerId, offerEvents.offerId),
+            or(
+              eq(offerVersions.id, offerEvents.offerVersionId),
+              and(
+                eq(offerEvents.action, 'offer.created'),
+                isNull(offerEvents.offerVersionId),
+                eq(offerVersions.versionNumber, 1),
+              ),
             ),
           ),
-        ),
-      )
-      .where(
-        and(
-          eq(offerEvents.workspaceId, actor.workspaceId),
-          eq(offerEvents.companyId, company.id),
-          inArray(offerEvents.action, [...actions]),
-          isNotNull(offerVersions.id),
-        ),
-      )
-      .orderBy(desc(offerEvents.occurredAt), desc(offerEvents.id))
-      .limit(INITIAL_PAGE_SIZE);
-    return rows.flatMap((row) => {
+        )
+        .where(
+          and(
+            eq(offerEvents.workspaceId, actor.workspaceId),
+            eq(offerEvents.companyId, company.id),
+            inArray(offerEvents.action, [...actions]),
+            isNotNull(offerVersions.id),
+            olderThan(offerEvents.occurredAt, offerEvents.id, after),
+          ),
+        )
+        .orderBy(desc(offerEvents.occurredAt), desc(offerEvents.id))
+        .limit(INITIAL_PAGE_SIZE);
+    return projectedPage(read, (row) => {
       const projected = readOfferActivity(row);
-      if (!projected) return [];
+      if (!projected) return undefined;
       const event: OfferActivityEvent = {
         ...projected,
         id: row.id,
@@ -1191,7 +1260,7 @@ export class AccountabilityService {
           displayName: row.displayName,
         },
       };
-      return [event];
+      return event;
     });
   }
 
@@ -1211,43 +1280,46 @@ export class AccountabilityService {
       !eligibleCommercialActions(company).includes('sales_stage.configured')
     )
       return [];
-    const rows = await this.databaseContext.connection
-      .select({
-        id: salesStageEvents.id,
-        action: salesStageEvents.action,
-        metadata: salesStageEvents.metadata,
-        companyId: salesStageEvents.companyId,
-        salesStageId: salesStageEvents.salesStageId,
-        occurredAt: salesStageEvents.occurredAt,
-        internalUserId: internalUsers.id,
-        displayName: internalUsers.displayName,
-      })
-      .from(salesStageEvents)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(workspaceMemberships.workspaceId, salesStageEvents.workspaceId),
-          eq(
-            workspaceMemberships.id,
-            salesStageEvents.actorWorkspaceMembershipId,
+    const read = (after: DatedEventCursor | undefined) =>
+      this.databaseContext.connection
+        .select({
+          id: salesStageEvents.id,
+          cursorAt: sql<string>`${salesStageEvents.occurredAt}::text`,
+          action: salesStageEvents.action,
+          metadata: salesStageEvents.metadata,
+          companyId: salesStageEvents.companyId,
+          salesStageId: salesStageEvents.salesStageId,
+          occurredAt: salesStageEvents.occurredAt,
+          internalUserId: internalUsers.id,
+          displayName: internalUsers.displayName,
+        })
+        .from(salesStageEvents)
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(workspaceMemberships.workspaceId, salesStageEvents.workspaceId),
+            eq(
+              workspaceMemberships.id,
+              salesStageEvents.actorWorkspaceMembershipId,
+            ),
           ),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        eq(internalUsers.id, workspaceMemberships.internalUserId),
-      )
-      .where(
-        and(
-          eq(salesStageEvents.workspaceId, actor.workspaceId),
-          eq(salesStageEvents.companyId, company.id),
-        ),
-      )
-      .orderBy(desc(salesStageEvents.occurredAt), desc(salesStageEvents.id))
-      .limit(INITIAL_PAGE_SIZE);
-    return rows.flatMap((row) => {
+        )
+        .innerJoin(
+          internalUsers,
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+        )
+        .where(
+          and(
+            eq(salesStageEvents.workspaceId, actor.workspaceId),
+            eq(salesStageEvents.companyId, company.id),
+            olderThan(salesStageEvents.occurredAt, salesStageEvents.id, after),
+          ),
+        )
+        .orderBy(desc(salesStageEvents.occurredAt), desc(salesStageEvents.id))
+        .limit(INITIAL_PAGE_SIZE);
+    return projectedPage(read, (row) => {
       const recorded = readCommercialActivity(row);
-      if (recorded?.action !== 'sales_stage.configured') return [];
+      if (recorded?.action !== 'sales_stage.configured') return undefined;
       const projected: CommercialActivityEvent = {
         ...recorded,
         id: row.id,
@@ -1262,7 +1334,203 @@ export class AccountabilityService {
           companyId: row.companyId,
         },
       };
-      return [projected];
+      return projected;
+    });
+  }
+
+  /**
+   * Recorded Contract events are projected under the same Company rule as the
+   * other commercial events, for an actor who also holds the complete
+   * Contract read prerequisite. The query resolves each event's current
+   * Contract, owning Opportunity and Request and the exact Contract Version
+   * it concerns: its own version, version 1 recorded atomically with a
+   * Contract creation, or the executed version a Project link follows. A
+   * Project link also resolves its Project inside the Project owner's Client
+   * boundary. An event whose target cannot be resolved is omitted before the
+   * bounded page and contributes no count, reference or ordering value.
+   */
+  private async contractActivityEvents(
+    actor: ActorContext,
+  ): Promise<ContractActivityEvent[]> {
+    const company = actor.activeCompany;
+    if (!actor.active || !company) return [];
+    const actions = eligibleContractActivityActions(actor);
+    if (actions.length === 0) return [];
+    const isProjectLink = eq(contractEvents.action, 'contract_project.linked');
+    const read = (after: DatedEventCursor | undefined) =>
+      this.databaseContext.connection
+        .select({
+          id: contractEvents.id,
+          cursorAt: sql<string>`${contractEvents.occurredAt}::text`,
+          // Integrity resolves each event to exactly one version and Project;
+          // an event resolving to several is ambiguous and fails closed. The
+          // window counts before any page boundary.
+          resolutions:
+            sql<number>`count(*) over (partition by ${contractEvents.id})`.mapWith(
+              Number,
+            ),
+          action: contractEvents.action,
+          metadata: contractEvents.metadata,
+          companyId: contractEvents.companyId,
+          contractVersionId: contractEvents.contractVersionId,
+          occurredAt: contractEvents.occurredAt,
+          contractId: contracts.id,
+          kind: contracts.kind,
+          origin: contracts.origin,
+          sourceOfferVersionId: contracts.sourceOfferVersionId,
+          parentContractId: contracts.parentContractId,
+          addendumOrdinal: contracts.addendumOrdinal,
+          illustrativeReference: contracts.illustrativeReference,
+          resolvedContractVersionId: contractVersions.id,
+          versionNumber: contractVersions.versionNumber,
+          executionState: contractVersions.executionState,
+          pricingSnapshotId: contractVersions.pricingSnapshotId,
+          opportunityId: opportunities.id,
+          clientRequestId: clientRequests.id,
+          projectId: projects.id,
+          projectTitle: projects.title,
+          linkCreated: contractProjectLinks.created,
+          internalUserId: internalUsers.id,
+          displayName: internalUsers.displayName,
+        })
+        .from(contractEvents)
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(workspaceMemberships.workspaceId, contractEvents.workspaceId),
+            eq(
+              workspaceMemberships.id,
+              contractEvents.actorWorkspaceMembershipId,
+            ),
+          ),
+        )
+        .innerJoin(
+          internalUsers,
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+        )
+        .innerJoin(
+          contracts,
+          and(
+            eq(contracts.workspaceId, contractEvents.workspaceId),
+            eq(contracts.companyId, contractEvents.companyId),
+            eq(contracts.id, contractEvents.contractId),
+          ),
+        )
+        .innerJoin(
+          opportunities,
+          and(
+            eq(opportunities.workspaceId, contracts.workspaceId),
+            eq(opportunities.companyId, contracts.companyId),
+            eq(opportunities.clientRequestId, contracts.clientRequestId),
+            eq(opportunities.id, contracts.opportunityId),
+          ),
+        )
+        .innerJoin(
+          clientRequests,
+          and(
+            eq(clientRequests.workspaceId, opportunities.workspaceId),
+            eq(clientRequests.companyId, opportunities.companyId),
+            eq(clientRequests.id, opportunities.clientRequestId),
+          ),
+        )
+        .leftJoin(
+          contractVersions,
+          and(
+            eq(contractVersions.workspaceId, contractEvents.workspaceId),
+            eq(contractVersions.companyId, contractEvents.companyId),
+            eq(contractVersions.contractId, contractEvents.contractId),
+            or(
+              eq(contractVersions.id, contractEvents.contractVersionId),
+              and(
+                eq(contractEvents.action, 'contract.created'),
+                isNull(contractEvents.contractVersionId),
+                eq(contractVersions.versionNumber, 1),
+              ),
+              and(
+                isProjectLink,
+                isNull(contractEvents.contractVersionId),
+                eq(contractVersions.executionState, 'EXECUTED'),
+              ),
+            ),
+          ),
+        )
+        // The linked Project, readable only inside the Project owner's Client
+        // boundary: its original Client active or superseded, with an active
+        // relationship to the event's Company.
+        .leftJoin(
+          projects,
+          and(
+            isProjectLink,
+            eq(projects.workspaceId, contractEvents.workspaceId),
+            eq(projects.companyId, contractEvents.companyId),
+            sql`${projects.id}::text = ${contractEvents.metadata}->>'projectId'`,
+          ),
+        )
+        .leftJoin(
+          clientAccounts,
+          and(
+            eq(clientAccounts.workspaceId, projects.workspaceId),
+            eq(clientAccounts.id, projects.clientAccountId),
+            inArray(clientAccounts.status, ['active', 'superseded']),
+          ),
+        )
+        .leftJoin(
+          clientCompanyRelationships,
+          and(
+            eq(clientCompanyRelationships.workspaceId, projects.workspaceId),
+            eq(clientCompanyRelationships.companyId, projects.companyId),
+            eq(
+              clientCompanyRelationships.clientAccountId,
+              projects.clientAccountId,
+            ),
+            eq(clientCompanyRelationships.status, 'active'),
+          ),
+        )
+        // The recorded link itself: the event's metadata has no foreign key,
+        // so only the link record proves the relationship and its creation.
+        .leftJoin(
+          contractProjectLinks,
+          and(
+            eq(contractProjectLinks.workspaceId, contractEvents.workspaceId),
+            eq(contractProjectLinks.companyId, contractEvents.companyId),
+            eq(contractProjectLinks.contractId, contractEvents.contractId),
+            eq(contractProjectLinks.projectId, projects.id),
+          ),
+        )
+        .where(
+          and(
+            eq(contractEvents.workspaceId, actor.workspaceId),
+            eq(contractEvents.companyId, company.id),
+            inArray(contractEvents.action, [...actions]),
+            isNotNull(contractVersions.id),
+            or(
+              ne(contractEvents.action, 'contract_project.linked'),
+              and(
+                isNotNull(projects.id),
+                isNotNull(clientAccounts.id),
+                isNotNull(clientCompanyRelationships.id),
+                isNotNull(contractProjectLinks.id),
+              ),
+            ),
+            olderThan(contractEvents.occurredAt, contractEvents.id, after),
+          ),
+        )
+        .orderBy(desc(contractEvents.occurredAt), desc(contractEvents.id))
+        .limit(INITIAL_PAGE_SIZE);
+    return projectedPage(read, (row) => {
+      const projected =
+        row.resolutions === 1 ? readContractActivity(row) : undefined;
+      if (!projected) return undefined;
+      const event: ContractActivityEvent = {
+        ...projected,
+        id: row.id,
+        occurredAt: row.occurredAt.toISOString(),
+        actor: {
+          internalUserId: row.internalUserId,
+          displayName: row.displayName,
+        },
+      };
+      return event;
     });
   }
 
@@ -2524,6 +2792,7 @@ export class AccountabilityService {
       ...(await this.commercialEvents(actor)),
       ...(await this.offerActivityEvents(actor)),
       ...(await this.salesStageEvents(actor)),
+      ...(await this.contractActivityEvents(actor)),
     ];
     datedEvents.sort(
       (left, right) =>

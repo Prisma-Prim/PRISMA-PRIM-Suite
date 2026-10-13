@@ -47,6 +47,32 @@ export const contractCopy = {
   lineTax: 'Tax',
 };
 
+// Contract history in the commercial Activity Log names the action, the kind,
+// illustrative reference and version, the simulated signature marker and a
+// linked Project only; never Contract content.
+export const contractActivityCopy = {
+  actionLabels: {
+    'contract.created': 'created an illustrative agreement',
+    'contract_version.created': 'created an agreement version',
+    'contract_version.approved': 'approved an agreement version',
+    'contract_version.rejected': 'rejected an agreement version',
+    'contract_version.signature_recorded':
+      'recorded the signature of an agreement version',
+    'contract_project.linked': 'linked a Project to an agreement',
+  },
+  kinds: {
+    CONTRACT: 'Contract',
+    PRECONTRACT: 'Precontract',
+    ADDENDUM: 'Addendum',
+  },
+  versionTarget: (kind: string, reference: number, versionNumber: number) =>
+    `Illustrative ${kind} ${reference} · version ${versionNumber}`,
+  simulated: 'Simulated',
+  linkedProject: (projectTitle: string, created: boolean) =>
+    `${created ? 'Created Project' : 'Project'}: ${projectTitle}`,
+  openVersion: 'Open agreement version',
+} as const;
+
 export const contractQualityCopy = {
   title: 'Contract Quality Checks',
   empty: 'No Contract Quality Check run yet.',

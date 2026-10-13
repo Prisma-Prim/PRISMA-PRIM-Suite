@@ -4,6 +4,14 @@ import {
   type OfferQualityRuleSetVersion,
 } from '../offer/offer-quality.js';
 import { canReadOfferTarget } from '../offer/offer.read-predicate.js';
+import {
+  hasDistinctMembers,
+  hasExactly,
+  isIdentifier,
+  isPlainObject,
+  isPositiveInteger,
+  isUuid,
+} from './recorded-metadata.js';
 
 /**
  * The Offer family of the commercial Activity projection (section 25.1). Each
@@ -181,9 +189,6 @@ const VERSION_IDENTITY_FIELDS = [
 const VERSION_FIELDS = [...VERSION_IDENTITY_FIELDS, 'outcome'] as const;
 const BINDING_FIELDS = ['ruleSetVersion', 'acknowledgedWarningCodes'] as const;
 
-const SNAPSHOT_ID_GRAMMAR =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
-
 function targetReference(
   row: Record<string, unknown>,
 ): OfferTargetReference | undefined {
@@ -231,8 +236,7 @@ function recordsCreatedVersion(
       ? hasExactly(metadata, fields)
       : hasExactly(metadata, [...fields, 'predecessorVersionNumber']) &&
         metadata.predecessorVersionNumber === versionNumber - 1) &&
-    typeof metadata.pricingSnapshotId === 'string' &&
-    SNAPSHOT_ID_GRAMMAR.test(metadata.pricingSnapshotId) &&
+    isUuid(metadata.pricingSnapshotId) &&
     (metadata.recipientKind === 'PRIMARY' ||
       metadata.recipientKind === 'ADDITIONAL')
   );
@@ -246,39 +250,10 @@ function recordsBinding(metadata: Record<string, unknown>): boolean {
   const { ruleSetVersion, acknowledgedWarningCodes } = metadata;
   return (
     isRuleSetVersion(ruleSetVersion) &&
-    Array.isArray(acknowledgedWarningCodes) &&
-    new Set(acknowledgedWarningCodes).size ===
-      acknowledgedWarningCodes.length &&
-    acknowledgedWarningCodes.every((code) =>
-      OFFER_QUALITY_CODES.some((known) => known === code),
-    )
+    hasDistinctMembers(acknowledgedWarningCodes, OFFER_QUALITY_CODES)
   );
 }
 
 function isRuleSetVersion(value: unknown): value is OfferQualityRuleSetVersion {
   return value === 1 || value === 2;
-}
-
-function hasExactly(
-  metadata: Record<string, unknown>,
-  fields: readonly string[],
-): boolean {
-  const recorded = Object.keys(metadata).sort();
-  const expected = [...fields].sort();
-  return (
-    recorded.length === expected.length &&
-    recorded.every((field, index) => field === expected[index])
-  );
-}
-
-function isPositiveInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
-}
-
-function isIdentifier(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
