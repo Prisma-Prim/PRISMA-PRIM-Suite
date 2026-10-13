@@ -326,6 +326,12 @@ describe('Contract Activity metadata', () => {
   });
 
   it('projects a Project link on the executed version with the creation flag and Project reference only', () => {
+    expect(
+      readContractActivity({ ...linkedRow, kind: 'PRECONTRACT' }),
+    ).toMatchObject({
+      action: 'contract_project.linked',
+      target: { kind: 'PRECONTRACT' },
+    });
     expect(readContractActivity(linkedRow)).toEqual({
       action: 'contract_project.linked',
       target: target(SOURCES.ACCEPTED_CONTRACT, VERSION_ID, 2),
@@ -571,6 +577,16 @@ describe('Contract Activity metadata', () => {
       { ...linkedRow, projectId: null },
       { ...linkedRow, projectTitle: null },
       { ...linkedRow, projectId: PARENT_ID },
+      // An Addendum is never linked, even executed with a link record.
+      { ...linkedRow, kind: 'ADDENDUM' },
+      {
+        ...linkedRow,
+        ...resolved(SOURCES.ADDENDUM, VERSION_ID, 2),
+        executionState: 'EXECUTED',
+        projectId: PROJECT_ID,
+        projectTitle: 'Synthetic Project',
+        linkCreated: true,
+      },
       // No link record, or one whose creation flag differs from the event.
       { ...linkedRow, linkCreated: null },
       { ...linkedRow, linkCreated: undefined },

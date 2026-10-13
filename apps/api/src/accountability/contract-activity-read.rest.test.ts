@@ -596,6 +596,97 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
     expect(after).toHaveLength(5);
   });
 
+  it('omits a Project link recorded for an executed Addendum and keeps its parent link', async () => {
+    const setup = await preparedCompany();
+    const parent = await linkedContract(setup, 'addendum-link');
+    tick();
+    const addendum = record(
+      await command(
+        OWNER,
+        `${parent.base}/agreements/${parent.contractId}/addenda`,
+        {
+          expectedContractRevision: 4,
+          changeSummary: 'Synthetic change',
+          termEndsOn: '2026-12-31',
+        },
+        'addendum-link-create',
+        setup.companyId,
+      ),
+    );
+    const addendumId = stringField(addendum, 'id');
+    const agreement: RecordedContract = {
+      ...parent,
+      contractId: addendumId,
+      base: `${parent.base}/agreements/${addendumId}`,
+      v1: { id: stringField(record(addendum.version), 'id'), versionNumber: 1 },
+    };
+    tick();
+    await approve(setup, agreement, agreement.v1.id, 1);
+    tick();
+    await sign(setup, agreement, agreement.v1.id, 2);
+    await preparedReader(setup.companyId, READER_ASSIGNMENTS);
+    const before = contractEvents(await activityLog(READER, setup.companyId));
+    const linked = (events: ProjectedEvent[]) =>
+      events.filter((event) => event.action === 'contract_project.linked');
+    expect(linked(before)).toHaveLength(1);
+
+    // Integrity refuses an Addendum link (CONTRACT_KIND_NOT_LINKABLE). The
+    // disposable fixture records one, with its link record, regardless.
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL session_replication_role = replica');
+      await client.query(
+        `INSERT INTO contract_project_links (workspace_id, company_id,
+           contract_id, project_id, created, result_revision,
+           actor_internal_user_id, actor_workspace_membership_id, linked_at)
+         SELECT workspace_id, company_id, $1, project_id, false, 99,
+           actor_internal_user_id, actor_workspace_membership_id, $3
+         FROM contract_project_links WHERE contract_id = $2`,
+        [addendumId, parent.contractId, tick().toISOString()],
+      );
+      await client.query(
+        `INSERT INTO contract_events (workspace_id, company_id, action,
+           contract_id, actor_internal_user_id, actor_workspace_membership_id,
+           occurred_at, metadata)
+         SELECT workspace_id, company_id, 'contract_project.linked', $1::uuid,
+           actor_internal_user_id, actor_workspace_membership_id, linked_at,
+           jsonb_build_object('contractId', $1::text,
+             'projectId', project_id::text, 'created', false)
+         FROM contract_project_links WHERE contract_id = $1::uuid`,
+        [addendumId],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    expect(
+      (
+        await pool.query(
+          "SELECT count(*)::int AS links FROM contract_events WHERE action = 'contract_project.linked' AND contract_id = $1",
+          [addendumId],
+        )
+      ).rows[0],
+    ).toEqual({ links: 1 });
+
+    const after = contractEvents(await activityLog(READER, setup.companyId));
+    expect(after).toEqual(before);
+    expect(linked(after)).toEqual([
+      expect.objectContaining({
+        target: expect.objectContaining({
+          contractId: parent.contractId,
+          kind: 'CONTRACT',
+        }),
+      }),
+    ]);
+    expect(
+      after.filter((event) => record(event.target).kind === 'ADDENDUM'),
+    ).toHaveLength(4);
+  });
+
   it('fills the page with valid events past newer rows that fail closed, including a source or Snapshot unlike the resolved Contract', async () => {
     const setup = await preparedCompany();
     const contract = await createdContract(setup, 'bounded');

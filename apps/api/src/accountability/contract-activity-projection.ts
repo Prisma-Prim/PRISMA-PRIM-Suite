@@ -127,6 +127,9 @@ export function readContractActivity(
   if (action === 'contract_project.linked') {
     const { projectId, projectTitle } = row;
     return row.contractVersionId === null &&
+      // Only an executed Contract or Precontract is linked (section 19.8,
+      // PC16); an Addendum never is, its parent's links apply.
+      target.kind !== 'ADDENDUM' &&
       row.executionState === 'EXECUTED' &&
       hasExactly(metadata, ['contractId', 'projectId', 'created']) &&
       typeof metadata.created === 'boolean' &&
