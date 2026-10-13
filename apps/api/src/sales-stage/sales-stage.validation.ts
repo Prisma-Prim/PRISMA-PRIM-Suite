@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { SALES_STAGE_LABEL_MAXIMUM_LENGTH } from './sales-stage.definition.js';
+import {
+  isSalesStageLabel,
+  SALES_STAGE_LABEL_MAXIMUM_LENGTH,
+} from './sales-stage.definition.js';
 import type { CreateSalesStageCommand } from './sales-stage.types.js';
 
 const CREATE_FIELDS = new Set(['expectedRevision', 'label']);
@@ -27,11 +30,7 @@ export function readCreateSalesStageCommand(
     expectedRevision > MAXIMUM_REVISION
   )
     invalid('expectedRevision', 'Reload the Sales Stages before retrying.');
-  if (
-    typeof label !== 'string' ||
-    label.trim().length === 0 ||
-    label.length > SALES_STAGE_LABEL_MAXIMUM_LENGTH
-  )
+  if (typeof label !== 'string' || !isSalesStageLabel(label))
     invalid(
       'label',
       `Enter between 1 and ${SALES_STAGE_LABEL_MAXIMUM_LENGTH} characters.`,

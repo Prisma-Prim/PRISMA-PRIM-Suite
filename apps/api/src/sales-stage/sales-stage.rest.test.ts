@@ -729,9 +729,25 @@ describe.skipIf(!databaseUrl)('Sales Stage REST contract', () => {
     expect(
       (await create({ expectedRevision: 1, label: 'x'.repeat(80) })).status,
     ).toBe(201);
+    // Characters are Unicode code points, as the length(label) CHECK counts
+    // them: 80 emoji fit, 81 do not.
+    const emoji = '🚀'.repeat(80);
+    const tooLong = await create({ expectedRevision: 2, label: `${emoji}🚀` });
+    expect(tooLong.status).toBe(400);
+    expect(await body(tooLong)).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      field: 'label',
+    });
+    expect(
+      object(
+        (await body(await create({ expectedRevision: 2, label: emoji })))
+          .receipt,
+      ).label,
+    ).toBe(emoji);
     const after = await configurationWrites();
-    expect(after.stages).toHaveLength(2);
+    expect(after.stages).toHaveLength(3);
     expect(after.stages.slice(0, 1)).toEqual(before.stages);
+    expect(after.stages[2]).toMatchObject({ label: emoji, position: 3 });
   });
 
   it('refuses a stale revision and a 31st stage without committing anything', async () => {

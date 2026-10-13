@@ -61,10 +61,15 @@ export type StageEdit =
 
 export const NO_STAGE_SELECTION = 'none';
 
-/** The section 24.1 label rule: 1–80 characters, not only whitespace. */
+/**
+ * The section 24.1 label rule: 1–80 characters, not only whitespace. Characters
+ * are Unicode code points, as PostgreSQL `length()` counts them, so an astral
+ * character such as an emoji counts once, not as two UTF-16 units.
+ */
 export function isValidStageLabel(value: string): boolean {
   return (
-    value.trim().length > 0 && value.length <= SALES_STAGE_LABEL_MAXIMUM_LENGTH
+    value.trim().length > 0 &&
+    [...value].length <= SALES_STAGE_LABEL_MAXIMUM_LENGTH
   );
 }
 

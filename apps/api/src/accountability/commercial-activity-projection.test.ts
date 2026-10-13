@@ -483,6 +483,19 @@ describe('commercial Activity projection rules', () => {
         ).not.toContain('sales_stage.configured');
     });
 
+    it('projects an 80-emoji label, counted in characters', () => {
+      const label = '🚀'.repeat(80);
+      expect(
+        readCommercialActivity({
+          action: 'sales_stage.configured',
+          metadata: { operation: 'CREATED', configurationRevision: 1, label },
+        }),
+      ).toEqual({
+        action: 'sales_stage.configured',
+        metadata: { operation: 'CREATED', label },
+      });
+    });
+
     it.each([
       ['a missing revision', { operation: 'CREATED', label: 'Qualification' }],
       [

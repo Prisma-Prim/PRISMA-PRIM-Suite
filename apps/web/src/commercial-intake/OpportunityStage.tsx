@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import { formatMessage } from '../localization/messages';
-import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import { useSalesStageCopy } from './sales-stage.copy';
 import {
   continuesStageHistory,
@@ -58,7 +57,7 @@ export function OpportunityStage({
           onClick={editor.onReloadRequest}
           disabled={pending}
         >
-          {copy.reloadRequest}
+          {stageCopy('reloadRequest')}
         </button>
       );
     case 'loading':

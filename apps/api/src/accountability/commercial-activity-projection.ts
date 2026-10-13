@@ -10,7 +10,7 @@ import {
   type OpportunityLossReasonCode,
   type OpportunityOutcomeStatus,
 } from '../commercial-intake/opportunity-outcome.js';
-import { SALES_STAGE_LABEL_MAXIMUM_LENGTH } from '../sales-stage/sales-stage.definition.js';
+import { isSalesStageLabel } from '../sales-stage/sales-stage.definition.js';
 import type { CommercialActivityEvent } from './accountability.types.js';
 
 /**
@@ -389,11 +389,7 @@ function recordedConfiguration(
 }
 
 function isStageLabel(value: unknown): value is string {
-  return (
-    typeof value === 'string' &&
-    value.trim().length > 0 &&
-    value.length <= SALES_STAGE_LABEL_MAXIMUM_LENGTH
-  );
+  return typeof value === 'string' && isSalesStageLabel(value);
 }
 
 function recordedResponsible(

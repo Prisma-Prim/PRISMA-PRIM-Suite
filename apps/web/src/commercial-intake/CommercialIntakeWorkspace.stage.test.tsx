@@ -267,7 +267,9 @@ describe('Sales Stage settings', () => {
     expect(
       within(settings).queryByLabelText(stage('salesStageLabel')),
     ).not.toBeInTheDocument();
-    fireEvent.click(within(settings).getByRole('button', { name: copy.back }));
+    fireEvent.click(
+      within(settings).getByRole('button', { name: stage('backToRequests') }),
+    );
     expect(
       await screen.findByRole('button', {
         name: stage('openSalesStageSettings'),
@@ -407,6 +409,58 @@ describe('Sales Stage settings', () => {
     });
     expect(retried?.[1]?.body).toEqual(uncertain?.[1]?.body);
     expect(keyOf(retried?.[1])).toEqual(keyOf(uncertain?.[1]));
+  });
+
+  it('accepts an 80-emoji label, counted in characters, and refuses 81 without a request', async () => {
+    const emoji = '🚀'.repeat(80);
+    const transport = stubRoutes({
+      [listPath]: [reply(listPage())],
+      [stagesPath]: [reply(stageList())],
+      [createPath]: [
+        reply(
+          {
+            receipt: {
+              operation: 'CREATED',
+              salesStageId: 'stage-emoji',
+              label: emoji,
+              position: 1,
+              revision: 1,
+            },
+            configuration: stageList([
+              buildSalesStage({ id: 'stage-emoji', label: emoji }),
+            ]),
+          },
+          201,
+        ),
+      ],
+    });
+    renderWorkspace(configurator);
+    const settings = await openSettings();
+    const field = await within(settings).findByLabelText(
+      stage('salesStageLabel'),
+    );
+    fireEvent.change(field, { target: { value: `${emoji}🚀` } });
+    fireEvent.click(
+      within(settings).getByRole('button', { name: stage('createSalesStage') }),
+    );
+    expect(
+      within(settings).getByText(stage('salesStageLabelValidation')),
+    ).toBeVisible();
+    expect(transport.calls(createPath)).toHaveLength(0);
+    fireEvent.change(field, { target: { value: emoji } });
+    await act(async () => {
+      fireEvent.click(
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
+      );
+    });
+    expect(await screen.findByText(stage('salesStageCreated'))).toBeVisible();
+    expect(bodyOf(transport.calls(createPath)[0]?.[1])).toEqual({
+      expectedRevision: 0,
+      label: emoji,
+    });
+    expect(within(settings).getByText(emoji)).toBeVisible();
   });
 
   it('requires an explicit reload after a stale revision and states the 30-stage limit', async () => {
@@ -663,7 +717,9 @@ describe('Opportunity Sales Stage', () => {
       screen.queryByRole('button', { name: stage('changeStage') }),
     ).not.toBeInTheDocument();
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: copy.reloadRequest }));
+      fireEvent.click(
+        screen.getByRole('button', { name: stage('reloadRequest') }),
+      );
     });
     await act(async () => {
       fireEvent.click(
@@ -817,6 +873,7 @@ describe('Sales Stage localization', () => {
           reply(stageList([qualification, negotiation])),
         ],
         [detailPath]: [reply(assignedDetail)],
+        [setPath]: [reply({ code: 'STALE_VERSION' }, 409)],
       });
       renderInLocale(
         <InterfaceLocaleProvider>
@@ -858,7 +915,9 @@ describe('Sales Stage localization', () => {
         }),
       ).toBeVisible();
       fireEvent.click(
-        within(settings).getByRole('button', { name: copy.back }),
+        within(settings).getByRole('button', {
+          name: stage('backToRequests', locale),
+        }),
       );
 
       const open = await screen.findByRole('button', {
@@ -893,8 +952,20 @@ describe('Sales Stage localization', () => {
         'Qualification',
         'Negociere finală',
       ]);
+      changeValue(
+        screen.getByRole('combobox', { name: stage('stageChoice', locale) }),
+        negotiation.id,
+      );
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: stage('saveStage', locale) }),
+        );
+      });
       expect(
-        screen.getByRole('button', { name: stage('saveStage', locale) }),
+        await screen.findByText(stage('stageConflict', locale)),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: stage('reloadRequest', locale) }),
       ).toBeVisible();
     },
   );

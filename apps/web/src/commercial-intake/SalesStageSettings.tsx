@@ -5,7 +5,6 @@ import {
   useState,
   type FormEvent,
 } from 'react';
-import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import {
   useSalesStageCopy,
   type SalesStageMessageKey,
@@ -14,7 +13,6 @@ import type { CommercialIntakeRequest } from './RequestClientAssociation';
 import {
   isSalesStageList,
   isValidStageLabel,
-  SALES_STAGE_LABEL_MAXIMUM_LENGTH,
   SALES_STAGE_LIMIT,
   type SalesStageList,
 } from './sales-stage';
@@ -229,7 +227,7 @@ export function SalesStageSettings({
       aria-labelledby="commercial-intake-sales-stages-title"
     >
       <button type="button" onClick={onBack} disabled={create === 'saving'}>
-        {copy.back}
+        {stageCopy('backToRequests')}
       </button>
       <h3 id="commercial-intake-sales-stages-title">
         {stageCopy('salesStageSettings')}
@@ -285,7 +283,6 @@ export function SalesStageSettings({
                   setLabel(event.target.value);
                   setLabelError('');
                 }}
-                maxLength={SALES_STAGE_LABEL_MAXIMUM_LENGTH}
                 disabled={create !== 'idle'}
                 aria-invalid={labelError ? true : undefined}
                 aria-describedby={

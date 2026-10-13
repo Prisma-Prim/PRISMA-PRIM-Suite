@@ -5,6 +5,8 @@ import { defineMessages, useMessages } from '../localization/messages';
 // are never translated: they are shown exactly as entered.
 const keys = [
   'salesStage',
+  'backToRequests',
+  'reloadRequest',
   'stageNone',
   'changeStage',
   'stageChoice',
@@ -67,6 +69,8 @@ export type SalesStageMessageKey = (typeof keys)[number];
 export const salesStageMessages = defineMessages(keys, {
   en: {
     salesStage: 'Sales Stage',
+    backToRequests: 'Back to Requests',
+    reloadRequest: 'Reload Request',
     stageNone: 'No Sales Stage',
     changeStage: 'Change Sales Stage',
     stageChoice: 'New Sales Stage',
@@ -139,6 +143,8 @@ export const salesStageMessages = defineMessages(keys, {
   },
   ro: {
     salesStage: 'Etapă de vânzare',
+    backToRequests: 'Înapoi la solicitări',
+    reloadRequest: 'Reîncărcați solicitarea',
     stageNone: 'Fără etapă de vânzare',
     changeStage: 'Schimbați etapa de vânzare',
     stageChoice: 'Etapă de vânzare nouă',
@@ -219,6 +225,8 @@ export const salesStageMessages = defineMessages(keys, {
   },
   ru: {
     salesStage: 'Этап продаж',
+    backToRequests: 'Назад к запросам',
+    reloadRequest: 'Перезагрузить запрос',
     stageNone: 'Без этапа продаж',
     changeStage: 'Изменить этап продаж',
     stageChoice: 'Новый этап продаж',
@@ -290,6 +298,8 @@ export const salesStageMessages = defineMessages(keys, {
   },
   fr: {
     salesStage: 'Étape de vente',
+    backToRequests: 'Retour aux demandes',
+    reloadRequest: 'Recharger la demande',
     stageNone: 'Aucune étape de vente',
     changeStage: 'Modifier l’étape de vente',
     stageChoice: 'Nouvelle étape de vente',
