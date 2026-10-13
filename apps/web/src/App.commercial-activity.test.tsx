@@ -180,6 +180,59 @@ describe('commercial history in the Activity Log', () => {
     ).toBeInTheDocument();
   });
 
+  it('names the captured stage labels of a Sales Stage change and the created stage of the settings', async () => {
+    stubTransport([
+      {
+        id: 'event-5',
+        action: 'opportunity.stage.changed',
+        occurredAt: '2026-09-21T10:09:00.000Z',
+        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+        target: {
+          type: 'opportunity',
+          opportunityId: OPPORTUNITY_ID,
+          clientRequestId: REQUEST_ID,
+          companyId: COMPANY_ID,
+        },
+        metadata: { previousLabel: 'Qualification', newLabel: null },
+      },
+      {
+        id: 'event-6',
+        action: 'sales_stage.configured',
+        occurredAt: '2026-09-21T10:08:30.000Z',
+        actor: { internalUserId: 'user-1', displayName: 'Ada Ionescu' },
+        target: {
+          type: 'sales_stage',
+          salesStageId: 'stage-1',
+          companyId: COMPANY_ID,
+        },
+        metadata: { operation: 'CREATED', label: 'Negociere finală' },
+      },
+    ]);
+
+    render(<App identity={deterministicBrowserIdentity()} />);
+
+    const changed = (
+      await screen.findByText(
+        'Ada Ionescu changed the Sales Stage of an Opportunity (Qualification → No Sales Stage)',
+      )
+    ).closest('li');
+    if (!changed) throw new Error('Expected the Activity entry.');
+    expect(changed).toHaveTextContent(`Target: Opportunity: ${OPPORTUNITY_ID}`);
+    expect(
+      within(changed).getByRole('button', { name: 'Open Request' }),
+    ).toBeInTheDocument();
+    const configured = screen
+      .getByText(
+        'Ada Ionescu configured a Sales Stage (created: Negociere finală)',
+      )
+      .closest('li');
+    if (!configured) throw new Error('Expected the Activity entry.');
+    expect(configured).toHaveTextContent('Target: Sales Stage settings');
+    expect(
+      within(configured).queryByRole('button', { name: 'Open Request' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows the existing empty state when the authorized Company has no event', async () => {
     stubTransport([]);
 

@@ -3,6 +3,10 @@ import type {
   RequestListItem,
 } from '../commercial-intake/CommercialIntakeWorkspace';
 import type { OutcomeHistoryEntry } from '../commercial-intake/opportunity-outcome';
+import type {
+  SalesStage,
+  StageHistoryEntry,
+} from '../commercial-intake/sales-stage';
 
 /**
  * Typed builders for the Commercial Intake responses web unit tests and
@@ -62,20 +66,56 @@ export function buildOutcomeHistoryEntry(
   };
 }
 
+/** One configured Sales Stage: by default the first ACTIVE stage. */
+export function buildSalesStage(
+  overrides: Partial<SalesStage> = {},
+): SalesStage {
+  return {
+    id: 'stage-qualification',
+    label: 'Qualification',
+    position: 1,
+    state: 'ACTIVE',
+    ...overrides,
+  };
+}
+
+/**
+ * One recorded Sales Stage assignment: by default the responsible member
+ * assigned the first stage to an Opportunity without one.
+ */
+export function buildStageHistoryEntry(
+  overrides: Partial<StageHistoryEntry> = {},
+): StageHistoryEntry {
+  return {
+    previousStage: null,
+    newStage: { salesStageId: 'stage-qualification', label: 'Qualification' },
+    version: 2,
+    actor: {
+      workspaceMembershipId: defaultResponsibleActor.workspaceMembershipId,
+      displayLabel: defaultResponsibleActor.displayName,
+    },
+    changedAt: '2026-09-21T11:00:00.000Z',
+    ...overrides,
+  };
+}
+
 /**
  * The initial Opportunity of a Request detail. Without history it is OPEN
- * since its creation at version 1; with history its status, entry time and
- * version follow the newest entry unless overridden. The responsible
- * membership follows the responsible actor.
+ * since its creation at version 1, without a Sales Stage; with history its
+ * status, entry time, stage and version follow the newest entries unless
+ * overridden. The responsible membership follows the responsible actor.
  */
 export function buildInitialOpportunity(
   overrides: InitialOpportunityOverrides = {},
 ): InitialOpportunityResponse {
   const outcomeHistory = overrides.outcomeHistory ?? { entries: [] };
+  const stageHistory = overrides.stageHistory ?? { entries: [] };
   const [newest] = outcomeHistory.entries;
+  const [newestStage] = stageHistory.entries;
   const createdAt = overrides.createdAt ?? DEFAULT_INSTANT;
   const responsibleActor =
     overrides.responsibleActor ?? defaultResponsibleActor;
+  const assigned = newestStage?.newStage;
   return {
     id: 'opportunity-1',
     title: 'Prepare quality process review',
@@ -84,9 +124,15 @@ export function buildInitialOpportunity(
     status: newest?.newStatus ?? 'OPEN',
     statusEnteredAt: newest?.changedAt ?? createdAt,
     responsibleWorkspaceMembershipId: responsibleActor.workspaceMembershipId,
-    version: newest?.version ?? 1,
+    version: Math.max(newest?.version ?? 1, newestStage?.version ?? 1),
     ...overrides,
+    salesStage:
+      overrides.salesStage ??
+      (assigned
+        ? { id: assigned.salesStageId, label: assigned.label, state: 'ACTIVE' }
+        : null),
     outcomeHistory,
+    stageHistory,
     responsibleActor,
     createdAt,
   };
@@ -138,6 +184,7 @@ export function buildRequestListItem({
       status: 'OPEN',
       responsibleActor: defaultResponsibleActor,
       ...initialOpportunity,
+      salesStage: initialOpportunity?.salesStage ?? null,
     },
   };
 }
@@ -160,6 +207,7 @@ export function requestListItemFor(
       title: request.initialOpportunity.title,
       nextAction: request.initialOpportunity.nextAction,
       status: request.initialOpportunity.status,
+      salesStage: request.initialOpportunity.salesStage,
       responsibleActor: request.initialOpportunity.responsibleActor,
       ...initialOpportunity,
     },

@@ -14,6 +14,7 @@ import { changeValue, selectOption } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
+import { salesStageMessages } from '../commercial-intake/sales-stage.copy';
 import { resolveMessage } from '../localization/messages';
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -34,13 +35,14 @@ const bundleLabels = {
   pricingAdjustment: 'Company Pricing Adjustment',
   reader: 'Company Commercial Activity Reader',
   manager: 'Company Opportunity Manager',
+  stageConfiguration: 'Company Sales Stage Configuration',
   project: 'Company Project Access',
   approver: 'Company Project Approver',
 } as const;
 const serverVersions = {
   context: null,
   director: 'v2',
-  commercial: 'v3',
+  commercial: 'v4',
   catalogue: 'v1',
   pricing: 'v1',
   pricingUser: 'v1',
@@ -49,6 +51,7 @@ const serverVersions = {
   pricingAdjustment: 'v1',
   reader: 'v1',
   manager: 'v2',
+  stageConfiguration: 'v1',
   project: 'v2',
   approver: 'v1',
 } as const;
@@ -530,6 +533,24 @@ describe('CompanyContextAccess', () => {
     {
       name: 'a v3 Opportunity Manager version',
       assignment: { bundle: 'Company Opportunity Manager', version: 'v3' },
+    },
+    {
+      name: 'a v5 Commercial Intake version',
+      assignment: { bundle: 'Company Commercial Intake', version: 'v5' },
+    },
+    {
+      name: 'a null Sales Stage Configuration version',
+      assignment: {
+        bundle: 'Company Sales Stage Configuration',
+        version: null,
+      },
+    },
+    {
+      name: 'a v2 Sales Stage Configuration version',
+      assignment: {
+        bundle: 'Company Sales Stage Configuration',
+        version: 'v2',
+      },
     },
     {
       name: 'a null Opportunity Manager version',
@@ -1693,6 +1714,79 @@ describe('CompanyContextAccess', () => {
       {
         method: 'DELETE',
         path: `/api/company-opportunity-manager-assignments/${memberId}/${companyId}`,
+        key: expect.any(String),
+      },
+    ]);
+  });
+
+  it('grants and revokes Company Sales Stage Configuration v1 with its prerequisites stated', async () => {
+    let active = false;
+    const commands: { method: string; path: string; key: string | null }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string, options?: RequestInit) => {
+        if (path === '/api/company-context-assignments/administration')
+          return Response.json(
+            administration(active ? 'stageConfiguration' : undefined),
+          );
+        if (
+          path.startsWith('/api/company-sales-stage-configuration-assignments')
+        ) {
+          commands.push({
+            method: options?.method ?? 'GET',
+            path,
+            key: new Headers(options?.headers).get('idempotency-key'),
+          });
+          active = options?.method === 'POST';
+          return Response.json(
+            {
+              id: 'stage-configuration-assignment',
+              workspaceMembershipId: memberId,
+              companyId,
+              bundle: 'Company Sales Stage Configuration',
+              permissionSetVersion: 'v1',
+              active,
+            },
+            { status: active ? 201 : 200 },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <CompanyContextAccess
+        actor={ownerActor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    await screen.findByLabelText('Workspace member');
+    chooseTargets();
+    const bundleSelect = screen.getByLabelText('Access bundle');
+    selectOption(bundleSelect, 'sales-stage-configuration');
+    expect(bundleSelect).toHaveTextContent(
+      resolveMessage(salesStageMessages, 'ro', 'configurationBundle'),
+    );
+    expect(
+      screen.getByText(
+        resolveMessage(salesStageMessages, 'ro', 'configurationPrerequisites'),
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+    await screen.findByText('Access granted. Server state refreshed.');
+    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+      /^Current server state: Granted — captured version v1$/,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+    await screen.findByText('Access revoked. Server state refreshed.');
+    expect(commands).toEqual([
+      {
+        method: 'POST',
+        path: '/api/company-sales-stage-configuration-assignments',
+        key: expect.any(String),
+      },
+      {
+        method: 'DELETE',
+        path: `/api/company-sales-stage-configuration-assignments/${memberId}/${companyId}`,
         key: expect.any(String),
       },
     ]);

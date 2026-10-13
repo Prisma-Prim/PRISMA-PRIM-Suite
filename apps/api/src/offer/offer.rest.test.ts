@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { ActorContext } from '../access/access.types.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
+import { SalesStageService } from '../sales-stage/sales-stage.service.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
@@ -6099,6 +6100,7 @@ withPostgres('First illustrative Offer REST', () => {
       clients,
       accountability,
       new CommercialResponsibleAccessService(databaseContext),
+      new SalesStageService(databaseContext, authorization, accountability),
     );
     const pricing = new PricingSnapshotService(
       databaseContext,

@@ -75,6 +75,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_commercial_activity_reader_assignment.revoked'
     | 'company_opportunity_manager_assignment.granted'
     | 'company_opportunity_manager_assignment.revoked'
+    | 'company_sales_stage_configuration_assignment.granted'
+    | 'company_sales_stage_configuration_assignment.revoked'
     | 'company_project_approver_assignment.granted'
     | 'company_project_approver_assignment.revoked'
     | 'company.registered'
@@ -357,6 +359,31 @@ export type OfferActivityLogEvent = {
       };
     }
 );
+/**
+ * A changed Opportunity Sales Stage: the previous and new stage labels as the
+ * change captured them, or null for none. Never the version or identifiers.
+ */
+export interface OpportunityStageChangedActivityLogEvent {
+  id: string;
+  action: 'opportunity.stage.changed';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: OpportunityResponsibleChangedActivityLogEvent['target'];
+  metadata: { previousLabel: string | null; newLabel: string | null };
+}
+
+/**
+ * A Sales Stage configuration operation, targeting the stage in the Company's
+ * Sales Stage settings: the operation and the label, never the revision.
+ */
+export interface SalesStageConfiguredActivityLogEvent {
+  id: string;
+  action: 'sales_stage.configured';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: { type: 'sales_stage'; salesStageId: string; companyId: string };
+  metadata: { operation: 'CREATED'; label: string };
+}
 
 /** Before and after keep only a membership identifier and its captured label. */
 export interface ProjectResponsibleChangedActivityLogEvent {
@@ -404,6 +431,8 @@ export type ActivityLogEvent =
   | ProjectResponsibleChangedActivityLogEvent
   | OpportunityResponsibleChangedActivityLogEvent
   | OpportunityOutcomeChangedActivityLogEvent
+  | OpportunityStageChangedActivityLogEvent
+  | SalesStageConfiguredActivityLogEvent
   | ProjectLifecycleChangedActivityLogEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent

@@ -1,11 +1,13 @@
 import type { ActorContext } from '../access/access.types.js';
 import {
+  commandFingerprint,
   insertionOrderFingerprint,
   type AdvisoryLockParts,
 } from '../command/idempotent-command.js';
 import type {
   ChangeOpportunityOutcomeCommand,
   ChangeOpportunityResponsibleCommand,
+  SetOpportunityStageCommand,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
 
@@ -15,7 +17,8 @@ import type {
 export type OpportunityCommandName =
   | 'commercial-intake.update-next-action'
   | 'commercial-intake.change-responsible'
-  | 'commercial-intake.change-outcome';
+  | 'commercial-intake.change-outcome'
+  | 'commercial-intake.set-stage';
 
 export function opportunityCommandLockParts(input: {
   readonly command: OpportunityCommandName;
@@ -63,5 +66,17 @@ export function outcomeFingerprint(
     opportunityId,
     expectedVersion: command.expectedVersion,
     change: command.change,
+  });
+}
+
+// A new command, so its fingerprint uses the key-order-free spelling.
+export function stageFingerprint(
+  opportunityId: string,
+  command: SetOpportunityStageCommand,
+): string {
+  return commandFingerprint({
+    opportunityId,
+    expectedVersion: command.expectedVersion,
+    salesStageId: command.salesStageId,
   });
 }

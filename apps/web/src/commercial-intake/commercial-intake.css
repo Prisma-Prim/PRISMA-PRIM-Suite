@@ -240,6 +240,7 @@
 .prisme-shell .commercial-intake-next-action-actions button,
 .prisme-shell .commercial-intake-filter button,
 .prisme-shell .commercial-intake-restriction button,
+.prisme-shell .commercial-intake-sales-stages > button,
 .prisme-shell .commercial-intake-workspace > button {
   min-height: 40px;
   border: 1px solid #d8d3eb;
@@ -344,6 +345,84 @@
 
 .commercial-intake-responsible .shared-select {
   max-width: 36rem;
+}
+
+.commercial-intake-stage {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.commercial-intake-stage label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.commercial-intake-stage .shared-select {
+  max-width: 36rem;
+}
+
+.commercial-intake-sales-stages {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.commercial-intake-sales-stages h3,
+.commercial-intake-sales-stages p {
+  margin: 0;
+}
+
+.commercial-intake-sales-stages > button {
+  justify-self: start;
+}
+
+.commercial-intake-sales-stages ol {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.commercial-intake-sales-stages li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.5rem;
+}
+
+.commercial-intake-sales-stages li small {
+  color: var(--shell-muted, currentColor);
+}
+
+.commercial-intake-sales-stage-form {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 36rem;
+}
+
+.commercial-intake-sales-stage-form label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.commercial-intake-sales-stage-form input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--shell-line, currentColor);
+  border-radius: 0.4rem;
+  font: inherit;
 }
 
 .commercial-intake-primary-action {

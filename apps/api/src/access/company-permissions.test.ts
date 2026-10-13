@@ -21,6 +21,7 @@ import {
   projectApproverPermissionsFor,
   pricingUserPermissionsFor,
   projectPermissionsFor,
+  salesStageConfigurationPermissionsFor,
   serviceCataloguePermissionsFor,
   taskPermissionsFor,
   type CompanyCommercialIntakePermissionSetVersion,
@@ -121,15 +122,15 @@ describe('Company Opportunity Manager permission sets', () => {
   it('accepts every captured Commercial Intake version carrying both reads as the read prerequisite', () => {
     expect(
       commercialIntakeVersionsWith(COMMERCIAL_INTAKE_READ_PERMISSIONS),
-    ).toEqual(['v1', 'v2', 'v3']);
+    ).toEqual(['v1', 'v2', 'v3', 'v4']);
     expect(
       commercialIntakeVersionsWith([
         'commercial.opportunity.next_action.update',
       ]),
-    ).toEqual(['v2', 'v3']);
+    ).toEqual(['v2', 'v3', 'v4']);
     expect(
       commercialIntakeVersionsWith(['commercial.request.client.associate']),
-    ).toEqual(['v3']);
+    ).toEqual(['v3', 'v4']);
   });
 });
 
@@ -283,6 +284,18 @@ describe('Company Commercial Intake permission sets', () => {
         'commercial.request.client.associate',
       ],
     ],
+    [
+      'v4',
+      [
+        'commercial.request.read',
+        'commercial.request.create',
+        'commercial.opportunity.read',
+        'commercial.opportunity.create',
+        'commercial.opportunity.next_action.update',
+        'commercial.request.client.associate',
+        'commercial.opportunity.stage.set',
+      ],
+    ],
   ] satisfies Array<
     [CompanyCommercialIntakePermissionSetVersion, readonly string[]]
   >)('resolves immutable %s permissions', (version, expected) => {
@@ -290,7 +303,13 @@ describe('Company Commercial Intake permission sets', () => {
     expect(isCommercialIntakePermissionSetVersion(version)).toBe(true);
   });
 
-  it.each([null, undefined, '', 'V3', 'v4'])(
+  it('accepts the Sales Stage assignment from captured v4 only', () => {
+    expect(
+      commercialIntakeVersionsWith(['commercial.opportunity.stage.set']),
+    ).toEqual(['v4']);
+  });
+
+  it.each([null, undefined, '', 'V3', 'V4', 'v5'])(
     'fails closed for an unsupported captured version: %s',
     (version) => {
       expect(commercialIntakePermissionsFor(version)).toEqual([]);
@@ -505,5 +524,33 @@ describe('Company Profitability permission sets', () => {
         ...profitabilityDirectorPermissionsFor('v1'),
       ])
         expect(permissions).not.toContain(permission);
+  });
+});
+
+describe('Company Sales Stage Configuration permission sets', () => {
+  it('resolves exactly the captured v1 configuration permission', () => {
+    expect(salesStageConfigurationPermissionsFor('v1')).toEqual([
+      'commercial.sales_stage.configure',
+    ]);
+  });
+
+  it.each([null, undefined, '', 'V1', 'v2', 1])(
+    'fails closed for an unsupported version: %s',
+    (version) => {
+      expect(salesStageConfigurationPermissionsFor(version)).toEqual([]);
+    },
+  );
+
+  it('is conferred by no Commercial Intake version, and v4 adds only the stage assignment', () => {
+    for (const version of ['v1', 'v2', 'v3', 'v4'])
+      expect(commercialIntakePermissionsFor(version)).not.toContain(
+        'commercial.sales_stage.configure',
+      );
+    expect(
+      commercialIntakePermissionsFor('v4').filter(
+        (permission) =>
+          !commercialIntakePermissionsFor('v3').includes(permission),
+      ),
+    ).toEqual(['commercial.opportunity.stage.set']);
   });
 });

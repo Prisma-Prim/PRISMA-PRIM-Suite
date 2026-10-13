@@ -62,6 +62,7 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_project_approver',
   'company_profitability_contributor',
   'company_profitability_director',
+  'company_sales_stage_configuration',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -275,11 +276,11 @@ export const companies = pgTable(
   ],
 );
 
-// drizzle-kit compares CHECK text byte for byte. Migration 0065 captured the
-// dedicated multi-version clauses in this order, with the first one wrapped
-// over three lines; reproducing that layout keeps the derived constraint free
-// of drift. Bundles not listed here follow in registry order. The next
-// migration that rewrites this constraint may drop both layout facts.
+// drizzle-kit compares CHECK text byte for byte. Migrations 0065 and 0066
+// captured the dedicated multi-version clauses in this order, with the first
+// one wrapped over three lines; reproducing that layout keeps the derived
+// constraint free of drift. Bundles not listed here follow in registry order.
+// The next migration that rewrites this constraint may drop both layout facts.
 const CAPTURED_DEDICATED_CLAUSE_ORDER: readonly string[] = [
   'company_director_client_access',
   'company_document_registrar',
@@ -762,6 +763,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_profitability_contributor_assignment.revoked',
   'company_profitability_director_assignment.granted',
   'company_profitability_director_assignment.revoked',
+  'company_sales_stage_configuration_assignment.granted',
+  'company_sales_stage_configuration_assignment.revoked',
   'client.created',
   'client_company_relationship.established',
   'client.corrected',
@@ -827,7 +830,8 @@ export const activityLogEvents = pgTable(
               | 'Company Opportunity Manager'
               | 'Company Project Approver'
               | 'Company Profitability Contributor'
-              | 'Company Profitability Director';
+              | 'Company Profitability Director'
+              | 'Company Sales Stage Configuration';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }
         | { legalEntityId: string; values: ClientLegalEntityValues }

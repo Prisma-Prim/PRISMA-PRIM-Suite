@@ -33,9 +33,10 @@ export interface ActorContext {
       | 'commercial.opportunity.create'
       | 'commercial.opportunity.next_action.update'
       | 'commercial.request.client.associate'
+      | 'commercial.opportunity.stage.set'
     >;
     commercialIntakePermissionAssignmentId?: string;
-    commercialIntakePermissionSetVersion?: 'v1' | 'v2' | 'v3';
+    commercialIntakePermissionSetVersion?: 'v1' | 'v2' | 'v3' | 'v4';
     serviceCataloguePermissions?: Array<
       | 'service.definition.read'
       | 'service.definition.create'
@@ -104,6 +105,9 @@ export interface ActorContext {
     >;
     opportunityManagerPermissionAssignmentId?: string;
     opportunityManagerPermissionSetVersion?: 'v1' | 'v2';
+    salesStageConfigurationPermissions?: Array<'commercial.sales_stage.configure'>;
+    salesStageConfigurationPermissionAssignmentId?: string;
+    salesStageConfigurationPermissionSetVersion?: 'v1';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'

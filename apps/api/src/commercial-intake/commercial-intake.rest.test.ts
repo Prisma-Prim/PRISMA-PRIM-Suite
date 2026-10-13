@@ -85,7 +85,7 @@ withPostgres('Company commercial intake REST', () => {
     );
     expect(assignment).toMatchObject({
       bundle: 'Company Commercial Intake',
-      permissionSetVersion: 'v3',
+      permissionSetVersion: 'v4',
       active: true,
     });
 
@@ -167,6 +167,7 @@ withPostgres('Company commercial intake REST', () => {
             title: body.opportunity.title,
             nextAction: body.opportunity.nextAction,
             status: 'OPEN',
+            salesStage: null,
             responsibleActor: {
               workspaceMembershipId: actor.workspaceMembershipId,
               displayName: actor.displayName,
@@ -301,8 +302,9 @@ withPostgres('Company commercial intake REST', () => {
       'commercial.opportunity.create',
       'commercial.opportunity.next_action.update',
       'commercial.request.client.associate',
+      'commercial.opportunity.stage.set',
     ]);
-    expect(activeCompany.commercialIntakePermissionSetVersion).toBe('v3');
+    expect(activeCompany.commercialIntakePermissionSetVersion).toBe('v4');
     expect(
       (
         await request('/commercial-intake/requests', company.id, {

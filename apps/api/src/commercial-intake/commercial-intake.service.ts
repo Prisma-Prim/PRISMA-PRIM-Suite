@@ -26,16 +26,20 @@ import {
   commercialIntakeNextActionCommands,
   commercialIntakeOutcomeCommands,
   commercialIntakeResponsibleCommands,
+  commercialIntakeStageCommands,
   internalUsers,
   opportunities,
   opportunityOutcomeHistory,
+  opportunityStageHistory,
+  salesStages,
 } from '../database/schema/index.js';
+import { SalesStageService } from '../sales-stage/sales-stage.service.js';
 import {
   commercialIntakeCursor,
-  outcomeHistoryCursor,
+  opportunityHistoryCursor,
   readCommercialIntakeCursor,
   readCommercialIntakeLimit,
-  readOutcomeHistoryCursor,
+  readOpportunityHistoryCursor,
 } from './commercial-intake-pagination.js';
 import type {
   ChangeOpportunityResponsibleCommand,
@@ -50,9 +54,14 @@ import type {
   OpportunityOutcomeHistoryPage,
   OpportunityResponsibleCandidatePage,
   OpportunityResponsibleChangeResult,
+  OpportunitySalesStage,
+  OpportunityStageChangeResult,
+  OpportunityStageHistoryEntry,
+  OpportunityStageHistoryPage,
   ReadablePricingOpportunity,
   ReadableOfferOpportunity,
   CommercialClientProjection,
+  SetOpportunityStageCommand,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
 import {
@@ -60,6 +69,7 @@ import {
   readChangeOpportunityOutcomeCommand,
   readChangeOpportunityResponsibleCommand,
   readCreateCommercialIntakeCommand,
+  readSetOpportunityStageCommand,
   readUpdateOpportunityNextActionCommand,
 } from './commercial-intake.validation.js';
 import {
@@ -67,6 +77,7 @@ import {
   opportunityCommandLockParts,
   outcomeFingerprint,
   responsibleFingerprint,
+  stageFingerprint,
 } from './opportunity-command.js';
 import { resolveOutcomeTransition } from './opportunity-outcome.js';
 
@@ -78,9 +89,16 @@ type ResponsibleCommandRow =
   typeof commercialIntakeResponsibleCommands.$inferSelect;
 type OutcomeCommandRow = typeof commercialIntakeOutcomeCommands.$inferSelect;
 type OutcomeHistoryRow = typeof opportunityOutcomeHistory.$inferSelect;
+type StageCommandRow = typeof commercialIntakeStageCommands.$inferSelect;
+type StageHistoryRow = typeof opportunityStageHistory.$inferSelect;
+type HistoryBound =
+  | { kind: 'through'; version: number }
+  | { kind: 'before'; version: number }
+  | undefined;
 
-// Section 23.6: the Request detail and each older page carry at most 50.
-const OUTCOME_HISTORY_PAGE_SIZE = 50;
+// Sections 23.6 and 24.5: the Request detail and each older page of an
+// Opportunity history carry at most 50 entries.
+const HISTORY_PAGE_SIZE = 50;
 
 const UUID_GRAMMAR =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -93,6 +111,7 @@ export class CommercialIntakeService {
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
     private readonly responsibleAccess: CommercialResponsibleAccessService,
+    private readonly salesStages: SalesStageService,
   ) {}
 
   async create(
@@ -185,6 +204,8 @@ export class CommercialIntakeService {
         opportunity,
         responsibleDisplayName,
         outcomeHistory: { entries: [] },
+        salesStage: null,
+        stageHistory: { entries: [] },
         client: clientReference,
       });
     });
@@ -800,7 +821,7 @@ export class CommercialIntakeService {
       actor,
       'read',
     );
-    const beforeVersion = readOutcomeHistoryCursor(cursorInput);
+    const beforeVersion = readOpportunityHistoryCursor(cursorInput);
     return this.databaseContext.transaction(
       async () => {
         await this.requireVisibleOpportunity(
@@ -810,6 +831,222 @@ export class CommercialIntakeService {
           false,
         );
         return this.outcomeHistoryPage(
+          actor,
+          companyId,
+          opportunityId,
+          beforeVersion === undefined
+            ? undefined
+            : { kind: 'before', version: beforeVersion },
+        );
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
+  }
+
+  /**
+   * Assigns one `ACTIVE` Sales Stage of the Opportunity's Company, or clears
+   * the stage (section 24.4). It shares the Opportunity version with the
+   * next action, the reassignment and the outcome status, is accepted in
+   * every outcome status, records one history entry, one receipt and one
+   * event, and changes nothing else about the Opportunity or its Request.
+   */
+  async setStage(
+    actor: ActorContext,
+    opportunityId: string,
+    value: unknown,
+    key: string | undefined,
+  ): Promise<OpportunityStageChangeResult> {
+    await this.authorization.requireCommercialIntakeAccess(actor, 'set-stage');
+    const command = readSetOpportunityStageCommand(value);
+    const idempotencyKey = requireIdempotencyKey(key);
+    const fingerprint = stageFingerprint(opportunityId, command);
+    return runIdempotentCommand(this.databaseContext, {
+      fingerprint,
+      authorize: () =>
+        this.authorization.requireCommercialIntakeAccess(
+          actor,
+          'set-stage',
+          true,
+        ),
+      lockParts: (companyId) =>
+        opportunityCommandLockParts({
+          command: 'commercial-intake.set-stage',
+          actor,
+          companyId,
+          idempotencyKey,
+        }),
+      findReceipt: (companyId) =>
+        this.findStageCommand(actor, companyId, idempotencyKey),
+      conflict: () =>
+        idempotencyConflict(
+          'Idempotency-Key was already used for another Sales Stage change.',
+        ),
+      replay: (companyId, receipt) =>
+        this.replayOpportunityReceipt(
+          actor,
+          companyId,
+          opportunityId,
+          stageReceiptView(receipt),
+        ),
+      execute: async (companyId) => {
+        const current = await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          true,
+        );
+        if (current.version !== command.expectedVersion) throw staleVersion();
+        const receipt = {
+          actor,
+          companyId,
+          opportunityId,
+          idempotencyKey,
+          fingerprint,
+          command,
+        };
+        // Submitting the current stage, or null without a stage, changes
+        // nothing: an unchanged receipt and no event.
+        if (current.salesStageId === command.salesStageId)
+          return {
+            receipt: stageReceiptView(
+              await this.recordStageCommand({
+                ...receipt,
+                outcome: 'unchanged',
+                resultVersion: current.version,
+              }),
+            ),
+            request: await this.loadDetail(
+              actor,
+              companyId,
+              current.clientRequestId,
+              false,
+            ),
+          };
+        // Refused before any write, so no Opportunity change, history entry,
+        // event or receipt commits and the key stays unused.
+        if (current.version >= MAXIMUM_OPPORTUNITY_VERSION)
+          throw versionExhausted();
+        const newStage =
+          command.salesStageId === null
+            ? null
+            : await this.salesStages.lockAssignableStage({
+                workspaceId: actor.workspaceId,
+                companyId,
+                salesStageId: command.salesStageId,
+              });
+        if (newStage === undefined)
+          throw new ConflictException({
+            code: 'SALES_STAGE_UNAVAILABLE',
+            message:
+              'This Sales Stage cannot be assigned. Reload the Request and choose another stage.',
+          });
+        const previousStage =
+          current.salesStageId === null
+            ? null
+            : {
+                id: current.salesStageId,
+                label: await this.salesStages.currentLabel({
+                  workspaceId: actor.workspaceId,
+                  companyId,
+                  salesStageId: current.salesStageId,
+                }),
+              };
+
+        const resultVersion = current.version + 1;
+        const [updated] = await this.databaseContext.connection
+          .update(opportunities)
+          .set({
+            salesStageId: newStage?.id ?? null,
+            version: resultVersion,
+            lastUpdatedByInternalUserId: actor.internalUserId,
+            lastUpdatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+            lastUpdatedAt: sql`now()`,
+          })
+          .where(
+            and(
+              eq(opportunities.workspaceId, actor.workspaceId),
+              eq(opportunities.companyId, companyId),
+              eq(opportunities.id, opportunityId),
+              eq(opportunities.version, command.expectedVersion),
+            ),
+          )
+          .returning();
+        if (!updated) throw staleVersion();
+        await this.databaseContext.connection
+          .insert(opportunityStageHistory)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            opportunityId: updated.id,
+            opportunityVersion: updated.version,
+            previousSalesStageId: previousStage?.id ?? null,
+            previousLabel: previousStage?.label ?? null,
+            newSalesStageId: newStage?.id ?? null,
+            newLabel: newStage?.label ?? null,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            actorDisplayLabel: memberDisplayLabel(
+              actor.displayName,
+              actor.workspaceMembershipId,
+            ),
+          });
+        await this.accountability.recordOpportunityStageChanged({
+          actor,
+          companyId,
+          clientRequestId: updated.clientRequestId,
+          opportunityId: updated.id,
+          opportunityVersion: updated.version,
+          previousStage: previousStage && {
+            salesStageId: previousStage.id,
+            label: previousStage.label,
+          },
+          newStage: newStage && {
+            salesStageId: newStage.id,
+            label: newStage.label,
+          },
+        });
+        return {
+          receipt: stageReceiptView(
+            await this.recordStageCommand({
+              ...receipt,
+              outcome: 'updated',
+              resultVersion,
+            }),
+          ),
+          request: await this.loadDetail(
+            actor,
+            companyId,
+            updated.clientRequestId,
+            false,
+          ),
+        };
+      },
+    });
+  }
+
+  /**
+   * One older page of a visible Opportunity's Sales Stage history, newest
+   * first. Commercial Intake read is the only authority required.
+   */
+  async stageHistory(
+    actor: ActorContext,
+    opportunityId: string,
+    cursorInput: unknown,
+  ): Promise<OpportunityStageHistoryPage> {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+    );
+    const beforeVersion = readOpportunityHistoryCursor(cursorInput);
+    return this.databaseContext.transaction(
+      async () => {
+        await this.requireVisibleOpportunity(
+          actor,
+          companyId,
+          opportunityId,
+          false,
+        );
+        return this.stageHistoryPage(
           actor,
           companyId,
           opportunityId,
@@ -867,6 +1104,8 @@ export class CommercialIntakeService {
         request: clientRequests,
         opportunity: opportunities,
         responsibleDisplayName: internalUsers.displayName,
+        salesStageLabel: salesStages.label,
+        salesStageState: salesStages.state,
         capturedAtCursor: sql<string>`to_char(
           ${clientRequests.capturedAt} AT TIME ZONE 'UTC',
           'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
@@ -886,6 +1125,7 @@ export class CommercialIntakeService {
         internalUsers,
         eq(internalUsers.id, opportunities.responsibleInternalUserId),
       )
+      .leftJoin(salesStages, assignedSalesStage())
       .where(
         and(
           eq(clientRequests.workspaceId, actor.workspaceId),
@@ -910,6 +1150,8 @@ export class CommercialIntakeService {
           request,
           opportunity,
           responsibleDisplayName,
+          salesStageLabel,
+          salesStageState,
         }): CommercialIntakeListItem => {
           const clientProjection = request.clientAccountId
             ? clientProjections.get(request.clientAccountId)
@@ -922,6 +1164,11 @@ export class CommercialIntakeService {
               title: opportunity.title,
               nextAction: opportunity.nextAction,
               status: opportunity.status,
+              salesStage: salesStageView(
+                opportunity.salesStageId,
+                salesStageLabel,
+                salesStageState,
+              ),
               responsibleActor: {
                 workspaceMembershipId:
                   opportunity.responsibleWorkspaceMembershipId,
@@ -982,6 +1229,8 @@ export class CommercialIntakeService {
         request: clientRequests,
         opportunity: opportunities,
         responsibleDisplayName: internalUsers.displayName,
+        salesStageLabel: salesStages.label,
+        salesStageState: salesStages.state,
       })
       .from(clientRequests)
       .innerJoin(
@@ -999,6 +1248,7 @@ export class CommercialIntakeService {
         internalUsers,
         eq(internalUsers.id, opportunities.responsibleInternalUserId),
       )
+      .leftJoin(salesStages, assignedSalesStage())
       .where(
         and(
           eq(clientRequests.workspaceId, actor.workspaceId),
@@ -1010,11 +1260,21 @@ export class CommercialIntakeService {
     // Bound history to the Opportunity version just read: under READ
     // COMMITTED a transition committing between the two queries would
     // otherwise pair the old status with its new history entry.
+    const readVersion = {
+      kind: 'through',
+      version: row.opportunity.version,
+    } as const;
     const outcomeHistory = await this.outcomeHistoryPage(
       actor,
       companyId,
       row.opportunity.id,
-      { kind: 'through', version: row.opportunity.version },
+      readVersion,
+    );
+    const stageHistory = await this.stageHistoryPage(
+      actor,
+      companyId,
+      row.opportunity.id,
+      readVersion,
     );
     const view = (
       client?: NonNullable<CommercialIntakeDetail['clientReference']>,
@@ -1024,6 +1284,12 @@ export class CommercialIntakeService {
         opportunity: row.opportunity,
         responsibleDisplayName: row.responsibleDisplayName,
         outcomeHistory,
+        salesStage: salesStageView(
+          row.opportunity.salesStageId,
+          row.salesStageLabel,
+          row.salesStageState,
+        ),
+        stageHistory,
         ...(client ? { client } : {}),
       });
     if (!row.request.clientAccountId) return view();
@@ -1061,10 +1327,7 @@ export class CommercialIntakeService {
     actor: ActorContext,
     companyId: string,
     opportunityId: string,
-    bound:
-      | { kind: 'through'; version: number }
-      | { kind: 'before'; version: number }
-      | undefined,
+    bound: HistoryBound,
   ): Promise<OpportunityOutcomeHistoryPage> {
     const rows = await this.databaseContext.connection
       .select()
@@ -1082,13 +1345,46 @@ export class CommercialIntakeService {
         ),
       )
       .orderBy(desc(opportunityOutcomeHistory.opportunityVersion))
-      .limit(OUTCOME_HISTORY_PAGE_SIZE + 1);
-    const entries = rows.slice(0, OUTCOME_HISTORY_PAGE_SIZE);
+      .limit(HISTORY_PAGE_SIZE + 1);
+    const entries = rows.slice(0, HISTORY_PAGE_SIZE);
     const last = entries.at(-1);
     return {
       entries: entries.map(outcomeHistoryEntryView),
-      ...(rows.length > OUTCOME_HISTORY_PAGE_SIZE && last
-        ? { nextCursor: outcomeHistoryCursor(last.opportunityVersion) }
+      ...(rows.length > HISTORY_PAGE_SIZE && last
+        ? { nextCursor: opportunityHistoryCursor(last.opportunityVersion) }
+        : {}),
+    };
+  }
+
+  private async stageHistoryPage(
+    actor: ActorContext,
+    companyId: string,
+    opportunityId: string,
+    bound: HistoryBound,
+  ): Promise<OpportunityStageHistoryPage> {
+    const rows = await this.databaseContext.connection
+      .select()
+      .from(opportunityStageHistory)
+      .where(
+        and(
+          eq(opportunityStageHistory.workspaceId, actor.workspaceId),
+          eq(opportunityStageHistory.companyId, companyId),
+          eq(opportunityStageHistory.opportunityId, opportunityId),
+          bound === undefined
+            ? undefined
+            : bound.kind === 'through'
+              ? lte(opportunityStageHistory.opportunityVersion, bound.version)
+              : lt(opportunityStageHistory.opportunityVersion, bound.version),
+        ),
+      )
+      .orderBy(desc(opportunityStageHistory.opportunityVersion))
+      .limit(HISTORY_PAGE_SIZE + 1);
+    const entries = rows.slice(0, HISTORY_PAGE_SIZE);
+    const last = entries.at(-1);
+    return {
+      entries: entries.map(stageHistoryEntryView),
+      ...(rows.length > HISTORY_PAGE_SIZE && last
+        ? { nextCursor: opportunityHistoryCursor(last.opportunityVersion) }
         : {}),
     };
   }
@@ -1334,6 +1630,57 @@ export class CommercialIntakeService {
     return command;
   }
 
+  private async recordStageCommand(input: {
+    actor: ActorContext;
+    companyId: string;
+    opportunityId: string;
+    idempotencyKey: string;
+    fingerprint: string;
+    command: SetOpportunityStageCommand;
+    outcome: StageCommandRow['outcome'];
+    resultVersion: number;
+  }): Promise<StageCommandRow> {
+    const [receipt] = await this.databaseContext.connection
+      .insert(commercialIntakeStageCommands)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        idempotencyKey: input.idempotencyKey,
+        fingerprint: input.fingerprint,
+        opportunityId: input.opportunityId,
+        expectedVersion: input.command.expectedVersion,
+        resultVersion: input.resultVersion,
+        outcome: input.outcome,
+        salesStageId: input.command.salesStageId,
+      })
+      .returning();
+    if (!receipt) throw new Error('The Sales Stage command was not recorded.');
+    return receipt;
+  }
+
+  private async findStageCommand(
+    actor: ActorContext,
+    companyId: string,
+    idempotencyKey: string,
+  ): Promise<StageCommandRow | undefined> {
+    const [command] = await this.databaseContext.connection
+      .select()
+      .from(commercialIntakeStageCommands)
+      .where(
+        and(
+          eq(commercialIntakeStageCommands.workspaceId, actor.workspaceId),
+          eq(commercialIntakeStageCommands.companyId, companyId),
+          eq(
+            commercialIntakeStageCommands.actorWorkspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(commercialIntakeStageCommands.idempotencyKey, idempotencyKey),
+        ),
+      );
+    return command;
+  }
+
   private async findOutcomeCommand(
     actor: ActorContext,
     companyId: string,
@@ -1388,6 +1735,67 @@ function outcomeReceiptView(
     status: command.newStatus,
     version: command.resultVersion,
   };
+}
+
+function stageReceiptView(
+  command: StageCommandRow,
+): OpportunityStageChangeResult['receipt'] {
+  return {
+    opportunityId: command.opportunityId,
+    salesStageId: command.salesStageId,
+    version: command.resultVersion,
+    outcome: command.outcome,
+  };
+}
+
+function stageHistoryEntryView(
+  row: StageHistoryRow,
+): OpportunityStageHistoryEntry {
+  return {
+    previousStage: recordedStageView(
+      row.previousSalesStageId,
+      row.previousLabel,
+    ),
+    newStage: recordedStageView(row.newSalesStageId, row.newLabel),
+    version: row.opportunityVersion,
+    actor: {
+      workspaceMembershipId: row.actorWorkspaceMembershipId,
+      displayLabel: row.actorDisplayLabel,
+    },
+    changedAt: row.changedAt.toISOString(),
+  };
+}
+
+// The history CHECK keeps a recorded stage and its captured label together.
+function recordedStageView(
+  salesStageId: string | null,
+  label: string | null,
+): OpportunityStageHistoryEntry['previousStage'] {
+  if (salesStageId === null && label === null) return null;
+  if (salesStageId === null || label === null)
+    throw new Error('Unsupported Sales Stage history entry.');
+  return { salesStageId, label };
+}
+
+// The assigned stage, joined in the Opportunity's own Workspace and Company.
+function assignedSalesStage() {
+  return and(
+    eq(salesStages.workspaceId, opportunities.workspaceId),
+    eq(salesStages.companyId, opportunities.companyId),
+    eq(salesStages.id, opportunities.salesStageId),
+  );
+}
+
+function salesStageView(
+  salesStageId: string | null,
+  label: string | null,
+  state: OpportunitySalesStage['state'] | null,
+): OpportunitySalesStage | null {
+  if (salesStageId === null) return null;
+  // The composite foreign key keeps an assigned stage in the same Company.
+  if (label === null || state === null)
+    throw new Error('The assigned Sales Stage is missing.');
+  return { id: salesStageId, label, state };
 }
 
 function outcomeHistoryEntryView(
@@ -1461,12 +1869,16 @@ function detailView({
   opportunity,
   responsibleDisplayName,
   outcomeHistory,
+  salesStage,
+  stageHistory,
   client,
 }: {
   request: ClientRequestRow;
   opportunity: OpportunityRow;
   responsibleDisplayName: string;
   outcomeHistory: OpportunityOutcomeHistoryPage;
+  salesStage: OpportunitySalesStage | null;
+  stageHistory: OpportunityStageHistoryPage;
   client?: NonNullable<CommercialIntakeDetail['clientReference']>;
 }): CommercialIntakeDetail {
   if (
@@ -1508,6 +1920,8 @@ function detailView({
         outcomeHistory.entries[0]?.changedAt ??
         opportunity.createdAt.toISOString(),
       outcomeHistory,
+      salesStage,
+      stageHistory,
       responsibleWorkspaceMembershipId:
         opportunity.responsibleWorkspaceMembershipId,
       responsibleActor: {

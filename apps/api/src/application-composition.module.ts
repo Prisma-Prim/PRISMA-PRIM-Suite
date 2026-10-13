@@ -59,6 +59,8 @@ import { ClientModule } from './client/client.module.js';
 import { ClientUnionController } from './client/client-union.controller.js';
 import { DatabaseModule } from './database/database.module.js';
 import { CommercialIntakeModule } from './commercial-intake/commercial-intake.module.js';
+import { SalesStageModule } from './sales-stage/sales-stage.module.js';
+import { SalesStageController } from './sales-stage/sales-stage.controller.js';
 import {
   CommercialIntakeController,
   CommercialIntakeOpportunityController,
@@ -79,6 +81,7 @@ import { CompanyCommercialActivityReaderAssignmentController } from './access/co
 import { CompanyOfferPreparerAssignmentController } from './access/company-offer-preparer-assignment.controller.js';
 import { CompanyOfferApproverAssignmentController } from './access/company-offer-approver-assignment.controller.js';
 import { CompanyOpportunityManagerAssignmentController } from './access/company-opportunity-manager-assignment.controller.js';
+import { CompanySalesStageConfigurationAssignmentController } from './access/company-sales-stage-configuration-assignment.controller.js';
 import { CompanyProjectApproverAssignmentController } from './access/company-project-approver-assignment.controller.js';
 import { OperationalHomeModule } from './operational-home/operational-home.module.js';
 import { OperationalHomeController } from './operational-home/operational-home.controller.js';
@@ -99,6 +102,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyModule,
     DatabaseModule,
     CommercialIntakeModule,
+    SalesStageModule,
     CommercialCatalogueModule,
     PricingConfigurationModule,
     OperationalHomeModule,
@@ -134,6 +138,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     WorkspaceMembershipSuspensionController,
     WorkspaceSessionRevocationController,
     CommercialIntakeController,
+    SalesStageController,
     CommercialIntakeOpportunityController,
     CompanyCommercialIntakeAssignmentController,
     CommercialCatalogueController,
@@ -151,6 +156,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyContractApproverAssignmentController,
     CompanyOfferApproverAssignmentController,
     CompanyOpportunityManagerAssignmentController,
+    CompanySalesStageConfigurationAssignmentController,
     OperationalHomeController,
     OfferController,
     ContractController,

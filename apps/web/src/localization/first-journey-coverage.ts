@@ -6,6 +6,7 @@ import { contractPrecontractMessages } from '../contract/contract-precontract.co
 import { contractRuleSetMessages } from '../contract/contract-rule-set.copy';
 import { offerBindingMessages } from '../offer/offer-binding.copy';
 import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
+import { salesStageMessages } from '../commercial-intake/sales-stage.copy';
 import { appMessages } from '../app.copy';
 import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
@@ -26,6 +27,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('contractRuleSet', contractRuleSetMessages);
   assertMessageCoverage('offerBinding', offerBindingMessages);
   assertMessageCoverage('profitability', profitabilityMessages);
+  assertMessageCoverage('salesStage', salesStageMessages);
   assertMessageCoverage('app', appMessages);
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);

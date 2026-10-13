@@ -156,7 +156,9 @@ it.skipIf(!databaseUrl)(
             async (table) =>
               (
                 await query(
-                  `SELECT to_jsonb(row_value)::text AS value FROM ${table} row_value ORDER BY id`,
+                  // 0066 later adds the nullable Opportunity Sales Stage,
+                  // which this upgrade assigns to no row.
+                  `SELECT (to_jsonb(row_value) - 'sales_stage_id')::text AS value FROM ${table} row_value ORDER BY id`,
                 )
               ).rows,
           ),
@@ -208,7 +210,7 @@ it.skipIf(!databaseUrl)(
          VALUES ($1, $2, $3, 'company_commercial_intake', 'v3')`,
         [WORKSPACE, COMPANY, MEMBERSHIP],
       );
-      for (const version of [null, 'v4'])
+      for (const version of [null, 'v5'])
         await expect(
           query(
             `INSERT INTO company_role_assignments (workspace_id, company_id,

@@ -137,6 +137,8 @@ it.skipIf(!databaseUrl)(
           last_updated_by_internal_user_id: null,
           last_updated_by_workspace_membership_id: null,
           last_updated_at: null,
+          // 0066 adds the Sales Stage, which no migration assigns.
+          sales_stage_id: null,
         })),
       );
       expect(
@@ -173,7 +175,7 @@ it.skipIf(!databaseUrl)(
         query(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle,
              permission_set_version, revoked_at)
-           VALUES ($1, $2, $3, 'company_commercial_intake', 'v4', now())`,
+           VALUES ($1, $2, $3, 'company_commercial_intake', 'v5', now())`,
           [WORKSPACE, COMPANY, MEMBERSHIP],
         ),
       ).rejects.toMatchObject({ code: CHECK_VIOLATION });

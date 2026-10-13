@@ -45,6 +45,11 @@ export interface VersionedCommandProtocol {
   readonly acceptedStatus: number;
   /** The recorded receipt inside an accepted response body. */
   receipt(body: unknown): unknown;
+  /**
+   * The refusal code of a stale observation: `STALE_VERSION` unless the
+   * command guards another counter, such as a configuration revision.
+   */
+  readonly staleCode?: string;
 }
 
 export interface ProtocolScenario {
@@ -129,7 +134,7 @@ export function versionedCommandProtocolScenarios(
           }),
         );
         assert.equal(stale.status, 409);
-        assert.equal(code(stale.body), 'STALE_VERSION');
+        assert.equal(code(stale.body), protocol.staleCode ?? 'STALE_VERSION');
       },
     },
     {

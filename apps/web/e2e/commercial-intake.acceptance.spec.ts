@@ -1030,6 +1030,206 @@ test('changes, reloads and consults the outcome status of an Opportunity through
   }
 });
 
+test('configures Sales Stages, then assigns, changes and clears one on an Opportunity through the real API and PostgreSQL', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const subject = `Sales Stage request — ${suffix}`;
+  // Tenant labels, shown exactly as entered in every interface locale.
+  const qualification = `Calificare ${suffix}`;
+  const negotiation = `Negociere finală ${suffix}`;
+  await grantSalesStageConfiguration(page);
+  try {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const company = page.getByLabel('Active Company', { exact: true });
+    const navigation = page.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    const intake = page.locator('.commercial-intake-workspace');
+    await selectCompany(page, company, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+
+    // The configuration holder creates two stages in the Company settings.
+    await intake.getByRole('button', { name: 'Sales Stage settings' }).click();
+    const settings = intake.getByRole('region', {
+      name: 'Sales Stage settings',
+    });
+    for (const label of [qualification, negotiation]) {
+      await settings.getByLabel('New stage label', { exact: true }).fill(label);
+      const created = page.waitForResponse(
+        mutationResponse('POST', '/api/sales-stages'),
+      );
+      await settings.getByRole('button', { name: 'Add stage' }).click();
+      expect((await created).status()).toBe(201);
+      await expect(
+        settings
+          .getByRole('alert')
+          .filter({ hasText: /^Sales Stage added\.$/u }),
+      ).toBeVisible();
+    }
+    const stages = settings.getByRole('list', { name: 'Sales Stages' });
+    await expect(
+      stages.getByText(qualification, { exact: true }),
+    ).toBeVisible();
+    await expect(stages.getByText(negotiation, { exact: true })).toBeVisible();
+    await capture(
+      page,
+      testInfo,
+      `commercial-sales-stage-settings-${suffix.toLowerCase()}.png`,
+    );
+    await settings.getByRole('button', { name: 'Back to Requests' }).click();
+
+    await captureRequest(page, intake, {
+      originalText: `Exact source of the ${suffix} Sales Stage request.`,
+      subject,
+      opportunityTitle: `Qualify the ${suffix} Sales Stage`,
+      nextAction: 'Call the Client back',
+    });
+    const current = (label: string) =>
+      intake.getByText(`Sales Stage: ${label}`, { exact: true });
+    await expect(current('No Sales Stage')).toBeVisible();
+    await expect(
+      intake.getByText('No Sales Stage change recorded yet.', { exact: true }),
+    ).toBeVisible();
+
+    async function setStage(label: string): Promise<void> {
+      await intake.getByRole('button', { name: 'Change Sales Stage' }).click();
+      await selectOption(
+        intake.getByLabel('New Sales Stage', { exact: true }),
+        {
+          label,
+        },
+      );
+      await expect(
+        intake.getByRole('button', { name: 'Edit next action' }),
+      ).toBeDisabled();
+      const change = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          /\/api\/commercial-intake\/opportunities\/[^/]+\/stage$/u.test(
+            new URL(response.url()).pathname,
+          ),
+      );
+      await intake.getByRole('button', { name: 'Save Sales Stage' }).click();
+      expect((await change).status()).toBe(200);
+      await expect(
+        intake
+          .getByRole('alert')
+          .filter({ hasText: /^Sales Stage changed\.$/u }),
+      ).toBeVisible();
+    }
+
+    await setStage(qualification);
+    await expect(current(qualification)).toBeVisible();
+
+    // The stage survives a reload, in the list row and the detail.
+    await page.reload();
+    const row = intake.getByRole('button').filter({
+      has: page.getByText(subject, { exact: true }),
+    });
+    await expect(
+      row.getByText(`Sales Stage: ${qualification}`, { exact: true }),
+    ).toBeVisible();
+    await row.click();
+    await expect(current(qualification)).toBeVisible();
+    await intake.getByRole('button', { name: 'Change Sales Stage' }).click();
+    await capture(
+      page,
+      testInfo,
+      `commercial-sales-stage-editor-${suffix.toLowerCase()}.png`,
+    );
+    await intake
+      .locator('.commercial-intake-stage')
+      .getByRole('button', { name: 'Cancel' })
+      .click();
+    await setStage(negotiation);
+    await expect(current(negotiation)).toBeVisible();
+    await setStage('No Sales Stage');
+    await expect(current('No Sales Stage')).toBeVisible();
+
+    const history = intake.getByRole('list', { name: 'Sales Stage history' });
+    const entries = history.getByRole('listitem');
+    await expect(entries).toHaveCount(3);
+    await expect(entries.nth(0)).toContainText(
+      `${negotiation} → No Sales Stage`,
+    );
+    await expect(entries.nth(1)).toContainText(
+      `${qualification} → ${negotiation}`,
+    );
+    await expect(entries.nth(2)).toContainText(
+      `No Sales Stage → ${qualification}`,
+    );
+    await expect(entries.nth(0)).toContainText(/Ada Ionescu · [0-9A-Z]+/u);
+    await capture(
+      page,
+      testInfo,
+      `commercial-sales-stage-history-${suffix.toLowerCase()}.png`,
+    );
+
+    await grantCommercialActivityReader(page);
+    try {
+      await page.reload();
+      await navigate(page, navigation, 'Activity Log', narrow);
+      const activity = page.locator('.activity-log .activity-log-list > li');
+      await expect(
+        activity
+          .filter({
+            hasText: `Ada Ionescu changed the Sales Stage of an Opportunity (${qualification} → ${negotiation})`,
+          })
+          .first(),
+      ).toBeVisible();
+      const configured = activity
+        .filter({
+          hasText: `Ada Ionescu configured a Sales Stage (created: ${negotiation})`,
+        })
+        .first();
+      await expect(configured).toBeVisible();
+      await expect(configured).toContainText('Target: Sales Stage settings');
+      await expectNoHorizontalOverflow(page);
+    } finally {
+      await revokeCommercialActivityReader(page);
+    }
+  } finally {
+    await revokeSalesStageConfiguration(page);
+  }
+});
+
+async function grantSalesStageConfiguration(page: Page): Promise<void> {
+  const response = await page.request.post(
+    'http://127.0.0.1:4174/api/company-sales-stage-configuration-assignments',
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'content-type': 'application/json',
+        'idempotency-key': `acceptance-grant-stages-${crypto.randomUUID()}`,
+      },
+      data: {
+        workspaceMembershipId: requiredEnvironment(
+          'ACCEPTANCE_PRIMARY_MEMBERSHIP_ID',
+        ),
+        companyId: requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID'),
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function revokeSalesStageConfiguration(page: Page): Promise<void> {
+  const response = await page.request.delete(
+    `http://127.0.0.1:4174/api/company-sales-stage-configuration-assignments/${requiredEnvironment('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID')}/${requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID')}`,
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'idempotency-key': `acceptance-revoke-stages-${crypto.randomUUID()}`,
+      },
+    },
+  );
+  expect(response.status()).toBe(200);
+}
+
 async function grantOfferPreparer(page: Page): Promise<void> {
   const response = await page.request.post(
     'http://127.0.0.1:4174/api/company-offer-preparer-assignments',

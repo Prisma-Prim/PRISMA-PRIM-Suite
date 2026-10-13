@@ -64,6 +64,8 @@ import {
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialIntakeVersionsWith,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
+  salesStageConfigurationPermissionsFor,
   isOpportunityManagerPermissionSetVersion,
   opportunityManagerPermissionsFor,
   opportunityManagerVersionsWith,
@@ -753,9 +755,53 @@ export class CompanyContextAuthorization {
       lock,
       'member-rows',
     );
+    await this.requireLiveCommercialIntakeRead(actor, company.id, lock);
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  // Sales Stage configuration needs the live captured Company Sales Stage
+  // Configuration v1, a live Commercial Intake version carrying both reads and
+  // live Company context, all in the same active Company. A locked read
+  // serializes the command against revocation of any of them and suspension
+  // of the actor.
+  async requireSalesStageConfiguration(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !company?.salesStageConfigurationPermissions?.includes(
+        'commercial.sales_stage.configure',
+      ) ||
+      !carriesEvery(
+        company.commercialIntakePermissions,
+        COMMERCIAL_INTAKE_READ_PERMISSIONS,
+      )
+    )
+      throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
       company.id,
+      capturedGrant(COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE),
+      lock,
+      'member-rows',
+    );
+    await this.requireLiveCommercialIntakeRead(actor, company.id, lock);
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  // The live captured Commercial Intake read prerequisite of an opt-in
+  // commercial bundle: any captured version carrying both reads.
+  private async requireLiveCommercialIntakeRead(
+    actor: ActorContext,
+    companyId: string,
+    lock: boolean,
+  ): Promise<void> {
+    await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
       sql`(${eq(
         companyRoleAssignments.bundle,
         COMPANY_COMMERCIAL_INTAKE_BUNDLE,
@@ -766,8 +812,6 @@ export class CompanyContextAuthorization {
       lock,
       'member-rows',
     );
-    await this.requireLiveCompanyContext(actor, company.id, lock);
-    return company.id;
   }
 
   // Calculation belongs only to Company Pricing User v1. Snapshot reads use
@@ -1172,6 +1216,7 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_ADJUSTMENT_BUNDLE,
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+        COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
@@ -1330,6 +1375,20 @@ export class CompanyContextAuthorization {
         company.opportunityManagerPermissionSetVersion =
           row.permissionSetVersion;
       }
+      // The configuration bundle carries Sales Stage configuration only. It
+      // never contributes Company context; its prerequisites are evaluated
+      // separately.
+      if (
+        row.bundle === COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.salesStageConfigurationPermissions = [
+          ...salesStageConfigurationPermissionsFor(row.permissionSetVersion),
+        ];
+        company.salesStageConfigurationPermissionAssignmentId =
+          row.assignmentId;
+        company.salesStageConfigurationPermissionSetVersion = 'v1';
+      }
       if (
         row.bundle === COMPANY_SERVICE_CATALOGUE_BUNDLE &&
         row.permissionSetVersion === 'v1'
@@ -1465,7 +1524,8 @@ function capturedGrant(
     | typeof COMPANY_CONTRACT_APPROVER_BUNDLE
     | typeof COMPANY_OFFER_APPROVER_BUNDLE
     | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE
-    | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+    | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE
+    | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
 ): SQL {
   return sql`(${sql`${companyRoleAssignments.bundle}::text = ${bundle}`} AND ${eq(
     companyRoleAssignments.permissionSetVersion,
@@ -1494,7 +1554,7 @@ export type CompanyContextVisibility =
   | { kind: 'assigned-active'; companyIds: readonly string[] };
 
 export type CommercialIntakeAccessMode =
-  'read' | 'create' | 'update-next-action' | 'associate-client';
+  'read' | 'create' | 'update-next-action' | 'associate-client' | 'set-stage';
 
 // Runtime authorization evaluates the captured assignment version. Reads and
 // creates accept every captured version that carries them. Later mutations
@@ -1523,6 +1583,12 @@ function commercialIntakeRequiredPermissions(
       ];
     case 'associate-client':
       return ['commercial.request.read', 'commercial.request.client.associate'];
+    case 'set-stage':
+      return [
+        'commercial.request.read',
+        'commercial.opportunity.read',
+        'commercial.opportunity.stage.set',
+      ];
     default:
       return assertNeverMode(mode);
   }

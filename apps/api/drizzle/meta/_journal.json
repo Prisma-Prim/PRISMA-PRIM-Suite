@@ -463,6 +463,13 @@
       "when": 1791742399603,
       "tag": "0065_opportunity_outcome_status",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1791838945568,
+      "tag": "0066_sales_stages",
+      "breakpoints": true
     }
   ]
 }

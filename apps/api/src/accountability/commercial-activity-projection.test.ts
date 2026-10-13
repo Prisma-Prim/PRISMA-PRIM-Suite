@@ -62,6 +62,7 @@ describe('commercial Activity projection rules', () => {
       'opportunity.next_action.updated',
       'opportunity.responsible.changed',
       'opportunity.outcome.changed',
+      'opportunity.stage.changed',
     ]);
   });
 
@@ -85,6 +86,8 @@ describe('commercial Activity projection rules', () => {
       'opportunity.next_action.updated',
       'opportunity.responsible.changed',
       'opportunity.outcome.changed',
+      'opportunity.stage.changed',
+      'sales_stage.configured',
     ]);
   });
 
@@ -326,6 +329,203 @@ describe('commercial Activity projection rules', () => {
           action: 'opportunity.outcome.changed',
           metadata,
         }),
+      ).toBeUndefined();
+    });
+  });
+
+  describe('the Sales Stage change', () => {
+    const qualification = {
+      salesStageId: '00000000-0000-4000-8000-000000000501',
+      label: 'Qualification',
+    };
+    const negotiation = {
+      salesStageId: '00000000-0000-4000-8000-000000000502',
+      label: 'Negotiation',
+    };
+
+    it('projects the previous and new captured labels, not the version or identifiers', () => {
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.stage.changed',
+          metadata: {
+            opportunityVersion: 3,
+            previousStage: qualification,
+            newStage: negotiation,
+          },
+        }),
+      ).toEqual({
+        action: 'opportunity.stage.changed',
+        metadata: { previousLabel: 'Qualification', newLabel: 'Negotiation' },
+      });
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.stage.changed',
+          metadata: {
+            opportunityVersion: 2,
+            previousStage: null,
+            newStage: qualification,
+          },
+        }),
+      ).toEqual({
+        action: 'opportunity.stage.changed',
+        metadata: { previousLabel: null, newLabel: 'Qualification' },
+      });
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.stage.changed',
+          metadata: {
+            opportunityVersion: 4,
+            previousStage: negotiation,
+            newStage: null,
+          },
+        }),
+      ).toEqual({
+        action: 'opportunity.stage.changed',
+        metadata: { previousLabel: 'Negotiation', newLabel: null },
+      });
+      expect(commercialActivityTargetOf('opportunity.stage.changed')).toBe(
+        'opportunity',
+      );
+    });
+
+    it.each([
+      ['a missing version', { previousStage: null, newStage: qualification }],
+      [
+        'the first version',
+        { opportunityVersion: 1, previousStage: null, newStage: qualification },
+      ],
+      ['a missing side', { opportunityVersion: 2, newStage: qualification }],
+      [
+        'no stage on either side',
+        { opportunityVersion: 2, previousStage: null, newStage: null },
+      ],
+      [
+        'the same stage on both sides',
+        {
+          opportunityVersion: 2,
+          previousStage: qualification,
+          newStage: qualification,
+        },
+      ],
+      [
+        'a blank label',
+        {
+          opportunityVersion: 2,
+          previousStage: null,
+          newStage: { ...qualification, label: '  ' },
+        },
+      ],
+      [
+        'an overlong label',
+        {
+          opportunityVersion: 2,
+          previousStage: null,
+          newStage: { ...qualification, label: 'x'.repeat(81) },
+        },
+      ],
+      [
+        'an extra stage field',
+        {
+          opportunityVersion: 2,
+          previousStage: null,
+          newStage: { ...qualification, position: 1 },
+        },
+      ],
+      [
+        'an extra key',
+        {
+          opportunityVersion: 2,
+          previousStage: null,
+          newStage: qualification,
+          nextAction: 'Call back',
+        },
+      ],
+    ])('fails closed on %s', (_case, metadata) => {
+      expect(
+        readCommercialActivity({
+          action: 'opportunity.stage.changed',
+          metadata,
+        }),
+      ).toBeUndefined();
+    });
+  });
+
+  describe('the Sales Stage configuration', () => {
+    it('projects the operation and label, not the revision, for a Sales Stage list reader', () => {
+      expect(
+        readCommercialActivity({
+          action: 'sales_stage.configured',
+          metadata: {
+            operation: 'CREATED',
+            configurationRevision: 1,
+            label: 'Qualification',
+          },
+        }),
+      ).toEqual({
+        action: 'sales_stage.configured',
+        metadata: { operation: 'CREATED', label: 'Qualification' },
+      });
+      expect(commercialActivityTargetOf('sales_stage.configured')).toBe(
+        'sales_stage',
+      );
+      // The stage list is read with both Commercial Intake reads.
+      for (const commercialIntakePermissions of [
+        ['commercial.request.read' as const],
+        ['commercial.opportunity.read' as const],
+      ])
+        expect(
+          eligibleCommercialActions(
+            company({
+              commercialActivityPermissions: ['commercial.activity.read'],
+              commercialIntakePermissions,
+            }),
+          ),
+        ).not.toContain('sales_stage.configured');
+    });
+
+    it('projects an 80-emoji label, counted in characters', () => {
+      const label = '🚀'.repeat(80);
+      expect(
+        readCommercialActivity({
+          action: 'sales_stage.configured',
+          metadata: { operation: 'CREATED', configurationRevision: 1, label },
+        }),
+      ).toEqual({
+        action: 'sales_stage.configured',
+        metadata: { operation: 'CREATED', label },
+      });
+    });
+
+    it.each([
+      ['a missing revision', { operation: 'CREATED', label: 'Qualification' }],
+      [
+        'revision 0',
+        { operation: 'CREATED', configurationRevision: 0, label: 'Q' },
+      ],
+      [
+        'a later operation',
+        {
+          operation: 'RENAMED',
+          configurationRevision: 2,
+          label: 'Qualification',
+        },
+      ],
+      [
+        'a blank label',
+        { operation: 'CREATED', configurationRevision: 1, label: ' ' },
+      ],
+      [
+        'an extra key',
+        {
+          operation: 'CREATED',
+          configurationRevision: 1,
+          label: 'Qualification',
+          position: 1,
+        },
+      ],
+    ])('fails closed on %s', (_case, metadata) => {
+      expect(
+        readCommercialActivity({ action: 'sales_stage.configured', metadata }),
       ).toBeUndefined();
     });
   });
