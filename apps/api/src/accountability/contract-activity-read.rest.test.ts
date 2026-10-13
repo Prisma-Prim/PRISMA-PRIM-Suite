@@ -521,6 +521,81 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
     expect(serialized).not.toContain(sibling.projectId);
   });
 
+  it('omits a Project link without its link record or with another creation flag and keeps its sibling link', async () => {
+    const setup = await preparedCompany();
+    const contract = await linkedContract(setup, 'link-record');
+    tick();
+    const created = record(
+      await command(
+        OWNER,
+        `${contract.base}/projects/create`,
+        {
+          title: 'Synthetic created Project',
+          acknowledgedCandidateProjectIds: [contract.projectId],
+          expectedContractRevision: 4,
+        },
+        'create-link-record-project',
+        setup.companyId,
+      ),
+    );
+    const createdProjectId = stringField(record(created.project), 'id');
+    const siblingProjectId = await project(setup, 'Synthetic sibling Project');
+    tick();
+    await command(
+      OWNER,
+      `${contract.base}/projects`,
+      { projectId: siblingProjectId, expectedContractRevision: 5 },
+      'link-sibling',
+      setup.companyId,
+    );
+    await preparedReader(setup.companyId, READER_ASSIGNMENTS);
+    const linkedProjects = (events: ProjectedEvent[]) =>
+      events.flatMap((event) =>
+        event.action === 'contract_project.linked'
+          ? [record(record(event.metadata).project).projectId]
+          : [],
+      );
+    const before = contractEvents(await activityLog(READER, setup.companyId));
+    expect(linkedProjects(before)).toEqual([
+      siblingProjectId,
+      createdProjectId,
+      contract.projectId,
+    ]);
+
+    // Integrity forbids these states: the first link record is gone and the
+    // created Project's link records another creation flag than its event.
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL session_replication_role = replica');
+      await client.query(
+        'DELETE FROM contract_project_links WHERE contract_id = $1 AND project_id = $2',
+        [contract.contractId, contract.projectId],
+      );
+      await client.query(
+        'UPDATE contract_project_links SET created = false WHERE contract_id = $1 AND project_id = $2',
+        [contract.contractId, createdProjectId],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    const after = contractEvents(await activityLog(READER, setup.companyId));
+    expect(after).toEqual(
+      before.filter(
+        (event) =>
+          event.action !== 'contract_project.linked' ||
+          record(record(event.metadata).project).projectId === siblingProjectId,
+      ),
+    );
+    expect(linkedProjects(after)).toEqual([siblingProjectId]);
+    expect(after).toHaveLength(5);
+  });
+
   it('fills the page with valid events past newer rows that fail closed, including a source or Snapshot unlike the resolved Contract', async () => {
     const setup = await preparedCompany();
     const contract = await createdContract(setup, 'bounded');

@@ -188,6 +188,7 @@ const linkedRow = {
   executionState: 'EXECUTED',
   projectId: PROJECT_ID,
   projectTitle: 'Synthetic Project',
+  linkCreated: true,
   metadata: { contractId: CONTRACT_ID, projectId: PROJECT_ID, created: true },
 };
 
@@ -336,6 +337,7 @@ describe('Contract Activity metadata', () => {
     expect(
       readContractActivity({
         ...linkedRow,
+        linkCreated: false,
         metadata: { ...linkedRow.metadata, created: false },
       }),
     ).toMatchObject({ metadata: { created: false } });
@@ -569,6 +571,14 @@ describe('Contract Activity metadata', () => {
       { ...linkedRow, projectId: null },
       { ...linkedRow, projectTitle: null },
       { ...linkedRow, projectId: PARENT_ID },
+      // No link record, or one whose creation flag differs from the event.
+      { ...linkedRow, linkCreated: null },
+      { ...linkedRow, linkCreated: undefined },
+      { ...linkedRow, linkCreated: false },
+      {
+        ...linkedRow,
+        metadata: { ...linkedRow.metadata, created: false },
+      },
       { ...linkedRow, metadata: { ...linkedRow.metadata, created: 'true' } },
       {
         ...linkedRow,

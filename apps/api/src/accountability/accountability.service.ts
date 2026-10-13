@@ -66,6 +66,7 @@ import {
   opportunities,
   clientRequests,
   contractEvents,
+  contractProjectLinks,
   contracts,
   contractVersions,
   profitabilityEstimateEvents,
@@ -1385,6 +1386,7 @@ export class AccountabilityService {
           clientRequestId: clientRequests.id,
           projectId: projects.id,
           projectTitle: projects.title,
+          linkCreated: contractProjectLinks.created,
           internalUserId: internalUsers.id,
           displayName: internalUsers.displayName,
         })
@@ -1481,6 +1483,17 @@ export class AccountabilityService {
             eq(clientCompanyRelationships.status, 'active'),
           ),
         )
+        // The recorded link itself: the event's metadata has no foreign key,
+        // so only the link record proves the relationship and its creation.
+        .leftJoin(
+          contractProjectLinks,
+          and(
+            eq(contractProjectLinks.workspaceId, contractEvents.workspaceId),
+            eq(contractProjectLinks.companyId, contractEvents.companyId),
+            eq(contractProjectLinks.contractId, contractEvents.contractId),
+            eq(contractProjectLinks.projectId, projects.id),
+          ),
+        )
         .where(
           and(
             eq(contractEvents.workspaceId, actor.workspaceId),
@@ -1493,6 +1506,7 @@ export class AccountabilityService {
                 isNotNull(projects.id),
                 isNotNull(clientAccounts.id),
                 isNotNull(clientCompanyRelationships.id),
+                isNotNull(contractProjectLinks.id),
               ),
             ),
             olderThan(contractEvents.occurredAt, contractEvents.id, after),

@@ -109,7 +109,7 @@ export function eligibleContractActivityActions(
 /**
  * One persisted Contract event joined to its current Contract, owning
  * Opportunity and Request, the Contract Version it concerns and, for a
- * Project link, the readable linked Project. Rows are an external boundary:
+ * Project link, the readable linked Project and the link record. Rows are an external boundary:
  * anything other than exactly the section 19.12 shape of a known action,
  * consistent with the resolved target, is omitted.
  */
@@ -130,6 +130,8 @@ export function readContractActivity(
       row.executionState === 'EXECUTED' &&
       hasExactly(metadata, ['contractId', 'projectId', 'created']) &&
       typeof metadata.created === 'boolean' &&
+      // The recorded link's own creation flag.
+      metadata.created === row.linkCreated &&
       isIdentifier(projectId) &&
       metadata.projectId === projectId &&
       typeof projectTitle === 'string'
