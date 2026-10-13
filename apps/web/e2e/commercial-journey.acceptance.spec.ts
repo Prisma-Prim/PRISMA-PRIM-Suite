@@ -119,11 +119,49 @@ test('follows one commercial case from Request to signed agreement, Project and 
   const companyName = `Commercial Journey ${suffix}`;
   const clientName = `Synthetic Journey Client ${suffix}`;
   const subject = `Journey audit request ${suffix}`;
-  const originalText = `Exact synthetic source of the ${suffix} commercial journey.`;
   const opportunityTitle = `Certify the ${suffix} journey site`;
   const serviceName = `Illustrative journey audit ${suffix}`;
   const qualification = `Calificare ${suffix}`;
   const contracting = `Contractare ${suffix}`;
+  // Every value the journey types that the Activity contract forbids
+  // projecting (PRD 17.3, 18.10, 19.12, 23.6 and 25.2): texts, reasons,
+  // conditions, signatories, the IDNO and user-entered dates. Defined once and
+  // typed from here, so the leak check of step 10 cannot drift from the run.
+  const entered = {
+    originalText: `Exact synthetic source of the ${suffix} commercial journey.`,
+    firstNextAction: 'Arrange the scoping call',
+    secondNextAction: 'Confirm the audit scope with the Client',
+    ionNextAction: 'Send the audit questionnaire',
+    netReduction: '30.00',
+    adjustmentReason: 'Synthetic loyalty reduction',
+    offerScope: `Synthetic audit scope ${suffix}`,
+    firstConditions: 'Synthetic first conditions',
+    negotiatedConditions: 'Synthetic negotiated conditions',
+    clientTaxId: `IDNO-JOURNEY-${suffix.toUpperCase()}`,
+    preliminaryScope: 'Synthetic site survey before the Contract',
+    preliminaryConditions: 'Synthetic advance capped at cost',
+    preliminaryLimits: 'Synthetic limit: survey only',
+    precontractTermEnd: '2099-12-31',
+    contractTermStart: '2026-11-02',
+    specialConditions: 'Synthetic special conditions agreed in negotiation',
+    providerSignatory: 'Synthetic provider signatory',
+    clientSignatory: 'Synthetic Client signatory',
+    changeSummary: `Synthetic extension of the audit scope ${suffix}`,
+  } as const;
+  // The Snapshot figures of step 4 (2 × 300.0000 EUR, 15 % tax, net reduction)
+  // and the values the journey types from server receipts: the reported
+  // received time and the signing dates. Snapshot content and user-entered
+  // dates are forbidden Activity content as well (PRD 25.2).
+  const snapshotAmounts = [
+    '300.0000',
+    '600.00',
+    '90.00',
+    entered.netReduction,
+    '570.00',
+    '85.50',
+    '655.50',
+  ];
+  const typedFromReceipts: string[] = [];
 
   const ada = await membershipOf(request, identities.ada);
   const ion = await membershipOf(request, identities.ion);
@@ -145,7 +183,11 @@ test('follows one commercial case from Request to signed agreement, Project and 
   const intake = page.locator('.commercial-intake-workspace');
   const feedback = intake.locator(':scope > [role="alert"]');
   const sessions: Page[] = [];
+  let clientRequestId = '';
   let opportunityId = '';
+  // The Access labels of both responsible actors, as the change records them.
+  let adaLabel = '';
+  let ionLabel = '';
   await page.emulateMedia({ reducedMotion: 'reduce' });
 
   try {
@@ -182,23 +224,25 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(feedback).toHaveText(
         'Enter the required request and Opportunity fields.',
       );
-      await intake.getByLabel('Original request text').fill(originalText);
+      await intake
+        .getByLabel('Original request text')
+        .fill(entered.originalText);
       await intake.getByLabel('Subject').fill(subject);
       await intake.getByLabel('Opportunity title').fill(opportunityTitle);
-      await intake.getByLabel('Next action').fill('Arrange the scoping call');
+      await intake.getByLabel('Next action').fill(entered.firstNextAction);
       const captured = page.waitForResponse(
         mutation('POST', /^\/api\/commercial-intake\/requests$/u),
       );
       await intake.getByRole('button', { name: 'Capture Request' }).click();
       const capturedResponse = await captured;
       expect(capturedResponse.status()).toBe(201);
-      opportunityId = text(
-        object(object(await capturedResponse.json()).initialOpportunity).id,
-      );
+      const receipt = object(await capturedResponse.json());
+      clientRequestId = text(receipt.id);
+      opportunityId = text(object(receipt.initialOpportunity).id);
 
       await reopenRequest(journey);
       await expect(
-        intake.getByText(originalText, { exact: true }),
+        intake.getByText(entered.originalText, { exact: true }),
       ).toBeVisible();
       await expect(
         intake.getByText('Responsible actor: Ada Ionescu', { exact: true }),
@@ -238,9 +282,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
     await test.step('2. set the next action, then hand the case to Ion Popa', async () => {
       await intake.getByRole('button', { name: 'Edit next action' }).click();
-      await intake
-        .getByLabel('Next action')
-        .fill('Confirm the audit scope with the Client');
+      await intake.getByLabel('Next action').fill(entered.secondNextAction);
       const saved = page.waitForResponse(
         mutation(
           'POST',
@@ -252,17 +294,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(feedback).toHaveText('Next action saved.');
       await reopenRequest(journey);
       await expect(
-        intake.getByText(
-          'Next action: Confirm the audit scope with the Client',
-          {
-            exact: true,
-          },
-        ),
+        intake.getByText(`Next action: ${entered.secondNextAction}`, {
+          exact: true,
+        }),
       ).toBeVisible();
       await expect(
         intake.getByText('Version: 2', { exact: true }),
       ).toBeVisible();
 
+      ionLabel = await responsibleLabel(request, {
+        companyId,
+        opportunityId,
+        membership: ion,
+      });
       await intake.getByRole('button', { name: 'Change responsible' }).click();
       const choices = await openSelect(
         intake.getByLabel('New responsible actor', { exact: true }),
@@ -280,6 +324,11 @@ test('follows one commercial case from Request to signed agreement, Project and 
       );
       await intake.getByRole('button', { name: 'Save responsible' }).click();
       expect((await changed).status()).toBe(200);
+      adaLabel = await responsibleLabel(request, {
+        companyId,
+        opportunityId,
+        membership: ada,
+      });
       await reopenRequest(journey);
       await expect(
         intake.getByText('Responsible actor: Ion Popa', { exact: true }),
@@ -367,9 +416,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
     await test.step("criterion 3: Ion's stale edit conflicts with Ada's newer change, then Ion acts", async () => {
       const ionFeedback = ionIntake.locator(':scope > [role="alert"]');
       await ionIntake.getByRole('button', { name: 'Edit next action' }).click();
-      await ionIntake
-        .getByLabel('Next action')
-        .fill('Send the audit questionnaire');
+      await ionIntake.getByLabel('Next action').fill(entered.ionNextAction);
       const stale = ionPage.waitForResponse(
         mutation(
           'POST',
@@ -390,9 +437,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ionIntake.getByText(`Sales Stage: ${qualification}`, { exact: true }),
       ).toBeVisible();
       await ionIntake.getByRole('button', { name: 'Edit next action' }).click();
-      await ionIntake
-        .getByLabel('Next action')
-        .fill('Send the audit questionnaire');
+      await ionIntake.getByLabel('Next action').fill(entered.ionNextAction);
       const saved = ionPage.waitForResponse(
         mutation(
           'POST',
@@ -404,7 +449,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(ionFeedback).toHaveText('Next action saved.');
       await reopenRequest(ionJourney);
       await expect(
-        ionIntake.getByText('Next action: Send the audit questionnaire', {
+        ionIntake.getByText(`Next action: ${entered.ionNextAction}`, {
           exact: true,
         }),
       ).toBeVisible();
@@ -413,7 +458,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       ).toBeVisible();
       await reopenRequest(journey);
       await expect(
-        intake.getByText('Next action: Send the audit questionnaire', {
+        intake.getByText(`Next action: ${entered.ionNextAction}`, {
           exact: true,
         }),
       ).toBeVisible();
@@ -432,7 +477,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await line
         .getByLabel('Apply a fixed net discount', { exact: true })
         .check();
-      await line.getByLabel('Net reduction', { exact: true }).fill('30.00');
+      await line
+        .getByLabel('Net reduction', { exact: true })
+        .fill(entered.netReduction);
       const reason = line.getByRole('textbox', {
         name: 'Adjustment reason',
         exact: true,
@@ -442,19 +489,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(pricing.getByRole('alert')).toHaveText(
         'Correct the highlighted values and try again.',
       );
-      await reason.fill('Synthetic loyalty reduction');
+      await reason.fill(entered.adjustmentReason);
       const calculated = page.waitForResponse(
         mutation('POST', /^\/api\/pricing\/opportunities\/[^/]+\/snapshots$/u),
       );
       await pricing.getByRole('button', { name: 'Calculate and save' }).click();
       expect((await calculated).status()).toBe(201);
-      await expectAdjustedSnapshot(pricing);
+      await expectAdjustedSnapshot(pricing, entered.adjustmentReason);
 
       await reopenRequest(journey);
       await pricing
         .getByRole('button', { name: /Reopen snapshot: 655\.50 EUR/u })
         .click();
-      await expectAdjustedSnapshot(pricing);
+      await expectAdjustedSnapshot(pricing, entered.adjustmentReason);
       await expect(
         pricing.getByText('2 × 300.0000 EUR/illustrative-unit'),
       ).toBeVisible();
@@ -478,10 +525,10 @@ test('follows one commercial case from Request to signed agreement, Project and 
         .click();
       await offer
         .getByRole('textbox', { name: 'Scope note', exact: true })
-        .fill(`Synthetic audit scope ${suffix}`);
+        .fill(entered.offerScope);
       await offer
         .getByRole('textbox', { name: 'Commercial conditions', exact: true })
-        .fill('Synthetic first conditions');
+        .fill(entered.firstConditions);
       const prepared = page.waitForResponse(
         mutation('POST', /^\/api\/offers\/opportunities\/[^/]+$/u),
       );
@@ -567,7 +614,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(summary).toHaveCount(0);
       await capture(page, testInfo, 'journey-offer-denied');
       await reopenRequest(journey);
-      await expect(page.getByText(originalText, { exact: true })).toBeVisible();
+      await expect(
+        page.getByText(entered.originalText, { exact: true }),
+      ).toBeVisible();
       await expect(unavailable).toBeVisible();
       await expect(summary).toHaveCount(0);
       await expect(page.getByText('Approved internally')).toHaveCount(0);
@@ -577,7 +626,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         activityRow(
           page,
           'Ada Ionescu captured a Client Request',
-          'Client Request',
+          `Client Request: ${clientRequestId}`,
         ),
       ).toHaveCount(1);
       await expect(activity).not.toContainText('Illustrative Offer');
@@ -623,7 +672,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         .click();
       await offer
         .getByRole('textbox', { name: 'Commercial conditions', exact: true })
-        .fill('Synthetic negotiated conditions');
+        .fill(entered.negotiatedConditions);
       const created = page.waitForResponse(mutation('POST', /\/versions$/u));
       await offer
         .getByRole('button', { name: 'Create new version', exact: true })
@@ -631,7 +680,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       expect((await created).status()).toBe(201);
       await reopenRequest(journey);
       await expect(
-        offer.getByText('Current value: Synthetic negotiated conditions', {
+        offer.getByText(`Current value: ${entered.negotiatedConditions}`, {
           exact: true,
         }),
       ).toBeVisible();
@@ -673,6 +722,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       const transmittedAt = text(
         object(await transmitted.json()).transmittedAt,
       );
+      typedFromReceipts.push(transmittedAt);
       await reopenRequest(journey);
       const response = offer.locator('.offer-client-response');
       await response
@@ -726,7 +776,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       });
       await correction
         .getByLabel('IDNO / tax code', { exact: true })
-        .fill(`IDNO-JOURNEY-${suffix.toUpperCase()}`);
+        .fill(entered.clientTaxId);
       const corrected = page.waitForResponse(
         mutation('PATCH', /^\/api\/clients\/[^/]+$/u),
       );
@@ -787,12 +837,13 @@ test('follows one commercial case from Request to signed agreement, Project and 
         companyId,
         path: agreementPath,
       });
+      typedFromReceipts.push(signedOn);
       await signatures
         .getByLabel('Provider signatory label', { exact: true })
-        .fill('Synthetic provider signatory');
+        .fill(entered.providerSignatory);
       await signatures
         .getByLabel('Client signatory label', { exact: true })
-        .fill('Synthetic Client signatory');
+        .fill(entered.clientSignatory);
       await signatures
         .getByLabel('Provider signing date', { exact: true })
         .fill(signedOn);
@@ -822,22 +873,22 @@ test('follows one commercial case from Request to signed agreement, Project and 
       });
       await editor
         .getByRole('textbox', { name: 'Preliminary work scope', exact: true })
-        .fill('Synthetic site survey before the Contract');
+        .fill(entered.preliminaryScope);
       await editor
         .getByRole('textbox', {
           name: 'Preliminary financial conditions',
           exact: true,
         })
-        .fill('Synthetic advance capped at cost');
+        .fill(entered.preliminaryConditions);
       await editor
         .getByRole('textbox', {
           name: 'Limits until the Contract',
           exact: true,
         })
-        .fill('Synthetic limit: survey only');
+        .fill(entered.preliminaryLimits);
       await editor
         .getByLabel('Precontract term end', { exact: true })
-        .fill('2099-12-31');
+        .fill(entered.precontractTermEnd);
       await editor
         .getByRole('button', { name: 'Create Precontract', exact: true })
         .click();
@@ -913,11 +964,15 @@ test('follows one commercial case from Request to signed agreement, Project and 
         name: 'Revise Contract before signature',
         exact: true,
       });
-      await revisions.getByLabel('Revised term start').fill('2026-11-02');
-      await revisions.getByLabel('Revised term end').fill('2099-12-31');
+      await revisions
+        .getByLabel('Revised term start')
+        .fill(entered.contractTermStart);
+      await revisions
+        .getByLabel('Revised term end')
+        .fill(entered.precontractTermEnd);
       await revisions
         .getByLabel('Revised special conditions')
-        .fill('Synthetic special conditions agreed in negotiation');
+        .fill(entered.specialConditions);
       await revisions
         .getByRole('button', {
           name: 'Create new Contract Version',
@@ -1021,7 +1076,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await reopenRequest(journey);
       await contract
         .getByRole('textbox', { name: 'Change summary', exact: true })
-        .fill(`Synthetic extension of the audit scope ${suffix}`);
+        .fill(entered.changeSummary);
       await contract
         .getByRole('button', { name: 'Create Addendum', exact: true })
         .click();
@@ -1063,9 +1118,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         .getByRole('button', { name: 'Open Addendum 1', exact: true })
         .click();
       await expect(
-        contract.getByText(`Synthetic extension of the audit scope ${suffix}`, {
-          exact: true,
-        }),
+        contract.getByText(entered.changeSummary, { exact: true }),
       ).toBeVisible();
       await capture(page, testInfo, 'journey-addendum-executed');
     });
@@ -1099,58 +1152,147 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
     await test.step('10. follow the case in the Activity Log and open exact versions', async () => {
       await openSection(journey, 'Activity Log');
-      for (const [description, target] of [
-        ['Ada Ionescu captured a Client Request', 'Client Request'],
-        ['Ada Ionescu created an initial Opportunity', ''],
-        ['Ada Ionescu associated a Client with a Request', 'Client Request'],
-        ['Ada Ionescu changed the responsible actor of an Opportunity', ''],
-        ['Ion Popa updated an Opportunity next action', ''],
+      const activity = page.locator('.activity-log');
+      const rows = activity.locator('.activity-log-list > li');
+      const requestTarget = `Client Request: ${clientRequestId}`;
+      const opportunityTarget = `Opportunity: ${opportunityId}`;
+      const offerV1 = 'Illustrative Offer 1 · version 1';
+      const offerV2 = 'Illustrative Offer 1 · version 2';
+      const precontractV1 = 'Illustrative Precontract 1 · version 1';
+      const contractV1 = 'Illustrative Contract 1 · version 1';
+      const contractV2 = 'Illustrative Contract 1 · version 2';
+      const addendumV1 = 'Illustrative Addendum 1 · version 1';
+      // Every successful command of the journey records exactly the events
+      // below (PRD 17.3, 18.10, 19.12, 23.6 and 24.5), each projected once
+      // with its exact target. Ion's stale save (409), the denied
+      // transmission (403), the Quality Check runs, the Snapshot and the
+      // reloads record no commercial event; the bundle revocation and
+      // re-grant record assignment events outside the commercial family.
+      const commercialEvents: readonly (readonly [string, string])[] = [
+        ['Ada Ionescu captured a Client Request', requestTarget],
+        ['Ada Ionescu created an initial Opportunity', opportunityTarget],
+        ['Ada Ionescu associated a Client with a Request', requestTarget],
+        ['Ada Ionescu updated an Opportunity next action', opportunityTarget],
+        [
+          `Ada Ionescu changed the responsible actor of an Opportunity (${adaLabel} → ${ionLabel})`,
+          opportunityTarget,
+        ],
+        // Ion's stale save recorded nothing; his retry after the reload did.
+        ['Ion Popa updated an Opportunity next action', opportunityTarget],
+        [
+          `Ada Ionescu configured a Sales Stage (created: ${qualification})`,
+          'Sales Stage settings',
+        ],
+        [
+          `Ada Ionescu configured a Sales Stage (created: ${contracting})`,
+          'Sales Stage settings',
+        ],
+        [
+          `Ada Ionescu changed the Sales Stage of an Opportunity (No Sales Stage → ${qualification})`,
+          opportunityTarget,
+        ],
         [
           `Ada Ionescu changed the Sales Stage of an Opportunity (${qualification} → ${contracting})`,
-          '',
+          opportunityTarget,
         ],
-        [`Ada Ionescu configured a Sales Stage (created: ${contracting})`, ''],
-        ['Ada Ionescu changed the status of an Opportunity (Open → Won)', ''],
         [
-          'Ada Ionescu created an illustrative Offer',
-          'Illustrative Offer 1 · version 1',
+          'Ada Ionescu changed the status of an Opportunity (Open → Won)',
+          opportunityTarget,
         ],
+        ['Ada Ionescu created an illustrative Offer', offerV1],
+        ['Ada Ionescu created an Offer Version', offerV1],
+        ['Ada Ionescu approved an Offer Version', offerV1],
+        // The denied transmission of version 1 committed nothing.
         [
           'Ada Ionescu recorded the transmission of an Offer Version',
-          'Illustrative Offer 1 · version 1 · Simulated',
+          `${offerV1} · Simulated`,
+        ],
+        ['Ada Ionescu created an Offer Version', offerV2],
+        ['Ada Ionescu approved an Offer Version', offerV2],
+        [
+          'Ada Ionescu recorded the transmission of an Offer Version',
+          `${offerV2} · Simulated`,
         ],
         [
           'Ada Ionescu recorded the Client response to an Offer Version (Accepted)',
-          'Illustrative Offer 1 · version 2 · Simulated',
+          `${offerV2} · Simulated`,
         ],
-        [
-          'Ada Ionescu created an illustrative agreement',
-          'Illustrative Precontract 1 · version 1',
-        ],
-        [
-          'Ada Ionescu created an illustrative agreement',
-          'Illustrative Contract 1 · version 1',
-        ],
+        ['Ada Ionescu created an illustrative agreement', precontractV1],
+        ['Ada Ionescu created an agreement version', precontractV1],
+        ['Ada Ionescu approved an agreement version', precontractV1],
         [
           'Ada Ionescu recorded the signature of an agreement version',
-          'Illustrative Contract 1 · version 2 · Simulated',
+          `${precontractV1} · Simulated`,
         ],
         [
           'Ada Ionescu linked a Project to an agreement',
-          `Illustrative Contract 1 · version 2 — Project: ${opportunityTitle}`,
+          `${precontractV1} — Created Project: ${opportunityTitle}`,
         ],
+        ['Ada Ionescu created an illustrative agreement', contractV1],
+        ['Ada Ionescu created an agreement version', contractV1],
+        ['Ada Ionescu created an agreement version', contractV2],
+        ['Ada Ionescu approved an agreement version', contractV2],
         [
           'Ada Ionescu recorded the signature of an agreement version',
-          'Illustrative Addendum 1 · version 1 · Simulated',
+          `${contractV2} · Simulated`,
         ],
-      ] as const)
+        [
+          'Ada Ionescu linked a Project to an agreement',
+          `${contractV2} — Project: ${opportunityTitle}`,
+        ],
+        ['Ada Ionescu created an illustrative agreement', addendumV1],
+        ['Ada Ionescu created an agreement version', addendumV1],
+        ['Ada Ionescu approved an agreement version', addendumV1],
+        [
+          'Ada Ionescu recorded the signature of an agreement version',
+          `${addendumV1} · Simulated`,
+        ],
+      ];
+      for (const [description, target] of commercialEvents)
         await expect(activityRow(page, description, target)).toHaveCount(1);
-      const activity = page.locator('.activity-log');
-      await expect(activity).not.toContainText(originalText);
-      await expect(activity).not.toContainText(
-        'Synthetic negotiated conditions',
-      );
-      await expect(activity).not.toContainText('Synthetic provider signatory');
+      // Create and link Project also records the Project owner's own event
+      // (PRD 19.12); it is not part of the commercial family (PRD 25.1).
+      await expect(
+        activityRow(
+          page,
+          'Ada Ionescu created a preparatory Project',
+          `Project: ${opportunityTitle}`,
+        ),
+      ).toHaveCount(1);
+      // No commercial event beyond those: every row with a Request,
+      // Opportunity, Sales Stage, Offer or agreement target is one of them.
+      const commercialRows = rows.filter({
+        has: page.locator('span', {
+          hasText:
+            /^Target: (?:Client Request: |Opportunity: |Sales Stage settings$|Illustrative )/u,
+        }),
+      });
+      await expect(commercialRows).toHaveCount(commercialEvents.length);
+
+      // Nothing typed or priced reaches the Activity Log (PRD 17.3 and 25.2).
+      // The legitimate labels are the Client label of the Client family's own
+      // events, the Project title of the three Project events, the stage,
+      // Company and actor labels.
+      const typedTexts = [...Object.values(entered), subject, serviceName];
+      const forbidden = [
+        ...typedTexts,
+        ...snapshotAmounts,
+        ...typedFromReceipts,
+      ];
+      for (const value of forbidden)
+        await expect(activity).not.toContainText(value);
+      await expect(rows.filter({ hasText: opportunityTitle })).toHaveCount(3);
+      for (const label of [clientName, companyName])
+        await expect(commercialRows.filter({ hasText: label })).toHaveCount(0);
+      await expectNoActivityLeak(request, {
+        companyId,
+        expectedCommercialEvents: commercialEvents.length,
+        forbidden,
+        typedTexts,
+        typedFromReceipts,
+        clientTaxId: entered.clientTaxId,
+        labels: { clientName, companyName, opportunityTitle },
+      });
       await capture(page, testInfo, 'journey-activity');
 
       // The first transmission opens the superseded Offer Version 1.
@@ -1172,7 +1314,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         offerRegion
           .locator('.offer-summary')
-          .getByText('Synthetic first conditions', { exact: true }),
+          .getByText(entered.firstConditions, { exact: true }),
       ).toBeVisible();
       await capture(page, testInfo, 'journey-activity-offer-v1');
 
@@ -1210,7 +1352,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         offerRegion
           .locator('.offer-summary')
-          .getByText('Synthetic negotiated conditions', { exact: true }),
+          .getByText(entered.negotiatedConditions, { exact: true }),
       ).toBeVisible();
     });
 
@@ -1380,12 +1522,15 @@ async function setStage(journey: Journey, label: string): Promise<void> {
   ).toBeVisible();
 }
 
-async function expectAdjustedSnapshot(pricing: Locator): Promise<void> {
+async function expectAdjustedSnapshot(
+  pricing: Locator,
+  adjustmentReason: string,
+): Promise<void> {
   await expect(pricing.getByText('655.50 EUR', { exact: true })).toBeVisible();
   for (const line of [
     'Original net and tax: 600.00 + 90.00 EUR',
     'Net reduction: 30.00 EUR',
-    'Adjustment reason: Synthetic loyalty reduction',
+    `Adjustment reason: ${adjustmentReason}`,
     'Adjusted net and tax: 570.00 + 85.50 EUR',
   ])
     await expect(pricing.getByText(line, { exact: true })).toBeVisible();
@@ -1406,11 +1551,118 @@ function requestClient(intake: Locator): Locator {
     .getByRole('definition');
 }
 
+/** The Activity Log rows with exactly this description and target label. */
 function activityRow(page: Page, description: string, target: string): Locator {
   return page
     .locator('.activity-log .activity-log-list > li')
-    .filter({ hasText: description })
-    .filter({ hasText: `Target: ${target}` });
+    .filter({ has: page.getByText(description, { exact: true }) })
+    .filter({ has: page.getByText(`Target: ${target}`, { exact: true }) });
+}
+
+/** The commercial Activity family (PRD 17.3 and 25.1). */
+const commercialActivityActions: readonly string[] = [
+  'client_request.created',
+  'client_request.client_associated',
+  'opportunity.created',
+  'opportunity.next_action.updated',
+  'opportunity.responsible.changed',
+  'opportunity.outcome.changed',
+  'opportunity.stage.changed',
+  'sales_stage.configured',
+  'offer.created',
+  'offer_version.created',
+  'offer_version.approved',
+  'offer_version.rejected',
+  'offer_version.transmission_recorded',
+  'offer_version.client_response_recorded',
+  'contract.created',
+  'contract_version.created',
+  'contract_version.approved',
+  'contract_version.rejected',
+  'contract_version.signature_recorded',
+  'contract_project.linked',
+];
+
+/**
+ * The Activity read itself, behind the rendered page: the commercial events
+ * carry no typed value, amount, date or label beyond the references PRD 25.2
+ * allows, and no typed text reaches any event of the page.
+ */
+async function expectNoActivityLeak(
+  request: APIRequestContext,
+  {
+    companyId,
+    expectedCommercialEvents,
+    forbidden,
+    typedTexts,
+    typedFromReceipts,
+    clientTaxId,
+    labels,
+  }: {
+    companyId: string;
+    expectedCommercialEvents: number;
+    /** Every forbidden value, amounts and receipt-derived values included. */
+    forbidden: readonly string[];
+    /** The typed texts alone, which no timestamp can spell. */
+    typedTexts: readonly string[];
+    typedFromReceipts: readonly string[];
+    clientTaxId: string;
+    labels: {
+      clientName: string;
+      companyName: string;
+      opportunityTitle: string;
+    };
+  },
+): Promise<void> {
+  const events = object(
+    await apiRead(request, {
+      identity: identities.ada,
+      companyId,
+      path: '/activity-log',
+    }),
+  ).events;
+  if (!Array.isArray(events)) throw new Error('Expected Activity events');
+  const projected = events.map((event) => object(event));
+  const commercial = projected.filter((event) =>
+    commercialActivityActions.includes(text(event.action)),
+  );
+  expect(commercial).toHaveLength(expectedCommercialEvents);
+  // Server times are ISO instants, so the received time and signing dates
+  // typed from receipts are indistinguishable there; the rendered page, which
+  // formats times, has already proven them absent.
+  const content = JSON.stringify(
+    commercial.map(({ action, target, metadata }) => ({
+      action,
+      target,
+      metadata,
+    })),
+  );
+  for (const value of [
+    ...forbidden.filter((value) => !typedFromReceipts.includes(value)),
+    labels.clientName,
+    labels.companyName,
+  ])
+    expect(content, value).not.toContain(value);
+  // The Project title is the reference of the two Project links only.
+  expect(
+    commercial
+      .filter((event) =>
+        JSON.stringify(event).includes(labels.opportunityTitle),
+      )
+      .map((event) => event.action),
+  ).toEqual(['contract_project.linked', 'contract_project.linked']);
+  // No typed text reaches any event of the page. Outside the commercial
+  // family, only the Client dossier correction's own history (the Client
+  // owner's event) records the corrected IDNO. Amounts are checked on the
+  // commercial events alone: other families' timestamps may spell them.
+  const page = JSON.stringify(projected);
+  for (const value of typedTexts.filter((value) => value !== clientTaxId))
+    expect(page, value).not.toContain(value);
+  expect(
+    projected
+      .filter((event) => JSON.stringify(event).includes(clientTaxId))
+      .map((event) => event.action),
+  ).toEqual(['client.corrected']);
 }
 
 /** A second browser session acting as another member through the same build. */
@@ -1570,6 +1822,33 @@ async function registerCompany(
       }),
     ).id,
   );
+}
+
+/**
+ * The Access label of one eligible responsible actor, as the responsible
+ * change records it and the Activity projection returns it (PRD 17.3).
+ */
+async function responsibleLabel(
+  request: APIRequestContext,
+  {
+    companyId,
+    opportunityId,
+    membership,
+  }: { companyId: string; opportunityId: string; membership: string },
+): Promise<string> {
+  const members = object(
+    await apiRead(request, {
+      identity: identities.ada,
+      companyId,
+      path: `/commercial-intake/opportunities/${opportunityId}/eligible-responsible-actors`,
+    }),
+  ).members;
+  if (!Array.isArray(members)) throw new Error('Expected eligible members');
+  const member = members
+    .map((candidate) => object(candidate))
+    .find((candidate) => candidate.workspaceMembershipId === membership);
+  if (!member) throw new Error(`Membership ${membership} is not eligible`);
+  return text(member.displayLabel);
 }
 
 async function membershipOf(
