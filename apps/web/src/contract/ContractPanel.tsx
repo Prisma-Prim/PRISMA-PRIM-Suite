@@ -57,6 +57,20 @@ type Feedback =
   | 'denied'
   | null;
 const ignoreActor = () => undefined;
+/** The exact Contract Version a link opens, superseded or not. */
+type RequestedContractVersion = {
+  contractId: string;
+  contractVersionId: string;
+  kind: 'CONTRACT' | 'PRECONTRACT' | 'ADDENDUM';
+};
+/** The main Contract opens without an agreement; any other kind names it. */
+function requestedAgreementOf(
+  requested: RequestedContractVersion | undefined,
+): string | null {
+  return requested && requested.kind !== 'CONTRACT'
+    ? requested.contractId
+    : null;
+}
 export function ContractPanel({
   actor,
   identity,
@@ -67,10 +81,17 @@ export function ContractPanel({
   onActorRevalidated = ignoreActor,
   onWorkspaceAccessRejected = ignoreActor,
   onOpenProject,
+  requestedVersion,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
+  /**
+   * Opens this exact Contract Version instead of the head until the reader
+   * opens another version or agreement. The Contract read decides what is
+   * shown; nothing else is requested.
+   */
+  requestedVersion?: RequestedContractVersion;
   opportunityTitle?: string;
   currentClientId?: string;
   onCompanyContextRejected: (companyId: string) => void;
@@ -83,7 +104,10 @@ export function ContractPanel({
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
   const versionCopy = useContractVersionCopy();
-  const [agreementId, setAgreementId] = useState<string | null>(null);
+  const requested = useRef(requestedVersion);
+  const [agreementId, setAgreementId] = useState<string | null>(
+    requestedAgreementOf(requestedVersion),
+  );
   const [addendumSuccessId, setAddendumSuccessId] = useState<string | null>(
     null,
   );
@@ -191,7 +215,14 @@ export function ContractPanel({
       signal,
     });
   }
-  async function load(signal: AbortSignal, versionId?: string) {
+  async function load(
+    signal: AbortSignal,
+    versionId?: string,
+    wanted?: RequestedContractVersion,
+  ) {
+    // Any other read, a chosen version or the head after a command, is newer
+    // than the requested version and retires it.
+    if (wanted === undefined) requested.current = undefined;
     if (!mayRead || !companyId) {
       setView({ kind: 'denied' });
       return;
@@ -224,7 +255,11 @@ export function ContractPanel({
         if (
           contract.companyId !== companyId ||
           contract.opportunityId !== opportunityId ||
-          (agreementId !== null && contract.id !== agreementId)
+          (agreementId !== null && contract.id !== agreementId) ||
+          // A requested version is shown only as exactly that version.
+          (wanted !== undefined &&
+            (contract.id !== wanted.contractId ||
+              contract.version.id !== wanted.contractVersionId))
         )
           throw new Error('Mismatched Contract.');
         setView({ kind: 'ready', contract, stamp, identity });
@@ -268,7 +303,12 @@ export function ContractPanel({
     setConditions('');
     const controller = new AbortController();
     request.current = controller;
-    void load(controller.signal);
+    // A requested version applies only inside its own agreement; opening
+    // another agreement retires it.
+    if (requestedAgreementOf(requested.current) !== agreementId)
+      requested.current = undefined;
+    const wanted = requested.current;
+    void load(controller.signal, wanted?.contractVersionId, wanted);
     return () => {
       controller.abort();
       request.current?.abort();
@@ -276,7 +316,7 @@ export function ContractPanel({
     // This authority key captures every input which can invalidate business state.
   }, [stamp, opportunityId, identity]);
   useEffect(() => {
-    setAgreementId(null);
+    setAgreementId(requestedAgreementOf(requested.current));
     setAddendumSuccessId(null);
     setPrecontractSuccessId(null);
   }, [opportunityId, companyId, actor.workspaceId, identity]);

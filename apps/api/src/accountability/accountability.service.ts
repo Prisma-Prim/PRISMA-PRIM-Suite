@@ -26,6 +26,7 @@ import {
   inArray,
   isNotNull,
   isNull,
+  ne,
   notInArray,
   or,
   sql,
@@ -64,6 +65,8 @@ import {
   opportunities,
   clientRequests,
   contractEvents,
+  contracts,
+  contractVersions,
   profitabilityEstimateEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
@@ -80,12 +83,17 @@ import {
   eligibleOfferActivityActions,
   readOfferActivity,
 } from './offer-activity-projection.js';
+import {
+  eligibleContractActivityActions,
+  readContractActivity,
+} from './contract-activity-projection.js';
 import { readClientCorrectionChanges } from './client-correction-history.js';
 import type {
   ActivityLogPage,
   ClientCorrectionHistoryRead,
   CommercialActivityEvent,
   OfferActivityEvent,
+  ContractActivityEvent,
   DocumentRegisteredActivityEvent,
   DocumentCorrectedActivityEvent,
   DocumentProjectActivityEvent,
@@ -1263,6 +1271,179 @@ export class AccountabilityService {
         },
       };
       return [projected];
+    });
+  }
+
+  /**
+   * Recorded Contract events are projected under the same Company rule as the
+   * other commercial events, for an actor who also holds the complete
+   * Contract read prerequisite. The query resolves each event's current
+   * Contract, owning Opportunity and Request and the exact Contract Version
+   * it concerns: its own version, version 1 recorded atomically with a
+   * Contract creation, or the executed version a Project link follows. A
+   * Project link also resolves its Project inside the Project owner's Client
+   * boundary. An event whose target cannot be resolved is omitted before the
+   * bounded page and contributes no count, reference or ordering value.
+   */
+  private async contractActivityEvents(
+    actor: ActorContext,
+  ): Promise<ContractActivityEvent[]> {
+    const company = actor.activeCompany;
+    if (!actor.active || !company) return [];
+    const actions = eligibleContractActivityActions(actor);
+    if (actions.length === 0) return [];
+    const isProjectLink = eq(contractEvents.action, 'contract_project.linked');
+    const rows = await this.databaseContext.connection
+      .select({
+        id: contractEvents.id,
+        action: contractEvents.action,
+        metadata: contractEvents.metadata,
+        companyId: contractEvents.companyId,
+        contractVersionId: contractEvents.contractVersionId,
+        occurredAt: contractEvents.occurredAt,
+        contractId: contracts.id,
+        kind: contracts.kind,
+        illustrativeReference: contracts.illustrativeReference,
+        resolvedContractVersionId: contractVersions.id,
+        versionNumber: contractVersions.versionNumber,
+        executionState: contractVersions.executionState,
+        opportunityId: opportunities.id,
+        clientRequestId: clientRequests.id,
+        projectId: projects.id,
+        projectTitle: projects.title,
+        internalUserId: internalUsers.id,
+        displayName: internalUsers.displayName,
+      })
+      .from(contractEvents)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(workspaceMemberships.workspaceId, contractEvents.workspaceId),
+          eq(
+            workspaceMemberships.id,
+            contractEvents.actorWorkspaceMembershipId,
+          ),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .innerJoin(
+        contracts,
+        and(
+          eq(contracts.workspaceId, contractEvents.workspaceId),
+          eq(contracts.companyId, contractEvents.companyId),
+          eq(contracts.id, contractEvents.contractId),
+        ),
+      )
+      .innerJoin(
+        opportunities,
+        and(
+          eq(opportunities.workspaceId, contracts.workspaceId),
+          eq(opportunities.companyId, contracts.companyId),
+          eq(opportunities.clientRequestId, contracts.clientRequestId),
+          eq(opportunities.id, contracts.opportunityId),
+        ),
+      )
+      .innerJoin(
+        clientRequests,
+        and(
+          eq(clientRequests.workspaceId, opportunities.workspaceId),
+          eq(clientRequests.companyId, opportunities.companyId),
+          eq(clientRequests.id, opportunities.clientRequestId),
+        ),
+      )
+      .leftJoin(
+        contractVersions,
+        and(
+          eq(contractVersions.workspaceId, contractEvents.workspaceId),
+          eq(contractVersions.companyId, contractEvents.companyId),
+          eq(contractVersions.contractId, contractEvents.contractId),
+          or(
+            eq(contractVersions.id, contractEvents.contractVersionId),
+            and(
+              eq(contractEvents.action, 'contract.created'),
+              isNull(contractEvents.contractVersionId),
+              eq(contractVersions.versionNumber, 1),
+            ),
+            and(
+              isProjectLink,
+              isNull(contractEvents.contractVersionId),
+              eq(contractVersions.executionState, 'EXECUTED'),
+            ),
+          ),
+        ),
+      )
+      // The linked Project, readable only inside the Project owner's Client
+      // boundary: its original Client active or superseded, with an active
+      // relationship to the event's Company.
+      .leftJoin(
+        projects,
+        and(
+          isProjectLink,
+          eq(projects.workspaceId, contractEvents.workspaceId),
+          eq(projects.companyId, contractEvents.companyId),
+          sql`${projects.id}::text = ${contractEvents.metadata}->>'projectId'`,
+        ),
+      )
+      .leftJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
+        ),
+      )
+      .leftJoin(
+        clientCompanyRelationships,
+        and(
+          eq(clientCompanyRelationships.workspaceId, projects.workspaceId),
+          eq(clientCompanyRelationships.companyId, projects.companyId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            projects.clientAccountId,
+          ),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(contractEvents.workspaceId, actor.workspaceId),
+          eq(contractEvents.companyId, company.id),
+          inArray(contractEvents.action, [...actions]),
+          isNotNull(contractVersions.id),
+          or(
+            ne(contractEvents.action, 'contract_project.linked'),
+            and(
+              isNotNull(projects.id),
+              isNotNull(clientAccounts.id),
+              isNotNull(clientCompanyRelationships.id),
+            ),
+          ),
+        ),
+      )
+      .orderBy(desc(contractEvents.occurredAt), desc(contractEvents.id))
+      .limit(INITIAL_PAGE_SIZE);
+    // Integrity resolves each event to exactly one version and Project; an
+    // event resolving to several is ambiguous and fails closed.
+    const resolutions = new Map<string, number>();
+    for (const row of rows)
+      resolutions.set(row.id, (resolutions.get(row.id) ?? 0) + 1);
+    return rows.flatMap((row) => {
+      const projected =
+        resolutions.get(row.id) === 1 ? readContractActivity(row) : undefined;
+      if (!projected) return [];
+      const event: ContractActivityEvent = {
+        ...projected,
+        id: row.id,
+        occurredAt: row.occurredAt.toISOString(),
+        actor: {
+          internalUserId: row.internalUserId,
+          displayName: row.displayName,
+        },
+      };
+      return [event];
     });
   }
 
@@ -2524,6 +2705,7 @@ export class AccountabilityService {
       ...(await this.commercialEvents(actor)),
       ...(await this.offerActivityEvents(actor)),
       ...(await this.salesStageEvents(actor)),
+      ...(await this.contractActivityEvents(actor)),
     ];
     datedEvents.sort(
       (left, right) =>

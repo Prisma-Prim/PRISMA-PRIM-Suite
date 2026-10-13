@@ -125,19 +125,32 @@ type SelectedRequest = {
 type ClientRestriction = { clientDossierId: string; displayName: string };
 
 /**
- * One Request detail the shell requested, optionally with the exact Offer
- * Version to select in it; `requestId` numbers each request.
+ * The exact version a requested Request detail opens with selected, superseded
+ * or not: an Offer Version, or a Contract Version of the named agreement.
+ */
+export type RequestedVersion =
+  | { type: 'offer_version'; offerVersionId: string }
+  | {
+      type: 'contract_version';
+      contractId: string;
+      contractVersionId: string;
+      kind: 'CONTRACT' | 'PRECONTRACT' | 'ADDENDUM';
+    };
+
+/**
+ * One Request detail the shell requested, optionally with the exact version
+ * to select in it; `requestId` numbers each request.
  */
 type RequestedRequest = {
   clientRequestId: string;
-  offerVersionId?: string;
+  version?: RequestedVersion;
   requestId: number;
 };
 
-/** The Offer Version a requested Request detail opens with selected. */
-type RequestedOfferVersion = {
+/** The version a requested Request detail opens with selected. */
+type RequestedDetailVersion = {
   clientRequestId: string;
-  offerVersionId: string;
+  version: RequestedVersion;
   requestId: number;
 };
 
@@ -342,9 +355,9 @@ export function CommercialIntakeWorkspace({
   const [captureUncertain, setCaptureUncertain] = useState(false);
   // The latest requested Request not opened yet.
   const [requestToOpen, setRequestToOpen] = useState<RequestedRequest>();
-  // The Offer Version the latest opened request selects in its Request detail.
-  const [requestedOfferVersion, setRequestedOfferVersion] =
-    useState<RequestedOfferVersion>();
+  // The version the latest opened request selects in its Request detail.
+  const [requestedVersion, setRequestedVersion] =
+    useState<RequestedDetailVersion>();
   // Local view state over the already loaded rows; it never reaches the API.
   const [filter, setFilter] = useState('');
   const [nextActionEdit, setNextActionEdit] = useState<NextActionEdit>({
@@ -817,11 +830,11 @@ export function CommercialIntakeWorkspace({
     if (!requestToOpen || protectedWork) return;
     setRequestToOpen(undefined);
     setSelected(undefined);
-    const { clientRequestId, offerVersionId, requestId } = requestToOpen;
-    setRequestedOfferVersion(
-      offerVersionId === undefined
+    const { clientRequestId, version, requestId } = requestToOpen;
+    setRequestedVersion(
+      version === undefined
         ? undefined
-        : { clientRequestId, offerVersionId, requestId },
+        : { clientRequestId, version, requestId },
     );
     void selectRequest(clientRequestId);
   }, [requestToOpen, protectedWork]);
@@ -1154,7 +1167,7 @@ export function CommercialIntakeWorkspace({
 
   function closeDetail(): void {
     commandRequest.current?.abort();
-    setRequestedOfferVersion(undefined);
+    setRequestedVersion(undefined);
     membersRequest.current?.abort();
     stageListRequest.current?.abort();
     setSelected(undefined);
@@ -2027,9 +2040,9 @@ export function CommercialIntakeWorkspace({
           actor={actor}
           identity={identity}
           request={visibleRequest}
-          requestedOfferVersion={
-            requestedOfferVersion?.clientRequestId === visibleRequest.id
-              ? requestedOfferVersion
+          requestedVersion={
+            requestedVersion?.clientRequestId === visibleRequest.id
+              ? requestedVersion
               : undefined
           }
           clientAuthority={clientReadAuthority}
@@ -2395,7 +2408,7 @@ export function CommercialIntakeWorkspace({
             onSelect={(id) => {
               // Choosing a row is newer than a Request held behind a capture.
               setRequestToOpen(undefined);
-              setRequestedOfferVersion(undefined);
+              setRequestedVersion(undefined);
               void selectRequest(id);
             }}
             onReload={() => companyId && void loadRequests(companyId)}
@@ -2714,7 +2727,7 @@ function RequestDetail({
   actor,
   identity,
   request,
-  requestedOfferVersion,
+  requestedVersion,
   onBack,
   pending,
   onOpenClientDossier,
@@ -2733,8 +2746,8 @@ function RequestDetail({
   onOpenProject?: (projectId: string) => void;
   identity: BrowserIdentity;
   request: ClientRequest;
-  /** Opens the Offer with this exact version selected instead of its head. */
-  requestedOfferVersion: RequestedOfferVersion | undefined;
+  /** Opens the Offer or Contract with this exact version selected. */
+  requestedVersion: RequestedDetailVersion | undefined;
   onBack: () => void;
   pending: boolean;
   /** Offered only for a current dossier identity, never a name or original id. */
@@ -2755,6 +2768,21 @@ function RequestDetail({
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
   const stageCopy = useSalesStageCopy();
+  // Each panel receives only the version it owns, numbered by its request.
+  const requestedOffer =
+    requestedVersion?.version.type === 'offer_version'
+      ? {
+          requestId: requestedVersion.requestId,
+          offerVersionId: requestedVersion.version.offerVersionId,
+        }
+      : undefined;
+  const requestedContract =
+    requestedVersion?.version.type === 'contract_version'
+      ? {
+          requestId: requestedVersion.requestId,
+          version: requestedVersion.version,
+        }
+      : undefined;
   return (
     <article
       className="commercial-intake-detail"
@@ -2897,11 +2925,11 @@ function RequestDetail({
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
       <OfferPanel
-        key={`offer:${requestedOfferVersion?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
+        key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}
-        requestedVersionId={requestedOfferVersion?.offerVersionId}
+        requestedVersionId={requestedOffer?.offerVersionId}
         currentClientId={request.clientReference?.currentClientId}
         clientDisplayName={request.clientReference?.displayName}
         onCompanyContextRejected={onCompanyContextRejected}
@@ -2913,12 +2941,15 @@ function RequestDetail({
         onOpenProject={onOpenProject}
         opportunityTitle={request.initialOpportunity.title}
         key={
+          (requestedContract?.requestId ?? 'head') +
+          ':' +
           clientAuthority +
           ':' +
           request.id +
           ':' +
           request.initialOpportunity.id
         }
+        requestedVersion={requestedContract?.version}
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}

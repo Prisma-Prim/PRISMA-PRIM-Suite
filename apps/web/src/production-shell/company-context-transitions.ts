@@ -385,6 +385,57 @@ export interface SalesStageConfiguredActivityLogEvent {
   metadata: { operation: 'CREATED'; label: string };
 }
 
+/**
+ * The exact Contract Version an event concerns, superseded or not, named by
+ * its Contract's kind and immutable illustrative reference, with the
+ * Opportunity and Request that own it. A Contract creation concerns version
+ * 1 and a Project link the executed version.
+ */
+export interface ContractVersionActivityTarget {
+  type: 'contract_version';
+  contractId: string;
+  contractVersionId: string;
+  kind: 'CONTRACT' | 'PRECONTRACT' | 'ADDENDUM';
+  illustrativeReference: number;
+  versionNumber: number;
+  opportunityId: string;
+  clientRequestId: string;
+  companyId: string;
+}
+
+/**
+ * A recorded Contract event: its target reference, the simulated marker of a
+ * signature and, for a Project link, whether the Project was created and the
+ * Project's reference. It never carries an amount, condition, scope, reason,
+ * note, signatory label, date, party identity, Snapshot content or warning.
+ */
+export type ContractActivityLogEvent = {
+  id: string;
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: ContractVersionActivityTarget;
+} & (
+  | {
+      action:
+        | 'contract.created'
+        | 'contract_version.created'
+        | 'contract_version.approved'
+        | 'contract_version.rejected';
+      metadata: Record<string, never>;
+    }
+  | {
+      action: 'contract_version.signature_recorded';
+      metadata: { evidenceKind: 'SIMULATED' };
+    }
+  | {
+      action: 'contract_project.linked';
+      metadata: {
+        created: boolean;
+        project: { projectId: string; projectTitle: string };
+      };
+    }
+);
+
 /** Before and after keep only a membership identifier and its captured label. */
 export interface ProjectResponsibleChangedActivityLogEvent {
   id: string;
@@ -423,8 +474,8 @@ export interface ProjectLifecycleChangedActivityLogEvent {
  * One entry of a proved `/activity-log` page (see `activityLogPageResponse`).
  * The shell lists these entries and presents no metadata except the proved
  * before and after of a Project or Opportunity responsible change, an
- * Opportunity outcome change, and an Offer event's response outcome and
- * simulated marker.
+ * Opportunity outcome change, an Offer event's response outcome and
+ * simulated marker, and a Contract event's simulated marker or linked Project.
  */
 export type ActivityLogEvent =
   | TaskActivityLogEvent
@@ -439,6 +490,7 @@ export type ActivityLogEvent =
   | ClientUnionActivityLogEvent
   | CommercialActivityLogEvent
   | OfferActivityLogEvent
+  | ContractActivityLogEvent
   | DocumentRegisteredActivityLogEvent
   | DocumentCorrectedActivityLogEvent
   | DocumentVersionActivityLogEvent;

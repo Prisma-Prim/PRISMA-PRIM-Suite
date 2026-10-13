@@ -33,6 +33,7 @@ import type {
 } from '../access/company-permissions.js';
 import type { CommercialActivityRecord } from './commercial-activity-projection.js';
 import type { OfferActivityProjection } from './offer-activity-projection.js';
+import type { ContractActivityProjection } from './contract-activity-projection.js';
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
@@ -565,6 +566,19 @@ export type OfferActivityEvent = OfferActivityProjection & {
   actor: { internalUserId: string; displayName: string };
 };
 
+/**
+ * The authorized Company projection of an already recorded Contract event:
+ * the canonical action, the responsible Company, the existing actor label,
+ * the server time and the exact Contract Version target, plus the simulated
+ * marker of a signature or a Project link's creation flag and Project
+ * reference, and nothing else.
+ */
+export type ContractActivityEvent = ContractActivityProjection & {
+  id: string;
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+};
+
 export type ActivityLogEvent =
   | TaskEvent
   | DocumentProjectActivityEvent
@@ -572,6 +586,7 @@ export type ActivityLogEvent =
   | ClientUnionActivityEvent
   | CommercialActivityEvent
   | OfferActivityEvent
+  | ContractActivityEvent
   | DocumentRegisteredActivityEvent
   | DocumentCorrectedActivityEvent
   | DocumentVersionActivityEvent
