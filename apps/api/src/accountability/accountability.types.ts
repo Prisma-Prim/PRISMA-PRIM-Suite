@@ -31,6 +31,7 @@ import type {
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 import type { CommercialActivityRecord } from './commercial-activity-projection.js';
+import type { OfferActivityProjection } from './offer-activity-projection.js';
 
 export const INTERNAL_USER_PROVISIONED_ACTION =
   'internal_user.provisioned' as const;
@@ -539,12 +540,25 @@ export type CommercialActivityEvent = CommercialActivityRecord & {
       };
 };
 
+/**
+ * The authorized Company projection of an already recorded Offer event: the
+ * canonical action, the responsible Company, the existing actor label, the
+ * server time and the Offer target reference, plus a Client response outcome
+ * and the simulated marker of a transmission or response, and nothing else.
+ */
+export type OfferActivityEvent = OfferActivityProjection & {
+  id: string;
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+};
+
 export type ActivityLogEvent =
   | TaskEvent
   | DocumentProjectActivityEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityEvent
   | CommercialActivityEvent
+  | OfferActivityEvent
   | DocumentRegisteredActivityEvent
   | DocumentCorrectedActivityEvent
   | DocumentVersionActivityEvent

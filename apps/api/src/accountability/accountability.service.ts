@@ -17,7 +17,19 @@ import type {
 } from '../project/project-lifecycle.types.js';
 import { readTaskMeaning } from '../task/task.validation.js';
 import { Injectable } from '@nestjs/common';
-import { and, asc, desc, eq, exists, notInArray, or, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  inArray,
+  isNotNull,
+  isNull,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -46,6 +58,10 @@ import {
   PRICING_PROVENANCE,
   pricingConfigurationEvents,
   offerEvents,
+  offers,
+  offerVersions,
+  opportunities,
+  clientRequests,
   contractEvents,
   profitabilityEstimateEvents,
   type TariffCurrency,
@@ -57,11 +73,16 @@ import {
   readCommercialActivity,
   type RecordedOpportunityResponsible,
 } from './commercial-activity-projection.js';
+import {
+  eligibleOfferActivityActions,
+  readOfferActivity,
+} from './offer-activity-projection.js';
 import { readClientCorrectionChanges } from './client-correction-history.js';
 import type {
   ActivityLogPage,
   ClientCorrectionHistoryRead,
   CommercialActivityEvent,
+  OfferActivityEvent,
   DocumentRegisteredActivityEvent,
   DocumentCorrectedActivityEvent,
   DocumentProjectActivityEvent,
@@ -996,6 +1017,118 @@ export class AccountabilityService {
         target: commercialActivityTarget(company, recorded.action, row),
       };
       return [projected];
+    });
+  }
+
+  /**
+   * Recorded Offer events are projected under the same Company rule as the
+   * other commercial events, for an actor who also holds the complete Offer
+   * read prerequisite. The query resolves each event's current Offer, owning
+   * Opportunity and Request and the exact Offer Version it concerns: its own
+   * version, or version 1, recorded atomically with an Offer creation. An
+   * event whose target cannot be resolved is omitted before the bounded page
+   * and contributes no count, reference or ordering value.
+   */
+  private async offerActivityEvents(
+    actor: ActorContext,
+  ): Promise<OfferActivityEvent[]> {
+    const company = actor.activeCompany;
+    if (!actor.active || !company) return [];
+    const actions = eligibleOfferActivityActions(company);
+    if (actions.length === 0) return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        id: offerEvents.id,
+        action: offerEvents.action,
+        metadata: offerEvents.metadata,
+        companyId: offerEvents.companyId,
+        offerId: offerEvents.offerId,
+        offerVersionId: offerEvents.offerVersionId,
+        occurredAt: offerEvents.occurredAt,
+        illustrativeReference: offers.illustrativeReference,
+        resolvedOfferVersionId: offerVersions.id,
+        versionNumber: offerVersions.versionNumber,
+        opportunityId: opportunities.id,
+        clientRequestId: clientRequests.id,
+        internalUserId: internalUsers.id,
+        displayName: internalUsers.displayName,
+      })
+      .from(offerEvents)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(workspaceMemberships.workspaceId, offerEvents.workspaceId),
+          eq(workspaceMemberships.id, offerEvents.actorWorkspaceMembershipId),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .innerJoin(
+        offers,
+        and(
+          eq(offers.workspaceId, offerEvents.workspaceId),
+          eq(offers.companyId, offerEvents.companyId),
+          eq(offers.id, offerEvents.offerId),
+        ),
+      )
+      .innerJoin(
+        opportunities,
+        and(
+          eq(opportunities.workspaceId, offers.workspaceId),
+          eq(opportunities.companyId, offers.companyId),
+          eq(opportunities.clientRequestId, offers.clientRequestId),
+          eq(opportunities.id, offers.opportunityId),
+        ),
+      )
+      .innerJoin(
+        clientRequests,
+        and(
+          eq(clientRequests.workspaceId, opportunities.workspaceId),
+          eq(clientRequests.companyId, opportunities.companyId),
+          eq(clientRequests.id, opportunities.clientRequestId),
+        ),
+      )
+      .leftJoin(
+        offerVersions,
+        and(
+          eq(offerVersions.workspaceId, offerEvents.workspaceId),
+          eq(offerVersions.companyId, offerEvents.companyId),
+          eq(offerVersions.offerId, offerEvents.offerId),
+          or(
+            eq(offerVersions.id, offerEvents.offerVersionId),
+            and(
+              eq(offerEvents.action, 'offer.created'),
+              isNull(offerEvents.offerVersionId),
+              eq(offerVersions.versionNumber, 1),
+            ),
+          ),
+        ),
+      )
+      .where(
+        and(
+          eq(offerEvents.workspaceId, actor.workspaceId),
+          eq(offerEvents.companyId, company.id),
+          inArray(offerEvents.action, [...actions]),
+          isNotNull(offerVersions.id),
+        ),
+      )
+      .orderBy(desc(offerEvents.occurredAt), desc(offerEvents.id))
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.flatMap((row) => {
+      const projected = readOfferActivity(row);
+      if (!projected) return [];
+      const event: OfferActivityEvent = {
+        ...projected,
+        id: row.id,
+        occurredAt: row.occurredAt.toISOString(),
+        actor: {
+          internalUserId: row.internalUserId,
+          displayName: row.displayName,
+        },
+      };
+      return [event];
     });
   }
 
@@ -2255,6 +2388,7 @@ export class AccountabilityService {
       ...(await this.documentVersionEvents(actor)),
       ...(await this.documentProjectEvents(actor)),
       ...(await this.commercialEvents(actor)),
+      ...(await this.offerActivityEvents(actor)),
     ];
     datedEvents.sort(
       (left, right) =>

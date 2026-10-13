@@ -36,6 +36,7 @@ import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalog
 import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
 import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
+import { offerActivityCopy } from './offer/offer.copy';
 import { OperationalHome } from './operational-home/OperationalHome';
 import {
   useProductionShellContext,
@@ -72,6 +73,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedRequest, setRequestedRequest] = useState<{
     requestsMount: string;
     clientRequestId: string;
+    /** The exact Offer Version to select in the Request detail, if any. */
+    offerVersionId?: string;
     requestId: number;
   }>();
   const [requestedDocument, setRequestedDocument] = useState<
@@ -245,10 +248,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     : undefined;
   // The shell owns one requested Request for the Requests workspace it offers.
   const openRequest = canAccessCommercial
-    ? (clientRequestId: string) => {
+    ? (clientRequestId: string, offerVersionId?: string) => {
         setRequestedRequest((current) => ({
           requestsMount,
           clientRequestId,
+          offerVersionId,
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('requests');
@@ -679,19 +683,38 @@ function requestsMountOf(sessionGeneration: number, actor: ActorContext) {
 
 /**
  * The Request a commercial event may open inside the active Company: its own
- * Request, or the containing Request the server derived for an Opportunity
- * event only while the actor can read Requests. Other targets open nothing.
+ * Request, the containing Request the server derived for an Opportunity event
+ * only while the actor can read Requests, or the Request owning an Offer, with
+ * the exact Offer Version an Offer event concerns. Other targets open nothing.
  */
 function requestOpenedBy(
   event: ActivityLogEvent,
   activeCompanyId: string | undefined,
-): string | undefined {
+):
+  | { clientRequestId: string; offerVersionId?: string; label: string }
+  | undefined {
   const { target } = event;
-  if (target.type !== 'client_request' && target.type !== 'opportunity')
+  if (
+    (target.type !== 'client_request' &&
+      target.type !== 'opportunity' &&
+      target.type !== 'offer_version') ||
+    target.companyId !== activeCompanyId ||
+    target.clientRequestId === undefined
+  )
     return undefined;
-  return target.companyId === activeCompanyId
-    ? target.clientRequestId
-    : undefined;
+  switch (target.type) {
+    case 'offer_version':
+      return {
+        clientRequestId: target.clientRequestId,
+        offerVersionId: target.offerVersionId,
+        label: offerActivityCopy.openVersion,
+      };
+    default:
+      return {
+        clientRequestId: target.clientRequestId,
+        label: commercialIntakeCopy.activityOpenRequest,
+      };
+  }
 }
 
 function ActivityLog({
@@ -702,7 +725,8 @@ function ActivityLog({
   state: ActivityLogState;
   activeCompanyId: string | undefined;
   /** Present only while the shell offers the Requests section. */
-  onOpenRequest: ((clientRequestId: string) => void) | undefined;
+  onOpenRequest:
+    ((clientRequestId: string, offerVersionId?: string) => void) | undefined;
 }) {
   const invitationActivityActionLabels =
     useWorkspaceInvitationsCopy().activityActionLabels;
@@ -746,9 +770,14 @@ function ActivityLog({
                       type="button"
                       className="activity-log-open-request"
                       aria-describedby={targetId}
-                      onClick={() => onOpenRequest(openedRequest)}
+                      onClick={() =>
+                        onOpenRequest(
+                          openedRequest.clientRequestId,
+                          openedRequest.offerVersionId,
+                        )
+                      }
                     >
-                      {commercialIntakeCopy.activityOpenRequest}
+                      {openedRequest.label}
                     </button>
                   ) : null}
                 </div>
@@ -801,9 +830,12 @@ function activityDescription(
     ...clientLegalEntitiesCopy.activityActionLabels,
     ...clientUnionCopy.actionLabels,
     ...commercialIntakeCopy.activityActionLabels,
+    ...offerActivityCopy.actionLabels,
     ...invitationActivityActionLabels,
   };
   const description = `${actorName} ${actionLabels[event.action]}`;
+  if (event.action === 'offer_version.client_response_recorded')
+    return `${description} (${offerActivityCopy.responseOutcomes[event.metadata.outcome]})`;
   if (event.action === 'opportunity.outcome.changed') {
     const { metadata } = event;
     return `${description} ${commercialIntakeCopy.activityOutcomeChange(
@@ -850,6 +882,16 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return `${commercialIntakeCopy.activityRequestTarget}: ${event.target.clientRequestId}`;
     case 'opportunity':
       return `${commercialIntakeCopy.activityOpportunityTarget}: ${event.target.opportunityId}`;
+    case 'offer_version': {
+      const version = offerActivityCopy.versionTarget(
+        event.target.illustrativeReference,
+        event.target.versionNumber,
+      );
+      return event.action === 'offer_version.transmission_recorded' ||
+        event.action === 'offer_version.client_response_recorded'
+        ? `${version} · ${offerActivityCopy.simulated}`
+        : version;
+    }
     case 'company_role_assignment':
       return `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`;
     case 'client_company_relationship':
