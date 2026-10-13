@@ -237,10 +237,8 @@ export const offerActivityCopy = {
     REJECTED: 'Rejected by the Client',
     EXPIRED: 'Expired',
   },
-  offerTarget: (reference: number) => `Illustrative Offer ${reference}`,
   versionTarget: (reference: number, versionNumber: number) =>
     `Illustrative Offer ${reference} · version ${versionNumber}`,
   simulated: 'Simulated',
-  openOffer: 'Open Offer',
   openVersion: 'Open Offer Version',
 } as const;

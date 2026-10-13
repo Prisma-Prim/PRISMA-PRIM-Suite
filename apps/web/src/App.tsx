@@ -685,7 +685,7 @@ function requestsMountOf(sessionGeneration: number, actor: ActorContext) {
  * The Request a commercial event may open inside the active Company: its own
  * Request, the containing Request the server derived for an Opportunity event
  * only while the actor can read Requests, or the Request owning an Offer, with
- * the exact Offer Version a version event concerns. Other targets open nothing.
+ * the exact Offer Version an Offer event concerns. Other targets open nothing.
  */
 function requestOpenedBy(
   event: ActivityLogEvent,
@@ -697,18 +697,12 @@ function requestOpenedBy(
   if (
     (target.type !== 'client_request' &&
       target.type !== 'opportunity' &&
-      target.type !== 'offer' &&
       target.type !== 'offer_version') ||
     target.companyId !== activeCompanyId ||
     target.clientRequestId === undefined
   )
     return undefined;
   switch (target.type) {
-    case 'offer':
-      return {
-        clientRequestId: target.clientRequestId,
-        label: offerActivityCopy.openOffer,
-      };
     case 'offer_version':
       return {
         clientRequestId: target.clientRequestId,
@@ -888,8 +882,6 @@ function activityTargetDescription(event: ActivityLogEvent): string {
       return `${commercialIntakeCopy.activityRequestTarget}: ${event.target.clientRequestId}`;
     case 'opportunity':
       return `${commercialIntakeCopy.activityOpportunityTarget}: ${event.target.opportunityId}`;
-    case 'offer':
-      return offerActivityCopy.offerTarget(event.target.illustrativeReference);
     case 'offer_version': {
       const version = offerActivityCopy.versionTarget(
         event.target.illustrativeReference,

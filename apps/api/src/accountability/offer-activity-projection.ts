@@ -29,7 +29,10 @@ interface OfferTargetReference {
   companyId: string;
 }
 
-/** The exact Offer Version an event concerns, superseded or not. */
+/**
+ * The exact Offer Version an event concerns, superseded or not. An Offer
+ * creation concerns version 1, recorded with it in the same command.
+ */
 type OfferVersionTarget = {
   type: 'offer_version';
   offerVersionId: string;
@@ -44,12 +47,8 @@ type OfferVersionTarget = {
  */
 export type OfferActivityProjection =
   | {
-      action: 'offer.created';
-      target: { type: 'offer' } & OfferTargetReference;
-      metadata: Record<string, never>;
-    }
-  | {
       action:
+        | 'offer.created'
         | 'offer_version.created'
         | 'offer_version.approved'
         | 'offer_version.rejected';
@@ -86,9 +85,10 @@ export function eligibleOfferActivityActions(
 
 /**
  * One persisted Offer event joined to its current Offer, owning Opportunity
- * and, for a version event, its exact Offer Version. Rows are an external
- * boundary: anything other than exactly the section 18.10 shape of a known
- * action, consistent with the resolved target, is omitted.
+ * and the Offer Version it concerns: the event's own version, or version 1
+ * for an Offer creation. Rows are an external boundary: anything other than
+ * exactly the section 18.10 shape of a known action, consistent with the
+ * resolved target, is omitted.
  */
 export function readOfferActivity(
   row: unknown,
@@ -107,18 +107,24 @@ export function readOfferActivity(
     metadata.provenance !== 'ILLUSTRATIVE'
   )
     return undefined;
+  const target = versionTarget(row, reference);
+  if (!target) return undefined;
   if (action === 'offer.created')
     return row.offerVersionId === null &&
+      target.versionNumber === 1 &&
       hasExactly(metadata, [
         'illustrativeReference',
         'offerId',
         'provenance',
       ]) &&
       metadata.illustrativeReference === reference.illustrativeReference
-      ? { action, target: { type: 'offer', ...reference }, metadata: {} }
+      ? { action, target, metadata: {} }
       : undefined;
-  const target = versionTarget(row, reference);
-  if (!target || metadata.offerVersionId !== target.offerVersionId)
+  if (
+    row.offerVersionId !== target.offerVersionId ||
+    metadata.offerVersionId !== target.offerVersionId ||
+    metadata.versionNumber !== target.versionNumber
+  )
     return undefined;
   switch (action) {
     case 'offer_version.created':
@@ -188,20 +194,23 @@ function targetReference(
     : undefined;
 }
 
-/** The resolved version, whose recorded number must equal the event's. */
+/** The Offer Version the query resolved for the event. */
 function versionTarget(
   row: Record<string, unknown>,
   reference: OfferTargetReference,
 ): OfferVersionTarget | undefined {
-  const { offerVersionId, versionNumber } = row;
+  const { resolvedOfferVersionId, versionNumber } = row;
   if (
-    !isIdentifier(offerVersionId) ||
-    !isPositiveInteger(versionNumber) ||
-    !isPlainObject(row.metadata) ||
-    row.metadata.versionNumber !== versionNumber
+    !isIdentifier(resolvedOfferVersionId) ||
+    !isPositiveInteger(versionNumber)
   )
     return undefined;
-  return { type: 'offer_version', offerVersionId, versionNumber, ...reference };
+  return {
+    type: 'offer_version',
+    offerVersionId: resolvedOfferVersionId,
+    versionNumber,
+    ...reference,
+  };
 }
 
 /** Version 1 has no predecessor; a successor names exactly the previous one. */

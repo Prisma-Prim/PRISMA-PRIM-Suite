@@ -26,16 +26,17 @@ const opportunityTarget = {
   clientRequestId: 'request-358',
   companyId,
 };
-const offerTarget = {
-  type: 'offer',
+const firstOfferVersionTarget = {
+  type: 'offer_version',
+  offerVersionId: 'offer-version-1',
+  versionNumber: 1,
   illustrativeReference: 7,
   opportunityId: 'opportunity-358',
   clientRequestId: 'request-358',
   companyId,
 };
 const offerVersionTarget = {
-  ...offerTarget,
-  type: 'offer_version',
+  ...firstOfferVersionTarget,
   offerVersionId: 'offer-version-2',
   versionNumber: 2,
 };
@@ -595,13 +596,13 @@ describe('the authenticated Activity Log transport', () => {
         'offer_version.approved',
         offerVersionTarget,
       ),
-      event('event-offer-rejected', 'offer_version.rejected', {
-        ...offerVersionTarget,
-        offerVersionId: 'offer-version-1',
-        versionNumber: 1,
-      }),
+      event(
+        'event-offer-rejected',
+        'offer_version.rejected',
+        firstOfferVersionTarget,
+      ),
       event('event-offer-version', 'offer_version.created', offerVersionTarget),
-      event('event-offer', 'offer.created', offerTarget),
+      event('event-offer', 'offer.created', firstOfferVersionTarget),
     ];
     const { result } = await loadActivityLog({ events });
 
@@ -610,17 +611,22 @@ describe('the authenticated Activity Log transport', () => {
 
   it.each<[string, unknown]>([
     [
-      'a version event on the Offer target',
-      event('event-offer-malformed', 'offer_version.approved', offerTarget),
+      'an Offer creation without its version',
+      event('event-offer-malformed', 'offer.created', {
+        ...firstOfferVersionTarget,
+        type: 'offer',
+        offerVersionId: undefined,
+        versionNumber: undefined,
+      }),
     ],
     [
-      'an Offer creation on a version target',
+      'an Offer creation on a later version',
       event('event-offer-malformed', 'offer.created', offerVersionTarget),
     ],
     [
       'a missing illustrative reference',
       event('event-offer-malformed', 'offer.created', {
-        ...offerTarget,
+        ...firstOfferVersionTarget,
         illustrativeReference: undefined,
       }),
     ],
@@ -689,7 +695,10 @@ describe('the authenticated Activity Log transport', () => {
     'fails closed on an Offer event with %s next to a valid one',
     async (_case, malformed) => {
       const { result } = await loadActivityLog({
-        events: [event('event-offer', 'offer.created', offerTarget), malformed],
+        events: [
+          event('event-offer', 'offer.created', firstOfferVersionTarget),
+          malformed,
+        ],
       });
 
       expect(result).toEqual({ status: 'error' });

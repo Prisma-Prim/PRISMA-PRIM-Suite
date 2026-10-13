@@ -100,6 +100,11 @@ test('reads Offer events in the commercial Activity Log and opens each exact Off
       .filter({ hasText: `Ada Ionescu ${description}` })
       .filter({ hasText: `Target: ${target}` });
   const reference = `Illustrative Offer ${offer.illustrativeReference}`;
+  // Version 2 now succeeds it, yet the Offer creation still concerns version 1.
+  const createdOffer = row(
+    'created an illustrative Offer',
+    `${reference} · version 1`,
+  );
   const transmittedV1 = row(
     'recorded the transmission of an Offer Version',
     `${reference} · version 1 · Simulated`,
@@ -109,7 +114,7 @@ test('reads Offer events in the commercial Activity Log and opens each exact Off
     `${reference} · version 2 · Simulated`,
   );
   for (const expected of [
-    row('created an illustrative Offer', reference),
+    createdOffer,
     row('created an Offer Version', `${reference} · version 1`),
     row('approved an Offer Version', `${reference} · version 1`),
     transmittedV1,
@@ -174,6 +179,21 @@ test('reads Offer events in the commercial Activity Log and opens each exact Off
   await expect(offerPanel.getByText('Current version')).toBeVisible();
   await expect(
     offerPanel.getByRole('button', { name: 'Open version 2' }),
+  ).toBeDisabled();
+
+  // The Offer creation opens version 1, not the current head.
+  await page.goto('/?frame=classic#activity');
+  await expect(createdOffer).toHaveCount(1);
+  versionRead = offerRead(page, `/versions/${offer.v1}`);
+  await createdOffer
+    .getByRole('button', { name: 'Open Offer Version' })
+    .click();
+  expect((await versionRead).status()).toBe(200);
+  await expect(
+    offerPanel.getByText('Historical version · read only'),
+  ).toBeVisible();
+  await expect(
+    offerPanel.getByRole('button', { name: 'Open version 1' }),
   ).toBeDisabled();
   expect(mutations).toEqual([]);
 

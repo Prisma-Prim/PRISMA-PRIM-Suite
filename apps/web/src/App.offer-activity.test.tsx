@@ -62,7 +62,8 @@ const offerEvents = [
     action: 'offer.created',
     occurredAt: '2026-09-28T10:03:00.000Z',
     actor,
-    target: { type: 'offer', ...offerReference },
+    // Version 2 now succeeds it, yet the creation still concerns version 1.
+    target: version('version-one', 1),
     metadata: {},
   },
 ];
@@ -303,9 +304,11 @@ describe('Offer history in the Activity Log', () => {
     );
     expect(approval).not.toHaveTextContent('Simulated');
     const creation = await activityRow('created an illustrative Offer');
-    expect(creation).toHaveTextContent('Target: Illustrative Offer 7');
+    expect(creation).toHaveTextContent(
+      'Target: Illustrative Offer 7 · version 1',
+    );
     expect(
-      within(creation).getByRole('button', { name: 'Open Offer' }),
+      within(creation).getByRole('button', { name: 'Open Offer Version' }),
     ).toBeInTheDocument();
   });
 
@@ -332,25 +335,26 @@ describe('Offer history in the Activity Log', () => {
     expect(transport.mutations).toEqual([]);
   });
 
-  it('opens the Offer at its current version from its creation event', async () => {
+  it('opens version 1 from the Offer creation event after a successor exists', async () => {
     const transport = installTransport();
     render(<App identity={deterministicBrowserIdentity()} />);
 
     fireEvent.click(
       within(await activityRow('created an illustrative Offer')).getByRole(
         'button',
-        { name: 'Open Offer' },
+        { name: 'Open Offer Version' },
       ),
     );
 
     expect(
       await within(
-        await screen.findByRole('region', {
-          name: 'Illustrative Offer',
-        }),
-      ).findByText('Current version'),
+        await screen.findByRole('region', { name: 'Illustrative Offer' }),
+      ).findByText('Historical version · read only'),
     ).toBeVisible();
-    expect(transport.offerReads).toEqual(['head']);
+    expect(
+      within(offerRegion()).getByText('Conditions of version 1'),
+    ).toBeVisible();
+    expect(transport.offerReads).toEqual(['/versions/version-one']);
   });
 
   it('shows the existing unavailable state when the exact version is no longer readable', async () => {

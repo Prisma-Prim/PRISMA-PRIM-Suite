@@ -7,6 +7,7 @@ import {
 
 const OFFER_ID = '00000000-0000-4000-8000-0000000000a1';
 const VERSION_ID = '00000000-0000-4000-8000-0000000000b2';
+const FIRST_VERSION_ID = '00000000-0000-4000-8000-0000000000b1';
 const SNAPSHOT_ID = '00000000-0000-4000-8000-0000000000c3';
 const OWNER = {
   illustrativeReference: 7,
@@ -41,12 +42,13 @@ const completeReader = {
   offerPermissions: ['commercial.offer.read'],
 } satisfies Partial<ActiveCompanyContext>;
 
-/** A joined version event row exactly as the Offer module records it. */
+/** A version event row joined to its own Offer Version. */
 function versionRow(action: string, metadata: Record<string, unknown>) {
   return {
     action,
     offerId: OFFER_ID,
     offerVersionId: VERSION_ID,
+    resolvedOfferVersionId: VERSION_ID,
     versionNumber: 2,
     ...OWNER,
     metadata: {
@@ -83,11 +85,13 @@ const RECORDED = {
   ),
 };
 
+/** An Offer creation row joined to the Offer's version 1. */
 const createdRow = {
   action: 'offer.created',
   offerId: OFFER_ID,
   offerVersionId: null,
-  versionNumber: null,
+  resolvedOfferVersionId: FIRST_VERSION_ID,
+  versionNumber: 1,
   ...OWNER,
   metadata: {
     offerId: OFFER_ID,
@@ -129,10 +133,15 @@ describe('Offer Activity projection rules', () => {
 });
 
 describe('Offer Activity metadata', () => {
-  it('projects the creation of an Offer as its illustrative reference only', () => {
+  it('projects the creation of an Offer as its reference and version 1 only', () => {
     expect(readOfferActivity(createdRow)).toEqual({
       action: 'offer.created',
-      target: { type: 'offer', ...OWNER },
+      target: {
+        type: 'offer_version',
+        offerVersionId: FIRST_VERSION_ID,
+        versionNumber: 1,
+        ...OWNER,
+      },
       metadata: {},
     });
   });
@@ -207,6 +216,8 @@ describe('Offer Activity metadata', () => {
         { ...row, metadata: { ...metadata, versionNumber: 3 } },
         { ...row, metadata: { ...metadata, versionNumber: '2' } },
         { ...row, offerVersionId: null },
+        { ...row, resolvedOfferVersionId: FIRST_VERSION_ID },
+        { ...row, resolvedOfferVersionId: null },
         { ...row, versionNumber: null },
         { ...row, opportunityId: null },
         { ...row, clientRequestId: '' },
@@ -275,7 +286,10 @@ describe('Offer Activity metadata', () => {
 
   it('fails closed for an Offer creation outside its recorded shape', () => {
     for (const variant of [
-      { ...createdRow, offerVersionId: VERSION_ID },
+      { ...createdRow, offerVersionId: FIRST_VERSION_ID },
+      { ...createdRow, resolvedOfferVersionId: null },
+      { ...createdRow, resolvedOfferVersionId: VERSION_ID, versionNumber: 2 },
+      { ...createdRow, versionNumber: null },
       { ...createdRow, illustrativeReference: 8 },
       {
         ...createdRow,

@@ -100,7 +100,7 @@ const targetTypes = {
   'opportunity.next_action.updated': 'opportunity',
   'opportunity.responsible.changed': 'opportunity',
   'opportunity.outcome.changed': 'opportunity',
-  'offer.created': 'offer',
+  'offer.created': 'offer_version',
   'offer_version.created': 'offer_version',
   'offer_version.approved': 'offer_version',
   'offer_version.rejected': 'offer_version',
@@ -268,8 +268,9 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
 }
 
 /**
- * An Offer event names its Offer by illustrative reference and, for a version
- * event, the exact version it concerns. Its metadata is exactly empty, the
+ * An Offer event names its Offer by illustrative reference and the exact
+ * version it concerns, version 1 for the Offer's creation. Its metadata is
+ * exactly empty, the
  * simulated channel of a transmission, or the outcome and simulated evidence
  * of a Client response; any other shape rejects the page.
  */
@@ -286,15 +287,6 @@ function offerEvent(
     clientRequestId: identifier(target.clientRequestId),
     companyId: identifier(target.companyId),
   };
-  if (action === 'offer.created') {
-    if (Object.keys(metadata).length !== 0) invalid();
-    return {
-      ...recorded(event),
-      action,
-      target: { type: 'offer', ...reference },
-      metadata: {},
-    };
-  }
   const version: OfferVersionActivityTarget = {
     type: 'offer_version',
     offerVersionId: identifier(target.offerVersionId),
@@ -302,6 +294,10 @@ function offerEvent(
     ...reference,
   };
   switch (action) {
+    case 'offer.created':
+      if (version.versionNumber !== 1 || Object.keys(metadata).length !== 0)
+        invalid();
+      return { ...recorded(event), action, target: version, metadata: {} };
     case 'offer_version.created':
     case 'offer_version.approved':
     case 'offer_version.rejected':

@@ -313,7 +313,10 @@ interface OfferActivityTargetReference {
   companyId: string;
 }
 
-/** The exact Offer Version an event concerns, superseded or not. */
+/**
+ * The exact Offer Version an event concerns, superseded or not; an Offer
+ * creation concerns version 1.
+ */
 export type OfferVersionActivityTarget = {
   type: 'offer_version';
   offerVersionId: string;
@@ -332,12 +335,8 @@ export type OfferActivityLogEvent = {
   actor: { internalUserId: string; displayName: string };
 } & (
   | {
-      action: 'offer.created';
-      target: { type: 'offer' } & OfferActivityTargetReference;
-      metadata: Record<string, never>;
-    }
-  | {
       action:
+        | 'offer.created'
         | 'offer_version.created'
         | 'offer_version.approved'
         | 'offer_version.rejected';

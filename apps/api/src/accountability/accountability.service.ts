@@ -1024,9 +1024,10 @@ export class AccountabilityService {
    * Recorded Offer events are projected under the same Company rule as the
    * other commercial events, for an actor who also holds the complete Offer
    * read prerequisite. The query resolves each event's current Offer, owning
-   * Opportunity and Request and, for a version event, its exact Offer Version,
-   * so an event whose target cannot be resolved is omitted before the bounded
-   * page and contributes no count, reference or ordering value.
+   * Opportunity and Request and the exact Offer Version it concerns: its own
+   * version, or version 1, recorded atomically with an Offer creation. An
+   * event whose target cannot be resolved is omitted before the bounded page
+   * and contributes no count, reference or ordering value.
    */
   private async offerActivityEvents(
     actor: ActorContext,
@@ -1045,6 +1046,7 @@ export class AccountabilityService {
         offerVersionId: offerEvents.offerVersionId,
         occurredAt: offerEvents.occurredAt,
         illustrativeReference: offers.illustrativeReference,
+        resolvedOfferVersionId: offerVersions.id,
         versionNumber: offerVersions.versionNumber,
         opportunityId: opportunities.id,
         clientRequestId: clientRequests.id,
@@ -1094,7 +1096,14 @@ export class AccountabilityService {
           eq(offerVersions.workspaceId, offerEvents.workspaceId),
           eq(offerVersions.companyId, offerEvents.companyId),
           eq(offerVersions.offerId, offerEvents.offerId),
-          eq(offerVersions.id, offerEvents.offerVersionId),
+          or(
+            eq(offerVersions.id, offerEvents.offerVersionId),
+            and(
+              eq(offerEvents.action, 'offer.created'),
+              isNull(offerEvents.offerVersionId),
+              eq(offerVersions.versionNumber, 1),
+            ),
+          ),
         ),
       )
       .where(
@@ -1102,7 +1111,7 @@ export class AccountabilityService {
           eq(offerEvents.workspaceId, actor.workspaceId),
           eq(offerEvents.companyId, company.id),
           inArray(offerEvents.action, [...actions]),
-          or(isNull(offerEvents.offerVersionId), isNotNull(offerVersions.id)),
+          isNotNull(offerVersions.id),
         ),
       )
       .orderBy(desc(offerEvents.occurredAt), desc(offerEvents.id))

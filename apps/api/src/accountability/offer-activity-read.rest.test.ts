@@ -97,14 +97,10 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
     const owner = await currentActor(OWNER, setup.companyId);
 
     const events = offerEvents(await activityLog(OWNER, setup.companyId));
-    const target = (version?: { id: string; versionNumber: number }) => ({
-      ...(version
-        ? {
-            type: 'offer_version',
-            offerVersionId: version.id,
-            versionNumber: version.versionNumber,
-          }
-        : { type: 'offer' }),
+    const target = (version: { id: string; versionNumber: number }) => ({
+      type: 'offer_version',
+      offerVersionId: version.id,
+      versionNumber: version.versionNumber,
       illustrativeReference: sequence.illustrativeReference,
       opportunityId: sequence.opportunityId,
       clientRequestId: sequence.requestId,
@@ -113,7 +109,7 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
     const projected = (
       action: string,
       occurredAt: Date,
-      version: { id: string; versionNumber: number } | undefined,
+      version: { id: string; versionNumber: number },
       metadata: Record<string, unknown> = {},
     ) => ({
       id: expect.any(String),
@@ -128,7 +124,8 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
     });
     const { v1, v2, at } = sequence;
     // Newest first inside the existing dated page. Creating the Offer records
-    // its two events at one server time; they are compared as a set.
+    // its two events at one server time; they are compared as a set. Although
+    // version 2 now succeeds it, the Offer creation still concerns version 1.
     expect(events.slice(0, 7)).toEqual([
       projected('offer_version.client_response_recorded', at.accepted, v2, {
         outcome: 'ACCEPTED',
@@ -148,7 +145,7 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
     expect(events.slice(6)).toHaveLength(2);
     expect(events.slice(6)).toEqual(
       expect.arrayContaining([
-        projected('offer.created', at.created1, undefined),
+        projected('offer.created', at.created1, v1),
         projected('offer_version.created', at.created1, v1),
       ]),
     );
@@ -283,13 +280,14 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
     expect((await fetch(`${origin}/api/activity-log`)).status).toBe(401);
   });
 
-  it('omits every event whose Offer or owning Opportunity cannot be resolved and keeps a resolvable sibling', async () => {
+  it('omits every event whose Offer, owning Opportunity or Offer Version cannot be resolved and keeps a resolvable sibling', async () => {
     const setup = await preparedCompany();
     const lostOpportunity = await rejectedOffer(setup, 'lost-opportunity');
     const lostOffer = await rejectedOffer(setup, 'lost-offer');
+    const lostFirstVersion = await rejectedOffer(setup, 'lost-version');
     const sibling = await rejectedOffer(setup, 'sibling');
     const before = offerEvents(await activityLog(OWNER, setup.companyId));
-    expect(before).toHaveLength(9);
+    expect(before).toHaveLength(12);
 
     // Integrity forbids these states. The disposable fixture bypasses its
     // triggers and foreign keys to prove the read fails closed regardless.
@@ -302,6 +300,10 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
       ]);
       await client.query('DELETE FROM offers WHERE id = $1', [
         lostOffer.offerId,
+      ]);
+      // The Offer creation concerns version 1, so it goes with that version.
+      await client.query('DELETE FROM offer_versions WHERE id = $1', [
+        lostFirstVersion.v1.id,
       ]);
       await client.query('COMMIT');
     } catch (error) {
@@ -327,7 +329,7 @@ withPostgres('Offer events in the commercial Activity Log REST', () => {
       sibling.illustrativeReference,
     ]);
     const serialized = JSON.stringify(after);
-    for (const missing of [lostOpportunity, lostOffer]) {
+    for (const missing of [lostOpportunity, lostOffer, lostFirstVersion]) {
       expect(serialized).not.toContain(missing.opportunityId);
       expect(serialized).not.toContain(missing.requestId);
       expect(serialized).not.toContain(missing.v1.id);
