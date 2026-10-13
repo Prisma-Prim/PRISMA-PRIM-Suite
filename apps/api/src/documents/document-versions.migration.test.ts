@@ -298,7 +298,7 @@ it.skipIf(!databaseUrl)(
         ['company_document_registrar', 'v4'],
         ['company_document_registrar', null],
         ['company_document_project_organizer', 'v2'],
-        ['company_commercial_intake', 'v4'],
+        ['company_commercial_intake', 'v5'],
         ['company_project_access', 'v3'],
         ['company_director_client_access', 'v3'],
         ['company_pricing_configuration', 'v2'],

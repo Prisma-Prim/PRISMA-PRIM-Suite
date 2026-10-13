@@ -37,6 +37,9 @@ export const companyContextAccessCopy = {
   opportunityManagerBundle: 'Company Opportunity Manager',
   opportunityManagerPrerequisites:
     'Company Opportunity Manager v2 changes the responsible actor and the outcome status; Company context and Commercial Intake read are authorized separately.',
+  salesStageConfigurationBundle: 'Company Sales Stage Configuration',
+  salesStageConfigurationPrerequisites:
+    'Company Sales Stage Configuration v1 grants only the configuration of the Company Sales Stages. Company context and Commercial Intake read are authorized separately.',
   pricingAdjustmentBundle: 'Company Pricing Adjustment',
   pricingAdjustmentPrerequisites:
     'Company Pricing Adjustment v1 grants only the application of a fixed net discount during a Pricing calculation. Company context, Opportunity visibility and Company Pricing User access must already be authorized separately.',
@@ -123,6 +126,10 @@ export const companyContextAccessCopy = {
       'granted Company Opportunity Manager',
     'company_opportunity_manager_assignment.revoked':
       'revoked Company Opportunity Manager',
+    'company_sales_stage_configuration_assignment.granted':
+      'granted Company Sales Stage Configuration',
+    'company_sales_stage_configuration_assignment.revoked':
+      'revoked Company Sales Stage Configuration',
     'company_pricing_adjustment_assignment.granted':
       'granted Company Pricing Adjustment',
     'company_pricing_adjustment_assignment.revoked':

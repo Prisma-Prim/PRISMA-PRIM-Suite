@@ -5,6 +5,7 @@ import {
   isOutcomeTransition,
   OPPORTUNITY_LOSS_REASON_CODES,
 } from '../commercial-intake/opportunity-outcome';
+import { isValidStageLabel } from '../commercial-intake/sales-stage';
 import type {
   ActivityLogEvent,
   ClientUnionActivityLogEvent,
@@ -13,6 +14,7 @@ import type {
   OfferVersionActivityTarget,
   OpportunityOutcomeChangedActivityLogEvent,
   OpportunityResponsibleChangedActivityLogEvent,
+  OpportunityStageChangedActivityLogEvent,
   OrdinaryActivityLogEvent,
   ProjectResponsibleChangedActivityLogEvent,
 } from './company-context-transitions';
@@ -56,6 +58,10 @@ const targetTypes = {
     'company_role_assignment',
   'company_opportunity_manager_assignment.granted': 'company_role_assignment',
   'company_opportunity_manager_assignment.revoked': 'company_role_assignment',
+  'company_sales_stage_configuration_assignment.granted':
+    'company_role_assignment',
+  'company_sales_stage_configuration_assignment.revoked':
+    'company_role_assignment',
   'company_project_approver_assignment.granted': 'company_role_assignment',
   'company_project_approver_assignment.revoked': 'company_role_assignment',
   'company_context_assignment.granted': 'company_role_assignment',
@@ -106,6 +112,8 @@ const targetTypes = {
   'offer_version.rejected': 'offer_version',
   'offer_version.transmission_recorded': 'offer_version',
   'offer_version.client_response_recorded': 'offer_version',
+  'opportunity.stage.changed': 'opportunity',
+  'sales_stage.configured': 'sales_stage',
 } as const satisfies Record<ActivityAction, ActivityLogEvent['target']['type']>;
 
 /**
@@ -258,6 +266,27 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
     case 'offer_version.transmission_recorded':
     case 'offer_version.client_response_recorded':
       return offerEvent(value, action, target);
+    case 'opportunity.stage.changed':
+      return {
+        ...recorded(value),
+        action,
+        target: opportunityTarget(target),
+        metadata: opportunityStageChange(value.metadata),
+      };
+    case 'sales_stage.configured':
+      return {
+        ...recorded(value),
+        action,
+        target: {
+          type: 'sales_stage',
+          salesStageId: identifier(target.salesStageId),
+          companyId: identifier(target.companyId),
+        },
+        metadata: {
+          operation: 'CREATED',
+          label: salesStageCreated(value.metadata),
+        },
+      };
     default:
       return {
         ...recorded(value),
@@ -562,6 +591,43 @@ function opportunityOutcomeChange(
   );
   if (!code || Object.keys(metadata).length !== 3) invalid();
   return { previousStatus, newStatus, lossReasonCode: code };
+}
+
+/**
+ * A Sales Stage change: exactly the previous and new captured labels, each a
+ * valid label or null, never both null. Any other shape rejects the page.
+ */
+function opportunityStageChange(
+  metadata: unknown,
+): OpportunityStageChangedActivityLogEvent['metadata'] {
+  if (
+    !isRecord(metadata) ||
+    Object.keys(metadata).sort().join(',') !== 'newLabel,previousLabel'
+  )
+    invalid();
+  const previousLabel = optionalStageLabel(metadata.previousLabel);
+  const newLabel = optionalStageLabel(metadata.newLabel);
+  if (previousLabel === null && newLabel === null) invalid();
+  return { previousLabel, newLabel };
+}
+
+/** A created stage: exactly the CREATED operation and its label. */
+function salesStageCreated(metadata: unknown): string {
+  if (
+    !isRecord(metadata) ||
+    Object.keys(metadata).sort().join(',') !== 'label,operation' ||
+    metadata.operation !== 'CREATED' ||
+    typeof metadata.label !== 'string' ||
+    !isValidStageLabel(metadata.label)
+  )
+    invalid();
+  return metadata.label;
+}
+
+function optionalStageLabel(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== 'string' || !isValidStageLabel(value)) invalid();
+  return value;
 }
 
 /**

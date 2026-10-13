@@ -42,6 +42,23 @@ import {
   type OutcomeHistoryPage,
 } from './opportunity-outcome';
 import { RequestClientAssociation } from './RequestClientAssociation';
+import {
+  OpportunityStage,
+  OpportunityStageHistory,
+  type OlderStageHistory,
+  type StageEditor,
+} from './OpportunityStage';
+import { SalesStageSettings } from './SalesStageSettings';
+import {
+  isConsistentStageSnapshot,
+  isOpportunitySalesStage,
+  isSalesStageList,
+  isStageHistoryPage,
+  NO_STAGE_SELECTION,
+  type OpportunitySalesStage,
+  type StageEdit,
+  type StageHistoryPage,
+} from './sales-stage';
 import './commercial-intake.css';
 
 type ResponsibleActor = { workspaceMembershipId: string; displayName: string };
@@ -58,6 +75,7 @@ export type RequestListItem = {
     title: string;
     nextAction: string;
     status: OpportunityOutcomeStatus;
+    salesStage: OpportunitySalesStage | null;
     responsibleActor: ResponsibleActor;
   };
 } & RequestListClientProjection;
@@ -87,6 +105,8 @@ export type ClientRequest = {
     status: OpportunityOutcomeStatus;
     statusEnteredAt: string;
     outcomeHistory: OutcomeHistoryPage;
+    salesStage: OpportunitySalesStage | null;
+    stageHistory: StageHistoryPage;
     responsibleWorkspaceMembershipId: string;
     responsibleActor: ResponsibleActor;
     createdAt: string;
@@ -121,10 +141,16 @@ type RequestedOfferVersion = {
 };
 
 // What the one shared in-flight controller serves: an ordinary detail read, or
-// a capture, next-action, responsible-actor or outcome status command until
-// the reads that follow its outcome end.
+// a capture, next-action, responsible-actor, outcome status or Sales Stage
+// command until the reads that follow its outcome end.
 type InFlight =
-  'none' | 'read' | 'capture' | 'next-action' | 'responsible' | 'outcome';
+  | 'none'
+  | 'read'
+  | 'capture'
+  | 'next-action'
+  | 'responsible'
+  | 'outcome'
+  | 'stage';
 type AssociationProtection = 'idle' | 'loading' | 'uncertain';
 
 type NextActionUpdateResult = {
@@ -187,6 +213,24 @@ type OutcomeRetry = {
   key: string;
   /** The status shown when the command was built: the receipt starts here. */
   previousStatus: OpportunityOutcomeStatus;
+};
+
+type StageChangeResult = {
+  receipt: {
+    opportunityId: string;
+    salesStageId: string | null;
+    version: number;
+    outcome: 'updated' | 'unchanged';
+  };
+  request: ClientRequest;
+};
+
+// An explicit retry resends exactly this stage, observed version and key.
+type StageRetry = {
+  opportunityId: string;
+  expectedVersion: number;
+  salesStageId: string | null;
+  key: string;
 };
 
 type RequestPage = { items: RequestListItem[]; nextCursor?: string };
@@ -309,6 +353,10 @@ export function CommercialIntakeWorkspace({
   const [outcomeEdit, setOutcomeEdit] = useState<OutcomeEdit>({
     kind: 'idle',
   });
+  const [stageEdit, setStageEdit] = useState<StageEdit>({ kind: 'idle' });
+  // The Company's Sales Stage settings view replaces the capture form and the
+  // list while it is open.
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const listRequest = useRef<AbortController | undefined>(undefined);
   const commandRequest = useRef<AbortController | undefined>(undefined);
   const clientSearchRequest = useRef<AbortController | undefined>(undefined);
@@ -327,6 +375,11 @@ export function CommercialIntakeWorkspace({
   const outcomeRetry = useRef<OutcomeRetry | undefined>(undefined);
   // The outcome status save whose response has not arrived yet.
   const outcomeCommand = useRef<AbortController | undefined>(undefined);
+  const stageRetry = useRef<StageRetry | undefined>(undefined);
+  // The Sales Stage save whose response has not arrived yet, and the stage
+  // list read of an open Sales Stage editor.
+  const stageCommand = useRef<AbortController | undefined>(undefined);
+  const stageListRequest = useRef<AbortController | undefined>(undefined);
   // The ordinary detail read in flight, if any; never a command.
   const detailRead = useRef<AbortController | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
@@ -339,10 +392,15 @@ export function CommercialIntakeWorkspace({
     responsibleEdit.kind !== 'idle' && responsibleEdit.kind !== 'conflict';
   const outcomeEditOpen =
     outcomeEdit.kind !== 'idle' && outcomeEdit.kind !== 'conflict';
+  const stageEditOpen =
+    stageEdit.kind !== 'idle' && stageEdit.kind !== 'conflict';
   // At most one Opportunity editor is open; any one is protected work.
   const opportunityEditInProgress = useRef(false);
   opportunityEditInProgress.current =
-    nextActionEditOpen || responsibleEditOpen || outcomeEditOpen;
+    nextActionEditOpen ||
+    responsibleEditOpen ||
+    outcomeEditOpen ||
+    stageEditOpen;
   const associationInProgress = useRef(false);
   associationInProgress.current = associationProtection !== 'idle';
   const protectedWork =
@@ -354,9 +412,11 @@ export function CommercialIntakeWorkspace({
           ? 'responsible-edit'
           : outcomeEditOpen || inFlight === 'outcome'
             ? 'outcome-edit'
-            : inFlight === 'capture' || captureUncertain
-              ? 'capture'
-              : undefined;
+            : stageEditOpen || inFlight === 'stage'
+              ? 'stage-edit'
+              : inFlight === 'capture' || captureUncertain
+                ? 'capture'
+                : undefined;
   const listDenied = useRef(false);
   listDenied.current = load.kind === 'denied';
   const rejectCompany = useRef(onCompanyContextRejected);
@@ -459,6 +519,26 @@ export function CommercialIntakeWorkspace({
     actor.activeCompany?.opportunityManagerPermissionSetVersion,
     canChangeOutcome,
   ]);
+  // The Sales Stage assignment needs captured Commercial Intake v4, which
+  // carries both reads; the server also requires live Company context.
+  const canSetStage =
+    intakePermissions.includes('commercial.opportunity.stage.set') &&
+    intakePermissions.includes('commercial.request.read') &&
+    intakePermissions.includes('commercial.opportunity.read');
+  const stageAuthority = JSON.stringify([
+    actor.workspaceMembershipId,
+    companyId,
+    actor.activeCompany?.commercialIntakePermissionAssignmentId,
+    actor.activeCompany?.commercialIntakePermissionSetVersion,
+    canSetStage,
+  ]);
+  // Configuring stages needs the opt-in configuration bundle and both reads.
+  const canConfigureStages =
+    actor.activeCompany?.salesStageConfigurationPermissions?.includes(
+      'commercial.sales_stage.configure',
+    ) === true &&
+    intakePermissions.includes('commercial.request.read') &&
+    intakePermissions.includes('commercial.opportunity.read');
 
   const request = useCallback(
     async ({
@@ -529,7 +609,9 @@ export function CommercialIntakeWorkspace({
         | 'client-association'
         | 'next-action-update'
         | 'responsible-update'
-        | 'outcome-update' = 'intake',
+        | 'outcome-update'
+        | 'stage-update'
+        | 'sales-stage-configuration' = 'intake',
     ): Promise<'ok' | 'retained' | 'rejected'> => {
       if (signal.aborted) return 'rejected';
       if (result.status === 401) {
@@ -573,6 +655,8 @@ export function CommercialIntakeWorkspace({
           setAssociationProtection('idle');
           setResponsibleEdit({ kind: 'idle' });
           setOutcomeEdit({ kind: 'idle' });
+          setStageEdit({ kind: 'idle' });
+          setSettingsOpen(false);
           setInFlight('none');
           setCaptureUncertain(false);
           setRequestToOpen(undefined);
@@ -580,9 +664,11 @@ export function CommercialIntakeWorkspace({
           nextActionRetry.current = undefined;
           responsibleRetry.current = undefined;
           outcomeRetry.current = undefined;
+          stageRetry.current = undefined;
           listRequest.current?.abort();
           commandRequest.current?.abort();
           membersRequest.current?.abort();
+          stageListRequest.current?.abort();
         }
       }
       return retainAuthorizedIntake && !signal.aborted
@@ -656,11 +742,15 @@ export function CommercialIntakeWorkspace({
     nextActionRetry.current = undefined;
     responsibleRetry.current = undefined;
     outcomeRetry.current = undefined;
+    stageRetry.current = undefined;
+    stageListRequest.current?.abort();
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     setAssociationProtection('idle');
     setResponsibleEdit({ kind: 'idle' });
     setOutcomeEdit({ kind: 'idle' });
+    setStageEdit({ kind: 'idle' });
+    setSettingsOpen(false);
     setFeedback('');
     setClientQuery('');
     setClientSearch({ kind: 'idle' });
@@ -679,6 +769,7 @@ export function CommercialIntakeWorkspace({
       commandRequest.current?.abort();
       clientSearchRequest.current?.abort();
       membersRequest.current?.abort();
+      stageListRequest.current?.abort();
     };
   }, [actor.workspaceId, actor.workspaceMembershipId, companyId, loadRequests]);
 
@@ -705,6 +796,9 @@ export function CommercialIntakeWorkspace({
     responsibleRetry.current = undefined;
     setOutcomeEdit({ kind: 'idle' });
     outcomeRetry.current = undefined;
+    stageListRequest.current?.abort();
+    setStageEdit({ kind: 'idle' });
+    stageRetry.current = undefined;
   }, [clientRestriction]);
 
   // The shell owns the requested Request. A new one supersedes any older or
@@ -872,6 +966,41 @@ export function CommercialIntakeWorkspace({
     if (outcomeEdit.kind !== 'conflict') setFeedback(copy.outcomeDenied);
   }, [canChangeOutcome, outcomeEdit.kind]);
 
+  // Losing the Sales Stage assignment keeps the read-only detail, but retires
+  // the editor, its stage list, the pending command and any in-flight save, so
+  // a later regrant can neither restore nor replay them.
+  useEffect(() => {
+    if (canSetStage) return;
+    stageRetry.current = undefined;
+    stageListRequest.current?.abort();
+    const save = stageCommand.current;
+    stageCommand.current = undefined;
+    if (save && !save.signal.aborted) {
+      save.abort();
+      setInFlight('none');
+    }
+    if (stageEdit.kind === 'idle') return;
+    setStageEdit({ kind: 'idle' });
+    if (stageEdit.kind !== 'conflict') setFeedback(copy.stageDenied);
+  }, [canSetStage, stageEdit.kind]);
+
+  // Another captured Commercial Intake assignment is a new authority: like a
+  // remount keyed on it, it retires every Sales Stage draft and command.
+  const readStageAuthority = useRef(stageAuthority);
+  useEffect(() => {
+    if (readStageAuthority.current === stageAuthority) return;
+    readStageAuthority.current = stageAuthority;
+    stageRetry.current = undefined;
+    stageListRequest.current?.abort();
+    const save = stageCommand.current;
+    stageCommand.current = undefined;
+    if (save && !save.signal.aborted) {
+      save.abort();
+      setInFlight('none');
+    }
+    setStageEdit({ kind: 'idle' });
+  }, [stageAuthority]);
+
   // Another captured manager assignment is a new authority: like a remount
   // keyed on it, it retires every outcome draft and command.
   const readOutcomeAuthority = useRef(outcomeAuthority);
@@ -975,6 +1104,7 @@ export function CommercialIntakeWorkspace({
     const startedUnderProjection = clientProjection.current.revision;
     setInFlight('read');
     setFeedback('');
+    setSettingsOpen(false);
     if (!preserveConflict) {
       setNextActionEdit({ kind: 'idle' });
       nextActionRetry.current = undefined;
@@ -982,7 +1112,10 @@ export function CommercialIntakeWorkspace({
       responsibleRetry.current = undefined;
       setOutcomeEdit({ kind: 'idle' });
       outcomeRetry.current = undefined;
+      setStageEdit({ kind: 'idle' });
+      stageRetry.current = undefined;
       membersRequest.current?.abort();
+      stageListRequest.current?.abort();
     }
     try {
       const result = await request({
@@ -1005,6 +1138,8 @@ export function CommercialIntakeWorkspace({
         responsibleRetry.current = undefined;
         setOutcomeEdit({ kind: 'idle' });
         outcomeRetry.current = undefined;
+        setStageEdit({ kind: 'idle' });
+        stageRetry.current = undefined;
       } else setFeedback(copy.error);
     } catch {
       if (!controller.signal.aborted) setFeedback(copy.error);
@@ -1018,6 +1153,7 @@ export function CommercialIntakeWorkspace({
     commandRequest.current?.abort();
     setRequestedOfferVersion(undefined);
     membersRequest.current?.abort();
+    stageListRequest.current?.abort();
     setSelected(undefined);
     setNextActionEdit({ kind: 'idle' });
     setAssociationProtection('idle');
@@ -1026,6 +1162,8 @@ export function CommercialIntakeWorkspace({
     responsibleRetry.current = undefined;
     setOutcomeEdit({ kind: 'idle' });
     outcomeRetry.current = undefined;
+    setStageEdit({ kind: 'idle' });
+    stageRetry.current = undefined;
     setInFlight('none');
   }
 
@@ -1038,6 +1176,8 @@ export function CommercialIntakeWorkspace({
     responsibleRetry.current = undefined;
     setOutcomeEdit({ kind: 'idle' });
     outcomeRetry.current = undefined;
+    setStageEdit({ kind: 'idle' });
+    stageRetry.current = undefined;
     setSelected(undefined);
     setFeedback(copy.nextActionMissing);
     await loadRequests(companyContextId);
@@ -1406,6 +1546,196 @@ export function CommercialIntakeWorkspace({
     }
   };
 
+  async function openStageEditor(): Promise<void> {
+    if (!companyId || !selected || pending) return;
+    const current = selected.request.initialOpportunity.salesStage;
+    stageListRequest.current?.abort();
+    const controller = new AbortController();
+    stageListRequest.current = controller;
+    stageRetry.current = undefined;
+    setStageEdit({ kind: 'loading' });
+    setFeedback('');
+    try {
+      const result = await request({
+        path: '/sales-stages',
+        companyContextId: companyId,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+        return;
+      if (controller.signal.aborted) return;
+      if (result.status === 200 && isSalesStageList(result.body)) {
+        // Only ACTIVE stages are offered, in their configured order.
+        const stages = result.body.stages.filter(
+          (stage) => stage.state === 'ACTIVE',
+        );
+        setStageEdit({
+          kind: 'choosing',
+          stages,
+          selection:
+            current && stages.some((stage) => stage.id === current.id)
+              ? current.id
+              : NO_STAGE_SELECTION,
+        });
+        return;
+      }
+      setStageEdit({ kind: 'load-error' });
+      setFeedback(copy.stageListError);
+    } catch {
+      if (!controller.signal.aborted) {
+        setStageEdit({ kind: 'load-error' });
+        setFeedback(copy.stageListError);
+      }
+    } finally {
+      if (stageListRequest.current === controller)
+        stageListRequest.current = undefined;
+    }
+  }
+
+  async function saveStage(): Promise<void> {
+    if (!companyId || !selected || pending) return;
+    if (stageEdit.kind !== 'choosing' && stageEdit.kind !== 'uncertain') return;
+    const { stages } = stageEdit;
+    const preservedRetry =
+      stageEdit.kind === 'uncertain' ? stageRetry.current : undefined;
+    const salesStageId =
+      preservedRetry === undefined
+        ? stageEdit.selection === NO_STAGE_SELECTION
+          ? null
+          : stageEdit.selection
+        : preservedRetry.salesStageId;
+    const opportunityId =
+      preservedRetry?.opportunityId ?? selected.request.initialOpportunity.id;
+    const expectedVersion =
+      preservedRetry?.expectedVersion ??
+      selected.request.initialOpportunity.version;
+    const previous = stageRetry.current;
+    // An explicit retry reuses the key only for the exact same stage and
+    // observed version, so the server can replay the original receipt.
+    const key =
+      previous &&
+      previous.opportunityId === opportunityId &&
+      previous.expectedVersion === expectedVersion &&
+      previous.salesStageId === salesStageId
+        ? previous.key
+        : crypto.randomUUID();
+    stageRetry.current = { opportunityId, expectedVersion, salesStageId, key };
+    const selection = salesStageId ?? NO_STAGE_SELECTION;
+    commandRequest.current?.abort();
+    const controller = new AbortController();
+    commandRequest.current = controller;
+    stageCommand.current = controller;
+    const startedUnderProjection = clientProjection.current.revision;
+    setStageEdit({ kind: 'saving', stages, selection });
+    setInFlight('stage');
+    setFeedback('');
+    try {
+      const result = await request({
+        path: `/commercial-intake/opportunities/${encodeURIComponent(opportunityId)}/stage`,
+        companyContextId: companyId,
+        signal: controller.signal,
+        method: 'POST',
+        body: JSON.stringify({ expectedVersion, salesStageId }),
+        idempotencyKey: key,
+      });
+      if (stageCommand.current === controller) stageCommand.current = undefined;
+      if (controller.signal.aborted) return;
+      const access = await handleAccess(
+        result,
+        companyId,
+        controller.signal,
+        'stage-update',
+      );
+      if (controller.signal.aborted) return;
+      if (access === 'retained') {
+        // Assignment authority was lost while read authority remains: the
+        // editor and pending command are dropped, the read-only detail stays.
+        setStageEdit({ kind: 'idle' });
+        stageRetry.current = undefined;
+        setFeedback(copy.stageDenied);
+        return;
+      }
+      if (access === 'rejected') return;
+      if (result.status === 404) {
+        await closeMissingOpportunity(companyId);
+        return;
+      }
+      if (
+        result.status === 400 ||
+        (result.status === 409 &&
+          isRecord(result.body) &&
+          result.body.code === 'SALES_STAGE_UNAVAILABLE')
+      ) {
+        setStageEdit({ kind: 'unavailable' });
+        stageRetry.current = undefined;
+        setFeedback(copy.stageUnavailable);
+        return;
+      }
+      if (result.status === 409) {
+        setStageEdit({ kind: 'conflict' });
+        stageRetry.current = undefined;
+        setFeedback(copy.stageConflict);
+        return;
+      }
+      if (
+        result.status === 200 &&
+        isStageChangeResult(result.body, {
+          opportunityId,
+          expectedVersion,
+          salesStageId,
+        })
+      ) {
+        const { receipt, request: updated } = result.body;
+        applyOpportunityResponse({
+          request: updated,
+          responseRevision: startedUnderProjection,
+        });
+        setStageEdit({ kind: 'idle' });
+        stageRetry.current = undefined;
+        setFeedback(
+          receipt.outcome === 'updated'
+            ? copy.stageChanged
+            : copy.stageUnchanged,
+        );
+        if (receipt.outcome === 'updated') await onActivityRecorded();
+        if (!controller.signal.aborted) await loadRequests(companyId);
+        return;
+      }
+      setStageEdit({ kind: 'uncertain', stages, selection });
+      setFeedback(copy.stageUncertain);
+    } catch {
+      if (!controller.signal.aborted) {
+        setStageEdit({ kind: 'uncertain', stages, selection });
+        setFeedback(copy.stageUncertain);
+      }
+    } finally {
+      if (!controller.signal.aborted) setInFlight('none');
+    }
+  }
+
+  // One older page of the shown Opportunity's Sales Stage history. Only
+  // Commercial Intake read is needed; a lost read clears the scoped content.
+  const loadOlderStageHistory: OlderStageHistory = async (cursor) => {
+    if (!companyId || !selected) return undefined;
+    const controller = new AbortController();
+    try {
+      const result = await request({
+        path: `/commercial-intake/opportunities/${encodeURIComponent(selected.request.initialOpportunity.id)}/stage-history?cursor=${encodeURIComponent(cursor)}`,
+        companyContextId: companyId,
+        signal: controller.signal,
+      });
+      if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
+        return undefined;
+      return result.status === 200 &&
+        isStageHistoryPage(result.body, isDisplayableTimestamp)
+        ? result.body
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
   async function saveNextAction(): Promise<void> {
     if (!companyId || !selected || pending) return;
     if (
@@ -1683,7 +2013,9 @@ export function CommercialIntakeWorkspace({
                 ? copy.requestedAfterResponsibleEdit
                 : protectedWork === 'outcome-edit'
                   ? copy.requestedAfterOutcomeEdit
-                  : copy.requestedAfterNextActionEdit}
+                  : protectedWork === 'stage-edit'
+                    ? copy.requestedAfterStageEdit
+                    : copy.requestedAfterNextActionEdit}
         </p>
       ) : null}
       {selected && visibleRequest ? (
@@ -1712,7 +2044,8 @@ export function CommercialIntakeWorkspace({
                   current: selected.request.initialOpportunity.responsibleActor,
                   blocked:
                     nextActionEdit.kind !== 'idle' ||
-                    outcomeEdit.kind !== 'idle',
+                    outcomeEdit.kind !== 'idle' ||
+                    stageEdit.kind !== 'idle',
                   onOpen: () => void openResponsibleEditor(),
                   onSelect: (workspaceMembershipId) =>
                     setResponsibleEdit((current) =>
@@ -1739,7 +2072,8 @@ export function CommercialIntakeWorkspace({
                   edit: nextActionEdit,
                   blocked:
                     responsibleEdit.kind !== 'idle' ||
-                    outcomeEdit.kind !== 'idle',
+                    outcomeEdit.kind !== 'idle' ||
+                    stageEdit.kind !== 'idle',
                   onEdit: () => {
                     setFeedback('');
                     setNextActionEdit({
@@ -1770,7 +2104,8 @@ export function CommercialIntakeWorkspace({
                   current: selected.request.initialOpportunity.status,
                   blocked:
                     nextActionEdit.kind !== 'idle' ||
-                    responsibleEdit.kind !== 'idle',
+                    responsibleEdit.kind !== 'idle' ||
+                    stageEdit.kind !== 'idle',
                   onOpen: () => {
                     setFeedback('');
                     outcomeRetry.current = undefined;
@@ -1796,6 +2131,35 @@ export function CommercialIntakeWorkspace({
               : undefined
           }
           loadOlderOutcomeHistory={loadOlderOutcomeHistory}
+          stage={
+            canSetStage
+              ? {
+                  edit: stageEdit,
+                  blocked:
+                    nextActionEdit.kind !== 'idle' ||
+                    responsibleEdit.kind !== 'idle' ||
+                    outcomeEdit.kind !== 'idle',
+                  onOpen: () => void openStageEditor(),
+                  onSelect: (selection) =>
+                    setStageEdit((current) =>
+                      current.kind === 'choosing'
+                        ? { ...current, selection }
+                        : current,
+                    ),
+                  onSave: () => void saveStage(),
+                  onCancel: () => {
+                    stageListRequest.current?.abort();
+                    setStageEdit({ kind: 'idle' });
+                    stageRetry.current = undefined;
+                    setFeedback('');
+                  },
+                  onReloadList: () => void openStageEditor(),
+                  onReloadRequest: () =>
+                    void selectRequest(selected.request.id, true),
+                }
+              : undefined
+          }
+          loadOlderStageHistory={loadOlderStageHistory}
           clientAssociation={
             companyId &&
             canAssociateClient &&
@@ -1808,7 +2172,10 @@ export function CommercialIntakeWorkspace({
                 expectedVersion={selected.request.version}
                 clientIdentityRevision={clientIdentityRevision}
                 blocked={
-                  nextActionEditOpen || responsibleEditOpen || outcomeEditOpen
+                  nextActionEditOpen ||
+                  responsibleEditOpen ||
+                  outcomeEditOpen ||
+                  stageEditOpen
                 }
                 request={request}
                 handleAccess={handleAccess}
@@ -1856,8 +2223,29 @@ export function CommercialIntakeWorkspace({
           onActorRevalidated={onActorRevalidated}
           onWorkspaceAccessRejected={onWorkspaceAccessRejected}
         />
+      ) : settingsOpen && companyId ? (
+        <SalesStageSettings
+          key={companyId}
+          companyId={companyId}
+          canConfigure={canConfigureStages}
+          request={request}
+          handleAccess={handleAccess}
+          onBack={() => setSettingsOpen(false)}
+          onConfigured={onActivityRecorded}
+        />
       ) : (
         <>
+          <button
+            type="button"
+            className="commercial-intake-secondary-action"
+            onClick={() => {
+              setFeedback('');
+              setSettingsOpen(true);
+            }}
+            disabled={pending}
+          >
+            {copy.openSalesStageSettings}
+          </button>
           <form
             className="commercial-intake-form"
             noValidate
@@ -2234,6 +2622,10 @@ function RequestList({
                 {copy.opportunityStatusLabels[item.initialOpportunity.status]}
               </small>
               <small>
+                {copy.salesStage}:{' '}
+                {item.initialOpportunity.salesStage?.label ?? copy.stageNone}
+              </small>
+              <small>
                 {copy.nextAction}: {item.initialOpportunity.nextAction}
               </small>
               <small>
@@ -2325,6 +2717,8 @@ function RequestDetail({
   nextAction,
   outcome,
   loadOlderOutcomeHistory,
+  stage,
+  loadOlderStageHistory,
   clientAssociation,
   onCompanyContextRejected,
   onActorRevalidated,
@@ -2346,6 +2740,9 @@ function RequestDetail({
   /** Offered only with the outcome permission and the Intake reads. */
   outcome: OutcomeEditor | undefined;
   loadOlderOutcomeHistory: OlderOutcomeHistory;
+  /** Offered only with the Sales Stage assignment permission and the reads. */
+  stage: StageEditor | undefined;
+  loadOlderStageHistory: OlderStageHistory;
   clientAssociation: ReactNode;
   clientAuthority: string;
   onCompanyContextRejected: (companyContextId: string) => void;
@@ -2457,6 +2854,16 @@ function RequestDetail({
           key={`${request.initialOpportunity.id}:${request.initialOpportunity.version}`}
           page={request.initialOpportunity.outcomeHistory}
           loadOlder={loadOlderOutcomeHistory}
+        />
+        <p>
+          {copy.salesStage}:{' '}
+          {request.initialOpportunity.salesStage?.label ?? copy.stageNone}
+        </p>
+        {stage ? <OpportunityStage editor={stage} pending={pending} /> : null}
+        <OpportunityStageHistory
+          key={`stage:${request.initialOpportunity.id}:${request.initialOpportunity.version}`}
+          page={request.initialOpportunity.stageHistory}
+          loadOlder={loadOlderStageHistory}
         />
         <p>
           {copy.opportunityVersion}: {request.initialOpportunity.version}
@@ -2621,6 +3028,7 @@ function isRequestListItem(value: unknown): value is RequestListItem {
     typeof value.initialOpportunity.title === 'string' &&
     typeof value.initialOpportunity.nextAction === 'string' &&
     isOpportunityOutcomeStatus(value.initialOpportunity.status) &&
+    isOpportunitySalesStage(value.initialOpportunity.salesStage) &&
     isResponsibleActor(value.initialOpportunity.responsibleActor)
   );
 }
@@ -2724,6 +3132,13 @@ function isInitialOpportunity(
       createdAt: value.createdAt,
       version: value.version,
       outcomeHistory: value.outcomeHistory,
+    }) &&
+    isOpportunitySalesStage(value.salesStage) &&
+    isStageHistoryPage(value.stageHistory, isDisplayableTimestamp) &&
+    isConsistentStageSnapshot({
+      salesStage: value.salesStage,
+      version: value.version,
+      stageHistory: value.stageHistory,
     })
   );
 }
@@ -2810,6 +3225,48 @@ function submittedOutcome(
     Number.isSafeInteger(body.expectedVersion)
     ? { status: body.status, expectedVersion: body.expectedVersion }
     : undefined;
+}
+
+const STAGE_RECEIPT_FIELDS = [
+  'opportunityId',
+  'salesStageId',
+  'version',
+  'outcome',
+] as const;
+
+/**
+ * The result of the exact stage command sent: the receipt names the command's
+ * Opportunity and stage, and its version is the observed one for a no-op or
+ * one more for a change. Anything else keeps the command for an explicit
+ * retry instead of settling it.
+ */
+function isStageChangeResult(
+  value: unknown,
+  sent: {
+    opportunityId: string;
+    expectedVersion: number;
+    salesStageId: string | null;
+  },
+): value is StageChangeResult {
+  if (
+    !isRecord(value) ||
+    Object.keys(value).length !== 2 ||
+    !isRecord(value.receipt)
+  )
+    return false;
+  const receipt = value.receipt;
+  return (
+    Object.keys(receipt).length === STAGE_RECEIPT_FIELDS.length &&
+    STAGE_RECEIPT_FIELDS.every((field) => Object.hasOwn(receipt, field)) &&
+    receipt.opportunityId === sent.opportunityId &&
+    receipt.salesStageId === sent.salesStageId &&
+    ((receipt.outcome === 'updated' &&
+      receipt.version === sent.expectedVersion + 1) ||
+      (receipt.outcome === 'unchanged' &&
+        receipt.version === sent.expectedVersion)) &&
+    isClientRequest(value.request) &&
+    value.request.initialOpportunity.id === sent.opportunityId
+  );
 }
 
 function isResponsibleCandidates(

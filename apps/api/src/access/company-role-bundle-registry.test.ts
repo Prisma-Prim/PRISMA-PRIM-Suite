@@ -71,6 +71,15 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
       'commercial.opportunity.next_action.update',
       'commercial.request.client.associate',
     ],
+    v4: [
+      'commercial.request.read',
+      'commercial.request.create',
+      'commercial.opportunity.read',
+      'commercial.opportunity.create',
+      'commercial.opportunity.next_action.update',
+      'commercial.request.client.associate',
+      'commercial.opportunity.stage.set',
+    ],
   },
   company_service_catalogue: {
     v1: [
@@ -148,6 +157,9 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
       'commercial.profitability_estimate.decide',
     ],
   },
+  company_sales_stage_configuration: {
+    v1: ['commercial.sales_stage.configure'],
+  },
 };
 
 const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
@@ -172,12 +184,13 @@ const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
   company_project_approver: 'Company Project Approver',
   company_profitability_contributor: 'Company Profitability Contributor',
   company_profitability_director: 'Company Profitability Director',
+  company_sales_stage_configuration: 'Company Sales Stage Configuration',
 };
 
 const BUNDLES = Object.keys(EXPECTED).filter(
   (bundle): bundle is CompanyRoleBundle => Object.hasOwn(EXPECTED, bundle),
 );
-const ALL_CAPTURED_VERSIONS = ['v1', 'v2', 'v3'];
+const ALL_CAPTURED_VERSIONS = ['v1', 'v2', 'v3', 'v4'];
 
 describe('Company role bundle registry', () => {
   it('registers exactly the persisted Company role bundles', () => {
@@ -214,7 +227,7 @@ describe('Company role bundle registry', () => {
         '',
         'V1',
         'v0',
-        'v4',
+        'v5',
         ' v1',
         'toString',
         '__proto__',
@@ -250,13 +263,20 @@ describe('Company role bundle registry', () => {
         'commercial.request.read',
         'commercial.opportunity.read',
       ]),
-    ).toEqual(['v1', 'v2', 'v3']);
+    ).toEqual(['v1', 'v2', 'v3', 'v4']);
     expect(
       companyRoleVersionsWith('company_commercial_intake', [
         'commercial.request.read',
         'commercial.request.client.associate',
       ]),
-    ).toEqual(['v3']);
+    ).toEqual(['v3', 'v4']);
+    expect(
+      companyRoleVersionsWith('company_commercial_intake', [
+        'commercial.request.read',
+        'commercial.opportunity.read',
+        'commercial.opportunity.stage.set',
+      ]),
+    ).toEqual(['v4']);
     expect(
       companyRoleVersionsWith('company_opportunity_manager', [
         'commercial.opportunity.outcome.change',
@@ -274,9 +294,9 @@ describe('Company role permission set version CHECK', () => {
   const bundle = '"company_role_assignments"."bundle"::text';
   const version = '"company_role_assignments"."permission_set_version"';
   const singleVersionBundles =
-    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director'";
+    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration'";
   const versionedBundles =
-    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director'";
+    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration'";
   const EXPECTED_CHECK = [
     '(',
     `        (${bundle} = 'company_director_client_access'`,
@@ -285,7 +305,7 @@ describe('Company role permission set version CHECK', () => {
     '        OR',
     `        (${bundle} = 'company_document_registrar' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2', 'v3'))`,
     '        OR',
-    `        (${bundle} = 'company_commercial_intake' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2', 'v3'))`,
+    `        (${bundle} = 'company_commercial_intake' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2', 'v3', 'v4'))`,
     '        OR',
     `        (${bundle} = 'company_project_access' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
     '        OR',

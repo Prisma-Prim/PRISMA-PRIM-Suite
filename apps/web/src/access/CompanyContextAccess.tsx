@@ -44,6 +44,7 @@ type AssignmentBundle =
   | 'pricing-adjustment'
   | 'commercial-activity-reader'
   | 'opportunity-manager'
+  | 'sales-stage-configuration'
   | 'project'
   | 'project-approver'
   | 'profitability-contributor'
@@ -72,6 +73,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'commercial-activity-reader':
     '/company-commercial-activity-reader-assignments',
   'opportunity-manager': '/company-opportunity-manager-assignments',
+  'sales-stage-configuration': '/company-sales-stage-configuration-assignments',
   project: '/company-project-assignments',
   'project-approver': '/company-project-approver-assignments',
 };
@@ -516,6 +518,10 @@ export function CompanyContextAccess({
                 value: 'opportunity-manager',
                 label: copy.opportunityManagerBundle,
               },
+              {
+                value: 'sales-stage-configuration',
+                label: copy.salesStageConfigurationBundle,
+              },
               { value: 'director-client', label: copy.directorClientBundle },
               {
                 value: 'document-project-organizer',
@@ -550,6 +556,7 @@ export function CompanyContextAccess({
                 value === 'pricing-adjustment' ||
                 value === 'commercial-activity-reader' ||
                 value === 'opportunity-manager' ||
+                value === 'sales-stage-configuration' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -596,6 +603,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'opportunity-manager' && (
             <p>{copy.opportunityManagerPrerequisites}</p>
+          )}
+          {bundle === 'sales-stage-configuration' && (
+            <p>{copy.salesStageConfigurationPrerequisites}</p>
           )}
           {bundle === 'pricing-adjustment' && (
             <p>{copy.pricingAdjustmentPrerequisites}</p>
@@ -689,6 +699,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'opportunity-manager': copy.opportunityManagerBundle,
+    'sales-stage-configuration': copy.salesStageConfigurationBundle,
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',

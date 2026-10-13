@@ -836,6 +836,16 @@ function activityDescription(
   const description = `${actorName} ${actionLabels[event.action]}`;
   if (event.action === 'offer_version.client_response_recorded')
     return `${description} (${offerActivityCopy.responseOutcomes[event.metadata.outcome]})`;
+  if (event.action === 'opportunity.stage.changed')
+    return `${description} ${commercialIntakeCopy.activityStageChange(
+      event.metadata.previousLabel ?? commercialIntakeCopy.stageNone,
+      event.metadata.newLabel ?? commercialIntakeCopy.stageNone,
+    )}`;
+  if (event.action === 'sales_stage.configured')
+    return `${description} ${commercialIntakeCopy.activityStageConfigured(
+      commercialIntakeCopy.salesStageOperationLabels[event.metadata.operation],
+      event.metadata.label,
+    )}`;
   if (event.action === 'opportunity.outcome.changed') {
     const { metadata } = event;
     return `${description} ${commercialIntakeCopy.activityOutcomeChange(
@@ -892,6 +902,8 @@ function activityTargetDescription(event: ActivityLogEvent): string {
         ? `${version} · ${offerActivityCopy.simulated}`
         : version;
     }
+    case 'sales_stage':
+      return commercialIntakeCopy.activitySalesStageTarget;
     case 'company_role_assignment':
       return `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`;
     case 'client_company_relationship':

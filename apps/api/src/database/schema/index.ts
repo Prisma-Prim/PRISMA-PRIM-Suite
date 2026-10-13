@@ -11,6 +11,7 @@ export * from './project-lifecycle.js';
 
 export * from './task.js';
 
+export * from './sales-stage.js';
 export * from './commercial-intake.js';
 
 export * from './commercial-catalogue.js';

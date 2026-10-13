@@ -5,6 +5,7 @@ import type {
   ChangeOpportunityOutcomeCommand,
   ChangeOpportunityResponsibleCommand,
   CreateCommercialIntakeCommand,
+  SetOpportunityStageCommand,
   UpdateOpportunityNextActionCommand,
 } from './commercial-intake.types.js';
 import {
@@ -32,6 +33,7 @@ const RESPONSIBLE_CHANGE_FIELDS = new Set([
   'expectedVersion',
   'workspaceMembershipId',
 ]);
+const STAGE_CHANGE_FIELDS = new Set(['expectedVersion', 'salesStageId']);
 const OUTCOME_CHANGE_FIELDS = new Set([
   'expectedVersion',
   'status',
@@ -39,7 +41,7 @@ const OUTCOME_CHANGE_FIELDS = new Set([
   'lossReasonCode',
   'note',
 ]);
-const MEMBERSHIP_ID =
+const UUID_GRAMMAR =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 // Opportunity versions are PostgreSQL integers. The maximum stays a valid
 // observation so an unchanged or replayed command can confirm it; the command
@@ -96,13 +98,31 @@ export function readChangeOpportunityResponsibleCommand(
   const { workspaceMembershipId } = body;
   if (
     typeof workspaceMembershipId !== 'string' ||
-    !MEMBERSHIP_ID.test(workspaceMembershipId)
+    !UUID_GRAMMAR.test(workspaceMembershipId)
   )
     invalid('workspaceMembershipId', 'Choose an eligible member.');
   return {
     expectedVersion,
     workspaceMembershipId: workspaceMembershipId.toLowerCase(),
   };
+}
+
+/**
+ * Exactly an observed Opportunity version and one business field: a stage
+ * identifier, or an explicit null to clear the stage. Whether the stage is
+ * assignable is decided inside the command.
+ */
+export function readSetOpportunityStageCommand(
+  value: unknown,
+): SetOpportunityStageCommand {
+  const body = record(value, 'change');
+  rejectExtraFields(body, STAGE_CHANGE_FIELDS, 'change');
+  const expectedVersion = observedVersion(body.expectedVersion);
+  const { salesStageId } = body;
+  if (salesStageId === null) return { expectedVersion, salesStageId: null };
+  if (typeof salesStageId !== 'string' || !UUID_GRAMMAR.test(salesStageId))
+    invalid('salesStageId', 'Choose a Sales Stage or clear the stage.');
+  return { expectedVersion, salesStageId: salesStageId.toLowerCase() };
 }
 
 /**

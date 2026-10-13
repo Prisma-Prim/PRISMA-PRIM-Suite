@@ -8780,6 +8780,23 @@ withPostgres('First illustrative Contract REST', () => {
           },
         });
         ({ origin, pool } = priorHarness);
+        // The fixture is recorded through the current application, which
+        // writes the nullable Opportunity Sales Stage and captures Commercial
+        // Intake v4, both from 0066, which every baseline predates. Both are
+        // shimmed only while the historic fixtures are recorded.
+        const versionCheck = (
+          await pool.query<{ definition: string }>(
+            "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname='company_role_assignments_permission_set_version_check'",
+          )
+        ).rows[0];
+        if (!versionCheck)
+          throw new Error('Missing captured version constraint');
+        await pool.query(
+          'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+        );
+        await pool.query(
+          'ALTER TABLE opportunities ADD COLUMN sales_stage_id uuid',
+        );
         const fixture = await acceptedOffer();
         await grantContract(fixture, 'historic-grant');
         const payload = {
@@ -9156,6 +9173,17 @@ withPostgres('First illustrative Contract REST', () => {
               index >= 60,
             ],
           );
+        // Restore the baseline before upgrading it: no stage column, and v3.
+        await pool.query(
+          'ALTER TABLE opportunities DROP COLUMN sales_stage_id',
+        );
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version='v3' WHERE bundle='company_commercial_intake' AND permission_set_version='v4'",
+        );
+        await pool.query(
+          'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+            versionCheck.definition,
+        );
         const before = (await evidence()).rows;
         await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
         expect((await evidence()).rows).toEqual(before);

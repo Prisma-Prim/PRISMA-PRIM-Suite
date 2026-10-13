@@ -1,3 +1,4 @@
+import type { SalesStageState } from '../sales-stage/sales-stage.definition.js';
 import type {
   OpportunityLossReasonCode,
   OpportunityOutcomeChange,
@@ -65,6 +66,50 @@ export interface OpportunityOutcomeHistoryPage {
 }
 
 /**
+ * Exactly an observed Opportunity version and one business field: a Sales
+ * Stage of the Opportunity's Company, or null to clear the stage.
+ */
+export interface SetOpportunityStageCommand {
+  readonly expectedVersion: number;
+  readonly salesStageId: string | null;
+}
+
+/** The Opportunity's current Sales Stage, its label shown as entered. */
+export interface OpportunitySalesStage {
+  readonly id: string;
+  readonly label: string;
+  readonly state: SalesStageState;
+}
+
+/** A stage as one history entry captured it at the change. */
+export interface RecordedOpportunityStage {
+  readonly salesStageId: string;
+  readonly label: string;
+}
+
+/**
+ * One material Sales Stage assignment (section 24.5): the previous and new
+ * stage with the labels captured at the change, and the acting member with
+ * the label captured then.
+ */
+export interface OpportunityStageHistoryEntry {
+  readonly previousStage: RecordedOpportunityStage | null;
+  readonly newStage: RecordedOpportunityStage | null;
+  readonly version: number;
+  readonly actor: {
+    readonly workspaceMembershipId: string;
+    readonly displayLabel: string;
+  };
+  readonly changedAt: string;
+}
+
+/** At most 50 entries, newest first; the opaque cursor reads older ones. */
+export interface OpportunityStageHistoryPage {
+  readonly entries: readonly OpportunityStageHistoryEntry[];
+  readonly nextCursor?: string;
+}
+
+/**
  * The responsible actor label shown by the Request list and detail. It carries
  * only the membership already scoped to this Company intake read boundary and
  * its current display name; it is not a member directory.
@@ -99,6 +144,8 @@ export interface CommercialIntakeDetail {
     readonly status: OpportunityOutcomeStatus;
     readonly statusEnteredAt: string;
     readonly outcomeHistory: OpportunityOutcomeHistoryPage;
+    readonly salesStage: OpportunitySalesStage | null;
+    readonly stageHistory: OpportunityStageHistoryPage;
     readonly responsibleWorkspaceMembershipId: string;
     readonly responsibleActor: CommercialIntakeResponsibleActor;
     readonly createdAt: string;
@@ -133,6 +180,18 @@ export interface OpportunityResponsibleChangeResult {
   readonly receipt: {
     readonly opportunityId: string;
     readonly workspaceMembershipId: string;
+    readonly version: number;
+    readonly outcome: 'updated' | 'unchanged';
+  };
+  readonly request: CommercialIntakeDetail;
+}
+
+// The receipt confirms what one stage assignment did; `request` is the current
+// permission-filtered state, refreshed separately from the receipt.
+export interface OpportunityStageChangeResult {
+  readonly receipt: {
+    readonly opportunityId: string;
+    readonly salesStageId: string | null;
     readonly version: number;
     readonly outcome: 'updated' | 'unchanged';
   };
@@ -182,6 +241,7 @@ export type CommercialIntakeListItem = {
     readonly title: string;
     readonly nextAction: string;
     readonly status: OpportunityOutcomeStatus;
+    readonly salesStage: OpportunitySalesStage | null;
     readonly responsibleActor: CommercialIntakeResponsibleActor;
   };
 } & CommercialIntakeListClientProjection;

@@ -56,7 +56,8 @@ const PRESERVED_TABLES: ReadonlyArray<
 > = [
   ['company_role_assignments', []],
   ['client_requests', []],
-  ['opportunities', []],
+  // 0066 later adds the nullable Sales Stage, which no row is assigned.
+  ['opportunities', ['sales_stage_id']],
   ['service_definitions', []],
   ['company_service_offerings', []],
   ['pricing_rule_versions', []],

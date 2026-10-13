@@ -313,7 +313,9 @@ describe.skipIf(!databaseUrl)(
               async (table) =>
                 (
                   await pool().query(
-                    `SELECT to_jsonb(preserved_row)::text AS value FROM ${table} AS preserved_row ORDER BY id`,
+                    // 0066 later adds the nullable Opportunity Sales Stage,
+                    // which this upgrade assigns to no row.
+                    `SELECT (to_jsonb(preserved_row) - 'sales_stage_id')::text AS value FROM ${table} AS preserved_row ORDER BY id`,
                   )
                 ).rows,
             ),

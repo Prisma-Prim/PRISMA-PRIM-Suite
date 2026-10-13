@@ -142,9 +142,12 @@ it.skipIf(!databaseUrl)(
 
       // Existing Opportunities stay OPEN, unchanged and without a history
       // entry, so each reads as OPEN since its capture time.
+      // 0066 later adds the Sales Stage, which no migration assigns.
       expect(
         (await query('SELECT * FROM opportunities ORDER BY id')).rows,
-      ).toEqual(opportunitiesBefore);
+      ).toEqual(
+        opportunitiesBefore.map((row) => ({ ...row, sales_stage_id: null })),
+      );
       expect(
         (await query('SELECT * FROM company_role_assignments ORDER BY id'))
           .rows,

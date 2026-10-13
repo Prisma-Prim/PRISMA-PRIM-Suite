@@ -212,7 +212,7 @@ it.skipIf(!databaseUrl)(
         ['company_pricing_configuration', 'v2'],
         ['company_service_catalogue', 'v2'],
         ['company_commercial_activity_reader', 'v2'],
-        ['company_commercial_intake', 'v4'],
+        ['company_commercial_intake', 'v5'],
         ['company_project_access', 'v3'],
         ['company_director_client_access', null],
         ['company_document_registrar', 'v4'],

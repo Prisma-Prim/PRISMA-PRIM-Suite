@@ -18,6 +18,7 @@ import type {
   CompanyProfitabilityDirectorPermission,
   CompanyProjectPermission,
   CompanyProjectApproverPermission,
+  CompanySalesStageConfigurationPermission,
 } from './company-permissions.js';
 
 export interface ExternalPrincipal {
@@ -85,6 +86,9 @@ export interface ActiveCompanyContext {
   profitabilityDirectorPermissions?: CompanyProfitabilityDirectorPermission[];
   profitabilityDirectorPermissionAssignmentId?: string;
   profitabilityDirectorPermissionSetVersion?: 'v1';
+  salesStageConfigurationPermissions?: CompanySalesStageConfigurationPermission[];
+  salesStageConfigurationPermissionAssignmentId?: string;
+  salesStageConfigurationPermissionSetVersion?: 'v1';
   clientPermissionAssignmentId?: string;
   clientPermissionSetVersion?: CompanyDirectorClientPermissionSetVersion;
 }

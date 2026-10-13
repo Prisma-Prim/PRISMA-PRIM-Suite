@@ -76,6 +76,8 @@ import {
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
+  COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
+  COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
   type DocumentPermissionSetVersion,
   isDocumentPermissionSetVersion,
@@ -116,7 +118,8 @@ type BundleDefinition = {
     | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
     | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
     | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
-    | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
+    | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
+    | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
     | DocumentPermissionSetVersion
@@ -166,12 +169,12 @@ const PROJECT_BUNDLE: BundleDefinition = {
   label: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
-// A fresh grant captures v3; existing v1 and v2 assignments keep their
+// A fresh grant captures v4; existing v1, v2 and v3 assignments keep their
 // captured version until explicitly revoked and granted again.
 const COMMERCIAL_INTAKE_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
   label: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
-  permissionSetVersion: 'v3',
+  permissionSetVersion: 'v4',
 };
 const SERVICE_CATALOGUE_BUNDLE: BundleDefinition = {
   value: COMPANY_SERVICE_CATALOGUE_BUNDLE,
@@ -235,6 +238,12 @@ const OPPORTUNITY_MANAGER_BUNDLE: BundleDefinition = {
   label: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
+// The opt-in Sales Stage configuration bundle exists only as captured v1.
+const SALES_STAGE_CONFIGURATION_BUNDLE: BundleDefinition = {
+  value: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
+  label: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 // The opt-in lifecycle approver exists only as captured v1.
 const PROJECT_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_APPROVER_BUNDLE,
@@ -263,6 +272,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_PROJECT_APPROVER_BUNDLE,
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+  COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
 ] as const;
 
 @Injectable()
@@ -810,6 +820,36 @@ export class CompanyContextAssignmentService {
       command.workspaceMembershipId,
       command.companyId,
       command.idempotencyKey,
+    );
+  }
+
+  async grantSalesStageConfiguration(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      SALES_STAGE_CONFIGURATION_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeSalesStageConfiguration(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      SALES_STAGE_CONFIGURATION_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
     );
   }
 
@@ -1412,6 +1452,10 @@ function assignmentAction(
       return granted
         ? 'company_project_approver_assignment.granted'
         : 'company_project_approver_assignment.revoked';
+    case COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE:
+      return granted
+        ? 'company_sales_stage_configuration_assignment.granted'
+        : 'company_sales_stage_configuration_assignment.revoked';
     case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
       return granted
         ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
@@ -1635,6 +1679,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Sales Stage Configuration version.');
+      return {
+        ...base,
+        bundle: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
   }

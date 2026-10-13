@@ -139,11 +139,17 @@ it.skipIf(!databaseUrl)(
          VALUES ($1, $2, $3, 'preserved-update', 'fingerprint', $4, 1, 2, 'updated', 'Preserved next action')`,
         [WORKSPACE, COMPANY, MEMBERSHIP, OPPORTUNITY],
       );
+      // 0066 later adds the nullable Opportunity Sales Stage, which this
+      // upgrade assigns to no row.
       const snapshot = () =>
         Promise.all(
           PRESERVED.map(
             async (table) =>
-              (await query('SELECT * FROM ' + table + ' ORDER BY id')).rows,
+              (
+                await query(
+                  `SELECT to_jsonb(preserved_row) - 'sales_stage_id' AS value FROM ${table} AS preserved_row ORDER BY id`,
+                )
+              ).rows,
           ),
         );
       const before = await snapshot();
@@ -340,7 +346,7 @@ it.skipIf(!databaseUrl)(
       await migrate(connection, { migrationsFolder: resolve('drizzle') });
       expect(await snapshot()).toEqual(beforeLatest);
       await insertAssignment('company_commercial_intake', 'v3');
-      for (const version of [null, 'v0', 'V3', 'v4'])
+      for (const version of [null, 'v0', 'V3', 'v5'])
         await expect(
           insertAssignment('company_commercial_intake', version),
         ).rejects.toMatchObject({ code: CHECK_VIOLATION });

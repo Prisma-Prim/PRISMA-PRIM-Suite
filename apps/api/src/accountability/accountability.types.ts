@@ -29,6 +29,7 @@ import type {
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
+  COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 import type { CommercialActivityRecord } from './commercial-activity-projection.js';
 import type { OfferActivityProjection } from './offer-activity-projection.js';
@@ -188,7 +189,9 @@ export type CanonicalActivityEvent =
         | 'company_profitability_director_assignment.granted'
         | 'company_profitability_director_assignment.revoked'
         | 'company_project_approver_assignment.granted'
-        | 'company_project_approver_assignment.revoked';
+        | 'company_project_approver_assignment.revoked'
+        | 'company_sales_stage_configuration_assignment.granted'
+        | 'company_sales_stage_configuration_assignment.revoked';
       target: {
         type: 'company_role_assignment';
         assignmentId: string;
@@ -218,7 +221,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
-          | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
+          | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
+          | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL;
       };
       transitionId: string;
     }
@@ -332,6 +336,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_profitability_director_assignment.revoked'
     | 'company_project_approver_assignment.granted'
     | 'company_project_approver_assignment.revoked'
+    | 'company_sales_stage_configuration_assignment.granted'
+    | 'company_sales_stage_configuration_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
     | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION
     | typeof CLIENT_CORRECTED_ACTION
@@ -408,7 +414,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
-          | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL;
+          | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
+          | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
     | { legalEntityId: string; values: ClientLegalEntityValues }
@@ -536,6 +543,12 @@ export type CommercialActivityEvent = CommercialActivityRecord & {
         opportunityId: string;
         /** The containing Request, present only for a current Request reader. */
         clientRequestId?: string;
+        companyId: string;
+      }
+    | {
+        /** One stage of the Company's Sales Stage settings. */
+        type: 'sales_stage';
+        salesStageId: string;
         companyId: string;
       };
 };

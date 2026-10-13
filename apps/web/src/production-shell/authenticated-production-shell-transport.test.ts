@@ -156,6 +156,7 @@ const legitimateTargets: Array<
     'company_pricing_adjustment_assignment',
     'company_commercial_activity_reader_assignment',
     'company_opportunity_manager_assignment',
+    'company_sales_stage_configuration_assignment',
     'company_context_assignment',
     'company_director_client_assignment',
     'company_document_project_organizer_assignment',
@@ -534,6 +535,113 @@ describe('the authenticated Activity Log transport', () => {
 
     expect(result).toEqual({ status: 'ok', value: { events: [lost, held] } });
   });
+
+  it('keeps the captured stage labels of a Sales Stage change and the label of a configured stage', async () => {
+    const assigned = event(
+      'event-stage-assigned',
+      'opportunity.stage.changed',
+      opportunityTarget,
+      { previousLabel: null, newLabel: 'Qualification' },
+    );
+    const changed = event(
+      'event-stage-changed',
+      'opportunity.stage.changed',
+      opportunityTarget,
+      { previousLabel: 'Qualification', newLabel: 'Negociere finală' },
+    );
+    const configured = event(
+      'event-stage-configured',
+      'sales_stage.configured',
+      { type: 'sales_stage', salesStageId: 'stage-1', companyId },
+      { operation: 'CREATED', label: 'Qualification' },
+    );
+    const { result } = await loadActivityLog({
+      events: [changed, assigned, configured],
+    });
+
+    expect(result).toEqual({
+      status: 'ok',
+      value: { events: [changed, assigned, configured] },
+    });
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    [
+      'no stage on either side',
+      {
+        action: 'opportunity.stage.changed',
+        target: opportunityTarget,
+        metadata: { previousLabel: null, newLabel: null },
+      },
+    ],
+    [
+      'a recorded version',
+      {
+        action: 'opportunity.stage.changed',
+        target: opportunityTarget,
+        metadata: {
+          previousLabel: null,
+          newLabel: 'Qualification',
+          opportunityVersion: 2,
+        },
+      },
+    ],
+    [
+      'a blank label',
+      {
+        action: 'opportunity.stage.changed',
+        target: opportunityTarget,
+        metadata: { previousLabel: ' ', newLabel: 'Qualification' },
+      },
+    ],
+    [
+      'a configured revision',
+      {
+        action: 'sales_stage.configured',
+        target: { type: 'sales_stage', salesStageId: 'stage-1', companyId },
+        metadata: {
+          operation: 'CREATED',
+          label: 'Q',
+          configurationRevision: 1,
+        },
+      },
+    ],
+    [
+      'a later configuration operation',
+      {
+        action: 'sales_stage.configured',
+        target: { type: 'sales_stage', salesStageId: 'stage-1', companyId },
+        metadata: { operation: 'RENAMED', label: 'Q' },
+      },
+    ],
+    [
+      'a configuration targeting an Opportunity',
+      {
+        action: 'sales_stage.configured',
+        target: opportunityTarget,
+        metadata: { operation: 'CREATED', label: 'Q' },
+      },
+    ],
+  ])(
+    'fails closed on a Sales Stage event with %s',
+    async (_case, malformed) => {
+      const { result } = await loadActivityLog({
+        events: [
+          {
+            ...event(
+              'event-stage-malformed',
+              'opportunity.stage.changed',
+              opportunityTarget,
+              {},
+            ),
+            ...malformed,
+          },
+        ],
+      });
+
+      expect(result).toEqual({ status: 'error' });
+    },
+  );
 
   it.each<[string, Record<string, unknown> | undefined]>([
     ['no metadata', undefined],

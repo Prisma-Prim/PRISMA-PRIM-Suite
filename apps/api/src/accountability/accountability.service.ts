@@ -55,6 +55,7 @@ import {
   clientUnionReversals,
   clientUnionProjections,
   commercialIntakeEvents,
+  salesStageEvents,
   PRICING_PROVENANCE,
   pricingConfigurationEvents,
   offerEvents,
@@ -71,6 +72,8 @@ import {
   commercialActivityTarget,
   eligibleCommercialActions,
   readCommercialActivity,
+  type CommercialIntakeActivityAction,
+  type RecordedSalesStage,
   type RecordedOpportunityResponsible,
 } from './commercial-activity-projection.js';
 import {
@@ -800,6 +803,63 @@ export class AccountabilityService {
       });
   }
 
+  // Records one material Sales Stage assignment. Metadata carries exactly the
+  // resulting version and the previous and new stage, each an identifier and
+  // the label captured now, or null; the caller commits it with the change,
+  // its history entry and its receipt.
+  async recordOpportunityStageChanged(input: {
+    actor: ActorContext;
+    companyId: string;
+    clientRequestId: string;
+    opportunityId: string;
+    opportunityVersion: number;
+    previousStage: RecordedSalesStage;
+    newStage: RecordedSalesStage;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(commercialIntakeEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        clientRequestId: input.clientRequestId,
+        opportunityId: input.opportunityId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+        action: 'opportunity.stage.changed',
+        metadata: {
+          opportunityVersion: input.opportunityVersion,
+          previousStage: recordedStage(input.previousStage),
+          newStage: recordedStage(input.newStage),
+        },
+      });
+  }
+
+  // Records one committed Sales Stage configuration operation, targeting the
+  // stage. Metadata carries exactly the operation, the resulting configuration
+  // revision and the label after it; the caller commits it with the operation
+  // and its receipt.
+  async recordSalesStageConfigured(input: {
+    actor: ActorContext;
+    companyId: string;
+    salesStageId: string;
+    configurationRevision: number;
+    label: string;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(salesStageEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      salesStageId: input.salesStageId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      action: 'sales_stage.configured',
+      metadata: {
+        operation: 'CREATED',
+        configurationRevision: input.configurationRevision,
+        label: input.label,
+      },
+    });
+  }
+
   // Recorded but projected by no Activity read surface. Metadata carries
   // identifiers, the version number and provenance only, never the label; the
   // caller commits it with the publication itself.
@@ -955,7 +1015,10 @@ export class AccountabilityService {
   ): Promise<CommercialActivityEvent[]> {
     const company = actor.activeCompany;
     if (!actor.active || !company) return [];
-    const actions = eligibleCommercialActions(company);
+    const actions = eligibleCommercialActions(company).filter(
+      (action): action is CommercialIntakeActivityAction =>
+        action !== 'sales_stage.configured',
+    );
     if (actions.length === 0) return [];
     const rows = await this.databaseContext.connection
       .select({
@@ -1005,7 +1068,7 @@ export class AccountabilityService {
       .limit(INITIAL_PAGE_SIZE);
     return rows.flatMap((row) => {
       const recorded = readCommercialActivity(row);
-      if (!recorded) return [];
+      if (!recorded || recorded.action === 'sales_stage.configured') return [];
       const projected: CommercialActivityEvent = {
         ...recorded,
         id: row.id,
@@ -1129,6 +1192,77 @@ export class AccountabilityService {
         },
       };
       return [event];
+    });
+  }
+
+  /**
+   * Sales Stage configuration events follow the same projection rule: the
+   * opt-in reader bundle and current Sales Stage list read, which is
+   * Commercial Intake read, in the server-validated active Company that owns
+   * them. Their target is the stage in the Company's stage settings.
+   */
+  private async salesStageEvents(
+    actor: ActorContext,
+  ): Promise<CommercialActivityEvent[]> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company ||
+      !eligibleCommercialActions(company).includes('sales_stage.configured')
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        id: salesStageEvents.id,
+        action: salesStageEvents.action,
+        metadata: salesStageEvents.metadata,
+        companyId: salesStageEvents.companyId,
+        salesStageId: salesStageEvents.salesStageId,
+        occurredAt: salesStageEvents.occurredAt,
+        internalUserId: internalUsers.id,
+        displayName: internalUsers.displayName,
+      })
+      .from(salesStageEvents)
+      .innerJoin(
+        workspaceMemberships,
+        and(
+          eq(workspaceMemberships.workspaceId, salesStageEvents.workspaceId),
+          eq(
+            workspaceMemberships.id,
+            salesStageEvents.actorWorkspaceMembershipId,
+          ),
+        ),
+      )
+      .innerJoin(
+        internalUsers,
+        eq(internalUsers.id, workspaceMemberships.internalUserId),
+      )
+      .where(
+        and(
+          eq(salesStageEvents.workspaceId, actor.workspaceId),
+          eq(salesStageEvents.companyId, company.id),
+        ),
+      )
+      .orderBy(desc(salesStageEvents.occurredAt), desc(salesStageEvents.id))
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.flatMap((row) => {
+      const recorded = readCommercialActivity(row);
+      if (recorded?.action !== 'sales_stage.configured') return [];
+      const projected: CommercialActivityEvent = {
+        ...recorded,
+        id: row.id,
+        occurredAt: row.occurredAt.toISOString(),
+        actor: {
+          internalUserId: row.internalUserId,
+          displayName: row.displayName,
+        },
+        target: {
+          type: 'sales_stage',
+          salesStageId: row.salesStageId,
+          companyId: row.companyId,
+        },
+      };
+      return [projected];
     });
   }
 
@@ -2389,6 +2523,7 @@ export class AccountabilityService {
       ...(await this.documentProjectEvents(actor)),
       ...(await this.commercialEvents(actor)),
       ...(await this.offerActivityEvents(actor)),
+      ...(await this.salesStageEvents(actor)),
     ];
     datedEvents.sort(
       (left, right) =>
@@ -2493,6 +2628,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_profitability_director_assignment.revoked':
     case 'company_project_approver_assignment.granted':
     case 'company_project_approver_assignment.revoked':
+    case 'company_sales_stage_configuration_assignment.granted':
+    case 'company_sales_stage_configuration_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,
@@ -2766,4 +2903,12 @@ function contractEventMetadata(
       return unreachable;
     }
   }
+}
+
+function recordedStage(
+  stage: RecordedSalesStage,
+): { salesStageId: string; label: string } | null {
+  return stage === null
+    ? null
+    : { salesStageId: stage.salesStageId, label: stage.label };
 }

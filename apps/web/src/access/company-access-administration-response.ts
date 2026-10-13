@@ -5,7 +5,7 @@ const CAPTURED_VERSIONS = {
   'Company Director Client Access': ['v1', 'v2'],
   'Company Document Registrar': ['v1', 'v2', 'v3'],
   'Company Document Approver': ['v1'],
-  'Company Commercial Intake': ['v1', 'v2', 'v3'],
+  'Company Commercial Intake': ['v1', 'v2', 'v3', 'v4'],
   'Company Document Project Organizer': ['v1'],
   'Company Project Access': ['v1', 'v2'],
   'Company Task Manager': ['v1'],
@@ -22,7 +22,11 @@ const CAPTURED_VERSIONS = {
   'Company Project Approver': ['v1'],
   'Company Profitability Contributor': ['v1'],
   'Company Profitability Director': ['v1'],
-} as const satisfies Record<string, readonly ('v1' | 'v2' | 'v3' | null)[]>;
+  'Company Sales Stage Configuration': ['v1'],
+} as const satisfies Record<
+  string,
+  readonly ('v1' | 'v2' | 'v3' | 'v4' | null)[]
+>;
 
 export type AssignmentBundleLabel = keyof typeof CAPTURED_VERSIONS;
 type CapturedVersion<Label extends AssignmentBundleLabel> =

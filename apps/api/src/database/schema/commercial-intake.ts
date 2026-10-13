@@ -18,6 +18,7 @@ import {
   OPPORTUNITY_OUTCOME_STATUSES,
 } from '../../commercial-intake/opportunity-outcome.js';
 import { clientAccounts, companies, workspaceMemberships } from './core.js';
+import { salesStages } from './sales-stage.js';
 
 export const clientRequests = pgTable(
   'client_requests',
@@ -136,14 +137,17 @@ export const opportunities = pgTable(
     responsibleWorkspaceMembershipId: uuid(
       'responsible_workspace_membership_id',
     ).notNull(),
+    // The Sales Stage of the Opportunity's own Company (section 24.4), or
+    // none. Capture assigns none.
+    salesStageId: uuid('sales_stage_id'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
     version: integer('version').default(1).notNull(),
     // Server-owned trace of the last material Opportunity mutation: a
-    // next-action update, a responsible-actor change or an outcome status
-    // change. All stay null while the Opportunity is still at its captured
-    // version 1.
+    // next-action update, a responsible-actor change, an outcome status
+    // change or a Sales Stage change. All stay null while the Opportunity is
+    // still at its captured version 1.
     lastUpdatedByInternalUserId: uuid('last_updated_by_internal_user_id'),
     lastUpdatedByWorkspaceMembershipId: uuid(
       'last_updated_by_workspace_membership_id',
@@ -189,6 +193,15 @@ export const opportunities = pgTable(
         workspaceMemberships.workspaceId,
         workspaceMemberships.id,
         workspaceMemberships.internalUserId,
+      ],
+    }),
+    foreignKey({
+      name: 'opportunities_sales_stage_fk',
+      columns: [table.workspaceId, table.companyId, table.salesStageId],
+      foreignColumns: [
+        salesStages.workspaceId,
+        salesStages.companyId,
+        salesStages.id,
       ],
     }),
     check(
@@ -623,6 +636,171 @@ export const commercialIntakeOutcomeCommands = pgTable(
   ],
 );
 
+// The append-only Sales Stage history of section 24.5: one entry per material
+// assignment, with the stages and the labels captured at the change, the
+// resulting Opportunity version and the acting member's captured label.
+// Entries are never edited or deleted.
+export const opportunityStageHistory = pgTable(
+  'opportunity_stage_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    opportunityVersion: integer('opportunity_version').notNull(),
+    previousSalesStageId: uuid('previous_sales_stage_id'),
+    previousLabel: text('previous_label'),
+    newSalesStageId: uuid('new_sales_stage_id'),
+    newLabel: text('new_label'),
+    actorInternalUserId: uuid('actor_internal_user_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    actorDisplayLabel: text('actor_display_label').notNull(),
+    changedAt: timestamp('changed_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    // Also serves the newest-first history pages.
+    unique('opportunity_stage_history_version_unique').on(
+      table.workspaceId,
+      table.opportunityId,
+      table.opportunityVersion,
+    ),
+    foreignKey({
+      name: 'opportunity_stage_history_opportunity_fk',
+      columns: [table.workspaceId, table.companyId, table.opportunityId],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'opportunity_stage_history_previous_stage_fk',
+      columns: [table.workspaceId, table.companyId, table.previousSalesStageId],
+      foreignColumns: [
+        salesStages.workspaceId,
+        salesStages.companyId,
+        salesStages.id,
+      ],
+    }),
+    foreignKey({
+      name: 'opportunity_stage_history_new_stage_fk',
+      columns: [table.workspaceId, table.companyId, table.newSalesStageId],
+      foreignColumns: [
+        salesStages.workspaceId,
+        salesStages.companyId,
+        salesStages.id,
+      ],
+    }),
+    foreignKey({
+      name: 'opportunity_stage_history_actor_fk',
+      columns: [
+        table.workspaceId,
+        table.actorWorkspaceMembershipId,
+        table.actorInternalUserId,
+      ],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+        workspaceMemberships.internalUserId,
+      ],
+    }),
+    check(
+      'opportunity_stage_history_version_check',
+      sql`${table.opportunityVersion} >= 2`,
+    ),
+    // A stage and its captured label are present together, and a material
+    // change always changes the stage.
+    check(
+      'opportunity_stage_history_stage_check',
+      sql`(${table.previousSalesStageId} IS NULL) = (${table.previousLabel} IS NULL)
+        AND (${table.newSalesStageId} IS NULL) = (${table.newLabel} IS NULL)
+        AND ${table.previousSalesStageId} IS DISTINCT FROM ${table.newSalesStageId}
+        AND (${table.previousLabel} IS NULL OR (length(${table.previousLabel}) BETWEEN 1 AND 80 AND length(btrim(${table.previousLabel})) > 0))
+        AND (${table.newLabel} IS NULL OR (length(${table.newLabel}) BETWEEN 1 AND 80 AND length(btrim(${table.newLabel})) > 0))`,
+    ),
+    check(
+      'opportunity_stage_history_actor_label_check',
+      sql`length(btrim(${table.actorDisplayLabel})) > 0`,
+    ),
+  ],
+);
+
+// Durable receipt of one Sales Stage assignment command, in its own key space.
+// It shares the Opportunity version with the next action, the reassignment
+// and the outcome status: an unchanged outcome records a no-op at the observed
+// version, an updated outcome the version it produced, and only one updated
+// command may produce a version.
+export const commercialIntakeStageCommands = pgTable(
+  'commercial_intake_stage_commands',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    workspaceId: uuid('workspace_id').notNull(),
+    companyId: uuid('company_id').notNull(),
+    actorWorkspaceMembershipId: uuid('actor_workspace_membership_id').notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
+    fingerprint: text('fingerprint').notNull(),
+    opportunityId: uuid('opportunity_id').notNull(),
+    expectedVersion: integer('expected_version').notNull(),
+    resultVersion: integer('result_version').notNull(),
+    outcome: text('outcome', { enum: ['updated', 'unchanged'] }).notNull(),
+    // The requested stage, which every recorded outcome leaves assigned; null
+    // when the command cleared the stage.
+    salesStageId: uuid('sales_stage_id'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex('commercial_intake_stage_commands_actor_key_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.actorWorkspaceMembershipId,
+      table.idempotencyKey,
+    ),
+    uniqueIndex('commercial_intake_stage_commands_version_unique')
+      .on(table.workspaceId, table.opportunityId, table.resultVersion)
+      .where(sql`${table.outcome} = 'updated'`),
+    foreignKey({
+      name: 'commercial_intake_stage_commands_actor_fk',
+      columns: [table.workspaceId, table.actorWorkspaceMembershipId],
+      foreignColumns: [
+        workspaceMemberships.workspaceId,
+        workspaceMemberships.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_stage_commands_opportunity_fk',
+      columns: [table.workspaceId, table.companyId, table.opportunityId],
+      foreignColumns: [
+        opportunities.workspaceId,
+        opportunities.companyId,
+        opportunities.id,
+      ],
+    }),
+    foreignKey({
+      name: 'commercial_intake_stage_commands_stage_fk',
+      columns: [table.workspaceId, table.companyId, table.salesStageId],
+      foreignColumns: [
+        salesStages.workspaceId,
+        salesStages.companyId,
+        salesStages.id,
+      ],
+    }),
+    check(
+      'commercial_intake_stage_commands_outcome_check',
+      sql`${table.expectedVersion} >= 1 AND (
+        (${table.outcome} = 'updated'
+          AND ${table.resultVersion} = (${table.expectedVersion})::bigint + 1)
+        OR
+        (${table.outcome} = 'unchanged'
+          AND ${table.resultVersion} = ${table.expectedVersion})
+      )`,
+    ),
+  ],
+);
+
 export const commercialIntakeCommands = pgTable(
   'commercial_intake_commands',
   {
@@ -682,6 +860,7 @@ export const commercialIntakeEvents = pgTable(
         'opportunity.next_action.updated',
         'opportunity.responsible.changed',
         'opportunity.outcome.changed',
+        'opportunity.stage.changed',
       ],
     }).notNull(),
     clientRequestId: uuid('client_request_id').notNull(),
@@ -727,13 +906,23 @@ export const commercialIntakeEvents = pgTable(
         sql`(${table.metadata} ->> 'opportunityVersion')`,
       )
       .where(sql`${table.action} = 'opportunity.outcome.changed'`),
+    // Exactly one Sales Stage change event per resulting version.
+    uniqueIndex('commercial_intake_events_stage_version_unique')
+      .on(
+        table.workspaceId,
+        table.opportunityId,
+        sql`(${table.metadata} ->> 'opportunityVersion')`,
+      )
+      .where(sql`${table.action} = 'opportunity.stage.changed'`),
     // Update metadata carries the resulting version only: one integer key,
     // never previous or new text. A responsible-actor change additionally
     // carries exactly the previous and new responsible actor, each a
     // membership identifier and a non-blank captured label, and they differ.
     // An outcome status change carries exactly the previous and new status of
     // one section 23.2 transition, plus the loss reason code of a loss; never
-    // reason or note text.
+    // reason or note text. A Sales Stage change carries exactly the previous
+    // and new stage, each a stage identifier and its non-blank captured label
+    // or null, and they differ.
     check(
       'commercial_intake_events_action_metadata_check',
       sql`(
@@ -795,6 +984,32 @@ export const commercialIntakeEvents = pgTable(
                 'opportunityVersion', (${table.metadata} ->> 'opportunityVersion')::integer,
                 'previousStatus', ${table.metadata} ->> 'previousStatus',
                 'newStatus', ${table.metadata} ->> 'newStatus')))) IS TRUE)
+        OR
+        ((${table.action} = 'opportunity.stage.changed'
+          AND jsonb_typeof(${table.metadata} -> 'opportunityVersion') = 'number'
+          AND (${table.metadata} ->> 'opportunityVersion')::integer >= 2
+          AND (jsonb_typeof(${table.metadata} -> 'previousStage') = 'null'
+            OR (jsonb_typeof(${table.metadata} #> '{previousStage,salesStageId}') = 'string'
+              AND jsonb_typeof(${table.metadata} #> '{previousStage,label}') = 'string'
+              AND ${table.metadata} -> 'previousStage' = jsonb_build_object(
+                'salesStageId', ${table.metadata} #>> '{previousStage,salesStageId}',
+                'label', ${table.metadata} #>> '{previousStage,label}')
+              AND length(${table.metadata} #>> '{previousStage,label}') BETWEEN 1 AND 80
+              AND length(btrim(${table.metadata} #>> '{previousStage,label}')) > 0))
+          AND (jsonb_typeof(${table.metadata} -> 'newStage') = 'null'
+            OR (jsonb_typeof(${table.metadata} #> '{newStage,salesStageId}') = 'string'
+              AND jsonb_typeof(${table.metadata} #> '{newStage,label}') = 'string'
+              AND ${table.metadata} -> 'newStage' = jsonb_build_object(
+                'salesStageId', ${table.metadata} #>> '{newStage,salesStageId}',
+                'label', ${table.metadata} #>> '{newStage,label}')
+              AND length(${table.metadata} #>> '{newStage,label}') BETWEEN 1 AND 80
+              AND length(btrim(${table.metadata} #>> '{newStage,label}')) > 0))
+          AND ${table.metadata} = jsonb_build_object(
+            'opportunityVersion', (${table.metadata} ->> 'opportunityVersion')::integer,
+            'previousStage', ${table.metadata} -> 'previousStage',
+            'newStage', ${table.metadata} -> 'newStage')
+          AND (${table.metadata} #>> '{previousStage,salesStageId}')
+            IS DISTINCT FROM (${table.metadata} #>> '{newStage,salesStageId}')) IS TRUE)
       )`,
     ),
     foreignKey({

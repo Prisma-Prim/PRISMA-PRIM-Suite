@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
+import { SalesStageService } from '../sales-stage/sales-stage.service.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { CommercialCatalogueService } from '../commercial-catalogue/commercial-catalogue.service.js';
@@ -215,6 +216,7 @@ function reader({
     clients,
     accountability,
     new CommercialResponsibleAccessService(context),
+    new SalesStageService(context, authorization, accountability),
   );
   const clock = { now: () => new Date('2026-09-30T12:00:00Z') };
   const pricing = new PricingSnapshotService(

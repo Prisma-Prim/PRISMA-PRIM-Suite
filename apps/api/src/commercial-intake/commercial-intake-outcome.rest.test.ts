@@ -502,6 +502,7 @@ describe.skipIf(!databaseUrl)(
           title: 'Prepare the ISO 9001 audit',
           nextAction: 'Arrange a qualification call',
           status: 'LOST',
+          salesStage: null,
           responsibleActor: {
             workspaceMembershipId: ada,
             displayName: DISPLAY_NAMES.ada,

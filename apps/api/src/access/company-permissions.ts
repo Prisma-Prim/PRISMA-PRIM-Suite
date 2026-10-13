@@ -111,6 +111,17 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.opportunity.next_action.update',
         'commercial.request.client.associate',
       ],
+      // Captured v4 adds the Sales Stage assignment. Existing v1, v2 and v3
+      // assignments keep their captured permissions.
+      v4: [
+        'commercial.request.read',
+        'commercial.request.create',
+        'commercial.opportunity.read',
+        'commercial.opportunity.create',
+        'commercial.opportunity.next_action.update',
+        'commercial.request.client.associate',
+        'commercial.opportunity.stage.set',
+      ],
     },
   },
   company_service_catalogue: {
@@ -240,6 +251,13 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.profitability_estimate.decide',
       ],
     },
+  },
+  // The opt-in configuration bundle for a Company's Sales Stages (Commercial
+  // Workflow PRD section 24.3). Company context and Commercial Intake read are
+  // prerequisites it never grants.
+  company_sales_stage_configuration: {
+    label: 'Company Sales Stage Configuration',
+    versions: { v1: ['commercial.sales_stage.configure'] },
   },
 } as const satisfies Readonly<
   Record<
@@ -437,6 +455,21 @@ export function opportunityManagerVersionsWith(
   return companyRoleVersionsWith(COMPANY_OPPORTUNITY_MANAGER_BUNDLE, [
     required,
   ]);
+}
+export const COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE =
+  'company_sales_stage_configuration' satisfies CompanyRoleBundle;
+export const COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_sales_stage_configuration.label;
+export type CompanySalesStageConfigurationPermission =
+  CompanyRolePermission<'company_sales_stage_configuration'>;
+// Never inherited: a null or unknown captured version resolves to nothing.
+export function salesStageConfigurationPermissionsFor(
+  version: unknown,
+): readonly CompanySalesStageConfigurationPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
+    version,
+  );
 }
 export const COMPANY_SERVICE_CATALOGUE_BUNDLE =
   'company_service_catalogue' satisfies CompanyRoleBundle;

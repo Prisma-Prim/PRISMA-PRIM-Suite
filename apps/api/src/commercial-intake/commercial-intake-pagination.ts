@@ -50,10 +50,13 @@ export function readCommercialIntakeCursor(
 }
 
 /**
- * The opaque cursor of one outcome history page: the version of the oldest
- * entry already returned. Every entry's version is at least 2.
+ * The opaque cursor of one Opportunity history page, outcome or Sales Stage:
+ * the version of the oldest entry already returned. Every entry's version is
+ * at least 2.
  */
-export function readOutcomeHistoryCursor(value: unknown): number | undefined {
+export function readOpportunityHistoryCursor(
+  value: unknown,
+): number | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== 'string' || value.length === 0) invalidHistoryPage();
   let decoded: unknown;
@@ -77,7 +80,7 @@ export function readOutcomeHistoryCursor(value: unknown): number | undefined {
   return decoded.beforeVersion;
 }
 
-export function outcomeHistoryCursor(beforeVersion: number): string {
+export function opportunityHistoryCursor(beforeVersion: number): string {
   return Buffer.from(JSON.stringify({ beforeVersion })).toString('base64url');
 }
 
