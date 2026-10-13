@@ -521,6 +521,84 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
     expect(serialized).not.toContain(sibling.projectId);
   });
 
+  it('fills the page with valid events past newer rows that fail closed, including a source or Snapshot unlike the resolved Contract', async () => {
+    const setup = await preparedCompany();
+    const contract = await createdContract(setup, 'bounded');
+    await preparedReader(setup.companyId, READER_ASSIGNMENTS);
+    const valid = contractEvents(await activityLog(READER, setup.companyId));
+    expect(valid.map((event) => event.action)).toEqual([
+      expect.stringMatching(/^contract(_version)?\.created$/u),
+      expect.stringMatching(/^contract(_version)?\.created$/u),
+    ]);
+
+    // Sixty newer recorded approvals, each on its own successor version, that
+    // the database shape admits. Versions 2 to 58 acknowledge an unknown
+    // warning code, version 59 records another Snapshot and version 60
+    // another accepted Offer Version; only version 61 is valid. The
+    // disposable fixture bypasses the lineage and evidence triggers.
+    const recordedAt = tick();
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('SET LOCAL session_replication_role = replica');
+      await client.query(
+        `INSERT INTO contract_versions
+         SELECT (jsonb_populate_record(v, jsonb_build_object(
+           'id', md5($2 || g)::uuid,
+           'version_number', g,
+           'created_contract_revision', g,
+           'predecessor_version_id',
+             CASE WHEN g = 2 THEN v.id ELSE md5($2 || (g - 1))::uuid END
+         ))).*
+         FROM contract_versions v, generate_series(2, 61) g
+         WHERE v.id = $1`,
+        [contract.v1.id, `bounded-${contract.contractId}-`],
+      );
+      await client.query(
+        `INSERT INTO contract_events (workspace_id, company_id, action,
+           contract_id, contract_version_id, actor_internal_user_id,
+           actor_workspace_membership_id, occurred_at, metadata)
+         SELECT e.workspace_id, e.company_id, 'contract_version.approved',
+           e.contract_id, v.id, e.actor_internal_user_id,
+           e.actor_workspace_membership_id,
+           $2::timestamptz + v.version_number * interval '1 second',
+           jsonb_build_object(
+             'contractId', e.contract_id::text,
+             'contractVersionId', v.id::text,
+             'versionNumber', v.version_number,
+             'kind', 'CONTRACT',
+             'origin', 'ACCEPTED_OFFER',
+             'offerVersionId', CASE WHEN v.version_number = 60
+               THEN gen_random_uuid()::text ELSE e.metadata->>'offerVersionId' END,
+             'provenance', 'ILLUSTRATIVE',
+             'pricingSnapshotId', CASE WHEN v.version_number = 59
+               THEN gen_random_uuid()::text ELSE v.pricing_snapshot_id::text END,
+             'ruleSetVersion', 1,
+             'acknowledgedWarningCodes', CASE WHEN v.version_number >= 59
+               THEN '[]'::jsonb ELSE '["UNKNOWN_CODE"]'::jsonb END)
+         FROM contract_events e
+         JOIN contract_versions v
+           ON v.contract_id = e.contract_id AND v.version_number > 1
+         WHERE e.contract_id = $1 AND e.action = 'contract.created'`,
+        [contract.contractId, recordedAt.toISOString()],
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+
+    const page = contractEvents(await activityLog(READER, setup.companyId));
+    expect(page).toHaveLength(3);
+    expect(page[0]).toMatchObject({
+      action: 'contract_version.approved',
+      target: { contractId: contract.contractId, versionNumber: 61 },
+    });
+    expect(page.slice(1)).toEqual(valid);
+  });
+
   interface PreparedCompany {
     companyId: string;
     clientId: string;

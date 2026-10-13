@@ -80,10 +80,18 @@ function resolved(source: Source, versionId: string, versionNumber: number) {
   return {
     contractId: CONTRACT_ID,
     kind: source.kind,
+    origin: 'origin' in source ? source.origin : null,
+    sourceOfferVersionId:
+      'offerVersionId' in source ? source.offerVersionId : null,
+    parentContractId:
+      'parentContractId' in source ? source.parentContractId : null,
+    addendumOrdinal:
+      'addendumOrdinal' in source ? source.addendumOrdinal : null,
     illustrativeReference: 7,
     resolvedContractVersionId: versionId,
     versionNumber,
     executionState: 'NOT_EXECUTED',
+    pricingSnapshotId: SNAPSHOT_ID,
     projectId: null,
     projectTitle: null,
     ...OWNER,
@@ -284,11 +292,21 @@ describe('Contract Activity metadata', () => {
         ([field]) => field !== 'pricingSnapshotId',
       ),
     );
-    expect(readContractActivity({ ...withoutSnapshot, metadata })).toEqual({
+    expect(
+      readContractActivity({
+        ...withoutSnapshot,
+        pricingSnapshotId: null,
+        metadata,
+      }),
+    ).toEqual({
       action: 'contract_version.rejected',
       target: target(source, VERSION_ID, 2),
       metadata: {},
     });
+    // A version that references a Snapshot never omits it from its events.
+    expect(
+      readContractActivity({ ...withoutSnapshot, metadata }),
+    ).toBeUndefined();
     const first = {
       ...versionRow('contract_version.created', source, { versionNumber: 1 }),
       versionNumber: 1,
@@ -394,6 +412,9 @@ describe('Contract Activity metadata', () => {
   it('fails closed for sources, decisions and signatures outside their contracts', () => {
     const { ACCEPTED_CONTRACT, DIRECT_CONTRACT, PRECONTRACT, ADDENDUM } =
       SOURCES;
+    const contractCreated = createdRow(ACCEPTED_CONTRACT);
+    const directCreated = createdRow(DIRECT_CONTRACT);
+    const addendumCreated = createdRow(ADDENDUM);
     const approved = recorded(ACCEPTED_CONTRACT)['contract_version.approved'];
     const rejected = recorded(ACCEPTED_CONTRACT)['contract_version.rejected'];
     const signed =
@@ -495,6 +516,24 @@ describe('Contract Activity metadata', () => {
       // The recorded kind must be the resolved Contract's kind.
       { ...addendum, kind: 'CONTRACT' },
       { ...precontract, kind: 'ADDENDUM' },
+      // The recorded source must be the resolved Contract's immutable source.
+      { ...approved, sourceOfferVersionId: PARENT_ID },
+      { ...approved, sourceOfferVersionId: null },
+      { ...approved, origin: 'DIRECT' },
+      { ...contractCreated, sourceOfferVersionId: PARENT_ID },
+      { ...precontract, sourceOfferVersionId: SNAPSHOT_ID },
+      { ...direct, origin: 'ACCEPTED_OFFER' },
+      { ...direct, sourceOfferVersionId: OFFER_VERSION_ID },
+      { ...directCreated, origin: null },
+      { ...addendum, parentContractId: CONTRACT_ID },
+      { ...addendum, addendumOrdinal: 3 },
+      { ...addendum, origin: 'ACCEPTED_OFFER' },
+      { ...addendumCreated, parentContractId: null },
+      { ...addendumCreated, addendumOrdinal: 1 },
+      // The recorded Snapshot must be the resolved version's Snapshot.
+      { ...approved, pricingSnapshotId: PARENT_ID },
+      { ...approved, pricingSnapshotId: null },
+      { ...signed, pricingSnapshotId: OFFER_VERSION_ID },
     ])
       expect(readContractActivity(variant)).toBeUndefined();
   });

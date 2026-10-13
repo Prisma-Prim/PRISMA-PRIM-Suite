@@ -147,6 +147,7 @@ export function readContractActivity(
   if (
     !source ||
     metadata.kind !== target.kind ||
+    !recordsResolvedSource(metadata, row) ||
     metadata.provenance !== 'ILLUSTRATIVE'
   )
     return undefined;
@@ -165,7 +166,9 @@ export function readContractActivity(
   if (
     row.contractVersionId !== target.contractVersionId ||
     metadata.contractVersionId !== target.contractVersionId ||
-    metadata.versionNumber !== target.versionNumber
+    metadata.versionNumber !== target.versionNumber ||
+    // The resolved version's immutable Snapshot, or none for both.
+    (metadata.pricingSnapshotId ?? null) !== row.pricingSnapshotId
   )
     return undefined;
   const identity = [
@@ -279,6 +282,23 @@ function sourceFields(
   )
     return ['kind', 'parentContractId', 'addendumOrdinal'];
   return undefined;
+}
+
+/**
+ * The recorded source equals the resolved Contract's immutable source: its
+ * origin and accepted Offer Version, or an Addendum's parent and ordinal.
+ * A field the kind does not record must be absent on both sides.
+ */
+function recordsResolvedSource(
+  metadata: Record<string, unknown>,
+  row: Record<string, unknown>,
+): boolean {
+  return (
+    (metadata.origin ?? null) === row.origin &&
+    (metadata.offerVersionId ?? null) === row.sourceOfferVersionId &&
+    (metadata.parentContractId ?? null) === row.parentContractId &&
+    (metadata.addendumOrdinal ?? null) === row.addendumOrdinal
+  );
 }
 
 /**
