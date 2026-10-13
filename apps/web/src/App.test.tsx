@@ -521,10 +521,6 @@ describe('App', () => {
         'granted Company Opportunity Manager',
       'company_opportunity_manager_assignment.revoked':
         'revoked Company Opportunity Manager',
-      'company_sales_stage_configuration_assignment.granted':
-        'granted Company Sales Stage Configuration',
-      'company_sales_stage_configuration_assignment.revoked':
-        'revoked Company Sales Stage Configuration',
       'company_pricing_adjustment_assignment.granted':
         'granted Company Pricing Adjustment',
       'company_pricing_adjustment_assignment.revoked':

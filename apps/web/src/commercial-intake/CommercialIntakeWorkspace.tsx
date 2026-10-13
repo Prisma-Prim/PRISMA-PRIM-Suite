@@ -49,6 +49,7 @@ import {
   type StageEditor,
 } from './OpportunityStage';
 import { SalesStageSettings } from './SalesStageSettings';
+import { useSalesStageCopy } from './sales-stage.copy';
 import {
   isConsistentStageSnapshot,
   isOpportunitySalesStage,
@@ -318,6 +319,8 @@ export function CommercialIntakeWorkspace({
   requestedRequest?: RequestedRequest;
   onOpenProject?: (projectId: string) => void;
 }) {
+  const stageCopy = useSalesStageCopy();
+  const stageDeniedMessage = stageCopy('stageDenied');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [selected, setSelected] = useState<SelectedRequest>();
   // Local view state over the already loaded rows, beside the text filter; it
@@ -981,8 +984,8 @@ export function CommercialIntakeWorkspace({
     }
     if (stageEdit.kind === 'idle') return;
     setStageEdit({ kind: 'idle' });
-    if (stageEdit.kind !== 'conflict') setFeedback(copy.stageDenied);
-  }, [canSetStage, stageEdit.kind]);
+    if (stageEdit.kind !== 'conflict') setFeedback(stageDeniedMessage);
+  }, [canSetStage, stageEdit.kind, stageDeniedMessage]);
 
   // Another captured Commercial Intake assignment is a new authority: like a
   // remount keyed on it, it retires every Sales Stage draft and command.
@@ -1581,11 +1584,11 @@ export function CommercialIntakeWorkspace({
         return;
       }
       setStageEdit({ kind: 'load-error' });
-      setFeedback(copy.stageListError);
+      setFeedback(stageCopy('stageListError'));
     } catch {
       if (!controller.signal.aborted) {
         setStageEdit({ kind: 'load-error' });
-        setFeedback(copy.stageListError);
+        setFeedback(stageCopy('stageListError'));
       }
     } finally {
       if (stageListRequest.current === controller)
@@ -1653,7 +1656,7 @@ export function CommercialIntakeWorkspace({
         // editor and pending command are dropped, the read-only detail stays.
         setStageEdit({ kind: 'idle' });
         stageRetry.current = undefined;
-        setFeedback(copy.stageDenied);
+        setFeedback(stageCopy('stageDenied'));
         return;
       }
       if (access === 'rejected') return;
@@ -1669,13 +1672,13 @@ export function CommercialIntakeWorkspace({
       ) {
         setStageEdit({ kind: 'unavailable' });
         stageRetry.current = undefined;
-        setFeedback(copy.stageUnavailable);
+        setFeedback(stageCopy('stageUnavailable'));
         return;
       }
       if (result.status === 409) {
         setStageEdit({ kind: 'conflict' });
         stageRetry.current = undefined;
-        setFeedback(copy.stageConflict);
+        setFeedback(stageCopy('stageConflict'));
         return;
       }
       if (
@@ -1695,19 +1698,19 @@ export function CommercialIntakeWorkspace({
         stageRetry.current = undefined;
         setFeedback(
           receipt.outcome === 'updated'
-            ? copy.stageChanged
-            : copy.stageUnchanged,
+            ? stageCopy('stageChanged')
+            : stageCopy('stageUnchanged'),
         );
         if (receipt.outcome === 'updated') await onActivityRecorded();
         if (!controller.signal.aborted) await loadRequests(companyId);
         return;
       }
       setStageEdit({ kind: 'uncertain', stages, selection });
-      setFeedback(copy.stageUncertain);
+      setFeedback(stageCopy('stageUncertain'));
     } catch {
       if (!controller.signal.aborted) {
         setStageEdit({ kind: 'uncertain', stages, selection });
-        setFeedback(copy.stageUncertain);
+        setFeedback(stageCopy('stageUncertain'));
       }
     } finally {
       if (!controller.signal.aborted) setInFlight('none');
@@ -2014,7 +2017,7 @@ export function CommercialIntakeWorkspace({
                 : protectedWork === 'outcome-edit'
                   ? copy.requestedAfterOutcomeEdit
                   : protectedWork === 'stage-edit'
-                    ? copy.requestedAfterStageEdit
+                    ? stageCopy('requestedAfterStageEdit')
                     : copy.requestedAfterNextActionEdit}
         </p>
       ) : null}
@@ -2244,7 +2247,7 @@ export function CommercialIntakeWorkspace({
             }}
             disabled={pending}
           >
-            {copy.openSalesStageSettings}
+            {stageCopy('openSalesStageSettings')}
           </button>
           <form
             className="commercial-intake-form"
@@ -2530,6 +2533,7 @@ function RequestList({
   onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
   const filterField = useRef<HTMLInputElement>(null);
+  const stageCopy = useSalesStageCopy();
   if (load.kind === 'loading') return <p>{copy.loading}</p>;
   if (load.kind === 'denied') return <p role="alert">{copy.denied}</p>;
   if (load.kind === 'error')
@@ -2622,8 +2626,9 @@ function RequestList({
                 {copy.opportunityStatusLabels[item.initialOpportunity.status]}
               </small>
               <small>
-                {copy.salesStage}:{' '}
-                {item.initialOpportunity.salesStage?.label ?? copy.stageNone}
+                {stageCopy('salesStage')}:{' '}
+                {item.initialOpportunity.salesStage?.label ??
+                  stageCopy('stageNone')}
               </small>
               <small>
                 {copy.nextAction}: {item.initialOpportunity.nextAction}
@@ -2749,6 +2754,7 @@ function RequestDetail({
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const stageCopy = useSalesStageCopy();
   return (
     <article
       className="commercial-intake-detail"
@@ -2856,8 +2862,9 @@ function RequestDetail({
           loadOlder={loadOlderOutcomeHistory}
         />
         <p>
-          {copy.salesStage}:{' '}
-          {request.initialOpportunity.salesStage?.label ?? copy.stageNone}
+          {stageCopy('salesStage')}:{' '}
+          {request.initialOpportunity.salesStage?.label ??
+            stageCopy('stageNone')}
         </p>
         {stage ? <OpportunityStage editor={stage} pending={pending} /> : null}
         <OpportunityStageHistory

@@ -6,6 +6,10 @@ import {
   type FormEvent,
 } from 'react';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import {
+  useSalesStageCopy,
+  type SalesStageMessageKey,
+} from './sales-stage.copy';
 import type { CommercialIntakeRequest } from './RequestClientAssociation';
 import {
   isSalesStageList,
@@ -16,6 +20,15 @@ import {
 } from './sales-stage';
 
 type HttpResult = Awaited<ReturnType<CommercialIntakeRequest>>;
+
+// Indexing by the stage state makes a new state a type error until its
+// localized label exists.
+const STATE_KEYS = {
+  ACTIVE: 'stateActive',
+} as const satisfies Record<
+  SalesStageList['stages'][number]['state'],
+  SalesStageMessageKey
+>;
 
 export type SalesStageAccessHandler = (
   result: HttpResult,
@@ -57,6 +70,7 @@ export function SalesStageSettings({
   onBack: () => void;
   onConfigured: () => Promise<void> | void;
 }) {
+  const stageCopy = useSalesStageCopy();
   const [list, setList] = useState<ListState>({ kind: 'loading' });
   const [label, setLabel] = useState('');
   const [create, setCreate] = useState<CreateState>('idle');
@@ -122,7 +136,7 @@ export function SalesStageSettings({
     const preserved = create === 'uncertain' ? retry.current : undefined;
     const draft = preserved?.label ?? label;
     if (!isValidStageLabel(draft)) {
-      setLabelError(copy.salesStageLabelValidation);
+      setLabelError(stageCopy('salesStageLabelValidation'));
       return;
     }
     const expectedRevision = preserved?.expectedRevision ?? list.list.revision;
@@ -155,7 +169,7 @@ export function SalesStageSettings({
         // Configuration authority was lost while the list stays readable.
         retry.current = undefined;
         setCreate('idle');
-        setFeedback(copy.salesStageDenied);
+        setFeedback(stageCopy('salesStageDenied'));
         return;
       }
       if (access === 'rejected') return;
@@ -163,25 +177,25 @@ export function SalesStageSettings({
       if (result.status === 400 && code === 'SALES_STAGE_LABEL_TAKEN') {
         retry.current = undefined;
         setCreate('idle');
-        setLabelError(copy.salesStageLabelTaken);
+        setLabelError(stageCopy('salesStageLabelTaken'));
         return;
       }
       if (result.status === 400) {
         retry.current = undefined;
         setCreate('idle');
-        setLabelError(copy.salesStageLabelValidation);
+        setLabelError(stageCopy('salesStageLabelValidation'));
         return;
       }
       if (result.status === 409 && code === 'SALES_STAGE_LIMIT') {
         retry.current = undefined;
         setCreate('idle');
-        setFeedback(copy.salesStageLimit);
+        setFeedback(stageCopy('salesStageLimit'));
         return;
       }
       if (result.status === 409) {
         retry.current = undefined;
         setCreate('conflict');
-        setFeedback(copy.salesStageConflict);
+        setFeedback(stageCopy('salesStageConflict'));
         return;
       }
       if (
@@ -193,16 +207,16 @@ export function SalesStageSettings({
         setList({ kind: 'ready', list: result.body.configuration });
         setLabel('');
         setCreate('idle');
-        setFeedback(copy.salesStageCreated);
+        setFeedback(stageCopy('salesStageCreated'));
         await onConfigured();
         return;
       }
       setCreate('uncertain');
-      setFeedback(copy.salesStageUncertain);
+      setFeedback(stageCopy('salesStageUncertain'));
     } catch {
       if (!controller.signal.aborted) {
         setCreate('uncertain');
-        setFeedback(copy.salesStageUncertain);
+        setFeedback(stageCopy('salesStageUncertain'));
       }
     }
   }
@@ -218,27 +232,27 @@ export function SalesStageSettings({
         {copy.back}
       </button>
       <h3 id="commercial-intake-sales-stages-title">
-        {copy.salesStageSettings}
+        {stageCopy('salesStageSettings')}
       </h3>
-      <p>{copy.salesStageSettingsHelp}</p>
+      <p>{stageCopy('salesStageSettingsHelp')}</p>
       {feedback ? <p role="alert">{feedback}</p> : null}
       {list.kind === 'loading' ? (
-        <p role="status">{copy.salesStagesLoading}</p>
+        <p role="status">{stageCopy('salesStagesLoading')}</p>
       ) : list.kind === 'error' ? (
         <>
-          <p role="alert">{copy.salesStagesError}</p>
+          <p role="alert">{stageCopy('salesStagesError')}</p>
           <button type="button" onClick={() => void loadList()}>
-            {copy.salesStagesReload}
+            {stageCopy('salesStagesReload')}
           </button>
         </>
       ) : stages.length === 0 ? (
-        <p>{copy.salesStagesEmpty}</p>
+        <p>{stageCopy('salesStagesEmpty')}</p>
       ) : (
-        <ol aria-label={copy.salesStageList}>
+        <ol aria-label={stageCopy('salesStageList')}>
           {stages.map((stage) => (
             <li key={stage.id}>
               <span>{stage.label}</span>
-              <small>{copy.salesStageStateLabels[stage.state]}</small>
+              <small>{stageCopy(STATE_KEYS[stage.state])}</small>
             </li>
           ))}
         </ol>
@@ -253,10 +267,10 @@ export function SalesStageSettings({
               void loadList();
             }}
           >
-            {copy.salesStagesReload}
+            {stageCopy('salesStagesReload')}
           </button>
         ) : full ? (
-          <p>{copy.salesStageLimit}</p>
+          <p>{stageCopy('salesStageLimit')}</p>
         ) : (
           <form
             className="commercial-intake-sales-stage-form"
@@ -264,7 +278,7 @@ export function SalesStageSettings({
             onSubmit={(event) => void submit(event)}
           >
             <label>
-              {copy.salesStageLabel}
+              {stageCopy('salesStageLabel')}
               <input
                 value={label}
                 onChange={(event) => {
@@ -285,7 +299,7 @@ export function SalesStageSettings({
               </p>
             ) : null}
             {create === 'saving' ? (
-              <p role="status">{copy.salesStageSaving}</p>
+              <p role="status">{stageCopy('salesStageSaving')}</p>
             ) : null}
             <div className="commercial-intake-next-action-actions">
               <button
@@ -294,8 +308,8 @@ export function SalesStageSettings({
                 disabled={create === 'saving'}
               >
                 {create === 'uncertain'
-                  ? copy.retrySalesStage
-                  : copy.createSalesStage}
+                  ? stageCopy('retrySalesStage')
+                  : stageCopy('createSalesStage')}
               </button>
               {create === 'uncertain' ? (
                 <button
@@ -308,14 +322,14 @@ export function SalesStageSettings({
                     void loadList();
                   }}
                 >
-                  {copy.cancelSalesStage}
+                  {stageCopy('cancelSalesStage')}
                 </button>
               ) : null}
             </div>
           </form>
         )
       ) : list.kind === 'ready' && !canConfigure ? (
-        <p>{copy.salesStageReadOnly}</p>
+        <p>{stageCopy('salesStageReadOnly')}</p>
       ) : null}
     </section>
   );

@@ -14,6 +14,7 @@ import { changeValue, selectOption } from '../test/select-option';
 import { CompanyContextAccess } from './CompanyContextAccess';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
+import { salesStageMessages } from '../commercial-intake/sales-stage.copy';
 import { resolveMessage } from '../localization/messages';
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -1762,10 +1763,12 @@ describe('CompanyContextAccess', () => {
     chooseTargets();
     const bundleSelect = screen.getByLabelText('Access bundle');
     selectOption(bundleSelect, 'sales-stage-configuration');
-    expect(bundleSelect).toHaveTextContent('Company Sales Stage Configuration');
+    expect(bundleSelect).toHaveTextContent(
+      resolveMessage(salesStageMessages, 'ro', 'configurationBundle'),
+    );
     expect(
       screen.getByText(
-        'Company Sales Stage Configuration v1 grants only the configuration of the Company Sales Stages. Company context and Commercial Intake read are authorized separately.',
+        resolveMessage(salesStageMessages, 'ro', 'configurationPrerequisites'),
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));

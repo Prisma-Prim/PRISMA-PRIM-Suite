@@ -1,4 +1,20 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render as renderInLocale,
+  screen,
+  within,
+} from '@testing-library/react';
+import { render } from '../test/render-with-interface-locale';
+import {
+  InterfaceLocaleProvider,
+  interfaceLocaleStorageKey,
+  type InterfaceLocale,
+} from '../localization/interface-locale';
+import {
+  assertMessageCoverage,
+  resolveMessage,
+} from '../localization/messages';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -11,7 +27,16 @@ import {
 } from '../test/commercial-intake-responses';
 import { CommercialIntakeWorkspace } from './CommercialIntakeWorkspace';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import {
+  salesStageMessages,
+  type SalesStageMessageKey,
+} from './sales-stage.copy';
 import type { SalesStage, StageHistoryEntry } from './sales-stage';
+
+// The tests render in English; one case below renders every other locale.
+function stage(key: SalesStageMessageKey, locale: InterfaceLocale = 'en') {
+  return resolveMessage(salesStageMessages, locale, key);
+}
 
 const ion = {
   workspaceMembershipId: 'membership-ion',
@@ -198,13 +223,15 @@ async function openRequest() {
 async function openSettings() {
   await act(async () => {
     fireEvent.click(
-      await screen.findByRole('button', { name: copy.openSalesStageSettings }),
+      await screen.findByRole('button', {
+        name: stage('openSalesStageSettings'),
+      }),
     );
   });
-  return screen.findByRole('region', { name: copy.salesStageSettings });
+  return screen.findByRole('region', { name: stage('salesStageSettings') });
 }
 function stageSelect(): HTMLElement {
-  return screen.getByRole('combobox', { name: copy.stageChoice });
+  return screen.getByRole('combobox', { name: stage('stageChoice') });
 }
 function keyOf(init: RequestInit | undefined): string | undefined {
   const headers = init?.headers;
@@ -227,20 +254,24 @@ describe('Sales Stage settings', () => {
     renderWorkspace(seller);
     const settings = await openSettings();
     const list = await within(settings).findByRole('list', {
-      name: copy.salesStageList,
+      name: stage('salesStageList'),
     });
     expect(
       within(list)
         .getAllByRole('listitem')
         .map((item) => item.textContent),
     ).toEqual(['QualificationActive', 'Negociere finalăActive']);
-    expect(within(settings).getByText(copy.salesStageReadOnly)).toBeVisible();
     expect(
-      within(settings).queryByLabelText(copy.salesStageLabel),
+      within(settings).getByText(stage('salesStageReadOnly')),
+    ).toBeVisible();
+    expect(
+      within(settings).queryByLabelText(stage('salesStageLabel')),
     ).not.toBeInTheDocument();
     fireEvent.click(within(settings).getByRole('button', { name: copy.back }));
     expect(
-      await screen.findByRole('button', { name: copy.openSalesStageSettings }),
+      await screen.findByRole('button', {
+        name: stage('openSalesStageSettings'),
+      }),
     ).toBeVisible();
     expect(transport.unexpected).toEqual([]);
   });
@@ -269,29 +300,34 @@ describe('Sales Stage settings', () => {
     renderWorkspace(configurator, recorded);
     const settings = await openSettings();
     expect(
-      await within(settings).findByText(copy.salesStagesEmpty),
+      await within(settings).findByText(stage('salesStagesEmpty')),
     ).toBeVisible();
-    fireEvent.change(within(settings).getByLabelText(copy.salesStageLabel), {
-      target: { value: 'Qualification' },
-    });
+    fireEvent.change(
+      within(settings).getByLabelText(stage('salesStageLabel')),
+      {
+        target: { value: 'Qualification' },
+      },
+    );
     await act(async () => {
       fireEvent.click(
-        within(settings).getByRole('button', { name: copy.createSalesStage }),
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
       );
     });
-    expect(await screen.findByText(copy.salesStageCreated)).toBeVisible();
+    expect(await screen.findByText(stage('salesStageCreated'))).toBeVisible();
     expect(bodyOf(transport.calls(createPath)[0]?.[1])).toEqual({
       expectedRevision: 0,
       label: 'Qualification',
     });
     expect(
       within(
-        within(settings).getByRole('list', { name: copy.salesStageList }),
+        within(settings).getByRole('list', { name: stage('salesStageList') }),
       ).getByText('Qualification'),
     ).toBeVisible();
-    expect(within(settings).getByLabelText(copy.salesStageLabel)).toHaveValue(
-      '',
-    );
+    expect(
+      within(settings).getByLabelText(stage('salesStageLabel')),
+    ).toHaveValue('');
     expect(recorded).toHaveBeenCalledTimes(1);
     expect(transport.unexpected).toEqual([]);
   });
@@ -320,24 +356,28 @@ describe('Sales Stage settings', () => {
     });
     renderWorkspace(configurator);
     const settings = await openSettings();
-    const field = await within(settings).findByLabelText(copy.salesStageLabel);
+    const field = await within(settings).findByLabelText(
+      stage('salesStageLabel'),
+    );
     fireEvent.change(field, { target: { value: '   ' } });
     fireEvent.click(
-      within(settings).getByRole('button', { name: copy.createSalesStage }),
+      within(settings).getByRole('button', { name: stage('createSalesStage') }),
     );
     expect(
-      within(settings).getByText(copy.salesStageLabelValidation),
+      within(settings).getByText(stage('salesStageLabelValidation')),
     ).toBeVisible();
     expect(transport.calls(createPath)).toHaveLength(0);
 
     fireEvent.change(field, { target: { value: 'QUALIFICATION' } });
     await act(async () => {
       fireEvent.click(
-        within(settings).getByRole('button', { name: copy.createSalesStage }),
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
       );
     });
     expect(
-      await within(settings).findByText(copy.salesStageLabelTaken),
+      await within(settings).findByText(stage('salesStageLabelTaken')),
     ).toBeVisible();
     expect(field).toHaveValue('QUALIFICATION');
     expect(field).toBeEnabled();
@@ -345,17 +385,21 @@ describe('Sales Stage settings', () => {
     fireEvent.change(field, { target: { value: 'Negociere finală' } });
     await act(async () => {
       fireEvent.click(
-        within(settings).getByRole('button', { name: copy.createSalesStage }),
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
       );
     });
-    expect(await screen.findByText(copy.salesStageUncertain)).toBeVisible();
+    expect(await screen.findByText(stage('salesStageUncertain'))).toBeVisible();
     expect(field).toBeDisabled();
     await act(async () => {
       fireEvent.click(
-        within(settings).getByRole('button', { name: copy.retrySalesStage }),
+        within(settings).getByRole('button', {
+          name: stage('retrySalesStage'),
+        }),
       );
     });
-    expect(await screen.findByText(copy.salesStageCreated)).toBeVisible();
+    expect(await screen.findByText(stage('salesStageCreated'))).toBeVisible();
     const [, uncertain, retried] = transport.calls(createPath);
     expect(bodyOf(uncertain?.[1])).toEqual({
       expectedRevision: 1,
@@ -381,27 +425,31 @@ describe('Sales Stage settings', () => {
     renderWorkspace(configurator);
     const settings = await openSettings();
     fireEvent.change(
-      await within(settings).findByLabelText(copy.salesStageLabel),
+      await within(settings).findByLabelText(stage('salesStageLabel')),
       { target: { value: 'Qualification' } },
     );
     await act(async () => {
       fireEvent.click(
-        within(settings).getByRole('button', { name: copy.createSalesStage }),
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage'),
+        }),
       );
     });
-    expect(await screen.findByText(copy.salesStageConflict)).toBeVisible();
+    expect(await screen.findByText(stage('salesStageConflict'))).toBeVisible();
     expect(
-      within(settings).queryByLabelText(copy.salesStageLabel),
+      within(settings).queryByLabelText(stage('salesStageLabel')),
     ).not.toBeInTheDocument();
     await act(async () => {
       fireEvent.click(
-        within(settings).getByRole('button', { name: copy.salesStagesReload }),
+        within(settings).getByRole('button', {
+          name: stage('salesStagesReload'),
+        }),
       );
     });
     expect(await within(settings).findByText('Stage 30')).toBeVisible();
-    expect(within(settings).getByText(copy.salesStageLimit)).toBeVisible();
+    expect(within(settings).getByText(stage('salesStageLimit'))).toBeVisible();
     expect(
-      within(settings).queryByLabelText(copy.salesStageLabel),
+      within(settings).queryByLabelText(stage('salesStageLabel')),
     ).not.toBeInTheDocument();
     expect(transport.calls(stagesPath)).toHaveLength(2);
   });
@@ -417,21 +465,21 @@ describe('Opportunity Sales Stage', () => {
     });
     renderWorkspace(legacySeller);
     expect(
-      await screen.findByText(`${copy.salesStage}: Qualification`),
+      await screen.findByText(`${stage('salesStage')}: Qualification`),
     ).toBeVisible();
     const detail = await openRequest();
     expect(
-      within(detail).getByText(`${copy.salesStage}: Qualification`),
+      within(detail).getByText(`${stage('salesStage')}: Qualification`),
     ).toBeVisible();
     const history = within(detail).getByRole('list', {
-      name: copy.stageHistory,
+      name: stage('stageHistory'),
     });
     expect(within(history).getByRole('listitem')).toHaveTextContent(
       'No Sales Stage → Qualification',
     );
     expect(within(history).getByRole('listitem')).toHaveTextContent('Ion · 2B');
     expect(
-      within(detail).queryByRole('button', { name: copy.changeStage }),
+      within(detail).queryByRole('button', { name: stage('changeStage') }),
     ).not.toBeInTheDocument();
     expect(transport.unexpected).toEqual([]);
   });
@@ -445,21 +493,21 @@ describe('Opportunity Sales Stage', () => {
     renderWorkspace(seller);
     const detail = await openRequest();
     expect(
-      within(detail).getByText(`${copy.salesStage}: ${copy.stageNone}`),
+      within(detail).getByText(`${stage('salesStage')}: ${stage('stageNone')}`),
     ).toBeVisible();
-    expect(within(detail).getByText(copy.stageHistoryEmpty)).toBeVisible();
+    expect(within(detail).getByText(stage('stageHistoryEmpty'))).toBeVisible();
     await act(async () => {
       fireEvent.click(
-        within(detail).getByRole('button', { name: copy.changeStage }),
+        within(detail).getByRole('button', { name: stage('changeStage') }),
       );
     });
-    expect(await screen.findByText(copy.stageNoneConfigured)).toBeVisible();
+    expect(await screen.findByText(stage('stageNoneConfigured'))).toBeVisible();
     expect(
-      screen.queryByRole('button', { name: copy.saveStage }),
+      screen.queryByRole('button', { name: stage('saveStage') }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: copy.cancelStage }));
+    fireEvent.click(screen.getByRole('button', { name: stage('cancelStage') }));
     expect(
-      within(detail).getByRole('button', { name: copy.changeStage }),
+      within(detail).getByRole('button', { name: stage('changeStage') }),
     ).toBeEnabled();
   });
 
@@ -510,47 +558,47 @@ describe('Opportunity Sales Stage', () => {
     const detail = await openRequest();
     await act(async () => {
       fireEvent.click(
-        within(detail).getByRole('button', { name: copy.changeStage }),
+        within(detail).getByRole('button', { name: stage('changeStage') }),
       );
     });
     expect(selectOptionLabels(stageSelect())).toEqual([
-      copy.stageNone,
+      stage('stageNone'),
       'Qualification',
       'Negociere finală',
     ]);
     changeValue(stageSelect(), qualification.id);
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: copy.saveStage }));
+      fireEvent.click(screen.getByRole('button', { name: stage('saveStage') }));
     });
-    expect(await screen.findByText(copy.stageChanged)).toBeVisible();
+    expect(await screen.findByText(stage('stageChanged'))).toBeVisible();
     expect(bodyOf(transport.calls(setPath)[0]?.[1])).toEqual({
       expectedVersion: 1,
       salesStageId: qualification.id,
     });
     expect(
-      within(detail).getByText(`${copy.salesStage}: Qualification`),
+      within(detail).getByText(`${stage('salesStage')}: Qualification`),
     ).toBeVisible();
 
     await act(async () => {
       fireEvent.click(
-        within(detail).getByRole('button', { name: copy.changeStage }),
+        within(detail).getByRole('button', { name: stage('changeStage') }),
       );
     });
     expect(stageSelect()).toHaveTextContent('Qualification');
     changeValue(stageSelect(), 'none');
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: copy.saveStage }));
+      fireEvent.click(screen.getByRole('button', { name: stage('saveStage') }));
     });
-    expect(await screen.findByText(copy.stageChanged)).toBeVisible();
+    expect(await screen.findByText(stage('stageChanged'))).toBeVisible();
     expect(bodyOf(transport.calls(setPath)[1]?.[1])).toEqual({
       expectedVersion: 2,
       salesStageId: null,
     });
     expect(
-      within(detail).getByText(`${copy.salesStage}: ${copy.stageNone}`),
+      within(detail).getByText(`${stage('salesStage')}: ${stage('stageNone')}`),
     ).toBeVisible();
     expect(
-      within(within(detail).getByRole('list', { name: copy.stageHistory }))
+      within(within(detail).getByRole('list', { name: stage('stageHistory') }))
         .getAllByRole('listitem')
         .map((item) => item.querySelector('strong')?.textContent),
     ).toEqual([
@@ -589,49 +637,51 @@ describe('Opportunity Sales Stage', () => {
     const detail = await openRequest();
     await act(async () => {
       fireEvent.click(
-        within(detail).getByRole('button', { name: copy.changeStage }),
+        within(detail).getByRole('button', { name: stage('changeStage') }),
       );
     });
     changeValue(stageSelect(), negotiation.id);
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: copy.saveStage }));
+      fireEvent.click(screen.getByRole('button', { name: stage('saveStage') }));
     });
-    expect(await screen.findByText(copy.stageUnavailable)).toBeVisible();
+    expect(await screen.findByText(stage('stageUnavailable'))).toBeVisible();
     await act(async () => {
       fireEvent.click(
-        screen.getByRole('button', { name: copy.stageReloadList }),
+        screen.getByRole('button', { name: stage('stageReloadList') }),
       );
     });
     expect(selectOptionLabels(stageSelect())).toEqual([
-      copy.stageNone,
+      stage('stageNone'),
       'Qualification',
     ]);
     changeValue(stageSelect(), qualification.id);
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: copy.saveStage }));
+      fireEvent.click(screen.getByRole('button', { name: stage('saveStage') }));
     });
-    expect(await screen.findByText(copy.stageConflict)).toBeVisible();
+    expect(await screen.findByText(stage('stageConflict'))).toBeVisible();
     expect(
-      screen.queryByRole('button', { name: copy.changeStage }),
+      screen.queryByRole('button', { name: stage('changeStage') }),
     ).not.toBeInTheDocument();
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: copy.reloadRequest }));
     });
     await act(async () => {
       fireEvent.click(
-        await screen.findByRole('button', { name: copy.changeStage }),
+        await screen.findByRole('button', { name: stage('changeStage') }),
       );
     });
     changeValue(stageSelect(), qualification.id);
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: copy.saveStage }));
+      fireEvent.click(screen.getByRole('button', { name: stage('saveStage') }));
     });
-    expect(await screen.findByText(copy.stageUncertain)).toBeVisible();
+    expect(await screen.findByText(stage('stageUncertain'))).toBeVisible();
     expect(stageSelect()).toBeDisabled();
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: copy.retryStage }));
+      fireEvent.click(
+        screen.getByRole('button', { name: stage('retryStage') }),
+      );
     });
-    expect(await screen.findByText(copy.stageChanged)).toBeVisible();
+    expect(await screen.findByText(stage('stageChanged'))).toBeVisible();
     const calls = transport.calls(setPath);
     expect(calls).toHaveLength(4);
     expect(calls[3]?.[1]?.body).toEqual(calls[2]?.[1]?.body);
@@ -651,14 +701,14 @@ describe('Opportunity Sales Stage', () => {
       within(detail).getByRole('button', { name: copy.editNextAction }),
     );
     expect(
-      within(detail).getByRole('button', { name: copy.changeStage }),
+      within(detail).getByRole('button', { name: stage('changeStage') }),
     ).toBeDisabled();
     fireEvent.click(
       within(detail).getByRole('button', { name: copy.cancelNextAction }),
     );
     await act(async () => {
       fireEvent.click(
-        within(detail).getByRole('button', { name: copy.changeStage }),
+        within(detail).getByRole('button', { name: stage('changeStage') }),
       );
     });
     expect(
@@ -667,9 +717,9 @@ describe('Opportunity Sales Stage', () => {
     changeValue(stageSelect(), qualification.id);
 
     act(() => workspace.selectActor(legacySeller));
-    expect(await screen.findByText(copy.stageDenied)).toBeVisible();
+    expect(await screen.findByText(stage('stageDenied'))).toBeVisible();
     expect(
-      screen.queryByRole('combobox', { name: copy.stageChoice }),
+      screen.queryByRole('combobox', { name: stage('stageChoice') }),
     ).not.toBeInTheDocument();
     expect(
       within(detail).getByRole('button', { name: copy.editNextAction }),
@@ -699,15 +749,19 @@ describe('Opportunity Sales Stage', () => {
     const detail = await openRequest();
     await act(async () => {
       fireEvent.click(
-        within(detail).getByRole('button', { name: copy.stageHistoryOlder }),
+        within(detail).getByRole('button', {
+          name: stage('stageHistoryOlder'),
+        }),
       );
     });
     const history = within(detail).getByRole('list', {
-      name: copy.stageHistory,
+      name: stage('stageHistory'),
     });
     expect(within(history).getAllByRole('listitem')).toHaveLength(2);
     expect(
-      within(detail).queryByRole('button', { name: copy.stageHistoryOlder }),
+      within(detail).queryByRole('button', {
+        name: stage('stageHistoryOlder'),
+      }),
     ).not.toBeInTheDocument();
     expect(transport.unexpected).toEqual([]);
   });
@@ -741,4 +795,107 @@ describe('Opportunity Sales Stage', () => {
       screen.queryByRole('article', { name: 'Solicitare audit request-1' }),
     ).not.toBeInTheDocument();
   });
+});
+
+describe('Sales Stage localization', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('translates every Sales Stage message in the four interface locales', () => {
+    expect(() =>
+      assertMessageCoverage('salesStage', salesStageMessages),
+    ).not.toThrow();
+  });
+
+  it.each<InterfaceLocale>(['ro', 'ru', 'fr'])(
+    'shows the settings and the stage editor in %s while stage labels stay as entered',
+    async (locale) => {
+      localStorage.setItem(interfaceLocaleStorageKey, locale);
+      stubRoutes({
+        [listPath]: [reply(listPage(assignedDetail))],
+        [stagesPath]: [
+          reply(stageList([qualification, negotiation])),
+          reply(stageList([qualification, negotiation])),
+        ],
+        [detailPath]: [reply(assignedDetail)],
+      });
+      renderInLocale(
+        <InterfaceLocaleProvider>
+          <CommercialIntakeWorkspace
+            actor={configurator}
+            identity={deterministicBrowserIdentity()}
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      expect(
+        await screen.findByText(
+          `${stage('salesStage', locale)}: Qualification`,
+        ),
+      ).toBeVisible();
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: stage('openSalesStageSettings', locale),
+          }),
+        );
+      });
+      const settings = await screen.findByRole('region', {
+        name: stage('salesStageSettings', locale),
+      });
+      const list = await within(settings).findByRole('list', {
+        name: stage('salesStageList', locale),
+      });
+      expect(within(list).getByText('Negociere finală')).toBeVisible();
+      expect(
+        within(list).getAllByText(stage('stateActive', locale)),
+      ).toHaveLength(2);
+      expect(
+        within(settings).getByLabelText(stage('salesStageLabel', locale)),
+      ).toBeVisible();
+      expect(
+        within(settings).getByRole('button', {
+          name: stage('createSalesStage', locale),
+        }),
+      ).toBeVisible();
+      fireEvent.click(
+        within(settings).getByRole('button', { name: copy.back }),
+      );
+
+      const open = await screen.findByRole('button', {
+        name: /^Solicitare audit request-1/u,
+      });
+      await act(async () => {
+        fireEvent.click(open);
+      });
+      const detail = await screen.findByRole('article', {
+        name: 'Solicitare audit request-1',
+      });
+      expect(
+        within(
+          within(detail).getByRole('list', {
+            name: stage('stageHistory', locale),
+          }),
+        ).getByRole('listitem'),
+      ).toHaveTextContent(`${stage('stageNone', locale)} → Qualification`);
+      await act(async () => {
+        fireEvent.click(
+          within(detail).getByRole('button', {
+            name: stage('changeStage', locale),
+          }),
+        );
+      });
+      expect(
+        selectOptionLabels(
+          screen.getByRole('combobox', { name: stage('stageChoice', locale) }),
+        ),
+      ).toEqual([
+        stage('stageNone', locale),
+        'Qualification',
+        'Negociere finală',
+      ]);
+      expect(
+        screen.getByRole('button', { name: stage('saveStage', locale) }),
+      ).toBeVisible();
+    },
+  );
 });

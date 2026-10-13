@@ -32,11 +32,18 @@ import { formatApplicationDateTime } from './presentation/date-time';
 import { clientUnionCopy } from './client/client-union.copy';
 import { clientLegalEntitiesCopy } from './client/client-legal-entities.copy';
 import { CommercialIntakeWorkspace } from './commercial-intake/CommercialIntakeWorkspace';
+import {
+  useSalesStageCopy,
+  type SalesStageCopy,
+  type SalesStageMessageKey,
+} from './commercial-intake/sales-stage.copy';
+import { formatMessage } from './localization/messages';
 import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalogueWorkspace';
 import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
 import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { commercialIntakeCopy } from './commercial-intake/commercial-intake.copy';
 import { offerActivityCopy } from './offer/offer.copy';
+import type { SalesStageConfiguredActivityLogEvent } from './production-shell/company-context-transitions';
 import { OperationalHome } from './operational-home/OperationalHome';
 import {
   useProductionShellContext,
@@ -730,6 +737,7 @@ function ActivityLog({
 }) {
   const invitationActivityActionLabels =
     useWorkspaceInvitationsCopy().activityActionLabels;
+  const stageCopy = useSalesStageCopy();
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">
       <div className="activity-log-heading">
@@ -760,10 +768,14 @@ function ActivityLog({
               <li key={entry}>
                 <div>
                   <strong>
-                    {activityDescription(event, invitationActivityActionLabels)}
+                    {activityDescription(
+                      event,
+                      invitationActivityActionLabels,
+                      stageCopy,
+                    )}
                   </strong>
                   <span id={openedRequest ? targetId : undefined}>
-                    Target: {activityTargetDescription(event)}
+                    Target: {activityTargetDescription(event, stageCopy)}
                   </span>
                   {openedRequest && onOpenRequest ? (
                     <button
@@ -800,6 +812,7 @@ function activityDescription(
   invitationActivityActionLabels: ReturnType<
     typeof useWorkspaceInvitationsCopy
   >['activityActionLabels'],
+  stageCopy: SalesStageCopy,
 ): string {
   const actorName =
     'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
@@ -832,19 +845,30 @@ function activityDescription(
     ...commercialIntakeCopy.activityActionLabels,
     ...offerActivityCopy.actionLabels,
     ...invitationActivityActionLabels,
+    'opportunity.stage.changed': stageCopy('activityStageChanged'),
+    'sales_stage.configured': stageCopy('activitySalesStageConfigured'),
+    'company_sales_stage_configuration_assignment.granted': stageCopy(
+      'configurationGranted',
+    ),
+    'company_sales_stage_configuration_assignment.revoked': stageCopy(
+      'configurationRevoked',
+    ),
   };
   const description = `${actorName} ${actionLabels[event.action]}`;
   if (event.action === 'offer_version.client_response_recorded')
     return `${description} (${offerActivityCopy.responseOutcomes[event.metadata.outcome]})`;
   if (event.action === 'opportunity.stage.changed')
-    return `${description} ${commercialIntakeCopy.activityStageChange(
-      event.metadata.previousLabel ?? commercialIntakeCopy.stageNone,
-      event.metadata.newLabel ?? commercialIntakeCopy.stageNone,
-    )}`;
+    return `${description} ${formatMessage(stageCopy('activityStageChange'), {
+      previous: event.metadata.previousLabel ?? stageCopy('stageNone'),
+      next: event.metadata.newLabel ?? stageCopy('stageNone'),
+    })}`;
   if (event.action === 'sales_stage.configured')
-    return `${description} ${commercialIntakeCopy.activityStageConfigured(
-      commercialIntakeCopy.salesStageOperationLabels[event.metadata.operation],
-      event.metadata.label,
+    return `${description} ${formatMessage(
+      stageCopy('activityStageConfigured'),
+      {
+        operation: stageCopy(STAGE_OPERATION_KEYS[event.metadata.operation]),
+        label: event.metadata.label,
+      },
     )}`;
   if (event.action === 'opportunity.outcome.changed') {
     const { metadata } = event;
@@ -872,7 +896,19 @@ function responsibleChange({
   return `${copy.activityFrom} ${before?.displayLabel ?? copy.none} ${copy.activityTo} ${after?.displayLabel ?? copy.none}`;
 }
 
-function activityTargetDescription(event: ActivityLogEvent): string {
+// Indexing by the recorded operation makes a new operation a type error
+// until its localized label exists.
+const STAGE_OPERATION_KEYS = {
+  CREATED: 'operationCreated',
+} as const satisfies Record<
+  SalesStageConfiguredActivityLogEvent['metadata']['operation'],
+  SalesStageMessageKey
+>;
+
+function activityTargetDescription(
+  event: ActivityLogEvent,
+  stageCopy: SalesStageCopy,
+): string {
   switch (event.target.type) {
     case 'document_project':
       return `${documentsCopy.activityTarget}: ${event.target.documentTitle} — ${projectCopy.activityTarget}: ${event.target.projectTitle}`;
@@ -903,7 +939,7 @@ function activityTargetDescription(event: ActivityLogEvent): string {
         : version;
     }
     case 'sales_stage':
-      return commercialIntakeCopy.activitySalesStageTarget;
+      return stageCopy('salesStageSettings');
     case 'company_role_assignment':
       return `${event.target.internalUserDisplayName} — ${event.target.companyDisplayName}`;
     case 'client_company_relationship':

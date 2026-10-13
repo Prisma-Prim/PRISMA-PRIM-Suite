@@ -1,3 +1,4 @@
+import { useSalesStageCopy } from '../commercial-intake/sales-stage.copy';
 import { useContractDecisionCopy } from '../contract/contract-decision.copy';
 import {
   type FormEvent,
@@ -108,6 +109,7 @@ export function CompanyContextAccess({
 }) {
   const profitabilityCopy = useProfitabilityCopy();
   const decisionCopy = useContractDecisionCopy();
+  const stageCopy = useSalesStageCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -520,7 +522,7 @@ export function CompanyContextAccess({
               },
               {
                 value: 'sales-stage-configuration',
-                label: copy.salesStageConfigurationBundle,
+                label: stageCopy('configurationBundle'),
               },
               { value: 'director-client', label: copy.directorClientBundle },
               {
@@ -605,7 +607,7 @@ export function CompanyContextAccess({
             <p>{copy.opportunityManagerPrerequisites}</p>
           )}
           {bundle === 'sales-stage-configuration' && (
-            <p>{copy.salesStageConfigurationPrerequisites}</p>
+            <p>{stageCopy('configurationPrerequisites')}</p>
           )}
           {bundle === 'pricing-adjustment' && (
             <p>{copy.pricingAdjustmentPrerequisites}</p>
@@ -699,7 +701,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'pricing-adjustment': copy.pricingAdjustmentBundle,
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'opportunity-manager': copy.opportunityManagerBundle,
-    'sales-stage-configuration': copy.salesStageConfigurationBundle,
+    'sales-stage-configuration': 'Company Sales Stage Configuration',
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',

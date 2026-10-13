@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
+import { formatMessage } from '../localization/messages';
 import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import { useSalesStageCopy } from './sales-stage.copy';
 import {
   continuesStageHistory,
   NO_STAGE_SELECTION,
@@ -35,6 +37,7 @@ export function OpportunityStage({
   editor: StageEditor;
   pending: boolean;
 }) {
+  const stageCopy = useSalesStageCopy();
   const { edit } = editor;
   switch (edit.kind) {
     case 'idle':
@@ -45,7 +48,7 @@ export function OpportunityStage({
           onClick={editor.onOpen}
           disabled={pending || editor.blocked}
         >
-          {copy.changeStage}
+          {stageCopy('changeStage')}
         </button>
       );
     case 'conflict':
@@ -64,16 +67,16 @@ export function OpportunityStage({
       return (
         <div className="commercial-intake-stage">
           {edit.kind === 'loading' ? (
-            <p role="status">{copy.stageListLoading}</p>
+            <p role="status">{stageCopy('stageListLoading')}</p>
           ) : null}
           <div className="commercial-intake-next-action-actions">
             {edit.kind === 'loading' ? null : (
               <button type="button" onClick={editor.onReloadList}>
-                {copy.stageReloadList}
+                {stageCopy('stageReloadList')}
               </button>
             )}
             <button type="button" onClick={editor.onCancel}>
-              {copy.cancelStage}
+              {stageCopy('cancelStage')}
             </button>
           </div>
         </div>
@@ -92,17 +95,17 @@ export function OpportunityStage({
           }}
         >
           {edit.stages.length === 0 ? (
-            <p>{copy.stageNoneConfigured}</p>
+            <p>{stageCopy('stageNoneConfigured')}</p>
           ) : (
             <>
               <label htmlFor="commercial-intake-stage-choice">
-                {copy.stageChoice}
+                {stageCopy('stageChoice')}
               </label>
               <Select
                 id="commercial-intake-stage-choice"
                 value={edit.selection}
                 options={[
-                  { value: NO_STAGE_SELECTION, label: copy.stageNone },
+                  { value: NO_STAGE_SELECTION, label: stageCopy('stageNone') },
                   ...edit.stages.map((stage) => ({
                     value: stage.id,
                     label: stage.label,
@@ -113,7 +116,7 @@ export function OpportunityStage({
               />
             </>
           )}
-          {saving ? <p role="status">{copy.stageSaving}</p> : null}
+          {saving ? <p role="status">{stageCopy('stageSaving')}</p> : null}
           <div className="commercial-intake-next-action-actions">
             {edit.stages.length === 0 ? null : (
               <button
@@ -121,7 +124,9 @@ export function OpportunityStage({
                 className="commercial-intake-primary-action"
                 disabled={pending}
               >
-                {edit.kind === 'uncertain' ? copy.retryStage : copy.saveStage}
+                {edit.kind === 'uncertain'
+                  ? stageCopy('retryStage')
+                  : stageCopy('saveStage')}
               </button>
             )}
             <button
@@ -130,7 +135,7 @@ export function OpportunityStage({
               onClick={editor.onCancel}
               disabled={saving}
             >
-              {copy.cancelStage}
+              {stageCopy('cancelStage')}
             </button>
           </div>
         </form>
@@ -161,6 +166,9 @@ export function OpportunityStageHistory({
   page: StageHistoryPage;
   loadOlder: OlderStageHistory;
 }) {
+  const stageCopy = useSalesStageCopy();
+  const stageLabel = (stage: RecordedSalesStage | null): string =>
+    stage === null ? stageCopy('stageNone') : stage.label;
   const [older, setOlder] = useState<{
     entries: StageHistoryEntry[];
     nextCursor?: string;
@@ -189,18 +197,18 @@ export function OpportunityStageHistory({
 
   return (
     <div className="commercial-intake-outcome-history">
-      <h5>{copy.stageHistory}</h5>
+      <h5>{stageCopy('stageHistory')}</h5>
       {entries.length === 0 ? (
-        <p>{copy.stageHistoryEmpty}</p>
+        <p>{stageCopy('stageHistoryEmpty')}</p>
       ) : (
-        <ol aria-label={copy.stageHistory}>
+        <ol aria-label={stageCopy('stageHistory')}>
           {entries.map((entry) => (
             <li key={entry.version}>
               <strong>
-                {copy.stageHistoryChange(
-                  stageLabel(entry.previousStage),
-                  stageLabel(entry.newStage),
-                )}
+                {formatMessage(stageCopy('stageHistoryChange'), {
+                  previous: stageLabel(entry.previousStage),
+                  next: stageLabel(entry.newStage),
+                })}
               </strong>
               <small>
                 <time dateTime={entry.changedAt}>
@@ -213,10 +221,10 @@ export function OpportunityStageHistory({
         </ol>
       )}
       {older.state === 'loading' ? (
-        <p role="status">{copy.stageHistoryOlderLoading}</p>
+        <p role="status">{stageCopy('stageHistoryOlderLoading')}</p>
       ) : null}
       {older.state === 'error' ? (
-        <p role="alert">{copy.stageHistoryOlderError}</p>
+        <p role="alert">{stageCopy('stageHistoryOlderError')}</p>
       ) : null}
       {nextCursor ? (
         <button
@@ -224,13 +232,9 @@ export function OpportunityStageHistory({
           disabled={older.state === 'loading'}
           onClick={() => void showOlder(nextCursor)}
         >
-          {copy.stageHistoryOlder}
+          {stageCopy('stageHistoryOlder')}
         </button>
       ) : null}
     </div>
   );
-}
-
-function stageLabel(stage: RecordedSalesStage | null): string {
-  return stage === null ? copy.stageNone : stage.label;
 }

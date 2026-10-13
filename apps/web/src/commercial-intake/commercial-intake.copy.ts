@@ -134,67 +134,6 @@ export const commercialIntakeCopy = {
   outcomeHistoryOlderError:
     'Older status changes could not be loaded. Try again.',
   responsible: 'Responsible actor',
-  // Sales Stage labels are tenant terminology shown exactly as entered; only
-  // the surrounding copy below is product copy.
-  salesStage: 'Sales Stage',
-  stageNone: 'No Sales Stage',
-  changeStage: 'Change Sales Stage',
-  stageChoice: 'New Sales Stage',
-  stageListLoading: 'Loading Sales Stages…',
-  stageListError: 'The Sales Stages could not be loaded. Reload the list.',
-  stageReloadList: 'Reload the list',
-  stageNoneConfigured:
-    'No Sales Stage is configured for this Company yet. A holder of Company Sales Stage Configuration must create one first in the Sales Stage settings.',
-  saveStage: 'Save Sales Stage',
-  cancelStage: 'Cancel',
-  retryStage: 'Retry update',
-  stageSaving: 'Saving Sales Stage…',
-  stageChanged: 'Sales Stage changed.',
-  stageUnchanged: 'The Opportunity already had this Sales Stage.',
-  stageUnavailable:
-    'This Sales Stage can no longer be assigned. Reload the list.',
-  stageConflict:
-    'This Opportunity changed since you loaded it. Reload the Request before changing the Sales Stage.',
-  stageDenied:
-    'You no longer have permission to change the Sales Stage of this Opportunity.',
-  stageUncertain:
-    'The Sales Stage change did not complete. Retry to confirm the result.',
-  stageHistory: 'Sales Stage history',
-  stageHistoryEmpty: 'No Sales Stage change recorded yet.',
-  stageHistoryChange: (previous: string, next: string) =>
-    `${previous} → ${next}`,
-  stageHistoryOlder: 'Show older Sales Stage changes',
-  stageHistoryOlderLoading: 'Loading older Sales Stage changes…',
-  stageHistoryOlderError:
-    'Older Sales Stage changes could not be loaded. Try again.',
-  // The Company's Sales Stage settings view.
-  openSalesStageSettings: 'Sales Stage settings',
-  salesStageSettings: 'Sales Stage settings',
-  salesStageSettingsHelp:
-    'The Sales Stages of this Company, in order. Stage labels are shown exactly as entered.',
-  salesStageList: 'Sales Stages',
-  salesStagesLoading: 'Loading Sales Stages…',
-  salesStagesError: 'The Sales Stages could not be loaded. Please try again.',
-  salesStagesReload: 'Reload Sales Stages',
-  salesStagesEmpty: 'No Sales Stage is configured for this Company yet.',
-  salesStageStateLabels: { ACTIVE: 'Active' },
-  salesStageReadOnly:
-    'Only a holder of Company Sales Stage Configuration can add Sales Stages.',
-  salesStageLabel: 'New stage label',
-  createSalesStage: 'Add stage',
-  retrySalesStage: 'Retry adding the stage',
-  cancelSalesStage: 'Cancel',
-  salesStageSaving: 'Adding the stage…',
-  salesStageCreated: 'Sales Stage added.',
-  salesStageLabelValidation: 'Enter a label between 1 and 80 characters.',
-  salesStageLabelTaken:
-    'Another Sales Stage of this Company already uses this label.',
-  salesStageLimit: 'This Company already has the maximum of 30 Sales Stages.',
-  salesStageConflict:
-    'The Sales Stages changed since you loaded them. Reload them before adding a stage.',
-  salesStageDenied: 'You no longer have permission to configure Sales Stages.',
-  salesStageUncertain:
-    'Adding the stage did not complete. Retry to confirm the result.',
   opportunityVersion: 'Version',
   editNextAction: 'Edit next action',
   saveNextAction: 'Save next action',
@@ -255,8 +194,6 @@ export const commercialIntakeCopy = {
     'opportunity.responsible.changed':
       'changed the responsible actor of an Opportunity',
     'opportunity.outcome.changed': 'changed the status of an Opportunity',
-    'opportunity.stage.changed': 'changed the Sales Stage of an Opportunity',
-    'sales_stage.configured': 'configured a Sales Stage',
   },
   // The previous and new responsible actor, as the change captured them.
   activityResponsibleChange: (before: string, after: string) =>
@@ -265,14 +202,6 @@ export const commercialIntakeCopy = {
   // reason or note text.
   activityOutcomeChange: (previous: string, next: string, loss?: string) =>
     loss ? `(${previous} → ${next}: ${loss})` : `(${previous} → ${next})`,
-  // The previous and new stage labels as the change captured them.
-  activityStageChange: (previous: string, next: string) =>
-    `(${previous} → ${next})`,
-  // The configuration operation and the stage label, never the revision.
-  salesStageOperationLabels: { CREATED: 'created' },
-  activityStageConfigured: (operation: string, label: string) =>
-    `(${operation}: ${label})`,
-  activitySalesStageTarget: 'Sales Stage settings',
   activityRequestTarget: 'Client Request',
   activityOpportunityTarget: 'Opportunity',
   // Offered on a commercial Activity event; it names no event content.
@@ -281,8 +210,6 @@ export const commercialIntakeCopy = {
     'The requested Client Request opens after the next-action edit is saved or cancelled.',
   requestedAfterOutcomeEdit:
     'The requested Client Request opens after the status change is saved or cancelled.',
-  requestedAfterStageEdit:
-    'The requested Client Request opens after the Sales Stage change is saved or cancelled.',
   requestedAfterResponsibleEdit:
     'The requested Client Request opens after the responsible actor change is saved or cancelled.',
   requestedAfterCapture:
