@@ -252,6 +252,30 @@ describe('Offer Activity metadata', () => {
         metadata: { ...approved.metadata, acknowledgedWarningCodes: 'NONE' },
       },
       {
+        ...approved,
+        metadata: {
+          ...approved.metadata,
+          acknowledgedWarningCodes: ['UNKNOWN_WARNING'],
+        },
+      },
+      {
+        ...approved,
+        metadata: {
+          ...approved.metadata,
+          acknowledgedWarningCodes: [
+            'RECIPIENT_TAX_ID_RECORDED',
+            'RECIPIENT_TAX_ID_RECORDED',
+          ],
+        },
+      },
+      {
+        ...transmitted,
+        metadata: {
+          ...transmitted.metadata,
+          acknowledgedWarningCodes: ['UNKNOWN_WARNING'],
+        },
+      },
+      {
         ...rejected,
         metadata: { ...rejected.metadata, ruleSetVersion: 1 },
       },

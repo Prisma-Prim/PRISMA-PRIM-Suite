@@ -1,5 +1,8 @@
 import type { ActiveCompanyContext } from '../access/access.types.js';
-import type { OfferQualityRuleSetVersion } from '../offer/offer-quality.js';
+import {
+  OFFER_QUALITY_CODES,
+  type OfferQualityRuleSetVersion,
+} from '../offer/offer-quality.js';
 import { canReadOfferTarget } from '../offer/offer.read-predicate.js';
 
 /**
@@ -235,14 +238,19 @@ function recordsCreatedVersion(
   );
 }
 
-/** A known rule set version and a list of warning codes; neither projected. */
+/**
+ * A known rule set version and a list of distinct known warning codes, the
+ * closed vocabulary the Offer module records; neither is projected.
+ */
 function recordsBinding(metadata: Record<string, unknown>): boolean {
   const { ruleSetVersion, acknowledgedWarningCodes } = metadata;
   return (
     isRuleSetVersion(ruleSetVersion) &&
     Array.isArray(acknowledgedWarningCodes) &&
-    acknowledgedWarningCodes.every(
-      (code) => typeof code === 'string' && code.length > 0,
+    new Set(acknowledgedWarningCodes).size ===
+      acknowledgedWarningCodes.length &&
+    acknowledgedWarningCodes.every((code) =>
+      OFFER_QUALITY_CODES.some((known) => known === code),
     )
   );
 }
