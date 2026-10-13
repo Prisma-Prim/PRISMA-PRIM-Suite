@@ -89,13 +89,17 @@ const offerBundles: readonly Bundle[] = [
   'company-offer-preparer',
   'company-offer-approver',
 ];
-// "Every bundle in BIC only" for the isolation proof (PRD 18.14 and 19.16).
-const otherCompanyBundles: readonly Bundle[] = [
-  'company-commercial-intake',
-  'company-offer-preparer',
-  'company-contract-preparer',
-  'company-commercial-activity-reader',
+// "Every bundle in BIC only" for the isolation proof (PRD 18.14 and 19.16):
+// each Company role bundle the journey actor holds, except the three the
+// foundation seed already grants the BIC member in BIC.
+const seededOtherCompanyBundles: readonly Bundle[] = [
+  'company-context',
+  'company-director-client',
+  'company-project',
 ];
+const otherCompanyBundles: readonly Bundle[] = journeyBundles.filter(
+  (bundle) => !seededOtherCompanyBundles.includes(bundle),
+);
 
 let initialClockOffset = 0;
 test.beforeEach(async () => {
@@ -1289,7 +1293,6 @@ test('follows one commercial case from Request to signed agreement, Project and 
         expectedCommercialEvents: commercialEvents.length,
         forbidden,
         typedTexts,
-        typedFromReceipts,
         clientTaxId: entered.clientTaxId,
         labels: { clientName, companyName, opportunityTitle },
       });
@@ -1432,8 +1435,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
             const body = await response.text();
             expect(body).not.toContain(subject);
             expect(body).not.toContain(opportunityTitle);
-            if (!path.startsWith('/commercial-intake'))
-              expect([403, 404]).toContain(response.status());
+            if (context === companyId)
+              // The journey Company is not a valid active Company for the
+              // BIC member: the safe denial, for the list read as well.
+              expect(response.status(), `${context} ${path}`).toBe(403);
+            else if (path.startsWith('/commercial-intake'))
+              // BIC's own Request list reads, without the journey case.
+              expect(response.status(), path).toBe(200);
+            else expect([403, 404], path).toContain(response.status());
           }
       } finally {
         for (const bundle of otherCompanyBundles)
@@ -1595,7 +1604,6 @@ async function expectNoActivityLeak(
     expectedCommercialEvents,
     forbidden,
     typedTexts,
-    typedFromReceipts,
     clientTaxId,
     labels,
   }: {
@@ -1605,7 +1613,6 @@ async function expectNoActivityLeak(
     forbidden: readonly string[];
     /** The typed texts alone, which no timestamp can spell. */
     typedTexts: readonly string[];
-    typedFromReceipts: readonly string[];
     clientTaxId: string;
     labels: {
       clientName: string;
@@ -1627,21 +1634,18 @@ async function expectNoActivityLeak(
     commercialActivityActions.includes(text(event.action)),
   );
   expect(commercial).toHaveLength(expectedCommercialEvents);
-  // Server times are ISO instants, so the received time and signing dates
-  // typed from receipts are indistinguishable there; the rendered page, which
-  // formats times, has already proven them absent.
+  // `occurredAt` is the only server instant a commercial event carries, and
+  // the received time and signing dates typed from receipts coincide with it.
+  // Everything else the event carries, its target included, must hold none of
+  // them nor any other forbidden value (PRD 25.2: no user-entered date).
   const content = JSON.stringify(
-    commercial.map(({ action, target, metadata }) => ({
-      action,
-      target,
-      metadata,
-    })),
+    commercial.map((event) =>
+      Object.fromEntries(
+        Object.entries(event).filter(([key]) => key !== 'occurredAt'),
+      ),
+    ),
   );
-  for (const value of [
-    ...forbidden.filter((value) => !typedFromReceipts.includes(value)),
-    labels.clientName,
-    labels.companyName,
-  ])
+  for (const value of [...forbidden, labels.clientName, labels.companyName])
     expect(content, value).not.toContain(value);
   // The Project title is the reference of the two Project links only.
   expect(
