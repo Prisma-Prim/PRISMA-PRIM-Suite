@@ -1280,43 +1280,46 @@ export class AccountabilityService {
       !eligibleCommercialActions(company).includes('sales_stage.configured')
     )
       return [];
-    const rows = await this.databaseContext.connection
-      .select({
-        id: salesStageEvents.id,
-        action: salesStageEvents.action,
-        metadata: salesStageEvents.metadata,
-        companyId: salesStageEvents.companyId,
-        salesStageId: salesStageEvents.salesStageId,
-        occurredAt: salesStageEvents.occurredAt,
-        internalUserId: internalUsers.id,
-        displayName: internalUsers.displayName,
-      })
-      .from(salesStageEvents)
-      .innerJoin(
-        workspaceMemberships,
-        and(
-          eq(workspaceMemberships.workspaceId, salesStageEvents.workspaceId),
-          eq(
-            workspaceMemberships.id,
-            salesStageEvents.actorWorkspaceMembershipId,
+    const read = (after: DatedEventCursor | undefined) =>
+      this.databaseContext.connection
+        .select({
+          id: salesStageEvents.id,
+          cursorAt: sql<string>`${salesStageEvents.occurredAt}::text`,
+          action: salesStageEvents.action,
+          metadata: salesStageEvents.metadata,
+          companyId: salesStageEvents.companyId,
+          salesStageId: salesStageEvents.salesStageId,
+          occurredAt: salesStageEvents.occurredAt,
+          internalUserId: internalUsers.id,
+          displayName: internalUsers.displayName,
+        })
+        .from(salesStageEvents)
+        .innerJoin(
+          workspaceMemberships,
+          and(
+            eq(workspaceMemberships.workspaceId, salesStageEvents.workspaceId),
+            eq(
+              workspaceMemberships.id,
+              salesStageEvents.actorWorkspaceMembershipId,
+            ),
           ),
-        ),
-      )
-      .innerJoin(
-        internalUsers,
-        eq(internalUsers.id, workspaceMemberships.internalUserId),
-      )
-      .where(
-        and(
-          eq(salesStageEvents.workspaceId, actor.workspaceId),
-          eq(salesStageEvents.companyId, company.id),
-        ),
-      )
-      .orderBy(desc(salesStageEvents.occurredAt), desc(salesStageEvents.id))
-      .limit(INITIAL_PAGE_SIZE);
-    return rows.flatMap((row) => {
+        )
+        .innerJoin(
+          internalUsers,
+          eq(internalUsers.id, workspaceMemberships.internalUserId),
+        )
+        .where(
+          and(
+            eq(salesStageEvents.workspaceId, actor.workspaceId),
+            eq(salesStageEvents.companyId, company.id),
+            olderThan(salesStageEvents.occurredAt, salesStageEvents.id, after),
+          ),
+        )
+        .orderBy(desc(salesStageEvents.occurredAt), desc(salesStageEvents.id))
+        .limit(INITIAL_PAGE_SIZE);
+    return projectedPage(read, (row) => {
       const recorded = readCommercialActivity(row);
-      if (recorded?.action !== 'sales_stage.configured') return [];
+      if (recorded?.action !== 'sales_stage.configured') return undefined;
       const projected: CommercialActivityEvent = {
         ...recorded,
         id: row.id,
@@ -1331,7 +1334,7 @@ export class AccountabilityService {
           companyId: row.companyId,
         },
       };
-      return [projected];
+      return projected;
     });
   }
 
