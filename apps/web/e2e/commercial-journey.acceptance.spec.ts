@@ -152,12 +152,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
     clientSignatory: 'Synthetic Client signatory',
     changeSummary: `Synthetic extension of the audit scope ${suffix}`,
   } as const;
-  // The Snapshot figures of step 4 (2 × 300.0000 EUR, 15 % tax, net reduction)
-  // and the values the journey types from server receipts: the reported
-  // received time and the signing dates. Snapshot content and user-entered
-  // dates are forbidden Activity content as well (PRD 25.2).
-  const snapshotAmounts = [
+  // The Snapshot content of step 4: the configured unit amount, unit, tax
+  // rate and label, rule label, the typed net reduction and every derived
+  // amount (2 × 300.0000, 15 % tax, 30.00 off), plus the values the journey
+  // types from server receipts: the reported received time and the signing
+  // dates. Snapshot content and user-entered dates are forbidden Activity
+  // content as well (PRD 25.2). The currency and quantity are not
+  // distinctive enough to scan for.
+  const snapshotContent = [
     '300.0000',
+    'illustrative-unit',
+    '15.00',
+    'Illustrative tax',
+    'Synthetic journey rule',
     '600.00',
     '90.00',
     entered.netReduction,
@@ -816,9 +823,15 @@ test('follows one commercial case from Request to signed agreement, Project and 
      * reloading through `reopen` after each durable step so that every state
      * is read back from PostgreSQL before the next command relies on it.
      */
+    // The acknowledgeable Contract Quality Check warnings the journey raises.
+    const identityWarning = 'Recorded identity matches the source';
+    const addedConditionsWarning =
+      'Added terms and conditions need confirmation';
     async function approveAndSign(
       agreementPath: string,
       reopen: () => Promise<void>,
+      // The exact acknowledgeable warnings of this version (PRD 19.16).
+      warnings: readonly string[],
     ): Promise<void> {
       const recordedIdno = checks
         .getByRole('listitem')
@@ -838,14 +851,34 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await reopen();
       await expect(noRun).toHaveCount(0);
       await expect(recordedIdno).toContainText('PASS');
-      for (const box of await decision.getByRole('checkbox').all())
-        await box.check();
-      await decision
-        .getByRole('button', {
-          name: 'Approve exact Contract Version',
+      // Exactly the expected warnings, by label and count, before any box.
+      const acknowledgements = warnings.map((warning) =>
+        decision.getByRole('checkbox', {
+          name: `I acknowledge this warning: ${warning}`,
           exact: true,
-        })
-        .click();
+        }),
+      );
+      await expect(decision.getByRole('checkbox')).toHaveCount(warnings.length);
+      for (const acknowledgement of acknowledgements)
+        await expect(acknowledgement).toHaveCount(1);
+      const approve = decision.getByRole('button', {
+        name: 'Approve exact Contract Version',
+        exact: true,
+      });
+      if (warnings.length > 0) {
+        // Approval is refused until exactly the current warnings are
+        // acknowledged (PRD 19.16).
+        await approve.click();
+        await expect(
+          decision.getByText(
+            'Acknowledge exactly the current warnings. Run and review checks again.',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        for (const acknowledgement of acknowledgements)
+          await acknowledgement.check();
+      }
+      await approve.click();
       await expect(
         decision.getByText('Approved internally', { exact: true }),
       ).toBeVisible();
@@ -933,8 +966,12 @@ test('follows one commercial case from Request to signed agreement, Project and 
           ).precontract,
         ).id,
       );
-      await approveAndSign(`${contractsPath}/agreements/${precontractId}`, () =>
-        reopenPrecontract(journey),
+      // The IDNO recorded since the Offer and the preliminary work and term
+      // end raise exactly the two Precontract warnings (PRD 19.16, step 3).
+      await approveAndSign(
+        `${contractsPath}/agreements/${precontractId}`,
+        () => reopenPrecontract(journey),
+        [identityWarning, addedConditionsWarning],
       );
 
       const creation = projects.getByRole('region', {
@@ -1035,9 +1072,13 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ).id,
       );
       // The Request detail opens the current Contract Version by default.
+      // Version 2 needs its own checks: the identity warning again and
+      // `ADDED_CONDITIONS_CONFIRMED` for its term and special conditions
+      // (PRD 19.16, revision variant).
       await approveAndSign(
         `${contractsPath}/agreements/${mainContractId}`,
         () => reopenRequest(journey),
+        [identityWarning, addedConditionsWarning],
       );
 
       const candidate = projects.getByRole('radio', {
@@ -1113,9 +1154,12 @@ test('follows one commercial case from Request to signed agreement, Project and 
       );
       const addenda = parent.addenda;
       if (!Array.isArray(addenda)) throw new Error('Expected Addenda');
+      // The Addendum copies its executed parent's current identity and adds
+      // no term, so none of its checks warns: approval needs no acknowledgement.
       await approveAndSign(
         `${contractsPath}/agreements/${text(object(addenda[0]).id)}`,
         () => reopenAddendum(journey),
+        [],
       );
       await contract
         .getByRole('button', {
@@ -1293,11 +1337,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
       const typedTexts = [...Object.values(entered), subject, serviceName];
       const forbidden = [
         ...typedTexts,
-        ...snapshotAmounts,
+        ...snapshotContent,
         ...typedFromReceipts,
       ];
+      // Each row's content without its rendered time: a formatted server
+      // time can spell a typed date or an amount on some run dates.
+      const rowContent = rows.locator(':scope > div');
       for (const value of forbidden)
-        await expect(activity).not.toContainText(value);
+        await expect(rowContent.filter({ hasText: value })).toHaveCount(0);
       await expect(rows.filter({ hasText: opportunityTitle })).toHaveCount(3);
       for (const label of [clientName, companyName])
         await expect(commercialRows.filter({ hasText: label })).toHaveCount(0);
@@ -1451,30 +1498,84 @@ test('follows one commercial case from Request to signed agreement, Project and 
         await expect(otherProjects).not.toContainText(opportunityTitle);
         await expect(otherProjects).not.toContainText(clientName);
 
-        // Direct identifiers reveal nothing either.
+        // Direct identifiers reveal nothing either (PRD 13): every public
+        // read keyed by an identifier the journey holds is denied, and BIC's
+        // own lists exclude the case.
+        const offerVersionId = text(
+          object(
+            object(
+              object(
+                await apiRead(request, {
+                  identity: identities.ada,
+                  companyId,
+                  path: `/offers/opportunities/${opportunityId}`,
+                }),
+              ).offer,
+            ).version,
+          ).id,
+        );
+        const contractVersionId = text(
+          object(
+            object(
+              object(
+                await apiRead(request, {
+                  identity: identities.ada,
+                  companyId,
+                  path: contractsPath,
+                }),
+              ).contract,
+            ).version,
+          ).id,
+        );
+        const ownedLists = [
+          '/commercial-intake/requests?limit=25',
+          '/sales-stages',
+          '/projects',
+        ];
+        const opportunityPath = `/commercial-intake/opportunities/${opportunityId}`;
+        const offerPath = `/offers/opportunities/${opportunityId}`;
+        const directReads = [
+          `/commercial-intake/requests/${clientRequestId}`,
+          `${opportunityPath}/outcome-history`,
+          `${opportunityPath}/stage-history`,
+          `${opportunityPath}/eligible-responsible-actors`,
+          offerPath,
+          `${offerPath}/versions`,
+          `${offerPath}/versions/${offerVersionId}`,
+          contractsPath,
+          `${contractsPath}/project-candidates`,
+          `${contractsPath}/versions`,
+          `${contractsPath}/versions/${contractVersionId}`,
+          `${contractsPath}/versions/${contractVersionId}/representation`,
+          `${contractsPath}/versions/${contractVersionId}/quality-checks`,
+          `/contracts/projects/${projectId}`,
+          `/projects/${projectId}`,
+        ];
+        const journeyIdentifiers = [
+          subject,
+          opportunityTitle,
+          entered.originalText,
+          qualification,
+          contracting,
+          clientRequestId,
+          opportunityId,
+          offerVersionId,
+          contractVersionId,
+          projectId,
+        ];
         for (const context of [companyId, otherCompanyId])
-          for (const path of [
-            `/commercial-intake/requests?limit=25`,
-            `/offers/opportunities/${opportunityId}`,
-            `/contracts/opportunities/${opportunityId}`,
-            '/projects',
-            `/projects/${projectId}`,
-          ]) {
+          for (const path of [...ownedLists, ...directReads]) {
             const response = await request.get(`${apiOrigin}/api${path}`, {
               headers: { ...identities.other, 'x-company-context-id': context },
             });
             const body = await response.text();
-            expect(body).not.toContain(subject);
-            expect(body).not.toContain(opportunityTitle);
-            expect(body).not.toContain(projectId);
+            for (const identifier of journeyIdentifiers)
+              expect(body, `${context} ${path}`).not.toContain(identifier);
             if (context === companyId)
               // The journey Company is not a valid active Company for the
               // BIC member: the safe denial, for the list reads as well.
               expect(response.status(), `${context} ${path}`).toBe(403);
-            else if (
-              path.startsWith('/commercial-intake') ||
-              path === '/projects'
-            )
+            else if (ownedLists.includes(path))
               // BIC's own lists read, without the journey case or Project.
               expect(response.status(), path).toBe(200);
             else expect([403, 404], path).toContain(response.status());
@@ -1637,6 +1738,47 @@ const commercialActivityActions: readonly string[] = [
   'contract_project.linked',
 ];
 
+/** The sorted keys of each commercial target reference (PRD 17.3, 25.2). */
+const projectedTargetKeys: Record<string, readonly string[]> = {
+  client_request: ['clientRequestId', 'companyId', 'type'],
+  // The containing Request is named for a current Request reader.
+  opportunity: ['clientRequestId', 'companyId', 'opportunityId', 'type'],
+  sales_stage: ['companyId', 'salesStageId', 'type'],
+  offer_version: [
+    'clientRequestId',
+    'companyId',
+    'illustrativeReference',
+    'offerVersionId',
+    'opportunityId',
+    'type',
+    'versionNumber',
+  ],
+  contract_version: [
+    'clientRequestId',
+    'companyId',
+    'contractId',
+    'contractVersionId',
+    'illustrativeReference',
+    'kind',
+    'opportunityId',
+    'type',
+    'versionNumber',
+  ],
+};
+
+/** The sorted metadata keys an action projects; every other action none. */
+const projectedMetadataKeys: Partial<Record<string, readonly string[]>> = {
+  'opportunity.responsible.changed': ['after', 'before'],
+  // A win carries no loss reason.
+  'opportunity.outcome.changed': ['newStatus', 'previousStatus'],
+  'opportunity.stage.changed': ['newLabel', 'previousLabel'],
+  'sales_stage.configured': ['label', 'operation'],
+  'offer_version.transmission_recorded': ['channel'],
+  'offer_version.client_response_recorded': ['evidenceKind', 'outcome'],
+  'contract_version.signature_recorded': ['evidenceKind'],
+  'contract_project.linked': ['created', 'project'],
+};
+
 /**
  * The Activity read itself, behind the rendered page: the commercial events
  * carry no typed value, amount, date or label beyond the references PRD 25.2
@@ -1679,6 +1821,36 @@ async function expectNoActivityLeak(
     commercialActivityActions.includes(text(event.action)),
   );
   expect(commercial).toHaveLength(expectedCommercialEvents);
+  // Each commercial event projects exactly the keys its contract names
+  // (PRD 17.3 and 25.2): any extra field fails before its value is scanned.
+  for (const event of commercial) {
+    const action = text(event.action);
+    const target = object(event.target);
+    const metadata = object(event.metadata);
+    expect(Object.keys(event).sort(), action).toEqual([
+      'action',
+      'actor',
+      'id',
+      'metadata',
+      'occurredAt',
+      'target',
+    ]);
+    expect(Object.keys(object(event.actor)).sort(), action).toEqual([
+      'displayName',
+      'internalUserId',
+    ]);
+    expect(Object.keys(target).sort(), action).toEqual(
+      projectedTargetKeys[text(target.type)],
+    );
+    expect(Object.keys(metadata).sort(), action).toEqual(
+      projectedMetadataKeys[action] ?? [],
+    );
+    if (action === 'contract_project.linked')
+      expect(Object.keys(object(metadata.project)).sort()).toEqual([
+        'projectId',
+        'projectTitle',
+      ]);
+  }
   // `occurredAt` is the only server instant a commercial event carries, and
   // the received time and signing dates typed from receipts coincide with it.
   // Everything else the event carries, its target included, must hold none of
