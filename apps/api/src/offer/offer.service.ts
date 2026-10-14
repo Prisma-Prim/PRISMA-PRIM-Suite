@@ -692,81 +692,78 @@ export class OfferService {
     await this.authorization.requireOfferAccess(actor, [
       'commercial.offer.read',
     ]);
-    return this.databaseContext.transaction(
-      async () => {
-        const companyId = await this.authorization.requireOfferAccess(
-          actor,
-          ['commercial.offer.read'],
-          true,
-        );
-        const opportunity = await this.intake.requireReadableOfferOpportunity(
-          actor,
-          input.opportunityId,
-          false,
-        );
-        const offer = await this.findOffer(
-          actor.workspaceId,
-          companyId,
-          opportunity.id,
-        );
-        if (!offer) return { versions: [], nextCursor: null };
-        const limit = input.limit === undefined ? 25 : Number(input.limit);
+    return this.readConsistently(async () => {
+      const companyId = await this.authorization.requireOfferAccess(
+        actor,
+        ['commercial.offer.read'],
+        true,
+      );
+      const opportunity = await this.intake.requireReadableOfferOpportunity(
+        actor,
+        input.opportunityId,
+        false,
+      );
+      const offer = await this.findOffer(
+        actor.workspaceId,
+        companyId,
+        opportunity.id,
+      );
+      if (!offer) return { versions: [], nextCursor: null };
+      const limit = input.limit === undefined ? 25 : Number(input.limit);
+      if (
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        limit > 50 ||
+        (input.limit !== undefined && !/^[1-9][0-9]*$/u.test(input.limit))
+      )
+        throw new BadRequestException({
+          code: 'OFFER_VALIDATION_ERROR',
+          field: 'limit',
+        });
+      let before: number | undefined;
+      if (input.cursor !== undefined) {
+        const match = /^([0-9a-f-]{36}):([1-9][0-9]*)$/u.exec(input.cursor);
         if (
-          !Number.isSafeInteger(limit) ||
-          limit < 1 ||
-          limit > 50 ||
-          (input.limit !== undefined && !/^[1-9][0-9]*$/u.test(input.limit))
+          !match ||
+          match[1] !== offer.id ||
+          !Number.isSafeInteger(Number(match[2]))
         )
           throw new BadRequestException({
             code: 'OFFER_VALIDATION_ERROR',
-            field: 'limit',
+            field: 'cursor',
           });
-        let before: number | undefined;
-        if (input.cursor !== undefined) {
-          const match = /^([0-9a-f-]{36}):([1-9][0-9]*)$/u.exec(input.cursor);
-          if (
-            !match ||
-            match[1] !== offer.id ||
-            !Number.isSafeInteger(Number(match[2]))
-          )
-            throw new BadRequestException({
-              code: 'OFFER_VALIDATION_ERROR',
-              field: 'cursor',
-            });
-          before = Number(match[2]);
-        }
-        const rows = await this.databaseContext.connection
-          .select()
-          .from(offerVersions)
-          .where(
-            and(
-              eq(offerVersions.workspaceId, actor.workspaceId),
-              eq(offerVersions.companyId, companyId),
-              eq(offerVersions.offerId, offer.id),
-              before === undefined
-                ? undefined
-                : lt(offerVersions.versionNumber, before),
-            ),
-          )
-          .orderBy(desc(offerVersions.versionNumber))
-          .limit(limit + 1);
-        const page = rows.slice(0, limit);
-        return {
-          versions: page.map((version) => ({
-            id: version.id,
-            versionNumber: version.versionNumber,
-            createdAt: version.createdAt.toISOString(),
-            predecessorVersionId: version.predecessorVersionId,
-            supersededByVersionId: version.supersededByVersionId,
-          })),
-          nextCursor:
-            rows.length > limit
-              ? `${offer.id}:${page.at(-1)?.versionNumber}`
-              : null,
-        };
-      },
-      { isolationLevel: 'repeatable read' },
-    );
+        before = Number(match[2]);
+      }
+      const rows = await this.databaseContext.connection
+        .select()
+        .from(offerVersions)
+        .where(
+          and(
+            eq(offerVersions.workspaceId, actor.workspaceId),
+            eq(offerVersions.companyId, companyId),
+            eq(offerVersions.offerId, offer.id),
+            before === undefined
+              ? undefined
+              : lt(offerVersions.versionNumber, before),
+          ),
+        )
+        .orderBy(desc(offerVersions.versionNumber))
+        .limit(limit + 1);
+      const page = rows.slice(0, limit);
+      return {
+        versions: page.map((version) => ({
+          id: version.id,
+          versionNumber: version.versionNumber,
+          createdAt: version.createdAt.toISOString(),
+          predecessorVersionId: version.predecessorVersionId,
+          supersededByVersionId: version.supersededByVersionId,
+        })),
+        nextCursor:
+          rows.length > limit
+            ? `${offer.id}:${page.at(-1)?.versionNumber}`
+            : null,
+      };
+    });
   }
 
   private async createdVersionView(
@@ -857,63 +854,63 @@ export class OfferService {
       )
     )
       throw new NotFoundException();
-    // A profile refresh can invalidate a locked row after the repeatable-read
+    return this.readConsistently(async () => {
+      const companyId = await this.authorization.requireOfferAccess(
+        actor,
+        ['commercial.offer.read'],
+        true,
+      );
+      const opportunity = await this.intake.requireReadableOfferOpportunity(
+        actor,
+        opportunityId,
+        false,
+      );
+      const offer = await this.findOffer(
+        actor.workspaceId,
+        companyId,
+        opportunity.id,
+      );
+      if (!offer) return null;
+      const stored = await this.requireOfferById(
+        actor,
+        companyId,
+        offer.id,
+        offerVersionId,
+      );
+      const snapshot = await this.pricing.resolveOfferVersionSnapshot({
+        actor,
+        companyId,
+        opportunityId: opportunity.id,
+        offerVersionId: stored.version.id,
+      });
+      return this.offerView(actor, stored.offer, stored.version, snapshot);
+    });
+  }
+
+  private async readConsistently<T>(read: () => Promise<T>): Promise<T> {
+    // A profile or assignment refresh can invalidate a locked row after the
     // snapshot began. Restart the entire read, including live authority checks;
     // never continue an aborted transaction or retry a mutation here.
     for (let attempt = 1; ; attempt += 1) {
       try {
-        return await this.databaseContext.transaction(
-          async () => {
-            const companyId = await this.authorization.requireOfferAccess(
-              actor,
-              ['commercial.offer.read'],
-              true,
-            );
-            const opportunity =
-              await this.intake.requireReadableOfferOpportunity(
-                actor,
-                opportunityId,
-                false,
-              );
-            const offer = await this.findOffer(
-              actor.workspaceId,
-              companyId,
-              opportunity.id,
-            );
-            if (!offer) return null;
-            const stored = await this.requireOfferById(
-              actor,
-              companyId,
-              offer.id,
-              offerVersionId,
-            );
-            const snapshot = await this.pricing.resolveOfferVersionSnapshot({
-              actor,
-              companyId,
-              opportunityId: opportunity.id,
-              offerVersionId: stored.version.id,
-            });
-            return this.offerView(
-              actor,
-              stored.offer,
-              stored.version,
-              snapshot,
-            );
-          },
-          { isolationLevel: 'repeatable read' },
-        );
+        return await this.databaseContext.transaction(read, {
+          isolationLevel: 'repeatable read',
+        });
       } catch (error) {
         const cause = error instanceof DrizzleQueryError ? error.cause : error;
         if (
-          attempt >= 3 ||
+          attempt >= 8 ||
           typeof cause !== 'object' ||
           cause === null ||
           !('code' in cause) ||
           cause.code !== '40001'
         )
           throw error;
-        // Let concurrent identity-profile writes settle before taking a fresh snapshot.
-        await new Promise<void>((resolve) => setTimeout(resolve, 25 * attempt));
+        // Bounded backoff lets parallel identity refreshes settle. Eight attempts
+        // add at most 1.125 seconds of delay without weakening the snapshot.
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, Math.min(25 * 2 ** (attempt - 1), 250)),
+        );
       }
     }
   }
