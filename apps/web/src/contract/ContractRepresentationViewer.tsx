@@ -134,6 +134,9 @@ export function ContractRepresentationViewer({
             {decisionCopy(DECISION_LABELS[versionState.decisionState])} ·{' '}
             {signatureCopy(EXECUTION_LABELS[versionState.executionState])}
           </p>
+          {versionState.decisionState === 'PENDING' && (
+            <p>{decisionCopy('draft')}</p>
+          )}
           <p>
             {copy.checksum}: <code>{view.sha256}</code>
           </p>

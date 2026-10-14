@@ -2790,7 +2790,7 @@ describe('ContractPanel', () => {
     },
   ])(
     'labels the opened document with its $state version state and unchanged checksum',
-    async ({ contract, label }) => {
+    async ({ contract, label, state }) => {
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
         response(
           input.toString().endsWith('/representation')
@@ -2808,8 +2808,17 @@ describe('ContractPanel', () => {
       expect(await within(viewer).findByText(label)).toBeVisible();
       expect(within(viewer).getByText(representation().sha256)).toBeVisible();
       expect(
-        within(viewer).queryByText(/legally signed|Draft — not approved/u),
+        within(viewer).queryByText(/legally signed/u),
       ).not.toBeInTheDocument();
+      if (state === 'pending')
+        expect(within(viewer).getByText('Draft — not approved')).toBeVisible();
+      else
+        expect(
+          within(viewer).queryByText('Draft — not approved'),
+        ).not.toBeInTheDocument();
+      expect(
+        screen.getByTitle('Illustrative Contract document'),
+      ).toHaveAttribute('srcdoc', representation().html);
     },
   );
   it('labels a reopened superseded version with its own recorded state', async () => {
@@ -2912,6 +2921,15 @@ describe('ContractPanel', () => {
       const viewer = documentRegion();
       expect(await within(viewer).findByText(label)).toBeVisible();
       expect(within(viewer).getByText(representation().sha256)).toBeVisible();
+      if (index === 0)
+        expect(within(viewer).getByText('Draft — not approved')).toBeVisible();
+      else
+        expect(
+          within(viewer).queryByText('Draft — not approved'),
+        ).not.toBeInTheDocument();
+      expect(
+        screen.getByTitle('Illustrative Contract document'),
+      ).toHaveAttribute('srcdoc', representation().html);
     }
   });
   it.each([
