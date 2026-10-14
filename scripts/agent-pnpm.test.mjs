@@ -125,6 +125,9 @@ test('fails closed when pnpm cannot activate the pinned effective version', asyn
 test('refuses an insecure pnpm home without changing its permissions', async () => {
   await withFakePnpm({}, async ({ env, home }) => {
     await mkdir(home, { mode: 0o755 });
+    // mkdir applies the inherited umask; chmod establishes the intended fixture.
+    await chmod(home, 0o755);
+    assert.equal((await stat(home)).mode & 0o777, 0o755);
     const result = runLauncher(['lint'], env);
 
     assert.equal(result.status, 1);
