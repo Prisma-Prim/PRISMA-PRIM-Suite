@@ -1028,9 +1028,23 @@ test('follows one commercial case from Request to signed agreement, Project and 
         creation.getByRole('textbox', { name: 'New Project title' }),
       ).toHaveValue(opportunityTitle);
       await creation.getByRole('checkbox').check();
+      const createdProject = page.waitForResponse(
+        mutation(
+          'POST',
+          /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/projects\/create$/u,
+        ),
+      );
       await creation
         .getByRole('button', { name: 'Create and link Project', exact: true })
         .click();
+      const creationResponse = await createdProject;
+      expect(creationResponse.status()).toBe(201);
+      const creationPayload: unknown = JSON.parse(
+        creationResponse.request().postData() ?? 'null',
+      );
+      expect(object(creationPayload).acknowledgedCandidateProjectIds).toEqual(
+        [],
+      );
       await expect(projects.getByText(opportunityTitle).first()).toBeVisible();
       await reopenPrecontract(journey);
       await expect(
@@ -1060,6 +1074,60 @@ test('follows one commercial case from Request to signed agreement, Project and 
           .getByRole('term')
           .filter({ hasText: /^Illustrative Precontract reference$/u }),
       ).toBeVisible();
+
+      // Before the revision adds terms, v1 has exactly the identity warning
+      // and no blocking result (PRD 19.16, step 6). Prove it after reload too.
+      await expect(
+        contract.getByRole('button', {
+          name: 'Open Contract Version 1',
+          exact: true,
+        }),
+      ).toBeDisabled();
+      await expect(
+        checks.getByText('No Contract Quality Check run yet.', { exact: true }),
+      ).toBeVisible();
+      await checks
+        .getByRole('button', {
+          name: 'Run Contract Quality Checks',
+          exact: true,
+        })
+        .click();
+      await expect(
+        checks.getByText('Contract checks completed with warnings.', {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await reopenRequest(journey);
+      await expect(
+        contract.getByRole('button', {
+          name: 'Open Contract Version 1',
+          exact: true,
+        }),
+      ).toBeDisabled();
+      const firstVersionResults = checks
+        .locator('ul')
+        .first()
+        .getByRole('listitem');
+      await expect(
+        firstVersionResults.filter({
+          has: page.locator('strong').filter({ hasText: /^WARNING$/u }),
+        }),
+      ).toHaveText([`${identityWarning} WARNING`]);
+      await expect(
+        firstVersionResults.filter({
+          has: page.locator('strong').filter({ hasText: /^ERROR$/u }),
+        }),
+      ).toHaveCount(0);
+      await expect(
+        firstVersionResults.filter({ hasText: 'IDNO / tax code is recorded' }),
+      ).toContainText('PASS');
+      await expect(decision.getByRole('checkbox')).toHaveCount(1);
+      await expect(
+        decision.getByRole('checkbox', {
+          name: `I acknowledge this warning: ${identityWarning}`,
+          exact: true,
+        }),
+      ).toHaveCount(1);
 
       const revisions = contract.getByRole('region', {
         name: 'Revise Contract before signature',
@@ -1131,6 +1199,53 @@ test('follows one commercial case from Request to signed agreement, Project and 
         name: new RegExp(opportunityTitle, 'u'),
       });
       await expect(candidate).toHaveCount(1);
+      // The empty candidate acknowledgement used for the Precontract is now
+      // obsolete. Exercise the public refusal without a successful mutation.
+      const beforeRefusal = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: contractsPath,
+          }),
+        ).contract,
+      );
+      const expectedRevision = beforeRefusal.revision;
+      if (
+        typeof expectedRevision !== 'number' ||
+        !Number.isSafeInteger(expectedRevision) ||
+        expectedRevision < 1
+      )
+        throw new Error('Expected a positive Contract revision');
+      const staleCandidates = await request.post(
+        `${apiOrigin}/api${contractsPath}/projects/create`,
+        {
+          headers: {
+            ...identities.ada,
+            'x-company-context-id': companyId,
+            'idempotency-key': `journey-stale-project-candidates-${suffix}`,
+          },
+          data: {
+            title: opportunityTitle,
+            acknowledgedCandidateProjectIds: [],
+            expectedContractRevision: expectedRevision,
+          },
+        },
+      );
+      const refusal: unknown = await staleCandidates.json();
+      expect(staleCandidates.status(), JSON.stringify(refusal)).toBe(409);
+      expect(refusal).toMatchObject({ code: 'PROJECT_CANDIDATES_CHANGED' });
+      const afterRefusal = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: contractsPath,
+          }),
+        ).contract,
+      );
+      expect(afterRefusal.revision).toBe(expectedRevision);
+      expect(afterRefusal.version).toEqual(beforeRefusal.version);
       await candidate.check();
       const linked = page.waitForResponse(
         mutation('POST', /^\/api\/contracts\/opportunities\/[^/]+\/projects$/u),
@@ -1142,7 +1257,13 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         projects.getByText('Project linked.', { exact: true }),
       ).toBeVisible();
+      const persistedContractRead = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname === `/api${contractsPath}`,
+      );
       await reopenRequest(journey);
+      expect((await persistedContractRead).status()).toBe(200);
       await expect(
         projects.getByRole('button', { name: 'Open Project', exact: true }),
       ).toHaveCount(1);
@@ -1177,6 +1298,24 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
     await test.step('8. prepare, approve and sign Addendum 1', async () => {
       await reopenRequest(journey);
+      const parentBeforeAddendum = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: contractsPath,
+          }),
+        ).contract,
+      );
+      expect(parentBeforeAddendum.version).toMatchObject({
+        versionNumber: 2,
+        scopeNote: entered.offerScope,
+        commercialConditions: entered.negotiatedConditions,
+        termStartsOn: entered.contractTermStart,
+        termEndsOn: entered.precontractTermEnd,
+        specialConditions: entered.specialConditions,
+        executionState: 'EXECUTED',
+      });
       await contract
         .getByRole('textbox', { name: 'Change summary', exact: true })
         .fill(entered.changeSummary);
@@ -1202,8 +1341,20 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ).contract,
       );
       const addenda = parent.addenda;
+      expect(parent.id).toBe(parentBeforeAddendum.id);
+      expect(parent.version).toEqual(parentBeforeAddendum.version);
       if (!Array.isArray(addenda)) throw new Error('Expected Addenda');
       const addendumId = text(object(addenda[0]).id);
+      await reopenRequest(journey);
+      await expect(
+        contract.getByText(entered.specialConditions, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        contract.getByRole('button', {
+          name: 'Open Contract Version 2',
+          exact: true,
+        }),
+      ).toBeDisabled();
       await reopenAddendum(journey);
       await expect(
         contract.getByRole('definition').filter({
@@ -1230,6 +1381,22 @@ test('follows one commercial case from Request to signed agreement, Project and 
         })
         .click();
       await reopenRequest(journey);
+      const parentAfterExecution = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: contractsPath,
+          }),
+        ).contract,
+      );
+      expect(parentAfterExecution.id).toBe(parentBeforeAddendum.id);
+      expect(parentAfterExecution.version).toEqual(
+        parentBeforeAddendum.version,
+      );
+      await expect(
+        contract.getByText(entered.specialConditions, { exact: true }),
+      ).toBeVisible();
       const listed = contract.getByRole('region', {
         name: 'Addenda',
         exact: true,
@@ -1611,18 +1778,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
             ).version,
           ).id,
         );
-        const contractVersionId = text(
+        const mainAgreement = object(
           object(
-            object(
-              object(
-                await apiRead(request, {
-                  identity: identities.ada,
-                  companyId,
-                  path: contractsPath,
-                }),
-              ).contract,
-            ).version,
-          ).id,
+            await apiRead(request, {
+              identity: identities.ada,
+              companyId,
+              path: contractsPath,
+            }),
+          ).contract,
+        );
+        const mainVersion = object(mainAgreement.version);
+        const contractVersionId = text(mainVersion.id);
+        const contractQualityRunId = text(
+          object(mainVersion.latestQualityRun).id,
         );
         const ownedLists = [
           '/commercial-intake/requests?limit=25',
@@ -1645,6 +1813,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
           `${contractsPath}/versions/${contractVersionId}`,
           `${contractsPath}/versions/${contractVersionId}/representation`,
           `${contractsPath}/versions/${contractVersionId}/quality-checks`,
+          `${contractsPath}/versions/${contractVersionId}/quality-checks/${contractQualityRunId}`,
           `/contracts/projects/${projectId}`,
           `/projects/${projectId}`,
           ...childAgreements.flatMap(({ id, versionId, qualityRunId }) => {
@@ -1671,6 +1840,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
           opportunityId,
           offerVersionId,
           contractVersionId,
+          contractQualityRunId,
           projectId,
           ...childAgreements.flatMap(({ id, versionId, qualityRunId }) => [
             id,
