@@ -14,7 +14,7 @@ import { readCreateCommercialIntakeCommand } from '../commercial-intake/commerci
 import { DatabaseContext } from '../database/database-context.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { OfferService } from './offer.service.js';
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import {
   afterAll,
   beforeAll,
@@ -5214,6 +5214,179 @@ withPostgres('First illustrative Offer REST', () => {
         ).status,
       ).toBe(404);
     });
+  });
+
+  it.each(['assignment refresh', 'Offer revocation'])(
+    'restarts Offer version history after a concurrent %s commits',
+    async (change) => {
+      const fixture = await preparedOffer();
+      const created = identifiedRecord(
+        await command(
+          `/offers/opportunities/${fixture.opportunityId}`,
+          {
+            pricingSnapshotId: fixture.snapshotId,
+            recipient: { kind: 'PRIMARY' },
+          },
+          'before-history-conflict',
+          fixture.companyId,
+        ),
+      );
+      const barrier = await pool.connect();
+      let pending: Promise<Response> | undefined;
+      try {
+        await barrier.query('BEGIN');
+        const [backend] = (
+          await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows;
+        if (!backend)
+          throw new Error('Expected the assignment transaction backend.');
+        // The guard and preflight see the committed grant. The snapshot read
+        // waits for this update before its live FOR SHARE authority check.
+        await barrier.query(
+          "UPDATE company_role_assignments SET updated_at = now(), revoked_at = $3 WHERE workspace_membership_id = $1 AND company_id = $2 AND bundle = 'company_offer_preparer'",
+          [
+            fixture.actorMembershipId,
+            fixture.companyId,
+            change === 'Offer revocation' ? instant : null,
+          ],
+        );
+        pending = request(
+          `/offers/opportunities/${fixture.opportunityId}/versions`,
+          fixture.companyId,
+        );
+        await waitForBlockedRequests(backend.pid, 1);
+        await barrier.query('COMMIT');
+        const response = await pending;
+        if (change === 'Offer revocation') {
+          expect(response.status).toBe(403);
+          return;
+        }
+        expect(response.status).toBe(200);
+        expect(await json(response)).toEqual({
+          versions: [
+            {
+              id: stringField(record(created.version), 'id'),
+              versionNumber: 1,
+              createdAt: expect.any(String),
+              predecessorVersionId: null,
+              supersededByVersionId: null,
+            },
+          ],
+          nextCursor: null,
+        });
+      } finally {
+        await barrier.query('ROLLBACK');
+        barrier.release();
+        if (pending) await Promise.allSettled([pending]);
+      }
+    },
+  );
+
+  it('reads an Offer after four successive concurrent authority refreshes', async () => {
+    const fixture = await preparedOffer();
+    const created = identifiedRecord(
+      await command(
+        `/offers/opportunities/${fixture.opportunityId}`,
+        {
+          pricingSnapshotId: fixture.snapshotId,
+          recipient: { kind: 'PRIMARY' },
+        },
+        'before-repeated-read-conflicts',
+        fixture.companyId,
+      ),
+    );
+    const { offers, actor } = await offerServiceContext(fixture);
+    const barriers = new Map<number, PoolClient>();
+    const acquired: PoolClient[] = [];
+    let pending: ReturnType<typeof offers.read> | undefined;
+    try {
+      // Independent held rows make every remaining update invalidate the next
+      // snapshot. No timing assumption or mocked query failure causes a retry.
+      for (const update of [
+        {
+          sql: 'UPDATE internal_users SET display_name = display_name WHERE id = $1',
+          values: [actor.internalUserId],
+        },
+        {
+          sql: 'UPDATE workspace_memberships SET status = status WHERE id = $1',
+          values: [fixture.actorMembershipId],
+        },
+        {
+          sql: 'UPDATE companies SET display_name = display_name WHERE id = $1',
+          values: [fixture.companyId],
+        },
+        {
+          sql: "UPDATE company_role_assignments SET updated_at = now() WHERE workspace_membership_id = $1 AND company_id = $2 AND bundle = 'company_offer_preparer'",
+          values: [fixture.actorMembershipId, fixture.companyId],
+        },
+      ]) {
+        const barrier = await pool.connect();
+        acquired.push(barrier);
+        const [backend] = (
+          await barrier.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows;
+        if (!backend) {
+          throw new Error('Expected the authority refresh backend.');
+        }
+        barriers.set(backend.pid, barrier);
+        await barrier.query('BEGIN');
+        await barrier.query(update.sql, update.values);
+      }
+      const remaining = new Set(barriers.keys());
+      let settled = false;
+      pending = offers.read(actor, fixture.opportunityId);
+      const outcome = pending.then(
+        (value) => {
+          settled = true;
+          return { kind: 'read' as const, value };
+        },
+        (error: unknown) => {
+          settled = true;
+          return { kind: 'failed' as const, error };
+        },
+      );
+      while (remaining.size > 0 && !settled) {
+        let blocker: number | undefined;
+        for (let attempt = 0; attempt < 40 && !settled; attempt += 1) {
+          const waiting = await pool.query<{ blockers: number[] }>(
+            "SELECT pg_blocking_pids(pid) AS blockers FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'",
+          );
+          blocker = waiting.rows
+            .flatMap((row) => row.blockers)
+            .find((pid) => remaining.has(pid));
+          if (blocker !== undefined) break;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        if (settled) break;
+        if (blocker === undefined)
+          throw new Error(
+            'Expected an Offer read waiting for an authority refresh.',
+          );
+        const barrier = barriers.get(blocker);
+        if (!barrier)
+          throw new Error('Expected the held authority refresh transaction.');
+        await barrier.query('COMMIT');
+        remaining.delete(blocker);
+      }
+      const result = await outcome;
+      expect(result.kind).toBe('read');
+      if (result.kind !== 'read') throw result.error;
+      expect(result.value).toEqual(created);
+      expect(remaining.size).toBe(0);
+    } finally {
+      await Promise.allSettled(
+        acquired.map(async (barrier) => {
+          let rolledBack = false;
+          try {
+            await barrier.query('ROLLBACK');
+            rolledBack = true;
+          } finally {
+            barrier.release(!rolledBack);
+          }
+        }),
+      );
+      if (pending) await Promise.allSettled([pending]);
+    }
   });
 
   it.each(['profile refresh', 'Offer revocation'])(

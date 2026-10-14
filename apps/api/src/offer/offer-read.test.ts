@@ -128,17 +128,18 @@ describe('Offer read transaction recovery', () => {
     ]);
   });
 
-  it('stops after three failed read attempts and releases each transaction', async () => {
+  it('stops after eight failed read attempts and releases each transaction', async () => {
     const fixture = reader({ failures: 10, code: '40001' });
     await expect(
       fixture.service.read(actor, opportunityId),
     ).rejects.toMatchObject({ cause: { code: '40001' } });
     expect(fixture.transactions()).toEqual(
-      Array.from({ length: 3 }, () => [
+      Array.from({ length: 8 }, () => [
         'begin isolation level repeatable read',
         'rollback',
       ]).flat(),
     );
+    expect(fixture.releases()).toBe(8);
   });
 
   it('does not retry a different database failure', async () => {
@@ -167,7 +168,12 @@ function reader({
   contentionUntil?: number;
 }) {
   const pool = new Pool();
-  const client = Object.assign(new Client(), { release: () => undefined });
+  let releases = 0;
+  const client = Object.assign(new Client(), {
+    release: () => {
+      releases += 1;
+    },
+  });
   const transactions: string[] = [];
   let revoked = false;
   async function query(config: unknown) {
@@ -238,6 +244,7 @@ function reader({
       clock,
     ),
     transactions: () => transactions,
+    releases: () => releases,
     revokeAuthority: () => {
       revoked = true;
     },
