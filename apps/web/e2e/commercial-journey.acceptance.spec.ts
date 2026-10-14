@@ -790,6 +790,42 @@ test('follows one commercial case from Request to signed agreement, Project and 
           exact: true,
         }),
       ).toHaveCount(0);
+      const offerPath = `/offers/opportunities/${opportunityId}`;
+      const acceptedOffer = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: offerPath,
+          }),
+        ).offer,
+      );
+      const acceptedVersion = object(acceptedOffer.version);
+      await expectVersionRefused(request, {
+        companyId,
+        path: `${offerPath}/versions`,
+        key: `journey-accepted-offer-version-${suffix}`,
+        code: 'OFFER_ACCEPTED',
+        data: {
+          expectedOfferRevision: acceptedOffer.revision,
+          pricingSnapshotId: text(acceptedVersion.pricingSnapshotId),
+          recipient: { kind: 'PRIMARY' },
+          validityDays: acceptedVersion.validityDays,
+          scopeNote: entered.offerScope,
+          commercialConditions: entered.negotiatedConditions,
+        },
+      });
+      const offerAfterRefusal = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: offerPath,
+          }),
+        ).offer,
+      );
+      expect(offerAfterRefusal.revision).toBe(acceptedOffer.revision);
+      expect(offerAfterRefusal.version).toEqual(acceptedVersion);
       await capture(page, testInfo, 'journey-offer-accepted');
     });
 
@@ -914,6 +950,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         decision.getByText('Approved internally', { exact: true }),
       ).toBeVisible();
+      // Persisted approval already acknowledged every current warning.
+      // Signature must not silently repair a missing acknowledgement.
+      await expect(signatures.getByRole('checkbox')).toHaveCount(0);
       const signedOn = await approvalDate(request, {
         companyId,
         path: agreementPath,
@@ -931,8 +970,6 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await signatures
         .getByLabel('Client signing date', { exact: true })
         .fill(signedOn);
-      for (const box of await signatures.getByRole('checkbox').all())
-        await box.check();
       await signatures
         .getByRole('button', {
           name: 'Record both simulated signatures',
@@ -946,6 +983,23 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(executed).toBeVisible();
       await reopen();
       await expect(executed).toBeVisible();
+      const evidence = (label: RegExp) =>
+        signatures
+          .getByRole('term')
+          .filter({ hasText: label })
+          .locator('xpath=following-sibling::dd[1]');
+      await expect(evidence(/^Provider signatory label$/u)).toHaveText(
+        entered.providerSignatory,
+      );
+      await expect(evidence(/^Client signatory label$/u)).toHaveText(
+        entered.clientSignatory,
+      );
+      await expect(
+        evidence(/^Provider signing date$/u).locator('time'),
+      ).toHaveAttribute('datetime', signedOn);
+      await expect(
+        evidence(/^Client signing date$/u).locator('time'),
+      ).toHaveAttribute('datetime', signedOn);
     }
 
     const contractsPath = `/contracts/opportunities/${opportunityId}`;
@@ -1017,6 +1071,46 @@ test('follows one commercial case from Request to signed agreement, Project and 
         `${contractsPath}/agreements/${precontractId}`,
         () => reopenPrecontract(journey),
         [identityWarning, addedConditionsWarning],
+      );
+      const precontractPath = `${contractsPath}/agreements/${precontractId}`;
+      const executedPrecontract = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: precontractPath,
+          }),
+        ).contract,
+      );
+      await expectVersionRefused(request, {
+        companyId,
+        path: `${precontractPath}/versions`,
+        key: `journey-executed-precontract-version-${suffix}`,
+        code: 'CONTRACT_EXECUTED',
+        data: {
+          expectedContractRevision: executedPrecontract.revision,
+          termStartsOn: null,
+          termEndsOn: entered.precontractTermEnd,
+          specialConditions: null,
+          preliminaryWorkScope: entered.preliminaryScope,
+          preliminaryFinancialConditions: entered.preliminaryConditions,
+          preliminaryLimits: entered.preliminaryLimits,
+        },
+      });
+      const precontractAfterRefusal = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: precontractPath,
+          }),
+        ).contract,
+      );
+      expect(precontractAfterRefusal.revision).toBe(
+        executedPrecontract.revision,
+      );
+      expect(precontractAfterRefusal.version).toEqual(
+        executedPrecontract.version,
       );
       await rememberChildAgreement(precontractId);
 
@@ -2161,7 +2255,13 @@ async function expectNoActivityLeak(
   // family, only the Client dossier correction's own history (the Client
   // owner's event) records the corrected IDNO. Amounts are checked on the
   // commercial events alone: other families' timestamps may spell them.
-  const page = JSON.stringify(projected);
+  const page = JSON.stringify(
+    projected.map((event) =>
+      Object.fromEntries(
+        Object.entries(event).filter(([key]) => key !== 'occurredAt'),
+      ),
+    ),
+  );
   for (const value of typedTexts.filter((value) => value !== clientTaxId))
     expect(page, value).not.toContain(value);
   expect(
@@ -2431,6 +2531,36 @@ async function command(
   const result: unknown = await response.json();
   expect(response.status(), JSON.stringify({ path, result })).toBe(201);
   return result;
+}
+
+/** A valid version command must be refused once its agreement is final. */
+async function expectVersionRefused(
+  request: APIRequestContext,
+  {
+    companyId,
+    path,
+    key,
+    code,
+    data,
+  }: {
+    companyId: string;
+    path: string;
+    key: string;
+    code: 'OFFER_ACCEPTED' | 'CONTRACT_EXECUTED';
+    data: unknown;
+  },
+): Promise<void> {
+  const response = await request.post(`${apiOrigin}/api${path}`, {
+    headers: {
+      ...identities.ada,
+      'x-company-context-id': companyId,
+      'idempotency-key': key,
+    },
+    data,
+  });
+  const result: unknown = await response.json();
+  expect(response.status(), JSON.stringify({ path, result })).toBe(409);
+  expect(result).toMatchObject({ code });
 }
 
 async function apiRead(
