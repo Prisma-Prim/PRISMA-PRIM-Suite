@@ -534,6 +534,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
     const summary = offer.locator('.offer-summary');
     await test.step('5a. prepare Offer v1 and run its Quality Checks', async () => {
       await expect(
+        offer.getByLabel('Validity in days', { exact: true }),
+      ).toHaveValue('30');
+      await expect(
         page
           .getByRole('region', { name: 'Contract', exact: true })
           .getByText('No Contract has been prepared for this Opportunity.'),
@@ -558,6 +561,16 @@ test('follows one commercial case from Request to signed agreement, Project and 
       expect((await prepared).status()).toBe(201);
 
       await reopenRequest(journey);
+      const pendingOffer = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+          }),
+        ).offer,
+      );
+      expect(object(pendingOffer.version).validityDays).toBe(30);
       await expect(
         summary.getByText('Illustrative and provisional', { exact: true }),
       ).toBeVisible();
@@ -594,6 +607,67 @@ test('follows one commercial case from Request to signed agreement, Project and 
           .filter({ hasText: /^Offer Version$/u })
           .locator('xpath=following-sibling::dd[1]'),
       ).toHaveText('1');
+      const originalServiceRow = offerDocument
+        .getByRole('row')
+        .filter({ hasText: serviceName });
+      await expect(originalServiceRow.getByRole('cell').nth(4)).toHaveText(
+        '600.00 EUR',
+      );
+      await expect(originalServiceRow.getByRole('cell').nth(6)).toHaveText(
+        '90.00 EUR',
+      );
+      const discountRow = originalServiceRow.locator(
+        'xpath=following-sibling::tr[1]',
+      );
+      await expect(discountRow.getByRole('cell')).toHaveText([
+        `Fixed discount: ${entered.adjustmentReason}`,
+        '30.00 EUR',
+        'Tax reduction',
+        '4.50 EUR',
+      ]);
+      await expect(
+        discountRow.locator('xpath=following-sibling::tr[1]').getByRole('cell'),
+      ).toHaveText([
+        'Adjusted line',
+        '570.00 EUR',
+        'Adjusted tax',
+        '85.50 EUR',
+      ]);
+      await expect(
+        offerDocument
+          .getByRole('row')
+          .filter({ hasText: `Fixed discount: ${entered.adjustmentReason}` })
+          .getByRole('cell'),
+      ).toHaveText([
+        `Fixed discount: ${entered.adjustmentReason}`,
+        '30.00 EUR',
+        'Tax reduction',
+        '4.50 EUR',
+      ]);
+      await expect(
+        offerDocument
+          .getByRole('row')
+          .filter({ hasText: /^Adjusted line/u })
+          .getByRole('cell'),
+      ).toHaveText([
+        'Adjusted line',
+        '570.00 EUR',
+        'Adjusted tax',
+        '85.50 EUR',
+      ]);
+      for (const [label, value] of [
+        ['Template Version', 'OFFER_ILLUSTRATIVE v2'],
+        ['Subtotal', '570.00 EUR'],
+        ['Tax total', '85.50 EUR'],
+        ['Total', '655.50 EUR'],
+        ['Currency', 'EUR'],
+      ])
+        await expect(
+          offerDocument
+            .getByRole('term')
+            .filter({ hasText: new RegExp(`^${label}$`, 'u') })
+            .locator('xpath=following-sibling::dd[1]'),
+        ).toHaveText(value);
       const quality = offer.locator('.offer-quality');
       await expect(
         quality.getByText('No Quality Check run yet.', { exact: true }),
@@ -829,6 +903,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ).offer,
       );
       const acceptedVersion = object(acceptedOffer.version);
+      expect(acceptedVersion.validityDays).toBe(30);
       await expectVersionRefused(request, {
         companyId,
         path: `${offerPath}/versions`,
@@ -1402,6 +1477,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
         name: new RegExp(opportunityTitle, 'u'),
       });
       await expect(candidate).toHaveCount(1);
+      await expect(candidate).toHaveAccessibleName(
+        / · Illustrative Precontract 1$/u,
+      );
       // The empty candidate acknowledgement used for the Precontract is now
       // obsolete. Exercise the public refusal without a successful mutation.
       const beforeRefusal = object(
