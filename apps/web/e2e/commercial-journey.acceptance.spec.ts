@@ -1,4 +1,5 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import {
   expect,
   test,
@@ -109,7 +110,7 @@ test.beforeEach(async () => {
   initialClockOffset = value;
 });
 test.afterEach(async () => {
-  await writeFile(clockFile(), JSON.stringify(initialClockOffset));
+  await writeClockOffset(initialClockOffset);
 });
 
 test('follows one commercial case from Request to signed agreement, Project and Activity', async ({
@@ -151,6 +152,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
     providerSignatory: 'Synthetic provider signatory',
     clientSignatory: 'Synthetic Client signatory',
     changeSummary: `Synthetic extension of the audit scope ${suffix}`,
+    addendumTermEnd: '2100-06-30',
   } as const;
   // The Snapshot content of step 4: the configured unit amount, unit, tax
   // rate and label, rule label, the typed net reduction and every derived
@@ -197,6 +199,11 @@ test('follows one commercial case from Request to signed agreement, Project and 
   let clientRequestId = '';
   let opportunityId = '';
   let projectId = '';
+  const childAgreements: {
+    id: string;
+    versionId: string;
+    qualityRunId: string;
+  }[] = [];
   // The Access labels of both responsible actors, as the change records them.
   let adaLabel = '';
   let ionLabel = '';
@@ -696,6 +703,18 @@ test('follows one commercial case from Request to signed agreement, Project and 
           exact: true,
         }),
       ).toBeVisible();
+      const conditionsDifference = offer
+        .locator('.offer-version-history dl > div')
+        .filter({
+          has: page
+            .getByRole('term')
+            .filter({ hasText: /^Commercial conditions · Changed$/u }),
+        });
+      await expect(conditionsDifference).toHaveCount(1);
+      await expect(conditionsDifference.getByRole('definition')).toHaveText([
+        `Previous value: ${entered.firstConditions}`,
+        `Current value: ${entered.negotiatedConditions}`,
+      ]);
       await expect(
         summary.getByText('Draft — not approved', { exact: true }),
       ).toBeVisible();
@@ -706,6 +725,15 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         offer.getByText('Checks completed with warnings.', { exact: true }),
       ).toBeVisible();
+      await reopenRequest(journey);
+      await expect(
+        offer.getByText('Checks completed with warnings.', { exact: true }),
+      ).toBeVisible();
+      await expect(
+        offer
+          .locator('.offer-quality li')
+          .filter({ hasText: 'Recipient tax ID recorded' }),
+      ).toContainText('WARNING');
       await offer
         .getByRole('checkbox', { name: 'Recipient tax ID recorded' })
         .check();
@@ -921,6 +949,23 @@ test('follows one commercial case from Request to signed agreement, Project and 
     }
 
     const contractsPath = `/contracts/opportunities/${opportunityId}`;
+    async function rememberChildAgreement(id: string): Promise<void> {
+      const agreement = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `${contractsPath}/agreements/${id}`,
+          }),
+        ).contract,
+      );
+      const version = object(agreement.version);
+      childAgreements.push({
+        id: text(agreement.id),
+        versionId: text(version.id),
+        qualityRunId: text(object(version.latestQualityRun).id),
+      });
+    }
     await test.step('6. prepare, approve and sign the Precontract, then create its Project', async () => {
       const editor = contract.getByRole('region', {
         name: 'Create Precontract',
@@ -973,6 +1018,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         () => reopenPrecontract(journey),
         [identityWarning, addedConditionsWarning],
       );
+      await rememberChildAgreement(precontractId);
 
       const creation = projects.getByRole('region', {
         name: 'Create a preparatory Project',
@@ -1135,6 +1181,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
         .getByRole('textbox', { name: 'Change summary', exact: true })
         .fill(entered.changeSummary);
       await contract
+        .getByLabel('New term end (optional)', { exact: true })
+        .fill(entered.addendumTermEnd);
+      await contract
         .getByRole('button', { name: 'Create Addendum', exact: true })
         .click();
       await expect(
@@ -1154,13 +1203,26 @@ test('follows one commercial case from Request to signed agreement, Project and 
       );
       const addenda = parent.addenda;
       if (!Array.isArray(addenda)) throw new Error('Expected Addenda');
-      // The Addendum copies its executed parent's current identity and adds
-      // no term, so none of its checks warns: approval needs no acknowledgement.
+      const addendumId = text(object(addenda[0]).id);
+      await reopenAddendum(journey);
+      await expect(
+        contract.getByRole('definition').filter({
+          hasText: new RegExp(`^${entered.addendumTermEnd}$`, 'u'),
+        }),
+      ).toBeVisible();
+      // The Addendum copies its executed parent's current identity. Its new
+      // term end is in the future, so that check passes without a warning.
       await approveAndSign(
-        `${contractsPath}/agreements/${text(object(addenda[0]).id)}`,
+        `${contractsPath}/agreements/${addendumId}`,
         () => reopenAddendum(journey),
         [],
       );
+      await expect(
+        checks
+          .getByRole('listitem')
+          .filter({ hasText: 'Term end has not passed (UTC)' }),
+      ).toContainText('PASS');
+      await rememberChildAgreement(addendumId);
       await contract
         .getByRole('button', {
           name: 'Return to parent agreement',
@@ -1180,6 +1242,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
         .click();
       await expect(
         contract.getByText(entered.changeSummary, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        contract.getByRole('definition').filter({
+          hasText: new RegExp(`^${entered.addendumTermEnd}$`, 'u'),
+        }),
+      ).toBeVisible();
+      await contract
+        .getByRole('button', { name: 'Open exact Contract document' })
+        .click();
+      await expect(
+        contract
+          .frameLocator('iframe[title="Illustrative Contract document"]')
+          .getByText(entered.addendumTermEnd, { exact: false }),
       ).toBeVisible();
       await capture(page, testInfo, 'journey-addendum-executed');
     });
@@ -1359,6 +1434,12 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await capture(page, testInfo, 'journey-activity');
 
       // The first transmission opens the superseded Offer Version 1.
+      const historicalOfferRead = page.waitForResponse(
+        mutation(
+          'GET',
+          /^\/api\/offers\/opportunities\/[^/]+\/versions\/[^/]+$/u,
+        ),
+      );
       await activityRow(
         page,
         'Ada Ionescu recorded the transmission of an Offer Version',
@@ -1372,6 +1453,22 @@ test('follows one commercial case from Request to signed agreement, Project and 
       });
       await expect(
         offerRegion.getByText('Historical version · read only'),
+      ).toBeVisible();
+      const historicalOffer = await historicalOfferRead;
+      expect(historicalOffer.status()).toBe(200);
+      const historicalVersion = object(
+        object(object(await historicalOffer.json()).offer).version,
+      );
+      expect(historicalVersion.versionNumber).toBe(1);
+      expect(historicalVersion.transmissionState).toBe('TRANSMITTED');
+      expect(historicalVersion.clientResponseState).toBe('PENDING');
+      await expect(
+        offerRegion
+          .locator('.offer-summary')
+          .getByText(
+            'Simulated transmission recorded · Client response pending',
+            { exact: true },
+          ),
       ).toBeVisible();
       // Version 1 keeps its own conditions, not those negotiated later.
       await expect(
@@ -1550,6 +1647,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
           `${contractsPath}/versions/${contractVersionId}/quality-checks`,
           `/contracts/projects/${projectId}`,
           `/projects/${projectId}`,
+          ...childAgreements.flatMap(({ id, versionId, qualityRunId }) => {
+            const agreementPath = `${contractsPath}/agreements/${id}`;
+            const versionPath = `${agreementPath}/versions/${versionId}`;
+            return [
+              agreementPath,
+              `${agreementPath}/project-candidates`,
+              `${agreementPath}/versions`,
+              versionPath,
+              `${versionPath}/representation`,
+              `${versionPath}/quality-checks`,
+              `${versionPath}/quality-checks/${qualityRunId}`,
+            ];
+          }),
         ];
         const journeyIdentifiers = [
           subject,
@@ -1562,6 +1672,11 @@ test('follows one commercial case from Request to signed agreement, Project and 
           offerVersionId,
           contractVersionId,
           projectId,
+          ...childAgreements.flatMap(({ id, versionId, qualityRunId }) => [
+            id,
+            versionId,
+            qualityRunId,
+          ]),
         ];
         for (const context of [companyId, otherCompanyId])
           for (const path of [...ownedLists, ...directReads]) {
@@ -2010,7 +2125,7 @@ async function publishIllustrativeConfiguration(
     'tariff',
   );
   // Both versions take effect on the synthetic server clock, not after a sleep.
-  await writeFile(clockFile(), JSON.stringify(initialClockOffset + 120_000));
+  await writeClockOffset(initialClockOffset + 120_000);
 }
 
 async function approvalDate(
@@ -2161,6 +2276,20 @@ async function apiRead(
   });
   expect(response.status(), path).toBe(200);
   return response.json();
+}
+
+// The API reads this file synchronously while browser requests can still be
+// in flight. Replace the complete JSON atomically so advancing or resetting
+// the synthetic clock never exposes the empty file of a truncating write.
+async function writeClockOffset(offset: number): Promise<void> {
+  const path = clockFile();
+  const temporaryPath = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, JSON.stringify(offset));
+    await rename(temporaryPath, path);
+  } finally {
+    await rm(temporaryPath, { force: true });
+  }
 }
 
 function clockFile(): string {
