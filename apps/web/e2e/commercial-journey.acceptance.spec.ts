@@ -118,7 +118,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
   request,
   browser,
 }, testInfo) => {
-  test.setTimeout(600_000);
+  // The complete journey also follows every projected Activity version link.
+  // Reserve time for those round trips; individual assertions keep their limits.
+  test.setTimeout(1_200_000);
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? 'Narrow' : 'Desktop';
   const companyName = `Commercial Journey ${suffix}`;
@@ -201,6 +203,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
   let projectId = '';
   const childAgreements: {
     id: string;
+    kind: 'PRECONTRACT' | 'ADDENDUM';
     versionId: string;
     qualityRunId: string;
   }[] = [];
@@ -566,6 +569,31 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         summary.getByText('Draft — not approved', { exact: true }),
       ).toBeVisible();
+      const draftOffer = offer.locator('.offer-representation');
+      await expect(
+        draftOffer.getByText('Draft — not approved', { exact: true }),
+      ).toBeVisible();
+      const offerDocument = draftOffer.frameLocator(
+        'iframe[title="Illustrative Offer representation"]',
+      );
+      await expect(
+        offerDocument.getByText(
+          'Provisional illustrative document — cannot be accepted — no legal effect — no official number',
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        offerDocument.getByRole('heading', {
+          name: 'Illustrative Offer',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        offerDocument
+          .getByRole('term')
+          .filter({ hasText: /^Offer Version$/u })
+          .locator('xpath=following-sibling::dd[1]'),
+      ).toHaveText('1');
       const quality = offer.locator('.offer-quality');
       await expect(
         quality.getByText('No Quality Check run yet.', { exact: true }),
@@ -903,13 +931,26 @@ test('follows one commercial case from Request to signed agreement, Project and 
       const noRun = checks.getByText('No Contract Quality Check run yet.', {
         exact: true,
       });
+      const completedAgreementCommand = (
+        action: 'quality-checks' | 'approve' | 'signature',
+      ) =>
+        page.waitForResponse(
+          (response) =>
+            response.request().method() === 'POST' &&
+            new URL(response.url()).pathname.startsWith(
+              `/api${agreementPath}/versions/`,
+            ) &&
+            new URL(response.url()).pathname.endsWith(`/${action}`),
+        );
       await expect(noRun).toBeVisible();
+      const checksCompleted = completedAgreementCommand('quality-checks');
       await checks
         .getByRole('button', {
           name: 'Run Contract Quality Checks',
           exact: true,
         })
         .click();
+      expect((await checksCompleted).status()).toBe(201);
       // The recorded IDNO clears the only blocking agreement check.
       await expect(recordedIdno).toContainText('PASS');
       await reopen();
@@ -942,7 +983,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
         for (const acknowledgement of acknowledgements)
           await acknowledgement.check();
       }
+      const approved = completedAgreementCommand('approve');
       await approve.click();
+      expect((await approved).status()).toBe(201);
       await expect(
         decision.getByText('Approved internally', { exact: true }),
       ).toBeVisible();
@@ -970,12 +1013,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await signatures
         .getByLabel('Client signing date', { exact: true })
         .fill(signedOn);
+      const signed = completedAgreementCommand('signature');
       await signatures
         .getByRole('button', {
           name: 'Record both simulated signatures',
           exact: true,
         })
         .click();
+      expect((await signed).status()).toBe(201);
       const executed = signatures.getByText(
         'Executed — simulated evidence only',
         { exact: true },
@@ -1014,8 +1059,12 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ).contract,
       );
       const version = object(agreement.version);
+      const kind = agreement.kind;
+      if (kind !== 'PRECONTRACT' && kind !== 'ADDENDUM')
+        throw new Error('Expected a child agreement kind');
       childAgreements.push({
         id: text(agreement.id),
+        kind,
         versionId: text(version.id),
         qualityRunId: text(object(version.latestQualityRun).id),
       });
@@ -1065,6 +1114,67 @@ test('follows one commercial case from Request to signed agreement, Project and 
           ).precontract,
         ).id,
       );
+      const draftDocumentRead = page.waitForResponse(
+        mutation(
+          'GET',
+          /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/versions\/[^/]+\/representation$/u,
+        ),
+      );
+      await contract
+        .getByRole('button', { name: 'Open exact Contract document' })
+        .click();
+      expect((await draftDocumentRead).status()).toBe(200);
+      const draftPrecontract = contract.getByRole('region', {
+        name: 'Illustrative Contract document',
+        exact: true,
+      });
+      const precontractDocument = draftPrecontract.frameLocator(
+        'iframe[title="Illustrative Contract document"]',
+      );
+      await expect(
+        precontractDocument.getByRole('heading', {
+          name: 'Illustrative Precontract',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        precontractDocument
+          .getByRole('term')
+          .filter({ hasText: /^Contract Version$/u })
+          .locator('xpath=following-sibling::dd[1]'),
+      ).toHaveText('1');
+      await expect(
+        precontractDocument.getByText(
+          'Provisional illustrative document — cannot be accepted — no legal effect — no official number — not a signed agreement — clauses are placeholders',
+          { exact: true },
+        ),
+      ).toBeVisible();
+      for (const clause of [
+        'Subject — CL_SUBJECT v1',
+        'Price — CL_PRICE v1',
+        'Term — CL_TERM v1',
+        'Conditions — CL_CONDITIONS v1',
+        'Preliminary work — CL_PRELIMINARY_WORK v1',
+        'General — CL_GENERAL v1',
+      ])
+        await expect(
+          precontractDocument.getByRole('heading', {
+            name: clause,
+            exact: true,
+          }),
+        ).toBeVisible();
+      await expect(
+        precontractDocument.getByText(
+          'No approved legal wording exists for this clause. This is an illustrative placeholder.',
+          { exact: true },
+        ),
+      ).toHaveCount(6);
+      await capture(page, testInfo, 'journey-precontract-draft');
+      // PRD 19.5 and 19.16 require this state marker in the viewer,
+      // outside the immutable representation bytes (PRD 18.7 and 19.7).
+      await expect(
+        draftPrecontract.getByText('Draft — not approved', { exact: true }),
+      ).toBeVisible();
       // The IDNO recorded since the Offer and the preliminary work and term
       // end raise exactly the two Precontract warnings (PRD 19.16, step 3).
       await approveAndSign(
@@ -1283,11 +1393,10 @@ test('follows one commercial case from Request to signed agreement, Project and 
       // Version 2 needs its own checks: the identity warning again and
       // `ADDED_CONDITIONS_CONFIRMED` for its term and special conditions
       // (PRD 19.16, revision variant).
-      await approveAndSign(
-        `${contractsPath}/agreements/${mainContractId}`,
-        () => reopenRequest(journey),
-        [identityWarning, addedConditionsWarning],
-      );
+      await approveAndSign(contractsPath, () => reopenRequest(journey), [
+        identityWarning,
+        addedConditionsWarning,
+      ]);
 
       const candidate = projects.getByRole('radio', {
         name: new RegExp(opportunityTitle, 'u'),
@@ -1305,6 +1414,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ).contract,
       );
       const expectedRevision = beforeRefusal.revision;
+      expect(beforeRefusal.id).toBe(mainContractId);
       if (
         typeof expectedRevision !== 'number' ||
         !Number.isSafeInteger(expectedRevision) ||
@@ -1775,6 +1885,174 @@ test('follows one commercial case from Request to signed agreement, Project and 
           .locator('.offer-summary')
           .getByText(entered.negotiatedConditions, { exact: true }),
       ).toBeVisible();
+
+      // Every projected Offer/agreement action opens its own exact version,
+      // not merely a correctly labelled row (PRD 25.3 and 25.4).
+      const currentOffer = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+          }),
+        ).offer,
+      );
+      const currentOfferVersion = object(currentOffer.version);
+      expect(currentOfferVersion.versionNumber).toBe(2);
+      const currentContract = object(
+        object(
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: contractsPath,
+          }),
+        ).contract,
+      );
+      const currentContractVersion = object(currentContract.version);
+      expect(currentContract.kind).toBe('CONTRACT');
+      expect(currentContractVersion.versionNumber).toBe(2);
+      expect(childAgreements.map(({ kind }) => kind).sort()).toEqual([
+        'ADDENDUM',
+        'PRECONTRACT',
+      ]);
+      const versionTargets: ActivityVersionTarget[] = [
+        {
+          family: 'offer',
+          label: offerV1,
+          resourceId: text(currentOffer.id),
+          versionId: text(currentOfferVersion.predecessorVersionId),
+          versionNumber: 1,
+          path: `/offers/opportunities/${opportunityId}`,
+        },
+        {
+          family: 'offer',
+          label: offerV2,
+          resourceId: text(currentOffer.id),
+          versionId: text(currentOfferVersion.id),
+          versionNumber: 2,
+          path: `/offers/opportunities/${opportunityId}`,
+        },
+        {
+          family: 'agreement',
+          kind: 'CONTRACT',
+          label: contractV1,
+          resourceId: text(currentContract.id),
+          versionId: text(currentContractVersion.predecessorVersionId),
+          versionNumber: 1,
+          path: contractsPath,
+        },
+        {
+          family: 'agreement',
+          kind: 'CONTRACT',
+          label: contractV2,
+          resourceId: text(currentContract.id),
+          versionId: text(currentContractVersion.id),
+          versionNumber: 2,
+          path: contractsPath,
+        },
+        ...childAgreements.map(({ id, kind, versionId }) => ({
+          family: 'agreement' as const,
+          kind,
+          label: kind === 'PRECONTRACT' ? precontractV1 : addendumV1,
+          resourceId: id,
+          versionId,
+          versionNumber: 1 as const,
+          path: `${contractsPath}/agreements/${id}`,
+        })),
+      ];
+      let linksFollowed = 0;
+      for (const [description, target] of commercialEvents) {
+        if (!target.startsWith('Illustrative ')) continue;
+        const destination = versionTargets.find(
+          ({ label }) =>
+            target === label ||
+            target.startsWith(`${label} · `) ||
+            target.startsWith(`${label} — `),
+        );
+        if (!destination) throw new Error('Unexpected Activity version target');
+        await openSection(journey, 'Activity Log');
+        const exactPath = `/api${destination.path}/versions/${destination.versionId}`;
+        const selectedVersionRead = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname === exactPath,
+        );
+        await activityRow(page, description, target)
+          .getByRole('button', {
+            name:
+              destination.family === 'offer'
+                ? 'Open Offer Version'
+                : 'Open agreement version',
+            exact: true,
+          })
+          .click();
+        const selectedResponse = await selectedVersionRead;
+        expect(selectedResponse.status(), description).toBe(200);
+        const selected = object(
+          object(await selectedResponse.json())[
+            destination.family === 'offer' ? 'offer' : 'contract'
+          ],
+        );
+        expect(selected.id, description).toBe(destination.resourceId);
+        expect(selected.illustrativeReference, description).toBe(1);
+        const selectedVersion = object(selected.version);
+        expect(selectedVersion.id, description).toBe(destination.versionId);
+        expect(selectedVersion.versionNumber, description).toBe(
+          destination.versionNumber,
+        );
+        if (destination.family === 'offer') {
+          await expect(
+            offerRegion
+              .locator('.offer-summary')
+              .getByRole('term')
+              .filter({ hasText: /^Version$/u })
+              .locator('xpath=following-sibling::dd[1]'),
+          ).toHaveText(String(destination.versionNumber));
+          await expect(
+            offerRegion.getByText(
+              destination.versionNumber === 1
+                ? 'Historical version · read only'
+                : 'Current version',
+              { exact: true },
+            ),
+          ).toBeVisible();
+        } else {
+          expect(selected.kind, description).toBe(destination.kind);
+          await expect(
+            contract.getByText(
+              `Illustrative reference 1 · Version ${destination.versionNumber}`,
+              { exact: true },
+            ),
+          ).toBeVisible();
+          if (destination.kind === 'PRECONTRACT')
+            await expect(
+              contract.getByRole('heading', {
+                name: 'Illustrative Precontract',
+                exact: true,
+              }),
+            ).toBeVisible();
+          else if (destination.kind === 'ADDENDUM')
+            await expect(
+              contract.getByRole('heading', {
+                name: 'Illustrative Addendum 1',
+                exact: true,
+              }),
+            ).toBeVisible();
+          if (
+            destination.kind === 'CONTRACT' &&
+            destination.versionNumber === 1
+          )
+            await expect(
+              contract.getByText(
+                'Historical version — preserved; no further decision or signature.',
+                { exact: true },
+              ),
+            ).toBeVisible();
+        }
+        linksFollowed += 1;
+      }
+      expect(linksFollowed).toBe(23);
+      await capture(page, testInfo, 'journey-all-activity-links');
     });
 
     await test.step("criterion 3: another Company's user sees neither the case nor its Activity", async () => {
@@ -1957,7 +2235,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
             else if (ownedLists.includes(path))
               // BIC's own lists read, without the journey case or Project.
               expect(response.status(), path).toBe(200);
-            else expect([403, 404], path).toContain(response.status());
+            else expect(response.status(), path).toBe(404);
           }
       } finally {
         for (const bundle of otherCompanyBundles)
@@ -1979,6 +2257,17 @@ type Journey = {
   companyName: string;
   subject: string;
 };
+
+type ActivityVersionTarget = {
+  label: string;
+  resourceId: string;
+  versionId: string;
+  versionNumber: 1 | 2;
+  path: string;
+} & (
+  | { family: 'offer' }
+  | { family: 'agreement'; kind: 'CONTRACT' | 'PRECONTRACT' | 'ADDENDUM' }
+);
 
 /** Opens a navigation section of the active journey Company from a fresh load. */
 async function openSection(journey: Journey, section: string): Promise<void> {
@@ -2003,11 +2292,15 @@ async function openSection(journey: Journey, section: string): Promise<void> {
 async function reopenRequest(journey: Journey): Promise<void> {
   const { page, subject } = journey;
   await openSection(journey, 'Client Requests');
+  const detailRead = page.waitForResponse(
+    mutation('GET', /^\/api\/commercial-intake\/requests\/[^/]+$/u),
+  );
   await page
     .locator('.commercial-intake-workspace')
     .getByRole('button')
     .filter({ has: page.getByText(subject, { exact: true }) })
     .click();
+  expect((await detailRead).status()).toBe(200);
   await expect(
     page.getByText('Client Request detail', { exact: true }),
   ).toBeVisible();
