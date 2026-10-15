@@ -561,16 +561,15 @@ test('follows one commercial case from Request to signed agreement, Project and 
       expect((await prepared).status()).toBe(201);
 
       await reopenRequest(journey);
-      const pendingOffer = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: `/offers/opportunities/${opportunityId}`,
-          }),
-        ).offer,
-      );
-      expect(object(pendingOffer.version).validityDays).toBe(30);
+      const pendingOffer = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: `/offers/opportunities/${opportunityId}`,
+          decode: decodeOfferDetail,
+        })
+      ).offer;
+      expect(pendingOffer.version.validityDays).toBe(30);
       await expect(
         summary.getByText('Illustrative and provisional', { exact: true }),
       ).toBeVisible();
@@ -893,16 +892,15 @@ test('follows one commercial case from Request to signed agreement, Project and 
         }),
       ).toHaveCount(0);
       const offerPath = `/offers/opportunities/${opportunityId}`;
-      const acceptedOffer = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: offerPath,
-          }),
-        ).offer,
-      );
-      const acceptedVersion = object(acceptedOffer.version);
+      const acceptedOffer = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: offerPath,
+          decode: decodeOfferDetail,
+        })
+      ).offer;
+      const acceptedVersion = acceptedOffer.version;
       expect(acceptedVersion.validityDays).toBe(30);
       await expectVersionRefused(request, {
         companyId,
@@ -911,22 +909,21 @@ test('follows one commercial case from Request to signed agreement, Project and 
         code: 'OFFER_ACCEPTED',
         data: {
           expectedOfferRevision: acceptedOffer.revision,
-          pricingSnapshotId: text(acceptedVersion.pricingSnapshotId),
+          pricingSnapshotId: acceptedVersion.pricingSnapshotId,
           recipient: { kind: 'PRIMARY' },
           validityDays: acceptedVersion.validityDays,
           scopeNote: entered.offerScope,
           commercialConditions: entered.negotiatedConditions,
         },
       });
-      const offerAfterRefusal = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: offerPath,
-          }),
-        ).offer,
-      );
+      const offerAfterRefusal = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: offerPath,
+          decode: decodeOfferDetail,
+        })
+      ).offer;
       expect(offerAfterRefusal.revision).toBe(acceptedOffer.revision);
       expect(offerAfterRefusal.version).toEqual(acceptedVersion);
       await capture(page, testInfo, 'journey-offer-accepted');
@@ -1124,24 +1121,23 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
     const contractsPath = `/contracts/opportunities/${opportunityId}`;
     async function rememberChildAgreement(id: string): Promise<void> {
-      const agreement = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: `${contractsPath}/agreements/${id}`,
-          }),
-        ).contract,
-      );
-      const version = object(agreement.version);
+      const agreement = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: `${contractsPath}/agreements/${id}`,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
+      const version = agreement.version;
       const kind = agreement.kind;
       if (kind !== 'PRECONTRACT' && kind !== 'ADDENDUM')
         throw new Error('Expected a child agreement kind');
       childAgreements.push({
-        id: text(agreement.id),
+        id: agreement.id,
         kind,
-        versionId: text(version.id),
-        qualityRunId: text(object(version.latestQualityRun).id),
+        versionId: version.id,
+        qualityRunId: present(version.latestQualityRun).id,
       });
     }
     await test.step('6. prepare, approve and sign the Precontract, then create its Project', async () => {
@@ -1178,17 +1174,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
         contract.getByText('Pending approval · Not executed', { exact: true }),
       ).toBeVisible();
 
-      const precontractId = text(
-        object(
-          object(
-            await apiRead(request, {
-              identity: identities.ada,
-              companyId,
-              path: contractsPath,
-            }),
-          ).precontract,
-        ).id,
-      );
+      const precontractId = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodePrecontractSummary,
+        })
+      ).precontract.id;
       const draftDocumentRead = page.waitForResponse(
         mutation(
           'GET',
@@ -1258,15 +1251,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
         [identityWarning, addedConditionsWarning],
       );
       const precontractPath = `${contractsPath}/agreements/${precontractId}`;
-      const executedPrecontract = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: precontractPath,
-          }),
-        ).contract,
-      );
+      const executedPrecontract = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: precontractPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
       await expectVersionRefused(request, {
         companyId,
         path: `${precontractPath}/versions`,
@@ -1282,15 +1274,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
           preliminaryLimits: entered.preliminaryLimits,
         },
       });
-      const precontractAfterRefusal = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: precontractPath,
-          }),
-        ).contract,
-      );
+      const precontractAfterRefusal = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: precontractPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
       expect(precontractAfterRefusal.revision).toBe(
         executedPrecontract.revision,
       );
@@ -1453,17 +1444,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
     });
 
     await test.step('7b. approve and sign Contract v2, then link the existing Project', async () => {
-      const mainContractId = text(
-        object(
-          object(
-            await apiRead(request, {
-              identity: identities.ada,
-              companyId,
-              path: contractsPath,
-            }),
-          ).contract,
-        ).id,
-      );
+      const mainContractId = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract.id;
       // The Request detail opens the current Contract Version by default.
       // Version 2 needs its own checks: the identity warning again and
       // `ADDED_CONDITIONS_CONFIRMED` for its term and special conditions
@@ -1482,23 +1470,16 @@ test('follows one commercial case from Request to signed agreement, Project and 
       );
       // The empty candidate acknowledgement used for the Precontract is now
       // obsolete. Exercise the public refusal without a successful mutation.
-      const beforeRefusal = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: contractsPath,
-          }),
-        ).contract,
-      );
+      const beforeRefusal = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
       const expectedRevision = beforeRefusal.revision;
       expect(beforeRefusal.id).toBe(mainContractId);
-      if (
-        typeof expectedRevision !== 'number' ||
-        !Number.isSafeInteger(expectedRevision) ||
-        expectedRevision < 1
-      )
-        throw new Error('Expected a positive Contract revision');
       const staleCandidates = await request.post(
         `${apiOrigin}/api${contractsPath}/projects/create`,
         {
@@ -1517,15 +1498,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
       const refusal: unknown = await staleCandidates.json();
       expect(staleCandidates.status(), JSON.stringify(refusal)).toBe(409);
       expect(refusal).toMatchObject({ code: 'PROJECT_CANDIDATES_CHANGED' });
-      const afterRefusal = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: contractsPath,
-          }),
-        ).contract,
-      );
+      const afterRefusal = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
       expect(afterRefusal.revision).toBe(expectedRevision);
       expect(afterRefusal.version).toEqual(beforeRefusal.version);
       await candidate.check();
@@ -1565,30 +1545,30 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(linkedContracts).toContainText('Illustrative Contract 1');
       await expect(linkedContracts).toContainText('Illustrative Precontract 1');
       await capture(page, testInfo, 'journey-project');
-      const projectList: unknown = await apiRead(request, {
+      const projectList = await apiRead(request, {
         identity: identities.ada,
         companyId,
         path: '/projects',
+        decode: decodeProjects,
       });
-      if (!Array.isArray(projectList)) throw new Error('Expected Projects');
-      const journeyProjects = projectList
-        .map((project) => object(project))
-        .filter((project) => project.title === opportunityTitle);
+
+      const journeyProjects = projectList.filter(
+        (project) => project.title === opportunityTitle,
+      );
       expect(journeyProjects).toHaveLength(1);
-      projectId = text(object(journeyProjects[0]).id);
+      projectId = present(journeyProjects[0]).id;
     });
 
     await test.step('8. prepare, approve and sign Addendum 1', async () => {
       await reopenRequest(journey);
-      const parentBeforeAddendum = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: contractsPath,
-          }),
-        ).contract,
-      );
+      const parentBeforeAddendum = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
       expect(parentBeforeAddendum.version).toMatchObject({
         versionNumber: 2,
         scopeNote: entered.offerScope,
@@ -1613,20 +1593,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
           exact: true,
         }),
       ).toBeVisible();
-      const parent = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: contractsPath,
-          }),
-        ).contract,
-      );
+      const parent = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
       const addenda = parent.addenda;
       expect(parent.id).toBe(parentBeforeAddendum.id);
       expect(parent.version).toEqual(parentBeforeAddendum.version);
-      if (!Array.isArray(addenda)) throw new Error('Expected Addenda');
-      const addendumId = text(object(addenda[0]).id);
+
+      const addendumId = present(addenda[0]).id;
       await reopenRequest(journey);
       await expect(
         contract.getByText(entered.specialConditions, { exact: true }),
@@ -1663,15 +1642,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
         })
         .click();
       await reopenRequest(journey);
-      const parentAfterExecution = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: contractsPath,
-          }),
-        ).contract,
-      );
+      const parentAfterExecution = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
       expect(parentAfterExecution.id).toBe(parentBeforeAddendum.id);
       expect(parentAfterExecution.version).toEqual(
         parentBeforeAddendum.version,
@@ -1966,27 +1944,25 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
       // Every projected Offer/agreement action opens its own exact version,
       // not merely a correctly labelled row (PRD 25.3 and 25.4).
-      const currentOffer = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: `/offers/opportunities/${opportunityId}`,
-          }),
-        ).offer,
-      );
-      const currentOfferVersion = object(currentOffer.version);
+      const currentOffer = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: `/offers/opportunities/${opportunityId}`,
+          decode: decodeOfferDetail,
+        })
+      ).offer;
+      const currentOfferVersion = currentOffer.version;
       expect(currentOfferVersion.versionNumber).toBe(2);
-      const currentContract = object(
-        object(
-          await apiRead(request, {
-            identity: identities.ada,
-            companyId,
-            path: contractsPath,
-          }),
-        ).contract,
-      );
-      const currentContractVersion = object(currentContract.version);
+      const currentContract = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
+      const currentContractVersion = currentContract.version;
       expect(currentContract.kind).toBe('CONTRACT');
       expect(currentContractVersion.versionNumber).toBe(2);
       expect(childAgreements.map(({ kind }) => kind).sort()).toEqual([
@@ -1997,16 +1973,16 @@ test('follows one commercial case from Request to signed agreement, Project and 
         {
           family: 'offer',
           label: offerV1,
-          resourceId: text(currentOffer.id),
-          versionId: text(currentOfferVersion.predecessorVersionId),
+          resourceId: currentOffer.id,
+          versionId: present(currentOfferVersion.predecessorVersionId),
           versionNumber: 1,
           path: `/offers/opportunities/${opportunityId}`,
         },
         {
           family: 'offer',
           label: offerV2,
-          resourceId: text(currentOffer.id),
-          versionId: text(currentOfferVersion.id),
+          resourceId: currentOffer.id,
+          versionId: currentOfferVersion.id,
           versionNumber: 2,
           path: `/offers/opportunities/${opportunityId}`,
         },
@@ -2014,8 +1990,8 @@ test('follows one commercial case from Request to signed agreement, Project and 
           family: 'agreement',
           kind: 'CONTRACT',
           label: contractV1,
-          resourceId: text(currentContract.id),
-          versionId: text(currentContractVersion.predecessorVersionId),
+          resourceId: currentContract.id,
+          versionId: present(currentContractVersion.predecessorVersionId),
           versionNumber: 1,
           path: contractsPath,
         },
@@ -2023,8 +1999,8 @@ test('follows one commercial case from Request to signed agreement, Project and 
           family: 'agreement',
           kind: 'CONTRACT',
           label: contractV2,
-          resourceId: text(currentContract.id),
-          versionId: text(currentContractVersion.id),
+          resourceId: currentContract.id,
+          versionId: currentContractVersion.id,
           versionNumber: 2,
           path: contractsPath,
         },
@@ -2215,33 +2191,25 @@ test('follows one commercial case from Request to signed agreement, Project and 
         // Direct identifiers reveal nothing either (PRD 13): every public
         // read keyed by an identifier the journey holds is denied, and BIC's
         // own lists exclude the case.
-        const offerVersionId = text(
-          object(
-            object(
-              object(
-                await apiRead(request, {
-                  identity: identities.ada,
-                  companyId,
-                  path: `/offers/opportunities/${opportunityId}`,
-                }),
-              ).offer,
-            ).version,
-          ).id,
-        );
-        const mainAgreement = object(
-          object(
-            await apiRead(request, {
-              identity: identities.ada,
-              companyId,
-              path: contractsPath,
-            }),
-          ).contract,
-        );
-        const mainVersion = object(mainAgreement.version);
-        const contractVersionId = text(mainVersion.id);
-        const contractQualityRunId = text(
-          object(mainVersion.latestQualityRun).id,
-        );
+        const offerVersionId = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+            decode: decodeOfferDetail,
+          })
+        ).offer.version.id;
+        const mainAgreement = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: contractsPath,
+            decode: decodeAgreementDetail,
+          })
+        ).contract;
+        const mainVersion = mainAgreement.version;
+        const contractVersionId = mainVersion.id;
+        const contractQualityRunId = present(mainVersion.latestQualityRun).id;
         const ownedLists = [
           '/commercial-intake/requests?limit=25',
           '/sales-stages',
@@ -2558,25 +2526,26 @@ async function expectNoActivityLeak(
     };
   },
 ): Promise<void> {
-  const events = object(
+  const events = (
     await apiRead(request, {
       identity: identities.ada,
       companyId,
       path: '/activity-log',
-    }),
+      decode: decodeActivityPage,
+    })
   ).events;
-  if (!Array.isArray(events)) throw new Error('Expected Activity events');
-  const projected = events.map((event) => object(event));
+
+  const projected = events;
   const commercial = projected.filter((event) =>
-    commercialActivityActions.includes(text(event.action)),
+    commercialActivityActions.includes(event.action),
   );
   expect(commercial).toHaveLength(expectedCommercialEvents);
   // Each commercial event projects exactly the keys its contract names
   // (PRD 17.3 and 25.2): any extra field fails before its value is scanned.
   for (const event of commercial) {
-    const action = text(event.action);
-    const target = object(event.target);
-    const metadata = object(event.metadata);
+    const action = event.action;
+    const target = event.target;
+    const metadata = event.metadata;
     expect(Object.keys(event).sort(), action).toEqual([
       'action',
       'actor',
@@ -2585,18 +2554,18 @@ async function expectNoActivityLeak(
       'occurredAt',
       'target',
     ]);
-    expect(Object.keys(object(event.actor)).sort(), action).toEqual([
+    expect(Object.keys(event.actor).sort(), action).toEqual([
       'displayName',
       'internalUserId',
     ]);
     expect(Object.keys(target).sort(), action).toEqual(
-      projectedTargetKeys[text(target.type)],
+      projectedTargetKeys[target.type],
     );
     expect(Object.keys(metadata).sort(), action).toEqual(
       projectedMetadataKeys[action] ?? [],
     );
     if (action === 'contract_project.linked')
-      expect(Object.keys(object(metadata.project)).sort()).toEqual([
+      expect(Object.keys(present(metadata.project)).sort()).toEqual([
         'projectId',
         'projectTitle',
       ]);
@@ -2773,15 +2742,15 @@ async function approvalDate(
   request: APIRequestContext,
   { companyId, path }: { companyId: string; path: string },
 ): Promise<string> {
-  const agreement = object(
-    object(
-      await apiRead(request, { identity: identities.ada, companyId, path }),
-    ).contract,
-  );
-  return text(object(object(agreement.version).decision).decidedAt).slice(
-    0,
-    10,
-  );
+  const agreement = (
+    await apiRead(request, {
+      identity: identities.ada,
+      companyId,
+      path,
+      decode: decodeAgreementDetail,
+    })
+  ).contract;
+  return present(agreement.version.decision).decidedAt.slice(0, 10);
 }
 
 async function registerCompany(
@@ -2813,19 +2782,20 @@ async function responsibleLabel(
     membership,
   }: { companyId: string; opportunityId: string; membership: string },
 ): Promise<string> {
-  const members = object(
+  const members = (
     await apiRead(request, {
       identity: identities.ada,
       companyId,
       path: `/commercial-intake/opportunities/${opportunityId}/eligible-responsible-actors`,
-    }),
+      decode: decodeEligibleMembers,
+    })
   ).members;
-  if (!Array.isArray(members)) throw new Error('Expected eligible members');
-  const member = members
-    .map((candidate) => object(candidate))
-    .find((candidate) => candidate.workspaceMembershipId === membership);
+
+  const member = members.find(
+    (candidate) => candidate.workspaceMembershipId === membership,
+  );
   if (!member) throw new Error(`Membership ${membership} is not eligible`);
-  return text(member.displayLabel);
+  return member.displayLabel;
 }
 
 async function membershipOf(
@@ -2934,19 +2904,176 @@ async function expectVersionRefused(
   expect(result).toMatchObject({ code });
 }
 
-async function apiRead(
+/** Validate each read once, preserving unknown fields for equality/leak checks. */
+function decodeOfferDetail(value: unknown) {
+  const root = object(value);
+  const offer = object(root.offer);
+  const version = object(offer.version);
+  return {
+    ...root,
+    offer: {
+      ...offer,
+      id: text(offer.id),
+      revision: positiveInteger(offer.revision),
+      version: {
+        ...version,
+        id: text(version.id),
+        versionNumber: positiveInteger(version.versionNumber),
+        predecessorVersionId: nullableText(version.predecessorVersionId),
+        pricingSnapshotId: text(version.pricingSnapshotId),
+        validityDays: positiveInteger(version.validityDays),
+      },
+    },
+  };
+}
+
+function decodeAgreementDetail(value: unknown) {
+  const root = object(value);
+  const contract = object(root.contract);
+  const version = object(contract.version);
+  const kind = contract.kind;
+  if (kind !== 'CONTRACT' && kind !== 'PRECONTRACT' && kind !== 'ADDENDUM')
+    throw new Error('Expected an agreement kind');
+  const quality =
+    version.latestQualityRun === null ? null : object(version.latestQualityRun);
+  const decision = version.decision === null ? null : object(version.decision);
+  return {
+    ...root,
+    contract: {
+      ...contract,
+      id: text(contract.id),
+      kind,
+      revision: positiveInteger(contract.revision),
+      addenda: list(contract.addenda).map((value) => {
+        const addendum = object(value);
+        return { ...addendum, id: text(addendum.id) };
+      }),
+      version: {
+        ...version,
+        id: text(version.id),
+        versionNumber: positiveInteger(version.versionNumber),
+        predecessorVersionId: nullableText(version.predecessorVersionId),
+        latestQualityRun:
+          quality === null ? null : { ...quality, id: text(quality.id) },
+        decision:
+          decision === null
+            ? null
+            : { ...decision, decidedAt: text(decision.decidedAt) },
+      },
+    },
+  };
+}
+
+function decodePrecontractSummary(value: unknown) {
+  const root = object(value);
+  const precontract = object(root.precontract);
+  return { ...root, precontract: { ...precontract, id: text(precontract.id) } };
+}
+
+function decodeProjects(value: unknown) {
+  return list(value).map((value) => {
+    const project = object(value);
+    return { ...project, id: text(project.id), title: text(project.title) };
+  });
+}
+
+function decodeEligibleMembers(value: unknown) {
+  const root = object(value);
+  return {
+    ...root,
+    members: list(root.members).map((value) => {
+      const member = object(value);
+      return {
+        ...member,
+        workspaceMembershipId: text(member.workspaceMembershipId),
+        displayLabel: text(member.displayLabel),
+      };
+    }),
+  };
+}
+
+function decodeActivityMetadata(value: unknown): Record<string, unknown> & {
+  project?: { projectId: string; projectTitle: string };
+} {
+  const metadata = object(value);
+  if (!('project' in metadata)) return metadata;
+  const project = object(metadata.project);
+  return {
+    ...metadata,
+    project: {
+      ...project,
+      projectId: text(project.projectId),
+      projectTitle: text(project.projectTitle),
+    },
+  };
+}
+
+function decodeActivityPage(value: unknown) {
+  const root = object(value);
+  return {
+    ...root,
+    events: list(root.events).map((value) => {
+      const event = object(value);
+      const actor = object(event.actor);
+      const target = object(event.target);
+      return {
+        ...event,
+        id: text(event.id),
+        action: text(event.action),
+        occurredAt: text(event.occurredAt),
+        actor: {
+          ...actor,
+          displayName: text(actor.displayName),
+          internalUserId: text(actor.internalUserId),
+        },
+        target: { ...target, type: text(target.type) },
+        metadata: decodeActivityMetadata(event.metadata),
+      };
+    }),
+  };
+}
+
+function list(value: unknown): unknown[] {
+  if (!Array.isArray(value)) throw new Error('Expected an array');
+  return value;
+}
+
+function positiveInteger(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
+    throw new Error('Expected a positive integer');
+  return value;
+}
+
+function nullableText(value: unknown): string | null {
+  return value === null ? null : text(value);
+}
+
+function present<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined)
+    throw new Error('Expected a value');
+  return value;
+}
+
+async function apiRead<T>(
   request: APIRequestContext,
   {
     identity,
     companyId,
     path,
-  }: { identity: Identity; companyId: string; path: string },
-): Promise<unknown> {
+    decode,
+  }: {
+    identity: Identity;
+    companyId: string;
+    path: string;
+    decode: (value: unknown) => T;
+  },
+): Promise<T> {
   const response = await request.get(`${apiOrigin}/api${path}`, {
     headers: { ...identity, 'x-company-context-id': companyId },
   });
   expect(response.status(), path).toBe(200);
-  return response.json();
+  const payload: unknown = await response.json();
+  return decode(payload);
 }
 
 // The API reads this file synchronously while browser requests can still be
