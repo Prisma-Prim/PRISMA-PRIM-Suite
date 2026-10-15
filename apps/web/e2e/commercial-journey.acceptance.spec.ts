@@ -69,6 +69,67 @@ type Bundle =
   | 'company-sales-stage-configuration'
   | 'company-commercial-activity-reader';
 
+// Assignment receipts carry API display labels and captured permission versions.
+const assignmentContracts = {
+  'company-context': { label: 'Company Context Access', versions: [null] },
+  'company-director-client': {
+    label: 'Company Director Client Access',
+    versions: ['v1', 'v2'],
+  },
+  'company-commercial-intake': {
+    label: 'Company Commercial Intake',
+    versions: ['v1', 'v2', 'v3', 'v4'],
+  },
+  'company-service-catalogue': {
+    label: 'Company Service Catalogue',
+    versions: ['v1'],
+  },
+  'company-pricing-configuration': {
+    label: 'Company Pricing Configuration',
+    versions: ['v1'],
+  },
+  'company-pricing-user': { label: 'Company Pricing User', versions: ['v1'] },
+  'company-pricing-adjustment': {
+    label: 'Company Pricing Adjustment',
+    versions: ['v1'],
+  },
+  'company-offer-preparer': {
+    label: 'Company Offer Preparer',
+    versions: ['v1'],
+  },
+  'company-offer-approver': {
+    label: 'Company Offer Approver',
+    versions: ['v1'],
+  },
+  'company-contract-preparer': {
+    label: 'Company Contract Preparer',
+    versions: ['v1'],
+  },
+  'company-contract-approver': {
+    label: 'Company Contract Approver',
+    versions: ['v1'],
+  },
+  'company-project': {
+    label: 'Company Project Access',
+    versions: ['v1', 'v2'],
+  },
+  'company-opportunity-manager': {
+    label: 'Company Opportunity Manager',
+    versions: ['v1', 'v2'],
+  },
+  'company-sales-stage-configuration': {
+    label: 'Company Sales Stage Configuration',
+    versions: ['v1'],
+  },
+  'company-commercial-activity-reader': {
+    label: 'Company Commercial Activity Reader',
+    versions: ['v1'],
+  },
+} as const satisfies Record<
+  Bundle,
+  { label: string; versions: readonly ('v1' | 'v2' | 'v3' | 'v4' | null)[] }
+>;
+
 const journeyBundles: readonly Bundle[] = [
   'company-context',
   'company-director-client',
@@ -2234,6 +2295,8 @@ test('follows one commercial case from Request to signed agreement, Project and 
           `${contractsPath}/versions/${contractVersionId}/quality-checks/${contractQualityRunId}`,
           `/contracts/projects/${projectId}`,
           `/projects/${projectId}`,
+          `/projects/${projectId}/lifecycle`,
+          `/projects/${projectId}/responsible`,
           ...childAgreements.flatMap(({ id, versionId, qualityRunId }) => {
             const agreementPath = `${contractsPath}/agreements/${id}`;
             const versionPath = `${agreementPath}/versions/${versionId}`;
@@ -2679,51 +2742,61 @@ async function publishIllustrativeConfiguration(
     serviceName,
   }: { companyId: string; suffix: string; serviceName: string },
 ): Promise<void> {
-  const step = (path: string, data: unknown, key: string) =>
+  const step = <T>({
+    path,
+    data,
+    key,
+    decode,
+  }: {
+    path: string;
+    data: unknown;
+    key: string;
+    decode: (value: unknown) => T;
+  }) =>
     command(request, {
       identity: identities.ada,
       path,
       data,
       key: `journey-${key}-${suffix}`,
       companyId,
+      decode,
     });
   const effectiveFrom = new Date(
     Date.now() + initialClockOffset + 60_000,
   ).toISOString();
-  await step(
-    '/pricing-configuration/rule-versions',
-    {
+  await step({
+    path: '/pricing-configuration/rule-versions',
+    data: {
       label: 'Synthetic journey rule',
       effectiveFrom,
       expectedActiveVersionNumber: null,
     },
-    'rule',
-  );
-  const definition = object(
-    object(
-      await step(
-        '/commercial-catalogue/service-definitions',
-        {
-          code: `JOURNEY-${suffix.toUpperCase()}`,
-          name: serviceName,
-          description: null,
-        },
-        'definition',
-      ),
-    ).definition,
-  );
-  const offering = object(
-    object(
-      await step(
-        '/commercial-catalogue/offerings',
-        { serviceDefinitionId: text(definition.id), commercialLabel: null },
-        'offering',
-      ),
-    ).offering,
-  );
-  await step(
-    `/pricing-configuration/offerings/${text(offering.id)}/tariff-versions`,
-    {
+    key: 'rule',
+    decode: decodeRulePublication,
+  });
+  const definition = (
+    await step({
+      path: '/commercial-catalogue/service-definitions',
+      data: {
+        code: `JOURNEY-${suffix.toUpperCase()}`,
+        name: serviceName,
+        description: null,
+      },
+      key: 'definition',
+      decode: decodeDefinitionReceipt,
+    })
+  ).definition;
+  const offering = (
+    await step({
+      path: '/commercial-catalogue/offerings',
+      data: { serviceDefinitionId: definition.id, commercialLabel: null },
+      key: 'offering',
+      decode: decodeOfferingReceipt,
+    })
+  ).offering;
+  await step({
+    path: `/pricing-configuration/offerings/${offering.id}/tariff-versions`,
+    data: {
       unit: 'illustrative-unit',
       unitAmount: '300.0000',
       currency: 'EUR',
@@ -2732,8 +2805,9 @@ async function publishIllustrativeConfiguration(
       effectiveFrom,
       expectedActiveVersionNumber: null,
     },
-    'tariff',
-  );
+    key: 'tariff',
+    decode: decodeTariffPublication,
+  });
   // Both versions take effect on the synthetic server clock, not after a sleep.
   await writeClockOffset(initialClockOffset + 120_000);
 }
@@ -2758,16 +2832,14 @@ async function registerCompany(
   displayName: string,
   suffix: string,
 ): Promise<string> {
-  return text(
-    object(
-      await command(request, {
-        identity: identities.owner,
-        path: '/companies',
-        data: { displayName },
-        key: `journey-company-${suffix}`,
-      }),
-    ).id,
-  );
+  const company = await command(request, {
+    identity: identities.owner,
+    path: '/companies',
+    data: { displayName },
+    key: `journey-company-${suffix}`,
+    decode: decodeCompanyReceipt,
+  });
+  return company.id;
 }
 
 /**
@@ -2822,6 +2894,8 @@ async function grant(
     path: `/${bundle}-assignments`,
     data: { workspaceMembershipId: membership, companyId },
     key: `journey-grant-${bundle}-${crypto.randomUUID()}`,
+    decode: (value) =>
+      decodeAssignmentReceipt(value, { bundle, membership, companyId }),
   });
 }
 
@@ -2845,7 +2919,7 @@ async function revoke(
   expect(response.status()).toBe(200);
 }
 
-async function command(
+async function command<T>(
   request: APIRequestContext,
   {
     identity,
@@ -2853,14 +2927,16 @@ async function command(
     data,
     key,
     companyId,
+    decode,
   }: {
     identity: Identity;
     path: string;
     data: unknown;
     key: string;
     companyId?: string;
+    decode: (value: unknown) => T;
   },
-): Promise<unknown> {
+): Promise<T> {
   const response = await request.post(`${apiOrigin}/api${path}`, {
     headers: {
       ...identity,
@@ -2871,7 +2947,7 @@ async function command(
   });
   const result: unknown = await response.json();
   expect(response.status(), JSON.stringify({ path, result })).toBe(201);
-  return result;
+  return decode(result);
 }
 
 /** A valid version command must be refused once its agreement is final. */
@@ -2902,6 +2978,203 @@ async function expectVersionRefused(
   const result: unknown = await response.json();
   expect(response.status(), JSON.stringify({ path, result })).toBe(409);
   expect(result).toMatchObject({ code });
+}
+
+function decodeCompanyReceipt(value: unknown) {
+  const company = object(value);
+  if (company.status !== 'active')
+    throw new Error('Expected an active Company receipt');
+  return {
+    ...company,
+    id: text(company.id),
+    workspaceId: text(company.workspaceId),
+    displayName: text(company.displayName),
+    status: company.status,
+    createdAt: instant(company.createdAt),
+    createdByInternalUserId: text(company.createdByInternalUserId),
+  };
+}
+
+function decodeAssignmentReceipt<B extends Bundle>(
+  value: unknown,
+  {
+    bundle,
+    membership,
+    companyId,
+  }: {
+    bundle: B;
+    membership: string;
+    companyId: string;
+  },
+) {
+  const assignment = object(value);
+  const expected = assignmentContracts[bundle];
+  const allowed: readonly (typeof assignmentContracts)[B]['versions'][number][] =
+    expected.versions;
+  const permissionSetVersion = allowed.find(
+    (version) => version === assignment.permissionSetVersion,
+  );
+  if (permissionSetVersion === undefined)
+    throw new Error('Unknown captured Company assignment version');
+  if (
+    assignment.bundle !== expected.label ||
+    assignment.workspaceMembershipId !== membership ||
+    assignment.companyId !== companyId ||
+    assignment.active !== true
+  )
+    throw new Error('Expected the requested active Company assignment');
+  return {
+    ...assignment,
+    id: text(assignment.id),
+    bundle: expected.label,
+    workspaceMembershipId: membership,
+    companyId,
+    active: assignment.active,
+    permissionSetVersion,
+  };
+}
+
+function decodeIllustrativeRecord(value: unknown) {
+  const row = object(value);
+  if (row.provenance !== 'ILLUSTRATIVE' || row.provisional !== true)
+    throw new Error('Expected an illustrative provisional record');
+  return Object.assign(row, {
+    id: text(row.id),
+    provenance: row.provenance,
+    provisional: row.provisional,
+    createdByWorkspaceMembershipId: text(row.createdByWorkspaceMembershipId),
+    createdAt: instant(row.createdAt),
+  });
+}
+
+function decodeCatalogueReceipt(value: unknown) {
+  const receipt = object(value);
+  if (receipt.outcome !== 'CREATED' && receipt.outcome !== 'UNCHANGED')
+    throw new Error('Expected a catalogue creation receipt');
+  return Object.assign(receipt, { outcome: receipt.outcome });
+}
+
+function decodeDefinitionReceipt(value: unknown) {
+  const receipt = decodeCatalogueReceipt(value);
+  const definition = decodeIllustrativeRecord(receipt.definition);
+  return {
+    ...receipt,
+    definition: {
+      ...definition,
+      code: text(definition.code),
+      name: text(definition.name),
+      description: nullableText(definition.description),
+    },
+  };
+}
+
+function decodeOfferingReceipt(value: unknown) {
+  const receipt = decodeCatalogueReceipt(value);
+  const offering = decodeIllustrativeRecord(receipt.offering);
+  const definition = object(offering.serviceDefinition);
+  if (offering.availability !== 'AVAILABLE')
+    throw new Error('Expected an offering availability');
+  return {
+    ...receipt,
+    offering: {
+      ...offering,
+      companyId: text(offering.companyId),
+      serviceDefinitionId: text(offering.serviceDefinitionId),
+      serviceDefinition: {
+        ...definition,
+        code: text(definition.code),
+        name: text(definition.name),
+      },
+      commercialLabel: nullableText(offering.commercialLabel),
+      availability: offering.availability,
+    },
+  };
+}
+
+function decodePublicationReceipt(value: unknown) {
+  const receipt = object(value);
+  if (receipt.outcome !== 'PUBLISHED' && receipt.outcome !== 'UNCHANGED')
+    throw new Error('Expected a Pricing publication receipt');
+  const version = decodeIllustrativeRecord(receipt.version);
+  const state = version.state;
+  if (state !== 'SCHEDULED' && state !== 'CURRENT' && state !== 'SUPERSEDED')
+    throw new Error('Expected an effective-dated version state');
+  const supersession =
+    version.supersession === null ? null : object(version.supersession);
+  return Object.assign(receipt, {
+    outcome: receipt.outcome,
+    version: Object.assign(version, {
+      versionNumber: positiveInteger(version.versionNumber),
+      state,
+      effectiveFrom: instant(version.effectiveFrom),
+      effectiveTo:
+        version.effectiveTo === null ? null : instant(version.effectiveTo),
+      supersession:
+        supersession === null
+          ? null
+          : {
+              ...supersession,
+              supersededByVersionId: text(supersession.supersededByVersionId),
+              supersededAt: instant(supersession.supersededAt),
+              supersededFrom: instant(supersession.supersededFrom),
+            },
+    }),
+  });
+}
+
+function decodeRulePublication(value: unknown) {
+  const receipt = decodePublicationReceipt(value);
+  const version = receipt.version;
+  if (
+    version.ruleShape !== 'UNIT_PRICE_TIMES_QUANTITY' ||
+    version.roundingMode !== 'HALF_UP' ||
+    version.roundingScale !== 2 ||
+    version.taxApplication !== 'PER_LINE'
+  )
+    throw new Error('Expected the recorded illustrative Pricing Rule shape');
+  return {
+    ...receipt,
+    version: {
+      ...receipt.version,
+      label: text(version.label),
+      ruleShape: version.ruleShape,
+      roundingMode: version.roundingMode,
+      roundingScale: version.roundingScale,
+      taxApplication: version.taxApplication,
+    },
+  };
+}
+
+function decodeTariffPublication(value: unknown) {
+  const receipt = decodePublicationReceipt(value);
+  const version = receipt.version;
+  const currency = version.currency;
+  if (
+    currency !== 'MDL' &&
+    currency !== 'EUR' &&
+    currency !== 'RON' &&
+    currency !== 'USD'
+  )
+    throw new Error('Expected a supported illustrative currency');
+  return {
+    ...receipt,
+    version: {
+      ...receipt.version,
+      offeringId: text(version.offeringId),
+      unit: text(version.unit),
+      unitAmount: text(version.unitAmount),
+      currency,
+      taxRatePercent: text(version.taxRatePercent),
+      taxLabel: text(version.taxLabel),
+    },
+  };
+}
+
+function instant(value: unknown): string {
+  const result = text(value);
+  if (!Number.isFinite(Date.parse(result)))
+    throw new Error('Expected a recorded instant');
+  return result;
 }
 
 /** Validate each read once, preserving unknown fields for equality/leak checks. */
@@ -3070,6 +3343,8 @@ async function apiRead<T>(
 ): Promise<T> {
   const response = await request.get(`${apiOrigin}/api${path}`, {
     headers: { ...identity, 'x-company-context-id': companyId },
+    // Retry reset transport connections only; HTTP failures are never retried.
+    maxRetries: 2,
   });
   expect(response.status(), path).toBe(200);
   const payload: unknown = await response.json();
