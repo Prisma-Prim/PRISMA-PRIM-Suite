@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import {
   expect,
@@ -233,6 +233,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
     '600.00',
     '90.00',
     entered.netReduction,
+    '4.50',
     '570.00',
     '85.50',
     '655.50',
@@ -241,7 +242,10 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
   const ada = await membershipOf(request, identities.ada);
   const ion = await membershipOf(request, identities.ion);
-  const companyId = await registerCompany(request, companyName, suffix);
+  const companyId = await registerCompany(request, {
+    displayName: companyName,
+    suffix,
+  });
   for (const bundle of journeyBundles)
     await grant(request, { bundle, membership: ada, companyId });
   for (const bundle of [
@@ -255,12 +259,13 @@ test('follows one commercial case from Request to signed agreement, Project and 
     serviceName,
   });
 
-  const journey: Journey = { page, narrow, companyName, subject };
+  const journey: Journey = { page, narrow, companyId, companyName, subject };
   const intake = page.locator('.commercial-intake-workspace');
   const feedback = intake.locator(':scope > [role="alert"]');
   const sessions: Page[] = [];
   let clientRequestId = '';
   let opportunityId = '';
+  let pricingSnapshotId = '';
   let projectId = '';
   const childAgreements: {
     id: string;
@@ -438,7 +443,17 @@ test('follows one commercial case from Request to signed agreement, Project and 
     });
 
     await test.step('3a. without a configured stage the editor explains what is missing', async () => {
-      await intake.getByRole('button', { name: 'Change Sales Stage' }).click();
+      await actAndRead({
+        page,
+        expected: [
+          { method: 'GET', path: /^\/api\/sales-stages$/u, status: 200 },
+        ],
+        act: async () => {
+          await intake
+            .getByRole('button', { name: 'Change Sales Stage' })
+            .click();
+        },
+      });
       await expect(
         intake.getByText(
           'No Sales Stage is configured for this Company yet. A holder of Company Sales Stage Configuration must create one first in the Sales Stage settings.',
@@ -454,9 +469,17 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
     await test.step('3b. create two Sales Stages and place the case on the first', async () => {
       await intake.getByRole('button', { name: 'Back to Requests' }).click();
-      await intake
-        .getByRole('button', { name: 'Sales Stage settings' })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          { method: 'GET', path: /^\/api\/sales-stages$/u, status: 200 },
+        ],
+        act: async () => {
+          await intake
+            .getByRole('button', { name: 'Sales Stage settings' })
+            .click();
+        },
+      });
       const settings = intake.getByRole('region', {
         name: 'Sales Stage settings',
       });
@@ -512,7 +535,24 @@ test('follows one commercial case from Request to signed agreement, Project and 
         'This Opportunity changed since you loaded it. Reload the Request before editing again.',
       );
       await capture(ionPage, testInfo, 'journey-stale-edit');
-      await ionIntake.getByRole('button', { name: 'Reload Request' }).click();
+      await actAndRead({
+        page: ionPage,
+        expected: [
+          {
+            method: 'GET',
+            path: new RegExp(
+              `^/api/commercial-intake/requests/${clientRequestId}$`,
+              'u',
+            ),
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await ionIntake
+            .getByRole('button', { name: 'Reload Request' })
+            .click();
+        },
+      });
       await expect(
         ionIntake.getByText('Version: 4', { exact: true }),
       ).toBeVisible();
@@ -577,13 +617,38 @@ test('follows one commercial case from Request to signed agreement, Project and 
         mutation('POST', /^\/api\/pricing\/opportunities\/[^/]+\/snapshots$/u),
       );
       await pricing.getByRole('button', { name: 'Calculate and save' }).click();
-      expect((await calculated).status()).toBe(201);
+      const calculatedResponse = await calculated;
+      expect(calculatedResponse.status()).toBe(201);
+      const calculatedReceipt: unknown = await calculatedResponse.json();
+      pricingSnapshotId = text(object(calculatedReceipt).id);
       await expectAdjustedSnapshot(pricing, entered.adjustmentReason);
 
-      await reopenRequest(journey);
-      await pricing
-        .getByRole('button', { name: /Reopen snapshot: 655\.50 EUR/u })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'GET',
+            path: /^\/api\/pricing\/opportunities\/[^/]+\/snapshots$/u,
+            status: 200,
+          },
+        ],
+        act: () => reopenRequest(journey),
+      });
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'GET',
+            path: /^\/api\/pricing\/opportunities\/[^/]+\/snapshots\/[^/]+$/u,
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await pricing
+            .getByRole('button', { name: /Reopen snapshot: 655\.50 EUR/u })
+            .click();
+        },
+      });
       await expectAdjustedSnapshot(pricing, entered.adjustmentReason);
       await expect(
         pricing.getByText('2 × 300.0000 EUR/illustrative-unit'),
@@ -621,7 +686,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await offer.getByRole('button', { name: 'Prepare version 1' }).click();
       expect((await prepared).status()).toBe(201);
 
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'offer' });
       const pendingOffer = (
         await apiRead(request, {
           identity: identities.ada,
@@ -630,6 +695,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
           decode: decodeOfferDetail,
         })
       ).offer;
+      expect(pendingOffer.version.pricingSnapshotId).toBe(pricingSnapshotId);
       expect(pendingOffer.version.validityDays).toBe(30);
       await expect(
         summary.getByText('Illustrative and provisional', { exact: true }),
@@ -732,16 +798,28 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         quality.getByText('No Quality Check run yet.', { exact: true }),
       ).toBeVisible();
-      await quality
-        .getByRole('button', { name: 'Run Quality Checks', exact: true })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'POST',
+            path: /^\/api\/offers\/opportunities\/[^/]+\/versions\/[^/]+\/quality-checks$/u,
+            status: 201,
+          },
+        ],
+        act: async () => {
+          await quality
+            .getByRole('button', { name: 'Run Quality Checks', exact: true })
+            .click();
+        },
+      });
       await expect(
         quality.getByText('Checks completed with warnings.', { exact: true }),
       ).toBeVisible();
       await expect(
         quality.locator('li').filter({ hasText: 'Recipient tax ID recorded' }),
       ).toContainText('WARNING');
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'offer' });
       await expect(
         quality.getByText('Checks completed with warnings.', { exact: true }),
       ).toBeVisible();
@@ -762,13 +840,25 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await offer
         .getByRole('checkbox', { name: 'Recipient tax ID recorded' })
         .check();
-      await offer
-        .getByRole('button', { name: 'Approve this version', exact: true })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'POST',
+            path: /^\/api\/offers\/opportunities\/[^/]+\/versions\/[^/]+\/approve$/u,
+            status: 201,
+          },
+        ],
+        act: async () => {
+          await offer
+            .getByRole('button', { name: 'Approve this version', exact: true })
+            .click();
+        },
+      });
       await expect(
         offer.getByText('Version approved.', { exact: true }),
       ).toBeVisible();
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'offer' });
       await expect(
         offer.getByText('Approved internally', { exact: true }),
       ).toBeVisible();
@@ -804,11 +894,10 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await openSection(journey, 'Activity Log');
       const activity = page.locator('.activity-log');
       await expect(
-        activityRow(
-          page,
-          'Ada Ionescu captured a Client Request',
-          `Client Request: ${clientRequestId}`,
-        ),
+        activityRow(page, {
+          description: 'Ada Ionescu captured a Client Request',
+          target: `Client Request: ${clientRequestId}`,
+        }),
       ).toHaveCount(1);
       await expect(activity).not.toContainText('Illustrative Offer');
       await expect(activity).not.toContainText('Offer Version');
@@ -819,180 +908,350 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
       for (const bundle of offerBundles)
         await grant(request, { bundle, membership: ada, companyId });
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'offer' });
       // The refused command committed nothing.
       await expect(
         offer.getByText('Approved internally', { exact: true }),
       ).toBeVisible();
     });
 
-    await test.step('5c. record the simulated transmission of Offer v1', async () => {
-      const transmitted = page.waitForResponse(
-        mutation('POST', /\/transmission$/u),
-      );
-      await offer
-        .getByRole('button', {
-          name: 'Record simulated transmission',
-          exact: true,
-        })
-        .click();
-      expect((await transmitted).status()).toBe(201);
-      await reopenRequest(journey);
-      await expect(
-        offer.getByText(
-          'Simulated transmission recorded · Client response pending',
-          { exact: true },
-        ),
-      ).toBeVisible();
-      await capture(page, testInfo, 'journey-offer-v1-transmitted');
-    });
-
-    await test.step('5d. negotiate Offer v2, approve it and record the simulated acceptance', async () => {
-      await offer
-        .getByRole('button', { name: 'Prepare a new version', exact: true })
-        .click();
-      await offer
-        .getByRole('textbox', { name: 'Commercial conditions', exact: true })
-        .fill(entered.negotiatedConditions);
-      const created = page.waitForResponse(mutation('POST', /\/versions$/u));
-      await offer
-        .getByRole('button', { name: 'Create new version', exact: true })
-        .click();
-      expect((await created).status()).toBe(201);
-      await reopenRequest(journey);
-      await expect(
-        offer.getByText(`Current value: ${entered.negotiatedConditions}`, {
-          exact: true,
-        }),
-      ).toBeVisible();
-      const conditionsDifference = offer
-        .locator('.offer-version-history dl > div')
-        .filter({
-          has: page
-            .getByRole('term')
-            .filter({ hasText: /^Commercial conditions · Changed$/u }),
+    const transmittedOfferV1 =
+      await test.step('5c. record the simulated transmission of Offer v1', async () => {
+        const approvedVersion = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+            decode: decodeOfferDetail,
+          })
+        ).offer.version;
+        expectOfferChecksums({ version: approvedVersion, transmitted: false });
+        const transmitted = page.waitForResponse(
+          mutation('POST', /\/transmission$/u),
+        );
+        await offer
+          .getByRole('button', {
+            name: 'Record simulated transmission',
+            exact: true,
+          })
+          .click();
+        expect((await transmitted).status()).toBe(201);
+        await reopenRequest(journey, { record: 'offer' });
+        await expect(
+          offer.getByText(
+            'Simulated transmission recorded · Client response pending',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        await capture(page, testInfo, 'journey-offer-v1-transmitted');
+        const transmittedOffer = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+            decode: decodeOfferDetail,
+          })
+        ).offer;
+        expectOfferChecksums({
+          version: transmittedOffer.version,
+          transmitted: true,
         });
-      await expect(conditionsDifference).toHaveCount(1);
-      await expect(conditionsDifference.getByRole('definition')).toHaveText([
-        `Previous value: ${entered.firstConditions}`,
-        `Current value: ${entered.negotiatedConditions}`,
-      ]);
-      await expect(
-        summary.getByText('Draft — not approved', { exact: true }),
-      ).toBeVisible();
+        expect(transmittedOffer.version.representation).toEqual(
+          approvedVersion.representation,
+        );
+        expect(transmittedOffer.version.decision).toEqual(
+          approvedVersion.decision,
+        );
+        return transmittedOffer;
+      });
 
-      await offer
-        .getByRole('button', { name: 'Run Quality Checks', exact: true })
-        .click();
-      await expect(
-        offer.getByText('Checks completed with warnings.', { exact: true }),
-      ).toBeVisible();
-      await reopenRequest(journey);
-      await expect(
-        offer.getByText('Checks completed with warnings.', { exact: true }),
-      ).toBeVisible();
-      await expect(
-        offer
-          .locator('.offer-quality li')
-          .filter({ hasText: 'Recipient tax ID recorded' }),
-      ).toContainText('WARNING');
-      await offer
-        .getByRole('checkbox', { name: 'Recipient tax ID recorded' })
-        .check();
-      await offer
-        .getByRole('button', { name: 'Approve this version', exact: true })
-        .click();
-      await expect(
-        offer.getByText('Version approved.', { exact: true }),
-      ).toBeVisible();
-      await reopenRequest(journey);
-      await expect(
-        offer.getByText('Approved internally', { exact: true }),
-      ).toBeVisible();
-
-      const transmission = page.waitForResponse(
-        mutation('POST', /\/transmission$/u),
-      );
-      await offer
-        .getByRole('button', {
-          name: 'Record simulated transmission',
-          exact: true,
-        })
-        .click();
-      const transmitted = await transmission;
-      expect(transmitted.status()).toBe(201);
-      const transmittedAt = text(
-        object(await transmitted.json()).transmittedAt,
-      );
-      typedFromReceipts.push(transmittedAt);
-      await reopenRequest(journey);
-      const response = offer.locator('.offer-client-response');
-      await response
-        .getByLabel('Reported received time (UTC)')
-        .fill(transmittedAt);
-      const accepted = page.waitForResponse(
-        mutation('POST', /\/client-response$/u),
-      );
-      await response
-        .getByRole('button', {
-          name: 'Record simulated acceptance',
-          exact: true,
-        })
-        .click();
-      expect((await accepted).status()).toBe(201);
-      await reopenRequest(journey);
-      await expect(
-        offer.getByText('Simulated Client acceptance recorded', {
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(
-        offer.getByRole('button', {
-          name: 'Prepare a new version',
-          exact: true,
-        }),
-      ).toHaveCount(0);
-      const offerPath = `/offers/opportunities/${opportunityId}`;
-      const acceptedOffer = (
-        await apiRead(request, {
-          identity: identities.ada,
-          companyId,
-          path: offerPath,
-          decode: decodeOfferDetail,
-        })
-      ).offer;
-      const acceptedVersion = acceptedOffer.version;
-      expect(acceptedVersion.validityDays).toBe(30);
-      await expectVersionRefused(request, {
-        companyId,
-        path: `${offerPath}/versions`,
-        key: `journey-accepted-offer-version-${suffix}`,
-        code: 'OFFER_ACCEPTED',
-        data: {
-          expectedOfferRevision: acceptedOffer.revision,
-          pricingSnapshotId: acceptedVersion.pricingSnapshotId,
-          recipient: { kind: 'PRIMARY' },
-          validityDays: acceptedVersion.validityDays,
+    const acceptedOfferRecord =
+      await test.step('5d. negotiate Offer v2, approve it and record the simulated acceptance', async () => {
+        await offer
+          .getByRole('button', { name: 'Prepare a new version', exact: true })
+          .click();
+        await offer
+          .getByRole('textbox', { name: 'Commercial conditions', exact: true })
+          .fill(entered.negotiatedConditions);
+        const created = page.waitForResponse(mutation('POST', /\/versions$/u));
+        await offer
+          .getByRole('button', { name: 'Create new version', exact: true })
+          .click();
+        expect((await created).status()).toBe(201);
+        await reopenRequest(journey, { record: 'offer' });
+        await expect(
+          offer.getByText(`Current value: ${entered.negotiatedConditions}`, {
+            exact: true,
+          }),
+        ).toBeVisible();
+        const pendingVersion = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+            decode: decodeOfferDetail,
+          })
+        ).offer.version;
+        expect(pendingVersion).toMatchObject({
+          versionNumber: 2,
+          predecessorVersionId: transmittedOfferV1.version.id,
+          pricingSnapshotId,
+          pricingSnapshot: transmittedOfferV1.version.pricingSnapshot,
+          recipient: transmittedOfferV1.version.recipient,
+          validityDays: 30,
           scopeNote: entered.offerScope,
           commercialConditions: entered.negotiatedConditions,
-        },
-      });
-      const offerAfterRefusal = (
-        await apiRead(request, {
-          identity: identities.ada,
+        });
+        expect(pendingVersion.validUntil).toBe(
+          new Date(
+            Date.parse(pendingVersion.createdAt) + 30 * 86_400_000,
+          ).toISOString(),
+        );
+        const expectedDifferences = [
+          { field: 'recipientKind', previous: 'PRIMARY', current: 'PRIMARY' },
+          {
+            field: 'recipientAdditionalLegalEntityId',
+            previous: null,
+            current: null,
+          },
+          {
+            field: 'recipientLegalName',
+            previous: clientName,
+            current: clientName,
+          },
+          { field: 'recipientTaxId', previous: null, current: null },
+          { field: 'recipientLegalAddress', previous: null, current: null },
+          {
+            field: 'pricingSnapshotId',
+            previous: pricingSnapshotId,
+            current: pricingSnapshotId,
+          },
+          { field: 'currency', previous: 'EUR', current: 'EUR' },
+          { field: 'total', previous: '655.50', current: '655.50' },
+          { field: 'validityDays', previous: 30, current: 30 },
+          {
+            field: 'validUntil',
+            previous: transmittedOfferV1.version.validUntil,
+            current: pendingVersion.validUntil,
+          },
+          {
+            field: 'scopeNote',
+            previous: entered.offerScope,
+            current: entered.offerScope,
+          },
+          {
+            field: 'commercialConditions',
+            previous: entered.firstConditions,
+            current: entered.negotiatedConditions,
+          },
+        ];
+        expect(pendingVersion.differences).toEqual(
+          expectedDifferences.map((difference) => ({
+            ...difference,
+            changed: difference.previous !== difference.current,
+          })),
+        );
+        const preservedOfferV1 = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}/versions/${transmittedOfferV1.version.id}`,
+            decode: decodeOfferDetail,
+          })
+        ).offer.version;
+        expect(preservedOfferV1).toEqual({
+          ...transmittedOfferV1.version,
+          supersededByVersionId: pendingVersion.id,
+          supersededAt: pendingVersion.createdAt,
+        });
+        const conditionsDifference = offer
+          .locator('.offer-version-history dl > div')
+          .filter({
+            has: page
+              .getByRole('term')
+              .filter({ hasText: /^Commercial conditions · Changed$/u }),
+          });
+        await expect(conditionsDifference).toHaveCount(1);
+        await expect(conditionsDifference.getByRole('definition')).toHaveText([
+          `Previous value: ${entered.firstConditions}`,
+          `Current value: ${entered.negotiatedConditions}`,
+        ]);
+        await expect(
+          summary.getByText('Draft — not approved', { exact: true }),
+        ).toBeVisible();
+
+        await actAndRead({
+          page,
+          expected: [
+            {
+              method: 'POST',
+              path: /^\/api\/offers\/opportunities\/[^/]+\/versions\/[^/]+\/quality-checks$/u,
+              status: 201,
+            },
+          ],
+          act: async () => {
+            await offer
+              .getByRole('button', { name: 'Run Quality Checks', exact: true })
+              .click();
+          },
+        });
+        await expect(
+          offer.getByText('Checks completed with warnings.', { exact: true }),
+        ).toBeVisible();
+        await reopenRequest(journey, { record: 'offer' });
+        await expect(
+          offer.getByText('Checks completed with warnings.', { exact: true }),
+        ).toBeVisible();
+        await expect(
+          offer
+            .locator('.offer-quality li')
+            .filter({ hasText: 'Recipient tax ID recorded' }),
+        ).toContainText('WARNING');
+        await offer
+          .getByRole('checkbox', { name: 'Recipient tax ID recorded' })
+          .check();
+        await actAndRead({
+          page,
+          expected: [
+            {
+              method: 'POST',
+              path: /^\/api\/offers\/opportunities\/[^/]+\/versions\/[^/]+\/approve$/u,
+              status: 201,
+            },
+          ],
+          act: async () => {
+            await offer
+              .getByRole('button', {
+                name: 'Approve this version',
+                exact: true,
+              })
+              .click();
+          },
+        });
+        await expect(
+          offer.getByText('Version approved.', { exact: true }),
+        ).toBeVisible();
+        await reopenRequest(journey, { record: 'offer' });
+        await expect(
+          offer.getByText('Approved internally', { exact: true }),
+        ).toBeVisible();
+
+        const approvedVersion = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+            decode: decodeOfferDetail,
+          })
+        ).offer.version;
+        expectOfferChecksums({ version: approvedVersion, transmitted: false });
+        const transmission = page.waitForResponse(
+          mutation('POST', /\/transmission$/u),
+        );
+        await offer
+          .getByRole('button', {
+            name: 'Record simulated transmission',
+            exact: true,
+          })
+          .click();
+        const transmitted = await transmission;
+        expect(transmitted.status()).toBe(201);
+        const transmittedAt = text(
+          object(await transmitted.json()).transmittedAt,
+        );
+        typedFromReceipts.push(transmittedAt);
+        await reopenRequest(journey, { record: 'offer' });
+        const transmittedVersion = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: `/offers/opportunities/${opportunityId}`,
+            decode: decodeOfferDetail,
+          })
+        ).offer.version;
+        expectOfferChecksums({
+          version: transmittedVersion,
+          transmitted: true,
+        });
+        expect(transmittedVersion.representation).toEqual(
+          approvedVersion.representation,
+        );
+        expect(transmittedVersion.decision).toEqual(approvedVersion.decision);
+        const response = offer.locator('.offer-client-response');
+        await response
+          .getByLabel('Reported received time (UTC)')
+          .fill(transmittedAt);
+        const accepted = page.waitForResponse(
+          mutation('POST', /\/client-response$/u),
+        );
+        await response
+          .getByRole('button', {
+            name: 'Record simulated acceptance',
+            exact: true,
+          })
+          .click();
+        expect((await accepted).status()).toBe(201);
+        await reopenRequest(journey, { record: 'offer' });
+        await expect(
+          offer.getByText('Simulated Client acceptance recorded', {
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(
+          offer.getByRole('button', {
+            name: 'Prepare a new version',
+            exact: true,
+          }),
+        ).toHaveCount(0);
+        const offerPath = `/offers/opportunities/${opportunityId}`;
+        const acceptedOffer = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: offerPath,
+            decode: decodeOfferDetail,
+          })
+        ).offer;
+        const acceptedVersion = acceptedOffer.version;
+        expect(acceptedVersion.validityDays).toBe(30);
+        await expectVersionRefused(request, {
           companyId,
-          path: offerPath,
-          decode: decodeOfferDetail,
-        })
-      ).offer;
-      expect(offerAfterRefusal.revision).toBe(acceptedOffer.revision);
-      expect(offerAfterRefusal.version).toEqual(acceptedVersion);
-      await capture(page, testInfo, 'journey-offer-accepted');
-    });
+          path: `${offerPath}/versions`,
+          key: `journey-accepted-offer-version-${suffix}`,
+          code: 'OFFER_ACCEPTED',
+          data: {
+            expectedOfferRevision: acceptedOffer.revision,
+            pricingSnapshotId: acceptedVersion.pricingSnapshotId,
+            recipient: { kind: 'PRIMARY' },
+            validityDays: acceptedVersion.validityDays,
+            scopeNote: entered.offerScope,
+            commercialConditions: entered.negotiatedConditions,
+          },
+        });
+        const offerAfterRefusal = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: offerPath,
+            decode: decodeOfferDetail,
+          })
+        ).offer;
+        expect(offerAfterRefusal.revision).toBe(acceptedOffer.revision);
+        expect(offerAfterRefusal.version).toEqual(acceptedVersion);
+        await capture(page, testInfo, 'journey-offer-accepted');
+        return acceptedOffer;
+      });
+
+    // Agreements retain immutable price content; the optional live Client
+    // projection is deliberately absent from their Snapshot seam (Pricing §9).
+    const acceptedSnapshot: Record<string, unknown> = {
+      ...acceptedOfferRecord.version.pricingSnapshot,
+    };
+    delete acceptedSnapshot.clientReference;
 
     await test.step('3c. move the case to the second Sales Stage', async () => {
       await setStage(journey, contracting);
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'offer' });
       await expect(
         intake.getByText(`Sales Stage: ${contracting}`, { exact: true }),
       ).toBeVisible();
@@ -1019,7 +1278,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       );
       await correction.getByRole('button', { name: 'Save correction' }).click();
       expect((await corrected).status()).toBe(200);
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'offer' });
     });
 
     const contract = page.getByRole('region', {
@@ -1054,9 +1313,10 @@ test('follows one commercial case from Request to signed agreement, Project and 
       'Added terms and conditions need confirmation';
     async function approveAndSign(
       agreementPath: string,
-      reopen: () => Promise<void>,
+      reopen: (options?: { projectCandidates?: boolean }) => Promise<void>,
       // The exact acknowledgeable warnings of this version (PRD 19.16).
       warnings: readonly string[],
+      { projectCandidates = false }: { projectCandidates?: boolean } = {},
     ): Promise<void> {
       const recordedIdno = checks
         .getByRole('listitem')
@@ -1159,7 +1419,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
         { exact: true },
       );
       await expect(executed).toBeVisible();
-      await reopen();
+      await reopen({ projectCandidates });
       await expect(executed).toBeVisible();
       const evidence = (label: RegExp) =>
         signatures
@@ -1201,200 +1461,289 @@ test('follows one commercial case from Request to signed agreement, Project and 
         qualityRunId: present(version.latestQualityRun).id,
       });
     }
-    await test.step('6. prepare, approve and sign the Precontract, then create its Project', async () => {
-      const editor = contract.getByRole('region', {
-        name: 'Create Precontract',
-        exact: true,
-      });
-      await editor
-        .getByRole('textbox', { name: 'Preliminary work scope', exact: true })
-        .fill(entered.preliminaryScope);
-      await editor
-        .getByRole('textbox', {
-          name: 'Preliminary financial conditions',
+    const executedPrecontractRecord =
+      await test.step('6. prepare, approve and sign the Precontract, then create its Project', async () => {
+        const editor = contract.getByRole('region', {
+          name: 'Create Precontract',
           exact: true,
-        })
-        .fill(entered.preliminaryConditions);
-      await editor
-        .getByRole('textbox', {
-          name: 'Limits until the Contract',
-          exact: true,
-        })
-        .fill(entered.preliminaryLimits);
-      await editor
-        .getByLabel('Precontract term end', { exact: true })
-        .fill(entered.precontractTermEnd);
-      await editor
-        .getByRole('button', { name: 'Create Precontract', exact: true })
-        .click();
-      await expect(
-        contract.getByText('Precontract created.', { exact: true }),
-      ).toBeVisible();
-      await reopenPrecontract(journey);
-      await expect(
-        contract.getByText('Pending approval · Not executed', { exact: true }),
-      ).toBeVisible();
-
-      const precontractId = (
-        await apiRead(request, {
-          identity: identities.ada,
-          companyId,
-          path: contractsPath,
-          decode: decodePrecontractSummary,
-        })
-      ).precontract.id;
-      const draftDocumentRead = page.waitForResponse(
-        mutation(
-          'GET',
-          /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/versions\/[^/]+\/representation$/u,
-        ),
-      );
-      await contract
-        .getByRole('button', { name: 'Open exact Contract document' })
-        .click();
-      expect((await draftDocumentRead).status()).toBe(200);
-      const draftPrecontract = contract.getByRole('region', {
-        name: 'Illustrative Contract document',
-        exact: true,
-      });
-      const precontractDocument = draftPrecontract.frameLocator(
-        'iframe[title="Illustrative Contract document"]',
-      );
-      await expect(
-        precontractDocument.getByRole('heading', {
-          name: 'Illustrative Precontract',
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(
-        precontractDocument
-          .getByRole('term')
-          .filter({ hasText: /^Contract Version$/u })
-          .locator('xpath=following-sibling::dd[1]'),
-      ).toHaveText('1');
-      await expect(
-        precontractDocument.getByText(
-          'Provisional illustrative document — cannot be accepted — no legal effect — no official number — not a signed agreement — clauses are placeholders',
-          { exact: true },
-        ),
-      ).toBeVisible();
-      for (const clause of [
-        'Subject — CL_SUBJECT v1',
-        'Price — CL_PRICE v1',
-        'Term — CL_TERM v1',
-        'Conditions — CL_CONDITIONS v1',
-        'Preliminary work — CL_PRELIMINARY_WORK v1',
-        'General — CL_GENERAL v1',
-      ])
+        });
+        await editor
+          .getByRole('textbox', { name: 'Preliminary work scope', exact: true })
+          .fill(entered.preliminaryScope);
+        await editor
+          .getByRole('textbox', {
+            name: 'Preliminary financial conditions',
+            exact: true,
+          })
+          .fill(entered.preliminaryConditions);
+        await editor
+          .getByRole('textbox', {
+            name: 'Limits until the Contract',
+            exact: true,
+          })
+          .fill(entered.preliminaryLimits);
+        await editor
+          .getByLabel('Precontract term end', { exact: true })
+          .fill(entered.precontractTermEnd);
+        await actAndRead({
+          page,
+          expected: [
+            {
+              method: 'POST',
+              path: /^\/api\/contracts\/opportunities\/[^/]+$/u,
+              status: 201,
+            },
+            ...versionReads('agreement'),
+          ],
+          act: async () => {
+            await editor
+              .getByRole('button', { name: 'Create Precontract', exact: true })
+              .click();
+          },
+        });
         await expect(
-          precontractDocument.getByRole('heading', {
-            name: clause,
+          contract.getByText('Precontract created.', { exact: true }),
+        ).toBeVisible();
+        await reopenPrecontract(journey);
+        await expect(
+          contract.getByText('Pending approval · Not executed', {
             exact: true,
           }),
         ).toBeVisible();
-      await expect(
-        precontractDocument.getByText(
-          'No approved legal wording exists for this clause. This is an illustrative placeholder.',
-          { exact: true },
-        ),
-      ).toHaveCount(6);
-      await capture(page, testInfo, 'journey-precontract-draft');
-      // PRD 19.5 and 19.16 require this state marker in the viewer,
-      // outside the immutable representation bytes (PRD 18.7 and 19.7).
-      await expect(
-        draftPrecontract.getByText('Draft — not approved', { exact: true }),
-      ).toBeVisible();
-      // The IDNO recorded since the Offer and the preliminary work and term
-      // end raise exactly the two Precontract warnings (PRD 19.16, step 3).
-      await approveAndSign(
-        `${contractsPath}/agreements/${precontractId}`,
-        () => reopenPrecontract(journey),
-        [identityWarning, addedConditionsWarning],
-      );
-      const precontractPath = `${contractsPath}/agreements/${precontractId}`;
-      const executedPrecontract = (
-        await apiRead(request, {
-          identity: identities.ada,
-          companyId,
-          path: precontractPath,
-          decode: decodeAgreementDetail,
-        })
-      ).contract;
-      await expectVersionRefused(request, {
-        companyId,
-        path: `${precontractPath}/versions`,
-        key: `journey-executed-precontract-version-${suffix}`,
-        code: 'CONTRACT_EXECUTED',
-        data: {
-          expectedContractRevision: executedPrecontract.revision,
-          termStartsOn: null,
-          termEndsOn: entered.precontractTermEnd,
-          specialConditions: null,
-          preliminaryWorkScope: entered.preliminaryScope,
-          preliminaryFinancialConditions: entered.preliminaryConditions,
-          preliminaryLimits: entered.preliminaryLimits,
-        },
-      });
-      const precontractAfterRefusal = (
-        await apiRead(request, {
-          identity: identities.ada,
-          companyId,
-          path: precontractPath,
-          decode: decodeAgreementDetail,
-        })
-      ).contract;
-      expect(precontractAfterRefusal.revision).toBe(
-        executedPrecontract.revision,
-      );
-      expect(precontractAfterRefusal.version).toEqual(
-        executedPrecontract.version,
-      );
-      await rememberChildAgreement(precontractId);
+        async function expectPrecontractContent(): Promise<void> {
+          for (const [label, value] of [
+            ['Preliminary work scope', entered.preliminaryScope],
+            ['Preliminary financial conditions', entered.preliminaryConditions],
+            ['Limits until the Contract', entered.preliminaryLimits],
+            ['Term end', entered.precontractTermEnd],
+          ])
+            await expect(
+              contract
+                .getByRole('term')
+                .filter({ hasText: new RegExp(`^${label}$`, 'u') })
+                .locator('xpath=following-sibling::dd[1]'),
+            ).toHaveText(value);
+        }
+        await expectPrecontractContent();
 
-      const creation = projects.getByRole('region', {
-        name: 'Create a preparatory Project',
-        exact: true,
+        const precontractId = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: contractsPath,
+            decode: decodePrecontractSummary,
+          })
+        ).precontract.id;
+        const draftDocumentRead = page.waitForResponse(
+          mutation(
+            'GET',
+            /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/versions\/[^/]+\/representation$/u,
+          ),
+        );
+        await contract
+          .getByRole('button', { name: 'Open exact Contract document' })
+          .click();
+        expect((await draftDocumentRead).status()).toBe(200);
+        const draftPrecontract = contract.getByRole('region', {
+          name: 'Illustrative Contract document',
+          exact: true,
+        });
+        const precontractDocument = draftPrecontract.frameLocator(
+          'iframe[title="Illustrative Contract document"]',
+        );
+        await expect(
+          precontractDocument.getByRole('heading', {
+            name: 'Illustrative Precontract',
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(
+          precontractDocument
+            .getByRole('term')
+            .filter({ hasText: /^Contract Version$/u })
+            .locator('xpath=following-sibling::dd[1]'),
+        ).toHaveText('1');
+        await expect(
+          precontractDocument.getByText(
+            'Provisional illustrative document — cannot be accepted — no legal effect — no official number — not a signed agreement — clauses are placeholders',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        for (const clause of [
+          'Subject — CL_SUBJECT v1',
+          'Price — CL_PRICE v1',
+          'Term — CL_TERM v1',
+          'Conditions — CL_CONDITIONS v1',
+          'Preliminary work — CL_PRELIMINARY_WORK v1',
+          'General — CL_GENERAL v1',
+        ])
+          await expect(
+            precontractDocument.getByRole('heading', {
+              name: clause,
+              exact: true,
+            }),
+          ).toBeVisible();
+        await expect(
+          precontractDocument.getByText(
+            'No approved legal wording exists for this clause. This is an illustrative placeholder.',
+            { exact: true },
+          ),
+        ).toHaveCount(6);
+        await capture(page, testInfo, 'journey-precontract-draft');
+        // PRD 19.5 and 19.16 require this state marker in the viewer,
+        // outside the immutable representation bytes (PRD 18.7 and 19.7).
+        await expect(
+          draftPrecontract.getByText('Draft — not approved', { exact: true }),
+        ).toBeVisible();
+        // The IDNO recorded since the Offer and the preliminary work and term
+        // end raise exactly the two Precontract warnings (PRD 19.16, step 3).
+        await approveAndSign(
+          `${contractsPath}/agreements/${precontractId}`,
+          (options) => reopenPrecontract(journey, options),
+          [identityWarning, addedConditionsWarning],
+          { projectCandidates: true },
+        );
+        await expectPrecontractContent();
+        const precontractPath = `${contractsPath}/agreements/${precontractId}`;
+        const executedPrecontract = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: precontractPath,
+            decode: decodeAgreementDetail,
+          })
+        ).contract;
+        expect(executedPrecontract).toMatchObject({
+          sourceOfferId: acceptedOfferRecord.id,
+          sourceOfferVersionId: acceptedOfferRecord.version.id,
+        });
+        expect(executedPrecontract.version).toMatchObject({
+          pricingSnapshotId,
+          scopeNote: acceptedOfferRecord.version.scopeNote,
+          commercialConditions:
+            acceptedOfferRecord.version.commercialConditions,
+          termEndsOn: entered.precontractTermEnd,
+          preliminaryWork: {
+            scope: entered.preliminaryScope,
+            financialConditions: entered.preliminaryConditions,
+            limits: entered.preliminaryLimits,
+          },
+        });
+        expect(executedPrecontract.version.pricingSnapshot).toEqual(
+          acceptedSnapshot,
+        );
+        await expectVersionRefused(request, {
+          companyId,
+          path: `${precontractPath}/versions`,
+          key: `journey-executed-precontract-version-${suffix}`,
+          code: 'CONTRACT_EXECUTED',
+          data: {
+            expectedContractRevision: executedPrecontract.revision,
+            termStartsOn: null,
+            termEndsOn: entered.precontractTermEnd,
+            specialConditions: null,
+            preliminaryWorkScope: entered.preliminaryScope,
+            preliminaryFinancialConditions: entered.preliminaryConditions,
+            preliminaryLimits: entered.preliminaryLimits,
+          },
+        });
+        const precontractAfterRefusal = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: precontractPath,
+            decode: decodeAgreementDetail,
+          })
+        ).contract;
+        expect(precontractAfterRefusal.revision).toBe(
+          executedPrecontract.revision,
+        );
+        expect(precontractAfterRefusal.version).toEqual(
+          executedPrecontract.version,
+        );
+        await rememberChildAgreement(precontractId);
+
+        const creation = projects.getByRole('region', {
+          name: 'Create a preparatory Project',
+          exact: true,
+        });
+        await expect(
+          projects.getByText('No eligible existing Project is available.', {
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(
+          creation.getByRole('textbox', { name: 'New Project title' }),
+        ).toHaveValue(opportunityTitle);
+        await creation.getByRole('checkbox').check();
+        const createdProject = page.waitForResponse(
+          mutation(
+            'POST',
+            /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/projects\/create$/u,
+          ),
+        );
+        await creation
+          .getByRole('button', { name: 'Create and link Project', exact: true })
+          .click();
+        const creationResponse = await createdProject;
+        expect(creationResponse.status()).toBe(201);
+        const creationPayload: unknown = JSON.parse(
+          creationResponse.request().postData() ?? 'null',
+        );
+        expect(object(creationPayload).acknowledgedCandidateProjectIds).toEqual(
+          [],
+        );
+        await expect(
+          projects.getByText(opportunityTitle).first(),
+        ).toBeVisible();
+        await reopenPrecontract(journey);
+        await expect(
+          projects.getByRole('button', { name: 'Open Project', exact: true }),
+        ).toHaveCount(1);
+        const createdProjects = (
+          await apiRead(request, {
+            identity: identities.ada,
+            companyId,
+            path: '/projects',
+            decode: decodeProjects,
+          })
+        ).filter((project) => project.title === opportunityTitle);
+        expect(createdProjects).toHaveLength(1);
+        const preparatoryProject = present(createdProjects[0]);
+        expect(preparatoryProject).toMatchObject({ status: 'preparatory' });
+        projectId = preparatoryProject.id;
+        await capture(page, testInfo, 'journey-precontract-executed');
+        return executedPrecontract;
       });
-      await expect(
-        creation.getByRole('textbox', { name: 'New Project title' }),
-      ).toHaveValue(opportunityTitle);
-      await creation.getByRole('checkbox').check();
-      const createdProject = page.waitForResponse(
-        mutation(
-          'POST',
-          /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/projects\/create$/u,
-        ),
-      );
-      await creation
-        .getByRole('button', { name: 'Create and link Project', exact: true })
-        .click();
-      const creationResponse = await createdProject;
-      expect(creationResponse.status()).toBe(201);
-      const creationPayload: unknown = JSON.parse(
-        creationResponse.request().postData() ?? 'null',
-      );
-      expect(object(creationPayload).acknowledgedCandidateProjectIds).toEqual(
-        [],
-      );
-      await expect(projects.getByText(opportunityTitle).first()).toBeVisible();
-      await reopenPrecontract(journey);
-      await expect(
-        projects.getByRole('button', { name: 'Open Project', exact: true }),
-      ).toHaveCount(1);
-      await capture(page, testInfo, 'journey-precontract-executed');
-    });
 
     await test.step('7a. prepare the Contract from the accepted Offer and revise it before approval', async () => {
       await contract
         .getByRole('button', { name: 'Back to the Contract area', exact: true })
         .click();
-      await contract
-        .getByRole('button', { name: 'Create Contract', exact: true })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'POST',
+            path: /^\/api\/contracts\/opportunities\/[^/]+$/u,
+            status: 201,
+          },
+          {
+            method: 'GET',
+            path: /^\/api\/contracts\/opportunities\/[^/]+\/versions$/u,
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await contract
+            .getByRole('button', { name: 'Create Contract', exact: true })
+            .click();
+        },
+      });
       await expect(
         contract.getByText('Contract created.', { exact: true }),
       ).toBeVisible();
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       await expect(
         contract.getByText('Illustrative reference 1 · version 2', {
           exact: true,
@@ -1403,8 +1752,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         contract
           .getByRole('term')
-          .filter({ hasText: /^Illustrative Precontract reference$/u }),
-      ).toBeVisible();
+          .filter({ hasText: /^Illustrative Precontract reference$/u })
+          .locator('xpath=following-sibling::dd[1]'),
+      ).toHaveText(String(executedPrecontractRecord.illustrativeReference));
 
       // Before the revision adds terms, v1 has exactly the identity warning
       // and no blocking result (PRD 19.16, step 6). Prove it after reload too.
@@ -1417,18 +1767,30 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         checks.getByText('No Contract Quality Check run yet.', { exact: true }),
       ).toBeVisible();
-      await checks
-        .getByRole('button', {
-          name: 'Run Contract Quality Checks',
-          exact: true,
-        })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'POST',
+            path: /^\/api\/contracts\/opportunities\/[^/]+\/versions\/[^/]+\/quality-checks$/u,
+            status: 201,
+          },
+        ],
+        act: async () => {
+          await checks
+            .getByRole('button', {
+              name: 'Run Contract Quality Checks',
+              exact: true,
+            })
+            .click();
+        },
+      });
       await expect(
         checks.getByText('Contract checks completed with warnings.', {
           exact: true,
         }),
       ).toBeVisible();
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       await expect(
         contract.getByRole('button', {
           name: 'Open Contract Version 1',
@@ -1460,6 +1822,38 @@ test('follows one commercial case from Request to signed agreement, Project and 
         }),
       ).toHaveCount(1);
 
+      const originalContract = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract;
+      expect(originalContract).toMatchObject({
+        sourceOfferId: acceptedOfferRecord.id,
+        sourceOfferVersionId: acceptedOfferRecord.version.id,
+        precontract: {
+          id: executedPrecontractRecord.id,
+          illustrativeReference:
+            executedPrecontractRecord.illustrativeReference,
+        },
+      });
+      const originalContractVersion = originalContract.version;
+      expect(originalContractVersion).toMatchObject({
+        versionNumber: 1,
+        predecessorVersionId: null,
+        supersededByVersionId: null,
+        supersededAt: null,
+        scopeNote: entered.offerScope,
+        commercialConditions: entered.negotiatedConditions,
+        termStartsOn: null,
+        termEndsOn: null,
+        specialConditions: null,
+        pricingSnapshotId,
+      });
+      expect(originalContractVersion.pricingSnapshot).toEqual(acceptedSnapshot);
+
       const revisions = contract.getByRole('region', {
         name: 'Revise Contract before signature',
         exact: true,
@@ -1473,12 +1867,25 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await revisions
         .getByLabel('Revised special conditions')
         .fill(entered.specialConditions);
-      await revisions
-        .getByRole('button', {
-          name: 'Create new Contract Version',
-          exact: true,
-        })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'POST',
+            path: /^\/api\/contracts\/opportunities\/[^/]+\/versions$/u,
+            status: 201,
+          },
+          ...versionReads('contract'),
+        ],
+        act: async () => {
+          await revisions
+            .getByRole('button', {
+              name: 'Create new Contract Version',
+              exact: true,
+            })
+            .click();
+        },
+      });
       const history = contract.getByRole('region', {
         name: 'Contract Version history',
         exact: true,
@@ -1489,19 +1896,166 @@ test('follows one commercial case from Request to signed agreement, Project and 
           exact: true,
         }),
       ).toBeDisabled();
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       await expect(
         history.getByRole('button', {
           name: 'Open Contract Version 2',
           exact: true,
         }),
       ).toBeDisabled();
+      const differences = history.getByRole('region', {
+        name: 'Changes from the preceding version',
+        exact: true,
+      });
+      await expect(differences.getByRole('term')).toHaveText([
+        'Term start',
+        'Term end',
+        'Special conditions',
+      ]);
+      for (const [label, value] of [
+        ['Term start', entered.contractTermStart],
+        ['Term end', entered.precontractTermEnd],
+        ['Special conditions', entered.specialConditions],
+      ]) {
+        const difference = differences.locator('dl > div').filter({
+          has: page
+            .getByRole('term')
+            .filter({ hasText: new RegExp(`^${label}$`, 'u') }),
+        });
+        await expect(difference.locator('dd')).toHaveText([
+          'Previous value: Not recorded',
+          `New value: ${value}`,
+        ]);
+      }
+      const revisedContractVersion = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: contractsPath,
+          decode: decodeAgreementDetail,
+        })
+      ).contract.version;
+      expect(revisedContractVersion).toMatchObject({
+        versionNumber: 2,
+        predecessorVersionId: originalContractVersion.id,
+        termStartsOn: entered.contractTermStart,
+        termEndsOn: entered.precontractTermEnd,
+        specialConditions: entered.specialConditions,
+      });
+      expect(revisedContractVersion.differences).toEqual([
+        {
+          field: 'termStartsOn',
+          before: null,
+          after: entered.contractTermStart,
+        },
+        {
+          field: 'termEndsOn',
+          before: null,
+          after: entered.precontractTermEnd,
+        },
+        {
+          field: 'specialConditions',
+          before: null,
+          after: entered.specialConditions,
+        },
+      ]);
+      const preservedContractVersion = (
+        await apiRead(request, {
+          identity: identities.ada,
+          companyId,
+          path: `${contractsPath}/versions/${originalContractVersion.id}`,
+          decode: decodeAgreementDetail,
+        })
+      ).contract.version;
+      // Revision records only this exact supersession metadata on v1.
+      expect(preservedContractVersion).toEqual({
+        ...originalContractVersion,
+        supersededByVersionId: revisedContractVersion.id,
+        supersededAt: revisedContractVersion.createdAt,
+      });
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'GET',
+            path: new RegExp(
+              `^/api${contractsPath}/versions/${originalContractVersion.id}$`,
+              'u',
+            ),
+            status: 200,
+          },
+          {
+            method: 'GET',
+            path: new RegExp(`^/api${contractsPath}/versions$`, 'u'),
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await history
+            .getByRole('button', {
+              name: 'Open Contract Version 1',
+              exact: true,
+            })
+            .click();
+        },
+      });
       await expect(
-        history.getByRole('region', {
-          name: 'Changes from the preceding version',
+        contract.getByText(
+          'Historical version — preserved; no further decision or signature.',
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        contract.getByText('Illustrative reference 1 · Version 1', {
           exact: true,
         }),
-      ).toContainText('Special conditions');
+      ).toBeVisible();
+      for (const [label, value] of [
+        ['Accepted scope', entered.offerScope],
+        ['Accepted commercial conditions', entered.negotiatedConditions],
+        ['Term start', 'Not recorded'],
+        ['Term end', 'Not recorded'],
+        ['Special conditions', 'Not recorded'],
+      ])
+        await expect(
+          contract
+            .getByRole('term')
+            .filter({ hasText: new RegExp(`^${label}$`, 'u') })
+            .locator('xpath=following-sibling::dd[1]'),
+        ).toHaveText(value);
+      await capture(page, testInfo, 'journey-contract-v1-preserved');
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'GET',
+            path: new RegExp(
+              `^/api${contractsPath}/versions/${revisedContractVersion.id}$`,
+              'u',
+            ),
+            status: 200,
+          },
+          {
+            method: 'GET',
+            path: new RegExp(`^/api${contractsPath}/versions$`, 'u'),
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await history
+            .getByRole('button', {
+              name: 'Open Contract Version 2',
+              exact: true,
+            })
+            .click();
+        },
+      });
+      await expect(
+        history.getByRole('button', {
+          name: 'Open Contract Version 2',
+          exact: true,
+        }),
+      ).toBeDisabled();
     });
 
     await test.step('7b. approve and sign Contract v2, then link the existing Project', async () => {
@@ -1517,10 +2071,12 @@ test('follows one commercial case from Request to signed agreement, Project and 
       // Version 2 needs its own checks: the identity warning again and
       // `ADDED_CONDITIONS_CONFIRMED` for its term and special conditions
       // (PRD 19.16, revision variant).
-      await approveAndSign(contractsPath, () => reopenRequest(journey), [
-        identityWarning,
-        addedConditionsWarning,
-      ]);
+      await approveAndSign(
+        contractsPath,
+        (options) => reopenRequest(journey, { ...options, record: 'contract' }),
+        [identityWarning, addedConditionsWarning],
+        { projectCandidates: true },
+      );
 
       const candidate = projects.getByRole('radio', {
         name: new RegExp(opportunityTitle, 'u'),
@@ -1585,7 +2141,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
           response.request().method() === 'GET' &&
           new URL(response.url()).pathname === `/api${contractsPath}`,
       );
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       expect((await persistedContractRead).status()).toBe(200);
       await expect(
         projects.getByRole('button', { name: 'Open Project', exact: true }),
@@ -1593,9 +2149,26 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await capture(page, testInfo, 'journey-contract-executed');
 
       // One Project, linked from both agreements: no duplicate was created.
-      await projects
-        .getByRole('button', { name: 'Open Project', exact: true })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'GET',
+            path: new RegExp(`^/api/projects/${projectId}$`, 'u'),
+            status: 200,
+          },
+          {
+            method: 'GET',
+            path: new RegExp(`^/api/contracts/projects/${projectId}$`, 'u'),
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await projects
+            .getByRole('button', { name: 'Open Project', exact: true })
+            .click();
+        },
+      });
       await expect(
         page.getByRole('heading', { name: opportunityTitle, exact: true }),
       ).toBeVisible();
@@ -1617,11 +2190,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
         (project) => project.title === opportunityTitle,
       );
       expect(journeyProjects).toHaveLength(1);
-      projectId = present(journeyProjects[0]).id;
+      expect(present(journeyProjects[0])).toMatchObject({
+        id: projectId,
+        status: 'preparatory',
+      });
     });
 
     await test.step('8. prepare, approve and sign Addendum 1', async () => {
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       const parentBeforeAddendum = (
         await apiRead(request, {
           identity: identities.ada,
@@ -1645,9 +2221,22 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await contract
         .getByLabel('New term end (optional)', { exact: true })
         .fill(entered.addendumTermEnd);
-      await contract
-        .getByRole('button', { name: 'Create Addendum', exact: true })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'POST',
+            path: /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/addenda$/u,
+            status: 201,
+          },
+          ...versionReads('agreement'),
+        ],
+        act: async () => {
+          await contract
+            .getByRole('button', { name: 'Create Addendum', exact: true })
+            .click();
+        },
+      });
       await expect(
         contract.getByRole('button', {
           name: 'Return to parent agreement',
@@ -1667,7 +2256,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       expect(parent.version).toEqual(parentBeforeAddendum.version);
 
       const addendumId = present(addenda[0]).id;
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       await expect(
         contract.getByText(entered.specialConditions, { exact: true }),
       ).toBeVisible();
@@ -1702,7 +2291,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
           exact: true,
         })
         .click();
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       const parentAfterExecution = (
         await apiRead(request, {
           identity: identities.ada,
@@ -1725,9 +2314,15 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(listed.getByRole('listitem').first()).toContainText(
         'Executed — simulated evidence only',
       );
-      await listed
-        .getByRole('button', { name: 'Open Addendum 1', exact: true })
-        .click();
+      await actAndRead({
+        page,
+        expected: [...versionReads('agreement')],
+        act: async () => {
+          await listed
+            .getByRole('button', { name: 'Open Addendum 1', exact: true })
+            .click();
+        },
+      });
       await expect(
         contract.getByText(entered.changeSummary, { exact: true }),
       ).toBeVisible();
@@ -1736,9 +2331,21 @@ test('follows one commercial case from Request to signed agreement, Project and 
           hasText: new RegExp(`^${entered.addendumTermEnd}$`, 'u'),
         }),
       ).toBeVisible();
-      await contract
-        .getByRole('button', { name: 'Open exact Contract document' })
-        .click();
+      await actAndRead({
+        page,
+        expected: [
+          {
+            method: 'GET',
+            path: /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/versions\/[^/]+\/representation$/u,
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await contract
+            .getByRole('button', { name: 'Open exact Contract document' })
+            .click();
+        },
+      });
       await expect(
         contract
           .frameLocator('iframe[title="Illustrative Contract document"]')
@@ -1748,7 +2355,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
     });
 
     await test.step('9. declare the Opportunity WON', async () => {
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       await intake.getByRole('button', { name: 'Change status' }).click();
       await selectOption(intake.getByLabel('Status change', { exact: true }), {
         label: 'Mark as won',
@@ -1761,7 +2368,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       );
       await intake.getByRole('button', { name: 'Save status' }).click();
       expect((await changed).status()).toBe(200);
-      await reopenRequest(journey);
+      await reopenRequest(journey, { record: 'contract' });
       await expect(
         intake.locator('p').filter({ hasText: /^Status: Won · Since/u }),
       ).toBeVisible();
@@ -1873,15 +2480,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
         ],
       ];
       for (const [description, target] of commercialEvents)
-        await expect(activityRow(page, description, target)).toHaveCount(1);
+        await expect(activityRow(page, { description, target })).toHaveCount(1);
       // Create and link Project also records the Project owner's own event
       // (PRD 19.12); it is not part of the commercial family (PRD 25.1).
       await expect(
-        activityRow(
-          page,
-          'Ada Ionescu created a preparatory Project',
-          `Project: ${opportunityTitle}`,
-        ),
+        activityRow(page, {
+          description: 'Ada Ionescu created a preparatory Project',
+          target: `Project: ${opportunityTitle}`,
+        }),
       ).toHaveCount(1);
       // No commercial event beyond those: every row with a Request,
       // Opportunity, Sales Stage, Offer or agreement target is one of them.
@@ -1928,13 +2534,15 @@ test('follows one commercial case from Request to signed agreement, Project and 
           /^\/api\/offers\/opportunities\/[^/]+\/versions\/[^/]+$/u,
         ),
       );
-      await activityRow(
-        page,
-        'Ada Ionescu recorded the transmission of an Offer Version',
-        'Illustrative Offer 1 · version 1 · Simulated',
-      )
+      await activityRow(page, {
+        description:
+          'Ada Ionescu recorded the transmission of an Offer Version',
+        target: 'Illustrative Offer 1 · version 1 · Simulated',
+      })
         .getByRole('button', { name: 'Open Offer Version' })
         .click();
+      const historicalOffer = await historicalOfferRead;
+      expect(historicalOffer.status()).toBe(200);
       const offerRegion = page.getByRole('region', {
         name: 'Illustrative Offer',
         exact: true,
@@ -1942,8 +2550,6 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await expect(
         offerRegion.getByText('Historical version · read only'),
       ).toBeVisible();
-      const historicalOffer = await historicalOfferRead;
-      expect(historicalOffer.status()).toBe(200);
       const historicalVersion = object(
         object(object(await historicalOffer.json()).offer).version,
       );
@@ -1968,13 +2574,24 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
       // The Contract creation opens the superseded Contract Version 1.
       await openSection(journey, 'Activity Log');
-      await activityRow(
+      await actAndRead({
         page,
-        'Ada Ionescu created an illustrative agreement',
-        'Illustrative Contract 1 · version 1',
-      )
-        .getByRole('button', { name: 'Open agreement version' })
-        .click();
+        expected: [
+          {
+            method: 'GET',
+            path: new RegExp(`^/api${contractsPath}/versions/[^/]+$`, 'u'),
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await activityRow(page, {
+            description: 'Ada Ionescu created an illustrative agreement',
+            target: 'Illustrative Contract 1 · version 1',
+          })
+            .getByRole('button', { name: 'Open agreement version' })
+            .click();
+        },
+      });
       await expect(
         contract.getByText(
           'Historical version — preserved; no further decision or signature.',
@@ -1989,13 +2606,25 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
       // The accepted Offer Version 2 is the current one.
       await openSection(journey, 'Activity Log');
-      await activityRow(
+      await actAndRead({
         page,
-        'Ada Ionescu recorded the Client response to an Offer Version (Accepted)',
-        'Illustrative Offer 1 · version 2 · Simulated',
-      )
-        .getByRole('button', { name: 'Open Offer Version' })
-        .click();
+        expected: [
+          {
+            method: 'GET',
+            path: /^\/api\/offers\/opportunities\/[^/]+\/versions\/[^/]+$/u,
+            status: 200,
+          },
+        ],
+        act: async () => {
+          await activityRow(page, {
+            description:
+              'Ada Ionescu recorded the Client response to an Offer Version (Accepted)',
+            target: 'Illustrative Offer 1 · version 2 · Simulated',
+          })
+            .getByRole('button', { name: 'Open Offer Version' })
+            .click();
+        },
+      });
       await expect(offerRegion.getByText('Current version')).toBeVisible();
       await expect(
         offerRegion
@@ -2092,7 +2721,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
             response.request().method() === 'GET' &&
             new URL(response.url()).pathname === exactPath,
         );
-        await activityRow(page, description, target)
+        await activityRow(page, { description, target })
           .getByRole('button', {
             name:
               destination.family === 'offer'
@@ -2186,6 +2815,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
           page: otherPage,
           narrow,
           companyName: 'BIC',
+          companyId: otherCompanyId,
           subject,
         };
         await openSection(otherJourney, 'Client Requests');
@@ -2280,6 +2910,8 @@ test('follows one commercial case from Request to signed agreement, Project and 
         const offerPath = `/offers/opportunities/${opportunityId}`;
         const directReads = [
           `/commercial-intake/requests/${clientRequestId}`,
+          `/pricing/opportunities/${opportunityId}/snapshots`,
+          `/pricing/opportunities/${opportunityId}/snapshots/${pricingSnapshotId}`,
           `${opportunityPath}/outcome-history`,
           `${opportunityPath}/stage-history`,
           `${opportunityPath}/eligible-responsible-actors`,
@@ -2319,6 +2951,9 @@ test('follows one commercial case from Request to signed agreement, Project and 
           contracting,
           clientRequestId,
           opportunityId,
+          pricingSnapshotId,
+          entered.adjustmentReason,
+          ...snapshotContent,
           offerVersionId,
           contractVersionId,
           contractQualityRunId,
@@ -2362,6 +2997,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
 
 type Journey = {
   page: Page;
+  companyId: string;
   narrow: boolean;
   companyName: string;
   subject: string;
@@ -2378,9 +3014,65 @@ type ActivityVersionTarget = {
   | { family: 'agreement'; kind: 'CONTRACT' | 'PRECONTRACT' | 'ADDENDUM' }
 );
 
+type ExpectedResponse =
+  | { method: 'GET'; path: RegExp; status: 200 }
+  | { method: 'POST'; path: RegExp; status: 201 };
+
+/** Wait for the action's real responses before starting UI assertions. */
+async function actAndRead({
+  page,
+  expected,
+  act,
+}: {
+  page: Page;
+  expected: readonly ExpectedResponse[];
+  act: () => Promise<void>;
+}): Promise<void> {
+  const responses = expected.map(({ method, path, status }) => ({
+    response: page.waitForResponse(mutation(method, path)),
+    status,
+  }));
+  await act();
+  for (const pending of responses) {
+    const response = await pending.response;
+    expect(response.status()).toBe(pending.status);
+    expect(await response.finished()).toBeNull();
+  }
+}
+
+function versionReads(
+  resource: 'offer' | 'contract' | 'agreement',
+): ExpectedResponse[] {
+  const path = {
+    offer: '/api/offers/opportunities/[^/]+',
+    contract: '/api/contracts/opportunities/[^/]+',
+    agreement: '/api/contracts/opportunities/[^/]+/agreements/[^/]+',
+  }[resource];
+  return [path, `${path}/versions`].map((path) => ({
+    method: 'GET',
+    path: new RegExp(`^${path}$`, 'u'),
+    status: 200,
+  }));
+}
+
 /** Opens a navigation section of the active journey Company from a fresh load. */
 async function openSection(journey: Journey, section: string): Promise<void> {
-  const { page, narrow, companyName } = journey;
+  const { page, narrow, companyName, companyId } = journey;
+  // Activity loads at shell boot/Company selection, before navigation. Match
+  // this Company so the default Company's response cannot satisfy the wait.
+  const listPath =
+    section === 'Activity Log'
+      ? /^\/api\/activity-log$/u
+      : section === 'Client Requests'
+        ? /^\/api\/commercial-intake\/requests$/u
+        : undefined;
+  const listRead = listPath
+    ? page.waitForResponse(
+        (response) =>
+          mutation('GET', listPath)(response) &&
+          response.request().headers()['x-company-context-id'] === companyId,
+      )
+    : undefined;
   await page.goto('/');
   const company = page.getByLabel('Active Company', { exact: true });
   if (narrow)
@@ -2395,47 +3087,101 @@ async function openSection(journey: Journey, section: string): Promise<void> {
     .getByRole('navigation', { name: 'Primary navigation' })
     .getByRole('link', { name: section, exact: true })
     .click();
+  if (listRead) {
+    const response = await listRead;
+    expect(response.status()).toBe(200);
+    expect(await response.finished()).toBeNull();
+  }
 }
 
 /** Reloads from PostgreSQL and reopens the journey Request detail. */
-async function reopenRequest(journey: Journey): Promise<void> {
+async function reopenRequest(
+  journey: Journey,
+  {
+    record,
+    projectCandidates = false,
+  }: { record?: 'offer' | 'contract'; projectCandidates?: boolean } = {},
+): Promise<void> {
   const { page, subject } = journey;
   await openSection(journey, 'Client Requests');
-  const detailRead = page.waitForResponse(
-    mutation('GET', /^\/api\/commercial-intake\/requests\/[^/]+$/u),
-  );
-  await page
-    .locator('.commercial-intake-workspace')
-    .getByRole('button')
-    .filter({ has: page.getByText(subject, { exact: true }) })
-    .click();
-  expect((await detailRead).status()).toBe(200);
+  await actAndRead({
+    page,
+    expected: [
+      {
+        method: 'GET',
+        path: /^\/api\/commercial-intake\/requests\/[^/]+$/u,
+        status: 200,
+      },
+      ...(record ? versionReads(record) : []),
+      ...(projectCandidates
+        ? [
+            {
+              method: 'GET' as const,
+              path: /^\/api\/contracts\/opportunities\/[^/]+\/project-candidates$/u,
+              status: 200 as const,
+            },
+          ]
+        : []),
+    ],
+    act: async () => {
+      await page
+        .locator('.commercial-intake-workspace')
+        .getByRole('button')
+        .filter({ has: page.getByText(subject, { exact: true }) })
+        .click();
+    },
+  });
   await expect(
     page.getByText('Client Request detail', { exact: true }),
   ).toBeVisible();
 }
 
 /** Reloads, reopens the Request and selects its Precontract. */
-async function reopenPrecontract(journey: Journey): Promise<void> {
+async function reopenPrecontract(
+  journey: Journey,
+  { projectCandidates = false }: { projectCandidates?: boolean } = {},
+): Promise<void> {
   await reopenRequest(journey);
-  const contract = journey.page.getByRole('region', {
-    name: 'Contract',
-    exact: true,
+  const { page } = journey;
+  await actAndRead({
+    page,
+    expected: [
+      ...versionReads('agreement'),
+      ...(projectCandidates
+        ? [
+            {
+              method: 'GET' as const,
+              path: /^\/api\/contracts\/opportunities\/[^/]+\/agreements\/[^/]+\/project-candidates$/u,
+              status: 200 as const,
+            },
+          ]
+        : []),
+    ],
+    act: async () => {
+      await page
+        .getByRole('region', { name: 'Contract', exact: true })
+        .getByRole('region', { name: 'Precontract', exact: true })
+        .getByRole('button', { name: 'Open Precontract', exact: true })
+        .click();
+    },
   });
-  await contract
-    .getByRole('region', { name: 'Precontract', exact: true })
-    .getByRole('button', { name: 'Open Precontract', exact: true })
-    .click();
 }
 
 /** Reloads, reopens the Request and selects Addendum 1 of its Contract. */
 async function reopenAddendum(journey: Journey): Promise<void> {
-  await reopenRequest(journey);
-  await journey.page
-    .getByRole('region', { name: 'Contract', exact: true })
-    .getByRole('region', { name: 'Addenda', exact: true })
-    .getByRole('button', { name: 'Open Addendum 1', exact: true })
-    .click();
+  await reopenRequest(journey, { record: 'contract' });
+  const { page } = journey;
+  await actAndRead({
+    page,
+    expected: versionReads('agreement'),
+    act: async () => {
+      await page
+        .getByRole('region', { name: 'Contract', exact: true })
+        .getByRole('region', { name: 'Addenda', exact: true })
+        .getByRole('button', { name: 'Open Addendum 1', exact: true })
+        .click();
+    },
+  });
 }
 
 async function setStage(journey: Journey, label: string): Promise<void> {
@@ -2488,7 +3234,10 @@ function requestClient(intake: Locator): Locator {
 }
 
 /** The Activity Log rows with exactly this description and target label. */
-function activityRow(page: Page, description: string, target: string): Locator {
+function activityRow(
+  page: Page,
+  { description, target }: { description: string; target: string },
+): Locator {
   return page
     .locator('.activity-log .activity-log-list > li')
     .filter({ has: page.getByText(description, { exact: true }) })
@@ -2829,8 +3578,7 @@ async function approvalDate(
 
 async function registerCompany(
   request: APIRequestContext,
-  displayName: string,
-  suffix: string,
+  { displayName, suffix }: { displayName: string; suffix: string },
 ): Promise<string> {
   const company = await command(request, {
     identity: identities.owner,
@@ -3182,6 +3930,8 @@ function decodeOfferDetail(value: unknown) {
   const root = object(value);
   const offer = object(root.offer);
   const version = object(offer.version);
+  const snapshot = object(version.pricingSnapshot);
+  const representation = object(version.representation);
   return {
     ...root,
     offer: {
@@ -3193,11 +3943,62 @@ function decodeOfferDetail(value: unknown) {
         id: text(version.id),
         versionNumber: positiveInteger(version.versionNumber),
         predecessorVersionId: nullableText(version.predecessorVersionId),
+        supersededByVersionId: nullableText(version.supersededByVersionId),
+        supersededAt:
+          version.supersededAt === null ? null : instant(version.supersededAt),
+        createdAt: instant(version.createdAt),
+        differences: list(version.differences),
         pricingSnapshotId: text(version.pricingSnapshotId),
+        pricingSnapshot: Object.assign(snapshot, {
+          id: text(snapshot.id),
+          currency: text(snapshot.currency),
+          total: text(snapshot.total),
+        }),
+        recipient: object(version.recipient),
+        scopeNote: nullableText(version.scopeNote),
+        commercialConditions: nullableText(version.commercialConditions),
         validityDays: positiveInteger(version.validityDays),
+        validUntil: instant(version.validUntil),
+        decision: version.decision === null ? null : object(version.decision),
+        transmission:
+          version.transmission === null ? null : object(version.transmission),
+        representation: {
+          ...representation,
+          html: text(representation.html),
+          sha256: recordedSha256(representation.sha256),
+        },
       },
     },
   };
+}
+
+function recordedSha256(value: unknown): string {
+  const result = text(value);
+  if (!/^[0-9a-f]{64}$/u.test(result))
+    throw new Error('Expected a recorded SHA-256 checksum');
+  return result;
+}
+
+function expectOfferChecksums({
+  version,
+  transmitted,
+}: {
+  version: ReturnType<typeof decodeOfferDetail>['offer']['version'];
+  transmitted: boolean;
+}): void {
+  const checksum = createHash('sha256')
+    .update(version.representation.html)
+    .digest('hex');
+  expect(version.representation.sha256).toBe(checksum);
+  expect(version.decision).toMatchObject({
+    state: 'APPROVED',
+    representationSha256: checksum,
+  });
+  if (transmitted)
+    expect(version.transmission).toMatchObject({
+      representationSha256: checksum,
+    });
+  else expect(version.transmission).toBeNull();
 }
 
 function decodeAgreementDetail(value: unknown) {
@@ -3215,6 +4016,7 @@ function decodeAgreementDetail(value: unknown) {
     contract: {
       ...contract,
       id: text(contract.id),
+      illustrativeReference: positiveInteger(contract.illustrativeReference),
       kind,
       revision: positiveInteger(contract.revision),
       addenda: list(contract.addenda).map((value) => {
@@ -3226,6 +4028,18 @@ function decodeAgreementDetail(value: unknown) {
         id: text(version.id),
         versionNumber: positiveInteger(version.versionNumber),
         predecessorVersionId: nullableText(version.predecessorVersionId),
+        supersededByVersionId: nullableText(version.supersededByVersionId),
+        supersededAt:
+          version.supersededAt === null ? null : instant(version.supersededAt),
+        createdAt: instant(version.createdAt),
+        differences: list(version.differences),
+        pricingSnapshotId: nullableText(version.pricingSnapshotId),
+        pricingSnapshot:
+          version.pricingSnapshot === null
+            ? null
+            : object(version.pricingSnapshot),
+        scopeNote: nullableText(version.scopeNote),
+        commercialConditions: nullableText(version.commercialConditions),
         latestQualityRun:
           quality === null ? null : { ...quality, id: text(quality.id) },
         decision:
