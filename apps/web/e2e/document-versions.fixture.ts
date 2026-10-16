@@ -30,6 +30,7 @@ export function draftVersionsOf(document: {
         status: 'draft',
         createdAt: document.createdAt,
         createdBy: { displayName: 'Document Registrar' },
+        pdfContent: { state: 'absent' },
         representations: [
           {
             ...representation,

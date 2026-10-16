@@ -1,3 +1,4 @@
+import type { DocumentPdfContent } from './document-pdf.types.js';
 /** One current typed, unverified external reference held by a Version. */
 export type DocumentVersionReference = {
   id: string;
@@ -17,6 +18,7 @@ interface DocumentVersionBase {
   createdAt: string;
   createdBy: { displayName: string };
   representations: DocumentVersionReference[];
+  pdfContent: DocumentPdfContent;
 }
 
 interface DocumentVersionDesignation {

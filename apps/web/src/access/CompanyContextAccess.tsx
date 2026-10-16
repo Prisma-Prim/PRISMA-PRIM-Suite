@@ -1,3 +1,4 @@
+import { useDocumentPdfCopy } from '../documents/document-pdf.copy';
 import { useSalesStageCopy } from '../commercial-intake/sales-stage.copy';
 import { useContractDecisionCopy } from '../contract/contract-decision.copy';
 import {
@@ -32,6 +33,8 @@ type AssignmentBundle =
   | 'company-context'
   | 'director-client'
   | 'document-registrar'
+  | 'document-content-reader'
+  | 'document-content-uploader'
   | 'document-approver'
   | 'document-project-organizer'
   | 'commercial-intake'
@@ -59,6 +62,8 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'company-context': '/company-context-assignments',
   'director-client': '/company-director-client-assignments',
   'document-registrar': '/company-document-registrar-assignments',
+  'document-content-reader': '/company-document-content-reader-assignments',
+  'document-content-uploader': '/company-document-content-uploader-assignments',
   'document-approver': '/company-document-approver-assignments',
   'document-project-organizer':
     '/company-document-project-organizer-assignments',
@@ -218,6 +223,7 @@ export function CompanyContextAccess({
     reloadAdministration,
   ]);
 
+  const pdfCopy = useDocumentPdfCopy();
   if (!canManageAssignments) return null;
 
   async function submit(event: FormEvent, submission: Submission) {
@@ -534,6 +540,14 @@ export function CompanyContextAccess({
                 label: copy.documentRegistrarBundle,
               },
               {
+                value: 'document-content-reader',
+                label: pdfCopy.t('readerBundle'),
+              },
+              {
+                value: 'document-content-uploader',
+                label: pdfCopy.t('uploaderBundle'),
+              },
+              {
                 value: 'document-approver',
                 label: copy.documentApproverBundle,
               },
@@ -564,6 +578,8 @@ export function CompanyContextAccess({
                 value === 'document-project-organizer' ||
                 value === 'document-registrar' ||
                 value === 'project' ||
+                value === 'document-content-reader' ||
+                value === 'document-content-uploader' ||
                 value === 'document-approver' ||
                 value === 'project-approver'
               )
@@ -586,6 +602,12 @@ export function CompanyContextAccess({
           )}
           {bundle === 'project-approver' && (
             <p>{copy.projectApproverPrerequisites}</p>
+          )}
+          {bundle === 'document-content-reader' && (
+            <p>{pdfCopy.t('readerPrerequisites')}</p>
+          )}
+          {bundle === 'document-content-uploader' && (
+            <p>{pdfCopy.t('uploaderPrerequisites')}</p>
           )}
           {bundle === 'document-approver' && (
             <p>{copy.documentApproverPrerequisites}</p>
@@ -705,6 +727,8 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',
+    'document-content-reader': 'Company Document Content Reader',
+    'document-content-uploader': 'Company Document Content Uploader',
     'document-approver': copy.documentApproverBundle,
     project: copy.projectBundle,
     'project-approver': copy.projectApproverBundle,

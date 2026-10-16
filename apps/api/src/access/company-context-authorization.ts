@@ -25,6 +25,8 @@ import {
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
+  COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+  COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   documentApproverPermissionsFor,
   documentPermissionsFor,
   isDocumentPermissionSetVersion,
@@ -333,6 +335,52 @@ export class CompanyContextAuthorization {
     );
   }
 
+  async requireDocumentContentRead(actor: ActorContext): Promise<string> {
+    return this.requireLockedDocumentAuthority(actor, 'document.content.read', {
+      bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+      versions: ['v1'],
+    });
+  }
+  async requireDocumentContentUpload(actor: ActorContext): Promise<string> {
+    await this.requireDocumentContentRead(actor);
+    await this.requireDocumentVersionManagement(actor);
+    return this.requireLockedDocumentAuthority(
+      actor,
+      'document.content.upload',
+      { bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE, versions: ['v1'] },
+    );
+  }
+  async hasDocumentContentRead(actor: ActorContext): Promise<boolean> {
+    const companyId = actor.activeCompany?.id;
+    if (
+      !companyId ||
+      !actor.activeCompany?.documentPermissions?.includes(
+        'document.content.read',
+      )
+    )
+      return false;
+    const [assignment] = await this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(
+        and(
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(companyRoleAssignments.companyId, companyId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(
+            companyRoleAssignments.bundle,
+            COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+          ),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      );
+    return assignment !== undefined;
+  }
+
   /**
    * A Document command's live authority: the locked Document read authority,
    * Representation read, the required permission and its captured assignment
@@ -347,7 +395,10 @@ export class CompanyContextAuthorization {
           versions: readonly DocumentPermissionSetVersion[];
         }
       | {
-          bundle: typeof COMPANY_DOCUMENT_APPROVER_BUNDLE;
+          bundle:
+            | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE
+            | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE
+            | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE;
           versions: readonly ['v1'];
         },
   ): Promise<string> {
@@ -1223,6 +1274,8 @@ export class CompanyContextAuthorization {
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_APPROVER_BUNDLE,
+        COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+        COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
       eq(companies.status, 'active' as const),
@@ -1291,6 +1344,28 @@ export class CompanyContextAuthorization {
         ];
         company.documentApproverAssignmentId = row.assignmentId;
         company.documentApproverPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_DOCUMENT_CONTENT_READER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          'document.content.read',
+        ];
+        company.documentContentReaderAssignmentId = row.assignmentId;
+        company.documentContentReaderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          'document.content.upload',
+        ];
+        company.documentContentUploaderAssignmentId = row.assignmentId;
+        company.documentContentUploaderPermissionSetVersion = 'v1';
       }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
         if (!isDocumentPermissionSetVersion(row.permissionSetVersion)) continue;

@@ -1,3 +1,6 @@
+import { DocumentContentService } from './document-content.service.js';
+import { DocumentPdfStorage } from './document-pdf-storage.js';
+import { DocumentMalwareScanner } from './document-malware-scanner.js';
 import { ProjectModule } from '../project/project.module.js';
 import { DocumentProjectsService } from './document-projects.service.js';
 import { AccessModule } from '../access/access.module.js';
@@ -21,7 +24,15 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentProjectsService,
     DocumentReadBoundary,
     DocumentVersionsService,
+    DocumentContentService,
+    DocumentPdfStorage,
+    DocumentMalwareScanner,
   ],
-  exports: [DocumentsService, DocumentProjectsService, DocumentVersionsService],
+  exports: [
+    DocumentsService,
+    DocumentProjectsService,
+    DocumentVersionsService,
+    DocumentContentService,
+  ],
 })
 export class DocumentsModule {}

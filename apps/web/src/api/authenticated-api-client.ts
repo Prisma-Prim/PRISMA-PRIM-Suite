@@ -12,10 +12,10 @@ export type ApiResult<T> =
   | {
       status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
       reason?: undefined;
-      /** A conflict's machine-readable `code`, when the server states one. */
+      /** A conflict or service-unavailable machine code, when stated. */
       code?: string;
     }
-  | { status: 'validation'; message?: string };
+  | { status: 'validation'; message?: string; code?: string };
 
 /** The machine-readable code of a conflict other than a duplicate review. */
 export function conflictCode(result: ApiResult<unknown>): string | undefined {
@@ -27,13 +27,17 @@ export function conflictCode(result: ApiResult<unknown>): string | undefined {
 export interface ApiRequest {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   headers?: Record<string, string>;
-  body?: string;
+  body?: string | Blob;
   companyContextId?: string;
   signal?: AbortSignal;
 }
 
 export interface AuthenticatedApiClient {
   request<T>(path: string, request?: ApiRequest): Promise<ApiResult<T>>;
+  download(
+    path: string,
+    request?: Pick<ApiRequest, 'headers' | 'companyContextId' | 'signal'>,
+  ): Promise<ApiResult<Blob>>;
 }
 
 export async function createAuthenticatedApiClient(
@@ -44,30 +48,33 @@ export async function createAuthenticatedApiClient(
     identity.requestHeaders ??
     (token ? { Authorization: `Bearer ${token}` } : undefined);
 
+  function authenticatedFetch(
+    path: string,
+    request: ApiRequest,
+  ): Promise<Response> {
+    const headers = requestHeaders(
+      identityHeaders,
+      request.headers,
+      request.companyContextId,
+    );
+    return fetch(`${import.meta.env.VITE_API_URL ?? '/api'}${path}`, {
+      method: request.method,
+      credentials: 'include',
+      headers,
+      body: request.body,
+      signal: request.signal,
+    });
+  }
+
   return {
     async request<T>(
       path: string,
       request: ApiRequest = {},
     ): Promise<ApiResult<T>> {
-      const headers = requestHeaders(
-        identityHeaders,
-        request.headers,
-        request.companyContextId,
-      );
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL ?? '/api'}${path}`,
-          {
-            method: request.method,
-            credentials: 'include',
-            headers,
-            body: request.body,
-            signal: request.signal,
-          },
-        );
-        if (response.status === 401) return { status: 'unauthorized' };
-        if (response.status === 403) return { status: 'forbidden' };
-        if (response.status === 404) return { status: 'notFound' };
+        const response = await authenticatedFetch(path, request);
+        const rejection = accessFailure(response);
+        if (rejection) return rejection;
         if (response.status === 409) {
           const body = await optionalJson(response);
           if (isPossibleDuplicateConflict(body)) {
@@ -92,10 +99,18 @@ export async function createAuthenticatedApiClient(
         }
         if (response.status === 400) {
           const body = await optionalJson(response);
+          const code = codeFrom(body);
           return {
             status: 'validation',
             message: messageFrom(body),
+            ...(code === undefined ? {} : { code }),
           };
+        }
+        if (response.status === 503) {
+          const code = codeFrom(await optionalJson(response));
+          return code === undefined
+            ? { status: 'error' }
+            : { status: 'error', code };
         }
         if (!response.ok) return { status: 'error' };
         return {
@@ -108,7 +123,32 @@ export async function createAuthenticatedApiClient(
         return { status: 'error' };
       }
     },
+    async download(path, request = {}) {
+      try {
+        const response = await authenticatedFetch(path, {
+          ...request,
+          method: 'GET',
+        });
+        const rejection = accessFailure(response);
+        if (rejection) return rejection;
+        if (!response.ok) return { status: 'error' };
+        return { status: 'ok', value: await response.blob() };
+      } catch (error: unknown) {
+        if (error instanceof DOMException && error.name === 'AbortError')
+          throw error;
+        return { status: 'error' };
+      }
+    },
   };
+}
+
+function accessFailure(
+  response: Response,
+): { status: 'unauthorized' | 'forbidden' | 'notFound' } | undefined {
+  if (response.status === 401) return { status: 'unauthorized' };
+  if (response.status === 403) return { status: 'forbidden' };
+  if (response.status === 404) return { status: 'notFound' };
+  return undefined;
 }
 
 function requestHeaders(

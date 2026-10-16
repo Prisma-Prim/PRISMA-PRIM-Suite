@@ -63,6 +63,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_profitability_contributor',
   'company_profitability_director',
   'company_sales_stage_configuration',
+  'company_document_content_reader',
+  'company_document_content_uploader',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -733,6 +735,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_document_registrar_assignment.revoked',
   'company_document_approver_assignment.granted',
   'company_document_approver_assignment.revoked',
+  'company_document_content_reader_assignment.granted',
+  'company_document_content_reader_assignment.revoked',
+  'company_document_content_uploader_assignment.granted',
+  'company_document_content_uploader_assignment.revoked',
   'company_project_assignment.granted',
   'company_project_assignment.revoked',
   'company_commercial_intake_assignment.granted',
@@ -816,6 +822,8 @@ export const activityLogEvents = pgTable(
               | 'Company Document Project Organizer'
               | 'Company Document Registrar'
               | 'Company Document Approver'
+              | 'Company Document Content Reader'
+              | 'Company Document Content Uploader'
               | 'Company Project Access'
               | 'Company Commercial Intake'
               | 'Company Service Catalogue'

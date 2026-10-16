@@ -2863,6 +2863,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_registrar_assignment.revoked':
     case 'company_document_approver_assignment.granted':
     case 'company_document_approver_assignment.revoked':
+    case 'company_document_content_reader_assignment.granted':
+    case 'company_document_content_reader_assignment.revoked':
+    case 'company_document_content_uploader_assignment.granted':
+    case 'company_document_content_uploader_assignment.revoked':
     case 'company_project_assignment.granted':
     case 'company_project_assignment.revoked':
     case 'company_context_assignment.granted':

@@ -1,3 +1,6 @@
+import { ConfigService } from '@nestjs/config';
+import { DocumentPdfStorage } from './document-pdf-storage.js';
+import { DocumentMalwareScanner } from './document-malware-scanner.js';
 import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -958,7 +961,14 @@ describe.skipIf(!databaseUrl)(
         accountability,
         projects,
         boundary,
-        new DocumentVersionsService(authorization, context, clients, boundary),
+        new DocumentVersionsService(
+          authorization,
+          context,
+          clients,
+          boundary,
+          new DocumentPdfStorage(context),
+          new DocumentMalwareScanner(new ConfigService()),
+        ),
       );
       return {
         documents,
