@@ -1,15 +1,164 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
-} from './test/render-with-interface-locale';
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { ClientDossierPanel } from './client/ClientDossierPanel';
 import { ApplicationPresentation } from './production-shell/application-presentation';
+import {
+  InterfaceLocaleProvider,
+  interfaceLocaleStorageKey,
+  type InterfaceLocale,
+} from './localization/interface-locale';
+import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
+import { selectOption } from './test/select-option';
+
+const locales = [
+  {
+    code: 'ro',
+    title: 'Entități juridice și sucursale',
+    add: 'Adaugă o entitate juridică sau sucursală',
+    addTitle: 'Adăugarea unei entități juridice sau sucursale',
+    name: 'Denumirea juridică exactă',
+    tax: 'IDNO / cod fiscal',
+    address: 'Adresa juridică',
+    save: 'Salvează entitatea juridică',
+    saving: 'Se salvează entitatea juridică…',
+    cancel: 'Anulează',
+    correct: 'Corectează',
+    required: 'Introduceți denumirea juridică exactă.',
+    recorded: 'Entitatea juridică sau sucursala a fost înregistrată.',
+    corrected: 'Entitatea juridică sau sucursala a fost corectată.',
+    unchanged: 'Modificați cel puțin o valoare înainte de salvare.',
+    uncertain:
+      'Nu am putut confirma dacă această modificare a fost salvată. Salvați din nou pentru a reîncerca în siguranță exact aceeași modificare.',
+    stale:
+      'Acest dosar al Clientului s-a modificat înainte de salvarea modificării dvs. Reîncărcați entitățile juridice și sucursalele înainte de a încerca din nou.',
+    reload: 'Reîncarcă entitățile juridice și sucursalele',
+    capacity:
+      'Acest Client are deja numărul maxim de 50 de entități juridice sau sucursale suplimentare. Nu s-a adăugat nimic.',
+    nameLong: 'Denumirea juridică trebuie să aibă cel mult 200 de caractere.',
+    taxLong: 'IDNO / codul fiscal trebuie să aibă cel mult 500 de caractere.',
+    addressLong: 'Adresa juridică trebuie să aibă cel mult 2.000 de caractere.',
+    loading: 'Se încarcă entitățile juridice și sucursalele…',
+    error:
+      'Entitățile juridice și sucursalele nu au putut fi încărcate. Dosarul rămâne disponibil.',
+    retry: 'Reîncearcă încărcarea entităților juridice și sucursalelor',
+    unavailable:
+      'Entitățile juridice și sucursalele nu sunt disponibile cu accesul dvs. actual.',
+    invalid: 'Verificați valorile entității juridice și încercați din nou.',
+  },
+  {
+    code: 'ru',
+    title: 'Юридические лица и филиалы',
+    add: 'Добавить юридическое лицо или филиал',
+    addTitle: 'Добавление юридического лица или филиала',
+    name: 'Точное юридическое наименование',
+    tax: 'IDNO / налоговый код',
+    address: 'Юридический адрес',
+    save: 'Сохранить юридическое лицо',
+    saving: 'Сохранение юридического лица…',
+    cancel: 'Отмена',
+    correct: 'Исправить',
+    required: 'Введите точное юридическое наименование.',
+    recorded: 'Юридическое лицо или филиал зарегистрированы.',
+    corrected: 'Юридическое лицо или филиал исправлены.',
+    unchanged: 'Перед сохранением измените хотя бы одно значение.',
+    uncertain:
+      'Не удалось подтвердить, сохранено ли это изменение. Сохраните снова, чтобы безопасно повторить точно такое же изменение.',
+    stale:
+      'Досье этого Клиента изменилось до сохранения вашего изменения. Перезагрузите юридические лица и филиалы перед повторной попыткой.',
+    reload: 'Перезагрузить юридические лица и филиалы',
+    capacity:
+      'У этого Клиента уже зарегистрировано максимально допустимое количество дополнительных юридических лиц или филиалов: 50. Ничего не добавлено.',
+    nameLong:
+      'Юридическое наименование должно содержать не более 200 символов.',
+    taxLong: 'IDNO / налоговый код должен содержать не более 500 символов.',
+    addressLong: 'Юридический адрес должен содержать не более 2 000 символов.',
+    loading: 'Загрузка юридических лиц и филиалов…',
+    error:
+      'Не удалось загрузить юридические лица и филиалы. Досье остаётся доступным.',
+    retry: 'Повторить загрузку юридических лиц и филиалов',
+    unavailable:
+      'Юридические лица и филиалы недоступны при вашем текущем доступе.',
+    invalid: 'Проверьте данные юридического лица и повторите попытку.',
+  },
+  {
+    code: 'fr',
+    title: 'Entités juridiques et succursales',
+    add: 'Ajouter une entité juridique ou une succursale',
+    addTitle: 'Ajout d’une entité juridique ou d’une succursale',
+    name: 'Dénomination juridique exacte',
+    tax: 'IDNO / code fiscal',
+    address: 'Adresse juridique',
+    save: 'Enregistrer l’entité juridique',
+    saving: 'Enregistrement de l’entité juridique…',
+    cancel: 'Annuler',
+    correct: 'Corriger',
+    required: 'Saisissez la dénomination juridique exacte.',
+    recorded: 'Entité juridique ou succursale enregistrée.',
+    corrected: 'Entité juridique ou succursale corrigée.',
+    unchanged: 'Modifiez au moins une valeur avant d’enregistrer.',
+    uncertain:
+      'Nous n’avons pas pu confirmer si cette modification a été enregistrée. Enregistrez à nouveau pour réessayer exactement la même modification en toute sécurité.',
+    stale:
+      'Le dossier de ce Client a changé avant l’enregistrement de votre modification. Rechargez les entités juridiques et succursales avant de réessayer.',
+    reload: 'Recharger les entités juridiques et succursales',
+    capacity:
+      'Ce Client a déjà atteint le maximum de 50 entités juridiques ou succursales supplémentaires. Aucun ajout n’a été effectué.',
+    nameLong: 'La dénomination juridique doit contenir au plus 200 caractères.',
+    taxLong: 'L’IDNO / code fiscal doit contenir au plus 500 caractères.',
+    addressLong: 'L’adresse juridique doit contenir au plus 2 000 caractères.',
+    loading: 'Chargement des entités juridiques et succursales…',
+    error:
+      'Impossible de charger les entités juridiques et succursales. Le dossier reste disponible.',
+    retry: 'Réessayer le chargement des entités juridiques et succursales',
+    unavailable:
+      'Les entités juridiques et succursales ne sont pas disponibles avec votre accès actuel.',
+    invalid: 'Vérifiez les valeurs de l’entité juridique et réessayez.',
+  },
+  {
+    code: 'en',
+    title: 'Legal entities and branches',
+    add: 'Add legal entity or branch',
+    addTitle: 'Add a legal entity or branch',
+    name: 'Exact legal name',
+    tax: 'IDNO / tax code',
+    address: 'Legal address',
+    save: 'Save legal entity',
+    saving: 'Saving legal entity…',
+    cancel: 'Cancel',
+    correct: 'Correct',
+    required: 'Enter the exact legal name.',
+    recorded: 'Legal entity or branch recorded.',
+    corrected: 'Legal entity or branch corrected.',
+    unchanged: 'Change at least one value before saving.',
+    uncertain:
+      'We could not confirm whether this change was saved. Save again to retry exactly the same change safely.',
+    stale:
+      'This Client dossier changed before your change was saved. Reload the legal entities and branches before trying again.',
+    reload: 'Reload legal entities and branches',
+    capacity:
+      'This Client already records the maximum of 50 additional legal entities or branches. Nothing was added.',
+    nameLong: 'The legal name must be 200 characters or fewer.',
+    taxLong: 'The IDNO / tax code must be 500 characters or fewer.',
+    addressLong: 'The legal address must be 2,000 characters or fewer.',
+    loading: 'Loading legal entities and branches…',
+    error:
+      'Legal entities and branches could not be loaded. The dossier remains available.',
+    retry: 'Retry legal entities and branches',
+    unavailable:
+      'Legal entities and branches are not available with your current access.',
+    invalid: 'Check the legal entity values and try again.',
+  },
+] as const;
 
 const companyA = { id: 'company-a', displayName: 'PRISMA-PRIM' };
 const dossier = {
@@ -103,6 +252,8 @@ function renderDossier({
   presentation = 'prisme',
   canUpdate = true,
   clientAccountId = dossier.id,
+  locale = 'en',
+  application = false,
 }: {
   entities?: Entity[];
   route?: Route;
@@ -110,13 +261,24 @@ function renderDossier({
   presentation?: Presentation;
   canUpdate?: boolean;
   clientAccountId?: string;
+  locale?: InterfaceLocale | null;
+  application?: boolean;
 } = {}) {
   const server = {
     version: dossier.version,
     address: dossier.address,
     entities: [...entities],
+    actor: directorActor(),
+    activityReads: 0,
   };
   const requests: EntityRequest[] = [];
+  const wireCommands: {
+    method: string;
+    path: string;
+    body: string;
+    key: string | null;
+    company: string | null;
+  }[] = [];
   const dossierRequests: EntityRequest[] = [];
   const dossierCorrections: Record<string, unknown>[] = [];
   const activity = vi.fn(async () => undefined);
@@ -125,14 +287,45 @@ function renderDossier({
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const path = input.toString();
       const method = init?.method ?? 'GET';
-      if (path.endsWith('/access/current-actor'))
-        return respond(directorActor());
+      if (path.endsWith('/access/current-actor')) {
+        if (
+          new Headers(init?.headers).get('x-company-context-id') === 'company-b'
+        )
+          server.actor = {
+            ...server.actor,
+            activeCompany: {
+              ...server.actor.activeCompany,
+              id: 'company-b',
+              displayName: 'Company B',
+            },
+          };
+        return respond(server.actor);
+      }
+      if (path.endsWith('/companies'))
+        return respond([
+          companyA,
+          { id: 'company-b', displayName: 'Company B' },
+        ]);
+      if (path.endsWith('/activity-log')) {
+        server.activityReads += 1;
+        return respond({ events: [] });
+      }
+      if (path.includes('/clients/search?')) return respond({}, 403);
+      if (path.includes('/client-duplicate-reviews?'))
+        return respond({ items: [], next_cursor: null });
+      if (path.endsWith('/union-history')) return respond([]);
+      if (path.endsWith('/clients'))
+        return respond([
+          dossier,
+          { ...dossier, id: 'client-two', displayName: 'Other Demo SRL' },
+        ]);
       if (path.endsWith('/correction-history'))
         return respond({ corrections: [], nextCursor: null });
       if (path.includes('/legal-entities')) {
-        expect(new Headers(init?.headers).get('x-company-context-id')).toBe(
-          companyA.id,
-        );
+        if (!application)
+          expect(new Headers(init?.headers).get('x-company-context-id')).toBe(
+            companyA.id,
+          );
         const request: EntityRequest = {
           method,
           path: path.replace(/^\/api/u, ''),
@@ -142,6 +335,14 @@ function renderDossier({
               : record(JSON.parse(String(init.body))),
           key: new Headers(init?.headers).get('idempotency-key'),
         };
+        if (init?.body !== undefined)
+          wireCommands.push({
+            method,
+            path,
+            body: String(init.body),
+            key: request.key,
+            company: new Headers(init.headers).get('x-company-context-id'),
+          });
         requests.push(request);
         const answered = await route(request);
         if (answered) return answered;
@@ -232,22 +433,39 @@ function renderDossier({
     );
     return respond({ clientVersion: server.version, legalEntity: corrected });
   }
+  if (locale === null) localStorage.removeItem(interfaceLocaleStorageKey);
+  else localStorage.setItem(interfaceLocaleStorageKey, locale);
+  if (application)
+    window.history.replaceState(null, '', '/?frame=prisme#clients');
   const view = render(
-    <ApplicationPresentation value={presentation}>
-      <ClientDossierPanel
-        clientAccountId={clientAccountId}
-        companyContextId={companyA.id}
-        canUpdate={canUpdate}
-        identity={deterministicBrowserIdentity()}
-        onCompanyContextRejected={() => undefined}
-        onActivityRecorded={activity}
-        onClientsChanged={async () => undefined}
-      />
-    </ApplicationPresentation>,
+    application ? (
+      <App identity={deterministicBrowserIdentity()} />
+    ) : (
+      <ApplicationPresentation value={presentation}>
+        <ClientDossierPanel
+          clientAccountId={clientAccountId}
+          companyContextId={companyA.id}
+          canUpdate={canUpdate}
+          identity={deterministicBrowserIdentity()}
+          onCompanyContextRejected={() => undefined}
+          onActivityRecorded={activity}
+          onClientsChanged={async () => undefined}
+        />
+      </ApplicationPresentation>
+    ),
+    {
+      wrapper: ({ children }) => (
+        <InterfaceLocaleProvider>
+          <InterfaceLocaleSelect />
+          {children}
+        </InterfaceLocaleProvider>
+      ),
+    },
   );
   return {
     server,
     requests,
+    wireCommands,
     dossierRequests,
     dossierCorrections,
     activity,
@@ -292,6 +510,24 @@ describe('Client legal entities and branches', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('starts the public legal-entity panel in Romanian without an explicit choice', async () => {
+    renderDossier({ locale: null });
+    const region = await screen.findByRole('region', {
+      name: 'Entități juridice și sucursale',
+    });
+    expect(
+      await within(region).findByText(
+        'Nu sunt înregistrate entități juridice sau sucursale suplimentare. Identitatea din dosarul de mai sus este organizația principală.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(region).getByRole('button', {
+        name: 'Adaugă o entitate juridică sau sucursală',
+      }),
+    ).toBeEnabled();
   });
 
   it.each(['prisme', 'classic'] as const)(
@@ -930,5 +1166,592 @@ describe('Client legal entities and branches', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.queryByText(branch.legalName)).not.toBeInTheDocument();
     expect(screen.getByText('Other Demo — Filiala')).toBeVisible();
+  });
+  it.each(locales)(
+    'preserves literal drafts, validation, list order and exact commands through locale changes in $code',
+    async (locale) => {
+      let attempts = 0;
+      const pending = deferred<Response>();
+      const { requests, wireCommands, dossierRequests, activity } =
+        renderDossier({
+          locale: locale.code,
+          entities: [branch, logistic],
+          route: (request) =>
+            request.method === 'POST' && ++attempts === 1
+              ? pending.promise
+              : undefined,
+        });
+      const region = await screen.findByRole('region', { name: locale.title });
+      await within(region).findByText(logistic.legalName);
+      const names = () =>
+        within(region)
+          .getAllByRole('listitem')
+          .map((item) => item.querySelector('strong')?.textContent);
+      expect(names()).toEqual([branch.legalName, logistic.legalName]);
+      fireEvent.click(within(region).getByRole('button', { name: locale.add }));
+      const form = within(region).getByRole('form', { name: locale.addTitle });
+      const name = within(form).getByLabelText(locale.name);
+      fireEvent.click(within(form).getByRole('button', { name: locale.save }));
+      expect(name).toHaveAccessibleDescription(locale.required);
+      const literalName = '  Филиал {legalName} — Știință  ';
+      const literalTax = '  Налог {taxId}  ';
+      const literalAddress = '  Str. Științei {address}\nКорпус Б, etaj 2  ';
+      fill(form, {
+        [locale.name]: literalName,
+        [locale.tax]: literalTax,
+        [locale.address]: literalAddress,
+      });
+      const control = screen.getByRole('combobox');
+      const reads = requests.length;
+      const dossierReads = dossierRequests.length;
+      for (const next of locales) {
+        selectOption(control, next.code);
+        expect(screen.getByRole('region', { name: next.title })).toBe(region);
+        expect(within(region).getByRole('form', { name: next.addTitle })).toBe(
+          form,
+        );
+        expect(within(form).getByLabelText(next.name)).toBe(name);
+        expect(name).toHaveValue(literalName);
+        expect(name).toHaveAccessibleDescription(next.required);
+        expect(within(form).getByLabelText(next.tax)).toHaveValue(literalTax);
+        expect(within(form).getByLabelText(next.address)).toHaveValue(
+          literalAddress,
+        );
+        expect(control).toHaveFocus();
+        expect(names()).toEqual([branch.legalName, logistic.legalName]);
+        expect(requests).toHaveLength(reads);
+        expect(dossierRequests).toHaveLength(dossierReads);
+        expect(activity).not.toHaveBeenCalled();
+      }
+      selectOption(control, locale.code);
+      fireEvent.click(within(form).getByRole('button', { name: locale.save }));
+      expect(await within(form).findByRole('status')).toHaveTextContent(
+        locale.saving,
+      );
+      expect(
+        within(form).getByRole('button', { name: locale.saving }),
+      ).toBeDisabled();
+      selectOption(control, 'fr');
+      expect(within(form).getByRole('status')).toHaveTextContent(
+        'Enregistrement de l’entité juridique…',
+      );
+      pending.resolve(respond({}, 503));
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        'Nous n’avons pas pu confirmer si cette modification a été enregistrée.',
+      );
+      selectOption(control, locale.code);
+      expect(within(form).getByRole('alert')).toHaveTextContent(
+        locale.uncertain,
+      );
+      fireEvent.click(within(form).getByRole('button', { name: locale.save }));
+      expect(await within(region).findByText(locale.recorded)).toBeVisible();
+      expect(wireCommands).toHaveLength(2);
+      expect(wireCommands[1]).toEqual(wireCommands[0]);
+      expect(wireCommands[0]).toMatchObject({
+        method: 'POST',
+        path: '/api/clients/client-one/legal-entities',
+        company: companyA.id,
+        body: '{"expectedClientVersion":3,"legalName":"Филиал {legalName} — Știință","taxId":"Налог {taxId}","legalAddress":"Str. Științei {address}\\nКорпус Б, etaj 2"}',
+        key: expect.any(String),
+      });
+      expect(wireCommands[0]?.key).toBeTruthy();
+      const afterSaveReads = requests.length;
+      selectOption(control, 'fr');
+      expect(
+        within(region).getByText('Entité juridique ou succursale enregistrée.'),
+      ).toBeVisible();
+      expect(requests).toHaveLength(afterSaveReads);
+      selectOption(control, locale.code);
+      const exactName = 'Филиал {legalName} — Știință';
+      fireEvent.click(
+        within(region).getByRole('button', {
+          name: `${locale.correct} ${exactName}`,
+        }),
+      );
+      const correction = within(region).getByRole('form', {
+        name: `${locale.correct} ${exactName}`,
+      });
+      fireEvent.click(
+        within(correction).getByRole('button', { name: locale.save }),
+      );
+      expect(within(correction).getByRole('alert')).toHaveTextContent(
+        locale.unchanged,
+      );
+      selectOption(control, 'fr');
+      expect(within(correction).getByRole('alert')).toHaveTextContent(
+        'Modifiez au moins une valeur avant d’enregistrer.',
+      );
+      expect(wireCommands).toHaveLength(2);
+      selectOption(control, locale.code);
+      fill(correction, { [locale.tax]: '   ' });
+      const correctionReads = requests.length;
+      selectOption(control, 'ru');
+      expect(
+        within(correction).getByLabelText('IDNO / налоговый код'),
+      ).toHaveValue('   ');
+      expect(
+        within(correction).getByLabelText('Юридический адрес'),
+      ).toHaveValue(literalAddress.trim());
+      expect(requests).toHaveLength(correctionReads);
+      selectOption(control, locale.code);
+      fireEvent.click(
+        within(correction).getByRole('button', { name: locale.save }),
+      );
+      expect(await within(region).findByText(locale.corrected)).toBeVisible();
+      expect(wireCommands[2]).toMatchObject({
+        method: 'PATCH',
+        path: '/api/clients/client-one/legal-entities/legal-entity-3',
+        company: companyA.id,
+        body: '{"expectedClientVersion":4,"changes":{"taxId":null}}',
+      });
+      expect(wireCommands[2]?.key).not.toBe(wireCommands[0]?.key);
+      expect(activity).toHaveBeenCalledTimes(2);
+      expect(names()).toEqual([
+        branch.legalName,
+        logistic.legalName,
+        exactName,
+      ]);
+      selectOption(control, 'fr');
+      expect(
+        within(region).getByText('Entité juridique ou succursale corrigée.'),
+      ).toBeVisible();
+    },
+  );
+
+  it.each(locales)(
+    'keeps field bounds and changed-intention retry semantics in $code',
+    async (locale) => {
+      const { requests, wireCommands } = renderDossier({
+        locale: locale.code,
+        route: (request) =>
+          request.method === 'POST' ? respond({}, 503) : undefined,
+      });
+      const region = await screen.findByRole('region', { name: locale.title });
+      fireEvent.click(
+        await within(region).findByRole('button', { name: locale.add }),
+      );
+      const form = within(region).getByRole('form', { name: locale.addTitle });
+      for (const failure of [
+        {
+          values: { [locale.name]: 'N'.repeat(201) },
+          label: locale.name,
+          message: locale.nameLong,
+        },
+        {
+          values: {
+            [locale.name]: 'N'.repeat(200),
+            [locale.tax]: 'T'.repeat(501),
+          },
+          label: locale.tax,
+          message: locale.taxLong,
+        },
+        {
+          values: {
+            [locale.tax]: 'T'.repeat(500),
+            [locale.address]: 'A'.repeat(2001),
+          },
+          label: locale.address,
+          message: locale.addressLong,
+        },
+      ]) {
+        fill(form, failure.values);
+        fireEvent.click(
+          within(form).getByRole('button', { name: locale.save }),
+        );
+        expect(
+          within(form).getByLabelText(failure.label),
+        ).toHaveAccessibleDescription(failure.message);
+        expect(mutations(requests)).toHaveLength(0);
+      }
+      fill(form, { [locale.address]: 'A'.repeat(2000) });
+      fireEvent.click(within(form).getByRole('button', { name: locale.save }));
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        locale.uncertain,
+      );
+      selectOption(screen.getByRole('combobox'), 'fr');
+      fill(form, {
+        'Dénomination juridique exacte': 'Nouvelle intention {клиент}',
+      });
+      fireEvent.click(
+        within(form).getByRole('button', {
+          name: 'Enregistrer l’entité juridique',
+        }),
+      );
+      await waitFor(() => expect(wireCommands).toHaveLength(2));
+      expect(wireCommands[1]?.body).not.toBe(wireCommands[0]?.body);
+      expect(wireCommands[1]?.key).not.toBe(wireCommands[0]?.key);
+      expect(mutations(requests).at(-1)?.body).toMatchObject({
+        expectedClientVersion: 3,
+        legalName: 'Nouvelle intention {клиент}',
+        taxId: 'T'.repeat(500),
+        legalAddress: 'A'.repeat(2000),
+      });
+    },
+  );
+
+  it.each(locales)(
+    'retains the observed version until explicit stale reload in $code',
+    async (locale) => {
+      const { server, requests } = renderDossier({
+        locale: locale.code,
+        entities: [branch],
+      });
+      const region = await screen.findByRole('region', { name: locale.title });
+      fireEvent.click(
+        await within(region).findByRole('button', {
+          name: `${locale.correct} ${branch.legalName}`,
+        }),
+      );
+      const form = within(region).getByRole('form');
+      fill(form, { [locale.address]: 'Черновик {address}\nEtaj 2' });
+      server.version = 4;
+      fireEvent.click(within(form).getByRole('button', { name: locale.save }));
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        locale.stale,
+      );
+      const beforeLocale = requests.length;
+      for (const next of locales) {
+        selectOption(screen.getByRole('combobox'), next.code);
+        expect(within(form).getByRole('alert')).toHaveTextContent(next.stale);
+        expect(within(form).getByLabelText(next.address)).toHaveValue(
+          'Черновик {address}\nEtaj 2',
+        );
+        expect(
+          within(form).getByRole('button', { name: next.reload }),
+        ).toBeVisible();
+        expect(requests).toHaveLength(beforeLocale);
+      }
+      selectOption(screen.getByRole('combobox'), locale.code);
+      expect(mutations(requests)[0]?.body).toEqual({
+        expectedClientVersion: 3,
+        changes: { legalAddress: 'Черновик {address}\nEtaj 2' },
+      });
+      fireEvent.click(
+        within(form).getByRole('button', { name: locale.reload }),
+      );
+      await waitFor(() =>
+        expect(
+          requests.filter((request) => request.method === 'GET'),
+        ).toHaveLength(2),
+      );
+      expect(within(region).queryByRole('form')).not.toBeInTheDocument();
+      fireEvent.click(
+        await within(region).findByRole('button', {
+          name: `${locale.correct} ${branch.legalName}`,
+        }),
+      );
+      const fresh = within(region).getByRole('form');
+      fill(fresh, { [locale.address]: 'Saved after reload' });
+      fireEvent.click(within(fresh).getByRole('button', { name: locale.save }));
+      expect(await within(region).findByText(locale.corrected)).toBeVisible();
+      expect(mutations(requests).at(-1)).toMatchObject({
+        path: `/clients/client-one/legal-entities/${branch.id}`,
+        body: {
+          expectedClientVersion: 4,
+          changes: { legalAddress: 'Saved after reload' },
+        },
+      });
+    },
+  );
+
+  it.each(locales)(
+    'translates capacity and every server validation result reactively in $code',
+    async (locale) => {
+      let posts = 0;
+      const { requests } = renderDossier({
+        locale: locale.code,
+        route: (request) => {
+          if (request.method !== 'POST') return undefined;
+          posts += 1;
+          return posts === 1
+            ? respond({ code: 'client_legal_entity_capacity_exceeded' }, 409)
+            : posts === 2
+              ? respond({}, 400)
+              : respond({ message: 'Server {message} Кириллица' }, 400);
+        },
+      });
+      const region = await screen.findByRole('region', { name: locale.title });
+      fireEvent.click(
+        await within(region).findByRole('button', { name: locale.add }),
+      );
+      const form = within(region).getByRole('form');
+      fill(form, { [locale.name]: 'Synthetic branch' });
+      fireEvent.click(within(form).getByRole('button', { name: locale.save }));
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        locale.capacity,
+      );
+      const control = screen.getByRole('combobox');
+      selectOption(control, 'fr');
+      expect(within(form).getByRole('alert')).toHaveTextContent(
+        'Ce Client a déjà atteint le maximum de 50 entités juridiques ou succursales supplémentaires. Aucun ajout n’a été effectué.',
+      );
+      expect(mutations(requests)).toHaveLength(1);
+      selectOption(control, locale.code);
+      fireEvent.click(within(form).getByRole('button', { name: locale.save }));
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        locale.invalid,
+      );
+      selectOption(control, 'fr');
+      expect(within(form).getByRole('alert')).toHaveTextContent(
+        'Vérifiez les valeurs de l’entité juridique et réessayez.',
+      );
+      fireEvent.click(
+        within(form).getByRole('button', {
+          name: 'Enregistrer l’entité juridique',
+        }),
+      );
+      expect(await within(form).findByRole('alert')).toHaveTextContent(
+        'Vérifiez les valeurs de l’entité juridique et réessayez.',
+      );
+      selectOption(control, locale.code);
+      expect(within(form).getByRole('alert')).toHaveTextContent(locale.invalid);
+      expect(mutations(requests)).toHaveLength(3);
+    },
+  );
+
+  it.each(locales)(
+    'keeps loading, retry, refusal and read-only states safe in $code',
+    async (locale) => {
+      const pending = deferred<Response>();
+      let reads = 0;
+      const { requests } = renderDossier({
+        locale: locale.code,
+        canUpdate: false,
+        entities: [branch],
+        route: (request) => {
+          if (request.method !== 'GET')
+            throw new Error('Read-only panel must not mutate');
+          reads += 1;
+          return reads === 1 ? pending.promise : respond({}, 404);
+        },
+      });
+      const region = await screen.findByRole('region', { name: locale.title });
+      expect(within(region).getByRole('status')).toHaveTextContent(
+        locale.loading,
+      );
+      selectOption(screen.getByRole('combobox'), 'fr');
+      expect(within(region).getByRole('status')).toHaveTextContent(
+        'Chargement des entités juridiques et succursales…',
+      );
+      expect(requests).toHaveLength(1);
+      pending.resolve(respond({}, 503));
+      expect(await within(region).findByRole('alert')).toHaveTextContent(
+        'Impossible de charger les entités juridiques et succursales. Le dossier reste disponible.',
+      );
+      selectOption(screen.getByRole('combobox'), locale.code);
+      expect(within(region).getByRole('alert')).toHaveTextContent(locale.error);
+      fireEvent.click(
+        within(region).getByRole('button', { name: locale.retry }),
+      );
+      expect(await within(region).findByText(locale.unavailable)).toBeVisible();
+      expect(within(region).queryByRole('list')).not.toBeInTheDocument();
+      expect(within(region).queryByRole('button')).not.toBeInTheDocument();
+      expect(
+        within(region).queryByText(branch.legalName),
+      ).not.toBeInTheDocument();
+      expect(mutations(requests)).toHaveLength(0);
+    },
+  );
+
+  it.each([
+    'Company',
+    'session',
+    'assignment',
+    'version',
+    'permission',
+    'Client',
+  ] as const)(
+    'retires an uncertain legal-entity command and suppresses late mutation success at the real App %s boundary',
+    async (boundary) => {
+      const pending = deferred<Response>();
+      let posts = 0;
+      const { server, wireCommands, view } = renderDossier({
+        application: true,
+        route: (request) => {
+          if (request.method !== 'POST') return undefined;
+          posts += 1;
+          return posts === 2 ? pending.promise : respond({}, 503);
+        },
+      });
+      const fetchBoundary = vi.mocked(fetch);
+      async function openClient(displayName = dossier.displayName) {
+        const heading = (
+          await screen.findAllByRole('heading', {
+            name: displayName,
+          })
+        ).find((candidate) => candidate.closest('li'));
+        const row = heading?.closest('li');
+        if (!row) throw new Error('Expected the public Client directory row');
+        fireEvent.click(
+          within(row).getByRole('button', {
+            name: 'Open dossier',
+          }),
+        );
+        return section();
+      }
+      await openClient();
+      const form = await openAdd();
+      fill(form, {
+        'Exact legal name': 'Private {черновик}',
+        'Legal address': 'Private line 1\nСтрока 2',
+      });
+      save(form);
+      await within(form).findByRole('alert');
+      selectOption(screen.getByLabelText('Interface language'), 'ru');
+      expect(within(form).getByRole('alert')).toHaveTextContent(
+        'Не удалось подтвердить, сохранено ли это изменение.',
+      );
+      selectOption(screen.getByLabelText('Язык интерфейса'), 'en');
+      save(form);
+      await waitFor(() => expect(wireCommands).toHaveLength(2));
+      expect(wireCommands[1]).toEqual(wireCommands[0]);
+      const pendingSignal = fetchBoundary.mock.calls
+        .filter(
+          ([input, init]) =>
+            input.toString().includes('/legal-entities') &&
+            init?.method === 'POST',
+        )
+        .at(-1)?.[1]?.signal;
+      expect(pendingSignal?.aborted).toBe(false);
+      if (boundary === 'Company')
+        selectOption(
+          screen.getByLabelText('Active Company', { exact: true }),
+          'company-b',
+        );
+      else if (boundary === 'session')
+        view.rerender(<App identity={deterministicBrowserIdentity()} />);
+      else if (boundary === 'Client') await openClient('Other Demo SRL');
+      else {
+        server.actor = {
+          ...server.actor,
+          activeCompany: {
+            ...server.actor.activeCompany,
+            ...companyA,
+            ...(boundary === 'assignment'
+              ? { clientPermissionAssignmentId: 'assignment-2' }
+              : { clientPermissionSetVersion: 'v1' }),
+            ...(boundary === 'permission'
+              ? { clientPermissions: ['client.read'] }
+              : {}),
+          },
+        };
+        fireEvent.change(screen.getByLabelText('Find a shared Client'), {
+          target: { value: 'Refresh authority' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+      }
+      await waitFor(() => expect(pendingSignal?.aborted).toBe(true));
+      expect(
+        screen.queryByDisplayValue('Private {черновик}'),
+      ).not.toBeInTheDocument();
+      const readsAfterRetirement = server.activityReads;
+      await act(async () =>
+        pending.resolve(
+          respond(
+            {
+              clientVersion: 99,
+              legalEntity: { ...branch, legalName: 'Confidential late entity' },
+            },
+            201,
+          ),
+        ),
+      );
+      expect(
+        screen.queryByText('Confidential late entity'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Legal entity or branch recorded.'),
+      ).not.toBeInTheDocument();
+      expect(server.activityReads).toBe(readsAfterRetirement);
+      await openClient();
+      if (boundary === 'permission') {
+        expect(
+          screen.queryByRole('button', { name: 'Add legal entity or branch' }),
+        ).not.toBeInTheDocument();
+        return;
+      }
+      const fresh = await openAdd();
+      expect(within(fresh).getByLabelText('Exact legal name')).toHaveValue('');
+      expect(within(fresh).getByLabelText('Legal address')).toHaveValue('');
+      fill(fresh, {
+        'Exact legal name': 'Private {черновик}',
+        'Legal address': 'Private line 1\nСтрока 2',
+      });
+      save(fresh);
+      await within(fresh).findByRole('alert');
+      expect(wireCommands).toHaveLength(3);
+      expect(wireCommands[2]?.body).toBe(wireCommands[0]?.body);
+      expect(wireCommands[2]?.key).not.toBe(wireCommands[0]?.key);
+    },
+  );
+  it('retranslates real-shaped server validation in every locale while preserving the literal draft and command contract', async () => {
+    const { requests, wireCommands, activity } = renderDossier({
+      locale: null,
+      route: (request) =>
+        request.method === 'POST'
+          ? respond(
+              {
+                statusCode: 400,
+                error: 'Bad Request',
+                message:
+                  'Client legal entity address must not contain NUL characters.',
+              },
+              400,
+            )
+          : undefined,
+    });
+    const region = await screen.findByRole('region', {
+      name: 'Entități juridice și sucursale',
+    });
+    fireEvent.click(
+      await within(region).findByRole('button', {
+        name: 'Adaugă o entitate juridică sau sucursală',
+      }),
+    );
+    const form = within(region).getByRole('form');
+    const literalName = '  Филиал {legalName}  ';
+    const literalAddress = '  Str. Științei\nCorp\u0000{address}  ';
+    fill(form, {
+      'Denumirea juridică exactă': literalName,
+      'Adresa juridică': literalAddress,
+    });
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Salvează entitatea juridică' }),
+    );
+    await within(form).findByRole('alert');
+    const reads = requests.length;
+    for (const locale of locales) {
+      selectOption(screen.getByRole('combobox'), locale.code);
+      expect(within(form).getByRole('alert')).toHaveTextContent(locale.invalid);
+      expect(
+        within(form).queryByText(
+          'Client legal entity address must not contain NUL characters.',
+        ),
+      ).not.toBeInTheDocument();
+      expect(within(form).getByLabelText(locale.name)).toHaveValue(literalName);
+      expect(within(form).getByLabelText(locale.address)).toHaveValue(
+        literalAddress,
+      );
+      expect(requests).toHaveLength(reads);
+      expect(activity).not.toHaveBeenCalled();
+    }
+    expect(wireCommands).toHaveLength(1);
+    expect(wireCommands[0]).toEqual({
+      method: 'POST',
+      path: '/api/clients/client-one/legal-entities',
+      company: companyA.id,
+      body: '{"expectedClientVersion":3,"legalName":"Филиал {legalName}","taxId":null,"legalAddress":"Str. Științei\\nCorp\\u0000{address}"}',
+      key: expect.any(String),
+    });
+    expect(wireCommands[0]?.key).toBeTruthy();
+    fireEvent.click(
+      within(form).getByRole('button', { name: 'Save legal entity' }),
+    );
+    await waitFor(() => expect(wireCommands).toHaveLength(2));
+    expect(wireCommands[1]?.body).toBe(wireCommands[0]?.body);
+    expect(wireCommands[1]?.key).not.toBe(wireCommands[0]?.key);
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'Check the legal entity values and try again.',
+    );
   });
 });
