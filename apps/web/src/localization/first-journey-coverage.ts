@@ -18,6 +18,7 @@ import { sessionRevocationMessages } from '../access/workspace-session-revocatio
 import { selectMessages } from '../presentation/select.copy';
 import { fiberMessages } from '../production-shell/fiber/fiber.copy';
 import { prismeMessages } from '../production-shell/prisme/prisme.copy';
+import { serviceCatalogueMessages } from '../commercial-catalogue/service-catalogue.copy';
 import { publicWelcomeMessages } from '../welcome/public-welcome.copy';
 import { interfaceLocaleMessages } from './interface-locale.copy';
 import { assertMessageCoverage } from './messages';
@@ -37,6 +38,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('clientDirectory', clientDirectoryMessages);
   assertMessageCoverage('app', appMessages);
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);
+  assertMessageCoverage('serviceCatalogue', serviceCatalogueMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);
   assertMessageCoverage('prisme', prismeMessages);
   assertMessageCoverage('fiber', fiberMessages);

@@ -6,13 +6,14 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   deterministicBrowserIdentity,
   type BrowserIdentity,
 } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { changeValue, selectOption } from '../test/select-option';
+import { InterfaceLocaleProvider } from '../localization/interface-locale';
 import { ServiceCatalogueWorkspace } from './ServiceCatalogueWorkspace';
 
 const actor: ActorContext = {
@@ -139,12 +140,14 @@ function renderWorkspace(
   } = {},
 ) {
   return render(
-    <ServiceCatalogueWorkspace
-      actor={actor}
-      identity={props.identity ?? deterministicBrowserIdentity()}
-      onCompanyContextRejected={props.onCompanyContextRejected ?? vi.fn()}
-      onWorkspaceAccessRejected={props.onWorkspaceAccessRejected}
-    />,
+    <InterfaceLocaleProvider>
+      <ServiceCatalogueWorkspace
+        actor={actor}
+        identity={props.identity ?? deterministicBrowserIdentity()}
+        onCompanyContextRejected={props.onCompanyContextRejected ?? vi.fn()}
+        onWorkspaceAccessRejected={props.onWorkspaceAccessRejected}
+      />
+    </InterfaceLocaleProvider>,
   );
 }
 
@@ -166,6 +169,7 @@ function fillDefinition(code: string, name: string) {
 }
 
 describe('ServiceCatalogueWorkspace', () => {
+  beforeEach(() => localStorage.setItem('prisma-prim.interface-locale', 'en'));
   afterEach(() => vi.unstubAllGlobals());
 
   it('shows the permanent illustrative marker, the ability-to-perform statement and both empty states', async () => {
@@ -603,11 +607,13 @@ describe('ServiceCatalogueWorkspace', () => {
     });
     const identity = deterministicBrowserIdentity();
     const view = render(
-      <ServiceCatalogueWorkspace
-        actor={actor}
-        identity={identity}
-        onCompanyContextRejected={vi.fn()}
-      />,
+      <InterfaceLocaleProvider>
+        <ServiceCatalogueWorkspace
+          actor={actor}
+          identity={identity}
+          onCompanyContextRejected={vi.fn()}
+        />
+      </InterfaceLocaleProvider>,
     );
     fillDefinition(definition.code, definition.name);
     fireEvent.click(screen.getByRole('button', { name: 'Define Service' }));
@@ -618,11 +624,13 @@ describe('ServiceCatalogueWorkspace', () => {
     );
 
     view.rerender(
-      <ServiceCatalogueWorkspace
-        actor={secondCompanyActor}
-        identity={identity}
-        onCompanyContextRejected={vi.fn()}
-      />,
+      <InterfaceLocaleProvider>
+        <ServiceCatalogueWorkspace
+          actor={secondCompanyActor}
+          identity={identity}
+          onCompanyContextRejected={vi.fn()}
+        />
+      </InterfaceLocaleProvider>,
     );
     expect(
       await screen.findByText('No offerings for Second Company yet.'),
