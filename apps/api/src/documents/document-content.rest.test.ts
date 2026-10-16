@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { request as httpRequest, type ClientRequest } from 'node:http';
 import { createServer, type Server } from 'node:net';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -836,6 +837,266 @@ withPostgres('Preserved questionnaire PDF content REST', () => {
         )
       ).rows,
     ).toEqual([{ count: 0 }]);
+  });
+  it('confirms an exact retry whose preflight overlaps the original upload commit', async () => {
+    await grant('/company-document-content-reader-assignments');
+    await grant('/company-document-content-uploader-assignments');
+    const before = await harness.pool.query<{ version: number }>(
+      'SELECT client.version FROM client_accounts AS client JOIN working_documents AS document ON document.client_id=client.id WHERE document.id=$1',
+      [documentId],
+    );
+    const clientVersion = before.rows[0]?.version;
+    if (typeof clientVersion !== 'number')
+      throw new Error('Expected Client version.');
+    const receiptBarrier = await harness.pool.connect();
+    const documentBarrier = await harness.pool.connect();
+    let first: Promise<Response> | undefined;
+    let second: Promise<Response> | undefined;
+    let tableLock: Promise<unknown> | undefined;
+    let retryRequest: ClientRequest | undefined;
+    try {
+      await receiptBarrier.query('SELECT pg_advisory_lock(664,1)');
+      await harness.pool.query(
+        'CREATE FUNCTION hold_pdf_receipt_664() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_advisory_xact_lock(664,1); RETURN NEW; END $$',
+      );
+      await harness.pool.query(
+        'CREATE TRIGGER hold_pdf_receipt_664 BEFORE INSERT ON document_version_commands FOR EACH ROW EXECUTE FUNCTION hold_pdf_receipt_664()',
+      );
+      const marker = await harness.pool.query<{ marker: string }>(
+        "SELECT updated_at::text AS marker FROM internal_users WHERE external_subject='pdf-owner'",
+      );
+      const verifiedBefore = marker.rows[0]?.marker;
+      if (typeof verifiedBefore !== 'string')
+        throw new Error('Expected identity verification marker.');
+      // Send an incomplete public request first: identity verification writes
+      // the actor row, so it must finish before the original upload locks it.
+      second = new Promise<Response>((resolve, reject) => {
+        retryRequest = httpRequest(
+          `${harness.origin}/api${contentPath()}?expectedRevision=1&fileName=questionnaire-a.pdf`,
+          {
+            method: 'POST',
+            headers: {
+              'x-test-external-provider': 'deterministic-test',
+              'x-test-external-subject': 'pdf-owner',
+              'x-test-display-name': 'PDF Owner DEMO',
+              'x-test-email': 'pdf-owner@example.test',
+              'x-company-context-id': companyId,
+              'content-type': 'application/pdf',
+              'content-length': String(PDF_A.length),
+              'idempotency-key': 'same-upload-commit-window',
+            },
+          },
+          (response) => {
+            let body = '';
+            response.setEncoding('utf8');
+            response.on('data', (chunk: unknown) => {
+              if (typeof chunk !== 'string') {
+                response.destroy(new Error('Expected encoded HTTP response.'));
+                return;
+              }
+              body += chunk;
+            });
+            response.on('error', reject);
+            response.on('end', () => {
+              if (typeof response.statusCode !== 'number') {
+                reject(new Error('Expected HTTP status.'));
+                return;
+              }
+              resolve(new Response(body, { status: response.statusCode }));
+            });
+          },
+        );
+        retryRequest.on('error', reject);
+        retryRequest.write(PDF_A.subarray(0, 16));
+      });
+      await expect
+        .poll(
+          async () => {
+            const result = await harness.pool.query<{ verified: boolean }>(
+              "SELECT updated_at > $1::timestamptz AS verified FROM internal_users WHERE external_subject='pdf-owner'",
+              [verifiedBefore],
+            );
+            return result.rows[0]?.verified;
+          },
+          { timeout: 2_000 },
+        )
+        .toBe(true);
+      first = uploadPdf({ key: 'same-upload-commit-window' });
+      let firstPid: number | undefined;
+      await expect
+        .poll(
+          async () => {
+            const result = await harness.pool.query<{ pid: number }>(
+              "SELECT pid FROM pg_locks WHERE locktype='advisory' AND classid=664 AND objid=1 AND objsubid=2 AND NOT granted",
+            );
+            firstPid = result.rows[0]?.pid;
+            return result.rows.length;
+          },
+          { timeout: 2_000 },
+        )
+        .toBe(1);
+      if (typeof firstPid !== 'number')
+        throw new Error('Expected original upload backend.');
+      const backend = await documentBarrier.query<{ pid: number }>(
+        'SELECT pg_backend_pid()::int AS pid',
+      );
+      const documentPid = backend.rows[0]?.pid;
+      if (typeof documentPid !== 'number')
+        throw new Error('Expected Document barrier backend.');
+      await documentBarrier.query('BEGIN');
+      // The first upload already wrote the Document. This waiter therefore
+      // blocks only later reads, and cannot let the first commit race ahead.
+      tableLock = documentBarrier.query(
+        'LOCK TABLE working_documents IN ACCESS EXCLUSIVE MODE',
+      );
+      await expect
+        .poll(
+          async () => {
+            const result = await harness.pool.query<{ waiting: boolean }>(
+              "SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND relation='working_documents'::regclass AND mode='AccessExclusiveLock' AND NOT granted) AS waiting",
+              [documentPid],
+            );
+            return result.rows[0]?.waiting;
+          },
+          { timeout: 2_000 },
+        )
+        .toBe(true);
+      if (!retryRequest) throw new Error('Expected pending HTTP upload.');
+      retryRequest.end(PDF_A.subarray(16));
+      let secondPid: number | undefined;
+      try {
+        await expect
+          .poll(
+            async () => {
+              const result = await harness.pool.query<{ pid: number }>(
+                "SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND pid <> ALL($1::int[]) AND wait_event_type='Lock' AND (query LIKE '%working_documents%' OR query LIKE '%pg_advisory_xact_lock%') AND ($2=ANY(pg_blocking_pids(pid)) OR $3=ANY(pg_blocking_pids(pid)))",
+                [[firstPid, documentPid], firstPid, documentPid],
+              );
+              secondPid = result.rows[0]?.pid;
+              return result.rows.length;
+            },
+            { timeout: 2_000 },
+          )
+          .toBe(1);
+      } catch (error) {
+        const diagnostic = await harness.pool.query(
+          "SELECT pid, query, wait_event_type, wait_event, pg_blocking_pids(pid) AS blockers FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock'",
+        );
+        throw new Error(
+          'Retry scheduling did not reach the intended seam: ' +
+            JSON.stringify(diagnostic.rows),
+          { cause: error },
+        );
+      }
+      if (typeof secondPid !== 'number')
+        throw new Error('Expected exact retry backend.');
+      await receiptBarrier.query('SELECT pg_advisory_unlock(664,1)');
+      const original = await first;
+      expect(original.status).toBe(201);
+      const originalReceipt = await json(original);
+      await tableLock;
+      // Both implementations now have a blocked public retry and a committed
+      // original receipt. The retry must resolve that receipt, not stale state.
+      expect(
+        (
+          await harness.pool.query(
+            'SELECT count(*)::int AS count FROM document_version_commands',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+      await expect
+        .poll(
+          async () => {
+            const result = await harness.pool.query<{ waiting: boolean }>(
+              "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid=$1 AND query LIKE '%working_documents%' AND $2=ANY(pg_blocking_pids(pid))) AS waiting",
+              [secondPid, documentPid],
+            );
+            return result.rows[0]?.waiting;
+          },
+          { timeout: 2_000 },
+        )
+        .toBe(true);
+      await documentBarrier.query('COMMIT');
+      const replay = await second;
+      expect(replay.status).toBe(201);
+      expect(await json(replay)).toEqual(originalReceipt);
+      expect(scanCount).toBe(1);
+      expect(
+        (
+          await harness.pool.query(
+            'SELECT count(*)::int AS count FROM document_pdfs',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+      expect(
+        (
+          await harness.pool.query(
+            'SELECT count(*)::int AS count FROM document_version_commands',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+      expect(
+        (
+          await harness.pool.query(
+            'SELECT working_revision FROM working_documents WHERE id=$1',
+            [documentId],
+          )
+        ).rows,
+      ).toEqual([{ working_revision: 2 }]);
+      const activity = await call('/activity-log');
+      expect(activity.status).toBe(200);
+      const events = (await json(activity)).events;
+      if (!Array.isArray(events)) throw new Error('Expected Activity events.');
+      const uploads = events
+        .map((event: unknown) => record(event))
+        .filter((event) => event.action === 'document.representation.added');
+      expect(uploads).toHaveLength(1);
+      expect(uploads[0]).toMatchObject({
+        metadata: {
+          versionNumber: 1,
+          form: 'other',
+          appendedAfterDesignation: false,
+        },
+      });
+      expect(
+        (
+          await harness.pool.query<{ version: number }>(
+            'SELECT client.version FROM client_accounts AS client JOIN working_documents AS document ON document.client_id=client.id WHERE document.id=$1',
+            [documentId],
+          )
+        ).rows,
+      ).toEqual([{ version: clientVersion + 1 }]);
+      const downloaded = await call(contentPath());
+      expect(downloaded.status).toBe(200);
+      expect(Buffer.from(await downloaded.arrayBuffer())).toEqual(PDF_A);
+      expect(
+        (await uploadPdf({ key: 'different-stale-intention' })).status,
+      ).toBe(409);
+      expect(
+        (
+          await uploadPdf({
+            key: 'same-upload-commit-window',
+            fileName: 'different.pdf',
+          })
+        ).status,
+      ).toBe(409);
+      expect(scanCount).toBe(1);
+    } finally {
+      await receiptBarrier.query('SELECT pg_advisory_unlock(664,1)');
+      if (retryRequest && !retryRequest.writableEnded)
+        retryRequest.end(PDF_A.subarray(16));
+      if (tableLock) await tableLock;
+      await documentBarrier.query('ROLLBACK');
+      await Promise.allSettled([first, second]);
+      await harness.pool.query(
+        'DROP TRIGGER IF EXISTS hold_pdf_receipt_664 ON document_version_commands',
+      );
+      await harness.pool.query(
+        'DROP FUNCTION IF EXISTS hold_pdf_receipt_664()',
+      );
+      receiptBarrier.release();
+      documentBarrier.release();
+    }
   });
   it('converges simultaneous exact retries to one immutable file and one original durable receipt', async () => {
     await grant('/company-document-content-reader-assignments');

@@ -403,6 +403,9 @@ export class DocumentVersionsService {
       },
     };
     const replay = await this.database.transaction(async () => {
+      // Serialize receipt and revision reads with a concurrent commit of this
+      // key. This short transaction still ends before external scanning.
+      await this.lockCommandKey(actor, command.idempotencyKey);
       const { companyId, recorded } = await this.authorizePdfUpload(
         actor,
         command,
@@ -543,6 +546,21 @@ export class DocumentVersionsService {
     });
   }
 
+  private async lockCommandKey(
+    actor: ActorContext,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const lockKey = JSON.stringify([
+      'document.version',
+      actor.workspaceId,
+      actor.workspaceMembershipId,
+      idempotencyKey,
+    ]);
+    await this.database.connection.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+    );
+  }
+
   /**
    * The common command contract, in the delivered correction's order: the
    * per-actor key lock, live authority, visibility, replay, the original
@@ -567,15 +585,7 @@ export class DocumentVersionsService {
     },
   ): Promise<DocumentVersionReceipt> {
     return this.database.transaction(async () => {
-      const lockKey = JSON.stringify([
-        'document.version',
-        actor.workspaceId,
-        actor.workspaceMembershipId,
-        command.idempotencyKey,
-      ]);
-      await this.database.connection.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-      );
+      await this.lockCommandKey(actor, command.idempotencyKey);
       const companyId = await command.authorize();
       const visible = await this.boundary.requireVisible(
         actor,
