@@ -29,7 +29,6 @@ import {
   type OlderOutcomeHistory,
   type OutcomeEditor,
 } from './OpportunityOutcome';
-import { commercialIntakeCopy as copy } from './commercial-intake.copy';
 import {
   EMPTY_OUTCOME_DRAFT,
   isOpportunityOutcomeStatus,
@@ -354,7 +353,21 @@ export function CommercialIntakeWorkspace({
           | 'validation'
           | 'unavailableClient'
           | 'error'
-          | 'clientAssociationSuccess';
+          | 'clientAssociationSuccess'
+          | 'nextActionSaved'
+          | 'nextActionUnchanged'
+          | 'nextActionValidation'
+          | 'nextActionConflict'
+          | 'nextActionMissing'
+          | 'nextActionDenied'
+          | 'nextActionUncertain'
+          | 'responsibleMembersError'
+          | 'responsibleChanged'
+          | 'responsibleUnchanged'
+          | 'responsibleConflict'
+          | 'responsibleUnavailable'
+          | 'responsibleDenied'
+          | 'responsibleUncertain';
       }
   >('');
   const [inFlight, setInFlight] = useState<InFlight>('none');
@@ -954,7 +967,7 @@ export function CommercialIntakeWorkspace({
     if (nextActionEdit.kind === 'idle' || nextActionEdit.kind === 'conflict')
       return;
     setNextActionEdit({ kind: 'idle' });
-    setFeedback(copy.nextActionDenied);
+    setFeedback({ requestMessage: 'nextActionDenied' });
   }, [canEditNextAction, nextActionEdit.kind]);
 
   // Losing reassignment authority keeps the read-only detail, but retires the
@@ -973,7 +986,7 @@ export function CommercialIntakeWorkspace({
     if (responsibleEdit.kind === 'idle') return;
     setResponsibleEdit({ kind: 'idle' });
     if (responsibleEdit.kind !== 'conflict')
-      setFeedback(copy.responsibleDenied);
+      setFeedback({ requestMessage: 'responsibleDenied' });
   }, [canChangeResponsible, responsibleEdit.kind]);
 
   // Losing outcome authority keeps the read-only detail, but retires the
@@ -1206,7 +1219,7 @@ export function CommercialIntakeWorkspace({
     setStageEdit({ kind: 'idle' });
     stageRetry.current = undefined;
     setSelected(undefined);
-    setFeedback(copy.nextActionMissing);
+    setFeedback({ requestMessage: 'nextActionMissing' });
     await loadRequests(companyContextId);
   }
 
@@ -1235,7 +1248,7 @@ export function CommercialIntakeWorkspace({
       if (controller.signal.aborted) return;
       if (access === 'retained') {
         setResponsibleEdit({ kind: 'idle' });
-        setFeedback(copy.responsibleDenied);
+        setFeedback({ requestMessage: 'responsibleDenied' });
         return;
       }
       if (access === 'rejected') return;
@@ -1259,11 +1272,11 @@ export function CommercialIntakeWorkspace({
         return;
       }
       setResponsibleEdit({ kind: 'load-error' });
-      setFeedback(copy.responsibleMembersError);
+      setFeedback({ requestMessage: 'responsibleMembersError' });
     } catch {
       if (!controller.signal.aborted) {
         setResponsibleEdit({ kind: 'load-error' });
-        setFeedback(copy.responsibleMembersError);
+        setFeedback({ requestMessage: 'responsibleMembersError' });
       }
     } finally {
       if (membersRequest.current === controller)
@@ -1371,7 +1384,7 @@ export function CommercialIntakeWorkspace({
         // editor and pending command are dropped, the read-only detail stays.
         setResponsibleEdit({ kind: 'idle' });
         responsibleRetry.current = undefined;
-        setFeedback(copy.responsibleDenied);
+        setFeedback({ requestMessage: 'responsibleDenied' });
         return;
       }
       if (access === 'rejected') return;
@@ -1382,13 +1395,13 @@ export function CommercialIntakeWorkspace({
       if (result.status === 409) {
         setResponsibleEdit({ kind: 'conflict' });
         responsibleRetry.current = undefined;
-        setFeedback(copy.responsibleConflict);
+        setFeedback({ requestMessage: 'responsibleConflict' });
         return;
       }
       if (result.status === 400) {
         setResponsibleEdit({ kind: 'unavailable' });
         responsibleRetry.current = undefined;
-        setFeedback(copy.responsibleUnavailable);
+        setFeedback({ requestMessage: 'responsibleUnavailable' });
         return;
       }
       if (result.status === 200 && isResponsibleChangeResult(result.body)) {
@@ -1401,8 +1414,8 @@ export function CommercialIntakeWorkspace({
         responsibleRetry.current = undefined;
         setFeedback(
           receipt.outcome === 'updated'
-            ? copy.responsibleChanged
-            : copy.responsibleUnchanged,
+            ? { requestMessage: 'responsibleChanged' }
+            : { requestMessage: 'responsibleUnchanged' },
         );
         if (receipt.outcome === 'updated') await onActivityRecorded();
         if (!controller.signal.aborted) await loadRequests(companyId);
@@ -1413,7 +1426,7 @@ export function CommercialIntakeWorkspace({
         members,
         selection: workspaceMembershipId,
       });
-      setFeedback(copy.responsibleUncertain);
+      setFeedback({ requestMessage: 'responsibleUncertain' });
     } catch {
       if (!controller.signal.aborted) {
         setResponsibleEdit({
@@ -1421,7 +1434,7 @@ export function CommercialIntakeWorkspace({
           members,
           selection: workspaceMembershipId,
         });
-        setFeedback(copy.responsibleUncertain);
+        setFeedback({ requestMessage: 'responsibleUncertain' });
       }
     } finally {
       if (!controller.signal.aborted) setInFlight('none');
@@ -1774,7 +1787,7 @@ export function CommercialIntakeWorkspace({
       nextActionEdit.kind === 'uncertain' ? nextActionRetry.current : undefined;
     const draft = preservedRetry?.nextAction ?? nextActionEdit.draft;
     if (!draft.trim() || draft.length > 500) {
-      setFeedback(copy.nextActionValidation);
+      setFeedback({ requestMessage: 'nextActionValidation' });
       return;
     }
     const opportunityId =
@@ -1830,7 +1843,7 @@ export function CommercialIntakeWorkspace({
         // and pending command are dropped, the read-only detail stays.
         setNextActionEdit({ kind: 'idle' });
         nextActionRetry.current = undefined;
-        setFeedback(copy.nextActionDenied);
+        setFeedback({ requestMessage: 'nextActionDenied' });
         return;
       }
       if (access === 'rejected') return;
@@ -1841,12 +1854,12 @@ export function CommercialIntakeWorkspace({
       if (result.status === 409) {
         setNextActionEdit({ kind: 'conflict' });
         nextActionRetry.current = undefined;
-        setFeedback(copy.nextActionConflict);
+        setFeedback({ requestMessage: 'nextActionConflict' });
         return;
       }
       if (result.status === 400) {
         setNextActionEdit({ kind: 'editing', draft });
-        setFeedback(copy.nextActionValidation);
+        setFeedback({ requestMessage: 'nextActionValidation' });
         return;
       }
       if (result.status === 200 && isNextActionUpdateResult(result.body)) {
@@ -1859,19 +1872,19 @@ export function CommercialIntakeWorkspace({
         nextActionRetry.current = undefined;
         setFeedback(
           receipt.outcome === 'updated'
-            ? copy.nextActionSaved
-            : copy.nextActionUnchanged,
+            ? { requestMessage: 'nextActionSaved' }
+            : { requestMessage: 'nextActionUnchanged' },
         );
         if (receipt.outcome === 'updated') await onActivityRecorded();
         if (!controller.signal.aborted) await loadRequests(companyId);
         return;
       }
       setNextActionEdit({ kind: 'uncertain', draft });
-      setFeedback(copy.nextActionUncertain);
+      setFeedback({ requestMessage: 'nextActionUncertain' });
     } catch {
       if (!controller.signal.aborted) {
         setNextActionEdit({ kind: 'uncertain', draft });
-        setFeedback(copy.nextActionUncertain);
+        setFeedback({ requestMessage: 'nextActionUncertain' });
       }
     } finally {
       if (!controller.signal.aborted) setInFlight('none');
@@ -2987,6 +3000,7 @@ function NextActionEditForm({
   editor: NextActionEditor;
   pending: boolean;
 }) {
+  const copy = useCommercialRequestCopy();
   const { edit } = editor;
   switch (edit.kind) {
     case 'idle':
