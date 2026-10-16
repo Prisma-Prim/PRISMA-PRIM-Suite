@@ -28,7 +28,11 @@ import {
   type ClientContactDraft,
   type ClientContactDraftResult,
 } from './ClientContactEditor';
-import { clientWorkspaceCopy as copy } from './client-workspace.copy';
+import {
+  clientRegistrationValidationIssue,
+  useClientRegistrationCopy,
+  type ClientRegistrationValidationIssue,
+} from './client-registration.copy';
 import { useClientDirectoryCopy } from './client-directory.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectory, type ClientAccountView } from './ClientDirectory';
@@ -44,7 +48,7 @@ type CreateState =
   | { status: 'idle' | 'submitting' | 'success' }
   | {
       status: 'validation';
-      message: string;
+      issue: ClientRegistrationValidationIssue;
       field?: 'displayName' | 'contacts';
     }
   | { status: 'forbidden' | 'error' | 'possibleDuplicate' };
@@ -84,6 +88,7 @@ export function ClientWorkspace({
   };
 }) {
   const directoryCopy = useClientDirectoryCopy();
+  const copy = useClientRegistrationCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const registrationTrigger = useRef<HTMLButtonElement>(null);
@@ -278,7 +283,7 @@ export function ClientWorkspace({
     if (!normalizedDisplayName) {
       setCreateState({
         status: 'validation',
-        message: copy.displayNameRequired,
+        issue: 'displayNameRequired',
         field: 'displayName',
       });
       return;
@@ -290,7 +295,7 @@ export function ClientWorkspace({
     if (contactResult.status === 'invalid') {
       setCreateState({
         status: 'validation',
-        message: contactResult.message,
+        issue: contactResult.issue,
         field: 'contacts',
       });
       return;
@@ -338,7 +343,7 @@ export function ClientWorkspace({
         if (result.status === 'validation') {
           setCreateState({
             status: 'validation',
-            message: result.message ?? copy.displayNameRequired,
+            issue: clientRegistrationValidationIssue(result.message),
           });
           return;
         }
@@ -628,7 +633,7 @@ export function ClientWorkspace({
           role="alert"
           tone="error"
         >
-          {createState.message}
+          {copy.validation(createState.issue)}
         </ClientDirectoryFeedback>
       )}
       {createState.status === 'forbidden' && (

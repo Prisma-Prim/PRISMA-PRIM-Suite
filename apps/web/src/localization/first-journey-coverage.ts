@@ -1,5 +1,7 @@
 import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
+import { clientRegistrationMessages } from '../client/client-registration.copy';
+import { clientContactEditorMessages } from '../client/client-contact-editor.copy';
 import { pricingConfigurationMessages } from '../pricing-configuration/pricing-configuration.copy';
 import { localInstantMessages } from '../pricing-configuration/local-instant.copy';
 import { contractSignatureMessages } from '../contract/contract-signature.copy';
@@ -35,6 +37,8 @@ export function assertFirstJourneyTranslationCoverage(): void {
     workspaceMembershipSuspensionMessages,
   );
   assertMessageCoverage('contractDecision', contractDecisionMessages);
+  assertMessageCoverage('clientRegistration', clientRegistrationMessages);
+  assertMessageCoverage('clientContactEditor', clientContactEditorMessages);
   assertMessageCoverage('pricingConfiguration', pricingConfigurationMessages);
   assertMessageCoverage('localInstant', localInstantMessages);
   assertMessageCoverage('contractSignature', contractSignatureMessages);
