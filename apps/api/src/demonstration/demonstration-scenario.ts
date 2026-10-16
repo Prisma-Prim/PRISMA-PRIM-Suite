@@ -10,7 +10,7 @@ import type { TaskPriority } from '../task/task.types.js';
  * and `demonstration-scenario.test.ts` pins every released step key and its
  * payload fingerprint.
  */
-export const DEMONSTRATION_SCENARIO_VERSION = 'demo-v2';
+export const DEMONSTRATION_SCENARIO_VERSION = 'demo-v3';
 
 /**
  * Frozen with the first release so a released step keeps its idempotency key
@@ -27,7 +27,7 @@ export const DEMONSTRATION_MARKER = 'DEMO';
 export type DemonstrationCompanyKey = 'prisma-prim' | 'bic' | 'ecg';
 export type DemonstrationPersonaKey = 'ana' | 'ion' | 'maria' | 'victor';
 
-/** The ten delivered administrable Company bundles. */
+/** Existing Company bundles explicitly used by the synthetic scenario. */
 export type DemonstrationBundle =
   | 'context'
   | 'director-client'
@@ -39,13 +39,18 @@ export type DemonstrationBundle =
   | 'commercial-activity-reader'
   | 'service-catalogue'
   | 'pricing-configuration'
-  | 'pricing-user';
+  | 'pricing-user'
+  | 'offer-preparer'
+  | 'offer-approver'
+  | 'contract-preparer'
+  | 'contract-approver';
 
 /** Rows of the first-tenant substitution register named by scenario steps. */
 export type DemonstrationRegisterId =
   | 'SUB-CO-01'
   | 'SUB-RO-01'
   | 'SUB-RO-02'
+  | 'SUB-RO-03'
   | 'SUB-PR-02'
   | 'SUB-PR-04'
   | 'SUB-PR-01'
@@ -98,6 +103,21 @@ export type DemonstrationTaskTransition =
       readonly expectedVersion: number;
       readonly reason: string;
     };
+
+interface CommercialPreparation {
+  readonly actor: DemonstrationPersonaKey;
+  readonly request: string;
+  readonly snapshot: string;
+  readonly scopeNote: string;
+  readonly commercialConditions: string;
+}
+
+interface CommercialVersionTarget {
+  readonly actor: DemonstrationPersonaKey;
+  readonly request: string;
+  /** The immutable preparation step whose exact Version is targeted. */
+  readonly preparation: string;
+}
 
 /**
  * One step kind per public command. Administration kinds carry no actor: they
@@ -234,7 +254,31 @@ export type DemonstrationAction =
       readonly kind: 'pricing.rule';
       readonly actor: DemonstrationPersonaKey;
       readonly label: string;
-    };
+    }
+  | (CommercialPreparation & {
+      readonly kind: 'offer.prepare';
+      readonly validityDays: number;
+    })
+  | (CommercialPreparation & {
+      readonly kind: 'contract.prepare';
+      readonly directReason: string;
+    })
+  | (CommercialVersionTarget & {
+      readonly kind: 'offer.quality';
+    })
+  | (CommercialVersionTarget & {
+      readonly kind: 'contract.quality';
+    })
+  | (CommercialVersionTarget & {
+      readonly kind: 'offer.approve';
+      readonly expectedOfferRevision: 1;
+      readonly acknowledgedWarningCodes: readonly [];
+    })
+  | (CommercialVersionTarget & {
+      readonly kind: 'contract.approve';
+      readonly expectedContractRevision: 1;
+      readonly acknowledgedWarningCodes: readonly ['DIRECT_ORIGIN_REVIEWED'];
+    });
 
 export type DemonstrationStep = {
   readonly key: string;
@@ -833,9 +877,9 @@ export const DEMONSTRATION_BASE_SCENARIO: DemonstrationScenario = {
   steps: DEMONSTRATION_STEPS,
 };
 
-/** The released demo-v1 is an immutable prefix; CF-1 only appends. */
-export const DEMONSTRATION_SCENARIO: DemonstrationScenario = {
-  version: DEMONSTRATION_SCENARIO_VERSION,
+/** The released demo-v2, including CF-1, remains immutable. */
+export const DEMONSTRATION_PRICING_SCENARIO: DemonstrationScenario = {
+  version: 'demo-v2',
   personas: DEMONSTRATION_PERSONAS,
   steps: [
     ...DEMONSTRATION_STEPS,
@@ -888,6 +932,92 @@ export const DEMONSTRATION_SCENARIO: DemonstrationScenario = {
       request: 'demo-construct-iso45001',
       offering: 'catalogue.demo-iso45001-cert.offering',
       quantity: '2',
+    },
+  ],
+};
+
+/** CF-3 appends only synthetic grants and normal commercial commands. */
+export const DEMONSTRATION_SCENARIO: DemonstrationScenario = {
+  version: DEMONSTRATION_SCENARIO_VERSION,
+  personas: DEMONSTRATION_PERSONAS,
+  steps: [
+    ...DEMONSTRATION_PRICING_SCENARIO.steps,
+    ...(
+      [
+        { persona: 'ana', bundle: 'offer-preparer' },
+        { persona: 'ana', bundle: 'contract-preparer' },
+        { persona: 'ion', bundle: 'commercial-intake' },
+        { persona: 'ion', bundle: 'offer-approver' },
+        { persona: 'ion', bundle: 'contract-approver' },
+      ] satisfies {
+        persona: DemonstrationPersonaKey;
+        bundle: DemonstrationBundle;
+      }[]
+    ).map(({ persona, bundle }): DemonstrationStep => ({
+      key: `grant.${persona}.${bundle}`,
+      register: 'SUB-RO-02',
+      kind: 'grant',
+      company: 'prisma-prim',
+      persona,
+      bundle,
+    })),
+    {
+      key: 'commercial.prisma-prim.offer.prepare',
+      register: 'SUB-RO-03',
+      kind: 'offer.prepare',
+      actor: 'ana',
+      request: 'grup-demo-iso14001',
+      snapshot: 'pricing.prisma-prim.snapshot',
+      validityDays: 30,
+      scopeNote: 'DEMO commercial role preparation exercise',
+      commercialConditions: 'DEMO illustrative terms; no external commitment',
+    },
+    {
+      key: 'commercial.prisma-prim.offer.quality',
+      register: 'SUB-RO-03',
+      kind: 'offer.quality',
+      actor: 'ana',
+      request: 'grup-demo-iso14001',
+      preparation: 'commercial.prisma-prim.offer.prepare',
+    },
+    {
+      key: 'commercial.prisma-prim.offer.approve',
+      register: 'SUB-RO-03',
+      kind: 'offer.approve',
+      actor: 'ion',
+      request: 'grup-demo-iso14001',
+      preparation: 'commercial.prisma-prim.offer.prepare',
+      expectedOfferRevision: 1,
+      acknowledgedWarningCodes: [],
+    },
+    {
+      key: 'commercial.prisma-prim.contract.prepare',
+      register: 'SUB-RO-03',
+      kind: 'contract.prepare',
+      actor: 'ana',
+      request: 'grup-demo-iso14001',
+      snapshot: 'pricing.prisma-prim.snapshot',
+      directReason: 'DEMO role scenario without Client acceptance',
+      scopeNote: 'DEMO commercial role preparation exercise',
+      commercialConditions: 'DEMO illustrative terms; no external commitment',
+    },
+    {
+      key: 'commercial.prisma-prim.contract.quality',
+      register: 'SUB-RO-03',
+      kind: 'contract.quality',
+      actor: 'ana',
+      request: 'grup-demo-iso14001',
+      preparation: 'commercial.prisma-prim.contract.prepare',
+    },
+    {
+      key: 'commercial.prisma-prim.contract.approve',
+      register: 'SUB-RO-03',
+      kind: 'contract.approve',
+      actor: 'ion',
+      request: 'grup-demo-iso14001',
+      preparation: 'commercial.prisma-prim.contract.prepare',
+      expectedContractRevision: 1,
+      acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
     },
   ],
 };

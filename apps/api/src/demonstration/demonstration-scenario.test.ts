@@ -5,6 +5,7 @@ import {
   DEMONSTRATION_PERSONA_PROVIDER,
   DEMONSTRATION_SCENARIO,
   DEMONSTRATION_BASE_SCENARIO,
+  DEMONSTRATION_PRICING_SCENARIO,
   demonstrationIdempotencyKey,
   type DemonstrationStep,
 } from './demonstration-scenario.js';
@@ -107,6 +108,20 @@ const RELEASED_DEMO_V2_STEPS: readonly (readonly [string, string])[] = [
   ['pricing.bic.snapshot', '32d5304ce4f101d0'],
 ];
 
+const RELEASED_DEMO_V3_STEPS: readonly (readonly [string, string])[] = [
+  ['grant.ana.offer-preparer', '57d53b345d1e3319'],
+  ['grant.ana.contract-preparer', '3c173e2c7d411884'],
+  ['grant.ion.commercial-intake', 'f347560ff95a73d1'],
+  ['grant.ion.offer-approver', 'f2f43980bc6febd2'],
+  ['grant.ion.contract-approver', '0e12503e2e162cae'],
+  ['commercial.prisma-prim.offer.prepare', '7b53c8b0db6782ba'],
+  ['commercial.prisma-prim.offer.quality', '2c72272d63c32ff3'],
+  ['commercial.prisma-prim.offer.approve', 'fba4092e49a427e4'],
+  ['commercial.prisma-prim.contract.prepare', '9237346c64cdd43c'],
+  ['commercial.prisma-prim.contract.quality', '754a842f3190a348'],
+  ['commercial.prisma-prim.contract.approve', '28df75b53d3f26a3'],
+];
+
 // Scenario fields holding displayed free text, identifiers, contact data and
 // links; every other string is a closed code or a scenario-internal key.
 const DISPLAY_TEXT_FIELDS = new Set([
@@ -130,6 +145,9 @@ const DISPLAY_TEXT_FIELDS = new Set([
   'label',
   'unit',
   'taxLabel',
+  'scopeNote',
+  'commercialConditions',
+  'directReason',
 ]);
 const IDENTIFIER_FIELDS = new Set(['taxId', 'code']);
 const EMAIL_FIELDS = new Set(['email', 'generalEmail']);
@@ -222,12 +240,64 @@ describe('versioned demonstration scenario', () => {
   });
 
   it('pins the appended CF-1 steps without changing released command identities', () => {
-    expect(scenario.version).toBe('demo-v2');
+    expect(DEMONSTRATION_PRICING_SCENARIO.version).toBe('demo-v2');
     expect(
       scenario.steps
-        .slice(RELEASED_DEMO_V1_STEPS.length)
+        .slice(
+          RELEASED_DEMO_V1_STEPS.length,
+          RELEASED_DEMO_V1_STEPS.length + RELEASED_DEMO_V2_STEPS.length,
+        )
         .map((step) => [step.key, fingerprint(step)]),
     ).toEqual(RELEASED_DEMO_V2_STEPS);
+    expect(DEMONSTRATION_PRICING_SCENARIO.steps).toEqual(
+      scenario.steps.slice(0, 88),
+    );
+    expect(scenario.version).toBe('demo-v3');
+    expect(scenario.steps).toHaveLength(99);
+  });
+
+  it('pins the complete commercial role catch-up and its explicit synthetic assignments', () => {
+    expect(
+      scenario.steps.slice(88, 99).map((step) => [step.key, fingerprint(step)]),
+    ).toEqual(RELEASED_DEMO_V3_STEPS);
+    expect(
+      scenario.steps
+        .slice(88)
+        .filter((step) => step.kind === 'grant')
+        .map((step) => [step.persona, step.company, step.bundle]),
+    ).toEqual([
+      ['ana', 'prisma-prim', 'offer-preparer'],
+      ['ana', 'prisma-prim', 'contract-preparer'],
+      ['ion', 'prisma-prim', 'commercial-intake'],
+      ['ion', 'prisma-prim', 'offer-approver'],
+      ['ion', 'prisma-prim', 'contract-approver'],
+    ]);
+    expect(stepsOf('offer.approve')).toEqual([
+      expect.objectContaining({
+        actor: 'ion',
+        expectedOfferRevision: 1,
+        acknowledgedWarningCodes: [],
+      }),
+    ]);
+    expect(stepsOf('contract.approve')).toEqual([
+      expect.objectContaining({
+        actor: 'ion',
+        expectedContractRevision: 1,
+        acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+      }),
+    ]);
+    for (const kind of [
+      'offer.prepare',
+      'contract.prepare',
+    ] satisfies DemonstrationStep['kind'][]) {
+      expect(stepsOf(kind)).toEqual([
+        expect.objectContaining({
+          actor: 'ana',
+          request: 'grup-demo-iso14001',
+          snapshot: 'pricing.prisma-prim.snapshot',
+        }),
+      ]);
+    }
   });
 
   it('keeps unique step keys and stable idempotency keys', () => {
@@ -396,6 +466,22 @@ describe('versioned demonstration scenario', () => {
         case 'pricing.snapshot':
           need(step, `request:${step.request}`);
           need(step, `offering:${step.offering}`);
+          defined.add(`snapshot:${step.key}`);
+          break;
+        case 'offer.prepare':
+        case 'contract.prepare':
+          need(step, `persona:${step.actor}`);
+          need(step, `request:${step.request}`);
+          need(step, `snapshot:${step.snapshot}`);
+          defined.add(`version:${step.key}`);
+          break;
+        case 'offer.quality':
+        case 'contract.quality':
+        case 'offer.approve':
+        case 'contract.approve':
+          need(step, `persona:${step.actor}`);
+          need(step, `request:${step.request}`);
+          need(step, `version:${step.preparation}`);
           break;
         case 'pricing.rule':
           break;

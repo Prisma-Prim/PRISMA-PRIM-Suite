@@ -7,6 +7,10 @@ import {
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PRICING_USER_BUNDLE_LABEL,
+  COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
+  COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
+  COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
+  COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
@@ -40,8 +44,11 @@ export type DemonstrationPrincipal =
  * - `replayed`: the command was accepted and changed nothing (an idempotent
  *   replay, or an equivalent record already in place).
  * - `present`: the step found its target in place and sent no command.
+ * - `confirmed`: the public commercial command acknowledged commit or replay,
+ *   and its exact result was reopened; the API does not distinguish creation.
  */
-export type DemonstrationStepOutcome = 'created' | 'replayed' | 'present';
+export type DemonstrationStepOutcome =
+  'created' | 'replayed' | 'present' | 'confirmed';
 
 export type DemonstrationStopReason =
   | 'denied'
@@ -145,6 +152,10 @@ const BUNDLE_ROUTES = {
   'service-catalogue': '/company-service-catalogue-assignments',
   'pricing-configuration': '/company-pricing-configuration-assignments',
   'pricing-user': '/company-pricing-user-assignments',
+  'offer-preparer': '/company-offer-preparer-assignments',
+  'offer-approver': '/company-offer-approver-assignments',
+  'contract-preparer': '/company-contract-preparer-assignments',
+  'contract-approver': '/company-contract-approver-assignments',
 } as const satisfies Record<DemonstrationBundle, string>;
 
 export const DEMONSTRATION_BUNDLE_LABELS = {
@@ -159,6 +170,10 @@ export const DEMONSTRATION_BUNDLE_LABELS = {
   'service-catalogue': COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   'pricing-configuration': COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   'pricing-user': COMPANY_PRICING_USER_BUNDLE_LABEL,
+  'offer-preparer': COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
+  'offer-approver': COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
+  'contract-preparer': COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
+  'contract-approver': COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
 } as const satisfies Record<DemonstrationBundle, string>;
 
 const OWNER: DemonstrationPrincipal = { kind: 'owner' };
@@ -333,6 +348,158 @@ function requireProvisional(value: ApiRecord): ApiRecord {
   return value;
 }
 
+type CommercialFamily = 'offer' | 'contract';
+
+const COMMERCIAL_QUALITY = {
+  offer: 'OFFER_QUALITY_ILLUSTRATIVE',
+  contract: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+} as const;
+
+// The external API contract consumed by this released fixture: Offer v1 and
+// direct Contract v1 with a Snapshot and no term end. Keep this client outside
+// owning-module evaluators and framework dependencies. A changed rule set or
+// response shape must fail closed, never select or acknowledge new rules.
+const COMMERCIAL_QUALITY_RESULTS = {
+  offer: [
+    ['PRICING_SNAPSHOT_COHERENT', 'ERROR'],
+    ['CURRENCY_UNCHANGED', 'WARNING'],
+    ['VALIDITY_OPEN', 'ERROR'],
+    ['RECIPIENT_AVAILABLE', 'ERROR'],
+    ['RECIPIENT_IDENTITY_CURRENT', 'WARNING'],
+    ['RECIPIENT_TAX_ID_RECORDED', 'WARNING'],
+    ['PRICING_CLIENT_CONTEXT_COHERENT', 'WARNING'],
+    ['PROVISIONAL_MARKER_PRESENT', 'ERROR'],
+  ],
+  contract: [
+    ['SOURCE_COMPANY_MATCHES', 'ERROR'],
+    ['PARTY_AVAILABLE', 'ERROR'],
+    ['PARTY_IDENTITY_CURRENT', 'WARNING'],
+    ['PARTY_TAX_ID_RECORDED', 'ERROR'],
+    ['PRICING_SNAPSHOT_COHERENT', 'ERROR'],
+    ['DIRECT_ORIGIN_REVIEWED', 'WARNING'],
+    ['PROVISIONAL_MARKER_PRESENT', 'ERROR'],
+  ],
+} as const;
+
+interface CommercialContext {
+  readonly family: CommercialFamily;
+  readonly principal: DemonstrationPrincipal;
+  readonly companyId: string;
+  readonly opportunityId: string;
+  readonly path: string;
+}
+
+interface CommercialDecisionIdentity {
+  readonly state: 'APPROVED' | 'REJECTED';
+  readonly id: string;
+  readonly actorId: string;
+}
+
+interface CommercialVersionIdentity {
+  readonly family: CommercialFamily;
+  readonly entityId: string;
+  readonly versionId: string;
+  readonly companyId: string;
+  readonly opportunityId: string;
+  readonly decision: { readonly state: 'PENDING' } | CommercialDecisionIdentity;
+}
+
+/** Only consumed identity/state crosses the commercial HTTP boundary. */
+function commercialDecision(
+  value: unknown,
+  { family, versionId }: { family: CommercialFamily; versionId: string },
+): CommercialDecisionIdentity {
+  const decision = record(value);
+  const state =
+    family === 'offer'
+      ? decision.state
+      : decision.kind === 'APPROVE'
+        ? 'APPROVED'
+        : decision.kind === 'REJECT'
+          ? 'REJECTED'
+          : undefined;
+  if (
+    (state !== 'APPROVED' && state !== 'REJECTED') ||
+    decision[`${family}VersionId`] !== versionId
+  )
+    throw unexpected();
+  return {
+    state,
+    id: text(decision, 'id'),
+    actorId: text(decision, 'actorWorkspaceMembershipId'),
+  };
+}
+
+function commercialVersion(
+  value: unknown,
+  context: Pick<CommercialContext, 'family' | 'companyId' | 'opportunityId'>,
+): CommercialVersionIdentity {
+  const entity = requireProvisional(record(value));
+  const version = requireProvisional(record(entity.version));
+  const versionId = text(version, 'id');
+  if (
+    entity.companyId !== context.companyId ||
+    entity.opportunityId !== context.opportunityId ||
+    integer(entity, 'revision') < 1 ||
+    integer(version, 'versionNumber') !== 1 ||
+    version.provenance !== 'ILLUSTRATIVE' ||
+    version.qualityRuleSet !== COMMERCIAL_QUALITY[context.family] ||
+    version.qualityRuleSetVersion !== 1 ||
+    (context.family === 'contract' &&
+      (entity.kind !== 'CONTRACT' || entity.origin !== 'DIRECT'))
+  )
+    throw unexpected();
+  const identity = {
+    family: context.family,
+    entityId: text(entity, 'id'),
+    versionId,
+    companyId: context.companyId,
+    opportunityId: context.opportunityId,
+  };
+  if (version.decisionState === 'PENDING') {
+    if (version.decision !== null) throw unexpected();
+    return { ...identity, decision: { state: 'PENDING' } };
+  }
+  const decision = commercialDecision(version.decision, {
+    family: context.family,
+    versionId,
+  });
+  if (version.decisionState !== decision.state) throw unexpected();
+  return { ...identity, decision };
+}
+
+function commercialQualityRun(
+  value: unknown,
+  input: { family: CommercialFamily; versionId: string; actorId: string },
+): string {
+  const run = record(value);
+  if (
+    run[`${input.family}VersionId`] !== input.versionId ||
+    run.actorWorkspaceMembershipId !== input.actorId ||
+    run.ruleSet !== COMMERCIAL_QUALITY[input.family] ||
+    run.ruleSetVersion !== 1
+  )
+    throw unexpected();
+  const expected = COMMERCIAL_QUALITY_RESULTS[input.family];
+  const results = list(run.results).map(record);
+  if (results.length !== expected.length) throw unexpected();
+  let hasErrors = false;
+  for (const [index, [code, severity]] of expected.entries()) {
+    const result = results[index];
+    if (
+      !result ||
+      Object.keys(result).length !== 2 ||
+      result.code !== code ||
+      (result.status !== 'PASS' && result.status !== severity) ||
+      (code === 'DIRECT_ORIGIN_REVIEWED' && result.status !== 'WARNING')
+    )
+      throw unexpected();
+    if (result.status === 'ERROR') hasErrors = true;
+  }
+  if (hasErrors) throw new DemonstrationStepStop('rejected', null);
+  return text(run, 'id');
+}
+
 interface PricingVersionIdentity {
   readonly id: string;
   readonly versionNumber: number;
@@ -388,6 +555,10 @@ class DemonstrationRun {
   private readonly opportunities = new Map<string, string>();
   private workspaceId: string | undefined;
   private pricingStarted = false;
+  private readonly commercialVersions = new Map<
+    string,
+    CommercialVersionIdentity
+  >();
 
   constructor(
     private readonly api: DemonstrationApi,
@@ -442,6 +613,15 @@ class DemonstrationRun {
         return this.publishTariff(step);
       case 'pricing.snapshot':
         return this.calculateSnapshot(step);
+      case 'offer.prepare':
+      case 'contract.prepare':
+        return this.prepareCommercial(step);
+      case 'offer.quality':
+      case 'contract.quality':
+        return this.checkCommercial(step);
+      case 'offer.approve':
+      case 'contract.approve':
+        return this.approveCommercial(step);
       default:
         return assertNever(step);
     }
@@ -1120,6 +1300,194 @@ class DemonstrationRun {
       throw unexpected();
     this.records.set(`snapshot:${step.key}`, id);
     return created(!before.has(id), id);
+  }
+
+  private commercialContext(input: {
+    actor: DemonstrationPersonaKey;
+    request: string;
+    family: CommercialFamily;
+  }): CommercialContext {
+    const opportunityId = this.opportunities.get(input.request);
+    if (!opportunityId)
+      throw new Error(`Scenario Opportunity ${input.request} is unresolved.`);
+    return {
+      family: input.family,
+      principal: this.principal(input.actor),
+      companyId: this.personaCompany(input.actor),
+      opportunityId,
+      path: `/${input.family}s/opportunities/${opportunityId}`,
+    };
+  }
+
+  private commercialTarget(
+    preparation: string,
+    context: CommercialContext,
+  ): CommercialVersionIdentity {
+    const target = this.commercialVersions.get(preparation);
+    if (!target) throw new Error(`Preparation ${preparation} is unresolved.`);
+    if (
+      target.family !== context.family ||
+      target.companyId !== context.companyId ||
+      target.opportunityId !== context.opportunityId
+    )
+      throw unexpected();
+    return target;
+  }
+
+  private async readCommercialVersion(input: {
+    context: CommercialContext;
+    versionId: string;
+  }): Promise<CommercialVersionIdentity> {
+    const { context, versionId } = input;
+    const response = record(
+      await this.api.read(
+        context.principal,
+        `${context.path}/versions/${versionId}`,
+        context.companyId,
+      ),
+    );
+    const version = commercialVersion(response[context.family], context);
+    if (version.versionId !== versionId) throw unexpected();
+    return version;
+  }
+
+  private async prepareCommercial(
+    step: Extract<
+      DemonstrationStep,
+      { kind: 'offer.prepare' | 'contract.prepare' }
+    >,
+  ): Promise<StepResult> {
+    const context = this.commercialContext({
+      actor: step.actor,
+      request: step.request,
+      family: step.kind === 'offer.prepare' ? 'offer' : 'contract',
+    });
+    const common = {
+      pricingSnapshotId: this.record('snapshot', step.snapshot),
+      recipient: { kind: 'PRIMARY' },
+      scopeNote: step.scopeNote,
+      commercialConditions: step.commercialConditions,
+    };
+    const version = commercialVersion(
+      await this.api.send({
+        principal: context.principal,
+        companyId: context.companyId,
+        method: 'POST',
+        path:
+          step.kind === 'offer.prepare'
+            ? context.path
+            : `${context.path}/direct`,
+        idempotencyKey: demonstrationIdempotencyKey(step),
+        body:
+          step.kind === 'offer.prepare'
+            ? { ...common, validityDays: step.validityDays }
+            : { ...common, directReason: step.directReason },
+      }),
+      context,
+    );
+    const reopened = await this.readCommercialVersion({
+      context,
+      versionId: version.versionId,
+    });
+    if (reopened.entityId !== version.entityId) throw unexpected();
+    this.commercialVersions.set(step.key, reopened);
+    return { outcome: 'confirmed', recordId: version.versionId };
+  }
+
+  private async checkCommercial(
+    step: Extract<
+      DemonstrationStep,
+      { kind: 'offer.quality' | 'contract.quality' }
+    >,
+  ): Promise<StepResult> {
+    const context = this.commercialContext({
+      actor: step.actor,
+      request: step.request,
+      family: step.kind === 'offer.quality' ? 'offer' : 'contract',
+    });
+    const target = this.commercialTarget(step.preparation, context);
+    const path = `${context.path}/versions/${target.versionId}/quality-checks`;
+    const identity = {
+      family: context.family,
+      versionId: target.versionId,
+      actorId: this.membership(step.actor),
+    };
+    const command: ApiRequest = {
+      principal: context.principal,
+      companyId: context.companyId,
+      method: 'POST',
+      path,
+      idempotencyKey: demonstrationIdempotencyKey(step),
+      body: {},
+    };
+    const runId = commercialQualityRun(await this.api.send(command), identity);
+    // Offers expose only the latest run in a Version read. Its normal receipt
+    // is the public seam for reopening this exact explicit run after a later
+    // approval or operator run; Contracts also expose a per-run GET.
+    const reopenedId = commercialQualityRun(
+      context.family === 'offer'
+        ? await this.api.send(command)
+        : await this.api.read(
+            context.principal,
+            `${path}/${runId}`,
+            context.companyId,
+          ),
+      identity,
+    );
+    if (reopenedId !== runId) throw unexpected();
+    return { outcome: 'confirmed', recordId: runId };
+  }
+
+  private async approveCommercial(
+    step: Extract<
+      DemonstrationStep,
+      { kind: 'offer.approve' | 'contract.approve' }
+    >,
+  ): Promise<StepResult> {
+    const context = this.commercialContext({
+      actor: step.actor,
+      request: step.request,
+      family: step.kind === 'offer.approve' ? 'offer' : 'contract',
+    });
+    const target = this.commercialTarget(step.preparation, context);
+    // The released revision and acknowledgements stay byte-for-byte stable.
+    // Create replay returns a current root revision; it must never change this
+    // payload. Normal command receipts precede new head/state validation.
+    const decision = commercialDecision(
+      await this.api.send({
+        principal: context.principal,
+        companyId: context.companyId,
+        method: 'POST',
+        path: `${context.path}/versions/${target.versionId}/approve`,
+        idempotencyKey: demonstrationIdempotencyKey(step),
+        body:
+          step.kind === 'offer.approve'
+            ? {
+                expectedOfferRevision: step.expectedOfferRevision,
+                acknowledgedWarningCodes: step.acknowledgedWarningCodes,
+              }
+            : {
+                expectedContractRevision: step.expectedContractRevision,
+                acknowledgedWarningCodes: step.acknowledgedWarningCodes,
+              },
+      }),
+      { family: context.family, versionId: target.versionId },
+    );
+    const actorId = this.membership(step.actor);
+    if (decision.state !== 'APPROVED' || decision.actorId !== actorId)
+      throw unexpected();
+    const reopened = await this.readCommercialVersion({
+      context,
+      versionId: target.versionId,
+    });
+    if (
+      reopened.entityId !== target.entityId ||
+      reopened.decision.state !== 'APPROVED' ||
+      reopened.decision.id !== decision.id ||
+      reopened.decision.actorId !== actorId
+    )
+      throw unexpected();
+    return { outcome: 'confirmed', recordId: decision.id };
   }
 
   private async administration(): Promise<Administration> {
