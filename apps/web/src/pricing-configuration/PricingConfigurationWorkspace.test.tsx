@@ -5,7 +5,7 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
