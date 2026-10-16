@@ -4,6 +4,7 @@ import { TASK_PRIORITIES } from '../task/task.types.js';
 import {
   DEMONSTRATION_PERSONA_PROVIDER,
   DEMONSTRATION_SCENARIO,
+  DEMONSTRATION_BASE_SCENARIO,
   demonstrationIdempotencyKey,
   type DemonstrationStep,
 } from './demonstration-scenario.js';
@@ -94,6 +95,18 @@ const RELEASED_DEMO_V1_STEPS: readonly (readonly [string, string])[] = [
   ['pricing.bic.rule-v1', '62c86bd63ee09c32'],
 ];
 
+const RELEASED_DEMO_V2_STEPS: readonly (readonly [string, string])[] = [
+  ['grant.ana.pricing-user', '37b786d41a1b85c7'],
+  ['grant.maria.pricing-user', '9abb0e286de82949'],
+  ['pricing.demo-iso9001-cons.tariff-v1', 'ac3a95cabcd71e1b'],
+  ['pricing.demo-iso22000-cons.tariff-v1', '1d2407256b752f2e'],
+  ['pricing.demo-iso14001-cons.tariff-v1', '0f41f3887497639c'],
+  ['pricing.demo-iso9001-cert.tariff-v1', '9dc432dd08fb9f5c'],
+  ['pricing.demo-iso45001-cert.tariff-v1', 'e47d8d575a5ebac1'],
+  ['pricing.prisma-prim.snapshot', '9fd474b7fbdad6a7'],
+  ['pricing.bic.snapshot', '32d5304ce4f101d0'],
+];
+
 // Scenario fields holding displayed free text, identifiers, contact data and
 // links; every other string is a closed code or a scenario-internal key.
 const DISPLAY_TEXT_FIELDS = new Set([
@@ -115,6 +128,8 @@ const DISPLAY_TEXT_FIELDS = new Set([
   'description',
   'commercialLabel',
   'label',
+  'unit',
+  'taxLabel',
 ]);
 const IDENTIFIER_FIELDS = new Set(['taxId', 'code']);
 const EMAIL_FIELDS = new Set(['email', 'generalEmail']);
@@ -184,7 +199,17 @@ function stepsOf<Kind extends DemonstrationStep['kind']>(
   );
 }
 
-describe('demonstration scenario demo-v1', () => {
+describe('versioned demonstration scenario', () => {
+  it('extends the released scenario with five illustrative tariffs and two reproducible calculations', () => {
+    expect(
+      scenario.steps.filter((step) => step.kind === 'pricing.tariff'),
+    ).toHaveLength(5);
+    expect(
+      scenario.steps
+        .filter((step) => step.kind === 'pricing.snapshot')
+        .map((step) => step.key),
+    ).toEqual(['pricing.prisma-prim.snapshot', 'pricing.bic.snapshot']);
+  });
   it('pins every released step key and payload, so later versions only append', () => {
     expect(
       scenario.steps
@@ -194,6 +219,15 @@ describe('demonstration scenario demo-v1', () => {
     expect(scenario.steps.length).toBeGreaterThanOrEqual(
       RELEASED_DEMO_V1_STEPS.length,
     );
+  });
+
+  it('pins the appended CF-1 steps without changing released command identities', () => {
+    expect(scenario.version).toBe('demo-v2');
+    expect(
+      scenario.steps
+        .slice(RELEASED_DEMO_V1_STEPS.length)
+        .map((step) => [step.key, fingerprint(step)]),
+    ).toEqual(RELEASED_DEMO_V2_STEPS);
   });
 
   it('keeps unique step keys and stable idempotency keys', () => {
@@ -266,7 +300,8 @@ describe('demonstration scenario demo-v1', () => {
       ['Victor DEMO', 'ecg', 'DEMO Restricted member'],
     ]);
     const bundlesOf = (persona: string) =>
-      stepsOf('grant')
+      DEMONSTRATION_BASE_SCENARIO.steps
+        .filter((step) => step.kind === 'grant')
         .filter((step) => step.persona === persona)
         .map((step) => `${step.company}:${step.bundle}`);
     const manager = [
@@ -353,6 +388,14 @@ describe('demonstration scenario demo-v1', () => {
           break;
         case 'catalogue.offering':
           need(step, `definition:${step.definition}`);
+          defined.add(`offering:${step.offering}`);
+          break;
+        case 'pricing.tariff':
+          need(step, `offering:${step.offering}`);
+          break;
+        case 'pricing.snapshot':
+          need(step, `request:${step.request}`);
+          need(step, `offering:${step.offering}`);
           break;
         case 'pricing.rule':
           break;

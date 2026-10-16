@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runDemonstrationScenario } from './demonstration-runner.js';
 import {
-  DEMONSTRATION_SCENARIO,
+  DEMONSTRATION_BASE_SCENARIO as DEMONSTRATION_SCENARIO,
   type DemonstrationScenario,
 } from './demonstration-scenario.js';
 

@@ -6,6 +6,7 @@ import {
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
   COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
+  COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
@@ -121,6 +122,8 @@ export interface DemonstrationRunOptions {
   readonly scenario?: DemonstrationScenario;
   /** Match the seed application's fixed run clock; pricing starts just after it. */
   readonly now: () => Date;
+  /** Seed-local phase barrier; never changes the served application clock. */
+  readonly beginPricing?: () => void;
   readonly onLine?: (line: DemonstrationManifestLine) => void;
 }
 
@@ -141,6 +144,7 @@ const BUNDLE_ROUTES = {
     '/company-commercial-activity-reader-assignments',
   'service-catalogue': '/company-service-catalogue-assignments',
   'pricing-configuration': '/company-pricing-configuration-assignments',
+  'pricing-user': '/company-pricing-user-assignments',
 } as const satisfies Record<DemonstrationBundle, string>;
 
 export const DEMONSTRATION_BUNDLE_LABELS = {
@@ -154,6 +158,7 @@ export const DEMONSTRATION_BUNDLE_LABELS = {
   'commercial-activity-reader': COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   'service-catalogue': COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   'pricing-configuration': COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
+  'pricing-user': COMPANY_PRICING_USER_BUNDLE_LABEL,
 } as const satisfies Record<DemonstrationBundle, string>;
 
 const OWNER: DemonstrationPrincipal = { kind: 'owner' };
@@ -328,6 +333,39 @@ function requireProvisional(value: ApiRecord): ApiRecord {
   return value;
 }
 
+interface PricingVersionIdentity {
+  readonly id: string;
+  readonly versionNumber: number;
+  readonly offeringId?: string;
+}
+
+/** Decode the consumed pricing-version identity once at the HTTP boundary. */
+function pricingVersion(value: unknown): PricingVersionIdentity {
+  const version = requireProvisional(record(value));
+  const versionNumber = integer(version, 'versionNumber');
+  if (versionNumber < 1 || version.provenance !== 'ILLUSTRATIVE')
+    throw unexpected();
+  return {
+    id: text(version, 'id'),
+    versionNumber,
+    ...(version.offeringId === undefined
+      ? {}
+      : { offeringId: text(version, 'offeringId') }),
+  };
+}
+
+function pricingPublication(value: unknown): {
+  outcome: 'PUBLISHED' | 'UNCHANGED';
+  version: PricingVersionIdentity;
+} {
+  const result = record(value);
+  const outcome = result.outcome;
+  if (outcome !== 'PUBLISHED' && outcome !== 'UNCHANGED') throw unexpected();
+  const version = pricingVersion(result.version);
+  if (version.versionNumber !== 1) throw unexpected();
+  return { outcome, version };
+}
+
 function idsOf(value: unknown): Set<string> {
   return new Set(list(value).map((item) => text(record(item), 'id')));
 }
@@ -349,11 +387,13 @@ class DemonstrationRun {
   private readonly records = new Map<string, string>();
   private readonly opportunities = new Map<string, string>();
   private workspaceId: string | undefined;
+  private pricingStarted = false;
 
   constructor(
     private readonly api: DemonstrationApi,
     private readonly scenario: DemonstrationScenario,
     private readonly now: () => Date,
+    private readonly beginPricing?: () => void,
   ) {}
 
   async resolveOwner(): Promise<DemonstrationWorkspaceLine['workspace']> {
@@ -398,6 +438,10 @@ class DemonstrationRun {
         return this.createOffering(step);
       case 'pricing.rule':
         return this.publishRule(step);
+      case 'pricing.tariff':
+        return this.publishTariff(step);
+      case 'pricing.snapshot':
+        return this.calculateSnapshot(step);
       default:
         return assertNever(step);
     }
@@ -905,22 +949,14 @@ class DemonstrationRun {
       ),
     );
     if (scope.headVersionNumber !== null) {
-      integer(scope, 'headVersionNumber');
-      // A head exists, whoever published it: it is never superseded.
-      const page = requireProvisional(
-        record(
-          await this.api.read(
-            principal,
-            '/pricing-configuration/rule-versions?limit=1',
-            companyId,
-          ),
-        ),
-      );
-      const [head] = list(page.items);
-      if (head === undefined) throw unexpected();
+      if (integer(scope, 'headVersionNumber') < 1) throw unexpected();
       return {
         outcome: 'present',
-        recordId: text(requireProvisional(record(head)), 'id'),
+        recordId: await this.firstPricingVersion({
+          principal,
+          companyId,
+          path: '/pricing-configuration/rule-versions',
+        }),
       };
     }
     const start = new Date(
@@ -929,7 +965,7 @@ class DemonstrationRun {
       // its ordinary publication policy executes, however long locks take.
       (Math.floor(this.now().getTime() / 1_000) + 1) * 1_000,
     );
-    const result = record(
+    const result = pricingPublication(
       await this.api.send({
         principal,
         method: 'POST',
@@ -943,8 +979,147 @@ class DemonstrationRun {
         idempotencyKey: demonstrationIdempotencyKey(step),
       }),
     );
-    const version = requireProvisional(record(result.version));
-    return created(result.outcome === 'PUBLISHED', text(version, 'id'));
+    const version = result.version;
+    return created(result.outcome === 'PUBLISHED', version.id);
+  }
+
+  private async firstPricingVersion(input: {
+    principal: DemonstrationPrincipal;
+    companyId: string;
+    path: string;
+    offeringId?: string;
+  }): Promise<string> {
+    let cursor: string | undefined;
+    for (let pageNumber = 0; pageNumber < MAXIMUM_PAGES; pageNumber += 1) {
+      const query = new URLSearchParams({ limit: '50' });
+      if (cursor) query.set('cursor', cursor);
+      const page = requireProvisional(
+        record(
+          await this.api.read(
+            input.principal,
+            `${input.path}?${query}`,
+            input.companyId,
+          ),
+        ),
+      );
+      for (const item of list(page.items)) {
+        const version = pricingVersion(item);
+        if (input.offeringId && version.offeringId !== input.offeringId)
+          throw unexpected();
+        if (version.versionNumber === 1) return version.id;
+      }
+      if (page.nextCursor === undefined) break;
+      cursor = text(page, 'nextCursor');
+    }
+    throw unexpected();
+  }
+
+  private async publishTariff(
+    step: Extract<DemonstrationStep, { kind: 'pricing.tariff' }>,
+  ): Promise<StepResult> {
+    const principal = this.principal(step.actor);
+    const companyId = this.personaCompany(step.actor);
+    const offeringId = this.record('offering', step.offering);
+    const path = `/pricing-configuration/offerings/${offeringId}`;
+    const scope = requireProvisional(
+      record(await this.api.read(principal, `${path}/tariff-scope`, companyId)),
+    );
+    if (text(scope, 'offeringId') !== offeringId) throw unexpected();
+    if (scope.headVersionNumber !== null) {
+      if (integer(scope, 'headVersionNumber') < 1) throw unexpected();
+      return {
+        outcome: 'present',
+        recordId: await this.firstPricingVersion({
+          principal,
+          companyId,
+          path: `${path}/tariff-versions`,
+          offeringId,
+        }),
+      };
+    }
+    const effectiveFrom = new Date(
+      (Math.floor(this.now().getTime() / 1000) + 1) * 1000,
+    ).toISOString();
+    const result = pricingPublication(
+      await this.api.send({
+        principal,
+        companyId,
+        method: 'POST',
+        path: `${path}/tariff-versions`,
+        idempotencyKey: demonstrationIdempotencyKey(step),
+        body: {
+          unit: step.unit,
+          unitAmount: step.unitAmount,
+          currency: step.currency,
+          taxRatePercent: step.taxRatePercent,
+          taxLabel: step.taxLabel,
+          effectiveFrom,
+          expectedActiveVersionNumber: null,
+        },
+      }),
+    );
+    const version = result.version;
+    if (version.offeringId !== offeringId) throw unexpected();
+    return created(result.outcome === 'PUBLISHED', version.id);
+  }
+
+  private async calculateSnapshot(
+    step: Extract<DemonstrationStep, { kind: 'pricing.snapshot' }>,
+  ): Promise<StepResult> {
+    if (!this.pricingStarted) {
+      this.beginPricing?.();
+      this.pricingStarted = true;
+    }
+    const principal = this.principal(step.actor);
+    const companyId = this.personaCompany(step.actor);
+    const opportunityId = this.opportunities.get(step.request);
+    if (!opportunityId)
+      throw new Error(`Scenario Opportunity ${step.request} is unresolved.`);
+    const path = `/pricing/opportunities/${opportunityId}/snapshots`;
+    const before = await this.api.pagedIds(principal, path, companyId, (item) =>
+      text(requireProvisional(item), 'id'),
+    );
+    // These selections are part of the released step, not recomputed from the
+    // latest configuration. Normal replay can recover the original calculation
+    // after interruption, expiry or a user-published successor without repricing.
+    const snapshot = requireProvisional(
+      record(
+        await this.api.send({
+          principal,
+          companyId,
+          method: 'POST',
+          path,
+          idempotencyKey: demonstrationIdempotencyKey(step),
+          body: {
+            pricingRuleVersionNumber: 1,
+            lines: [
+              {
+                offeringId: this.record('offering', step.offering),
+                tariffVersionNumber: 1,
+                quantity: step.quantity,
+              },
+            ],
+          },
+        }),
+      ),
+    );
+    const id = text(snapshot, 'id');
+    if (
+      text(snapshot, 'opportunityId') !== opportunityId ||
+      integer(snapshot, 'version') !== 1
+    )
+      throw unexpected();
+    const reopened = requireProvisional(
+      record(await this.api.read(principal, `${path}/${id}`, companyId)),
+    );
+    if (
+      text(reopened, 'id') !== id ||
+      text(reopened, 'opportunityId') !== opportunityId ||
+      integer(reopened, 'version') !== 1
+    )
+      throw unexpected();
+    this.records.set(`snapshot:${step.key}`, id);
+    return created(!before.has(id), id);
   }
 
   private async administration(): Promise<Administration> {
@@ -1004,7 +1179,15 @@ class DemonstrationRun {
   }
 
   private record(
-    kind: 'client' | 'project' | 'task' | 'document' | 'request' | 'definition',
+    kind:
+      | 'client'
+      | 'project'
+      | 'task'
+      | 'document'
+      | 'request'
+      | 'definition'
+      | 'offering'
+      | 'snapshot',
     key: string,
   ): string {
     const id = this.records.get(`${kind}:${key}`);
@@ -1084,6 +1267,7 @@ export async function runDemonstrationScenario(
     new DemonstrationApi(options.origin, options.headersFor),
     scenario,
     options.now,
+    options.beginPricing,
   );
   const entries: DemonstrationManifestEntry[] = [];
   let current = DEMONSTRATION_OWNER_STEP;

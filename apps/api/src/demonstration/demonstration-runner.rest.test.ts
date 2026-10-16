@@ -1,5 +1,13 @@
 import type { Pool } from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import {
   createIsolatedPostgresTestDatabase,
   type IsolatedPostgresTestDatabase,
@@ -16,7 +24,8 @@ import {
 import {
   DEMONSTRATION_PERSONAS,
   DEMONSTRATION_PERSONA_PROVIDER,
-  DEMONSTRATION_SCENARIO,
+  DEMONSTRATION_BASE_SCENARIO as DEMONSTRATION_SCENARIO,
+  DEMONSTRATION_SCENARIO as PRICING_SCENARIO,
   demonstrationPersonaAdmissions,
   type DemonstrationPersonaKey,
   type DemonstrationScenario,
@@ -33,7 +42,8 @@ const OWNER_IDENTITY = {
   email: 'operator@example.test',
 };
 const OWNER: DemonstrationPrincipal = { kind: 'owner' };
-const RUN_CLOCK = { now: () => new Date('2026-09-26T12:00:00.000Z') };
+let runInstant = new Date('2026-09-26T12:00:00.000Z');
+const RUN_CLOCK = { now: () => new Date(runInstant) };
 const EVENT_TABLES = {
   activity_log_events: 'actor_workspace_membership_id',
   commercial_catalogue_events: 'actor_workspace_membership_id',
@@ -151,6 +161,11 @@ withPostgres('demonstration runner through the public REST API', () => {
       headersFor,
       scenario,
       now: RUN_CLOCK.now,
+      beginPricing: () => {
+        runInstant = new Date(
+          Math.floor(runInstant.getTime() / 1000) * 1000 + 1000,
+        );
+      },
     });
   }
 
@@ -368,6 +383,7 @@ withPostgres('demonstration runner through the public REST API', () => {
   }, 60_000);
 
   beforeEach(async () => {
+    runInstant = new Date('2026-09-26T12:00:00.000Z');
     await pool.query(
       'TRUNCATE activity_log_events, workspace_memberships, internal_users, workspaces CASCADE',
     );
@@ -377,6 +393,548 @@ withPostgres('demonstration runner through the public REST API', () => {
     await harness?.close();
     await database?.close();
   });
+
+  it('reproduces five tariffs and reopens the exact illustrative pricing results in their own Companies', async () => {
+    const result = await run(PRICING_SCENARIO);
+    expect(
+      result.kind,
+      result.kind === 'stopped' ? JSON.stringify(result.stop) : '',
+    ).toBe('converged');
+    const ids = recordIds(result);
+    for (const expected of [
+      {
+        company: 'prisma-prim',
+        actor: 'ana',
+        request: 'grup-demo-iso14001',
+        offering: 'demo-iso14001-cons',
+        currency: 'MDL',
+        net: '200.00',
+        tax: '40.00',
+        total: '240.00',
+      },
+      {
+        company: 'bic',
+        actor: 'maria',
+        request: 'demo-construct-iso45001',
+        offering: 'demo-iso45001-cert',
+        currency: 'EUR',
+        net: '300.00',
+        tax: '0.00',
+        total: '300.00',
+      },
+    ] satisfies {
+      company: string;
+      actor: DemonstrationPersonaKey;
+      request: string;
+      offering: string;
+      currency: string;
+      net: string;
+      tax: string;
+      total: string;
+    }[]) {
+      const companyId = id(ids, `company.${expected.company}`);
+      const request = object(
+        await read(
+          persona(expected.actor),
+          `/commercial-intake/requests/${id(ids, `request.${expected.request}`)}`,
+          companyId,
+        ),
+      );
+      const opportunityId = text(object(request.initialOpportunity).id);
+      const path = `/pricing/opportunities/${opportunityId}/snapshots`;
+      const snapshotId = id(ids, `pricing.${expected.company}.snapshot`);
+      const detail = object(
+        await read(persona(expected.actor), `${path}/${snapshotId}`, companyId),
+      );
+      expect(detail).toMatchObject({
+        id: snapshotId,
+        opportunityId,
+        clientRequestId: id(ids, `request.${expected.request}`),
+        provenance: 'ILLUSTRATIVE',
+        provisional: true,
+        version: 1,
+        currency: expected.currency,
+        subtotal: expected.net,
+        taxTotal: expected.tax,
+        total: expected.total,
+        pricingRuleVersion: {
+          id: id(ids, `pricing.${expected.company}.rule-v1`),
+          versionNumber: 1,
+        },
+        lines: [
+          expect.objectContaining({
+            tariffVersionId: id(ids, `pricing.${expected.offering}.tariff-v1`),
+            tariffVersionNumber: 1,
+            quantity: '2',
+            adjustment: null,
+          }),
+        ],
+      });
+      expect(
+        objects(
+          object(await read(persona(expected.actor), path, companyId)).items,
+        ).map((item) => item.id),
+      ).toEqual([snapshotId]);
+      expect(
+        (await api(persona('ion'), `${path}/${snapshotId}`, { companyId }))
+          .status,
+      ).toBe(403);
+      const otherCompany =
+        expected.company === 'prisma-prim' ? 'bic' : 'prisma-prim';
+      const otherPersona =
+        expected.actor === 'ana' ? persona('maria') : persona('ana');
+      const otherCompanyId = id(ids, `company.${otherCompany}`);
+      expect(
+        (
+          await api(otherPersona, `${path}/${snapshotId}`, {
+            companyId: otherCompanyId,
+          })
+        ).status,
+      ).toBe(404);
+      expect(
+        (await api(otherPersona, path, { companyId: otherCompanyId })).status,
+      ).toBe(404);
+      expect(
+        (
+          await api(persona(expected.actor), `${path}/${snapshotId}`, {
+            companyId: id(ids, 'company.ecg'),
+          })
+        ).status,
+      ).toBe(403);
+    }
+    expect(
+      (
+        await pool.query(
+          'SELECT count(*)::integer AS count FROM tariff_versions',
+        )
+      ).rows,
+    ).toEqual([{ count: 5 }]);
+    const counts = await tableCounts();
+    runInstant = new Date('2026-09-26T13:00:00.000Z');
+    const repeated = await run(PRICING_SCENARIO);
+    expect(repeated.kind, JSON.stringify(repeated)).toBe('converged');
+    expect(repeated.entries.map((entry) => entry.recordId)).toEqual(
+      result.entries.map((entry) => entry.recordId),
+    );
+    expect(repeated.entries.every((entry) => entry.outcome !== 'created')).toBe(
+      true,
+    );
+    expect(await tableCounts()).toEqual(counts);
+  }, 300_000);
+
+  it.each(['tariff', 'snapshot'])(
+    'recovers a committed %s whose response was lost, without duplicating it',
+    async (kind) => {
+      const originalFetch = globalThis.fetch;
+      let lost = false;
+      const spy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input, init) => {
+          const response = await originalFetch(input, init);
+          const url = String(input);
+          if (
+            !lost &&
+            init?.method === 'POST' &&
+            response.ok &&
+            (kind === 'tariff'
+              ? url.endsWith('/tariff-versions')
+              : url.endsWith('/snapshots'))
+          ) {
+            lost = true;
+            throw new Error('Simulated response loss after the real commit.');
+          }
+          return response;
+        });
+      let interrupted: DemonstrationRunResult;
+      try {
+        interrupted = await run(PRICING_SCENARIO);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(lost).toBe(true);
+      expect(interrupted).toMatchObject({
+        kind: 'stopped',
+        stop: { reason: 'unavailable' },
+      });
+      const committed = await pool.query<{ id: string }>(
+        kind === 'tariff'
+          ? 'SELECT id FROM tariff_versions'
+          : 'SELECT id FROM pricing_snapshots',
+      );
+      expect(committed.rows).toHaveLength(1);
+      runInstant = new Date('2026-09-26T14:00:00.000Z');
+      const recovered = await run(PRICING_SCENARIO);
+      expect(
+        recovered.kind,
+        recovered.kind === 'stopped' ? JSON.stringify(recovered.stop) : '',
+      ).toBe('converged');
+      expect(recovered.entries.map((entry) => entry.recordId)).toContain(
+        committed.rows[0]?.id,
+      );
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM tariff_versions',
+          )
+        ).rows,
+      ).toEqual([{ count: 5 }]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM pricing_snapshots',
+          )
+        ).rows,
+      ).toEqual([{ count: 2 }]);
+      const counts = await tableCounts();
+      expect((await run(PRICING_SCENARIO)).kind).toBe('converged');
+      expect(await tableCounts()).toEqual(counts);
+    },
+    300_000,
+  );
+
+  it('preserves the exact original Snapshot after an operator publishes successor configuration', async () => {
+    const first = await run(PRICING_SCENARIO);
+    expect(first.kind).toBe('converged');
+    const ids = recordIds(first);
+    const companyId = id(ids, 'company.prisma-prim');
+    const ana = persona('ana');
+    const request = object(
+      await read(
+        ana,
+        `/commercial-intake/requests/${id(ids, 'request.grup-demo-iso14001')}`,
+        companyId,
+      ),
+    );
+    const opportunityId = text(object(request.initialOpportunity).id);
+    const snapshotPath = `/pricing/opportunities/${opportunityId}/snapshots/${id(ids, 'pricing.prisma-prim.snapshot')}`;
+    const original = await read(ana, snapshotPath, companyId);
+    const future = '2026-09-26T13:00:00.000Z';
+    expect(
+      (
+        await api(ana, '/pricing-configuration/rule-versions', {
+          method: 'POST',
+          companyId,
+          key: 'operator-successor-rule',
+          body: {
+            label: 'DEMO operator successor',
+            effectiveFrom: future,
+            expectedActiveVersionNumber: 1,
+          },
+        })
+      ).status,
+    ).toBe(201);
+    const offeringId = id(ids, 'catalogue.demo-iso14001-cons.offering');
+    expect(
+      (
+        await api(
+          ana,
+          `/pricing-configuration/offerings/${offeringId}/tariff-versions`,
+          {
+            method: 'POST',
+            companyId,
+            key: 'operator-successor-tariff',
+            body: {
+              unit: 'DEMO revised unit',
+              unitAmount: '999.00',
+              currency: 'MDL',
+              taxRatePercent: '0',
+              taxLabel: 'DEMO changed tax',
+              effectiveFrom: future,
+              expectedActiveVersionNumber: 1,
+            },
+          },
+        )
+      ).status,
+    ).toBe(201);
+    runInstant = new Date('2026-09-26T14:00:00.000Z');
+    const counts = await tableCounts();
+    const repeated = await run(PRICING_SCENARIO);
+    expect(
+      repeated.kind,
+      repeated.kind === 'stopped' ? JSON.stringify(repeated.stop) : '',
+    ).toBe('converged');
+    expect(await tableCounts()).toEqual(counts);
+    expect(await read(ana, snapshotPath, companyId)).toEqual(original);
+    const repeatedIds = recordIds(repeated);
+    expect(repeatedIds.get('pricing.prisma-prim.rule-v1')).toBe(
+      ids.get('pricing.prisma-prim.rule-v1'),
+    );
+    expect(repeatedIds.get('pricing.demo-iso14001-cons.tariff-v1')).toBe(
+      ids.get('pricing.demo-iso14001-cons.tariff-v1'),
+    );
+
+    const tariffs = object(
+      await read(
+        ana,
+        `/pricing-configuration/offerings/${offeringId}/tariff-versions`,
+        companyId,
+      ),
+    );
+    expect(
+      objects(tariffs.items).map((item) => [
+        item.versionNumber,
+        item.unitAmount,
+      ]),
+    ).toEqual([
+      [2, '999.0000'],
+      [1, '100.0000'],
+    ]);
+  }, 300_000);
+
+  it.each([
+    { effectiveFrom: '2027-01-01T00:00:00.000Z', total: null },
+    { effectiveFrom: '2026-09-26T12:00:01.000Z', total: '1554.00' },
+  ])(
+    'preserves an operator tariff and evaluates its validity at calculation time: %j',
+    async ({ effectiveFrom, total }) => {
+      const tariffIndex = PRICING_SCENARIO.steps.findIndex(
+        (step) => step.kind === 'pricing.tariff',
+      );
+      const partial = await run({
+        ...PRICING_SCENARIO,
+        steps: PRICING_SCENARIO.steps.slice(0, tariffIndex),
+      });
+      expect(partial.kind).toBe('converged');
+      const ids = recordIds(partial);
+      const companyId = id(ids, 'company.prisma-prim');
+      const offeringId = id(ids, 'catalogue.demo-iso14001-cons.offering');
+      const published = await api(
+        persona('ana'),
+        `/pricing-configuration/offerings/${offeringId}/tariff-versions`,
+        {
+          method: 'POST',
+          companyId,
+          key: 'operator-future-tariff',
+          body: {
+            unit: 'DEMO operator unit',
+            unitAmount: '777.00',
+            currency: 'MDL',
+            taxRatePercent: '0',
+            taxLabel: 'DEMO operator tax',
+            effectiveFrom,
+            expectedActiveVersionNumber: null,
+          },
+        },
+      );
+      expect(published.status).toBe(201);
+      const result = await run(PRICING_SCENARIO);
+      if (total === null) {
+        expect(result).toMatchObject({
+          kind: 'stopped',
+          stop: {
+            step: 'pricing.prisma-prim.snapshot',
+            reason: 'conflict',
+            status: 409,
+          },
+        });
+        expect(
+          (
+            await pool.query(
+              'SELECT count(*)::integer AS count FROM pricing_snapshots',
+            )
+          ).rows,
+        ).toEqual([{ count: 0 }]);
+      } else {
+        expect(
+          result.kind,
+          result.kind === 'stopped' ? JSON.stringify(result.stop) : '',
+        ).toBe('converged');
+        const request = object(
+          await read(
+            persona('ana'),
+            `/commercial-intake/requests/${id(ids, 'request.grup-demo-iso14001')}`,
+            companyId,
+          ),
+        );
+        const snapshot = object(
+          await read(
+            persona('ana'),
+            `/pricing/opportunities/${text(object(request.initialOpportunity).id)}/snapshots/${id(recordIds(result), 'pricing.prisma-prim.snapshot')}`,
+            companyId,
+          ),
+        );
+        expect(snapshot).toMatchObject({
+          total,
+          subtotal: '1554.00',
+          taxTotal: '0.00',
+          provenance: 'ILLUSTRATIVE',
+        });
+        expect(objects(snapshot.lines)).toEqual([
+          expect.objectContaining({
+            tariffVersionId: object(object(published.body).version).id,
+            unitAmount: '777.0000',
+          }),
+        ]);
+      }
+      const tariffs = object(
+        await read(
+          persona('ana'),
+          `/pricing-configuration/offerings/${offeringId}/tariff-versions`,
+          companyId,
+        ),
+      );
+      expect(objects(tariffs.items)).toEqual([
+        expect.objectContaining({
+          id: object(object(published.body).version).id,
+          unitAmount: '777.0000',
+          versionNumber: 1,
+        }),
+      ]);
+    },
+    300_000,
+  );
+
+  it('never re-grants revoked pricing authority', async () => {
+    const first = await run(PRICING_SCENARIO);
+    expect(first.kind).toBe('converged');
+    const ids = recordIds(first);
+    expect(
+      (
+        await api(
+          OWNER,
+          `/company-pricing-user-assignments/${id(ids, 'persona.ana')}/${id(ids, 'company.prisma-prim')}`,
+          { method: 'DELETE', key: 'revoke-ana-pricing' },
+        )
+      ).status,
+    ).toBe(200);
+    const counts = await tableCounts();
+    const repeated = await run(PRICING_SCENARIO);
+    expect(repeated).toMatchObject({
+      kind: 'stopped',
+      stop: { step: 'grant.ana.pricing-user', reason: 'grant-revoked' },
+    });
+    expect(await tableCounts()).toEqual(counts);
+  }, 300_000);
+
+  it.each([
+    { provisional: false, headVersionNumber: null },
+    { provisional: true, headVersionNumber: 'invalid' },
+  ])(
+    'stops before tariff writes on malformed or non-provisional configuration: %j',
+    async (invalidScope) => {
+      const originalFetch = globalThis.fetch;
+      const spy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input, init) => {
+          const response = await originalFetch(input, init);
+          if (String(input).endsWith('/tariff-scope') && response.ok) {
+            const body: unknown = await response.json();
+            return new Response(
+              JSON.stringify({ ...object(body), ...invalidScope }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            );
+          }
+          return response;
+        });
+      let result: DemonstrationRunResult;
+      try {
+        result = await run(PRICING_SCENARIO);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(result).toMatchObject({
+        kind: 'stopped',
+        stop: {
+          step: 'pricing.demo-iso9001-cons.tariff-v1',
+          reason: 'unexpected-response',
+        },
+      });
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM tariff_versions',
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::integer AS count FROM pricing_snapshots',
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+    },
+    300_000,
+  );
+
+  it.each([
+    { family: 'rule', malformed: 'outcome' },
+    { family: 'tariff', malformed: 'outcome' },
+    { family: 'rule', malformed: 'version' },
+    { family: 'tariff', malformed: 'version' },
+  ])(
+    'rejects malformed pricing publication or history responses: %j',
+    async ({ family, malformed }) => {
+      const before =
+        malformed === 'version' ? await run(PRICING_SCENARIO) : undefined;
+      if (before) expect(before.kind).toBe('converged');
+      const counts = before ? await tableCounts() : undefined;
+      const originalFetch = globalThis.fetch;
+      let changed = false;
+      const spy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input, init) => {
+          const response = await originalFetch(input, init);
+          const url = new URL(String(input));
+          const target = url.pathname.endsWith(
+            family === 'rule' ? '/rule-versions' : '/tariff-versions',
+          );
+          if (
+            !changed &&
+            target &&
+            response.ok &&
+            (malformed === 'outcome'
+              ? init?.method === 'POST'
+              : init?.method === 'GET')
+          ) {
+            changed = true;
+            const body: unknown = await response.json();
+            const invalid =
+              malformed === 'outcome'
+                ? { ...object(body), outcome: 'UNKNOWN' }
+                : {
+                    ...object(body),
+                    items: objects(object(body).items).map((item) => ({
+                      ...item,
+                      versionNumber: 0,
+                    })),
+                  };
+            return new Response(JSON.stringify(invalid), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            });
+          }
+          return response;
+        });
+      let result: DemonstrationRunResult;
+      try {
+        result = await run(PRICING_SCENARIO);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(changed).toBe(true);
+      expect(result).toMatchObject({
+        kind: 'stopped',
+        stop: {
+          step:
+            family === 'rule'
+              ? 'pricing.prisma-prim.rule-v1'
+              : 'pricing.demo-iso9001-cons.tariff-v1',
+          reason: 'unexpected-response',
+        },
+      });
+      if (counts) expect(await tableCounts()).toEqual(counts);
+      else
+        expect(
+          (
+            await pool.query(
+              'SELECT count(*)::integer AS count FROM pricing_snapshots',
+            )
+          ).rows,
+        ).toEqual([{ count: 0 }]);
+    },
+    300_000,
+  );
 
   it('seeds demo-v1 through the public commands with normal, attributed events and isolated personas', async () => {
     // This case asserts the API's creation-time order. Task creation uses the
