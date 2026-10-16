@@ -199,7 +199,7 @@ describe('CompanyContextAccess', () => {
     );
     expect(
       within(classicAccess).getByRole('region', {
-        name: 'Identity-provider sessions',
+        name: 'Sesiunile furnizorului de identitate',
       }),
     ).not.toHaveClass('session-revocations--prisme');
     classic.unmount();
@@ -219,7 +219,7 @@ describe('CompanyContextAccess', () => {
     expect(access.querySelector('form')).toHaveClass('company-access-form');
     expect(
       within(access).getByRole('region', {
-        name: 'Identity-provider sessions',
+        name: 'Sesiunile furnizorului de identitate',
       }),
     ).toHaveClass('session-revocations--prisme');
     expect(
