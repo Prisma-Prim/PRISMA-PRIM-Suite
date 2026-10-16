@@ -3,9 +3,12 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
-import { sessionRevocationCopy as copy } from './workspace-session-revocation.copy';
+import {
+  sessionRevocationCopy,
+  useSessionRevocationCopy,
+} from './workspace-session-revocation.copy';
 
-type Status = keyof typeof copy.status;
+type Status = keyof typeof sessionRevocationCopy.status;
 type Page = {
   records: Array<{
     workspaceMembershipId: string;
@@ -27,6 +30,7 @@ export function WorkspaceSessionRevocations({
   onWorkspaceAccessRejected: () => Promise<void> | void;
   onActivityRecorded: () => Promise<void> | void;
 }) {
+  const copy = useSessionRevocationCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<State>({ kind: 'idle' });
   const pending = useRef<AbortController | undefined>(undefined);
