@@ -13,6 +13,7 @@ import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
 import { operationalHomeMessages } from '../operational-home/operational-home-localized.copy';
 import { selectMessages } from '../presentation/select.copy';
+import { myTasksMessages } from '../project/my-tasks-localized.copy';
 import { fiberMessages } from '../production-shell/fiber/fiber.copy';
 import { prismeMessages } from '../production-shell/prisme/prisme.copy';
 import { publicWelcomeMessages } from '../welcome/public-welcome.copy';
@@ -34,6 +35,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);
   assertMessageCoverage('prisme', prismeMessages);
+  assertMessageCoverage('myTasks', myTasksMessages);
   assertMessageCoverage('fiber', fiberMessages);
   assertMessageCoverage('companyContext', companyContextMessages);
   assertMessageCoverage('companyRegistration', companyRegistrationMessages);

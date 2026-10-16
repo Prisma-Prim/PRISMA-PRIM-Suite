@@ -4,7 +4,7 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -148,21 +148,21 @@ it.each(['classic', 'prisme'] as const)(
         'Early notes',
         'ISO preparation',
         'Synthetic Client',
-        '0099-12-31',
+        'Dec 31, 99',
         'Normal',
       ],
       [
         'September notes',
         'Audit preparation',
         'Second Synthetic Client',
-        '2026-09-30',
+        'Sep 30, 2026',
         'Normal',
       ],
       [
         'October notes',
         'ISO preparation',
         'Synthetic Client',
-        '2026-10-05',
+        'Oct 5, 2026',
         'Normal',
       ],
       [
@@ -206,14 +206,14 @@ it('labels each row with its priority as text while keeping the server date orde
       'September notes',
       'Audit preparation',
       'Second Synthetic Client',
-      '2026-09-30',
+      'Sep 30, 2026',
       'Normal',
     ],
     [
       'October notes',
       'ISO preparation',
       'Synthetic Client',
-      '2026-10-05',
+      'Oct 5, 2026',
       'Critical',
     ],
     [
@@ -390,7 +390,7 @@ it('reads Client authority from Company client.read as well as client.manage', a
       'October notes',
       'ISO preparation',
       'Synthetic Client',
-      '2026-10-05',
+      'Oct 5, 2026',
       'Normal',
     ],
   ]);
@@ -408,7 +408,7 @@ it('shows an error with Retry and then the list read by Retry', async () => {
       'October notes',
       'ISO preparation',
       'Synthetic Client',
-      '2026-10-05',
+      'Oct 5, 2026',
       'Normal',
     ],
   ]);
@@ -490,7 +490,7 @@ it('re-reads on Refresh so a completed Task disappears', async () => {
         'October notes',
         'ISO preparation',
         'Synthetic Client',
-        '2026-10-05',
+        'Oct 5, 2026',
         'Normal',
       ],
     ]),
@@ -531,7 +531,7 @@ it.each(['newer first', 'older first'])(
         'October notes',
         'ISO preparation',
         'Synthetic Client',
-        '2026-10-05',
+        'Oct 5, 2026',
         'Normal',
       ],
     ]);
@@ -614,7 +614,7 @@ it.each(['Company', 'membership', 'identity', 'assignment', 'permission'])(
         replacement.title,
         'ISO preparation',
         'Synthetic Client',
-        replacement.dueDate ?? taskCopy.noDate,
+        replacement.dueDate === null ? taskCopy.noDate : 'Oct 5, 2026',
         'Normal',
       ],
     ]);
