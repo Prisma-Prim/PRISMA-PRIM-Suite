@@ -136,7 +136,7 @@ describe('demonstration seed command refusals before any database access', () =>
       refusal: reason,
       providerCallAttempts: 0,
     });
-    expect(lines).toEqual([{ scenario: 'demo-v1', result: 'refused', reason }]);
+    expect(lines).toEqual([{ scenario: 'demo-v2', result: 'refused', reason }]);
   });
 });
 
@@ -197,7 +197,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       refusal: reason,
       providerCallAttempts: 0,
     });
-    expect(lines).toEqual([{ scenario: 'demo-v1', result: 'refused', reason }]);
+    expect(lines).toEqual([{ scenario: 'demo-v2', result: 'refused', reason }]);
     expect(await snapshot()).toEqual(before);
   }
 
@@ -239,7 +239,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
         providerCallAttempts: 0,
       });
       expect(stopped.lines.at(-1)).toEqual({
-        scenario: 'demo-v1',
+        scenario: 'demo-v2',
         result: 'stopped',
         step: 'persona.ana',
         reason: 'persona-not-synthetic',
@@ -336,13 +336,13 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
     const steps = DEMONSTRATION_SCENARIO.steps;
     expect(first.lines).toHaveLength(steps.length + 2);
     expect(first.lines[0]).toEqual({
-      scenario: 'demo-v1',
+      scenario: 'demo-v2',
       workspace: { id: WORKSPACE_ID, name: 'PRISMA DEMO Workspace' },
     });
     expect(first.lines.slice(1, -1)).toEqual(
       steps.map((step) =>
         expect.objectContaining({
-          scenario: 'demo-v1',
+          scenario: 'demo-v2',
           step: step.key,
           outcome: 'created',
           recordId: expect.any(String),
@@ -351,7 +351,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       ),
     );
     expect(first.lines.at(-1)).toMatchObject({
-      scenario: 'demo-v1',
+      scenario: 'demo-v2',
       result: 'converged',
       companies: [
         { key: 'prisma-prim', displayName: 'PRISMA-PRIM' },
@@ -480,7 +480,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       providerCallAttempts: 0,
     });
     expect(profileStop.lines.at(-1)).toEqual({
-      scenario: 'demo-v1',
+      scenario: 'demo-v2',
       result: 'stopped',
       step: 'persona.ana',
       reason: 'persona-not-synthetic',
@@ -540,7 +540,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       providerCallAttempts: 0,
     });
     expect(revokedGrantStop.lines.at(-1)).toEqual({
-      scenario: 'demo-v1',
+      scenario: 'demo-v2',
       result: 'stopped',
       step: 'grant.ana.context',
       reason: 'grant-revoked',

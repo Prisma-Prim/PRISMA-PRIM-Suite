@@ -326,14 +326,25 @@ withPostgres(
               'SELECT id FROM pricing_configuration_events',
             )
           ).rows,
-        ).toHaveLength(2);
+        ).toHaveLength(9);
         expect(
           (
             await database.targetPool.query(
               'SELECT * FROM pricing_configuration_commands',
             )
           ).rows,
-        ).toHaveLength(2);
+        ).toHaveLength(9);
+        expect(
+          (
+            await database.targetPool.query<{ command: string; count: number }>(
+              'SELECT command, count(*)::integer AS count FROM pricing_configuration_commands GROUP BY command ORDER BY command',
+            )
+          ).rows,
+        ).toEqual([
+          { command: 'pricing_rule_version.publish', count: 2 },
+          { command: 'pricing_snapshot.calculate', count: 2 },
+          { command: 'tariff_version.publish', count: 5 },
+        ]);
         await expectCompanyWritesAndReleasedProtection(3);
       } finally {
         await pause.query('ROLLBACK');

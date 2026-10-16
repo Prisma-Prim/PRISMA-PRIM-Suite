@@ -155,6 +155,7 @@ export async function runDemonstrationSeedCommand(
       headersFor: (principal) => identity.headersFor(principal),
       scenario,
       now: application.now,
+      beginPricing: application.beginPricing,
       onLine: (line) => input.write(JSON.stringify(line)),
     });
     return result.kind === 'converged'

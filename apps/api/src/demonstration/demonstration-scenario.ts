@@ -10,7 +10,7 @@ import type { TaskPriority } from '../task/task.types.js';
  * and `demonstration-scenario.test.ts` pins every released step key and its
  * payload fingerprint.
  */
-export const DEMONSTRATION_SCENARIO_VERSION = 'demo-v1';
+export const DEMONSTRATION_SCENARIO_VERSION = 'demo-v2';
 
 /**
  * Frozen with the first release so a released step keeps its idempotency key
@@ -38,13 +38,16 @@ export type DemonstrationBundle =
   | 'commercial-intake'
   | 'commercial-activity-reader'
   | 'service-catalogue'
-  | 'pricing-configuration';
+  | 'pricing-configuration'
+  | 'pricing-user';
 
 /** Rows of the first-tenant substitution register named by scenario steps. */
 export type DemonstrationRegisterId =
   | 'SUB-CO-01'
   | 'SUB-RO-01'
   | 'SUB-RO-02'
+  | 'SUB-PR-02'
+  | 'SUB-PR-04'
   | 'SUB-PR-01'
   | 'SUB-PR-03'
   | 'SUB-DE-01'
@@ -209,6 +212,23 @@ export type DemonstrationAction =
       readonly offering: string;
       readonly definition: string;
       readonly commercialLabel: string;
+    }
+  | {
+      readonly kind: 'pricing.tariff';
+      readonly actor: DemonstrationPersonaKey;
+      readonly offering: string;
+      readonly unit: string;
+      readonly unitAmount: string;
+      readonly currency: 'MDL' | 'EUR';
+      readonly taxRatePercent: string;
+      readonly taxLabel: string;
+    }
+  | {
+      readonly kind: 'pricing.snapshot';
+      readonly actor: DemonstrationPersonaKey;
+      readonly request: string;
+      readonly offering: string;
+      readonly quantity: string;
     }
   | {
       readonly kind: 'pricing.rule';
@@ -807,10 +827,69 @@ const DEMONSTRATION_STEPS: readonly DemonstrationStep[] = [
   },
 ];
 
+export const DEMONSTRATION_BASE_SCENARIO: DemonstrationScenario = {
+  version: 'demo-v1',
+  personas: DEMONSTRATION_PERSONAS,
+  steps: DEMONSTRATION_STEPS,
+};
+
+/** The released demo-v1 is an immutable prefix; CF-1 only appends. */
 export const DEMONSTRATION_SCENARIO: DemonstrationScenario = {
   version: DEMONSTRATION_SCENARIO_VERSION,
   personas: DEMONSTRATION_PERSONAS,
-  steps: DEMONSTRATION_STEPS,
+  steps: [
+    ...DEMONSTRATION_STEPS,
+    ...(['ana', 'maria'] satisfies DemonstrationPersonaKey[]).map(
+      (persona): DemonstrationStep => ({
+        key: `grant.${persona}.pricing-user`,
+        register: 'SUB-RO-02',
+        kind: 'grant',
+        persona,
+        company: persona === 'ana' ? 'prisma-prim' : 'bic',
+        bundle: 'pricing-user',
+      }),
+    ),
+    ...(
+      [
+        { actor: 'ana', offering: 'demo-iso9001-cons' },
+        { actor: 'ana', offering: 'demo-iso22000-cons' },
+        { actor: 'ana', offering: 'demo-iso14001-cons' },
+        { actor: 'maria', offering: 'demo-iso9001-cert' },
+        { actor: 'maria', offering: 'demo-iso45001-cert' },
+      ] satisfies { actor: 'ana' | 'maria'; offering: string }[]
+    ).map(({ actor, offering }): DemonstrationStep => {
+      return {
+        key: `pricing.${offering}.tariff-v1`,
+        register: 'SUB-PR-02',
+        kind: 'pricing.tariff',
+        actor,
+        offering: `catalogue.${offering}.offering`,
+        unit: 'DEMO unit',
+        unitAmount: actor === 'ana' ? '100.00' : '150.00',
+        currency: actor === 'ana' ? 'MDL' : 'EUR',
+        taxRatePercent: actor === 'ana' ? '20' : '0',
+        taxLabel: 'DEMO illustrative tax',
+      };
+    }),
+    {
+      key: 'pricing.prisma-prim.snapshot',
+      register: 'SUB-PR-04',
+      kind: 'pricing.snapshot',
+      actor: 'ana',
+      request: 'grup-demo-iso14001',
+      offering: 'catalogue.demo-iso14001-cons.offering',
+      quantity: '2',
+    },
+    {
+      key: 'pricing.bic.snapshot',
+      register: 'SUB-PR-04',
+      kind: 'pricing.snapshot',
+      actor: 'maria',
+      request: 'demo-construct-iso45001',
+      offering: 'catalogue.demo-iso45001-cert.offering',
+      quantity: '2',
+    },
+  ],
 };
 
 /** The stable per-step key a command presents; never derived from the run. */

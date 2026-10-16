@@ -90,6 +90,13 @@ describe('demonstration application composition', () => {
           now: normal.get<ServerClock>(SERVER_CLOCK).now(),
         }),
       ).toEqual({ kind: 'rejected', code: 'EFFECTIVE_FROM_PAST' });
+      application.beginPricing();
+      expect(application.now().toISOString()).toBe('2026-09-26T12:00:01.000Z');
+      application.beginPricing();
+      expect(application.now().toISOString()).toBe('2026-09-26T12:00:01.000Z');
+      expect(normal.get<ServerClock>(SERVER_CLOCK).now().toISOString()).toBe(
+        '2026-09-26T12:01:00.000Z',
+      );
     } finally {
       await normal.close();
       await application.close();

@@ -34,6 +34,8 @@ export interface DemonstrationApplication {
   readonly origin: string;
   /** Shared run instant for public pricing payloads and server validation. */
   readonly now: () => Date;
+  /** Advances only the seed clock to its next whole second, once. */
+  readonly beginPricing: () => void;
   close(): Promise<void>;
 }
 
@@ -65,7 +67,11 @@ export async function startDemonstrationApplication(
   // transit and database lock waits cannot expire its first pricing start.
   // The served application's ServerClockModule continues to use real time.
   const runInstant = new Date().getTime();
-  const now = () => new Date(runInstant);
+  let instant = runInstant;
+  const now = () => new Date(instant);
+  const beginPricing = () => {
+    instant = (Math.floor(runInstant / 1000) + 1) * 1000;
+  };
   const connectionUrl = new URL(input.databaseUrl);
   // Put this last in the URL options: node-postgres gives URL settings priority
   // over Pool options. Even a configured options value must retain this guard.
@@ -141,7 +147,7 @@ export async function startDemonstrationApplication(
     application = moduleRef.createNestApplication({ logger: false });
     application.setGlobalPrefix('api');
     await application.listen(0, '127.0.0.1');
-    return { origin: await application.getUrl(), now, close };
+    return { origin: await application.getUrl(), now, beginPricing, close };
   } catch (error) {
     await close();
     throw error;
