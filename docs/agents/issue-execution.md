@@ -49,6 +49,16 @@ Before coding, extend that note with the sensitive cases relevant to the assigne
 5. Publish one focused commit. Squash intermediate commits before the first push.
 6. After publication, require the complete GitHub Actions workflow to pass on the published head before merge. GitHub CI is the authoritative integration proof and does not replace the targeted local evidence above.
 
+### Acceptance evidence and review preparation
+
+Apply this procedure in every fresh session, including a handoff between Codex and Claude Code. The issue, repository instructions and pull-request evidence supply the contract; private conversation memory is not a prerequisite.
+
+- Before requesting review, check every acceptance criterion against the complete change. Record a compact mapping from each criterion to its test or other verifiable evidence in the pull request; identify any missing proof or unresolved ambiguity. For documentation, check the requested outcomes, links and consistency with the owning instructions instead of inventing behavioral tests.
+- Complete both Standards and Spec self-reviews before publication, fix their findings, and inspect the resulting final diff. For browser or asynchronous work, audit the affected journey's reads, writes and readiness conditions before assertions, together with permissions and state transitions where relevant. Preserve assertion strength and stay within the assigned acceptance contract.
+- When addressing a blocking finding, identify its cause and search the entire authorized scope for the same defect pattern. Correct all affected occurrences in the same batch; do not stop at the cited line or broaden the issue into unrelated hardening. Disposition nonblocking findings under the review-round policy below.
+- Wait for the requested review to complete, collect its findings, and apply the blocking corrections together. Rerun the affected checks and record the correction, tested revision, results and remaining uncertainties in the pull request. This preparation does not add review rounds or change the stopping rules below.
+- Before merge, verify that CI and the required review disposition apply to the exact current head. After a correction, explicitly distinguish evidence for unchanged material from checks rerun on the correction; an earlier green result does not establish that the new head passed.
+
 ## Capability-aware publication
 
 Harness capabilities and user authorization determine publication actions. A task prompt never grants capabilities or permissions the harness does not have.
