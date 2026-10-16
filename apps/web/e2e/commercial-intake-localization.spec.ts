@@ -252,6 +252,22 @@ for (const locale of locales) {
     await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
       locale.error,
     );
+    if (testInfo.project.name === 'narrow') {
+      for (const width of [390, 320, 820]) {
+        await page.setViewportSize({ width, height: 844 });
+        await expectNarrowLocaleRow(page);
+        await expect(
+          intake.getByRole('textbox', { name: locale.source, exact: true }),
+        ).toHaveValue(originalText);
+        await expect(
+          intake.getByLabel(locale.subject, { exact: true }),
+        ).toHaveValue('Demande {original}');
+        await expect(page.getByRole('banner')).toContainText(
+          company.displayName,
+        );
+      }
+      await page.setViewportSize({ width: 390, height: 844 });
+    }
     const alternate = locale.code === 'en' ? locales[0] : locales[3];
     await selectOption(page.getByLabel(locale.label, { exact: true }), {
       label: alternate.name,
@@ -350,5 +366,34 @@ for (const locale of locales) {
       path: testInfo.outputPath(`request-${locale.code}.png`),
       fullPage: true,
     });
+    if (testInfo.project.name === 'narrow') {
+      await page.goto('/?frame=classic#requests');
+      await expect(page.locator('html')).toHaveAttribute('lang', locale.code);
+      await expectNarrowLocaleRow(page);
+      await page.screenshot({
+        path: testInfo.outputPath(`locale-row-classic-${locale.code}.png`),
+        fullPage: true,
+      });
+    }
   });
+}
+
+async function expectNarrowLocaleRow(page: Page): Promise<void> {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const control = page.locator('.interface-locale-control');
+  const header = page.getByRole('banner');
+  await expect(control).toBeVisible();
+  await expect(header).toBeVisible();
+  const controlBounds = await control.boundingBox();
+  const headerBounds = await header.boundingBox();
+  if (!controlBounds || !headerBounds)
+    throw new Error(
+      'The locale control and application header must have layout boxes',
+    );
+  expect(controlBounds.y + controlBounds.height).toBeLessThanOrEqual(
+    headerBounds.y,
+  );
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(await page.evaluate(() => window.innerWidth));
 }
