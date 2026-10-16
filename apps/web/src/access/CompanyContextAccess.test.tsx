@@ -7,6 +7,8 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
+import { InterfaceLocaleProvider } from '../localization/interface-locale';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
@@ -16,6 +18,11 @@ import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
 import { salesStageMessages } from '../commercial-intake/sales-stage.copy';
 import { resolveMessage } from '../localization/messages';
+
+function renderInEnglish(ui: ReactNode) {
+  localStorage.setItem('prisma-prim.interface-locale', 'en');
+  return render(ui, { wrapper: InterfaceLocaleProvider });
+}
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -223,7 +230,7 @@ describe('CompanyContextAccess', () => {
       }),
     ).toHaveClass('session-revocations--prisme');
     expect(
-      within(access).getByRole('region', { name: 'Workspace access' }),
+      within(access).getByRole('region', { name: 'Acces la spațiul de lucru' }),
     ).toHaveClass('membership-suspension--prisme');
   });
 
@@ -824,7 +831,7 @@ describe('CompanyContextAccess', () => {
         ),
     );
 
-    render(
+    renderInEnglish(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
@@ -888,7 +895,7 @@ describe('CompanyContextAccess', () => {
           new Response(JSON.stringify(administration()), { status: 200 }),
         ),
     );
-    render(
+    renderInEnglish(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
@@ -920,7 +927,7 @@ describe('CompanyContextAccess', () => {
     const onPendingChange = vi.fn();
     const onActivityRecorded = vi.fn(async () => undefined);
     const onWorkspaceAccessRejected = vi.fn(async () => undefined);
-    const { rerender } = render(
+    const { rerender } = renderInEnglish(
       <WorkspaceMembershipSuspension
         actor={ownerActor}
         identity={identity}
@@ -989,7 +996,7 @@ describe('CompanyContextAccess', () => {
     const onPendingChange = vi.fn();
     const onActivityRecorded = vi.fn(async () => undefined);
     const onWorkspaceAccessRejected = vi.fn(async () => undefined);
-    const { rerender } = render(
+    const { rerender } = renderInEnglish(
       <WorkspaceMembershipSuspension
         actor={ownerActor}
         identity={firstIdentity}
@@ -1058,7 +1065,7 @@ describe('CompanyContextAccess', () => {
     const onPendingChange = vi.fn();
     const onActivityRecorded = vi.fn(async () => undefined);
     const onWorkspaceAccessRejected = vi.fn(async () => undefined);
-    const { rerender } = render(
+    const { rerender } = renderInEnglish(
       <WorkspaceMembershipSuspension
         actor={ownerActor}
         identity={firstIdentity}
@@ -1134,7 +1141,7 @@ describe('CompanyContextAccess', () => {
           ),
         ),
     );
-    render(
+    renderInEnglish(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
@@ -1178,7 +1185,7 @@ describe('CompanyContextAccess', () => {
           new Response(JSON.stringify(afterStaleDenial), { status: 200 }),
         ),
     );
-    render(
+    renderInEnglish(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}

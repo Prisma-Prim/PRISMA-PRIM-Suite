@@ -1,3 +1,4 @@
+import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
 import { contractSignatureMessages } from '../contract/contract-signature.copy';
 import { contractProjectsMessages } from '../contract/contract-projects.copy';
@@ -26,6 +27,10 @@ import { assertMessageCoverage } from './messages';
 export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('commercialRequest', commercialRequestMessages);
   assertMessageCoverage('opportunityOutcome', opportunityOutcomeMessages);
+  assertMessageCoverage(
+    'workspaceMembershipSuspension',
+    workspaceMembershipSuspensionMessages,
+  );
   assertMessageCoverage('contractDecision', contractDecisionMessages);
   assertMessageCoverage('contractSignature', contractSignatureMessages);
   assertMessageCoverage('contractProjects', contractProjectsMessages);

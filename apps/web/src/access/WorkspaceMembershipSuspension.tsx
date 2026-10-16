@@ -4,7 +4,7 @@ import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
-import { workspaceMembershipSuspensionCopy as copy } from './workspace-membership-suspension.copy';
+import { useWorkspaceMembershipSuspensionCopy } from './workspace-membership-suspension.copy';
 
 export interface SuspensionMemberOption {
   readonly workspaceMembershipId: string;
@@ -37,6 +37,7 @@ export function WorkspaceMembershipSuspension({
   onActivityRecorded: () => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const copy = useWorkspaceMembershipSuspensionCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [state, setState] = useState<SuspensionState>({ status: 'idle' });
