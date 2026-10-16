@@ -17,6 +17,7 @@ import { companyRegistrationMessages } from '../company/company-registration.cop
 import { operationalHomeMessages } from '../operational-home/operational-home-localized.copy';
 import { sessionRevocationMessages } from '../access/workspace-session-revocation.copy';
 import { selectMessages } from '../presentation/select.copy';
+import { myTasksMessages } from '../project/my-tasks-localized.copy';
 import { fiberMessages } from '../production-shell/fiber/fiber.copy';
 import { prismeMessages } from '../production-shell/prisme/prisme.copy';
 import { serviceCatalogueMessages } from '../commercial-catalogue/service-catalogue.copy';
@@ -46,6 +47,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('serviceCatalogue', serviceCatalogueMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);
   assertMessageCoverage('prisme', prismeMessages);
+  assertMessageCoverage('myTasks', myTasksMessages);
   assertMessageCoverage('fiber', fiberMessages);
   assertMessageCoverage('companyContext', companyContextMessages);
   assertMessageCoverage('companyRegistration', companyRegistrationMessages);

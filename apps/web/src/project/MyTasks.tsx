@@ -2,12 +2,11 @@ import { useContext, useEffect, useId, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { readAssignedTasks, type AssignedTask } from './task-response';
-import { taskCopy } from './task.copy';
+import { useMyTasksCopy } from './my-tasks-localized.copy';
 import './my-tasks.css';
-
-const copy = taskCopy.myTasks;
 
 type Props = {
   actor: ActorContext;
@@ -48,6 +47,8 @@ export function MyTasks(props: Props) {
 }
 
 function AssignedTasks({ actor, identity, onOpenTask }: Props) {
+  const copy = useMyTasksCopy();
+  const { formatDate } = useInterfaceLocale();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const titleId = useId();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -137,9 +138,7 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
             <li key={task.id}>
               <div>
                 <h3>{task.title}</h3>
-                <p className="my-tasks-status">
-                  {taskCopy.states[task.status]}
-                </p>
+                <p className="my-tasks-status">{copy.states[task.status]}</p>
               </div>
               <dl>
                 <div>
@@ -151,18 +150,20 @@ function AssignedTasks({ actor, identity, onOpenTask }: Props) {
                   <dd>{task.project.clientDisplayName}</dd>
                 </div>
                 <div>
-                  <dt>{taskCopy.dueDate}</dt>
+                  <dt>{copy.dueDate}</dt>
                   <dd>
                     {task.dueDate === null ? (
-                      taskCopy.noDate
+                      copy.noDate
                     ) : (
-                      <time dateTime={task.dueDate}>{task.dueDate}</time>
+                      <time dateTime={task.dueDate}>
+                        {formatDate(task.dueDate)}
+                      </time>
                     )}
                   </dd>
                 </div>
                 <div>
-                  <dt>{taskCopy.priority}</dt>
-                  <dd>{taskCopy.priorities[task.priority]}</dd>
+                  <dt>{copy.priority}</dt>
+                  <dd>{copy.priorities[task.priority]}</dd>
                 </div>
               </dl>
               {onOpenTask && (
