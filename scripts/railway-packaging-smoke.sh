@@ -62,11 +62,21 @@ else
   done
 fi
 
+api_dockerfile='deploy/railway/api.Dockerfile'
+web_dockerfile='deploy/railway/web.Dockerfile'
+if [ -n "${PACKAGING_IMAGE_DIRECTORY:-}" ]; then
+  # Fail closed on a missing/corrupt restored archive. The verifier binds the
+  # loaded config IDs to the unchanged official FROM indexes without a pull.
+  node scripts/ci-packaging-images.mjs load
+  api_dockerfile="$PACKAGING_IMAGE_DIRECTORY/api.Dockerfile"
+  web_dockerfile="$PACKAGING_IMAGE_DIRECTORY/web.Dockerfile"
+fi
+
 # Only synthetic public settings enter the web build. This key names an
 # example.test FAPI host and cannot authenticate with a live Clerk instance.
 publishable_key='pk_live_Y2xlcmsuZXhhbXBsZS50ZXN0JA=='
-docker build --file deploy/railway/api.Dockerfile --tag "$api_image" .
-docker build --file deploy/railway/web.Dockerfile --tag "$web_image" \
+docker build --file "$api_dockerfile" --tag "$api_image" .
+docker build --file "$web_dockerfile" --tag "$web_image" \
   --build-arg VITE_API_URL=https://api.example.test/api \
   --build-arg VITE_CLERK_PUBLISHABLE_KEY="$publishable_key" .
 

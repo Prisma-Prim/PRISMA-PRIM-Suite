@@ -472,3 +472,41 @@ test('the scope job classifies the exact pull request commits with full history'
   assert.match(classify, /run: node scripts\/ci-change-scope\.mjs\n/);
   assert.doesNotMatch(classify, /\bif:/);
 });
+
+test('packaging restores a digest-bound verified base-image cache and bootstraps only a miss', async () => {
+  const { packaging } = jobsIn(await readWorkflow());
+  const restore = stepBody(packaging, 'Restore pinned packaging base images');
+  const acquire = stepBody(packaging, 'Acquire pinned packaging base images');
+  const save = stepBody(packaging, 'Save pinned packaging base images');
+  const key =
+    /key: packaging-images-linux-amd64-\$\{\{ hashFiles\('deploy\/railway\/api\.Dockerfile', 'deploy\/railway\/web\.Dockerfile', 'scripts\/ci-packaging-images\.mjs'\) \}\}/;
+  assert.match(restore, /id: packaging_images/);
+  assert.match(restore, /uses: actions\/cache\/restore@v4/);
+  assert.match(restore, key);
+  assert.match(save, /uses: actions\/cache\/save@v4/);
+  assert.match(save, key);
+  for (const body of [acquire, save])
+    assert.match(
+      body,
+      /if: \$\{\{ steps\.packaging_images\.outputs\.cache-hit != 'true' \}\}/,
+    );
+  assert.match(acquire, /run: node scripts\/ci-packaging-images\.mjs acquire/);
+  assert.doesNotMatch(restore, /restore-keys:/);
+  for (const body of [
+    restore,
+    acquire,
+    save,
+    stepBody(packaging, 'Prove production image packaging'),
+  ])
+    assert.match(body, /\$\{\{ runner\.temp \}\}\/packaging-images/);
+  const positions = [
+    'Restore pinned packaging base images',
+    'Acquire pinned packaging base images',
+    'Save pinned packaging base images',
+    'Prove production image packaging',
+  ].map((step) => packaging.indexOf(`- name: ${step}\n`));
+  assert.deepEqual(
+    [...positions].sort((left, right) => left - right),
+    positions,
+  );
+});

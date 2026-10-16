@@ -301,8 +301,31 @@ jobs:
           path: ${{ runner.temp }}/postgres-image/postgres.tar
           key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
 
+      # Like PostgreSQL, main's cache is readable by later PRs. The key owns
+      # the reviewed FROM digests and the offline provenance verifier together.
+      - name: Restore pinned packaging base images
+        id: packaging_images
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/packaging-images
+          key: packaging-images-linux-amd64-${{ hashFiles('deploy/railway/api.Dockerfile', 'deploy/railway/web.Dockerfile', 'scripts/ci-packaging-images.mjs') }}
+
+      - name: Acquire pinned packaging base images
+        if: ${{ steps.packaging_images.outputs.cache-hit != 'true' }}
+        env:
+          PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
+        run: node scripts/ci-packaging-images.mjs acquire
+
+      - name: Save pinned packaging base images
+        if: ${{ steps.packaging_images.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/packaging-images
+          key: packaging-images-linux-amd64-${{ hashFiles('deploy/railway/api.Dockerfile', 'deploy/railway/web.Dockerfile', 'scripts/ci-packaging-images.mjs') }}
+
       - name: Prove production image packaging
         env:
+          PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
           POSTGRES_IMAGE_ARCHIVE: ${{ runner.temp }}/postgres-image/postgres.tar
         run: bash scripts/railway-packaging-smoke.sh
 
