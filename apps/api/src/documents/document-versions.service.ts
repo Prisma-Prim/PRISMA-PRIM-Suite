@@ -403,8 +403,10 @@ export class DocumentVersionsService {
       },
     };
     const replay = await this.database.transaction(async () => {
-      const companyId =
-        await this.authorization.requireDocumentContentUpload(actor);
+      const { companyId, recorded } = await this.authorizePdfUpload(
+        actor,
+        command,
+      );
       const visible = await this.boundary.requireVisible(
         actor,
         input.documentId,
@@ -415,7 +417,6 @@ export class DocumentVersionsService {
         documentId: input.documentId,
       };
       await this.requireVersionOf(scope, input.versionId);
-      const recorded = await this.replayCommand(actor, command, companyId);
       if (recorded) return recorded;
       await this.clients.lockActiveReferenceClient(
         actor,
@@ -431,7 +432,8 @@ export class DocumentVersionsService {
     await requireQuestionnairePdfStructure(input.pdf.bytes);
     return this.execute(actor, {
       ...command,
-      authorize: () => this.authorization.requireDocumentContentUpload(actor),
+      authorize: async () =>
+        (await this.authorizePdfUpload(actor, command)).companyId,
       apply: async (scope, document) => {
         const draft = await this.requirePdfDraft(scope, input.versionId);
         const representationId = await this.pdfs.insert({
@@ -452,6 +454,24 @@ export class DocumentVersionsService {
         };
       },
     });
+  }
+
+  /**
+   * Live upload authority precedes an actor-key fingerprint check, including
+   * Company changes. A matching receipt is released only after visibility is
+   * rechecked by the caller. Repeat under execute's key lock after scanning.
+   */
+  private async authorizePdfUpload(
+    actor: ActorContext,
+    command: VersionCommandIdentity,
+  ): Promise<{
+    companyId: string;
+    recorded: DocumentVersionReceipt | null;
+  }> {
+    const companyId =
+      await this.authorization.requireDocumentContentUpload(actor);
+    const recorded = await this.replayCommand(actor, command, companyId);
+    return { companyId, recorded };
   }
 
   private async requirePdfDraft(scope: DocumentScope, versionId: string) {

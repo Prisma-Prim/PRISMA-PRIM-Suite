@@ -682,6 +682,73 @@ withPostgres('Preserved questionnaire PDF content REST', () => {
       ).rows,
     ).toEqual([{ count: 1 }]);
   });
+  it('conflicts an actor upload key in another authorized Company before scoped Document visibility', async () => {
+    await grant('/company-document-content-reader-assignments');
+    await grant('/company-document-content-uploader-assignments');
+    const key = 'pdf-company-scoped-replay';
+    const uploaded = await uploadPdf({ key });
+    expect(uploaded.status).toBe(201);
+    const originalReceipt = await json(uploaded);
+    const other = await call('/companies', {
+      method: 'POST',
+      company: null,
+      body: { displayName: 'Replay Company B DEMO' },
+    });
+    expect(other.status).toBe(201);
+    const otherId = text((await json(other)).id);
+    for (const path of [
+      '/company-document-registrar-assignments',
+      '/company-document-content-reader-assignments',
+      '/company-document-content-uploader-assignments',
+    ]) {
+      const response = await call(path, {
+        method: 'POST',
+        company: null,
+        body: { companyId: otherId, workspaceMembershipId: membershipId },
+      });
+      expect(response.status, path).toBe(201);
+    }
+    scanMode = 'unavailable';
+    const conflict = await uploadPdf({ key, company: otherId });
+    expect(conflict.status).toBe(409);
+    const failure = await json(conflict);
+    expect(failure.message).toBe(
+      'Idempotency-Key was already used for another Version command.',
+    );
+    expect(JSON.stringify(failure)).not.toContain(documentId);
+    expect(JSON.stringify(failure)).not.toContain(versionId);
+    // Fresh keys and direct reads never reveal a Document in another Company.
+    expect(
+      (await uploadPdf({ key: 'fresh-company-b-upload', company: otherId }))
+        .status,
+    ).toBe(404);
+    expect((await call(contentPath(), { company: otherId })).status).toBe(404);
+    const revoked = await call(
+      `/company-document-content-reader-assignments/${membershipId}/${otherId}`,
+      { method: 'DELETE', company: null },
+    );
+    expect(revoked.status).toBe(200);
+    expect((await uploadPdf({ key, company: otherId })).status).toBe(403);
+    // A refused Company change neither rewrites nor reselects the original receipt.
+    const replay = await uploadPdf({ key });
+    expect(replay.status).toBe(201);
+    expect(await json(replay)).toEqual(originalReceipt);
+    expect(scanCount).toBe(1);
+    expect(
+      (
+        await harness.pool.query(
+          'SELECT count(*)::int AS count FROM document_pdfs',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+    expect(
+      (
+        await harness.pool.query(
+          'SELECT count(*)::int AS count FROM document_version_commands',
+        )
+      ).rows,
+    ).toEqual([{ count: 1 }]);
+  });
   it('does not commit scanned bytes after the draft was designated official concurrently', async () => {
     await grant('/company-document-content-reader-assignments');
     await grant('/company-document-content-uploader-assignments');

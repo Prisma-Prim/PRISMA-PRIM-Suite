@@ -34,6 +34,7 @@ const keys = [
   'uploaderGranted',
   'uploaderRevoked',
   'unsafe',
+  'unavailable',
   'history',
   'older',
   'current',
@@ -41,6 +42,8 @@ const keys = [
 ] as const;
 export const documentPdfMessages = defineMessages(keys, {
   ro: {
+    unavailable:
+      'Scanarea nu este disponibilă. PDF-ul nu a fost păstrat. Încearcă din nou când scanarea este disponibilă.',
     unsafe: 'PDF-ul nu a trecut verificarea antivirus. Alege un alt fișier.',
     history: 'Istoricul PDF-urilor',
     older: 'PDF-uri mai vechi',
@@ -83,6 +86,8 @@ export const documentPdfMessages = defineMessages(keys, {
       'a revocat încărcarea PDF-urilor confidențiale ale Companiei',
   },
   ru: {
+    unavailable:
+      'Проверка недоступна. PDF не сохранён. Повторите попытку, когда проверка станет доступна.',
     unsafe: 'PDF не прошёл антивирусную проверку. Выберите другой файл.',
     history: 'История PDF',
     older: 'Предыдущие PDF',
@@ -123,6 +128,8 @@ export const documentPdfMessages = defineMessages(keys, {
     uploaderRevoked: 'отозвал загрузку конфиденциальных PDF Компании',
   },
   fr: {
+    unavailable:
+      'L’analyse est indisponible. Le PDF n’a pas été conservé. Réessayez lorsque l’analyse sera disponible.',
     unsafe:
       'Le PDF n’a pas passé le contrôle antivirus. Choisissez un autre fichier.',
     history: 'Historique des PDF',
@@ -166,6 +173,8 @@ export const documentPdfMessages = defineMessages(keys, {
     uploaderRevoked: 'a révoqué le dépôt des PDF confidentiels de la Compagnie',
   },
   en: {
+    unavailable:
+      'Scanning is unavailable. The PDF was not preserved. Try again when scanning is available.',
     unsafe: 'The PDF failed the malware scan. Choose another file.',
     history: 'PDF history',
     older: 'Older PDFs',

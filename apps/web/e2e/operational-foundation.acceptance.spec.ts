@@ -159,9 +159,13 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(assignedTask.getByRole('definition')).toHaveText([
     projectTitle,
     clientName,
-    '2026-10-15',
+    'Oct 15, 2026',
     'Important',
   ]);
+  await expect(assignedTask.locator('time')).toHaveAttribute(
+    'datetime',
+    '2026-10-15',
+  );
   await capture(
     page,
     testInfo,
@@ -754,6 +758,10 @@ async function responseId(responsePromise: Promise<Response>): Promise<string> {
   return value.id;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function activityRecords(value: unknown): ActivityRecord[] {
   if (
     typeof value !== 'object' ||
@@ -771,9 +779,7 @@ function activityRecords(value: unknown): ActivityRecord[] {
       !('action' in event) ||
       typeof event.action !== 'string' ||
       !('target' in event) ||
-      typeof event.target !== 'object' ||
-      event.target === null ||
-      Array.isArray(event.target)
+      !isRecord(event.target)
     )
       throw new Error('Expected a complete Activity Log event.');
     if (

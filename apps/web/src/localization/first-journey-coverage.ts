@@ -1,5 +1,7 @@
 import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
+import { pricingConfigurationMessages } from '../pricing-configuration/pricing-configuration.copy';
+import { localInstantMessages } from '../pricing-configuration/local-instant.copy';
 import { contractSignatureMessages } from '../contract/contract-signature.copy';
 import { contractProjectsMessages } from '../contract/contract-projects.copy';
 import { contractProjectCreateMessages } from '../contract/contract-project-create.copy';
@@ -18,6 +20,7 @@ import { companyRegistrationMessages } from '../company/company-registration.cop
 import { operationalHomeMessages } from '../operational-home/operational-home-localized.copy';
 import { sessionRevocationMessages } from '../access/workspace-session-revocation.copy';
 import { selectMessages } from '../presentation/select.copy';
+import { myTasksMessages } from '../project/my-tasks-localized.copy';
 import { fiberMessages } from '../production-shell/fiber/fiber.copy';
 import { prismeMessages } from '../production-shell/prisme/prisme.copy';
 import { serviceCatalogueMessages } from '../commercial-catalogue/service-catalogue.copy';
@@ -33,6 +36,8 @@ export function assertFirstJourneyTranslationCoverage(): void {
     workspaceMembershipSuspensionMessages,
   );
   assertMessageCoverage('contractDecision', contractDecisionMessages);
+  assertMessageCoverage('pricingConfiguration', pricingConfigurationMessages);
+  assertMessageCoverage('localInstant', localInstantMessages);
   assertMessageCoverage('contractSignature', contractSignatureMessages);
   assertMessageCoverage('contractProjects', contractProjectsMessages);
   assertMessageCoverage('contractProjectCreate', contractProjectCreateMessages);
@@ -48,6 +53,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('serviceCatalogue', serviceCatalogueMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);
   assertMessageCoverage('prisme', prismeMessages);
+  assertMessageCoverage('myTasks', myTasksMessages);
   assertMessageCoverage('fiber', fiberMessages);
   assertMessageCoverage('companyContext', companyContextMessages);
   assertMessageCoverage('companyRegistration', companyRegistrationMessages);

@@ -44,6 +44,36 @@ const pdf = {
   scan: { outcome: 'clean', engine: 'ClamAV 1.4.3', scannedAt: instant },
 };
 
+const contentPath = '/api/documents/{documentId}/versions/{versionId}/content';
+for (const [suffix, method] of [
+  ['', 'post'],
+  ['', 'get'],
+  ['/history', 'get'],
+  ['/{representationId}', 'get'],
+]) {
+  test(`stored PDF ${method} ${suffix || 'current'} requires selected Company context`, () => {
+    const pathItem = contract.paths[`${contentPath}${suffix}`];
+    const operation = pathItem[method];
+    assert.ok(operation, 'The public content operation must exist.');
+    const parameters = [
+      ...(pathItem.parameters ?? []),
+      ...(operation.parameters ?? []),
+    ];
+    assert.ok(
+      parameters.some(
+        (parameter) =>
+          parameter.$ref === '#/components/parameters/RequiredCompanyContextId',
+      ),
+      'The selected Company header must be explicitly required.',
+    );
+    const header = contract.components.parameters.RequiredCompanyContextId;
+    assert.equal(header.in, 'header');
+    assert.equal(header.name, 'X-Company-Context-Id');
+    assert.equal(header.required, true);
+    assert.equal(header.schema.type, 'string');
+  });
+}
+
 test('PDF metadata exposes details only in the explicitly granted state and rejects unproved scan provenance', () => {
   const validate = validator('DocumentPdfContent');
   for (const value of [

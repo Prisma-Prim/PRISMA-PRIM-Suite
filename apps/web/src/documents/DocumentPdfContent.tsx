@@ -19,7 +19,13 @@ interface UploadCommand {
 type UploadState =
   | {
       status:
-        'idle' | 'invalid' | 'unsafe' | 'confirmed' | 'denied' | 'conflict';
+        | 'idle'
+        | 'invalid'
+        | 'unsafe'
+        | 'unavailable'
+        | 'confirmed'
+        | 'denied'
+        | 'conflict';
     }
   | { status: 'pending' | 'uncertain'; command: UploadCommand };
 /** Only content rights expose file metadata or authenticated immutable downloads. */
@@ -121,6 +127,13 @@ export function DocumentPdfContent({
         setUpload({
           status: result.code === 'document_pdf_unsafe' ? 'unsafe' : 'invalid',
         });
+        return;
+      }
+      if (
+        result.status === 'error' &&
+        result.code === 'document_pdf_scanner_unavailable'
+      ) {
+        setUpload({ status: 'unavailable' });
         return;
       }
       if (result.status !== 'ok') {
@@ -397,6 +410,7 @@ export function DocumentPdfContent({
       {upload.status === 'confirmed' && <p role="status">{copy.t('saved')}</p>}
       {(upload.status === 'invalid' ||
         upload.status === 'unsafe' ||
+        upload.status === 'unavailable' ||
         upload.status === 'denied' ||
         upload.status === 'conflict') && (
         <p role="alert">{copy.t(upload.status)}</p>

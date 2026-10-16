@@ -218,6 +218,175 @@ describe('Stored questionnaire PDF through Document Versions', () => {
       new Headers(writes[1]?.request?.headers).get('idempotency-key'),
     ).toBe(new Headers(writes[0]?.request?.headers).get('idempotency-key'));
   });
+  it('reports a documented scanner outage as unavailable and permits a new intention', async () => {
+    const original = new File(
+      ['%PDF-1.4\nDEMO A\n%%EOF\n'],
+      'questionnaire-a.pdf',
+      { type: 'application/pdf' },
+    );
+    const replacement = new File(
+      ['%PDF-1.4\nDEMO B\n%%EOF\n'],
+      'questionnaire-b.pdf',
+      { type: 'application/pdf' },
+    );
+    const writes: Array<{ path: string; request: RequestInit | undefined }> =
+      [];
+    let stored = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, request?: RequestInit) => {
+        const path = String(input);
+        if (path === '/api/documents/document/versions')
+          return Response.json(versionRead(stored, replacement.size));
+        if (path.includes('/content?') && request?.method === 'POST') {
+          writes.push({ path, request });
+          if (writes.length === 1)
+            return Response.json(
+              {
+                code: 'document_pdf_scanner_unavailable',
+                message: 'Scanning is unavailable.',
+              },
+              { status: 503 },
+            );
+          stored = true;
+          return Response.json(
+            {
+              action: 'representation_added',
+              documentId: 'document',
+              versionId: 'version',
+              versionNumber: 1,
+              workingRevision: 2,
+              representationId: 'pdf',
+              appendedAfterDesignation: false,
+            },
+            { status: 201 },
+          );
+        }
+        throw new Error(`Unexpected request: ${path}`);
+      }),
+    );
+    render(
+      <InterfaceLocaleProvider>
+        <DocumentVersions
+          actor={actor}
+          identity={deterministicBrowserIdentity()}
+          documentId="document"
+          workingRevision={1}
+          onRefresh={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    const input = await screen.findByLabelText('Alege fișierul PDF');
+    fireEvent.change(input, { target: { files: [original] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Păstrează PDF-ul' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Scanarea nu este disponibilă. PDF-ul nu a fost păstrat. Încearcă din nou când scanarea este disponibilă.',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Reîncearcă același PDF' }),
+    ).not.toBeInTheDocument();
+    expect(input).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Păstrează PDF-ul' }),
+    ).toBeEnabled();
+    expect(writes).toHaveLength(1);
+    expect(stored).toBe(false);
+    fireEvent.change(input, { target: { files: [replacement] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Păstrează PDF-ul' }));
+    await screen.findByRole('button', { name: 'Descarcă PDF-ul Versiunii 1' });
+    expect(writes).toHaveLength(2);
+    expect(writes[0]?.request?.body).toBe(original);
+    expect(writes[1]?.request?.body).toBe(replacement);
+    expect(
+      new Headers(writes[1]?.request?.headers).get('idempotency-key'),
+    ).not.toBe(new Headers(writes[0]?.request?.headers).get('idempotency-key'));
+  });
+  it.each([
+    {
+      status: 503,
+      body: { message: 'Confirmation unavailable after commit.' },
+    },
+    {
+      status: 503,
+      body: { code: 'unrecognized_outage', message: 'Unknown outcome.' },
+    },
+    {
+      status: 500,
+      body: {
+        code: 'document_pdf_scanner_unavailable',
+        message: 'Not the documented response.',
+      },
+    },
+  ])(
+    'keeps unclassified server failures uncertain with an exact retry: %j',
+    async (failure) => {
+      const file = new File(['%PDF-1.4\nDEMO\n%%EOF\n'], 'questionnaire.pdf', {
+        type: 'application/pdf',
+      });
+      const writes: Array<{ path: string; request: RequestInit | undefined }> =
+        [];
+      let stored = false;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, request?: RequestInit) => {
+          const path = String(input);
+          if (path === '/api/documents/document/versions')
+            return Response.json(versionRead(stored, file.size));
+          if (path.includes('/content?') && request?.method === 'POST') {
+            writes.push({ path, request });
+            stored = true;
+            if (writes.length === 1)
+              return Response.json(failure.body, { status: failure.status });
+            return Response.json(
+              {
+                action: 'representation_added',
+                documentId: 'document',
+                versionId: 'version',
+                versionNumber: 1,
+                workingRevision: 2,
+                representationId: 'pdf',
+                appendedAfterDesignation: false,
+              },
+              { status: 201 },
+            );
+          }
+          throw new Error(`Unexpected request: ${path}`);
+        }),
+      );
+      render(
+        <InterfaceLocaleProvider>
+          <DocumentVersions
+            actor={actor}
+            identity={deterministicBrowserIdentity()}
+            documentId="document"
+            workingRevision={1}
+            onRefresh={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      fireEvent.change(await screen.findByLabelText('Alege fișierul PDF'), {
+        target: { files: [file] },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Păstrează PDF-ul' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Rezultatul încărcării este incert.',
+      );
+      expect(screen.getByLabelText('Alege fișierul PDF')).toBeDisabled();
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Reîncearcă același PDF' }),
+      );
+      await screen.findByRole('button', {
+        name: 'Descarcă PDF-ul Versiunii 1',
+      });
+      expect(writes).toHaveLength(2);
+      expect(writes[1]?.path).toBe(writes[0]?.path);
+      expect(writes[1]?.request?.body).toBe(file);
+      expect(writes[0]?.request?.body).toBe(file);
+      expect(
+        new Headers(writes[1]?.request?.headers).get('idempotency-key'),
+      ).toBe(new Headers(writes[0]?.request?.headers).get('idempotency-key'));
+    },
+  );
   it('does not dispatch a PDF intention when its owner retires while obtaining the token', async () => {
     const file = new File(['%PDF-1.4\nDEMO\n%%EOF\n'], 'questionnaire.pdf', {
       type: 'application/pdf',

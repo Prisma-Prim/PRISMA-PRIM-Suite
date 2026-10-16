@@ -12,7 +12,7 @@ export type ApiResult<T> =
   | {
       status: 'unauthorized' | 'forbidden' | 'notFound' | 'conflict' | 'error';
       reason?: undefined;
-      /** A conflict's machine-readable `code`, when the server states one. */
+      /** A conflict or service-unavailable machine code, when stated. */
       code?: string;
     }
   | { status: 'validation'; message?: string; code?: string };
@@ -105,6 +105,12 @@ export async function createAuthenticatedApiClient(
             message: messageFrom(body),
             ...(code === undefined ? {} : { code }),
           };
+        }
+        if (response.status === 503) {
+          const code = codeFrom(await optionalJson(response));
+          return code === undefined
+            ? { status: 'error' }
+            : { status: 'error', code };
         }
         if (!response.ok) return { status: 'error' };
         return {

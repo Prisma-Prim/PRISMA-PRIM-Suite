@@ -1378,6 +1378,7 @@ paths:
         scan, revision, Activity event or change to the current PDF.
       tags: [Documents]
       parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
         - $ref: '#/components/parameters/IdempotencyKey'
         - in: query
           name: expectedRevision
@@ -1420,6 +1421,8 @@ paths:
         attachment filename, private no-store and nosniff. Metadata alone grants
         no content access. No public or signed storage URL is returned.
       tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
       responses:
         '200':
           description: Current immutable PDF bytes.
@@ -1444,6 +1447,7 @@ paths:
         preserves access to every older upload without a total-history cap.
       tags: [Documents]
       parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
         - in: path
           name: documentId
           required: true
@@ -1476,6 +1480,7 @@ paths:
         Representation ID never bypasses revocation or Workspace/Company scope.
       tags: [Documents]
       parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
         - in: path
           name: documentId
           required: true
