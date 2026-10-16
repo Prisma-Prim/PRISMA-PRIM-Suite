@@ -1082,17 +1082,66 @@ test('configures Sales Stages, then assigns, changes and clears one on an Opport
     );
     await settings.getByRole('button', { name: 'Back to Requests' }).click();
 
-    await captureRequest(page, intake, {
+    // Keep identical stage labels on independently identified prior rows.
+    const priorSubjects = [
+      `Prior Sales Stage request 1 — ${suffix}`,
+      `Prior Sales Stage request 2 — ${suffix}`,
+    ];
+    for (const priorSubject of priorSubjects) {
+      await captureRequest(page, intake, {
+        originalText: `Exact source of ${priorSubject}.`,
+        subject: priorSubject,
+        opportunityTitle: `Qualify ${priorSubject}`,
+        nextAction: 'Review the prior Request',
+      });
+      const priorDetail = intake.getByRole('article', {
+        name: priorSubject,
+        exact: true,
+      });
+      await expect(
+        priorDetail.getByRole('heading', { name: priorSubject, exact: true }),
+      ).toBeVisible();
+      await priorDetail
+        .getByRole('button', { name: 'Back to Requests' })
+        .click();
+    }
+    for (const priorSubject of priorSubjects) {
+      const priorRow = intake.getByRole('button').filter({
+        has: page.getByText(priorSubject, { exact: true }),
+      });
+      await expect(
+        priorRow.getByText('Sales Stage: No Sales Stage', { exact: true }),
+      ).toBeVisible();
+    }
+    await capture(
+      page,
+      testInfo,
+      `commercial-sales-stage-prior-requests-${suffix.toLowerCase()}.png`,
+    );
+
+    const detail = intake.getByRole('article', { name: subject, exact: true });
+    const current = (label: string) =>
+      detail.getByText(`Sales Stage: ${label}`, { exact: true });
+    const capturing = captureRequest(page, intake, {
       originalText: `Exact source of the ${suffix} Sales Stage request.`,
       subject,
       opportunityTitle: `Qualify the ${suffix} Sales Stage`,
       nextAction: 'Call the Client back',
     });
-    const current = (label: string) =>
-      intake.getByText(`Sales Stage: ${label}`, { exact: true });
-    await expect(current('No Sales Stage')).toBeVisible();
+    try {
+      // Prior list rows must not satisfy detail readiness during capture.
+      await Promise.all([
+        capturing,
+        expect(current('No Sales Stage')).toBeVisible(),
+      ]);
+    } finally {
+      await capturing;
+    }
     await expect(
-      intake.getByText('No Sales Stage change recorded yet.', { exact: true }),
+      detail.getByRole('heading', { name: subject, exact: true }),
+    ).toBeVisible();
+    await expect(
+      detail.getByText('No Sales Stage change recorded yet.', { exact: true }),
     ).toBeVisible();
 
     async function setStage(label: string): Promise<void> {
@@ -1134,6 +1183,9 @@ test('configures Sales Stages, then assigns, changes and clears one on an Opport
       row.getByText(`Sales Stage: ${qualification}`, { exact: true }),
     ).toBeVisible();
     await row.click();
+    await expect(
+      detail.getByRole('heading', { name: subject, exact: true }),
+    ).toBeVisible();
     await expect(current(qualification)).toBeVisible();
     await intake.getByRole('button', { name: 'Change Sales Stage' }).click();
     await capture(
@@ -1150,7 +1202,7 @@ test('configures Sales Stages, then assigns, changes and clears one on an Opport
     await setStage('No Sales Stage');
     await expect(current('No Sales Stage')).toBeVisible();
 
-    const history = intake.getByRole('list', { name: 'Sales Stage history' });
+    const history = detail.getByRole('list', { name: 'Sales Stage history' });
     const entries = history.getByRole('listitem');
     await expect(entries).toHaveCount(3);
     await expect(entries.nth(0)).toContainText(
