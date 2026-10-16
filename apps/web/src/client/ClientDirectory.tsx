@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react';
-import { clientWorkspaceCopy as copy } from './client-workspace.copy';
+import { useClientDirectoryCopy } from './client-directory.copy';
 
 export interface ClientAccountView {
   id: string;
@@ -20,6 +20,7 @@ export function ClientDirectory({
   onAttach?: (clientId: string) => void;
   attachingClientId: string | undefined;
 }) {
+  const copy = useClientDirectoryCopy();
   const hasActions = clients.some((client) =>
     client.relatedToActiveCompany
       ? onOpenDossier !== undefined

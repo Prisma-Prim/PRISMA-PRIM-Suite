@@ -29,6 +29,7 @@ import {
   type ClientContactDraftResult,
 } from './ClientContactEditor';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
+import { useClientDirectoryCopy } from './client-directory.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectory, type ClientAccountView } from './ClientDirectory';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
@@ -82,6 +83,7 @@ export function ClientWorkspace({
     requestId: number;
   };
 }) {
+  const directoryCopy = useClientDirectoryCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const registrationTrigger = useRef<HTMLButtonElement>(null);
@@ -450,7 +452,7 @@ export function ClientWorkspace({
     return (
       <section className="client-workspace">
         <ClientDirectoryFeedback role="alert" tone="error">
-          {copy.permissionDenied}
+          {directoryCopy.permissionDenied}
         </ClientDirectoryFeedback>
       </section>
     );
@@ -458,7 +460,9 @@ export function ClientWorkspace({
   if (!activeCompany) {
     return (
       <section className="client-workspace">
-        <ClientDirectoryFeedback>{copy.missingCompany}</ClientDirectoryFeedback>
+        <ClientDirectoryFeedback>
+          {directoryCopy.missingCompany}
+        </ClientDirectoryFeedback>
       </section>
     );
   }
@@ -482,12 +486,12 @@ export function ClientWorkspace({
     >
       <div className="client-directory-heading">
         <div className={isPrisme ? 'client-directory-context' : undefined}>
-          <p className="eyebrow">{copy.eyebrow}</p>
-          <h2 id="client-workspace-title">{copy.title}</h2>
+          <p className="eyebrow">{directoryCopy.eyebrow}</p>
+          <h2 id="client-workspace-title">{directoryCopy.title}</h2>
           <p>
             {isPrisme
-              ? copy.directoryCompany(activeCompany.displayName)
-              : copy.description}
+              ? directoryCopy.directoryCompany(activeCompany.displayName)
+              : directoryCopy.description}
           </p>
         </div>
         {isPrisme && canCreateClients && (
@@ -500,7 +504,7 @@ export function ClientWorkspace({
               setRegistrationOpen((open) => !open);
             }}
           >
-            {copy.newClient}
+            {directoryCopy.newClient}
           </button>
         )}
       </div>
@@ -647,7 +651,7 @@ export function ClientWorkspace({
         onSubmit={(event) => void searchClients(event)}
         noValidate
       >
-        <label htmlFor="client-search">{copy.searchLabel}</label>
+        <label htmlFor="client-search">{directoryCopy.searchLabel}</label>
         <div>
           <input
             id="client-search"
@@ -669,15 +673,17 @@ export function ClientWorkspace({
               attachingClientId !== undefined
             }
           >
-            {searchState.status === 'submitting' ? copy.searching : copy.search}
+            {searchState.status === 'submitting'
+              ? directoryCopy.searching
+              : directoryCopy.search}
           </button>
         </div>
         {isPrisme && (
           <p id="client-search-hint">
             {canAttachClients
-              ? copy.workspaceSearchHint
-              : copy.companySearchHint}{' '}
-            {copy.searchLimitHint}
+              ? directoryCopy.workspaceSearchHint
+              : directoryCopy.companySearchHint}{' '}
+            {directoryCopy.searchLimitHint}
           </p>
         )}
       </form>
@@ -692,12 +698,12 @@ export function ClientWorkspace({
             setSearchQuery('');
           }}
         >
-          {copy.showCompanyClients}
+          {directoryCopy.showCompanyClients}
         </button>
       )}
       {searchState.status === 'submitting' && (
         <ClientDirectoryFeedback role="status" tone="pending">
-          {copy.searching}
+          {directoryCopy.searching}
         </ClientDirectoryFeedback>
       )}
       {searchState.status === 'validation' && (
@@ -706,27 +712,29 @@ export function ClientWorkspace({
           role="alert"
           tone="error"
         >
-          {copy.searchRequired}
+          {directoryCopy.searchRequired}
         </ClientDirectoryFeedback>
       )}
       {searchState.status === 'forbidden' && (
         <ClientDirectoryFeedback role="alert" tone="error">
-          {copy.permissionDenied}
+          {directoryCopy.permissionDenied}
         </ClientDirectoryFeedback>
       )}
       {searchState.status === 'error' && (
         <ClientDirectoryFeedback role="alert" tone="error">
-          {copy.retryableError}
+          {directoryCopy.retryableError}
         </ClientDirectoryFeedback>
       )}
       {searchState.status === 'ready' && searchState.clients.length === 0 && (
         <ClientDirectoryFeedback>
-          {copy.noSearchResults}
+          {directoryCopy.noSearchResults}
         </ClientDirectoryFeedback>
       )}
       {searchState.status === 'ready' && searchState.clients.length > 0 && (
         <section aria-labelledby="client-search-results-title">
-          <h3 id="client-search-results-title">{copy.searchResultsTitle}</h3>
+          <h3 id="client-search-results-title">
+            {directoryCopy.searchResultsTitle}
+          </h3>
           {isPrisme ? (
             <ClientDirectory
               clients={searchState.clients}
@@ -742,19 +750,23 @@ export function ClientWorkspace({
               {searchState.clients.map((client) => (
                 <li key={client.id}>
                   <h4>{client.displayName}</h4>
-                  <p>{copy.clientId(client.id)}</p>
+                  <p>{directoryCopy.clientId(client.id)}</p>
                   {client.relatedToActiveCompany ? (
-                    <p>{copy.availableInCompany(activeCompany.displayName)}</p>
+                    <p>
+                      {directoryCopy.availableInCompany(
+                        activeCompany.displayName,
+                      )}
+                    </p>
                   ) : canAttachClients ? (
                     <button
                       type="button"
                       disabled={attachingClientId !== undefined}
                       onClick={() => void attachClient(client.id)}
                     >
-                      {copy.addToCompany(activeCompany.displayName)}
+                      {directoryCopy.addToCompany(activeCompany.displayName)}
                     </button>
                   ) : (
-                    <p>{copy.notAvailableInCompany}</p>
+                    <p>{directoryCopy.notAvailableInCompany}</p>
                   )}
                 </li>
               ))}
@@ -766,22 +778,22 @@ export function ClientWorkspace({
         <>
           {listState.status === 'loading' && (
             <ClientDirectoryFeedback role="status" tone="pending">
-              {copy.loading}
+              {directoryCopy.loading}
             </ClientDirectoryFeedback>
           )}
           {listState.status === 'forbidden' && (
             <ClientDirectoryFeedback role="alert" tone="error">
-              {copy.permissionDenied}
+              {directoryCopy.permissionDenied}
             </ClientDirectoryFeedback>
           )}
           {listState.status === 'error' && (
             <ClientDirectoryFeedback role="alert" tone="error">
-              {copy.retryableError}
+              {directoryCopy.retryableError}
             </ClientDirectoryFeedback>
           )}
           {listState.status === 'ready' && listState.clients.length === 0 && (
             <ClientDirectoryFeedback>
-              {copy.empty(activeCompany.displayName)}
+              {directoryCopy.empty(activeCompany.displayName)}
             </ClientDirectoryFeedback>
           )}
           {listState.status === 'ready' &&
@@ -798,13 +810,13 @@ export function ClientWorkspace({
                 {listState.clients.map((client) => (
                   <li key={client.id}>
                     <h3>{client.displayName}</h3>
-                    <p>{copy.clientId(client.id)}</p>
+                    <p>{directoryCopy.clientId(client.id)}</p>
                     {canReadClientDossiers && (
                       <button
                         type="button"
                         onClick={() => openDossier(client.id)}
                       >
-                        {copy.openDossier}
+                        {directoryCopy.openDossier}
                       </button>
                     )}
                   </li>
