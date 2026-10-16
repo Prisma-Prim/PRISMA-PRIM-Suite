@@ -12,7 +12,7 @@ import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { Select } from '../presentation/Select';
-import { serviceCatalogueCopy as copy } from './service-catalogue.copy';
+import { useServiceCatalogueCopy } from './service-catalogue.copy';
 import './service-catalogue.css';
 
 type ServiceDefinition = {
@@ -52,7 +52,23 @@ type ListState<T> =
     }
   | { kind: 'error' };
 
-type Feedback = { tone: 'status' | 'alert'; message: string };
+type Feedback = { tone: 'status' | 'alert' } & (
+  | {
+      message: 'definitionCreated' | 'definitionUnchanged' | 'codeConflict';
+      code: string;
+    }
+  | {
+      message: 'offeringCreated' | 'offeringUnchanged' | 'offeringDuplicate';
+      name: string;
+    }
+  | {
+      message:
+        | 'definitionValidation'
+        | 'offeringValidation'
+        | 'definitionUnavailable'
+        | 'error';
+    }
+);
 type HttpResult = { status: number; body: unknown } | { status: 'network' };
 type DefinitionForm = { code: string; name: string; description: string };
 type OfferingForm = { serviceDefinitionId: string; commercialLabel: string };
@@ -80,6 +96,7 @@ export function ServiceCatalogueWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const copy = useServiceCatalogueCopy();
   const [denied, setDenied] = useState(false);
   const [definitions, setDefinitions] = useState<ListState<ServiceDefinition>>({
     kind: 'loading',
@@ -332,7 +349,7 @@ export function ServiceCatalogueWorkspace({
     ) {
       setDefinitionFeedback({
         tone: 'alert',
-        message: copy.definitionValidation,
+        message: 'definitionValidation',
       });
       return;
     }
@@ -369,9 +386,8 @@ export function ServiceCatalogueWorkspace({
         setDefinitionFeedback({
           tone: 'status',
           message:
-            outcome === 'CREATED'
-              ? copy.definitionCreated(definition.code)
-              : copy.definitionUnchanged(definition.code),
+            outcome === 'CREATED' ? 'definitionCreated' : 'definitionUnchanged',
+          code: definition.code,
         });
         setDefinitionForm(emptyDefinition);
         setOfferingForm((current) => ({
@@ -382,17 +398,19 @@ export function ServiceCatalogueWorkspace({
         await loadDefinitions(companyId);
         return;
       }
-      setDefinitionFeedback({
-        tone: 'alert',
-        message: hasErrorCode(result, 409, 'SERVICE_CODE_CONFLICT')
-          ? copy.codeConflict(code)
-          : hasErrorCode(result, 400, 'VALIDATION_ERROR')
-            ? copy.definitionValidation
-            : copy.error,
-      });
+      setDefinitionFeedback(
+        hasErrorCode(result, 409, 'SERVICE_CODE_CONFLICT')
+          ? { tone: 'alert', message: 'codeConflict', code }
+          : {
+              tone: 'alert',
+              message: hasErrorCode(result, 400, 'VALIDATION_ERROR')
+                ? 'definitionValidation'
+                : 'error',
+            },
+      );
     } catch {
       if (!controller.signal.aborted)
-        setDefinitionFeedback({ tone: 'alert', message: copy.error });
+        setDefinitionFeedback({ tone: 'alert', message: 'error' });
     } finally {
       if (!controller.signal.aborted) setPending(false);
     }
@@ -410,7 +428,7 @@ export function ServiceCatalogueWorkspace({
           )
         : undefined;
     if (!selected || characterCount(offeringForm.commercialLabel) > 160) {
-      setOfferingFeedback({ tone: 'alert', message: copy.offeringValidation });
+      setOfferingFeedback({ tone: 'alert', message: 'offeringValidation' });
       return;
     }
     const payload = JSON.stringify({
@@ -445,9 +463,8 @@ export function ServiceCatalogueWorkspace({
         setOfferingFeedback({
           tone: 'status',
           message:
-            outcome === 'CREATED'
-              ? copy.offeringCreated(offering.serviceDefinition.name)
-              : copy.offeringUnchanged(offering.serviceDefinition.name),
+            outcome === 'CREATED' ? 'offeringCreated' : 'offeringUnchanged',
+          name: offering.serviceDefinition.name,
         });
         setOfferingForm(emptyOffering);
         offeringRetry.current = undefined;
@@ -457,22 +474,24 @@ export function ServiceCatalogueWorkspace({
       if (result.status === 404) {
         setOfferingFeedback({
           tone: 'alert',
-          message: copy.definitionUnavailable,
+          message: 'definitionUnavailable',
         });
         await loadDefinitions(companyId);
         return;
       }
-      setOfferingFeedback({
-        tone: 'alert',
-        message: hasErrorCode(result, 409, 'OFFERING_CONFLICT')
-          ? copy.offeringDuplicate(selected.name)
-          : hasErrorCode(result, 400, 'VALIDATION_ERROR')
-            ? copy.offeringValidation
-            : copy.error,
-      });
+      setOfferingFeedback(
+        hasErrorCode(result, 409, 'OFFERING_CONFLICT')
+          ? { tone: 'alert', message: 'offeringDuplicate', name: selected.name }
+          : {
+              tone: 'alert',
+              message: hasErrorCode(result, 400, 'VALIDATION_ERROR')
+                ? 'offeringValidation'
+                : 'error',
+            },
+      );
     } catch {
       if (!controller.signal.aborted)
-        setOfferingFeedback({ tone: 'alert', message: copy.error });
+        setOfferingFeedback({ tone: 'alert', message: 'error' });
     } finally {
       if (!controller.signal.aborted) setPending(false);
     }
@@ -484,6 +503,12 @@ export function ServiceCatalogueWorkspace({
     commandRequest.current = controller;
     setPending(true);
     return controller;
+  }
+
+  function feedbackMessage(feedback: Feedback): string {
+    if ('code' in feedback) return copy[feedback.message](feedback.code);
+    if ('name' in feedback) return copy[feedback.message](feedback.name);
+    return copy[feedback.message];
   }
 
   if (denied) {
@@ -574,7 +599,9 @@ export function ServiceCatalogueWorkspace({
             </button>
           </form>
           {definitionFeedback ? (
-            <p role={definitionFeedback.tone}>{definitionFeedback.message}</p>
+            <p role={definitionFeedback.tone}>
+              {feedbackMessage(definitionFeedback)}
+            </p>
           ) : null}
           <CatalogueList
             state={definitions}
@@ -662,7 +689,9 @@ export function ServiceCatalogueWorkspace({
             </button>
           </form>
           {offeringFeedback ? (
-            <p role={offeringFeedback.tone}>{offeringFeedback.message}</p>
+            <p role={offeringFeedback.tone}>
+              {feedbackMessage(offeringFeedback)}
+            </p>
           ) : null}
           <CatalogueList
             state={offerings}
