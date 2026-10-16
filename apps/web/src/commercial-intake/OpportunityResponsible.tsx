@@ -1,5 +1,5 @@
 import { Select } from '../presentation/Select';
-import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import { useCommercialRequestCopy } from './commercial-request.copy';
 
 /** An eligible member: a membership identifier and a label, never email. */
 export type ResponsibleCandidate = {
@@ -47,6 +47,7 @@ export function OpportunityResponsible({
   editor: ResponsibleEditor;
   pending: boolean;
 }) {
+  const copy = useCommercialRequestCopy();
   const { edit } = editor;
   switch (edit.kind) {
     case 'idle':
@@ -117,6 +118,7 @@ function ResponsibleChoice({
   current: ResponsibleEditor['current'];
   pending: boolean;
 }) {
+  const copy = useCommercialRequestCopy();
   const others = edit.members.filter(
     (member) => member.workspaceMembershipId !== current.workspaceMembershipId,
   );

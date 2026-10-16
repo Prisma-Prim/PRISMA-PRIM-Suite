@@ -6,6 +6,39 @@ import {
 import { commercialIntakeCopy } from './commercial-intake.copy';
 
 const keys = [
+  'responsibleChoice',
+  'responsibleSelectMember',
+  'responsibleMembersLoading',
+  'responsibleMembersError',
+  'responsibleReloadList',
+  'responsibleNoOtherMember',
+  'responsibleCurrentIneligible',
+  'saveResponsible',
+  'cancelResponsible',
+  'retryResponsible',
+  'responsibleSaving',
+  'responsibleChanged',
+  'responsibleUnchanged',
+  'responsibleConflict',
+  'responsibleUnavailable',
+  'responsibleDenied',
+  'responsibleUncertain',
+  'requestedAfterResponsibleEdit',
+  'saveNextAction',
+  'cancelNextAction',
+  'retryNextAction',
+  'reloadRequest',
+  'nextActionSaving',
+  'nextActionSaved',
+  'nextActionUnchanged',
+  'nextActionValidation',
+  'nextActionConflict',
+  'nextActionMissing',
+  'nextActionDenied',
+  'nextActionUncertain',
+  'requestedAfterNextActionEdit',
+  'editNextAction',
+  'changeResponsible',
   'manualSourceInformation',
   'eyebrow',
   'title',
@@ -89,6 +122,53 @@ export type CommercialRequestMessageKey = (typeof keys)[number];
 
 export const commercialRequestMessages = defineMessages(keys, {
   ro: {
+    responsibleChoice: 'Noul responsabil',
+    responsibleSelectMember: 'Selectați un membru',
+    responsibleMembersLoading: 'Se încarcă membrii eligibili…',
+    responsibleMembersError:
+      'Membrii eligibili nu au putut fi încărcați. Reîncărcați lista.',
+    responsibleReloadList: 'Reîncărcați lista',
+    responsibleNoOtherMember:
+      'Nu există alt membru eligibil; responsabilul actual rămâne.',
+    responsibleCurrentIneligible:
+      'Responsabil actual: {displayName} — nu mai este eligibil.',
+    saveResponsible: 'Salvează responsabilul',
+    cancelResponsible: 'Anulează',
+    retryResponsible: 'Reîncearcă actualizarea',
+    responsibleSaving: 'Se salvează responsabilul…',
+    responsibleChanged: 'Responsabilul a fost schimbat.',
+    responsibleUnchanged: 'Acest membru era deja responsabil.',
+    responsibleConflict:
+      'Această Oportunitate s-a modificat după încărcare. Reîncărcați Solicitarea înainte de a schimba responsabilul.',
+    responsibleUnavailable:
+      'Acest membru nu mai poate deveni responsabil. Reîncărcați lista.',
+    responsibleDenied:
+      'Nu mai aveți permisiunea de a schimba responsabilul acestei Oportunități.',
+    responsibleUncertain:
+      'Schimbarea responsabilului nu s-a finalizat. Reîncercați pentru a confirma rezultatul.',
+    requestedAfterResponsibleEdit:
+      'Solicitarea cerută se va deschide după salvarea sau anularea schimbării responsabilului.',
+    saveNextAction: 'Salvează acțiunea următoare',
+    cancelNextAction: 'Anulează',
+    retryNextAction: 'Reîncearcă actualizarea',
+    reloadRequest: 'Reîncărcați Solicitarea',
+    nextActionSaving: 'Se salvează acțiunea următoare…',
+    nextActionSaved: 'Acțiunea următoare a fost salvată.',
+    nextActionUnchanged: 'Acțiunea următoare avea deja această valoare.',
+    nextActionValidation:
+      'Introduceți o acțiune următoare între 1 și 500 de caractere.',
+    nextActionConflict:
+      'Această Oportunitate s-a modificat după încărcare. Reîncărcați Solicitarea înainte de a edita din nou.',
+    nextActionMissing:
+      'Această Solicitare nu mai este disponibilă în Compania activă. Reîncărcați lista.',
+    nextActionDenied:
+      'Nu mai aveți permisiunea de a actualiza acțiunea următoare a acestei Oportunități.',
+    nextActionUncertain:
+      'Actualizarea acțiunii următoare nu s-a finalizat. Reîncercați pentru a confirma rezultatul.',
+    requestedAfterNextActionEdit:
+      'Solicitarea cerută se va deschide după salvarea sau anularea editării acțiunii următoare.',
+    editNextAction: 'Editează acțiunea următoare',
+    changeResponsible: 'Schimbă responsabilul',
     manualSourceInformation: 'Informații despre sursa manuală',
     eyebrow: 'Comercial',
     title: 'Solicitări ale Clienților',
@@ -187,6 +267,53 @@ export const commercialRequestMessages = defineMessages(keys, {
     statusArchived: 'Arhivată',
   },
   ru: {
+    responsibleChoice: 'Новый ответственный',
+    responsibleSelectMember: 'Выберите участника',
+    responsibleMembersLoading: 'Загружаем доступных участников…',
+    responsibleMembersError:
+      'Не удалось загрузить доступных участников. Перезагрузите список.',
+    responsibleReloadList: 'Перезагрузить список',
+    responsibleNoOtherMember:
+      'Других подходящих участников нет; текущий ответственный остаётся.',
+    responsibleCurrentIneligible:
+      'Текущий ответственный: {displayName} — больше не соответствует требованиям.',
+    saveResponsible: 'Сохранить ответственного',
+    cancelResponsible: 'Отмена',
+    retryResponsible: 'Повторить обновление',
+    responsibleSaving: 'Сохраняем ответственного…',
+    responsibleChanged: 'Ответственный изменён.',
+    responsibleUnchanged: 'Этот участник уже был ответственным.',
+    responsibleConflict:
+      'Эта Возможность изменилась после загрузки. Перезагрузите Запрос перед сменой ответственного.',
+    responsibleUnavailable:
+      'Этот участник больше не может стать ответственным. Перезагрузите список.',
+    responsibleDenied:
+      'У вас больше нет права менять ответственного за эту Возможность.',
+    responsibleUncertain:
+      'Смена ответственного не завершена. Повторите попытку, чтобы подтвердить результат.',
+    requestedAfterResponsibleEdit:
+      'Запрошенный Запрос откроется после сохранения или отмены смены ответственного.',
+    saveNextAction: 'Сохранить следующее действие',
+    cancelNextAction: 'Отмена',
+    retryNextAction: 'Повторить обновление',
+    reloadRequest: 'Перезагрузить Запрос',
+    nextActionSaving: 'Сохраняем следующее действие…',
+    nextActionSaved: 'Следующее действие сохранено.',
+    nextActionUnchanged: 'Следующее действие уже имело это значение.',
+    nextActionValidation:
+      'Введите следующее действие длиной от 1 до 500 символов.',
+    nextActionConflict:
+      'Эта Возможность изменилась после загрузки. Перезагрузите Запрос перед повторным редактированием.',
+    nextActionMissing:
+      'Этот Запрос больше недоступен в активной Компании. Перезагрузите список.',
+    nextActionDenied:
+      'У вас больше нет права обновлять следующее действие этой Возможности.',
+    nextActionUncertain:
+      'Обновление следующего действия не завершено. Повторите попытку, чтобы подтвердить результат.',
+    requestedAfterNextActionEdit:
+      'Запрошенный Запрос откроется после сохранения или отмены редактирования следующего действия.',
+    editNextAction: 'Изменить следующее действие',
+    changeResponsible: 'Сменить ответственного',
     manualSourceInformation: 'Сведения о ручном источнике',
     eyebrow: 'Коммерческая работа',
     title: 'Запросы Клиентов',
@@ -282,6 +409,53 @@ export const commercialRequestMessages = defineMessages(keys, {
     statusArchived: 'Архивирована',
   },
   fr: {
+    responsibleChoice: 'Nouveau responsable',
+    responsibleSelectMember: 'Sélectionner un membre',
+    responsibleMembersLoading: 'Chargement des membres éligibles…',
+    responsibleMembersError:
+      'Impossible de charger les membres éligibles. Rechargez la liste.',
+    responsibleReloadList: 'Recharger la liste',
+    responsibleNoOtherMember:
+      'Aucun autre membre éligible ; le responsable actuel reste inchangé.',
+    responsibleCurrentIneligible:
+      'Responsable actuel : {displayName} — n’est plus éligible.',
+    saveResponsible: 'Enregistrer le responsable',
+    cancelResponsible: 'Annuler',
+    retryResponsible: 'Réessayer la mise à jour',
+    responsibleSaving: 'Enregistrement du responsable…',
+    responsibleChanged: 'Responsable modifié.',
+    responsibleUnchanged: 'Ce membre était déjà responsable.',
+    responsibleConflict:
+      'Cette Opportunité a changé depuis son chargement. Rechargez la Demande avant de changer le responsable.',
+    responsibleUnavailable:
+      'Ce membre ne peut plus devenir responsable. Rechargez la liste.',
+    responsibleDenied:
+      'Vous n’avez plus l’autorisation de changer le responsable de cette Opportunité.',
+    responsibleUncertain:
+      'Le changement de responsable n’a pas abouti. Réessayez pour confirmer le résultat.',
+    requestedAfterResponsibleEdit:
+      'La Demande demandée s’ouvrira après l’enregistrement ou l’annulation du changement de responsable.',
+    saveNextAction: 'Enregistrer la prochaine action',
+    cancelNextAction: 'Annuler',
+    retryNextAction: 'Réessayer la mise à jour',
+    reloadRequest: 'Recharger la Demande',
+    nextActionSaving: 'Enregistrement de la prochaine action…',
+    nextActionSaved: 'Prochaine action enregistrée.',
+    nextActionUnchanged: 'La prochaine action avait déjà cette valeur.',
+    nextActionValidation:
+      'Saisissez une prochaine action de 1 à 500 caractères.',
+    nextActionConflict:
+      'Cette Opportunité a changé depuis son chargement. Rechargez la Demande avant de la modifier à nouveau.',
+    nextActionMissing:
+      'Cette Demande n’est plus disponible dans l’Entreprise active. Rechargez la liste.',
+    nextActionDenied:
+      'Vous n’avez plus l’autorisation de modifier la prochaine action de cette Opportunité.',
+    nextActionUncertain:
+      'La mise à jour de la prochaine action n’a pas abouti. Réessayez pour confirmer le résultat.',
+    requestedAfterNextActionEdit:
+      'La Demande demandée s’ouvrira après l’enregistrement ou l’annulation de la prochaine action.',
+    editNextAction: 'Modifier la prochaine action',
+    changeResponsible: 'Changer le responsable',
     manualSourceInformation: 'Informations sur la source manuelle',
     eyebrow: 'Commercial',
     title: 'Demandes Client',
@@ -380,6 +554,52 @@ export const commercialRequestMessages = defineMessages(keys, {
     statusArchived: 'Archivée',
   },
   en: {
+    responsibleChoice: 'New responsible actor',
+    responsibleSelectMember: 'Select a member',
+    responsibleMembersLoading: 'Loading eligible members…',
+    responsibleMembersError:
+      'The eligible members could not be loaded. Reload the list.',
+    responsibleReloadList: 'Reload the list',
+    responsibleNoOtherMember:
+      'No other eligible member; the current responsible actor stays.',
+    responsibleCurrentIneligible:
+      'Current responsible actor: {displayName} — no longer eligible.',
+    saveResponsible: 'Save responsible',
+    cancelResponsible: 'Cancel',
+    retryResponsible: 'Retry update',
+    responsibleSaving: 'Saving responsible actor…',
+    responsibleChanged: 'Responsible actor changed.',
+    responsibleUnchanged: 'This member was already responsible.',
+    responsibleConflict:
+      'This Opportunity changed since you loaded it. Reload the Request before changing the responsible actor.',
+    responsibleUnavailable:
+      'This member can no longer become responsible. Reload the list.',
+    responsibleDenied:
+      'You no longer have permission to change the responsible actor of this Opportunity.',
+    responsibleUncertain:
+      'The responsible actor change did not complete. Retry to confirm the result.',
+    requestedAfterResponsibleEdit:
+      'The requested Client Request opens after the responsible actor change is saved or cancelled.',
+    saveNextAction: 'Save next action',
+    cancelNextAction: 'Cancel',
+    retryNextAction: 'Retry update',
+    reloadRequest: 'Reload Request',
+    nextActionSaving: 'Saving next action…',
+    nextActionSaved: 'Next action saved.',
+    nextActionUnchanged: 'The next action already had this value.',
+    nextActionValidation: 'Enter a next action between 1 and 500 characters.',
+    nextActionConflict:
+      'This Opportunity changed since you loaded it. Reload the Request before editing again.',
+    nextActionMissing:
+      'This Request is no longer available in the active Company. Reload the list.',
+    nextActionDenied:
+      'You no longer have permission to update the next action of this Opportunity.',
+    nextActionUncertain:
+      'The next action update did not complete. Retry to confirm the result.',
+    requestedAfterNextActionEdit:
+      'The requested Client Request opens after the next-action edit is saved or cancelled.',
+    editNextAction: 'Edit next action',
+    changeResponsible: 'Change responsible',
     manualSourceInformation: 'Manual source information',
     eyebrow: 'Commercial',
     title: 'Client Requests',
@@ -479,6 +699,40 @@ export function useCommercialRequestCopy() {
   const message = useMessages(commercialRequestMessages);
   return {
     ...commercialIntakeCopy,
+    responsibleChoice: message('responsibleChoice'),
+    responsibleSelectMember: message('responsibleSelectMember'),
+    responsibleMembersLoading: message('responsibleMembersLoading'),
+    responsibleMembersError: message('responsibleMembersError'),
+    responsibleReloadList: message('responsibleReloadList'),
+    responsibleNoOtherMember: message('responsibleNoOtherMember'),
+    saveResponsible: message('saveResponsible'),
+    cancelResponsible: message('cancelResponsible'),
+    retryResponsible: message('retryResponsible'),
+    responsibleSaving: message('responsibleSaving'),
+    responsibleChanged: message('responsibleChanged'),
+    responsibleUnchanged: message('responsibleUnchanged'),
+    responsibleConflict: message('responsibleConflict'),
+    responsibleUnavailable: message('responsibleUnavailable'),
+    responsibleDenied: message('responsibleDenied'),
+    responsibleUncertain: message('responsibleUncertain'),
+    requestedAfterResponsibleEdit: message('requestedAfterResponsibleEdit'),
+    responsibleCurrentIneligible: (displayName: string) =>
+      formatMessage(message('responsibleCurrentIneligible'), { displayName }),
+    saveNextAction: message('saveNextAction'),
+    cancelNextAction: message('cancelNextAction'),
+    retryNextAction: message('retryNextAction'),
+    reloadRequest: message('reloadRequest'),
+    nextActionSaving: message('nextActionSaving'),
+    nextActionSaved: message('nextActionSaved'),
+    nextActionUnchanged: message('nextActionUnchanged'),
+    nextActionValidation: message('nextActionValidation'),
+    nextActionConflict: message('nextActionConflict'),
+    nextActionMissing: message('nextActionMissing'),
+    nextActionDenied: message('nextActionDenied'),
+    nextActionUncertain: message('nextActionUncertain'),
+    requestedAfterNextActionEdit: message('requestedAfterNextActionEdit'),
+    editNextAction: message('editNextAction'),
+    changeResponsible: message('changeResponsible'),
     manualSourceInformation: message('manualSourceInformation'),
     eyebrow: message('eyebrow'),
     title: message('title'),
