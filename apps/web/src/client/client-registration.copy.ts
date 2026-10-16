@@ -39,6 +39,10 @@ const serverValidationKeys = [
 ] as const;
 
 type ServerValidationKey = (typeof serverValidationKeys)[number];
+export type ClientContactServerValidationIssue = Extract<
+  ServerValidationKey,
+  `serverContact${string}`
+>;
 export type ClientRegistrationValidationIssue =
   'displayNameRequired' | ClientContactValidationIssue | ServerValidationKey;
 
@@ -94,6 +98,22 @@ const serverValidationIssues: ReadonlyMap<string, ServerValidationKey> =
       'serverKeyUsed',
     ],
   ]);
+
+function isContactServerValidationIssue(
+  issue: ServerValidationKey,
+): issue is ClientContactServerValidationIssue {
+  return issue.startsWith('serverContact');
+}
+
+export function clientContactServerValidationIssue(
+  message: string | undefined,
+): ClientContactServerValidationIssue | undefined {
+  const issue =
+    message === undefined ? undefined : serverValidationIssues.get(message);
+  return issue !== undefined && isContactServerValidationIssue(issue)
+    ? issue
+    : undefined;
+}
 
 export function clientRegistrationValidationIssue(
   message: string | undefined,
@@ -395,6 +415,11 @@ export const clientRegistrationMessages = defineMessages(keys, {
       'This Client may already exist. No Client was created or changed. An authorized reviewer can compare the records safely.',
   },
 });
+
+export function useClientContactServerValidationCopy() {
+  const message = useMessages(clientRegistrationMessages);
+  return (issue: ClientContactServerValidationIssue) => message(issue);
+}
 
 export function useClientRegistrationCopy() {
   const message = useMessages(clientRegistrationMessages);
