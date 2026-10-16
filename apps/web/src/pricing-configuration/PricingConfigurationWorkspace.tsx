@@ -10,16 +10,16 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
+import { localInstant, type LocalInstant } from './local-instant';
+import { useLocalInstantCopy } from './local-instant.copy';
 import {
-  clockChangeRefusal,
-  localInstant,
-  type LocalInstant,
-} from './local-instant';
-import { pricingConfigurationCopy as copy } from './pricing-configuration.copy';
+  pricingConfigurationCopy as compatibilityCopy,
+  usePricingConfigurationCopy,
+} from './pricing-configuration.copy';
 import './pricing-configuration.css';
 
-type RuleVersionState = keyof typeof copy.stateLabels;
+type RuleVersionState = keyof typeof compatibilityCopy.stateLabels;
 
 type RuleVersion = {
   id: string;
@@ -31,7 +31,7 @@ type RuleVersion = {
   roundingMode: 'HALF_UP';
   roundingScale: 2;
   taxApplication: 'PER_LINE';
-  provenance: keyof typeof copy.provenanceLabels;
+  provenance: keyof typeof compatibilityCopy.provenanceLabels;
   provisional: true;
   state: RuleVersionState;
   supersession: {
@@ -92,15 +92,32 @@ type PublicationCommand = {
   expectedActiveVersionNumber: number | null;
 };
 
+type ValidationKey =
+  | 'validation'
+  | 'effectiveFromPast'
+  | 'effectiveFromNotAdvancing'
+  | 'windowGap'
+  | 'versionExhausted'
+  | 'idempotencyConflict';
+
+type ValidationFailure =
+  | { kind: 'named'; key: ValidationKey }
+  | {
+      kind: 'clockChange';
+      field: 'effectiveFrom' | 'effectiveTo';
+      change: 'skipped' | 'repeated';
+      zone: string;
+    };
+
 type DraftReading =
   | { kind: 'command'; command: PublicationCommand }
-  | { kind: 'invalid'; message: string };
+  | { kind: 'invalid'; reason: ValidationFailure };
 
 // A definite answer. An uncertain one is not feedback: it leaves its
 // publication unresolved.
 type Feedback =
   | { kind: 'published' | 'unchanged'; versionNumber: number }
-  | { kind: 'invalid'; message: string }
+  | { kind: 'invalid'; reason: ValidationFailure }
   | { kind: 'stale'; headVersionNumber: number | null };
 
 type PublicationOutcome = Feedback | { kind: 'uncertain' };
@@ -128,6 +145,7 @@ export function PricingConfigurationWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const copy = usePricingConfigurationCopy();
   const [denied, setDenied] = useState(false);
   const [view, setView] = useState<ViewState>({ kind: 'loading' });
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -709,6 +727,7 @@ function LoadOlder({
   disabled: boolean;
   onLoad: (cursor: string) => void;
 }) {
+  const copy = usePricingConfigurationCopy();
   return (
     <button type="button" disabled={disabled} onClick={() => onLoad(cursor)}>
       {copy.showOlder}
@@ -723,6 +742,7 @@ function VersionSummary({
   version: RuleVersion;
   isHead?: boolean;
 }) {
+  const copy = usePricingConfigurationCopy();
   return (
     <div className="pricing-configuration-version">
       <strong>{copy.versionName(version.versionNumber)}</strong>
@@ -757,17 +777,28 @@ function VersionSummary({
 }
 
 function Instant({ value }: { value: string }) {
-  return <time dateTime={value}>{formatApplicationDateTime(value)}</time>;
+  const { formatDateTime } = useInterfaceLocale();
+  return <time dateTime={value}>{formatDateTime(value)}</time>;
 }
 
 function FeedbackMessage({ feedback }: { feedback: Feedback }) {
+  const copy = usePricingConfigurationCopy();
+  const localCopy = useLocalInstantCopy();
   switch (feedback.kind) {
     case 'published':
       return <p role="status">{copy.published(feedback.versionNumber)}</p>;
     case 'unchanged':
       return <p role="status">{copy.unchanged(feedback.versionNumber)}</p>;
-    case 'invalid':
-      return <p role="alert">{feedback.message}</p>;
+    case 'invalid': {
+      const reason = feedback.reason;
+      const message =
+        reason.kind === 'named'
+          ? copy[reason.key]
+          : (reason.change === 'skipped'
+              ? localCopy.skippedTime
+              : localCopy.repeatedTime)[reason.field](reason.zone);
+      return <p role="alert">{message}</p>;
+    }
     case 'stale':
       return <p role="alert">{copy.stale(feedback.headVersionNumber)}</p>;
     default: {
@@ -816,7 +847,10 @@ function readDraft({
   expectedActiveVersionNumber: number | null;
   zone: string;
 }): DraftReading {
-  const invalid: DraftReading = { kind: 'invalid', message: copy.validation };
+  const invalid: DraftReading = {
+    kind: 'invalid',
+    reason: { kind: 'named', key: 'validation' },
+  };
   if (
     draft.label.trim().length === 0 ||
     Array.from(draft.label).length > labelMaximum
@@ -857,12 +891,12 @@ function refusedTime(
 ): DraftReading {
   switch (reason) {
     case 'malformed':
-      return { kind: 'invalid', message: copy.validation };
+      return { kind: 'invalid', reason: { kind: 'named', key: 'validation' } };
     case 'skipped':
     case 'repeated':
       return {
         kind: 'invalid',
-        message: clockChangeRefusal(field, reason, zone),
+        reason: { kind: 'clockChange', field, change: reason, zone },
       };
     default: {
       const exhaustive: never = reason;
@@ -876,13 +910,13 @@ function refusedTime(
 // unresolved publication, and the kept draft is published again under a new
 // key. An idempotency conflict is one of them, since repeating its key could
 // only repeat it. Any answer not named here stays uncertain.
-const publicationRejections: ReadonlyMap<string, string> = new Map([
-  ['400:VALIDATION_ERROR', copy.validation],
-  ['400:EFFECTIVE_FROM_PAST', copy.effectiveFromPast],
-  ['400:EFFECTIVE_FROM_NOT_ADVANCING', copy.effectiveFromNotAdvancing],
-  ['409:EFFECTIVE_WINDOW_GAP', copy.windowGap],
-  ['409:VERSION_EXHAUSTED', copy.versionExhausted],
-  ['409:IDEMPOTENCY_CONFLICT', copy.idempotencyConflict],
+const publicationRejections: ReadonlyMap<string, ValidationKey> = new Map([
+  ['400:VALIDATION_ERROR', 'validation'],
+  ['400:EFFECTIVE_FROM_PAST', 'effectiveFromPast'],
+  ['400:EFFECTIVE_FROM_NOT_ADVANCING', 'effectiveFromNotAdvancing'],
+  ['409:EFFECTIVE_WINDOW_GAP', 'windowGap'],
+  ['409:VERSION_EXHAUSTED', 'versionExhausted'],
+  ['409:IDEMPOTENCY_CONFLICT', 'idempotencyConflict'],
 ]);
 
 function publicationOutcome(result: HttpResult): PublicationOutcome {
@@ -906,11 +940,13 @@ function publicationOutcome(result: HttpResult): PublicationOutcome {
     if (headVersionNumber === null || isVersionNumber(headVersionNumber))
       return { kind: 'stale', headVersionNumber };
   }
-  const message =
+  const key =
     typeof code === 'string'
       ? publicationRejections.get(`${result.status}:${code}`)
       : undefined;
-  return message ? { kind: 'invalid', message } : { kind: 'uncertain' };
+  return key
+    ? { kind: 'invalid', reason: { kind: 'named', key } }
+    : { kind: 'uncertain' };
 }
 
 function isRuleScope(value: unknown): value is RuleScope {
