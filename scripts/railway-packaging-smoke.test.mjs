@@ -320,3 +320,24 @@ test('packaging loads the cached PostgreSQL archive and never pulls it', () => {
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('an explicitly configured but missing packaging cache fails before any build', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'packaging-cache-missing-'));
+  try {
+    const result = smoke({}, { PACKAGING_IMAGE_DIRECTORY: directory });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(
+      result.stderr,
+      /Packaging base-image acquisition\/verification failed/,
+    );
+    assert.equal(
+      result.commands.filter(
+        ([command, operation]) => command === 'docker' && operation === 'build',
+      ).length,
+      0,
+    );
+    requireCleanup(result);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
