@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
-import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import { useOpportunityOutcomeCopy } from './opportunity-outcome.copy';
 import {
   OPPORTUNITY_LOSS_REASON_CODES,
   continuesOutcomeHistory,
@@ -39,6 +39,7 @@ export function OpportunityOutcome({
   editor: OutcomeEditor;
   pending: boolean;
 }) {
+  const copy = useOpportunityOutcomeCopy();
   const { edit } = editor;
   switch (edit.kind) {
     case 'idle':
@@ -85,6 +86,7 @@ function OutcomeForm({
   draft: OutcomeDraft;
   pending: boolean;
 }) {
+  const copy = useOpportunityOutcomeCopy();
   // An uncertain outcome keeps its payload for the explicit retry.
   const locked = kind !== 'editing';
   const input = draft.transition
@@ -211,6 +213,8 @@ export function OpportunityOutcomeHistory({
   page: OutcomeHistoryPage;
   loadOlder: OlderOutcomeHistory;
 }) {
+  const copy = useOpportunityOutcomeCopy();
+  const { formatDateTime } = useInterfaceLocale();
   const [older, setOlder] = useState<{
     entries: OutcomeHistoryEntry[];
     nextCursor?: string;
@@ -254,7 +258,7 @@ export function OpportunityOutcomeHistory({
               </strong>
               <small>
                 <time dateTime={entry.changedAt}>
-                  {formatApplicationDateTime(entry.changedAt)}
+                  {formatDateTime(entry.changedAt)}
                 </time>{' '}
                 · {entry.actor.displayLabel}
               </small>

@@ -13,6 +13,10 @@ import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-
 import { selectedWorkspaceId } from '../access/workspace-selection';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useCommercialRequestCopy } from './commercial-request.copy';
+import {
+  useOpportunityOutcomeCopy,
+  type OutcomeFeedbackMessageKey,
+} from './opportunity-outcome.copy';
 import { Select } from '../presentation/Select';
 import { ProfitabilityEstimatePanel } from '../profitability-estimate/ProfitabilityEstimatePanel';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
@@ -333,6 +337,7 @@ export function CommercialIntakeWorkspace({
   onOpenProject?: (projectId: string) => void;
 }) {
   const copy = useCommercialRequestCopy();
+  const outcomeCopy = useOpportunityOutcomeCopy();
   const stageCopy = useSalesStageCopy();
   const stageDeniedMessage = stageCopy('stageDenied');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
@@ -348,6 +353,7 @@ export function CommercialIntakeWorkspace({
   const [searchProjectionRevision, setSearchProjectionRevision] = useState(-1);
   const [feedback, setFeedback] = useState<
     | string
+    | { outcomeMessage: OutcomeFeedbackMessageKey }
     | {
         requestMessage:
           | 'validation'
@@ -1003,7 +1009,8 @@ export function CommercialIntakeWorkspace({
     }
     if (outcomeEdit.kind === 'idle') return;
     setOutcomeEdit({ kind: 'idle' });
-    if (outcomeEdit.kind !== 'conflict') setFeedback(copy.outcomeDenied);
+    if (outcomeEdit.kind !== 'conflict')
+      setFeedback({ outcomeMessage: 'outcomeDenied' });
   }, [canChangeOutcome, outcomeEdit.kind]);
 
   // Losing the Sales Stage assignment keeps the read-only detail, but retires
@@ -1463,7 +1470,7 @@ export function CommercialIntakeWorkspace({
         selected.request.initialOpportunity.version,
       );
       if (!body) {
-        setFeedback(copy.outcomeValidation);
+        setFeedback({ outcomeMessage: 'outcomeValidation' });
         return;
       }
       command = JSON.stringify(body);
@@ -1513,7 +1520,7 @@ export function CommercialIntakeWorkspace({
         // and pending command are dropped, the read-only detail stays.
         setOutcomeEdit({ kind: 'idle' });
         outcomeRetry.current = undefined;
-        setFeedback(copy.outcomeDenied);
+        setFeedback({ outcomeMessage: 'outcomeDenied' });
         return;
       }
       if (access === 'rejected') return;
@@ -1524,13 +1531,13 @@ export function CommercialIntakeWorkspace({
       if (result.status === 409) {
         setOutcomeEdit({ kind: 'conflict' });
         outcomeRetry.current = undefined;
-        setFeedback(copy.outcomeConflict);
+        setFeedback({ outcomeMessage: 'outcomeConflict' });
         return;
       }
       if (result.status === 400) {
         setOutcomeEdit({ kind: 'editing', draft });
         outcomeRetry.current = undefined;
-        setFeedback(copy.outcomeValidation);
+        setFeedback({ outcomeMessage: 'outcomeValidation' });
         return;
       }
       if (
@@ -1547,17 +1554,17 @@ export function CommercialIntakeWorkspace({
         });
         setOutcomeEdit({ kind: 'idle' });
         outcomeRetry.current = undefined;
-        setFeedback(copy.outcomeChanged);
+        setFeedback({ outcomeMessage: 'outcomeChanged' });
         await onActivityRecorded();
         if (!controller.signal.aborted) await loadRequests(companyId);
         return;
       }
       setOutcomeEdit({ kind: 'uncertain', draft });
-      setFeedback(copy.outcomeUncertain);
+      setFeedback({ outcomeMessage: 'outcomeUncertain' });
     } catch {
       if (!controller.signal.aborted) {
         setOutcomeEdit({ kind: 'uncertain', draft });
-        setFeedback(copy.outcomeUncertain);
+        setFeedback({ outcomeMessage: 'outcomeUncertain' });
       }
     } finally {
       if (!controller.signal.aborted) setInFlight('none');
@@ -2046,7 +2053,9 @@ export function CommercialIntakeWorkspace({
         <p role="alert">
           {typeof feedback === 'string'
             ? feedback
-            : copy[feedback.requestMessage]}
+            : 'outcomeMessage' in feedback
+              ? outcomeCopy[feedback.outcomeMessage]
+              : copy[feedback.requestMessage]}
         </p>
       ) : null}
       {requestToOpen && protectedWork ? (
@@ -2058,7 +2067,7 @@ export function CommercialIntakeWorkspace({
               : protectedWork === 'responsible-edit'
                 ? copy.requestedAfterResponsibleEdit
                 : protectedWork === 'outcome-edit'
-                  ? copy.requestedAfterOutcomeEdit
+                  ? outcomeCopy.requestedAfterOutcomeEdit
                   : protectedWork === 'stage-edit'
                     ? stageCopy('requestedAfterStageEdit')
                     : copy.requestedAfterNextActionEdit}
