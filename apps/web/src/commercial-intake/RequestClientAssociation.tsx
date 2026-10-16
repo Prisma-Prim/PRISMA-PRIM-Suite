@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { Select } from '../presentation/Select';
-import { commercialIntakeCopy as copy } from './commercial-intake.copy';
+import { useCommercialRequestCopy } from './commercial-request.copy';
 
 type HttpResult = { status: number; body: unknown } | { status: 'network' };
 
@@ -72,6 +72,7 @@ export function RequestClientAssociation({
   ) => Promise<boolean> | boolean;
   onProtectionChange?: (state: 'idle' | 'loading' | 'uncertain') => void;
 }) {
+  const copy = useCommercialRequestCopy();
   const [query, setQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [search, setSearch] = useState<SearchState>({ kind: 'idle' });

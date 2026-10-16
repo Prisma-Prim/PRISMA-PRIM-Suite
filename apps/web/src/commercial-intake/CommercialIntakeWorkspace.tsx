@@ -11,7 +11,8 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
+import { useCommercialRequestCopy } from './commercial-request.copy';
 import { Select } from '../presentation/Select';
 import { ProfitabilityEstimatePanel } from '../profitability-estimate/ProfitabilityEstimatePanel';
 import { PricingSnapshotPanel } from '../pricing-configuration/PricingSnapshotPanel';
@@ -332,6 +333,7 @@ export function CommercialIntakeWorkspace({
   requestedRequest?: RequestedRequest;
   onOpenProject?: (projectId: string) => void;
 }) {
+  const copy = useCommercialRequestCopy();
   const stageCopy = useSalesStageCopy();
   const stageDeniedMessage = stageCopy('stageDenied');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
@@ -345,7 +347,16 @@ export function CommercialIntakeWorkspace({
     kind: 'idle',
   });
   const [searchProjectionRevision, setSearchProjectionRevision] = useState(-1);
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<
+    | string
+    | {
+        requestMessage:
+          | 'validation'
+          | 'unavailableClient'
+          | 'error'
+          | 'clientAssociationSuccess';
+      }
+  >('');
   const [inFlight, setInFlight] = useState<InFlight>('none');
   const [associationProtection, setAssociationProtection] =
     useState<AssociationProtection>('idle');
@@ -1156,9 +1167,9 @@ export function CommercialIntakeWorkspace({
         outcomeRetry.current = undefined;
         setStageEdit({ kind: 'idle' });
         stageRetry.current = undefined;
-      } else setFeedback(copy.error);
+      } else setFeedback({ requestMessage: 'error' });
     } catch {
-      if (!controller.signal.aborted) setFeedback(copy.error);
+      if (!controller.signal.aborted) setFeedback({ requestMessage: 'error' });
     } finally {
       if (!controller.signal.aborted) setInFlight('none');
       if (detailRead.current === controller) detailRead.current = undefined;
@@ -1875,14 +1886,14 @@ export function CommercialIntakeWorkspace({
       !form.opportunityTitle.trim() ||
       !form.nextAction.trim()
     ) {
-      setFeedback(copy.validation);
+      setFeedback({ requestMessage: 'validation' });
       return;
     }
     const reportedReceivedAt = form.reportedReceivedAt
       ? localDateTimeToIso(form.reportedReceivedAt)
       : undefined;
     if (form.reportedReceivedAt && !reportedReceivedAt) {
-      setFeedback(copy.validation);
+      setFeedback({ requestMessage: 'validation' });
       return;
     }
     const command = {
@@ -1929,13 +1940,13 @@ export function CommercialIntakeWorkspace({
       if ((await handleAccess(result, companyId, controller.signal)) !== 'ok')
         return;
       if (isUnavailableClient(result)) {
-        setFeedback(copy.unavailableClient);
+        setFeedback({ requestMessage: 'unavailableClient' });
         return;
       }
       // Invalid fields are rejected without persistence, so the capture is
       // settled rather than uncertain; the entered values stay for correction.
       if (result.status === 400) {
-        setFeedback(copy.error);
+        setFeedback({ requestMessage: 'error' });
         return;
       }
       if (
@@ -1952,11 +1963,11 @@ export function CommercialIntakeWorkspace({
         if (!controller.signal.aborted) await loadRequests(companyId);
         return;
       }
-      setFeedback(copy.error);
+      setFeedback({ requestMessage: 'error' });
       setCaptureUncertain(true);
     } catch {
       if (!controller.signal.aborted) {
-        setFeedback(copy.error);
+        setFeedback({ requestMessage: 'error' });
         setCaptureUncertain(true);
       }
     } finally {
@@ -2013,12 +2024,18 @@ export function CommercialIntakeWorkspace({
       </header>
       <aside
         className="commercial-intake-source"
-        aria-label="Manual source information"
+        aria-label={copy.manualSourceInformation}
       >
         <strong>{copy.manualSource}</strong>
         <p>{copy.manualSourceDetail}</p>
       </aside>
-      {feedback ? <p role="alert">{feedback}</p> : null}
+      {feedback ? (
+        <p role="alert">
+          {typeof feedback === 'string'
+            ? feedback
+            : copy[feedback.requestMessage]}
+        </p>
+      ) : null}
       {requestToOpen && protectedWork ? (
         <p role="status" className="commercial-intake-held-request">
           {protectedWork === 'capture'
@@ -2228,7 +2245,7 @@ export function CommercialIntakeWorkspace({
                             ),
                           },
                     );
-                  setFeedback(copy.clientAssociationSuccess);
+                  setFeedback({ requestMessage: 'clientAssociationSuccess' });
                   await onActivityRecorded();
                   return true;
                 }}
@@ -2545,7 +2562,9 @@ function RequestList({
   companyName: string;
   onOpenClientDossier?: (clientDossierId: string) => void;
 }) {
+  const { formatDateTime } = useInterfaceLocale();
   const filterField = useRef<HTMLInputElement>(null);
+  const copy = useCommercialRequestCopy();
   const stageCopy = useSalesStageCopy();
   if (load.kind === 'loading') return <p>{copy.loading}</p>;
   if (load.kind === 'denied') return <p role="alert">{copy.denied}</p>;
@@ -2653,7 +2672,7 @@ function RequestList({
               <small>
                 {copy.capturedAt}:{' '}
                 <time dateTime={item.capturedAt}>
-                  {formatApplicationDateTime(item.capturedAt)}
+                  {formatDateTime(item.capturedAt)}
                 </time>
               </small>
             </button>
@@ -2767,7 +2786,9 @@ function RequestDetail({
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const copy = useCommercialRequestCopy();
   const stageCopy = useSalesStageCopy();
+  const { formatDateTime } = useInterfaceLocale();
   // Each panel receives only the version it owns, numbered by its request.
   const requestedOffer =
     requestedVersion?.version.type === 'offer_version'
@@ -2810,7 +2831,7 @@ function RequestDetail({
           <dt>{copy.capturedAt}</dt>
           <dd>
             <time dateTime={request.capturedAt}>
-              {formatApplicationDateTime(request.capturedAt)}
+              {formatDateTime(request.capturedAt)}
             </time>
             <small>{copy.capturedAtHelp}</small>
           </dd>
@@ -2820,7 +2841,7 @@ function RequestDetail({
             <dt>{copy.reportedReceivedAt}</dt>
             <dd>
               <time dateTime={request.reportedReceivedAt}>
-                {formatApplicationDateTime(request.reportedReceivedAt)}
+                {formatDateTime(request.reportedReceivedAt)}
               </time>
             </dd>
           </div>
@@ -2876,9 +2897,7 @@ function RequestDetail({
           {' · '}
           {copy.statusEnteredAt}{' '}
           <time dateTime={request.initialOpportunity.statusEnteredAt}>
-            {formatApplicationDateTime(
-              request.initialOpportunity.statusEnteredAt,
-            )}
+            {formatDateTime(request.initialOpportunity.statusEnteredAt)}
           </time>
         </p>
         {outcome ? (
