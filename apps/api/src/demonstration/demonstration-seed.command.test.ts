@@ -47,6 +47,14 @@ async function seed(
 }
 
 const CONFIRMED = ['--confirm-workspace', WORKSPACE_ID];
+const COMMERCIAL_STEPS = new Set([
+  'commercial.prisma-prim.offer.prepare',
+  'commercial.prisma-prim.offer.quality',
+  'commercial.prisma-prim.offer.approve',
+  'commercial.prisma-prim.contract.prepare',
+  'commercial.prisma-prim.contract.quality',
+  'commercial.prisma-prim.contract.approve',
+]);
 
 function outcomeOf(line: unknown): unknown {
   return typeof line === 'object' && line !== null && 'outcome' in line
@@ -136,7 +144,7 @@ describe('demonstration seed command refusals before any database access', () =>
       refusal: reason,
       providerCallAttempts: 0,
     });
-    expect(lines).toEqual([{ scenario: 'demo-v2', result: 'refused', reason }]);
+    expect(lines).toEqual([{ scenario: 'demo-v3', result: 'refused', reason }]);
   });
 });
 
@@ -197,7 +205,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       refusal: reason,
       providerCallAttempts: 0,
     });
-    expect(lines).toEqual([{ scenario: 'demo-v2', result: 'refused', reason }]);
+    expect(lines).toEqual([{ scenario: 'demo-v3', result: 'refused', reason }]);
     expect(await snapshot()).toEqual(before);
   }
 
@@ -239,7 +247,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
         providerCallAttempts: 0,
       });
       expect(stopped.lines.at(-1)).toEqual({
-        scenario: 'demo-v2',
+        scenario: 'demo-v3',
         result: 'stopped',
         step: 'persona.ana',
         reason: 'persona-not-synthetic',
@@ -336,22 +344,22 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
     const steps = DEMONSTRATION_SCENARIO.steps;
     expect(first.lines).toHaveLength(steps.length + 2);
     expect(first.lines[0]).toEqual({
-      scenario: 'demo-v2',
+      scenario: 'demo-v3',
       workspace: { id: WORKSPACE_ID, name: 'PRISMA DEMO Workspace' },
     });
     expect(first.lines.slice(1, -1)).toEqual(
       steps.map((step) =>
         expect.objectContaining({
-          scenario: 'demo-v2',
+          scenario: 'demo-v3',
           step: step.key,
-          outcome: 'created',
+          outcome: COMMERCIAL_STEPS.has(step.key) ? 'confirmed' : 'created',
           recordId: expect.any(String),
           ...(step.register ? { register: step.register } : {}),
         }),
       ),
     );
     expect(first.lines.at(-1)).toMatchObject({
-      scenario: 'demo-v2',
+      scenario: 'demo-v3',
       result: 'converged',
       companies: [
         { key: 'prisma-prim', displayName: 'PRISMA-PRIM' },
@@ -458,8 +466,13 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       exitCode: 0,
       providerCallAttempts: 0,
     });
-    for (const line of second.lines.slice(1, -1))
-      expect(['replayed', 'present']).toContain(outcomeOf(line));
+    for (const [index, line] of second.lines.slice(1, -1).entries()) {
+      const step = steps[index];
+      if (!step) throw new Error('Unexpected manifest step.');
+      if (COMMERCIAL_STEPS.has(step.key))
+        expect(outcomeOf(line)).toBe('confirmed');
+      else expect(['replayed', 'present']).toContain(outcomeOf(line));
+    }
     expect(await identitySnapshot()).toEqual(identitiesBeforeReplay);
     expect(await snapshot()).toEqual(afterFirst);
 
@@ -480,7 +493,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       providerCallAttempts: 0,
     });
     expect(profileStop.lines.at(-1)).toEqual({
-      scenario: 'demo-v2',
+      scenario: 'demo-v3',
       result: 'stopped',
       step: 'persona.ana',
       reason: 'persona-not-synthetic',
@@ -540,7 +553,7 @@ withPostgres('demonstration seed command against PostgreSQL', () => {
       providerCallAttempts: 0,
     });
     expect(revokedGrantStop.lines.at(-1)).toEqual({
-      scenario: 'demo-v2',
+      scenario: 'demo-v3',
       result: 'stopped',
       step: 'grant.ana.context',
       reason: 'grant-revoked',

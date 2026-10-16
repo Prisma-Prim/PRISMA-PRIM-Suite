@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Pool } from 'pg';
 import {
   afterAll,
@@ -25,7 +26,8 @@ import {
   DEMONSTRATION_PERSONAS,
   DEMONSTRATION_PERSONA_PROVIDER,
   DEMONSTRATION_BASE_SCENARIO as DEMONSTRATION_SCENARIO,
-  DEMONSTRATION_SCENARIO as PRICING_SCENARIO,
+  DEMONSTRATION_PRICING_SCENARIO as PRICING_SCENARIO,
+  DEMONSTRATION_SCENARIO as COMMERCIAL_SCENARIO,
   demonstrationPersonaAdmissions,
   type DemonstrationPersonaKey,
   type DemonstrationScenario,
@@ -180,6 +182,38 @@ withPostgres('demonstration runner through the public REST API', () => {
         0,
         inclusive ? index + 1 : index,
       ),
+    };
+  }
+
+  function commercialPrefix(untilStep: string): DemonstrationScenario {
+    const index = COMMERCIAL_SCENARIO.steps.findIndex(
+      (step) => step.key === untilStep,
+    );
+    if (index < 0) throw new Error(`Unknown commercial step ${untilStep}.`);
+    return {
+      ...COMMERCIAL_SCENARIO,
+      steps: COMMERCIAL_SCENARIO.steps.slice(0, index),
+    };
+  }
+
+  async function commercialCase(result: DemonstrationRunResult) {
+    expect(
+      result.kind,
+      result.kind === 'stopped' ? JSON.stringify(result.stop) : '',
+    ).toBe('converged');
+    const ids = recordIds(result);
+    const companyId = id(ids, 'company.prisma-prim');
+    const request = object(
+      await read(
+        persona('ana'),
+        `/commercial-intake/requests/${id(ids, 'request.grup-demo-iso14001')}`,
+        companyId,
+      ),
+    );
+    return {
+      ids,
+      companyId,
+      opportunityId: text(object(request.initialOpportunity).id),
     };
   }
 
@@ -393,6 +427,928 @@ withPostgres('demonstration runner through the public REST API', () => {
     await harness?.close();
     await database?.close();
   });
+
+  it('reproduces exact commercial versions prepared by Ana and separately approved by Ion', async () => {
+    const result = await run(COMMERCIAL_SCENARIO);
+    expect(
+      result.kind,
+      result.kind === 'stopped' ? JSON.stringify(result.stop) : '',
+    ).toBe('converged');
+    const ids = recordIds(result);
+    const companyId = id(ids, 'company.prisma-prim');
+    const request = object(
+      await read(
+        persona('ana'),
+        `/commercial-intake/requests/${id(ids, 'request.grup-demo-iso14001')}`,
+        companyId,
+      ),
+    );
+    const opportunityId = text(object(request.initialOpportunity).id);
+    for (const family of ['offer', 'contract']) {
+      const prefix = `commercial.prisma-prim.${family}`;
+      const versionId = id(ids, `${prefix}.prepare`);
+      const path = `/${family}s/opportunities/${opportunityId}/versions/${versionId}`;
+      const artifact = object(
+        object(await read(persona('ion'), path, companyId))[family],
+      );
+      expect(artifact).toMatchObject({
+        companyId,
+        opportunityId,
+        provisional: true,
+        createdByWorkspaceMembershipId: id(ids, 'persona.ana'),
+        revision: 2,
+      });
+      const version = object(artifact.version);
+      expect(version).toMatchObject({
+        id: versionId,
+        versionNumber: 1,
+        decisionState: 'APPROVED',
+        provenance: 'ILLUSTRATIVE',
+        provisional: true,
+        pricingSnapshotId: id(ids, 'pricing.prisma-prim.snapshot'),
+        createdByWorkspaceMembershipId: id(ids, 'persona.ana'),
+        decision: {
+          id: id(ids, `${prefix}.approve`),
+          actorWorkspaceMembershipId: id(ids, 'persona.ion'),
+          acknowledgedWarningCodes:
+            family === 'offer' ? [] : ['DIRECT_ORIGIN_REVIEWED'],
+        },
+        pricingSnapshot: { currency: 'MDL', total: '240.00' },
+        issuingCompanyLabel: 'PRISMA-PRIM',
+        recipient: {
+          kind: 'PRIMARY',
+          legalName: 'GRUP DEMO SA',
+          taxId: 'DEMO-IDNO-0001',
+          legalAddress: 'DEMO Example Street 1, DEMO City',
+        },
+      });
+      const representation = object(version.representation);
+      expect(representation).toMatchObject({
+        templateCode:
+          family === 'offer' ? 'OFFER_ILLUSTRATIVE' : 'CONTRACT_ILLUSTRATIVE',
+        templateVersion: 1,
+      });
+      const html = text(representation.html);
+      for (const content of [
+        'PRISMA-PRIM',
+        'GRUP DEMO SA',
+        'DEMO-IDNO-0001',
+        'DEMO Example Street 1, DEMO City',
+        '240.00',
+        'MDL',
+        'Provisional illustrative document',
+        'no legal effect',
+        id(ids, 'pricing.prisma-prim.snapshot'),
+      ])
+        expect(html).toContain(content);
+      expect(representation.sha256).toBe(
+        createHash('sha256').update(html, 'utf8').digest('hex'),
+      );
+      expect(object(version.decision)).toMatchObject({
+        [family === 'offer'
+          ? 'representationSha256'
+          : 'representationChecksum']: representation.sha256,
+      });
+      const qualityResponse =
+        family === 'offer'
+          ? await api(persona('ana'), `${path}/quality-checks`, {
+              method: 'POST',
+              companyId,
+              key: `demo-v1:${prefix}.quality`,
+              body: {},
+            })
+          : await api(
+              persona('ion'),
+              `${path}/quality-checks/${id(ids, `${prefix}.quality`)}`,
+              { companyId },
+            );
+      expect(qualityResponse.status).toBe(family === 'offer' ? 201 : 200);
+      const quality = object(qualityResponse.body);
+      expect(quality).toMatchObject({
+        id: id(ids, `${prefix}.quality`),
+        actorWorkspaceMembershipId: id(ids, 'persona.ana'),
+        ruleSetVersion: 1,
+        [`${family}VersionId`]: versionId,
+      });
+      expect(
+        objects(quality.results).filter((item) => item.status === 'ERROR'),
+      ).toEqual([]);
+      if (family === 'offer') {
+        expect(version.transmissionState).toBe('NOT_TRANSMITTED');
+        expect(version.clientResponseState).toBe('NONE');
+      } else {
+        expect(artifact.kind).toBe('CONTRACT');
+        expect(artifact.origin).toBe('DIRECT');
+        expect(version.executionState).toBe('NOT_EXECUTED');
+        expect(version.signature).toBeNull();
+        expect(artifact.linkedProjects).toEqual([]);
+      }
+    }
+  }, 120_000);
+
+  it('recovers a lost committed response at every commercial step without duplicates, even after expiry', async () => {
+    const steps = [
+      'commercial.prisma-prim.offer.prepare',
+      'commercial.prisma-prim.offer.quality',
+      'commercial.prisma-prim.offer.approve',
+      'commercial.prisma-prim.contract.prepare',
+      'commercial.prisma-prim.contract.quality',
+      'commercial.prisma-prim.contract.approve',
+    ];
+    const remaining = new Set(steps.map((step) => `demo-v1:${step}`));
+    const send = globalThis.fetch;
+    const fault = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        const response = await send(input, init);
+        const key = new Headers(init?.headers).get('idempotency-key');
+        if (key && remaining.delete(key)) {
+          expect(response.status).toBe(201);
+          await response.text();
+          throw new Error('DEMO response lost after acknowledged commit');
+        }
+        return response;
+      });
+    try {
+      for (const step of steps) {
+        const interrupted = await run(COMMERCIAL_SCENARIO);
+        expect(interrupted).toMatchObject({
+          kind: 'stopped',
+          stop: { step, reason: 'unavailable', status: null },
+        });
+        const index = COMMERCIAL_SCENARIO.steps.findIndex(
+          (item) => item.key === step,
+        );
+        expect(interrupted.entries.map((entry) => entry.step)).toEqual(
+          COMMERCIAL_SCENARIO.steps.slice(0, index).map((item) => item.key),
+        );
+      }
+      expect(remaining.size).toBe(0);
+      const committedCounts = await tableCounts();
+      runInstant = new Date('2030-01-01T00:00:00.000Z');
+      const recovered = await run(COMMERCIAL_SCENARIO);
+      const { ids, companyId, opportunityId } = await commercialCase(recovered);
+      expect(await tableCounts()).toEqual(committedCounts);
+      for (const family of ['offer', 'contract']) {
+        const prefix = `commercial.prisma-prim.${family}`;
+        const versionId = id(ids, `${prefix}.prepare`);
+        const artifact = object(
+          object(
+            await read(
+              persona('ion'),
+              `/${family}s/opportunities/${opportunityId}/versions/${versionId}`,
+              companyId,
+            ),
+          )[family],
+        );
+        expect(object(artifact.version)).toMatchObject({
+          id: versionId,
+          versionNumber: 1,
+          decisionState: 'APPROVED',
+          decision: {
+            id: id(ids, `${prefix}.approve`),
+            actorWorkspaceMembershipId: id(ids, 'persona.ion'),
+          },
+        });
+        expect(
+          object(
+            await read(
+              persona('ion'),
+              `/${family}s/opportunities/${opportunityId}/versions`,
+              companyId,
+            ),
+          )[family === 'offer' ? 'versions' : 'items'],
+        ).toHaveLength(1);
+      }
+      const repeated = await run(COMMERCIAL_SCENARIO);
+      expect(repeated.kind).toBe('converged');
+      expect(
+        repeated.entries.map((entry) => [entry.step, entry.recordId]),
+      ).toEqual(recovered.entries.map((entry) => [entry.step, entry.recordId]));
+      expect(
+        repeated.entries
+          .filter((entry) => steps.includes(entry.step))
+          .map((entry) => entry.outcome),
+      ).toEqual([
+        'confirmed',
+        'confirmed',
+        'confirmed',
+        'confirmed',
+        'confirmed',
+        'confirmed',
+      ]);
+      expect(await tableCounts()).toEqual(committedCounts);
+    } finally {
+      fault.mockRestore();
+    }
+  }, 300_000);
+
+  it('preserves operator successor versions, decisions and later Quality Checks while replaying the original commercial results', async () => {
+    const first = await run(COMMERCIAL_SCENARIO);
+    const { ids, companyId, opportunityId } = await commercialCase(first);
+    const successors: {
+      family: string;
+      versionId: string;
+      decisionId: string;
+    }[] = [];
+    const originalVersions = new Map<string, Record<string, unknown>>();
+    for (const family of ['offer', 'contract']) {
+      const originalVersion = id(
+        ids,
+        `commercial.prisma-prim.${family}.prepare`,
+      );
+      const path = `/${family}s/opportunities/${opportunityId}`;
+      originalVersions.set(
+        family,
+        object(
+          object(
+            object(
+              await read(
+                persona('ana'),
+                `${path}/versions/${originalVersion}`,
+                companyId,
+              ),
+            )[family],
+          ).version,
+        ),
+      );
+      expect(
+        (
+          await api(
+            persona('ana'),
+            `${path}/versions/${originalVersion}/quality-checks`,
+            {
+              method: 'POST',
+              companyId,
+              key: `DEMO-operator-${family}-quality`,
+              body: {},
+            },
+          )
+        ).status,
+      ).toBe(201);
+      const common = {
+        pricingSnapshotId: id(ids, 'pricing.prisma-prim.snapshot'),
+        scopeNote: 'DEMO operator successor scope',
+        commercialConditions: 'DEMO operator successor conditions',
+      };
+      const successor = await api(persona('ana'), `${path}/versions`, {
+        method: 'POST',
+        companyId,
+        key: `DEMO-operator-${family}-successor`,
+        body:
+          family === 'offer'
+            ? {
+                ...common,
+                expectedOfferRevision: 2,
+                recipient: { kind: 'PRIMARY' },
+                validityDays: 30,
+              }
+            : { ...common, expectedContractRevision: 2 },
+      });
+      expect(successor.status, JSON.stringify(successor.body)).toBe(201);
+      const receipt = object(successor.body);
+      const successorId =
+        family === 'offer'
+          ? text(object(receipt.version).id)
+          : text(receipt.contractVersionId);
+      const version = object(
+        object(
+          object(
+            await read(
+              persona('ana'),
+              `${path}/versions/${successorId}`,
+              companyId,
+            ),
+          )[family],
+        ).version,
+      );
+      expect(version).toMatchObject({
+        versionNumber: 2,
+        decisionState: 'PENDING',
+      });
+      const approval = await api(
+        persona('ion'),
+        `${path}/versions/${successorId}/approve`,
+        {
+          method: 'POST',
+          companyId,
+          key: `DEMO-operator-${family}-successor-approval`,
+          body:
+            family === 'offer'
+              ? { expectedOfferRevision: 3, acknowledgedWarningCodes: [] }
+              : {
+                  expectedContractRevision: 3,
+                  acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+                },
+        },
+      );
+      expect(approval.status, JSON.stringify(approval.body)).toBe(201);
+      const operatorDecision = object(approval.body);
+      expect(operatorDecision).toMatchObject({
+        actorWorkspaceMembershipId: id(ids, 'persona.ion'),
+        ...(family === 'offer' ? { state: 'APPROVED' } : { kind: 'APPROVE' }),
+      });
+      const decisionId = text(operatorDecision.id);
+      expect(decisionId).not.toBe(
+        id(ids, `commercial.prisma-prim.${family}.approve`),
+      );
+      successors.push({ family, versionId: text(version.id), decisionId });
+    }
+    runInstant = new Date('2030-01-01T00:00:00.000Z');
+    const operatorReads = await Promise.all(
+      successors.map(({ family, versionId }) =>
+        read(
+          persona('ana'),
+          `/${family}s/opportunities/${opportunityId}/versions/${versionId}`,
+          companyId,
+        ),
+      ),
+    );
+    const counts = await tableCounts();
+    const repeated = await run(COMMERCIAL_SCENARIO);
+    expect(
+      repeated.kind,
+      repeated.kind === 'stopped' ? JSON.stringify(repeated.stop) : '',
+    ).toBe('converged');
+    expect(
+      repeated.entries.map((entry) => [entry.step, entry.recordId]),
+    ).toEqual(first.entries.map((entry) => [entry.step, entry.recordId]));
+    expect(await tableCounts()).toEqual(counts);
+    for (const [
+      index,
+      { family, versionId, decisionId },
+    ] of successors.entries()) {
+      const operator = await read(
+        persona('ana'),
+        `/${family}s/opportunities/${opportunityId}/versions/${versionId}`,
+        companyId,
+      );
+      expect(operator).toEqual(operatorReads[index]);
+      expect(object(object(object(operator)[family]).version)).toMatchObject({
+        versionNumber: 2,
+        decisionState: 'APPROVED',
+        decision: {
+          id: decisionId,
+          actorWorkspaceMembershipId: id(ids, 'persona.ion'),
+        },
+      });
+      const original = object(
+        object(
+          await read(
+            persona('ana'),
+            `/${family}s/opportunities/${opportunityId}/versions/${id(ids, `commercial.prisma-prim.${family}.prepare`)}`,
+            companyId,
+          ),
+        )[family],
+      );
+      expect(object(original.version)).toMatchObject({
+        versionNumber: 1,
+        decisionState: 'APPROVED',
+        supersededByVersionId: versionId,
+        decision: { id: id(ids, `commercial.prisma-prim.${family}.approve`) },
+      });
+      const before = originalVersions.get(family);
+      if (!before) throw new Error(`Missing original ${family} Version.`);
+      for (const field of [
+        'recipient',
+        'issuingCompanyLabel',
+        'representation',
+        'pricingSnapshotId',
+        'decision',
+      ])
+        expect(object(original.version)[field], `${family}: ${field}`).toEqual(
+          before[field],
+        );
+    }
+  }, 300_000);
+
+  it('keeps preparation, approval and denied profiles distinct and hides commercial results from valid foreign readers', async () => {
+    const { ids, companyId, opportunityId } = await commercialCase(
+      await run(COMMERCIAL_SCENARIO),
+    );
+    const ecg = id(ids, 'company.ecg');
+    const victor = object(
+      await read(persona('victor'), '/access/current-actor', ecg),
+    );
+    expect(object(victor.activeCompany).id).toBe(ecg);
+    const counts = await tableCounts();
+    for (const family of ['offer', 'contract']) {
+      const path = `/${family}s/opportunities/${opportunityId}`;
+      const versionId = id(ids, `commercial.prisma-prim.${family}.prepare`);
+      const creation = {
+        pricingSnapshotId: id(ids, 'pricing.prisma-prim.snapshot'),
+        recipient: { kind: 'PRIMARY' },
+        scopeNote: 'DEMO denied scope',
+        commercialConditions: 'DEMO denied terms',
+        ...(family === 'offer'
+          ? { validityDays: 30 }
+          : { directReason: 'DEMO denied direct reason' }),
+      };
+      const approval =
+        family === 'offer'
+          ? { expectedOfferRevision: 2, acknowledgedWarningCodes: [] }
+          : {
+              expectedContractRevision: 2,
+              acknowledgedWarningCodes: ['DIRECT_ORIGIN_REVIEWED'],
+            };
+      for (const actor of [
+        'ion',
+        'victor',
+      ] satisfies DemonstrationPersonaKey[]) {
+        expect(
+          (
+            await api(
+              persona(actor),
+              family === 'offer' ? path : `${path}/direct`,
+              {
+                method: 'POST',
+                companyId: actor === 'victor' ? ecg : companyId,
+                key: `DEMO-denied-${actor}-${family}-prepare`,
+                body: creation,
+              },
+            )
+          ).status,
+        ).toBe(403);
+      }
+      for (const actor of [
+        'ana',
+        'victor',
+      ] satisfies DemonstrationPersonaKey[]) {
+        expect(
+          (
+            await api(persona(actor), `${path}/versions/${versionId}/approve`, {
+              method: 'POST',
+              companyId: actor === 'victor' ? ecg : companyId,
+              key: `DEMO-denied-${actor}-${family}-approve`,
+              body: approval,
+            })
+          ).status,
+        ).toBe(403);
+      }
+      expect(
+        (
+          await api(
+            persona('victor'),
+            `${path}/versions/${versionId}/quality-checks`,
+            {
+              method: 'POST',
+              companyId: ecg,
+              key: `DEMO-denied-victor-${family}-quality`,
+              body: {},
+            },
+          )
+        ).status,
+      ).toBe(403);
+    }
+    expect(await tableCounts()).toEqual(counts);
+    const bic = id(ids, 'company.bic');
+    const bicRequest = object(
+      await read(
+        persona('maria'),
+        `/commercial-intake/requests/${id(ids, 'request.demo-construct-iso45001')}`,
+        bic,
+      ),
+    );
+    const bicOpportunity = text(object(bicRequest.initialOpportunity).id);
+    for (const family of ['offer', 'contract']) {
+      expect(
+        (
+          await api(OWNER, `/company-${family}-preparer-assignments`, {
+            method: 'POST',
+            key: `DEMO-foreign-${family}-reader`,
+            body: {
+              workspaceMembershipId: id(ids, 'persona.maria'),
+              companyId: bic,
+            },
+          })
+        ).status,
+      ).toBe(201);
+      const own = object(
+        await read(
+          persona('maria'),
+          `/${family}s/opportunities/${bicOpportunity}`,
+          bic,
+        ),
+      );
+      expect(own[family]).toBeNull();
+      const beforeDenied = await tableCounts();
+      for (const suffix of [
+        '',
+        '/versions',
+        `/versions/${id(ids, `commercial.prisma-prim.${family}.prepare`)}`,
+      ]) {
+        expect(
+          (
+            await api(
+              persona('maria'),
+              `/${family}s/opportunities/${opportunityId}${suffix}`,
+              { companyId: bic },
+            )
+          ).status,
+        ).toBe(404);
+      }
+      expect(await tableCounts()).toEqual(beforeDenied);
+    }
+  }, 300_000);
+
+  it('never restores any of the five revoked commercial fixture grants', async () => {
+    const { ids, companyId } = await commercialCase(
+      await run(COMMERCIAL_SCENARIO),
+    );
+    for (const { actor, bundle } of [
+      { actor: 'ana', bundle: 'offer-preparer' },
+      { actor: 'ana', bundle: 'contract-preparer' },
+      { actor: 'ion', bundle: 'commercial-intake' },
+      { actor: 'ion', bundle: 'offer-approver' },
+      { actor: 'ion', bundle: 'contract-approver' },
+    ]) {
+      expect(
+        (
+          await api(
+            OWNER,
+            `/company-${bundle}-assignments/${id(ids, `persona.${actor}`)}/${companyId}`,
+            { method: 'DELETE', key: `DEMO-revoke-${actor}-${bundle}` },
+          )
+        ).status,
+      ).toBe(200);
+      const counts = await tableCounts();
+      const stopped = await run(COMMERCIAL_SCENARIO);
+      expect(stopped).toMatchObject({
+        kind: 'stopped',
+        stop: { step: `grant.${actor}.${bundle}`, reason: 'grant-revoked' },
+      });
+      expect(await tableCounts()).toEqual(counts);
+      // An explicit administrator action prepares the next independent case;
+      // the scenario itself was proved to leave the revocation untouched.
+      expect(
+        (
+          await api(OWNER, `/company-${bundle}-assignments`, {
+            method: 'POST',
+            key: `DEMO-explicit-restore-${actor}-${bundle}`,
+            body: {
+              workspaceMembershipId: id(ids, `persona.${actor}`),
+              companyId,
+            },
+          })
+        ).status,
+      ).toBe(201);
+    }
+  }, 300_000);
+
+  it('revalidates approval authority after the grant phase even on an exact committed replay', async () => {
+    const { ids, companyId } = await commercialCase(
+      await run(COMMERCIAL_SCENARIO),
+    );
+    for (const family of ['offer', 'contract']) {
+      const step = `commercial.prisma-prim.${family}.approve`;
+      const send = globalThis.fetch;
+      let revoked = false;
+      let afterRevocation: Record<string, number> | undefined;
+      const interception = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input, init) => {
+          if (
+            !revoked &&
+            new Headers(init?.headers).get('idempotency-key') ===
+              `demo-v1:${step}`
+          ) {
+            revoked = true;
+            expect(
+              (
+                await api(
+                  OWNER,
+                  `/company-${family}-approver-assignments/${id(ids, 'persona.ion')}/${companyId}`,
+                  { method: 'DELETE', key: `DEMO-mid-run-${family}-revoke` },
+                )
+              ).status,
+            ).toBe(200);
+            afterRevocation = await tableCounts();
+          }
+          return send(input, init);
+        });
+      try {
+        const stopped = await run(COMMERCIAL_SCENARIO);
+        expect(stopped).toMatchObject({
+          kind: 'stopped',
+          stop: { step, reason: 'denied', status: 403 },
+        });
+        expect(revoked).toBe(true);
+        expect(await tableCounts()).toEqual(afterRevocation);
+      } finally {
+        interception.mockRestore();
+      }
+      expect(
+        (
+          await api(OWNER, `/company-${family}-approver-assignments`, {
+            method: 'POST',
+            key: `DEMO-mid-run-${family}-explicit-restore`,
+            body: { workspaceMembershipId: id(ids, 'persona.ion'), companyId },
+          })
+        ).status,
+      ).toBe(201);
+    }
+  }, 300_000);
+
+  it('refuses new unacknowledged identity warnings instead of changing an unfinished approval payload', async () => {
+    const partial = await run(
+      commercialPrefix('commercial.prisma-prim.offer.approve'),
+    );
+    const { ids, companyId } = await commercialCase(partial);
+    const clientPath = `/clients/${id(ids, 'client.grup-demo')}`;
+    const client = object(await read(persona('ana'), clientPath, companyId));
+    expect(
+      (
+        await api(persona('ana'), clientPath, {
+          method: 'PATCH',
+          companyId,
+          key: 'DEMO-before-approval-identity-correction',
+          body: {
+            expectedVersion: client.version,
+            address: 'DEMO corrected address before approval',
+          },
+        })
+      ).status,
+    ).toBe(200);
+    const counts = await tableCounts();
+    const stopped = await run(COMMERCIAL_SCENARIO);
+    expect(stopped).toMatchObject({
+      kind: 'stopped',
+      stop: {
+        step: 'commercial.prisma-prim.offer.approve',
+        reason: 'conflict',
+        status: 409,
+      },
+    });
+    expect(await tableCounts()).toEqual(counts);
+    expect(
+      object(await read(persona('ana'), clientPath, companyId)).address,
+    ).toBe('DEMO corrected address before approval');
+  }, 300_000);
+
+  it('deduplicates concurrent commercial commands before either caller receives its first acknowledgement', async () => {
+    expect((await run(PRICING_SCENARIO)).kind).toBe('converged');
+    const keys = ['offer', 'contract'].flatMap((family) =>
+      ['prepare', 'quality', 'approve'].map(
+        (operation) => `demo-v1:commercial.prisma-prim.${family}.${operation}`,
+      ),
+    );
+    const gates = new Map<
+      string,
+      {
+        arrivals: number;
+        readonly release: () => void;
+        readonly promise: Promise<void>;
+      }
+    >();
+    for (const key of keys) {
+      let release: () => void = () => undefined;
+      const promise = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      gates.set(key, { arrivals: 0, release, promise });
+    }
+    let timedOut = false;
+    const watchdog = setTimeout(() => {
+      timedOut = true;
+      for (const gate of gates.values()) gate.release();
+    }, 120_000);
+    const send = globalThis.fetch;
+    const interception = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        const response = await send(input, init);
+        const key = new Headers(init?.headers).get('idempotency-key');
+        const gate = key === null ? undefined : gates.get(key);
+        if (gate) {
+          expect(response.status).toBe(201);
+          gate.arrivals += 1;
+          if (gate.arrivals >= 2) gate.release();
+          await gate.promise;
+        }
+        return response;
+      });
+    try {
+      const [first, second] = await Promise.all([
+        run(COMMERCIAL_SCENARIO),
+        run(COMMERCIAL_SCENARIO),
+      ]);
+      expect(timedOut).toBe(false);
+      await commercialCase(first);
+      await commercialCase(second);
+      expect(
+        second.entries.map((entry) => [entry.step, entry.recordId]),
+      ).toEqual(first.entries.map((entry) => [entry.step, entry.recordId]));
+      for (const [key, gate] of gates)
+        expect(gate.arrivals, key).toBeGreaterThanOrEqual(2);
+      const counts = await tableCounts();
+      expect(counts).toMatchObject({
+        'public.offers': 1,
+        'public.offer_versions': 1,
+        'public.offer_decisions': 1,
+        'public.offer_quality_runs': 2,
+        'public.offer_commands': 3,
+        'public.contracts': 1,
+        'public.contract_versions': 1,
+        'public.contract_decisions': 1,
+        'public.contract_quality_runs': 2,
+        'public.contract_commands': 3,
+      });
+      expect((await run(COMMERCIAL_SCENARIO)).kind).toBe('converged');
+      expect(await tableCounts()).toEqual(counts);
+    } finally {
+      clearTimeout(watchdog);
+      for (const gate of gates.values()) gate.release();
+      interception.mockRestore();
+    }
+  }, 300_000);
+
+  it('fails closed at each commercial response boundary before another step can write', async () => {
+    const { ids, companyId } = await commercialCase(
+      await run(COMMERCIAL_SCENARIO),
+    );
+    const counts = await tableCounts();
+    for (const family of ['offer', 'contract']) {
+      const prefix = `commercial.prisma-prim.${family}`;
+      const cases = [
+        {
+          name: 'provisional creation',
+          stage: 'prepare',
+          boundary: 'command',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({
+            ...reply,
+            version: { ...object(reply.version), provisional: false },
+          }),
+        },
+        {
+          name: 'Company-bound exact read',
+          stage: 'prepare',
+          boundary: 'read',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({ ...reply, companyId: id(ids, 'company.bic') }),
+        },
+        {
+          name: 'known Quality Check version',
+          stage: 'quality',
+          boundary: 'command',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({ ...reply, ruleSetVersion: 99 }),
+        },
+        {
+          name: 'complete Quality Check results',
+          stage: 'quality',
+          boundary: 'read',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({
+            ...reply,
+            results: objects(reply.results).slice(1),
+          }),
+        },
+        {
+          name: 'known Quality Check code',
+          stage: 'quality',
+          boundary: 'command',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({
+            ...reply,
+            results: objects(reply.results).map((result, index) =>
+              index === 0 ? { ...result, code: 'UNKNOWN' } : result,
+            ),
+          }),
+        },
+        {
+          name: 'valid Quality Check severity',
+          stage: 'quality',
+          boundary: 'read',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({
+            ...reply,
+            results: objects(reply.results).map((result, index) =>
+              index === 0 ? { ...result, status: 'WARNING' } : result,
+            ),
+          }),
+        },
+        {
+          name: 'blocking Quality Check error',
+          stage: 'quality',
+          boundary: 'command',
+          reason: 'rejected',
+          mutate: (reply) => ({
+            ...reply,
+            results: objects(reply.results).map((result) =>
+              result.code === 'PRICING_SNAPSHOT_COHERENT'
+                ? { ...result, status: 'ERROR' }
+                : result,
+            ),
+          }),
+        },
+        {
+          name: 'closed approval state',
+          stage: 'approve',
+          boundary: 'command',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({
+            ...reply,
+            ...(family === 'offer'
+              ? { state: 'UNKNOWN' }
+              : { kind: 'UNKNOWN' }),
+          }),
+        },
+        {
+          name: 'exact deciding actor',
+          stage: 'approve',
+          boundary: 'read',
+          reason: 'unexpected-response',
+          mutate: (reply) => ({
+            ...reply,
+            version: {
+              ...object(reply.version),
+              decision: {
+                ...object(object(reply.version).decision),
+                actorWorkspaceMembershipId: id(ids, 'persona.ana'),
+              },
+            },
+          }),
+        },
+      ] satisfies {
+        name: string;
+        stage: 'prepare' | 'quality' | 'approve';
+        boundary: 'command' | 'read';
+        reason: 'unexpected-response' | 'rejected';
+        mutate: (reply: Record<string, unknown>) => unknown;
+      }[];
+      for (const testCase of cases) {
+        const step = `${prefix}.${testCase.stage}`;
+        const key = `demo-v1:${step}`;
+        let commands = 0;
+        let injected = false;
+        const send = globalThis.fetch;
+        const interception = vi
+          .spyOn(globalThis, 'fetch')
+          .mockImplementation(async (input, init) => {
+            const response = await send(input, init);
+            const path = new URL(String(input)).pathname;
+            if (new Headers(init?.headers).get('idempotency-key') === key)
+              commands += 1;
+            const isReceiptRead =
+              testCase.stage === 'quality' &&
+              family === 'offer' &&
+              commands === 2;
+            const isGetRead =
+              commands > 0 &&
+              (init?.method ?? 'GET') === 'GET' &&
+              path.startsWith(`/api/${family}s/`) &&
+              (testCase.stage === 'quality'
+                ? path.includes('/quality-checks/')
+                : path.endsWith(`/versions/${id(ids, `${prefix}.prepare`)}`));
+            const matches =
+              testCase.boundary === 'command'
+                ? new Headers(init?.headers).get('idempotency-key') === key
+                : isReceiptRead || isGetRead;
+            if (injected || !matches) return response;
+            injected = true;
+            expect(response.ok).toBe(true);
+            const raw: unknown = await response.json();
+            const reply = object(raw);
+            const versionRead =
+              testCase.boundary === 'read' && testCase.stage !== 'quality';
+            const changed = testCase.mutate(
+              versionRead ? object(reply[family]) : reply,
+            );
+            return new Response(
+              JSON.stringify(
+                versionRead ? { ...reply, [family]: changed } : changed,
+              ),
+              {
+                status: response.status,
+                headers: { 'content-type': 'application/json' },
+              },
+            );
+          });
+        try {
+          const stopped = await run(COMMERCIAL_SCENARIO);
+          expect(injected, `${family}: ${testCase.name}`).toBe(true);
+          expect(stopped, `${family}: ${testCase.name}`).toMatchObject({
+            kind: 'stopped',
+            stop: { step, reason: testCase.reason },
+          });
+          const index = COMMERCIAL_SCENARIO.steps.findIndex(
+            (item) => item.key === step,
+          );
+          expect(stopped.entries.map((entry) => entry.step)).toEqual(
+            COMMERCIAL_SCENARIO.steps.slice(0, index).map((item) => item.key),
+          );
+          expect(await tableCounts()).toEqual(counts);
+        } finally {
+          interception.mockRestore();
+        }
+      }
+    }
+    expect(
+      (await api(persona('ana'), '/access/current-actor', { companyId }))
+        .status,
+    ).toBe(200);
+  }, 600_000);
 
   it('reproduces five tariffs and reopens the exact illustrative pricing results in their own Companies', async () => {
     const result = await run(PRICING_SCENARIO);

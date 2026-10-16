@@ -138,11 +138,13 @@ docker compose exec postgres psql -U prisma_prim -d prisma_prim \
 
 ## Demonstration data
 
-The demonstration seed fills a dedicated demonstration Workspace with the versioned synthetic scenario `demo-v2` through the public API: PRISMA-PRIM, BIC and ECG, four `DEMO` personas with provisional role profiles, and illustrative Clients, Projects, Tasks, Documents, Requests, Service offerings and Pricing Rule Versions. [Platform PRD section 17](docs/product/platform-security-reliability-operations-prd.md#17-approved-provisional-demonstration-data-409) owns its rules, and the [first-tenant substitution register](docs/product/first-tenant-substitution-register.md) indexes what each stand-in replaces.
+The demonstration seed fills a dedicated demonstration Workspace with the versioned synthetic scenario `demo-v3` through the public API: PRISMA-PRIM, BIC and ECG, four `DEMO` personas with provisional role profiles, and illustrative Clients, Projects, Tasks, Documents, Requests, pricing, Offers and Contracts. [Platform PRD section 17](docs/product/platform-security-reliability-operations-prd.md#17-approved-provisional-demonstration-data-409) owns its rules, and the [first-tenant substitution register](docs/product/first-tenant-substitution-register.md) indexes what each stand-in replaces.
 
 The seed process fixes its server clock at startup and shares that instant with its runner. A first Pricing Rule starts at the next whole second of that synthetic run, so waiting for database locks cannot expire the request. The normal application continues to use real time; pricing validation, receipts and permissions are unchanged.
 
 The append-only `demo-v2` catch-up also grants Ana and Maria Pricing User access in their own Companies, publishes five illustrative Tariffs and calculates/reopens two quantity-2 Pricing Snapshots. On a fresh target their totals are MDL 240.00 for PRISMA-PRIM and EUR 300.00 for BIC. The manifest keys `pricing.prisma-prim.snapshot` and `pricing.bic.snapshot` identify their exact records. Rule and Tariff Version 1 selections stay fixed on replay; an existing incompatible configuration stops the scenario instead of being replaced. [Platform PRD §17.1](docs/product/platform-security-reliability-operations-prd.md#171-reproducible-illustrative-pricing-catch-up--cf-1-615) owns the phase-clock and preservation rules.
+
+The append-only `demo-v3` catch-up gives Ana explicit preparation bundles and Ion separate approval bundles in PRISMA-PRIM. Ana prepares and checks one illustrative Offer and direct Contract over the existing Snapshot; Ion approves their exact first versions. Manifest keys `commercial.prisma-prim.offer.prepare` and `commercial.prisma-prim.contract.prepare` identify those Versions; sibling `.quality` and `.approve` entries identify exact runs and decisions. Their `confirmed` outcome acknowledges a commit or identical replay plus a successful public reopen. Rerunning preserves prior results and operator changes. No transmission, Client response, signature or real authority is implied. [Platform PRD §17.2](docs/product/platform-security-reliability-operations-prd.md#172-reproducible-commercial-role-catch-up--cf-3-620) owns the fixture and replay contract.
 
 > **Warning:** never point the seed at a database that holds real or shared data. It refuses a target whose configured Workspace name lacks `DEMO`, that holds another Workspace, or that is not at the latest migration, but a dedicated demonstration database is the operator's responsibility.
 
@@ -167,7 +169,7 @@ pnpm demo:seed --confirm-workspace "$ACCESS_BOOTSTRAP_WORKSPACE_ID"
 
 The command prints its manifest as JSON lines and exits with:
 
-- `0` when every step converged: `created` on a first run, `replayed` or `present` on a repeated run;
+- `0` when every step converged: the six commercial steps report `confirmed` on both first execution and replay; other steps report `created` on a first run and `replayed` or `present` on a repeated run;
 - `2` when it refused the target, with a named reason and nothing written;
 - `3` when it stopped at a named step; earlier steps remain, and a repeated run resumes;
 - `1` on an unexpected failure.
