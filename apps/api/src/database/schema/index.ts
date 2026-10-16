@@ -22,3 +22,5 @@ export * from './offer.js';
 
 export * from './contract.js';
 export * from './profitability-estimate.js';
+
+export * from './document-pdfs.js';

@@ -470,6 +470,13 @@
       "when": 1791838945568,
       "tag": "0066_sales_stages",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792166592546,
+      "tag": "0067_document_pdf_content",
+      "breakpoints": true
     }
   ]
 }

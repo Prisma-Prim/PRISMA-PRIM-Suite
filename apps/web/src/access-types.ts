@@ -119,12 +119,18 @@ export interface ActorContext {
       | 'document.register'
       | 'document.reference.read'
       | 'document.correct'
+      | 'document.content.read'
+      | 'document.content.upload'
       | 'document.version.manage'
       | 'document.version.designate_official'
       | 'document.project.manage'
     >;
     documentPermissionSetVersion?: 'v1' | 'v2' | 'v3';
     /** The live Company Document Approver assignment, if any. */
+    documentContentReaderAssignmentId?: string;
+    documentContentReaderPermissionSetVersion?: 'v1';
+    documentContentUploaderAssignmentId?: string;
+    documentContentUploaderPermissionSetVersion?: 'v1';
     documentApproverAssignmentId?: string;
     documentApproverPermissionSetVersion?: 'v1';
     clientPermissionAssignmentId?: string;

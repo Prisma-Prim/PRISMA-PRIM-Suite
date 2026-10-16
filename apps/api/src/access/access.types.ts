@@ -43,6 +43,10 @@ export interface ActiveCompanyContext {
   /** The live captured Company Document Approver assignment, if any. */
   documentApproverAssignmentId?: string;
   documentApproverPermissionSetVersion?: 'v1';
+  documentContentReaderAssignmentId?: string;
+  documentContentReaderPermissionSetVersion?: 'v1';
+  documentContentUploaderAssignmentId?: string;
+  documentContentUploaderPermissionSetVersion?: 'v1';
   taskPermissions?: Array<'task.read' | 'task.manage'>;
   taskPermissionAssignmentId?: string;
   taskPermissionSetVersion?: 'v1';

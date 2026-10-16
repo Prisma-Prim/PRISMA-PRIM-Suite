@@ -1,3 +1,4 @@
+import { DocumentPdfContent } from './DocumentPdfContent';
 import {
   useCallback,
   useEffect,
@@ -122,6 +123,10 @@ export function DocumentVersions({
         [...permissions].sort(),
         company.documentPermissionSetVersion ?? null,
         company.documentApproverAssignmentId ?? null,
+        company.documentContentReaderAssignmentId ?? null,
+        company.documentContentReaderPermissionSetVersion ?? null,
+        company.documentContentUploaderAssignmentId ?? null,
+        company.documentContentUploaderPermissionSetVersion ?? null,
         company.clientPermissions?.includes('client.read') === true,
         actor.workspacePermissions.includes('client.manage'),
       ])}
@@ -135,6 +140,11 @@ export function DocumentVersions({
       }
       canStartDraft={
         canReadReference && permissions.includes('document.version.manage')
+      }
+      canUploadContent={
+        permissions.includes('document.content.read') &&
+        permissions.includes('document.content.upload') &&
+        permissions.includes('document.version.manage')
       }
       onRefresh={onRefresh}
       rejection={{
@@ -153,6 +163,7 @@ function VersionsSection({
   workingRevision,
   canDesignate,
   canStartDraft,
+  canUploadContent,
   onRefresh,
   rejection,
 }: {
@@ -162,6 +173,7 @@ function VersionsSection({
   workingRevision: number;
   canDesignate: boolean;
   canStartDraft: boolean;
+  canUploadContent: boolean;
   onRefresh: () => Promise<void> | void;
   rejection: AccessRejection;
 }) {
@@ -412,7 +424,9 @@ function VersionsSection({
   function reload(): void {
     setCommand({ status: 'idle' });
     setReloads((count) => count + 1);
-    void Promise.resolve(refresh.current()).catch(() => undefined);
+    void Promise.resolve()
+      .then(() => refresh.current())
+      .catch(() => undefined);
   }
 
   const busy =
@@ -457,6 +471,54 @@ function VersionsSection({
                 onAdd={addReference}
                 onRemove={removeReference}
               >
+                <DocumentPdfContent
+                  identity={identity}
+                  companyId={companyId}
+                  documentId={documentId}
+                  versionId={version.id}
+                  versionNumber={version.number}
+                  content={version.pdfContent}
+                  canUpload={
+                    canUploadContent &&
+                    read.read.mutable &&
+                    version.status === 'draft' &&
+                    !busy
+                  }
+                  workingRevision={read.read.workingRevision}
+                  onConfirmed={() => {
+                    setRead({ status: 'loading' });
+                    setReloads((count) => count + 1);
+                    void Promise.resolve()
+                      .then(() => refresh.current())
+                      .catch(() => undefined);
+                  }}
+                  onReload={() => {
+                    setRead({ status: 'loading' });
+                    reload();
+                  }}
+                  onDenied={async () => {
+                    await handleAuthenticatedAccessRejection({
+                      result: { status: 'forbidden' },
+                      identity,
+                      companyContextId: companyId,
+                      onCompanyContextRejected: (company) => {
+                        if (mounted.current)
+                          return reject.current.onCompanyContextRejected(
+                            company,
+                          );
+                      },
+                      onActorRevalidated: (actor) => {
+                        if (mounted.current)
+                          return reject.current.onActorRevalidated(actor);
+                      },
+                      onWorkspaceAccessRejected: () => {
+                        if (mounted.current)
+                          return reject.current.onWorkspaceAccessRejected();
+                      },
+                    });
+                    if (mounted.current) setReloads((count) => count + 1);
+                  }}
+                />
                 {read.read.mutable &&
                   canDesignate &&
                   version.status === 'draft' && (

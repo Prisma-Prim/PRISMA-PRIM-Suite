@@ -181,6 +181,8 @@ const legitimateTargets: Array<
     'company_director_client_assignment',
     'company_document_project_organizer_assignment',
     'company_document_registrar_assignment',
+    'company_document_content_reader_assignment',
+    'company_document_content_uploader_assignment',
     'company_document_approver_assignment',
   ].flatMap((assignment): Array<[string, Record<string, unknown>]> => [
     [`${assignment}.granted`, roleAssignmentTarget],

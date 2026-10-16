@@ -536,6 +536,7 @@ test('designates official Versions, starts and corrects a new draft and keeps th
     status: version.status,
     createdAt: version.createdAt,
     createdBy: { displayName: 'Document Registrar' },
+    pdfContent: { state: 'absent' },
     representations: version.references.map(reference),
     ...(version.status === 'draft'
       ? {}

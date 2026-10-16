@@ -1,3 +1,6 @@
+import { ConfigService } from '@nestjs/config';
+import { DocumentPdfStorage } from './document-pdf-storage.js';
+import { DocumentMalwareScanner } from './document-malware-scanner.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -576,7 +579,14 @@ describe.skipIf(!databaseUrl)(
         accountability,
         new ProjectService(context, authorization, clients, accountability),
         boundary,
-        new DocumentVersionsService(authorization, context, clients, boundary),
+        new DocumentVersionsService(
+          authorization,
+          context,
+          clients,
+          boundary,
+          new DocumentPdfStorage(context),
+          new DocumentMalwareScanner(new ConfigService()),
+        ),
       );
       const result = await documents.correctionHistory(metadataReader, {
         documentId,

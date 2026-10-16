@@ -160,6 +160,10 @@ Its lifecycle is `company_document_approver_assignment.granted` and `company_doc
 
 First-tenant configuration grants Approver v1 only to Iurie; this is an assignment, not a hard-coded identity.
 
+The [stored questionnaire-PDF slice](release-1-document-registry-prd.md#22-approved-provisional-stored-questionnaire-pdfs-633), explicitly approved by Dan on 2026-10-16, adds independent opt-in **Company Document Content Reader v1** (`document.content.read`) and **Company Document Content Uploader v1** (`document.content.upload`). Each contains exactly its named permission. Existing Company assignment administration explicitly grants or revokes it for an active same-Workspace membership and Company, with captured `v1`; null or unknown versions fail closed. The attributable lifecycle events are `company_document_content_reader_assignment.granted` / `.revoked` and `company_document_content_uploader_assignment.granted` / `.revoked`, with the existing assignment-transition metadata convention.
+
+Neither bundle grants context, Client read, Document metadata/reference read, Version management, designation or the other content permission. Existing bundles and assignments never expand automatically. Download additionally requires the current Document metadata/Client/Company read boundary. Upload additionally requires the Reader grant and existing Version-management authority, and revalidates all of them after scanning before committing. No migration or bootstrap implicitly assigns either bundle; real first-tenant grants remain an explicit configuration action.
+
 The [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306)
 adds `commercial.opportunity.next_action.update` only through captured
 **Company Commercial Intake v2**. Intake v1 remains exactly the four read and

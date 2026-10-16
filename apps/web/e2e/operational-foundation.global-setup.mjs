@@ -1,3 +1,4 @@
+import { startDocumentAcceptanceScanner } from './document-content-scanner.mjs';
 /* global URL, fetch, process */
 
 import { fileURLToPath } from 'node:url';
@@ -72,13 +73,17 @@ export default async function globalSetup() {
     },
   };
   let harness;
+  let documentScanner;
   try {
+    documentScanner = await startDocumentAcceptanceScanner();
     harness = await harnessModule.createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
       serverClock,
       environment: {
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
+        DOCUMENT_MALWARE_SCANNER_HOST: documentScanner.host,
+        DOCUMENT_MALWARE_SCANNER_PORT: documentScanner.port,
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: administratorIdentity.provider,
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: administratorIdentity.subject,
         ACCESS_BOOTSTRAP_WORKSPACE_ID: workspaceId,
@@ -110,6 +115,7 @@ export default async function globalSetup() {
   } catch (error) {
     await Promise.allSettled([
       Promise.resolve().then(() => harness?.close()),
+      Promise.resolve().then(() => documentScanner?.close()),
       Promise.resolve().then(() => database.close()),
       Promise.resolve().then(() =>
         rm(clockDirectory, { recursive: true, force: true }),
@@ -122,8 +128,15 @@ export default async function globalSetup() {
     try {
       await harness.close();
     } finally {
-      await database.close();
-      await rm(clockDirectory, { recursive: true, force: true });
+      try {
+        await documentScanner.close();
+      } finally {
+        try {
+          await database.close();
+        } finally {
+          await rm(clockDirectory, { recursive: true, force: true });
+        }
+      }
     }
   };
 }

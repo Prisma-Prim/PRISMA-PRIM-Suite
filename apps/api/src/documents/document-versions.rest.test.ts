@@ -390,6 +390,7 @@ withPostgres('Official Document Versions REST contract', () => {
           status: 'draft',
           createdAt: expect.any(String),
           createdBy: { displayName: MEMBERS.registrar },
+          pdfContent: { state: 'absent' },
           representations: [
             {
               id: expect.any(String),

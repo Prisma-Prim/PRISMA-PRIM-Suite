@@ -196,6 +196,7 @@ test('Version reads accept complete typed references and never accept a URL on d
           createdAt: occurredAt,
           createdBy: { displayName: 'Registrar' },
           representations: [representation],
+          pdfContent: { state: 'absent' },
         },
       ],
     };

@@ -259,6 +259,14 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Sales Stage Configuration',
     versions: { v1: ['commercial.sales_stage.configure'] },
   },
+  company_document_content_reader: {
+    label: 'Company Document Content Reader',
+    versions: { v1: ['document.content.read'] },
+  },
+  company_document_content_uploader: {
+    label: 'Company Document Content Uploader',
+    versions: { v1: ['document.content.upload'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -361,6 +369,14 @@ export const DOCUMENT_V2_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_document_registrar.versions.v2;
 export const DOCUMENT_V3_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_document_registrar.versions.v3;
+export const COMPANY_DOCUMENT_CONTENT_READER_BUNDLE =
+  'company_document_content_reader' satisfies CompanyRoleBundle;
+export const COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_document_content_reader.label;
+export const COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE =
+  'company_document_content_uploader' satisfies CompanyRoleBundle;
+export const COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_document_content_uploader.label;
 export const COMPANY_DOCUMENT_APPROVER_BUNDLE =
   'company_document_approver' satisfies CompanyRoleBundle;
 export const COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL =
@@ -577,6 +593,8 @@ export function commercialActivityPermissionsFor(
 export type DocumentPermission =
   | CompanyRolePermission<'company_document_registrar'>
   | DocumentApproverPermission
+  | CompanyRolePermission<'company_document_content_reader'>
+  | CompanyRolePermission<'company_document_content_uploader'>
   | CompanyRolePermission<'company_document_project_organizer'>;
 export type DocumentPermissionSetVersion =
   CompanyRolePermissionSetVersion<'company_document_registrar'>;
