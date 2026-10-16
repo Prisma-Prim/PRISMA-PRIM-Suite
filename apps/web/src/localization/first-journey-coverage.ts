@@ -8,6 +8,7 @@ import { offerBindingMessages } from '../offer/offer-binding.copy';
 import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
 import { commercialRequestMessages } from '../commercial-intake/commercial-request.copy';
 import { salesStageMessages } from '../commercial-intake/sales-stage.copy';
+import { clientDirectoryMessages } from '../client/client-directory.copy';
 import { appMessages } from '../app.copy';
 import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
@@ -30,6 +31,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('offerBinding', offerBindingMessages);
   assertMessageCoverage('profitability', profitabilityMessages);
   assertMessageCoverage('salesStage', salesStageMessages);
+  assertMessageCoverage('clientDirectory', clientDirectoryMessages);
   assertMessageCoverage('app', appMessages);
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);
