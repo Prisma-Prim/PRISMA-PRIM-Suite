@@ -6,6 +6,9 @@ export default defineConfig({
   fullyParallel: true,
   use: {
     baseURL: 'http://127.0.0.1:4173',
+    // Functional journeys do not need continuous decorative rendering.
+    // The dedicated motion suite explicitly exercises active animation.
+    contextOptions: { reducedMotion: 'reduce' },
     trace: 'on-first-retry',
     storageState: {
       cookies: [],
