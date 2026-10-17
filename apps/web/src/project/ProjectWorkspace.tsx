@@ -89,7 +89,18 @@ type Registration = {
     | { kind: 'manual' }
     | { kind: 'template'; templateKey: string; templateVersion: number };
 };
-type Feedback = 'error' | 'validation' | 'conflict' | null;
+type TemplateCreationFeedback =
+  | 'creationMissing'
+  | 'creationUnavailable'
+  | 'creationUncertain'
+  | 'creationConflict'
+  | 'creationValidation';
+type Feedback =
+  | 'error'
+  | 'validation'
+  | 'conflict'
+  | { kind: 'template'; message: TemplateCreationFeedback }
+  | null;
 /** A detail read, optionally requested with a Task target, or a registration. */
 type ProjectRequest =
   | {
@@ -512,12 +523,14 @@ export function ProjectWorkspace({
     const controller = new AbortController();
     request.current = controller;
     registering.current = command !== undefined;
+    let phase: 'preparing' | 'sent' | 'confirmed' = 'preparing';
     const startedUnder = identityRevision.current;
     setPending(true);
     setSelected(null);
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
+      phase = 'sent';
       const result = await api.request<unknown>(path, {
         companyContextId: companyId,
         signal: controller.signal,
@@ -551,9 +564,14 @@ export function ProjectWorkspace({
         return;
       }
       if (result.status !== 'ok' || !isProject(result.value)) {
-        setFeedback(messageFor(result));
+        setFeedback(
+          command?.source.kind === 'template'
+            ? templateCreationMessage(result)
+            : messageFor(result),
+        );
         return;
       }
+      phase = 'confirmed';
       setDetailPanel('tasks');
       if (projectRequest.kind === 'open') {
         // A requested Task opens only after its own Project read succeeds.
@@ -599,7 +617,18 @@ export function ProjectWorkspace({
       setTemplateSelection(null);
       await onActivityRecorded();
     } catch {
-      if (!controller.signal.aborted) setFeedback('error');
+      if (!controller.signal.aborted)
+        setFeedback(
+          command?.source.kind === 'template' && phase !== 'confirmed'
+            ? {
+                kind: 'template',
+                message:
+                  phase === 'sent'
+                    ? 'creationUncertain'
+                    : 'creationUnavailable',
+              }
+            : 'error',
+        );
     } finally {
       if (!controller.signal.aborted) setPending(false);
     }
@@ -862,7 +891,13 @@ export function ProjectWorkspace({
           )}
         </>
       )}
-      {feedback && <p role="alert">{copy[feedback]}</p>}
+      {feedback && (
+        <p role="alert">
+          {typeof feedback === 'string'
+            ? copy[feedback]
+            : templateCopy(feedback.message)}
+        </p>
+      )}
       {selected && (
         <article
           className={isPrisme ? 'project-detail-card' : undefined}
@@ -1098,4 +1133,20 @@ function messageFor(result: ApiResult<unknown>): Exclude<Feedback, null> {
     : result.status === 'conflict'
       ? 'conflict'
       : 'error';
+}
+
+function templateCreationMessage(
+  result: ApiResult<unknown>,
+): Extract<Feedback, { kind: 'template' }> {
+  return {
+    kind: 'template',
+    message:
+      result.status === 'notFound'
+        ? 'creationMissing'
+        : result.status === 'validation'
+          ? 'creationValidation'
+          : result.status === 'conflict'
+            ? 'creationConflict'
+            : 'creationUncertain',
+  };
 }

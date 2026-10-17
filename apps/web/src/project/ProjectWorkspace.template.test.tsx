@@ -146,7 +146,7 @@ it('preserves the exact model creation command and entered business content thro
     screen.getByRole('button', { name: 'Create Project from template' }),
   );
   await screen.findByText(
-    'The Project could not be loaded or saved. Please try again.',
+    'The Project creation could not be confirmed. Retry the same details safely.',
   );
   expect(writes).toHaveLength(1);
   const initialBody: unknown = JSON.parse(writes[0]?.body ?? '{}');
@@ -171,7 +171,7 @@ it('preserves the exact model creation command and entered business content thro
   ).toHaveTextContent('Préparation d’une mission de conseil — Version 1');
   expect(
     screen.getByText(
-      'Le Projet n’a pas pu être chargé ou enregistré. Veuillez réessayer.',
+      'La création du Projet n’a pas pu être confirmée. Réessayez avec les mêmes informations en toute sécurité.',
     ),
   ).toBeVisible();
   expect(writes).toHaveLength(1);
@@ -403,3 +403,163 @@ function withoutTemplateGrant(): ActorContext {
     },
   };
 }
+
+it.each([
+  {
+    name: 'missing selection',
+    status: 404,
+    message:
+      'The selected Client or Template Version is no longer available. Reload the choices before creating the Project.',
+  },
+  {
+    name: 'invalid selection',
+    status: 400,
+    message:
+      'Check the Project title, Client and Template Version before trying again.',
+  },
+  {
+    name: 'conflicting creation key',
+    status: 409,
+    message:
+      'This Project creation conflicts with the saved request or current selection. Reload before trying again.',
+  },
+])(
+  'distinguishes Template creation $name from an uncertain committed write',
+  async ({ status, message }) => {
+    const writes: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          writes.push(url);
+          return new Response(null, { status });
+        }
+        return baseRead(url);
+      }),
+    );
+    view();
+    const selector = await screen.findByRole('combobox', {
+      name: 'Project template',
+    });
+    changeValue(
+      screen.getByRole('textbox', { name: 'Project title' }),
+      project.title,
+    );
+    changeValue(screen.getByRole('combobox', { name: 'Client' }), clientId);
+    changeValue(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:1');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create Project from template' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByRole('textbox', { name: 'Project title' })).toHaveValue(
+      project.title,
+    );
+    expect(
+      screen.queryByText(
+        'The Project creation could not be confirmed. Retry the same details safely.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(writes).toEqual(['/api/projects/from-template']);
+  },
+);
+
+it.each(['server failure', 'network failure', 'malformed confirmation'])(
+  'preserves the exact Template retry after a %s',
+  async (failure) => {
+    const writes: Array<{ body: unknown; key: string | null }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          writes.push({
+            body: init.body,
+            key: new Headers(init.headers).get('idempotency-key'),
+          });
+          if (writes.length === 1) {
+            if (failure === 'network failure')
+              throw new TypeError('Synthetic lost response');
+            return failure === 'server failure'
+              ? new Response(null, { status: 500 })
+              : Response.json({ id: projectId }, { status: 201 });
+          }
+          return Response.json(project);
+        }
+        return baseRead(url);
+      }),
+    );
+    view();
+    const selector = await screen.findByRole('combobox', {
+      name: 'Project template',
+    });
+    changeValue(
+      screen.getByRole('textbox', { name: 'Project title' }),
+      project.title,
+    );
+    changeValue(screen.getByRole('combobox', { name: 'Client' }), clientId);
+    changeValue(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:1');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create Project from template' }),
+    );
+    await screen.findByText(
+      'The Project creation could not be confirmed. Retry the same details safely.',
+    );
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.key).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create Project from template' }),
+    );
+    await screen.findByRole('heading', { name: project.title });
+    expect(writes).toHaveLength(2);
+    expect(writes[1]).toEqual(writes[0]);
+  },
+);
+
+it('reports unavailable preparation without claiming that an undispatched creation might have committed', async () => {
+  let unavailable = false;
+  const identity = {
+    ...deterministicBrowserIdentity(),
+    getToken: async () => {
+      if (unavailable)
+        throw new Error('Synthetic credential acquisition failure');
+      return null;
+    },
+  };
+  const writes: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        writes.push(url);
+        return Response.json(project);
+      }
+      return baseRead(url);
+    }),
+  );
+  view(actor, identity);
+  const selector = await screen.findByRole('combobox', {
+    name: 'Project template',
+  });
+  changeValue(
+    screen.getByRole('textbox', { name: 'Project title' }),
+    project.title,
+  );
+  changeValue(screen.getByRole('combobox', { name: 'Client' }), clientId);
+  changeValue(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:1');
+  unavailable = true;
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Create Project from template' }),
+  );
+  await screen.findByText(
+    'Project creation is unavailable. Reload and try again.',
+  );
+  expect(writes).toHaveLength(0);
+  expect(screen.getByRole('textbox', { name: 'Project title' })).toHaveValue(
+    project.title,
+  );
+  unavailable = false;
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Create Project from template' }),
+  );
+  await screen.findByRole('heading', { name: project.title });
+  expect(writes).toEqual(['/api/projects/from-template']);
+});

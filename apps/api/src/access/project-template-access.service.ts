@@ -24,10 +24,10 @@ export class ProjectTemplateAccessService {
       lock?: boolean;
     } = {},
   ) {
-    const companyId = await this.company.requireProjectAccess(
-      actor,
-      options.lock,
-    );
+    const companyId =
+      options.instantiate || options.copiedPlan
+        ? await this.company.requireProjectAccess(actor, options.lock)
+        : await this.company.requireProjectReadPermission(actor, options.lock);
     const query = this.database.connection
       .select({ id: companyRoleAssignments.id })
       .from(companyRoleAssignments)

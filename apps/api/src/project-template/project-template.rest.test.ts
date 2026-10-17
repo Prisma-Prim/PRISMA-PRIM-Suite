@@ -178,6 +178,65 @@ describe.skipIf(!databaseUrl)(
       return result.rows;
     }
 
+    it('reads source definitions without Client access while protecting every real Project and Task boundary', async () => {
+      await grant('template');
+      const projectId = string((await createTemplate()).id);
+      const member = await read('/access/current-actor', {
+        subject: 'ana',
+        company: '',
+      });
+      const anaId = string(member.workspaceMembershipId);
+      await grant('project', anaId);
+      await grant('task', anaId);
+      await grant('template', anaId);
+      const before = await countRows();
+      const catalogue = await read('/project-templates', { subject: 'ana' });
+      expect(objects(catalogue.templates)).toHaveLength(1);
+      expect(objects(catalogue.templates)[0]).toMatchObject({
+        templateKey,
+        version: 1,
+        illustrative: true,
+      });
+      for (const path of [
+        '/clients',
+        '/projects',
+        `/projects/${projectId}`,
+        `/projects/${projectId}/template`,
+        `/projects/${projectId}/tasks`,
+      ])
+        expect((await request(path, { subject: 'ana' })).status).toBe(403);
+      expect(
+        (
+          await request('/projects/from-template', {
+            method: 'POST',
+            value: creation(),
+            subject: 'ana',
+          })
+        ).status,
+      ).toBe(403);
+      expect(await countRows()).toEqual(before);
+      await grant('client', anaId);
+      expect(
+        (await read(`/projects/${projectId}/template`, { subject: 'ana' }))
+          .template,
+      ).toMatchObject({ templateKey, version: 1 });
+      expect(
+        (
+          await request(`${assignments.client}/${anaId}/${companyId}`, {
+            method: 'DELETE',
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (await request(`/projects/${projectId}/template`, { subject: 'ana' }))
+          .status,
+      ).toBe(403);
+      expect(
+        (await request('/project-templates', { subject: 'ana' })).status,
+      ).toBe(200);
+      expect(await countRows()).toEqual(before);
+    });
+
     it('creates and reloads four independent unassigned Tasks from the exact illustrative v1', async () => {
       await grant('template');
       const catalogue = await read('/project-templates');
@@ -386,8 +445,10 @@ describe.skipIf(!databaseUrl)(
       await grant('project', anaId);
       expect(
         (await request('/project-templates', { subject: 'ana' })).status,
-      ).toBe(403);
-      // Existing Project read also needs independent Company context and Client read.
+      ).toBe(200);
+      // Source catalogue access needs no Client grant; real Project reads do.
+      expect((await request('/projects', { subject: 'ana' })).status).toBe(403);
+      // Existing Project data still needs independent Client read.
       await grant('client', anaId);
       expect(
         (await request('/project-templates', { subject: 'ana' })).status,

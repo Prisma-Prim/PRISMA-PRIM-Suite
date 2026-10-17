@@ -147,7 +147,7 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
     .click();
   await expect(
     projects.getByText(
-      'The Project could not be loaded or saved. Please try again.',
+      'The Project creation could not be confirmed. Retry the same details safely.',
     ),
   ).toBeVisible();
   expect(writes).toHaveLength(1);
