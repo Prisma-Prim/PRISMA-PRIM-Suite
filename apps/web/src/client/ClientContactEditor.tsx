@@ -1,4 +1,5 @@
 import { optionalProperty } from './client-command';
+import { useClientContactEditorCopy } from './client-contact-editor.copy';
 import { clientWorkspaceCopy as copy } from './client-workspace.copy';
 
 /** Closed provisional vocabulary, in the order the server stores it. */
@@ -37,9 +38,14 @@ export interface ClientContactDraft {
   communicationPreferences: string;
 }
 
+export type ClientContactValidationIssue =
+  | 'contactsInvalid'
+  | 'contactPositionTooLong'
+  | 'contactCommunicationPreferencesTooLong';
+
 export type ClientContactDraftResult =
   | { status: 'valid'; contacts: ClientContact[] }
-  | { status: 'invalid'; message: string };
+  | { status: 'invalid'; message: string; issue: ClientContactValidationIssue };
 
 export function isClientContactDecisionRole(
   value: unknown,
@@ -71,6 +77,7 @@ export function ClientContactEditor({
   errorId?: string;
   onChange: (contacts: ClientContactDraft[]) => void;
 }) {
+  const copy = useClientContactEditorCopy();
   return (
     <>
       <p className="client-contact-editor-label">{copy.contactsEditLabel}</p>
@@ -218,13 +225,22 @@ export function normalizedContacts(
   drafts: ClientContactDraft[],
 ): ClientContactDraftResult {
   if (drafts.some((contact) => !contact.name.trim()))
-    return { status: 'invalid', message: copy.contactsInvalid };
+    return {
+      status: 'invalid',
+      message: copy.contactsInvalid,
+      issue: 'contactsInvalid',
+    };
   if (drafts.some(positionTooLong))
-    return { status: 'invalid', message: copy.contactPositionTooLong };
+    return {
+      status: 'invalid',
+      message: copy.contactPositionTooLong,
+      issue: 'contactPositionTooLong',
+    };
   if (drafts.some(communicationPreferencesTooLong))
     return {
       status: 'invalid',
       message: copy.contactCommunicationPreferencesTooLong,
+      issue: 'contactCommunicationPreferencesTooLong',
     };
   return {
     status: 'valid',
