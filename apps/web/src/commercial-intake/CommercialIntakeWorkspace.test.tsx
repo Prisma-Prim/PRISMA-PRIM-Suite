@@ -1664,6 +1664,7 @@ describe('CommercialIntakeWorkspace', () => {
 
   it('associates an older loaded Request without replacing either loaded page', async () => {
     const onOpenClientDossier = vi.fn();
+    const detail = deferredResponse();
     const olderRequest = {
       ...createdRequest,
       id: 'request-26',
@@ -1687,7 +1688,7 @@ describe('CommercialIntakeWorkspace', () => {
           Response.json({ items: newestPage, nextCursor: 'cursor-page-2' }),
         )
         .mockResolvedValueOnce(Response.json({ items: olderPage }))
-        .mockResolvedValueOnce(Response.json(olderRequest))
+        .mockReturnValueOnce(detail.promise)
         .mockResolvedValueOnce(
           Response.json([
             {
@@ -1733,16 +1734,51 @@ describe('CommercialIntakeWorkspace', () => {
     fireEvent.click(
       await screen.findByRole('button', { name: requestButton(26) }),
     );
+    await waitFor(() =>
+      expect(fetch).toHaveBeenNthCalledWith(
+        3,
+        '/api/commercial-intake/requests/request-26',
+        expect.anything(),
+      ),
+    );
+    // Apply the opened detail and its form effects before entering the search.
+    await act(async () => {
+      detail.resolve(Response.json(olderRequest));
+    });
     await screen.findByRole('heading', { name: 'Associate a Client' });
     changeValue(screen.getByLabelText('Search Clients by name'), 'Associated');
+    expect(screen.getByLabelText('Search Clients by name')).toHaveValue(
+      'Associated',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
     changeValue(await screen.findByLabelText('Existing Client'), 'client-1');
+    expect(fetch).toHaveBeenNthCalledWith(
+      4,
+      '/api/clients/search?query=Associated',
+      expect.anything(),
+    );
     fireEvent.click(
       screen.getByRole('button', { name: 'Confirm Client association' }),
     );
     await screen.findByText('Client associated.', {
       selector: '[role="alert"]',
     });
+    expect(fetch).toHaveBeenCalledTimes(5);
+    expect(fetch).toHaveBeenNthCalledWith(
+      5,
+      '/api/commercial-intake/requests/request-26/client-association',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          expectedVersion: 1,
+          clientAccountId: 'client-1',
+        }),
+        headers: expect.objectContaining({
+          'idempotency-key': expect.any(String),
+          'x-company-context-id': 'company-1',
+        }),
+      }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Back to Requests' }));
 
     expect(visibleRequests()).toBe(28);
