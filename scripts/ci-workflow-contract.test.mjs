@@ -146,7 +146,7 @@ test('independent test families and packaging share only the fast prerequisite a
     'quality',
   ]);
   assert.doesNotMatch(jobs.checks, /\bneeds:|\bif:/);
-  assert.doesNotMatch(jobs.scope, /\bneeds:|\bif:/);
+  assert.doesNotMatch(jobs.scope, /^ {4}(?:needs:|if:)/m);
   // One job per run acquires the PostgreSQL image for the database jobs.
   assert.match(jobs.postgres_image, /^ {4}needs: scope$/m);
   assert.match(
@@ -174,11 +174,14 @@ test('independent test families and packaging share only the fast prerequisite a
     'build',
     'packaging',
   ]) {
-    // A heavy family is skipped only for a docs-only change; any other
-    // scope answer, including a missing one, runs it.
+    // Only a positive scope decision may skip a heavy family. Missing
+    // proof always executes its unchanged, complete command.
     assert.match(
       jobs[job],
-      /^ {4}if: \$\{\{ needs\.scope\.outputs\.docs_only != 'true' \}\}$/m,
+      new RegExp(
+        `^ {4}if: \\$\\{\\{ needs\\.scope\\.outputs\\.docs_only != 'true' && needs\\.scope\\.outputs\\.${job === 'api' ? 'reuse_api' : 'reuse_all'} != 'true' \\}\\}$`,
+        'm',
+      ),
     );
   }
   assert.match(
@@ -193,7 +196,7 @@ test('independent test families and packaging share only the fast prerequisite a
   assert.doesNotMatch(await readWorkflow(), /continue-on-error/);
 });
 
-test('CI preserves PR and main triggers, read-only permissions and obsolete PR cancellation', async () => {
+test('CI preserves triggers, read-only proof access and cancels obsolete PR or main runs', async () => {
   const workflow = await readWorkflow();
   assert.match(
     workflow,
@@ -209,7 +212,7 @@ test('CI preserves PR and main triggers, read-only permissions and obsolete PR c
     .replaceAll(/\s+/g, ' ');
   assert.match(
     concurrency,
-    /group: ci-\$\{\{ github\.event\.pull_request\.number \|\| github\.sha \}\}/,
+    /group: ci-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}/,
   );
   assert.match(concurrency, /cancel-in-progress: true/);
   assert.doesNotMatch(workflow, /workflow_call|checkout_ref|preflight/);

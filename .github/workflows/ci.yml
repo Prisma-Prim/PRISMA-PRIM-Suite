@@ -8,9 +8,10 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.sha }}
+  group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -50,6 +51,9 @@ jobs:
     timeout-minutes: 10
     outputs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
+      reuse_all: ${{ steps.proof.outputs.reuse_all }}
+      reuse_api: ${{ steps.proof.outputs.reuse_api }}
+      proof_run: ${{ steps.proof.outputs.proof_run }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -68,6 +72,13 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/ci-change-scope.mjs
+
+      - name: Find verified reusable CI proof
+        id: proof
+        if: ${{ steps.classify.outputs.docs_only != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ci-proof-reuse.mjs
 
   postgres_image:
     needs: scope
@@ -103,7 +114,7 @@ jobs:
 
   api:
     needs: [checks, scope, postgres_image]
-    if: ${{ needs.scope.outputs.docs_only != 'true' }}
+    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_api != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -137,7 +148,7 @@ jobs:
 
   web_unit:
     needs: [checks, scope]
-    if: ${{ needs.scope.outputs.docs_only != 'true' }}
+    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -158,7 +169,7 @@ jobs:
 
   browser:
     needs: [checks, scope]
-    if: ${{ needs.scope.outputs.docs_only != 'true' }}
+    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -201,7 +212,7 @@ jobs:
 
   acceptance:
     needs: [checks, scope, postgres_image]
-    if: ${{ needs.scope.outputs.docs_only != 'true' }}
+    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -256,7 +267,7 @@ jobs:
 
   build:
     needs: [checks, scope]
-    if: ${{ needs.scope.outputs.docs_only != 'true' }}
+    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -274,7 +285,7 @@ jobs:
 
   packaging:
     needs: [checks, scope, postgres_image]
-    if: ${{ needs.scope.outputs.docs_only != 'true' }}
+    if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
