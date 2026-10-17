@@ -10,17 +10,21 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
-import { clockChangeRefusal, localInstant } from './local-instant';
-import { tariffVersionCopy as copy } from './tariff-version.copy';
+import { localInstant } from './local-instant';
+import { useLocalInstantCopy } from './local-instant.copy';
+import {
+  tariffVersionCopy as compatibilityCopy,
+  useTariffVersionCopy,
+} from './tariff-version.copy';
 import './tariff-versions.css';
 
 // The closed illustrative currency set the API accepts.
 const currencies = ['MDL', 'EUR', 'RON', 'USD'] as const;
 type Currency = (typeof currencies)[number];
 
-type TariffVersionState = keyof typeof copy.stateLabels;
+type TariffVersionState = keyof typeof compatibilityCopy.stateLabels;
 
 type TariffVersion = {
   id: string;
@@ -33,7 +37,7 @@ type TariffVersion = {
   taxLabel: string;
   effectiveFrom: string;
   effectiveTo: string | null;
-  provenance: keyof typeof copy.provenanceLabels;
+  provenance: keyof typeof compatibilityCopy.provenanceLabels;
   provisional: true;
   state: TariffVersionState;
   supersession: {
@@ -130,15 +134,35 @@ type PublicationCommand = {
   expectedActiveVersionNumber: number | null;
 };
 
+type ValidationKey =
+  | 'validation'
+  | 'effectiveFromPast'
+  | 'effectiveFromNotAdvancing'
+  | 'windowGap'
+  | 'versionExhausted'
+  | 'idempotencyConflict';
+
+type ValidationField = keyof Draft;
+
+type ValidationFailure =
+  | { kind: 'field'; field: ValidationField }
+  | { kind: 'named'; key: ValidationKey }
+  | {
+      kind: 'clockChange';
+      field: 'effectiveFrom' | 'effectiveTo';
+      change: 'skipped' | 'repeated';
+      zone: string;
+    };
+
 type DraftReading =
   | { kind: 'command'; command: PublicationCommand }
-  | { kind: 'invalid'; message: string };
+  | { kind: 'invalid'; reason: ValidationFailure };
 
 // A definite answer. An uncertain one is not feedback: it leaves its
 // publication unresolved.
 type Feedback =
   | { kind: 'published' | 'unchanged'; versionNumber: number }
-  | { kind: 'invalid'; message: string }
+  | { kind: 'invalid'; reason: ValidationFailure }
   | { kind: 'stale'; headVersionNumber: number | null };
 
 type PublicationOutcome = Feedback | { kind: 'uncertain' };
@@ -180,6 +204,7 @@ export function TariffVersionPanel({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const copy = useTariffVersionCopy();
   const [denied, setDenied] = useState(false);
   const [offerings, setOfferings] = useState<OfferingsState>({
     kind: 'loading',
@@ -1029,6 +1054,7 @@ function LoadOlder({
   disabled: boolean;
   onLoad: (cursor: string) => void;
 }) {
+  const copy = useTariffVersionCopy();
   return (
     <button type="button" disabled={disabled} onClick={() => onLoad(cursor)}>
       {copy.showOlder}
@@ -1039,6 +1065,7 @@ function LoadOlder({
 // Every amount and rate carries its currency or percent sign and the
 // provisional and illustrative markers in the same view.
 function Amounts({ version }: { version: TariffVersion }) {
+  const copy = useTariffVersionCopy();
   return (
     <>
       <span className="tariff-versions-amount">
@@ -1072,6 +1099,7 @@ function VersionSummary({
   version: TariffVersion;
   isHead?: boolean;
 }) {
+  const copy = useTariffVersionCopy();
   return (
     <div className="tariff-versions-version">
       <strong>{copy.versionName(version.versionNumber)}</strong>
@@ -1103,17 +1131,19 @@ function VersionSummary({
 }
 
 function Instant({ value }: { value: string }) {
-  return <time dateTime={value}>{formatApplicationDateTime(value)}</time>;
+  const { formatDateTime } = useInterfaceLocale();
+  return <time dateTime={value}>{formatDateTime(value)}</time>;
 }
 
 function FeedbackMessage({ feedback }: { feedback: Feedback }) {
+  const copy = useTariffVersionCopy();
   switch (feedback.kind) {
     case 'published':
       return <p role="status">{copy.published(feedback.versionNumber)}</p>;
     case 'unchanged':
       return <p role="status">{copy.unchanged(feedback.versionNumber)}</p>;
     case 'invalid':
-      return <p role="alert">{feedback.message}</p>;
+      return <ValidationFeedback reason={feedback.reason} />;
     case 'stale':
       return <p role="alert">{copy.stale(feedback.headVersionNumber)}</p>;
     default: {
@@ -1121,6 +1151,35 @@ function FeedbackMessage({ feedback }: { feedback: Feedback }) {
       return exhaustive;
     }
   }
+}
+
+// Store the validated field/reason, not the language in which it was observed.
+function ValidationFeedback({ reason }: { reason: ValidationFailure }) {
+  const copy = useTariffVersionCopy();
+  const localTimeCopy = useLocalInstantCopy();
+  let message: string;
+  switch (reason.kind) {
+    case 'field':
+      message =
+        reason.field === 'effectiveFrom' || reason.field === 'effectiveTo'
+          ? copy.invalid.window
+          : copy.invalid[reason.field];
+      break;
+    case 'named':
+      message = copy[reason.key];
+      break;
+    case 'clockChange':
+      message =
+        reason.change === 'skipped'
+          ? localTimeCopy.skippedTime[reason.field](reason.zone)
+          : localTimeCopy.repeatedTime[reason.field](reason.zone);
+      break;
+    default: {
+      const exhaustive: never = reason;
+      return exhaustive;
+    }
+  }
+  return <p role="alert">{message}</p>;
 }
 
 function scopePath(offeringId: string): string {
@@ -1182,20 +1241,23 @@ function readDraft({
   zone: string;
 }): DraftReading {
   if (!isText(draft.unit, unitMaximum))
-    return { kind: 'invalid', message: copy.invalid.unit };
+    return { kind: 'invalid', reason: { kind: 'field', field: 'unit' } };
   if (
     !unitAmountGrammar.test(draft.unitAmount) ||
     // Without leading zeros, a value is above zero once any digit is.
     !/[1-9]/u.test(draft.unitAmount)
   )
-    return { kind: 'invalid', message: copy.invalid.unitAmount };
+    return { kind: 'invalid', reason: { kind: 'field', field: 'unitAmount' } };
   const currency = draft.currency;
   if (currency === '')
-    return { kind: 'invalid', message: copy.invalid.currency };
+    return { kind: 'invalid', reason: { kind: 'field', field: 'currency' } };
   if (!taxRatePercentGrammar.test(draft.taxRatePercent))
-    return { kind: 'invalid', message: copy.invalid.taxRatePercent };
+    return {
+      kind: 'invalid',
+      reason: { kind: 'field', field: 'taxRatePercent' },
+    };
   if (!isText(draft.taxLabel, taxLabelMaximum))
-    return { kind: 'invalid', message: copy.invalid.taxLabel };
+    return { kind: 'invalid', reason: { kind: 'field', field: 'taxLabel' } };
   const content = {
     unit: draft.unit,
     unitAmount: draft.unitAmount,
@@ -1205,11 +1267,19 @@ function readDraft({
   };
   const effectiveFrom = localInstant(draft.effectiveFrom);
   if (effectiveFrom.kind === 'malformed')
-    return { kind: 'invalid', message: copy.invalid.window };
+    return {
+      kind: 'invalid',
+      reason: { kind: 'field', field: 'effectiveFrom' },
+    };
   if (effectiveFrom.kind !== 'instant')
     return {
       kind: 'invalid',
-      message: clockChangeRefusal('effectiveFrom', effectiveFrom.kind, zone),
+      reason: {
+        kind: 'clockChange',
+        field: 'effectiveFrom',
+        change: effectiveFrom.kind,
+        zone,
+      },
     };
   if (draft.effectiveTo === '')
     return {
@@ -1222,14 +1292,19 @@ function readDraft({
     };
   const effectiveTo = localInstant(draft.effectiveTo);
   if (effectiveTo.kind === 'malformed')
-    return { kind: 'invalid', message: copy.invalid.window };
+    return { kind: 'invalid', reason: { kind: 'field', field: 'effectiveTo' } };
   if (effectiveTo.kind !== 'instant')
     return {
       kind: 'invalid',
-      message: clockChangeRefusal('effectiveTo', effectiveTo.kind, zone),
+      reason: {
+        kind: 'clockChange',
+        field: 'effectiveTo',
+        change: effectiveTo.kind,
+        zone,
+      },
     };
   if (Date.parse(effectiveTo.instant) <= Date.parse(effectiveFrom.instant))
-    return { kind: 'invalid', message: copy.invalid.window };
+    return { kind: 'invalid', reason: { kind: 'field', field: 'effectiveTo' } };
   return {
     kind: 'command',
     command: {
@@ -1256,24 +1331,24 @@ function isText(value: string, maximum: number): boolean {
 // unresolved publication, and the kept draft is published again under a new
 // key. An idempotency conflict is one of them, since repeating its key could
 // only repeat it. Any answer not named here stays uncertain.
-const publicationRejections: ReadonlyMap<string, string> = new Map([
-  ['400:VALIDATION_ERROR', copy.validation],
-  ['400:EFFECTIVE_FROM_PAST', copy.effectiveFromPast],
-  ['400:EFFECTIVE_FROM_NOT_ADVANCING', copy.effectiveFromNotAdvancing],
-  ['409:EFFECTIVE_WINDOW_GAP', copy.windowGap],
-  ['409:VERSION_EXHAUSTED', copy.versionExhausted],
-  ['409:IDEMPOTENCY_CONFLICT', copy.idempotencyConflict],
+const publicationRejections: ReadonlyMap<string, ValidationKey> = new Map([
+  ['400:VALIDATION_ERROR', 'validation'],
+  ['400:EFFECTIVE_FROM_PAST', 'effectiveFromPast'],
+  ['400:EFFECTIVE_FROM_NOT_ADVANCING', 'effectiveFromNotAdvancing'],
+  ['409:EFFECTIVE_WINDOW_GAP', 'windowGap'],
+  ['409:VERSION_EXHAUSTED', 'versionExhausted'],
+  ['409:IDEMPOTENCY_CONFLICT', 'idempotencyConflict'],
 ]);
 
 // A field-specific validation refusal names the field the owner must change.
-const validationFields: ReadonlyMap<string, string> = new Map([
-  ['unit', copy.invalid.unit],
-  ['unitAmount', copy.invalid.unitAmount],
-  ['currency', copy.invalid.currency],
-  ['taxRatePercent', copy.invalid.taxRatePercent],
-  ['taxLabel', copy.invalid.taxLabel],
-  ['effectiveFrom', copy.invalid.window],
-  ['effectiveTo', copy.invalid.window],
+const validationFields: ReadonlyMap<string, ValidationField> = new Map([
+  ['unit', 'unit'],
+  ['unitAmount', 'unitAmount'],
+  ['currency', 'currency'],
+  ['taxRatePercent', 'taxRatePercent'],
+  ['taxLabel', 'taxLabel'],
+  ['effectiveFrom', 'effectiveFrom'],
+  ['effectiveTo', 'effectiveTo'],
 ]);
 
 function publicationOutcome(
@@ -1299,22 +1374,24 @@ function publicationOutcome(
     if (headVersionNumber === null || isVersionNumber(headVersionNumber))
       return { kind: 'stale', headVersionNumber };
   }
-  const message = refusalMessage(result.status, body);
-  return message ? { kind: 'invalid', message } : { kind: 'uncertain' };
+  const reason = refusalReason(result.status, body);
+  return reason ? { kind: 'invalid', reason } : { kind: 'uncertain' };
 }
 
-function refusalMessage(
+function refusalReason(
   status: number,
   body: Record<string, unknown>,
-): string | undefined {
+): ValidationFailure | undefined {
   if (typeof body.code !== 'string') return undefined;
-  const fieldMessage =
+  const field =
     status === 400 &&
     body.code === 'VALIDATION_ERROR' &&
     typeof body.field === 'string'
       ? validationFields.get(body.field)
       : undefined;
-  return fieldMessage ?? publicationRejections.get(`${status}:${body.code}`);
+  if (field) return { kind: 'field', field };
+  const key = publicationRejections.get(`${status}:${body.code}`);
+  return key ? { kind: 'named', key } : undefined;
 }
 
 function isOfferingPage(value: unknown): value is OfferingPage {
