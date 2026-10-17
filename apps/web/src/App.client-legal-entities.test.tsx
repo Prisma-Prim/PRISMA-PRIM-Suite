@@ -1533,7 +1533,7 @@ describe('Client legal entities and branches', () => {
       expect(within(region).getByRole('status')).toHaveTextContent(
         'Chargement des entités juridiques et succursales…',
       );
-      expect(requests).toHaveLength(1);
+      await waitFor(() => expect(requests).toHaveLength(1));
       pending.resolve(respond({}, 503));
       expect(await within(region).findByRole('alert')).toHaveTextContent(
         'Impossible de charger les entités juridiques et succursales. Le dossier reste disponible.',
