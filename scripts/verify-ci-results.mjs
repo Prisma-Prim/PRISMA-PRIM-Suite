@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 // Always required, whatever the change: the fast checks and the scope
 // classification that decides whether the heavy families may be skipped.
 const alwaysRequiredJobs = ['checks', 'scope'];
-// Skippable only when the scope job succeeded and reported a docs-only change.
+// A skip requires a successful scope and either documentation-only status
+// or an explicit, verified proof for that family. Failed jobs never qualify.
 const heavyJobs = [
   'postgres_image',
   'api',
@@ -20,13 +21,24 @@ export function unsuccessfulJobs(results) {
   const documentationOnly =
     results.scope?.result === 'success' &&
     results.scope?.outputs?.docs_only === 'true';
+  const proof =
+    results.scope?.result === 'success' &&
+    /^[1-9][0-9]*$/u.test(results.scope?.outputs?.proof_run ?? '');
+  const reuseAll = proof && results.scope.outputs.reuse_all === 'true';
+  const reuseApi = proof && results.scope.outputs.reuse_api === 'true';
   const unsuccessful = alwaysRequiredJobs.filter(
     (job) => results[job]?.result !== 'success',
   );
   for (const job of heavyJobs) {
     const result = results[job]?.result;
     if (result === 'success') continue;
-    if (result === 'skipped' && documentationOnly) continue;
+    if (
+      result === 'skipped' &&
+      (documentationOnly ||
+        (job !== 'postgres_image' && reuseAll) ||
+        (job === 'api' && reuseApi))
+    )
+      continue;
     unsuccessful.push(job);
   }
   return unsuccessful.map(

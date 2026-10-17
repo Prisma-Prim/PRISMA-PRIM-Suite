@@ -94,3 +94,61 @@ for (const input of [undefined, '', '{', 'null', '[]', '"success"']) {
     assert.match(child.stderr, /CI_JOB_RESULTS must be a JSON object/);
   });
 }
+
+test('quality accepts explicitly proven reuse but never failed or cancelled suites', () => {
+  const reused = {
+    ...successfulResults,
+    scope: {
+      result: 'success',
+      outputs: {
+        docs_only: 'false',
+        reuse_all: 'true',
+        reuse_api: 'true',
+        proof_run: '123',
+      },
+    },
+  };
+  for (const job of [
+    'api',
+    'web_unit',
+    'browser',
+    'acceptance',
+    'build',
+    'packaging',
+  ])
+    reused[job] = { result: 'skipped' };
+  assert.equal(invoke(reused).status, 0);
+  for (const result of ['failure', 'cancelled'])
+    assert.equal(invoke({ ...reused, api: { result } }).status, 1);
+  for (const proof_run of ['', undefined, 'invalid'])
+    assert.equal(
+      invoke({
+        ...reused,
+        scope: {
+          result: 'success',
+          outputs: { ...reused.scope.outputs, proof_run },
+        },
+      }).status,
+      1,
+    );
+});
+test('an API proof cannot waive a frontend or packaging suite', () => {
+  const scope = {
+    result: 'success',
+    outputs: { docs_only: 'false', reuse_api: 'true', proof_run: '123' },
+  };
+  const results = { ...successfulResults, scope, api: { result: 'skipped' } };
+  assert.equal(invoke(results).status, 0);
+  for (const job of [
+    'web_unit',
+    'browser',
+    'acceptance',
+    'build',
+    'packaging',
+    'postgres_image',
+  ])
+    assert.equal(
+      invoke({ ...results, [job]: { result: 'skipped' } }).status,
+      1,
+    );
+});
