@@ -22,6 +22,8 @@ const fullJobs = [
 ];
 const none = { all: false, api: false, source: null, testedSha: null };
 const shaPattern = /^[a-f0-9]{40}$/u;
+const terminalEscapeError =
+  'the response contains terminal escape sequences; pass --allow-escape-sequences to output it anyway';
 
 function inputEntries(root, apps, web) {
   if (
@@ -217,6 +219,15 @@ export async function chooseReuse(context) {
   return none;
 }
 
+function apiOperation(path) {
+  if (path.startsWith('actions/workflows/')) return 'workflow-runs';
+  if (/^actions\/runs\/[^/]+\/jobs/u.test(path)) return 'run-jobs';
+  if (path.startsWith('actions/jobs/')) return 'job-logs';
+  if (path.startsWith('actions/runs/')) return 'run';
+  if (path.startsWith('git/commits/')) return 'commit';
+  return 'tree';
+}
+
 function git(...args) {
   const value = execFileSync('git', args, { encoding: 'utf8', timeout: 10000 });
   return args.includes('-z') ? value : value.trim();
@@ -262,17 +273,61 @@ async function main() {
       inputs,
     },
     api: async (path, raw = false) => {
-      const value = execFileSync(
-        'gh',
-        ['api', `repos/${process.env.GITHUB_REPOSITORY}/${path}`],
-        {
-          encoding: 'utf8',
-          timeout: 15000,
-          maxBuffer: 10 * 1024 * 1024,
-          stdio: ['ignore', 'pipe', 'pipe'],
-        },
-      );
-      return raw ? value : JSON.parse(value);
+      const operation = apiOperation(path);
+      const started = Date.now();
+      try {
+        const request = (allowEscapes = false) =>
+          execFileSync(
+            'gh',
+            [
+              'api',
+              `repos/${process.env.GITHUB_REPOSITORY}/${path}`,
+              ...(allowEscapes ? ['--allow-escape-sequences'] : []),
+            ],
+            {
+              encoding: 'utf8',
+              timeout: 15000,
+              maxBuffer: 10 * 1024 * 1024,
+              stdio: ['ignore', 'pipe', 'pipe'],
+            },
+          );
+        let value;
+        try {
+          value = request();
+        } catch (error) {
+          if (!raw || !String(error.stderr ?? '').includes(terminalEscapeError))
+            throw error;
+          // gh 2.102 rejects colored text even when piped. Opt in only after
+          // that exact error, for logs captured here and never rendered.
+          // Older gh versions need no flag and remain supported.
+          console.log(
+            `CI_PROOF_API_RETRY operation=${operation} reason=terminal-escapes`,
+          );
+          value = request(true);
+        }
+        const result = raw ? value : JSON.parse(value);
+        console.log(
+          `CI_PROOF_API_SUCCESS operation=${operation} elapsed_ms=${Date.now() - started}`,
+        );
+        return result;
+      } catch (error) {
+        // Never print the error or response: redirects can contain signed URLs.
+        const status = /\(HTTP ([1-5][0-9]{2})\)/u.exec(
+          String(error.stderr ?? ''),
+        )?.[1];
+        const category =
+          error.code === 'ETIMEDOUT'
+            ? 'timeout'
+            : status
+              ? 'http'
+              : error instanceof SyntaxError
+                ? 'decode'
+                : 'process';
+        console.error(
+          `CI_PROOF_API_FAILURE operation=${operation} category=${category}${status ? ` status=${status}` : ''} elapsed_ms=${Date.now() - started}`,
+        );
+        throw error;
+      }
     },
   });
   const output = `reuse_all=${result.all}\nreuse_api=${result.api}\nproof_run=${result.source ?? ''}\n`;

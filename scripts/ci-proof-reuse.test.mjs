@@ -382,12 +382,12 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
     mkdirSync(bin);
     writeFileSync(
       join(bin, 'gh'),
-      `#!${process.execPath}\nconst data = JSON.parse(process.env.PROOF_FIXTURE); const key = process.argv[3].replace('repos/owner/repo/', ''); const value = data[key]; if (value === undefined) process.exit(1); process.stdout.write(typeof value === 'string' ? value : JSON.stringify(value));\n`,
+      `#!${process.execPath}\nif (process.env.PROOF_ERROR) { process.stderr.write(process.env.PROOF_ERROR); process.exit(1); } const data = JSON.parse(process.env.PROOF_FIXTURE); const key = process.argv[3].replace('repos/owner/repo/', ''); const value = data[key]; if (value === undefined) process.exit(1); if (process.env.PROOF_TERMINAL_GUARD && typeof value === 'string' && value.includes('\\x1b') && !process.argv.includes('--allow-escape-sequences')) { process.stderr.write('the response contains terminal escape sequences; pass --allow-escape-sequences to output it anyway'); process.exit(1); } process.stdout.write(typeof value === 'string' ? value : JSON.stringify(value));\n`,
       { mode: 0o700 },
     );
     const output = join(dir, 'output');
     const summary = join(dir, 'summary');
-    const invokeCli = () =>
+    const invokeCli = (extraEnv = {}) =>
       spawnSync(
         process.execPath,
         [fileURLToPath(new URL('./ci-proof-reuse.mjs', import.meta.url))],
@@ -405,6 +405,7 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
             ImageOS: 'ubuntu24',
             ImageVersion: 'test-image',
             PROOF_FIXTURE: JSON.stringify(f.data),
+            ...extraEnv,
           },
         },
       );
@@ -415,6 +416,42 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
       'reuse_all=false\nreuse_api=true\nproof_run=12\n',
     );
     assert.match(readFileSync(summary, 'utf8'), /actions\/runs\/12/);
+    f.data['actions/jobs/2/logs'] +=
+      '2026-10-17T09:00:03Z \x1b[36;1mnode scripts/ci-proof-reuse.mjs\x1b[0m\n';
+    writeFileSync(output, '');
+    const guardedLogs = invokeCli({ PROOF_TERMINAL_GUARD: 'true' });
+    assert.equal(guardedLogs.status, 0, guardedLogs.stderr);
+    assert.equal(
+      readFileSync(output, 'utf8'),
+      'reuse_all=false\nreuse_api=true\nproof_run=12\n',
+      'current gh must allow captured colored logs without changing the proof',
+    );
+    assert.match(
+      guardedLogs.stdout,
+      /CI_PROOF_API_RETRY operation=job-logs reason=terminal-escapes/,
+    );
+    assert.equal(
+      (guardedLogs.stdout + guardedLogs.stderr).includes('\x1b'),
+      false,
+    );
+    writeFileSync(output, '');
+    const failure = invokeCli({
+      PROOF_ERROR:
+        'gh: Forbidden (HTTP 403) token=synthetic-sensitive https://logs.invalid/?signature=synthetic-private',
+    });
+    assert.equal(failure.status, 0, failure.stderr);
+    assert.match(
+      failure.stderr,
+      /CI_PROOF_API_FAILURE operation=workflow-runs category=http status=403/,
+    );
+    assert.doesNotMatch(
+      failure.stdout + failure.stderr + readFileSync(summary, 'utf8'),
+      /synthetic-sensitive|synthetic-private|logs\.invalid/,
+    );
+    assert.equal(
+      readFileSync(output, 'utf8'),
+      'reuse_all=false\nreuse_api=false\nproof_run=\n',
+    );
     writeFileSync(
       join(dir, 'apps/web/package.json'),
       '{"name":"synthetic-web","version":"0.2.0"}',
