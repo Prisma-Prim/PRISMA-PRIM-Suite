@@ -1,8 +1,8 @@
 import { changeValue } from '../test/select-option';
+import { render } from '../test/render-with-interface-locale';
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
