@@ -13,6 +13,7 @@ import { contractPrecontractMessages } from '../contract/contract-precontract.co
 import { contractRuleSetMessages } from '../contract/contract-rule-set.copy';
 import { documentPdfMessages } from '../documents/document-pdf.copy';
 import { offerBindingMessages } from '../offer/offer-binding.copy';
+import { offerPreparationMessages } from '../offer/offer-preparation.copy';
 import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
 import { commercialRequestMessages } from '../commercial-intake/commercial-request.copy';
 import { opportunityOutcomeMessages } from '../commercial-intake/opportunity-outcome.copy';
@@ -53,6 +54,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('contractRuleSet', contractRuleSetMessages);
   assertMessageCoverage('documentPdf', documentPdfMessages);
   assertMessageCoverage('offerBinding', offerBindingMessages);
+  assertMessageCoverage('offerPreparation', offerPreparationMessages);
   assertMessageCoverage('profitability', profitabilityMessages);
   assertMessageCoverage('salesStage', salesStageMessages);
   assertMessageCoverage('clientDirectory', clientDirectoryMessages);

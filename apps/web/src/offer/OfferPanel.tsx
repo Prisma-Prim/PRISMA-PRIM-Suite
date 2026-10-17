@@ -18,7 +18,11 @@ import {
 } from '../client/client-legal-entities-response';
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
-import { offerCopy as copy } from './offer.copy';
+import {
+  useOfferPreparationCopy,
+  useOfferVersionCopy,
+} from './offer-preparation.copy';
+import { useOfferPresentation } from './offer-presentation';
 import { useOfferBindingCopy } from './offer-binding.copy';
 import {
   readOffer,
@@ -35,7 +39,6 @@ import { OfferDecisionPanel } from './OfferDecisionPanel';
 import { OfferTransmissionPanel } from './OfferTransmissionPanel';
 import { OfferClientResponsePanel } from './OfferClientResponsePanel';
 import { OfferVersionHistory } from './OfferVersionHistory';
-import { offerVersionCopy } from './offer.copy';
 import {
   offerDecisionCopy,
   offerTransmissionCopy,
@@ -86,6 +89,9 @@ export function OfferPanel({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const copy = useOfferPreparationCopy();
+  const offerVersionCopy = useOfferVersionCopy();
+  const { formatDateTime, formatDecimal } = useOfferPresentation();
   const companyId = actor.activeCompany?.id;
   const permissions = actor.activeCompany?.offerPermissions ?? [];
   const mayRead = permissions.includes('commercial.offer.read');
@@ -362,8 +368,9 @@ export function OfferPanel({
       if (await reject(result, request.signal)) {
         setView({ kind: 'denied' });
       } else if (result.status === 'ok') {
+        const offer = readOffer(result.value);
         attempt.current = undefined;
-        setView({ kind: 'offer', offer: readOffer(result.value) });
+        setView({ kind: 'offer', offer });
         if (view.kind === 'version') setFeedback('created');
       } else if (result.status === 'notFound') {
         attempt.current = undefined;
@@ -432,7 +439,7 @@ export function OfferPanel({
                 disabled={contentLocked}
                 options={view.snapshots.map((snapshot) => ({
                   value: snapshot.id,
-                  label: `${snapshot.total} ${snapshot.currency} — ${formatApplicationDateTime(snapshot.committedAt)}`,
+                  label: `${formatDecimal(snapshot.total)} ${snapshot.currency} — ${formatDateTime(snapshot.committedAt)}`,
                 }))}
                 onValueChange={(value) => {
                   attempt.current = undefined;
@@ -701,6 +708,9 @@ export function OfferPanel({
 }
 
 function OfferSummary({ offer }: { offer: OfferView }) {
+  const copy = useOfferPreparationCopy();
+  const { formatDateTime, formatDecimal, formatNumber } =
+    useOfferPresentation();
   const version = offer.version;
   const bindingCopy = useOfferBindingCopy();
   return (
@@ -709,11 +719,11 @@ function OfferSummary({ offer }: { offer: OfferView }) {
       <dl>
         <div>
           <dt>{copy.reference}</dt>
-          <dd>{offer.illustrativeReference}</dd>
+          <dd>{formatNumber(offer.illustrativeReference)}</dd>
         </div>
         <div>
           <dt>{copy.version}</dt>
-          <dd>{version.versionNumber}</dd>
+          <dd>{formatNumber(version.versionNumber)}</dd>
         </div>
         <div>
           <dt>{copy.issuingCompany}</dt>
@@ -725,26 +735,27 @@ function OfferSummary({ offer }: { offer: OfferView }) {
         </div>
         <div>
           <dt>{copy.validUntil}</dt>
-          <dd>{formatApplicationDateTime(version.validUntil)}</dd>
+          <dd>{formatDateTime(version.validUntil)}</dd>
         </div>
         <div>
           <dt>{copy.states}</dt>
           <dd>
             {version.clientResponse
-              ? offerClientResponseCopy[version.clientResponse.outcome]
+              ? copy.responseStates[version.clientResponse.outcome]
               : version.transmissionState === 'TRANSMITTED'
-                ? offerTransmissionCopy.success
+                ? copy.transmittedState
                 : version.decisionState === 'PENDING'
                   ? copy.stateValue
                   : version.decisionState === 'APPROVED'
-                    ? offerDecisionCopy.approvedState
-                    : offerDecisionCopy.rejectedState}
+                    ? copy.approvedState
+                    : copy.rejectedState}
           </dd>
         </div>
         <div>
           <dt>{copy.snapshotTotal}</dt>
           <dd>
-            {version.pricingSnapshot.total} {version.pricingSnapshot.currency}
+            {formatDecimal(version.pricingSnapshot.total)}{' '}
+            {version.pricingSnapshot.currency}
           </dd>
         </div>
       </dl>
@@ -903,8 +914,8 @@ function OfferSummary({ offer }: { offer: OfferView }) {
             {version.decisionState === 'PENDING'
               ? copy.draftState
               : version.decisionState === 'APPROVED'
-                ? offerDecisionCopy.approvedViewer
-                : offerDecisionCopy.rejectedViewer}
+                ? copy.approvedViewer
+                : copy.rejectedViewer}
           </strong>
         </p>
         <dl>

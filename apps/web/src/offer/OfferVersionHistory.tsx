@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import type { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import { formatApplicationDateTime } from '../presentation/date-time';
-import { offerVersionCopy as copy } from './offer.copy';
+import { useOfferVersionCopy } from './offer-preparation.copy';
+import { useOfferPresentation } from './offer-presentation';
 import {
   readOfferDetail,
   readOfferVersionPage,
   type OfferView,
   type OfferVersionPage,
+  type OfferDifferenceView,
 } from './offer-response';
 
 export function OfferVersionHistory({
@@ -29,6 +30,8 @@ export function OfferVersionHistory({
   ) => ReturnType<typeof handleAuthenticatedAccessRejection>;
   onSelect: (offer: OfferView) => void;
 }) {
+  const copy = useOfferVersionCopy();
+  const { formatDateTime, formatDecimal } = useOfferPresentation();
   const [page, setPage] = useState<OfferVersionPage>({
     versions: [],
     nextCursor: null,
@@ -92,12 +95,36 @@ export function OfferVersionHistory({
       if (!request.signal.aborted) setState('error');
     }
   }
-  const differenceValue = (value: string | number | null) =>
-    value === null
-      ? copy.absent
-      : value === ''
-        ? copy.emptyText
-        : String(value);
+  function differenceValue(
+    field: OfferDifferenceView['field'],
+    value: string | number | null,
+  ): string {
+    if (value === null) return copy.absent;
+    if (value === '') return copy.emptyText;
+    switch (field) {
+      case 'total':
+      case 'validityDays':
+        return formatDecimal(String(value));
+      case 'validUntil':
+        return typeof value === 'string' && Number.isFinite(Date.parse(value))
+          ? formatDateTime(value)
+          : String(value);
+      case 'recipientKind':
+      case 'recipientAdditionalLegalEntityId':
+      case 'recipientLegalName':
+      case 'recipientTaxId':
+      case 'recipientLegalAddress':
+      case 'pricingSnapshotId':
+      case 'currency':
+      case 'scopeNote':
+      case 'commercialConditions':
+        return String(value);
+      default: {
+        const exhaustive: never = field;
+        return exhaustive;
+      }
+    }
+  }
   return (
     <div className="offer-version-history">
       <h5>{copy.title}</h5>
@@ -126,7 +153,7 @@ export function OfferVersionHistory({
             >
               {copy.open(version.versionNumber)}
             </button>{' '}
-            <span>{formatApplicationDateTime(version.createdAt)}</span>
+            <span>{formatDateTime(version.createdAt)}</span>
           </li>
         ))}
       </ul>
@@ -155,10 +182,11 @@ export function OfferVersionHistory({
                   {field.changed ? copy.changed : copy.unchanged}
                 </dt>
                 <dd>
-                  {copy.previous}: {differenceValue(field.previous)}
+                  {copy.previous}:{' '}
+                  {differenceValue(field.field, field.previous)}
                 </dd>
                 <dd>
-                  {copy.current}: {differenceValue(field.current)}
+                  {copy.current}: {differenceValue(field.field, field.current)}
                 </dd>
               </div>
             ))}
