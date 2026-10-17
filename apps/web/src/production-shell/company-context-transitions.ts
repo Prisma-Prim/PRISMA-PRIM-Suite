@@ -77,6 +77,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_opportunity_manager_assignment.revoked'
     | 'company_sales_stage_configuration_assignment.granted'
     | 'company_sales_stage_configuration_assignment.revoked'
+    | 'company_project_template_user_assignment.granted'
+    | 'company_project_template_user_assignment.revoked'
     | 'company_project_approver_assignment.granted'
     | 'company_project_approver_assignment.revoked'
     | 'company.registered'

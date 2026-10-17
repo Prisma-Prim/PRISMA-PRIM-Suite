@@ -2,6 +2,7 @@ import {
   useDocumentPdfCopy,
   type DocumentPdfCopy,
 } from './documents/document-pdf.copy';
+import { useProjectTemplateCopy } from './project/project-template.copy';
 import { taskCopy } from './project/task.copy';
 import { useAppCopy } from './app.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
@@ -763,6 +764,7 @@ function ActivityLog({
     useWorkspaceInvitationsCopy().activityActionLabels;
   const stageCopy = useSalesStageCopy();
   const pdfActionLabels = useDocumentPdfCopy().activityActionLabels;
+  const templateCopy = useProjectTemplateCopy();
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">
       <div className="activity-log-heading">
@@ -798,6 +800,7 @@ function ActivityLog({
                       invitationActivityActionLabels,
                       stageCopy,
                       pdfActionLabels,
+                      templateCopy,
                     )}
                   </strong>
                   <span id={openedRequest ? targetId : undefined}>
@@ -840,6 +843,7 @@ function activityDescription(
   >['activityActionLabels'],
   stageCopy: SalesStageCopy,
   pdfActionLabels: DocumentPdfCopy['activityActionLabels'],
+  templateCopy: ReturnType<typeof useProjectTemplateCopy>,
 ): string {
   const actorName =
     'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
@@ -874,6 +878,8 @@ function activityDescription(
     ...contractActivityCopy.actionLabels,
     ...invitationActivityActionLabels,
     ...pdfActionLabels,
+    'company_project_template_user_assignment.granted': templateCopy('granted'),
+    'company_project_template_user_assignment.revoked': templateCopy('revoked'),
     'opportunity.stage.changed': stageCopy('activityStageChanged'),
     'sales_stage.configured': stageCopy('activitySalesStageConfigured'),
     'company_sales_stage_configuration_assignment.granted': stageCopy(

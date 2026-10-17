@@ -81,6 +81,12 @@ export const tasks = pgTable(
       table.cancelledByDisplayName,
     ];
     return [
+      uniqueIndex('tasks_project_scope_id_unique').on(
+        table.workspaceId,
+        table.companyId,
+        table.projectId,
+        table.id,
+      ),
       uniqueIndex('tasks_scope_id_unique').on(
         table.workspaceId,
         table.companyId,

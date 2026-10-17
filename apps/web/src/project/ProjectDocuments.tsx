@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
+import { companyAuthorityWithoutProjectTemplate } from './project-authority';
 import type { BrowserIdentity } from '../access-composition';
 import {
   conflictCode,
@@ -50,7 +51,7 @@ export function ProjectDocuments(props: Props) {
     props.projectId,
     props.actor.workspaceId,
     props.actor.workspaceMembershipId,
-    props.actor.activeCompany,
+    companyAuthorityWithoutProjectTemplate(props.actor.activeCompany),
     props.actor.workspacePermissions,
   ]);
   return <ProjectDocumentSession key={authority} {...props} />;

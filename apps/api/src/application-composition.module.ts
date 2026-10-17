@@ -1,6 +1,9 @@
 import { DocumentContentController } from './documents/document-content.controller.js';
 import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
 import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
+import { ProjectTemplateModule } from './project-template/project-template.module.js';
+import { ProjectTemplateController } from './project-template/project-template.controller.js';
+import { CompanyProjectTemplateUserAssignmentController } from './access/company-project-template-user-assignment.controller.js';
 import { ContractAgreementsController } from './contract/contract-agreements.controller.js';
 import { ContractModule } from './contract/contract.module.js';
 import {
@@ -95,6 +98,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    ProjectTemplateModule,
     TaskModule,
     DocumentsModule,
     ProjectModule,
@@ -114,6 +118,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    ProjectTemplateController,
+    CompanyProjectTemplateUserAssignmentController,
     ProjectContractsController,
     TaskController,
     CompanyTaskManagerAssignmentController,

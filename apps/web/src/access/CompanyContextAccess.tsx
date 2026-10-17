@@ -1,4 +1,5 @@
 import { useDocumentPdfCopy } from '../documents/document-pdf.copy';
+import { useProjectTemplateCopy } from '../project/project-template.copy';
 import { useSalesStageCopy } from '../commercial-intake/sales-stage.copy';
 import { useContractDecisionCopy } from '../contract/contract-decision.copy';
 import {
@@ -49,6 +50,7 @@ type AssignmentBundle =
   | 'commercial-activity-reader'
   | 'opportunity-manager'
   | 'sales-stage-configuration'
+  | 'project-template-user'
   | 'project'
   | 'project-approver'
   | 'profitability-contributor'
@@ -80,6 +82,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
     '/company-commercial-activity-reader-assignments',
   'opportunity-manager': '/company-opportunity-manager-assignments',
   'sales-stage-configuration': '/company-sales-stage-configuration-assignments',
+  'project-template-user': '/company-project-template-user-assignments',
   project: '/company-project-assignments',
   'project-approver': '/company-project-approver-assignments',
 };
@@ -115,6 +118,7 @@ export function CompanyContextAccess({
   const profitabilityCopy = useProfitabilityCopy();
   const decisionCopy = useContractDecisionCopy();
   const stageCopy = useSalesStageCopy();
+  const templateCopy = useProjectTemplateCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -530,6 +534,7 @@ export function CompanyContextAccess({
                 value: 'sales-stage-configuration',
                 label: stageCopy('configurationBundle'),
               },
+              { value: 'project-template-user', label: templateCopy('bundle') },
               { value: 'director-client', label: copy.directorClientBundle },
               {
                 value: 'document-project-organizer',
@@ -573,6 +578,7 @@ export function CompanyContextAccess({
                 value === 'commercial-activity-reader' ||
                 value === 'opportunity-manager' ||
                 value === 'sales-stage-configuration' ||
+                value === 'project-template-user' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
@@ -627,6 +633,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'opportunity-manager' && (
             <p>{copy.opportunityManagerPrerequisites}</p>
+          )}
+          {bundle === 'project-template-user' && (
+            <p>{templateCopy('prerequisites')}</p>
           )}
           {bundle === 'sales-stage-configuration' && (
             <p>{stageCopy('configurationPrerequisites')}</p>
@@ -724,6 +733,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'commercial-activity-reader': copy.commercialActivityReaderBundle,
     'opportunity-manager': copy.opportunityManagerBundle,
     'sales-stage-configuration': 'Company Sales Stage Configuration',
+    'project-template-user': 'Company Project Template User',
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,
     'document-registrar': 'Company Document Registrar',

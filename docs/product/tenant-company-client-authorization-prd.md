@@ -256,6 +256,20 @@ assignment is revalidated transactionally, including direct submitted identifier
 assignment itself grants no access. The Project/Task PRD owns the lifecycle and
 preserved attribution when a responsible member later becomes ineligible.
 
+The [provisional illustrative Project Template creation journey](release-1-project-task-prd.md#24-approved-provisional-creation-from-an-illustrative-template-634)
+adds the explicitly assigned **Company Project Template User v1**, containing
+exactly `project.template.read` and `project.template.instantiate`. Company context,
+Project and Client read, Project creation and Task authority remain independent
+prerequisites owned by that contract. It grants no publishing, stage, lifecycle
+or assignment authority and expands no existing captured permission set. Null or
+unknown versions fail closed; no migration or first-user backfill grants it.
+
+Its `company_project_template_user_assignment.granted` and
+`company_project_template_user_assignment.revoked` follow this section's existing
+Company-scoped assignment administration and minimal bundle-label Activity
+convention. Each actual grant/revocation records one transition, and exact retries
+record none. No user or business title substitutes for the explicit assignment.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.
