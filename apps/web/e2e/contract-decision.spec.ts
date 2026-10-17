@@ -281,7 +281,9 @@ for (const locale of interfaceLocales)
       await page.reload();
       await page
         .getByRole('button')
-        .filter({ has: page.getByText(detail(id).subject, { exact: true }) })
+        .filter({
+          has: page.getByText('Synthetic ' + id + ' Request', { exact: true }),
+        })
         .click();
     }
     await open('approve');
@@ -324,7 +326,7 @@ for (const locale of interfaceLocales)
     await page
       .getByRole('button')
       .filter({
-        has: page.getByText(detail('approve').subject, { exact: true }),
+        has: page.getByText('Synthetic approve Request', { exact: true }),
       })
       .click();
     decision = page.getByRole('region', { name: copy('title'), exact: true });

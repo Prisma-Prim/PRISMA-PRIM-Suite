@@ -1512,11 +1512,17 @@ test('follows one commercial case from Request to signed agreement, Project and 
           }),
         ).toBeVisible();
         async function expectPrecontractContent(): Promise<void> {
+          await expect(
+            page.getByRole('combobox', {
+              name: 'Interface language',
+              exact: true,
+            }),
+          ).toHaveText('English');
           for (const [label, value] of [
             ['Preliminary work scope', entered.preliminaryScope],
             ['Preliminary financial conditions', entered.preliminaryConditions],
             ['Limits until the Contract', entered.preliminaryLimits],
-            ['Term end', entered.precontractTermEnd],
+            ['Term end', 'Dec 31, 2099'],
           ])
             await expect(
               contract
@@ -2270,7 +2276,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await reopenAddendum(journey);
       await expect(
         contract.getByRole('definition').filter({
-          hasText: new RegExp(`^${entered.addendumTermEnd}$`, 'u'),
+          hasText: /^Jun 30, 2100$/u,
         }),
       ).toBeVisible();
       // The Addendum copies its executed parent's current identity. Its new
@@ -2329,7 +2335,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       ).toBeVisible();
       await expect(
         contract.getByRole('definition').filter({
-          hasText: new RegExp(`^${entered.addendumTermEnd}$`, 'u'),
+          hasText: /^Jun 30, 2100$/u,
         }),
       ).toBeVisible();
       await actAndRead({

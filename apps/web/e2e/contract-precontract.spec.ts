@@ -1,3 +1,4 @@
+import { contractMessages } from '../src/contract/contract.copy';
 import { expect, test } from '@playwright/test';
 import { contractDecisionMessages } from '../src/contract/contract-decision.copy';
 import { contractPrecontractMessages } from '../src/contract/contract-precontract.copy';
@@ -24,13 +25,20 @@ const actor = {
   activeCompany: {
     ...company,
     clientPermissions: ['client.read'],
-    offerPermissions: ['commercial.offer.read'],
+    offerPermissions: [
+      'commercial.offer.read',
+      'commercial.offer.prepare',
+      'commercial.offer.transmission.record',
+      'commercial.pricing.snapshot.read',
+    ],
     offerPermissionAssignmentId: 'offer-one',
     offerPermissionSetVersion: 'v1',
     contractPermissions: [
       'commercial.contract.read',
       'commercial.contract.prepare',
+      'commercial.contract.project.link',
       'commercial.contract.approve',
+      'commercial.contract.signature.record',
     ],
     contractApproverAssignmentId: 'approver-one',
     contractApproverPermissionSetVersion: 'v1',
@@ -46,10 +54,11 @@ const actor = {
     commercialIntakePermissionSetVersion: 'v1',
   },
 } satisfies ActorContext;
+const requestSubject = 'Precontract Request';
 const detail = buildClientRequest({
   id: 'request-one',
   companyId: company.id,
-  subject: 'Precontract Request',
+  subject: requestSubject,
   originalText: 'Synthetic captured evidence',
   capturedByWorkspaceMembershipId: 'member-one',
   capturedAt: '2026-10-07T06:00:00.000Z',
@@ -295,9 +304,12 @@ for (const locale of interfaceLocales)
       await page.goto('/?frame=prisme#requests');
       await page
         .getByRole('button')
-        .filter({ has: page.getByText(detail.subject, { exact: true }) })
+        .filter({ has: page.getByText(requestSubject, { exact: true }) })
         .click();
-      const panel = page.getByRole('region', { name: 'Contract', exact: true });
+      const panel = page.getByRole('region', {
+        name: resolveMessage(contractMessages, locale, 'title'),
+        exact: true,
+      });
       const editor = panel.getByRole('region', {
         name: copy('create'),
         exact: true,
