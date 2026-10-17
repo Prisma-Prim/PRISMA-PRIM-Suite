@@ -91,29 +91,35 @@ async function readProof(api, run, context, allowApiReuse = false) {
   const { jobs, total_count: count } = await api(
     `actions/runs/${run.id}/jobs?filter=latest&per_page=100`,
   );
-  if (count !== fullJobs.length || jobs.length !== fullJobs.length)
-    return undefined;
+  if (!Array.isArray(jobs)) return undefined;
   const executed = (job) =>
     job?.conclusion === 'success' && job.runner_name && job.steps?.length > 0;
   const apiNames = fullJobs.filter((name) => name.startsWith('api ('));
   const apiExecuted = apiNames.every((name) =>
     executed(jobs.find((job) => job.name === name)),
   );
+  const skippedApi = jobs.find((job) => job.name === 'api');
+  // GitHub evaluates the job condition before expanding a skipped matrix.
   const apiSkipped =
     allowApiReuse &&
-    apiNames.every(
-      (name) => jobs.find((job) => job.name === name)?.conclusion === 'skipped',
-    );
+    skippedApi?.status === 'completed' &&
+    skippedApi.conclusion === 'skipped' &&
+    skippedApi.runner_id === null &&
+    skippedApi.runner_name === null &&
+    Array.isArray(skippedApi.steps) &&
+    skippedApi.steps.length === 0;
+  const expectedJobs = apiSkipped
+    ? [...fullJobs.filter((name) => !apiNames.includes(name)), 'api']
+    : fullJobs;
   if (
-    !fullJobs.every(
+    count !== expectedJobs.length ||
+    jobs.length !== expectedJobs.length ||
+    !expectedJobs.every(
       (name) =>
         jobs.filter(
           (job) =>
             job.name === name &&
-            (executed(job) ||
-              (apiSkipped &&
-                apiNames.includes(name) &&
-                job.conclusion === 'skipped')),
+            (executed(job) || (apiSkipped && name === 'api')),
         ).length === 1,
     )
   )
