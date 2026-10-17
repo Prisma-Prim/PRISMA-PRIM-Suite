@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
@@ -16,10 +16,15 @@ import {
 } from '../localization/interface-locale';
 import { resolveMessage } from '../localization/messages';
 import { offerBindingMessages } from './offer-binding.copy';
+import { offerPreparationMessages } from './offer-preparation.copy';
 import { OfferPanel } from './OfferPanel';
 
 const identity = deterministicBrowserIdentity({
   'x-test-external-subject': 'offer-preparer',
+});
+
+beforeEach(() => {
+  window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
 });
 
 afterEach(() => {
@@ -1377,15 +1382,7 @@ describe('OfferPanel', () => {
     const revoked = actor('company-one');
     if (!revoked.activeCompany) throw new Error('Expected active Company');
     revoked.activeCompany.offerPermissions = [];
-    rendered.rerender(
-      <OfferPanel
-        actor={revoked}
-        identity={identity}
-        opportunityId="opportunity-one"
-        currentClientId="client-one"
-        onCompanyContextRejected={() => undefined}
-      />,
-    );
+    rendered.rerender(panel(revoked, 'opportunity-one'));
     expect(
       await screen.findByText(
         'Offer access is not available for this Opportunity.',
@@ -1787,13 +1784,11 @@ describe('OfferPanel', () => {
         posts.push(init);
         return response(adjustedOfferView(), 201);
       });
-      render(
-        <InterfaceLocaleProvider>
-          {panel(actor('company-one'), 'opportunity-one')}
-        </InterfaceLocaleProvider>,
-      );
+      render(panel(actor('company-one'), 'opportunity-one'));
       fireEvent.click(
-        await screen.findByRole('button', { name: 'Prepare version 1' }),
+        await screen.findByRole('button', {
+          name: resolveMessage(offerPreparationMessages, locale, 'prepare'),
+        }),
       );
       const copy = (key: 'ruleSet' | 'adjustedSnapshot') =>
         resolveMessage(offerBindingMessages, locale, key);
@@ -1806,7 +1801,13 @@ describe('OfferPanel', () => {
         screen.getByText(adjustedOfferView().version.representation.sha256),
       ).toBeVisible();
       expect(
-        screen.getByTitle('Illustrative Offer representation'),
+        screen.getByTitle(
+          resolveMessage(
+            offerPreparationMessages,
+            locale,
+            'representationFrame',
+          ),
+        ),
       ).toHaveAttribute(
         'srcdoc',
         adjustedOfferView().version.representation.html,
@@ -2005,14 +2006,16 @@ function panel(
   currentIdentity = identity,
 ) {
   return (
-    <OfferPanel
-      actor={currentActor}
-      identity={currentIdentity}
-      opportunityId={opportunityId}
-      currentClientId="client-one"
-      clientDisplayName="Primary Client"
-      onCompanyContextRejected={() => undefined}
-    />
+    <InterfaceLocaleProvider>
+      <OfferPanel
+        actor={currentActor}
+        identity={currentIdentity}
+        opportunityId={opportunityId}
+        currentClientId="client-one"
+        clientDisplayName="Primary Client"
+        onCompanyContextRejected={() => undefined}
+      />
+    </InterfaceLocaleProvider>
   );
 }
 
