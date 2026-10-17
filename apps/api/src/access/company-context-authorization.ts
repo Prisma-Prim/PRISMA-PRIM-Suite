@@ -66,6 +66,8 @@ import {
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialIntakeVersionsWith,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+  projectTemplatePermissionsFor,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
   salesStageConfigurationPermissionsFor,
   isOpportunityManagerPermissionSetVersion,
@@ -433,6 +435,15 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  // A source catalogue contains no Client or Project records. Validate the
+  // live captured Project read permission without granting access to that data.
+  async requireProjectReadPermission(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    return this.requireProjectPermissionAssignment(actor, ['v1', 'v2'], lock);
+  }
+
   // Every delivered Project read and create accepts either captured version.
   async requireProjectAccess(
     actor: ActorContext,
@@ -497,7 +508,7 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
-  private async requireProjectAssignment(
+  private async requireProjectPermissionAssignment(
     actor: ActorContext,
     capturedVersions: readonly CompanyProjectPermissionSetVersion[],
     lock: boolean,
@@ -554,6 +565,19 @@ export class CompanyContextAuthorization {
       );
     const rows = lock ? await query.for('share') : await query;
     if (rows.length === 0) throw new ForbiddenException();
+    return companyId;
+  }
+
+  private async requireProjectAssignment(
+    actor: ActorContext,
+    capturedVersions: readonly CompanyProjectPermissionSetVersion[],
+    lock: boolean,
+  ): Promise<string> {
+    const companyId = await this.requireProjectPermissionAssignment(
+      actor,
+      capturedVersions,
+      lock,
+    );
     if (!actor.workspacePermissions.includes('client.manage')) {
       const clientQuery = this.databaseContext.connection
         .select({ id: companyRoleAssignments.id })
@@ -1268,6 +1292,7 @@ export class CompanyContextAuthorization {
         COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
         COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
         COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
+        COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
@@ -1449,6 +1474,16 @@ export class CompanyContextAuthorization {
         company.opportunityManagerPermissionAssignmentId = row.assignmentId;
         company.opportunityManagerPermissionSetVersion =
           row.permissionSetVersion;
+      }
+      if (
+        row.bundle === COMPANY_PROJECT_TEMPLATE_USER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.projectTemplatePermissions = [
+          ...projectTemplatePermissionsFor(row.permissionSetVersion),
+        ];
+        company.projectTemplatePermissionAssignmentId = row.assignmentId;
+        company.projectTemplatePermissionSetVersion = 'v1';
       }
       // The configuration bundle carries Sales Stage configuration only. It
       // never contributes Company context; its prerequisites are evaluated

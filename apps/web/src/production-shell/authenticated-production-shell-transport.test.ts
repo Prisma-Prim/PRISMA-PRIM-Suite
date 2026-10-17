@@ -177,6 +177,7 @@ const legitimateTargets: Array<
     'company_commercial_activity_reader_assignment',
     'company_opportunity_manager_assignment',
     'company_sales_stage_configuration_assignment',
+    'company_project_template_user_assignment',
     'company_context_assignment',
     'company_director_client_assignment',
     'company_document_project_organizer_assignment',

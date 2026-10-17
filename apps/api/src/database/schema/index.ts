@@ -24,3 +24,4 @@ export * from './contract.js';
 export * from './profitability-estimate.js';
 
 export * from './document-pdfs.js';
+export * from './project-template.js';

@@ -14,7 +14,10 @@ import { CompanyContextAuthorization } from '../access/company-context-authoriza
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DatabaseContext } from '../database/database-context.js';
-import { projects } from '../database/schema/index.js';
+import {
+  projects,
+  projectTemplateInstances,
+} from '../database/schema/index.js';
 import { isOpenProjectStatus } from './project-status.js';
 
 type ProjectRow = typeof projects.$inferSelect;
@@ -83,6 +86,24 @@ export class ProjectService {
     body: unknown,
     key: string | undefined,
   ) {
+    return this.registerWithinTransaction(actor, body, key, true);
+  }
+
+  /** A composed creation owns its receipt; never attach it to an existing manual Project. */
+  async createNewWithinTransaction(
+    actor: ActorContext,
+    body: unknown,
+    key: string,
+  ) {
+    return this.registerWithinTransaction(actor, body, key, false);
+  }
+
+  private async registerWithinTransaction(
+    actor: ActorContext,
+    body: unknown,
+    key: string | undefined,
+    allowExisting: boolean,
+  ) {
     if (
       !isRecord(body) ||
       Object.keys(body).some(
@@ -122,14 +143,28 @@ export class ProjectService {
       );
     if (existing) {
       if (
-        existing.title !== title ||
-        existing.clientAccountId !== clientAccountId ||
-        existing.companyId !== companyId
-      )
-        throw new ConflictException(
-          'Idempotency-Key was already used for another Project.',
-        );
-      return this.view(actor, existing);
+        allowExisting &&
+        existing.title === title &&
+        existing.clientAccountId === clientAccountId &&
+        existing.companyId === companyId
+      ) {
+        const [templateInstance] = await this.databaseContext.connection
+          .select({ projectId: projectTemplateInstances.projectId })
+          .from(projectTemplateInstances)
+          .where(
+            and(
+              eq(projectTemplateInstances.workspaceId, actor.workspaceId),
+              eq(projectTemplateInstances.companyId, companyId),
+              eq(projectTemplateInstances.projectId, existing.id),
+            ),
+          )
+          .limit(1);
+        // A Template intent cannot be replayed as a manual creation command.
+        if (!templateInstance) return this.view(actor, existing);
+      }
+      throw new ConflictException(
+        'Idempotency-Key was already used for another Project.',
+      );
     }
     await this.clients.recordReferenceUse(actor, clientAccountId);
     const [project] = await this.databaseContext.connection

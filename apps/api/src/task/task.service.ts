@@ -406,40 +406,101 @@ export class TaskService {
             input.assigneeMembershipId,
           )
         : null;
-      await this.clients.recordReferenceUse(actor, project.clientAccountId);
-      const [created] = await this.database.connection
-        .insert(tasks)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          projectId,
-          clientAccountId: project.clientAccountId,
-          title: input.title,
-          assigneeMembershipId: assignee?.workspaceMembershipId ?? null,
-          assigneeDisplayLabel: assignee?.displayLabel ?? null,
-          dueDate: input.dueDate,
-          priority: input.priority ?? DEFAULT_TASK_PRIORITY,
-          createdByInternalUserId: actor.internalUserId,
-          createdByMembershipId: actor.workspaceMembershipId,
-          createdByDisplayName: actor.displayName,
-        })
-        .returning();
-      if (!created) throw new Error('Task creation was not recorded.');
-      const result = view(created);
-      await this.accountability.recordTaskEvent({
+      const result = await this.recordNewTask({
         actor,
         companyId,
-        taskId: result.id,
-        occurredAt: created.createdAt,
-        meaning: {
-          action: 'task.created',
-          metadata: { version: result.version, initial: fields(result) },
+        project,
+        fields: {
+          title: input.title,
+          assignee,
+          dueDate: input.dueDate,
+          priority: input.priority ?? DEFAULT_TASK_PRIORITY,
         },
       });
       await this.recordCommand(actor, idempotencyKey, command, result);
       return result;
     });
   }
+  /**
+   * The caller owns the transaction and full creation receipt. Copies retain
+   * normal Task authority, lifecycle, history and Client-fence semantics.
+   */
+  async createTemplateCopiesWithinTransaction(input: {
+    actor: ActorContext;
+    projectId: string;
+    titles: readonly string[];
+  }): Promise<TaskView[]> {
+    const values = input.titles.map((title) => createInput({ title }));
+    const companyId = await this.access.requireActor(input.actor, true, true);
+    const project = await this.projects.read(input.actor, input.projectId);
+    await this.clients.lockActiveReferenceClient(
+      input.actor,
+      project.clientAccountId,
+    );
+    await this.closedProjects.requireOpen({
+      actor: input.actor,
+      companyId,
+      projectId: project.id,
+    });
+    const created: TaskView[] = [];
+    for (const value of values) {
+      created.push(
+        await this.recordNewTask({
+          actor: input.actor,
+          companyId,
+          project,
+          fields: {
+            title: value.title,
+            assignee: null,
+            dueDate: null,
+            priority: DEFAULT_TASK_PRIORITY,
+          },
+        }),
+      );
+    }
+    return created;
+  }
+
+  private async recordNewTask(input: {
+    actor: ActorContext;
+    companyId: string;
+    project: { id: string; clientAccountId: string };
+    fields: TaskFields;
+  }): Promise<TaskView> {
+    const { actor, companyId, project, fields: initial } = input;
+    await this.clients.recordReferenceUse(actor, project.clientAccountId);
+    const [created] = await this.database.connection
+      .insert(tasks)
+      .values({
+        workspaceId: actor.workspaceId,
+        companyId,
+        projectId: project.id,
+        clientAccountId: project.clientAccountId,
+        title: initial.title,
+        assigneeMembershipId: initial.assignee?.workspaceMembershipId ?? null,
+        assigneeDisplayLabel: initial.assignee?.displayLabel ?? null,
+        dueDate: initial.dueDate,
+        priority: initial.priority,
+        createdByInternalUserId: actor.internalUserId,
+        createdByMembershipId: actor.workspaceMembershipId,
+        createdByDisplayName: actor.displayName,
+      })
+      .returning();
+    if (!created) throw new Error('Task creation was not recorded.');
+    const result = view(created);
+    await this.accountability.recordTaskEvent({
+      actor,
+      companyId,
+      taskId: result.id,
+      occurredAt: created.createdAt,
+      meaning: {
+        action: 'task.created',
+        metadata: { version: result.version, initial: fields(result) },
+      },
+    });
+    return result;
+  }
+
   async edit(
     actor: ActorContext,
     taskId: unknown,

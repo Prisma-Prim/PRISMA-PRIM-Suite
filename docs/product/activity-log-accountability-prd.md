@@ -115,6 +115,14 @@ events. Assignment grant/revoke uses
 `company_task_manager_assignment.revoked` with existing administration visibility.
 No event mutation/deletion route or general member-directory exposure is added.
 
+For the [provisional illustrative Project Template creation journey](release-1-project-task-prd.md#24-approved-provisional-creation-from-an-illustrative-template-634),
+one successful creation records the ordinary `project.created` and four ordinary
+`task.created` events together with the Project, immutable copied provenance,
+Task instances and durable creation identity. The original events retain server
+actor/time and their existing projections; no stage-completion event is invented.
+Failed creation and exact committed replay add no event. The dedicated Company
+Project Template User grant/revocation follows the authorization PRD §8 convention.
+
 For the [Project responsible member](release-1-project-task-prd.md#21-approved-project-responsible-member-367) slice, each material change records one `project.responsible.changed` event targeting the Project. It records the server actor membership and time, the resulting responsibility revision, and the previous and new responsible member (membership identifier and display label, or none). The event commits with the responsibility, command receipt and original Client fence. Rejected commands, no-ops and exact replays record none. Projection requires the same current Project read and original Client/Company boundary as `project.created`; Workspace ownership or Client visibility alone discloses nothing. No email or other member-directory data is recorded.
 
 For the [provisional Project lifecycle](release-1-project-task-prd.md#23-approved-provisional-project-lifecycle-406), each committed transition records one `project.lifecycle.changed` event targeting the Project. The event is written in the same transaction as the status change, the lifecycle revision increment, the transition record, the durable receipt and the original Client operational-use fence advance. It records the server actor membership and time.

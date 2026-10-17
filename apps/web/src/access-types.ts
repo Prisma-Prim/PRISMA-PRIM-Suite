@@ -105,6 +105,11 @@ export interface ActorContext {
     >;
     opportunityManagerPermissionAssignmentId?: string;
     opportunityManagerPermissionSetVersion?: 'v1' | 'v2';
+    projectTemplatePermissions?: Array<
+      'project.template.read' | 'project.template.instantiate'
+    >;
+    projectTemplatePermissionAssignmentId?: string;
+    projectTemplatePermissionSetVersion?: 'v1';
     salesStageConfigurationPermissions?: Array<'commercial.sales_stage.configure'>;
     salesStageConfigurationPermissionAssignmentId?: string;
     salesStageConfigurationPermissionSetVersion?: 'v1';

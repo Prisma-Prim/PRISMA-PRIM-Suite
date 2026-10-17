@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { companyAuthorityWithoutProjectTemplate } from './project-authority';
 import {
   conflictCode,
   createAuthenticatedApiClient,
@@ -248,7 +249,7 @@ export function ProjectTasks(props: Props) {
     actor.workspaceMembershipId,
     actor.active,
     actor.workspacePermissions,
-    actor.activeCompany,
+    companyAuthorityWithoutProjectTemplate(actor.activeCompany),
   ]);
   return <TaskProjects key={authority} {...props} />;
 }
