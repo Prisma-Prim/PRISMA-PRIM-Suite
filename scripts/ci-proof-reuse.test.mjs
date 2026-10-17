@@ -479,18 +479,29 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
   }
 });
 
-test('main combines a PR frontend run with its directly verified full API source', async () => {
+function apiReuseFixture() {
   const f = fixture();
   const apiRun = structuredClone(f.run);
   apiRun.id = 11;
   apiRun.head_sha = 'f'.repeat(40);
   const apiJobs = structuredClone(f.jobs);
-  f.jobs
-    .filter((job) => job.name.startsWith('api ('))
-    .forEach((job) => {
-      job.conclusion = 'skipped';
-      job.steps = [];
-    });
+  // Actual GitHub response: the job condition skips the entire matrix before
+  // expansion, so a single unassigned parent replaces all four API children.
+  f.data['actions/runs/12/jobs?filter=latest&per_page=100'] = {
+    total_count: 13,
+    jobs: [
+      ...f.jobs.filter((job) => !job.name.startsWith('api (')),
+      {
+        id: 17,
+        name: 'api',
+        status: 'completed',
+        conclusion: 'skipped',
+        runner_id: null,
+        runner_name: null,
+        steps: [],
+      },
+    ],
+  };
   f.data['actions/jobs/2/logs'] +=
     '2026-10-17T09:00:03Z reuse_all=false\n2026-10-17T09:00:03Z reuse_api=true\n2026-10-17T09:00:03Z proof_run=11\n';
   f.data['actions/runs/11'] = apiRun;
@@ -506,6 +517,11 @@ test('main combines a PR frontend run with its directly verified full API source
     tree: { sha: tree },
     parents: [{ sha }, { sha: apiRun.head_sha }],
   };
+  return { ...f, apiSha };
+}
+
+test('main combines a PR frontend run with its directly verified full API source', async () => {
+  const f = apiReuseFixture();
   assert.deepEqual(await chooseReuse({ ...options, api: f.api }), {
     all: true,
     api: true,
@@ -513,7 +529,6 @@ test('main combines a PR frontend run with its directly verified full API source
     testedSha: sha,
     apiSource: 11,
   });
-  apiJobs[3].conclusion = 'skipped';
   f.data['actions/runs/11/jobs?filter=latest&per_page=100'].jobs[3].conclusion =
     'skipped';
   assert.deepEqual(
@@ -521,6 +536,113 @@ test('main combines a PR frontend run with its directly verified full API source
     noReuse,
     'a second level of reused API proof is rejected',
   );
+});
+
+for (const [label, alter] of [
+  [
+    'assigned API parent',
+    (r) => {
+      r.jobs.at(-1).runner_id = 1;
+    },
+  ],
+  [
+    'named API runner',
+    (r) => {
+      r.jobs.at(-1).runner_name = 'hosted';
+    },
+  ],
+  [
+    'executed API parent',
+    (r) => {
+      r.jobs.at(-1).steps = [{ conclusion: 'success' }];
+    },
+  ],
+  [
+    'unfinished API parent',
+    (r) => {
+      r.jobs.at(-1).status = 'queued';
+    },
+  ],
+  [
+    'unknown API assignment',
+    (r) => {
+      delete r.jobs.at(-1).runner_id;
+    },
+  ],
+  [
+    'failed frontend',
+    (r) => {
+      r.jobs.find((j) => j.name === 'browser (1)').conclusion = 'failure';
+    },
+  ],
+  [
+    'cancelled frontend',
+    (r) => {
+      r.jobs.find((j) => j.name === 'browser (1)').conclusion = 'cancelled';
+    },
+  ],
+  [
+    'unassigned frontend',
+    (r) => {
+      r.jobs.find((j) => j.name === 'browser (1)').runner_name = null;
+    },
+  ],
+  [
+    'unexecuted frontend',
+    (r) => {
+      r.jobs.find((j) => j.name === 'browser (1)').steps = [];
+    },
+  ],
+  [
+    'missing frontend',
+    (r) => {
+      r.jobs.splice(
+        r.jobs.findIndex((j) => j.name === 'browser (1)'),
+        1,
+      );
+      r.total_count = 12;
+    },
+  ],
+  [
+    'duplicate frontend',
+    (r) => {
+      r.jobs.find((j) => j.name === 'browser (1)').name = 'checks';
+    },
+  ],
+  [
+    'extra unknown job',
+    (r) => {
+      r.jobs.push({
+        name: 'unknown',
+        conclusion: 'success',
+        runner_name: 'hosted',
+        steps: [{ conclusion: 'success' }],
+      });
+      r.total_count = 14;
+    },
+  ],
+]) {
+  test(`composed proof rejects ${label}`, async () => {
+    const f = apiReuseFixture();
+    alter(f.data['actions/runs/12/jobs?filter=latest&per_page=100']);
+    assert.deepEqual(await chooseReuse({ ...options, api: f.api }), noReuse);
+  });
+}
+
+test('composed proof rejects a direct API source with different backend inputs', async () => {
+  const f = apiReuseFixture();
+  const otherTree = '9'.repeat(40);
+  f.data[`git/commits/${f.apiSha}`].tree.sha = otherTree;
+  f.data[`git/trees/${otherTree}`] = structuredClone(
+    f.data[`git/trees/${tree}`],
+  );
+  f.data[`git/trees/${otherTree}`].tree.push({
+    path: 'README.md',
+    mode: '100644',
+    type: 'blob',
+    sha: '8'.repeat(40),
+  });
+  assert.deepEqual(await chooseReuse({ ...options, api: f.api }), noReuse);
 });
 
 test('changed or unknown observed runner/toolchain always executes the suites', async () => {
