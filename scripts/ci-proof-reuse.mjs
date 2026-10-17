@@ -241,6 +241,16 @@ async function main() {
       ? `${process.env.ImageOS}/${process.env.ImageVersion}/${process.version}`
       : undefined;
   console.log(`CI_ENVIRONMENT=${environment}`);
+  let inputs;
+  try {
+    inputs = inputEntries(
+      { tree: localTree('HEAD') },
+      { tree: localTree('HEAD:apps') },
+      { tree: localTree('HEAD:apps/web') },
+    );
+  } catch {
+    // Unknown installation inputs disable API reuse, not verification itself.
+  }
   const result = await chooseReuse({
     repository: process.env.GITHUB_REPOSITORY,
     event: process.env.GITHUB_EVENT_NAME,
@@ -249,11 +259,7 @@ async function main() {
     current: {
       environment,
       tree: git('rev-parse', 'HEAD^{tree}'),
-      inputs: inputEntries(
-        { tree: localTree('HEAD') },
-        { tree: localTree('HEAD:apps') },
-        { tree: localTree('HEAD:apps/web') },
-      ),
+      inputs,
     },
     api: async (path, raw = false) => {
       const value = execFileSync(

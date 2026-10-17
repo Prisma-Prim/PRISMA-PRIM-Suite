@@ -428,6 +428,15 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
       readFileSync(output, 'utf8'),
       'reuse_all=false\nreuse_api=false\nproof_run=\n',
     );
+    git('rm', '-q', 'apps/web/package.json');
+    git('commit', '-qm', 'Synthetic missing install input');
+    writeFileSync(output, '');
+    const unknownInput = invokeCli();
+    assert.equal(unknownInput.status, 0, unknownInput.stderr);
+    assert.equal(
+      readFileSync(output, 'utf8'),
+      'reuse_all=false\nreuse_api=false\nproof_run=\n',
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
