@@ -23,15 +23,25 @@ const fullJobs = [
 const none = { all: false, api: false, source: null, testedSha: null };
 const shaPattern = /^[a-f0-9]{40}$/u;
 
-function inputEntries(root, apps) {
+function inputEntries(root, apps, web) {
   if (
     root.truncated ||
     apps.truncated ||
+    web.truncated ||
     !Array.isArray(root.tree) ||
-    !Array.isArray(apps.tree)
+    !Array.isArray(apps.tree) ||
+    !Array.isArray(web.tree)
   )
     throw new Error('Incomplete Git tree');
+  const manifest = web.tree.find(
+    (entry) =>
+      entry.path === 'package.json' &&
+      entry.type === 'blob' &&
+      entry.mode === '100644',
+  );
+  if (!manifest) throw new Error('Missing regular web manifest');
   return [
+    { ...manifest, path: 'apps/web/package.json' },
     ...root.tree.filter((entry) => entry.path !== 'apps'),
     ...apps.tree
       .filter((entry) => entry.path !== 'web')
@@ -47,7 +57,12 @@ async function backendInputs(api, tree) {
     (entry) => entry.path === 'apps' && entry.type === 'tree',
   );
   if (!apps) throw new Error('Missing apps tree');
-  return inputEntries(root, await api(`git/trees/${apps.sha}`));
+  const applications = await api(`git/trees/${apps.sha}`);
+  const web = applications.tree?.find(
+    (entry) => entry.path === 'web' && entry.type === 'tree',
+  );
+  if (!web) throw new Error('Missing web tree');
+  return inputEntries(root, applications, await api(`git/trees/${web.sha}`));
 }
 
 function eligibleRun(run, { repository, runId, now }) {
@@ -237,6 +252,7 @@ async function main() {
       inputs: inputEntries(
         { tree: localTree('HEAD') },
         { tree: localTree('HEAD:apps') },
+        { tree: localTree('HEAD:apps/web') },
       ),
     },
     api: async (path, raw = false) => {

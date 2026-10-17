@@ -72,6 +72,17 @@ function fixture() {
       truncated: false,
     },
   };
+  data[`git/trees/${'4'.repeat(40)}`] = {
+    tree: [
+      {
+        path: 'package.json',
+        mode: '100644',
+        type: 'blob',
+        sha: '5'.repeat(40),
+      },
+    ],
+    truncated: false,
+  };
   return {
     data,
     run,
@@ -88,6 +99,7 @@ const current = {
   inputs: [
     '040000 tree ' + '1'.repeat(40) + ' .github',
     '040000 tree ' + '3'.repeat(40) + ' apps/api',
+    '100644 blob ' + '5'.repeat(40) + ' apps/web/package.json',
   ],
 };
 const options = {
@@ -317,6 +329,10 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
     mkdirSync(join(dir, 'apps/api'), { recursive: true });
     mkdirSync(join(dir, 'apps/web'), { recursive: true });
     writeFileSync(join(dir, 'apps/api/input.txt'), 'backend');
+    writeFileSync(
+      join(dir, 'apps/web/package.json'),
+      '{"name":"synthetic-web","version":"0.1.0"}',
+    );
     writeFileSync(join(dir, 'apps/web/input.txt'), 'before');
     git('add', '.');
     git('commit', '-qm', 'Synthetic base');
@@ -348,6 +364,17 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
         { path: 'web', mode: '040000', type: 'tree', sha: webBlob },
       ],
     };
+    f.data[`git/trees/${webBlob}`] = {
+      truncated: false,
+      tree: [
+        {
+          path: 'package.json',
+          mode: '100644',
+          type: 'blob',
+          sha: git('rev-parse', 'HEAD:apps/web/package.json'),
+        },
+      ],
+    };
     writeFileSync(join(dir, 'apps/web/input.txt'), 'after');
     git('add', 'apps/web/input.txt');
     git('commit', '-qm', 'Synthetic frontend change');
@@ -360,32 +387,47 @@ test('the CLI compares real Git inputs and emits its verified decision', async (
     );
     const output = join(dir, 'output');
     const summary = join(dir, 'summary');
-    const child = spawnSync(
-      process.execPath,
-      [fileURLToPath(new URL('./ci-proof-reuse.mjs', import.meta.url))],
-      {
-        cwd: dir,
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          PATH: `${bin}:${process.env.PATH}`,
-          GITHUB_REPOSITORY: 'owner/repo',
-          GITHUB_EVENT_NAME: 'pull_request',
-          GITHUB_RUN_ID: '99',
-          GITHUB_OUTPUT: output,
-          GITHUB_STEP_SUMMARY: summary,
-          ImageOS: 'ubuntu24',
-          ImageVersion: 'test-image',
-          PROOF_FIXTURE: JSON.stringify(f.data),
+    const invokeCli = () =>
+      spawnSync(
+        process.execPath,
+        [fileURLToPath(new URL('./ci-proof-reuse.mjs', import.meta.url))],
+        {
+          cwd: dir,
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            PATH: `${bin}:${process.env.PATH}`,
+            GITHUB_REPOSITORY: 'owner/repo',
+            GITHUB_EVENT_NAME: 'pull_request',
+            GITHUB_RUN_ID: '99',
+            GITHUB_OUTPUT: output,
+            GITHUB_STEP_SUMMARY: summary,
+            ImageOS: 'ubuntu24',
+            ImageVersion: 'test-image',
+            PROOF_FIXTURE: JSON.stringify(f.data),
+          },
         },
-      },
-    );
+      );
+    const child = invokeCli();
     assert.equal(child.status, 0, child.stderr);
     assert.equal(
       readFileSync(output, 'utf8'),
       'reuse_all=false\nreuse_api=true\nproof_run=12\n',
     );
     assert.match(readFileSync(summary, 'utf8'), /actions\/runs\/12/);
+    writeFileSync(
+      join(dir, 'apps/web/package.json'),
+      '{"name":"synthetic-web","version":"0.2.0"}',
+    );
+    git('add', 'apps/web/package.json');
+    git('commit', '-qm', 'Synthetic manifest change');
+    writeFileSync(output, '');
+    const changedManifest = invokeCli();
+    assert.equal(changedManifest.status, 0, changedManifest.stderr);
+    assert.equal(
+      readFileSync(output, 'utf8'),
+      'reuse_all=false\nreuse_api=false\nproof_run=\n',
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
