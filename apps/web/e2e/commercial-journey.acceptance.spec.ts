@@ -1,12 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import {
   expect,
   test,
   type APIRequestContext,
   type Browser,
+  type Frame,
   type Locator,
   type Page,
+  type Request,
   type Response,
   type TestInfo,
 } from '@playwright/test';
@@ -174,6 +177,232 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   await writeClockOffset(initialClockOffset);
 });
+
+for (const previousRead of ['cancelled', 'completed'] as const) {
+  test(`reopens the persisted Request after a previous-load list response is ${previousRead}`, async ({
+    page,
+    request,
+  }, testInfo) => {
+    const narrow = testInfo.project.name.endsWith('narrow');
+    const suffix = `Read Completion ${previousRead} ${narrow ? 'Narrow' : 'Desktop'}`;
+    const companyName = `Commercial ${suffix}`;
+    const subject = `Synthetic ${suffix} Request`;
+    const nextAction = 'Confirm the saved read-completion action';
+    const ada = await membershipOf(request, identities.ada);
+    const companyId = await registerCompany(request, {
+      displayName: companyName,
+      suffix,
+    });
+    for (const bundle of [
+      'company-context',
+      'company-commercial-intake',
+    ] as const)
+      await grant(request, { bundle, membership: ada, companyId });
+    const requestId = await command(request, {
+      identity: identities.ada,
+      path: '/commercial-intake/requests',
+      companyId,
+      key: `read-completion-${suffix}`,
+      data: {
+        originalText: 'Synthetic exact source.',
+        subject,
+        opportunity: {
+          title: 'Synthetic completion case',
+          nextAction: 'Arrange the initial call',
+        },
+      },
+      decode: (value) => text(object(value).id),
+    });
+    const journey: Journey = { page, narrow, companyId, companyName, subject };
+    const intake = page.locator('.commercial-intake-workspace');
+    await reopenRequest(journey);
+
+    const navigationRequested = responseGate<void>();
+    const releaseNavigation = responseGate<void>();
+    const oldResponseReady = responseGate<{
+      start: () => void;
+      finish: () => void;
+    }>();
+    const oldRequest = responseGate<Request>();
+    const events: {
+      event: string;
+      request: number;
+      path: string;
+      failure?: string;
+    }[] = [];
+    const ids = new Map<Request, number>();
+    const identify = (candidate: Request): number => {
+      const existing = ids.get(candidate);
+      if (existing !== undefined) return existing;
+      const identifier = ids.size + 1;
+      ids.set(candidate, identifier);
+      return identifier;
+    };
+    const observe = (event: string) => (candidate: Request) => {
+      const failure = candidate.failure();
+      events.push({
+        event,
+        request: identify(candidate),
+        path: new URL(candidate.url()).pathname,
+        ...(failure ? { failure: failure.errorText } : {}),
+      });
+    };
+    page.on('request', observe('request'));
+    page.on('requestfinished', observe('requestfinished'));
+    page.on('requestfailed', observe('requestfailed'));
+    const relay = createServer((incoming, outgoing) => {
+      void (async () => {
+        const headers: Record<string, string> = {};
+        for (const [name, value] of Object.entries(incoming.headers))
+          if (typeof value === 'string') headers[name] = value;
+        const upstream = await request.get(`${apiOrigin}${incoming.url}`, {
+          headers,
+        });
+        expect(upstream.status()).toBe(200);
+        const body = await upstream.body();
+        oldResponseReady.resolve({
+          start: () => {
+            outgoing.writeHead(upstream.status(), upstream.headers());
+            outgoing.write(body.subarray(0, 1));
+          },
+          finish: () => {
+            outgoing.end(body.subarray(1));
+          },
+        });
+      })().catch((error: unknown) =>
+        outgoing.destroy(error instanceof Error ? error : undefined),
+      );
+    });
+    await new Promise<void>((resolve) => relay.listen(0, '127.0.0.1', resolve));
+    const address = relay.address();
+    if (!address || typeof address === 'string')
+      throw new Error('Missing relay address');
+    let gateList = true;
+    await page.route('**/*', async (route) => {
+      const candidate = route.request();
+      const url = new URL(candidate.url());
+      if (
+        candidate.isNavigationRequest() &&
+        candidate.frame() === page.mainFrame()
+      ) {
+        navigationRequested.resolve();
+        await releaseNavigation.promise;
+        await route.continue();
+      } else if (
+        gateList &&
+        candidate.method() === 'GET' &&
+        url.pathname === '/api/commercial-intake/requests' &&
+        candidate.headers()['x-company-context-id'] === companyId
+      ) {
+        gateList = false;
+        oldRequest.resolve(candidate);
+        await route.continue({
+          url: `http://127.0.0.1:${address.port}${url.pathname}${url.search}`,
+        });
+      } else await route.continue();
+    });
+    let completed = false;
+    let openingFailure: unknown;
+    try {
+      await intake.getByRole('button', { name: 'Edit next action' }).click();
+      await intake.getByLabel('Next action').fill(nextAction);
+      const saved = page.waitForResponse(mutation('POST', /\/next-action$/u));
+      await intake.getByRole('button', { name: 'Save next action' }).click();
+      expect((await saved).status()).toBe(200);
+      await expect(intake.locator(':scope > [role="alert"]')).toHaveText(
+        'Next action saved.',
+      );
+      const oldResponse = await oldResponseReady.promise;
+      const requestA = await oldRequest.promise;
+      const responseA = page.waitForResponse(
+        (response) => response.request() === requestA,
+      );
+      const opening = reopenRequest(journey).then(
+        () => {
+          completed = true;
+        },
+        (error: unknown) => {
+          openingFailure = error;
+        },
+      );
+      await navigationRequested.promise;
+      oldResponse.start();
+      expect((await responseA).status()).toBe(200);
+      const cancelled =
+        previousRead === 'cancelled'
+          ? page.waitForEvent(
+              'requestfailed',
+              (candidate) => candidate === requestA,
+            )
+          : undefined;
+      if (previousRead === 'completed') {
+        const finished = page.waitForEvent(
+          'requestfinished',
+          (candidate) => candidate === requestA,
+        );
+        oldResponse.finish();
+        expect((await finished).failure()).toBeNull();
+      }
+      const responseB = page.waitForResponse(
+        (response) =>
+          response.request() !== requestA &&
+          mutation('GET', /^\/api\/commercial-intake\/requests$/u)(response) &&
+          response.request().headers()['x-company-context-id'] === companyId,
+      );
+      releaseNavigation.resolve();
+      if (cancelled)
+        expect((await cancelled).failure()?.errorText).toBe('net::ERR_ABORTED');
+      const current = await responseB;
+      expect(current.status()).toBe(200);
+      expect(await current.finished()).toBeNull();
+      const currentRows = list(object(await current.json()).items).map(object);
+      const currentRow = object(
+        currentRows.find((row) => row.id === requestId),
+      );
+      expect(currentRow.subject).toBe(subject);
+      expect(object(currentRow.initialOpportunity).nextAction).toBe(nextAction);
+      expect(page.isClosed()).toBe(false);
+      await expect.poll(() => completed).toBe(true);
+      expect(openingFailure).toBeUndefined();
+      await opening;
+      await expect(
+        intake.getByText('Version: 2', { exact: true }),
+      ).toBeVisible();
+      await expect(
+        intake.getByText(`Next action: ${nextAction}`, { exact: true }),
+      ).toBeVisible();
+      const detail = await apiRead(request, {
+        identity: identities.ada,
+        companyId,
+        path: `/commercial-intake/requests/${requestId}`,
+        decode: object,
+      });
+      expect(detail.id).toBe(requestId);
+    } finally {
+      releaseNavigation.resolve();
+      await testInfo.attach('read-lifecycle', {
+        body: JSON.stringify(events, null, 2),
+        contentType: 'application/json',
+      });
+      await page.unrouteAll({ behavior: 'ignoreErrors' });
+      await page.close();
+      relay.closeAllConnections();
+      await new Promise<void>((resolve, reject) =>
+        relay.close((error) => (error ? reject(error) : resolve())),
+      );
+    }
+  });
+}
+
+function responseGate<T>() {
+  let release: (value: T) => void = () => {
+    throw new Error('Response gate is not initialized');
+  };
+  const promise = new Promise<T>((resolve) => {
+    release = resolve;
+  });
+  return { promise, resolve: (value: T) => release(value) };
+}
 
 test('follows one commercial case from Request to signed agreement, Project and Activity', async ({
   page,
@@ -624,17 +853,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       pricingSnapshotId = text(object(calculatedReceipt).id);
       await expectAdjustedSnapshot(pricing, entered.adjustmentReason);
 
-      await actAndRead({
-        page,
-        expected: [
-          {
-            method: 'GET',
-            path: /^\/api\/pricing\/opportunities\/[^/]+\/snapshots$/u,
-            status: 200,
-          },
-        ],
-        act: () => reopenRequest(journey),
-      });
+      await reopenRequest(journey, { pricingSnapshots: true });
       await actAndRead({
         page,
         expected: [
@@ -1512,11 +1731,17 @@ test('follows one commercial case from Request to signed agreement, Project and 
           }),
         ).toBeVisible();
         async function expectPrecontractContent(): Promise<void> {
+          await expect(
+            page.getByRole('combobox', {
+              name: 'Interface language',
+              exact: true,
+            }),
+          ).toHaveText('English');
           for (const [label, value] of [
             ['Preliminary work scope', entered.preliminaryScope],
             ['Preliminary financial conditions', entered.preliminaryConditions],
             ['Limits until the Contract', entered.preliminaryLimits],
-            ['Term end', entered.precontractTermEnd],
+            ['Term end', 'Dec 31, 2099'],
           ])
             await expect(
               contract
@@ -2270,7 +2495,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       await reopenAddendum(journey);
       await expect(
         contract.getByRole('definition').filter({
-          hasText: new RegExp(`^${entered.addendumTermEnd}$`, 'u'),
+          hasText: /^Jun 30, 2100$/u,
         }),
       ).toBeVisible();
       // The Addendum copies its executed parent's current identity. Its new
@@ -2329,7 +2554,7 @@ test('follows one commercial case from Request to signed agreement, Project and 
       ).toBeVisible();
       await expect(
         contract.getByRole('definition').filter({
-          hasText: new RegExp(`^${entered.addendumTermEnd}$`, 'u'),
+          hasText: /^Jun 30, 2100$/u,
         }),
       ).toBeVisible();
       await actAndRead({
@@ -3075,31 +3300,50 @@ async function openSection(journey: Journey, section: string): Promise<void> {
       : section === 'Client Requests'
         ? /^\/api\/commercial-intake\/requests$/u
         : undefined;
+  // A previous-document response may arrive after the waiter starts, then be
+  // cancelled by goto with Response.finished() still pending. Only reads
+  // initiated after the new main document commits prove this fresh load.
+  let committed = false;
+  const currentDocumentRequests = new Set<Request>();
+  const onNavigation = (frame: Frame) => {
+    if (frame === page.mainFrame()) committed = true;
+  };
+  const onRequest = (request: Request) => {
+    if (committed) currentDocumentRequests.add(request);
+  };
+  page.on('framenavigated', onNavigation);
+  page.on('request', onRequest);
   const listRead = listPath
     ? page.waitForResponse(
         (response) =>
           mutation('GET', listPath)(response) &&
+          currentDocumentRequests.has(response.request()) &&
           response.request().headers()['x-company-context-id'] === companyId,
       )
     : undefined;
-  await page.goto('/');
-  const company = page.getByLabel('Active Company', { exact: true });
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await selectOption(company, { label: companyName });
-  await expect(company).toHaveText(companyName);
-  if (narrow)
-    await page.getByRole('button', { name: 'Close navigation' }).click();
-  if (narrow)
-    await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('navigation', { name: 'Primary navigation' })
-    .getByRole('link', { name: section, exact: true })
-    .click();
-  if (listRead) {
-    const response = await listRead;
-    expect(response.status()).toBe(200);
-    expect(await response.finished()).toBeNull();
+  try {
+    await page.goto('/');
+    const company = page.getByLabel('Active Company', { exact: true });
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await selectOption(company, { label: companyName });
+    await expect(company).toHaveText(companyName);
+    if (narrow)
+      await page.getByRole('button', { name: 'Close navigation' }).click();
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('link', { name: section, exact: true })
+      .click();
+    if (listRead) {
+      const response = await listRead;
+      expect(response.status()).toBe(200);
+      expect(await response.finished()).toBeNull();
+    }
+  } finally {
+    page.off('framenavigated', onNavigation);
+    page.off('request', onRequest);
   }
 }
 
@@ -3108,8 +3352,13 @@ async function reopenRequest(
   journey: Journey,
   {
     record,
+    pricingSnapshots = false,
     projectCandidates = false,
-  }: { record?: 'offer' | 'contract'; projectCandidates?: boolean } = {},
+  }: {
+    record?: 'offer' | 'contract';
+    pricingSnapshots?: boolean;
+    projectCandidates?: boolean;
+  } = {},
 ): Promise<void> {
   const { page, subject } = journey;
   await openSection(journey, 'Client Requests');
@@ -3122,6 +3371,15 @@ async function reopenRequest(
         status: 200,
       },
       ...(record ? versionReads(record) : []),
+      ...(pricingSnapshots
+        ? [
+            {
+              method: 'GET' as const,
+              path: /^\/api\/pricing\/opportunities\/[^/]+\/snapshots$/u,
+              status: 200 as const,
+            },
+          ]
+        : []),
       ...(projectCandidates
         ? [
             {

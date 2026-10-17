@@ -1,3 +1,4 @@
+import { contractMessages } from '../src/contract/contract.copy';
 import { expect, test } from '@playwright/test';
 import { contractVersionMessages } from '../src/contract/contract-version.copy';
 import { resolveMessage } from '../src/localization/messages';
@@ -26,6 +27,7 @@ const actor = {
     contractPermissions: [
       'commercial.contract.read',
       'commercial.contract.prepare',
+      'commercial.contract.project.link',
     ],
     contractPermissionAssignmentId: 'contract-grant',
     contractPermissionSetVersion: 'v1',
@@ -39,10 +41,11 @@ const actor = {
     commercialIntakePermissionSetVersion: 'v1',
   },
 } satisfies ActorContext;
+const requestSubject = 'Contract checks Request';
 const detail = buildClientRequest({
   id: 'request-one',
   companyId: company.id,
-  subject: 'Contract checks Request',
+  subject: requestSubject,
   originalText: 'Synthetic captured evidence',
   capturedByWorkspaceMembershipId: 'member-one',
   capturedAt: '2026-10-07T06:00:00.000Z',
@@ -195,7 +198,7 @@ for (const locale of interfaceLocales)
       const openRequest = async () => {
         await page
           .getByRole('button')
-          .filter({ has: page.getByText(detail.subject, { exact: true }) })
+          .filter({ has: page.getByText(requestSubject, { exact: true }) })
           .click();
       };
       const revisions = page.getByRole('region', {
@@ -270,7 +273,10 @@ for (const locale of interfaceLocales)
       ).toHaveCount(0);
       expect(attempts).toHaveLength(2);
       await page
-        .getByRole('region', { name: 'Contract', exact: true })
+        .getByRole('region', {
+          name: resolveMessage(contractMessages, locale, 'title'),
+          exact: true,
+        })
         .screenshot({
           path: testInfo.outputPath(
             'c6-client-read-revoked-' +

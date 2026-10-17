@@ -23,7 +23,8 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import { contractCopy as copy } from './contract.copy';
+import { useInterfaceLocale } from '../localization/interface-locale';
+import { useContractCopy } from './contract.copy';
 import {
   readAcceptedOfferSource,
   readContract,
@@ -99,6 +100,7 @@ export function ContractPanel({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onOpenProject?: (projectId: string) => void;
 }) {
+  const copy = useContractCopy();
   const addendumCopy = useContractAddendumCopy();
   const precontractCopy = useContractPrecontractCopy();
   const decisionCopy = useContractDecisionCopy();
@@ -415,16 +417,16 @@ export function ContractPanel({
         ? (view.precontract?.id ?? null)
         : null;
   return (
-    <section className="contract-panel" aria-label={copy.title}>
-      <h4>{copy.title}</h4>
-      <p className="contract-banner">{copy.banner}</p>
-      {view.kind === 'loading' && <p role="status">{copy.loading}</p>}
+    <section className="contract-panel" aria-label={copy('title')}>
+      <h4>{copy('title')}</h4>
+      <p className="contract-banner">{copy('banner')}</p>
+      {view.kind === 'loading' && <p role="status">{copy('loading')}</p>}
       {(view.kind === 'error' || view.kind === 'denied') && (
-        <p role="alert">{copy[view.kind]}</p>
+        <p role="alert">{copy(view.kind)}</p>
       )}
       {view.kind === 'empty' && (
         <>
-          <p>{copy.empty}</p>
+          <p>{copy('empty')}</p>
           {view.precontract && (
             <section
               className="contract-precontract"
@@ -485,7 +487,7 @@ export function ContractPanel({
               />
             )}
           {!view.acceptedVersionId && !mayPrepareDirect && (
-            <p>{copy.awaiting}</p>
+            <p>{copy('awaiting')}</p>
           )}
           {!view.acceptedVersionId &&
             mayPrepareDirect &&
@@ -976,7 +978,7 @@ export function ContractPanel({
       {view.kind === 'empty' && view.acceptedVersionId && mayPrepare && (
         <form onSubmit={(event) => void submit(event)}>
           <label>
-            {copy.start}
+            {copy('start')}
             <input
               type="date"
               value={termStartsOn}
@@ -985,7 +987,7 @@ export function ContractPanel({
             />
           </label>
           <label>
-            {copy.end}
+            {copy('end')}
             <input
               type="date"
               value={termEndsOn}
@@ -994,7 +996,7 @@ export function ContractPanel({
             />
           </label>
           <label>
-            {copy.conditions}
+            {copy('conditions')}
             <textarea
               maxLength={4000}
               value={specialConditions}
@@ -1004,16 +1006,16 @@ export function ContractPanel({
           </label>
           <button type="submit" disabled={running || precontractProtected}>
             {running
-              ? copy.running
+              ? copy('running')
               : feedback === 'uncertain'
-                ? copy.retry
-                : copy.create}
+                ? copy('retry')
+                : copy('create')}
           </button>
         </form>
       )}
       {feedback && (
         <p role={feedback === 'success' ? 'status' : 'alert'}>
-          {copy[feedback]}
+          {copy(feedback)}
         </p>
       )}
       <button
@@ -1027,30 +1029,46 @@ export function ContractPanel({
           void load(controller.signal);
         }}
       >
-        {copy.refresh}
+        {copy('refresh')}
       </button>
     </section>
   );
 }
 function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
+  const { locale, formatDate, formatNumber } = useInterfaceLocale();
   const directCopy = useContractDirectCopy();
+  const copy = useContractCopy();
   const addendumCopy = useContractAddendumCopy();
   const precontractCopy = useContractPrecontractCopy();
   const versionCopy = useContractVersionCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
   const ruleSetCopy = useContractRuleSetCopy();
+  const source = contract.sourceOffer ?? contract.parent;
+  const integerFormatter = new Intl.NumberFormat(locale);
+  const decimalSeparator =
+    new Intl.NumberFormat(locale, { minimumFractionDigits: 1 })
+      .formatToParts(1n)
+      .find((part) => part.type === 'decimal')?.value ?? '.';
+  function formatDecimal(value: string): string {
+    const parts = /^(-?)(\d+)(?:\.(\d+))?$/u.exec(value);
+    if (!parts) return value;
+    const [, sign = '', integer = '0', fraction] = parts;
+    // Keep every fractional digit; only group the exact integer for display.
+    return `${sign}${integerFormatter.format(BigInt(integer))}${fraction === undefined ? '' : decimalSeparator + fraction}`;
+  }
   return (
     <>
       {contract.kind === 'PRECONTRACT' && <h5>{precontractCopy('title')}</h5>}
       {contract.kind === 'ADDENDUM' && (
         <>
           <h5>
-            {addendumCopy('itemTitle')} {contract.addendumOrdinal}
+            {addendumCopy('itemTitle')} {formatNumber(contract.addendumOrdinal)}
           </h5>
           <p>
-            {addendumCopy('parent')}: {contract.parent.illustrativeReference}
+            {addendumCopy('parent')}:{' '}
+            {formatNumber(contract.parent.illustrativeReference)}
           </p>
           <dl>
             <dt>{addendumCopy('summary')}</dt>
@@ -1059,8 +1077,8 @@ function ContractSummary({ contract }: { contract: ContractView }) {
         </>
       )}
       <p>
-        {copy.reference} {contract.illustrativeReference} ·{' '}
-        {versionCopy('versionLabel')} {version.versionNumber}
+        {copy('reference')} {formatNumber(contract.illustrativeReference)} ·{' '}
+        {versionCopy('versionLabel')} {formatNumber(version.versionNumber)}
       </p>
       <p>
         {decisionCopy(
@@ -1073,7 +1091,7 @@ function ContractSummary({ contract }: { contract: ContractView }) {
         ·{' '}
         {version.executionState === 'EXECUTED'
           ? signatureCopy('executed')
-          : copy.execution}
+          : copy('execution')}
       </p>
       <dl>
         <dt>
@@ -1081,19 +1099,17 @@ function ContractSummary({ contract }: { contract: ContractView }) {
             ? directCopy('title')
             : contract.kind === 'ADDENDUM'
               ? addendumCopy('parent')
-              : copy.source}
+              : copy('source')}
         </dt>
         <dd>
           {contract.origin === 'DIRECT' ? (
             directCopy('origin')
           ) : (
             <>
-              {copy.reference}{' '}
-              {contract.sourceOffer?.illustrativeReference ??
-                contract.parent?.illustrativeReference}{' '}
-              · {copy.sourceVersion}{' '}
-              {contract.sourceOffer?.versionNumber ??
-                contract.parent?.versionNumber}
+              {copy('reference')}{' '}
+              {source ? formatNumber(source.illustrativeReference) : null} ·{' '}
+              {copy('sourceVersion')}{' '}
+              {source ? formatNumber(source.versionNumber) : null}
             </>
           )}
         </dd>
@@ -1103,40 +1119,48 @@ function ContractSummary({ contract }: { contract: ContractView }) {
             <dd>{contract.directReason}</dd>
           </>
         )}
-        <dt>{copy.issuer}</dt>
+        <dt>{copy('issuer')}</dt>
         <dd>{version.issuingCompanyLabel}</dd>
-        <dt>{copy.party}</dt>
+        <dt>{copy('party')}</dt>
         <dd>
           {version.recipient.legalName}
           <br />
-          {version.recipient.taxId ?? copy.missing}
+          {version.recipient.taxId ?? copy('missing')}
           <br />
-          {version.recipient.legalAddress ?? copy.missing}
+          {version.recipient.legalAddress ?? copy('missing')}
         </dd>
         {contract.kind === 'CONTRACT' && (
           <>
             <dt>{precontractCopy('reference')}</dt>
             <dd>
-              {contract.precontract?.illustrativeReference ?? copy.missing}
+              {contract.precontract
+                ? formatNumber(contract.precontract.illustrativeReference)
+                : copy('missing')}
             </dd>
           </>
         )}
         {contract.kind !== 'ADDENDUM' && (
           <>
             <dt>
-              {contract.origin === 'DIRECT' ? directCopy('scope') : copy.scope}
+              {contract.origin === 'DIRECT'
+                ? directCopy('scope')
+                : copy('scope')}
             </dt>
-            <dd>{version.scopeNote ?? copy.missing}</dd>
+            <dd>{version.scopeNote ?? copy('missing')}</dd>
             <dt>
               {contract.origin === 'DIRECT'
                 ? directCopy('commercial')
-                : copy.commercial}
+                : copy('commercial')}
             </dt>
-            <dd>{version.commercialConditions ?? copy.missing}</dd>
-            <dt>{copy.start}</dt>
-            <dd>{version.termStartsOn ?? copy.missing}</dd>
-            <dt>{copy.conditions}</dt>
-            <dd>{version.specialConditions ?? copy.missing}</dd>
+            <dd>{version.commercialConditions ?? copy('missing')}</dd>
+            <dt>{copy('start')}</dt>
+            <dd>
+              {version.termStartsOn === null
+                ? copy('missing')
+                : formatDate(version.termStartsOn)}
+            </dd>
+            <dt>{copy('conditions')}</dt>
+            <dd>{version.specialConditions ?? copy('missing')}</dd>
           </>
         )}
         {version.preliminaryWork && (
@@ -1149,8 +1173,14 @@ function ContractSummary({ contract }: { contract: ContractView }) {
             <dd>{version.preliminaryWork.limits}</dd>
           </>
         )}
-        <dt>{contract.kind === 'ADDENDUM' ? addendumCopy('end') : copy.end}</dt>
-        <dd>{version.termEndsOn ?? copy.missing}</dd>
+        <dt>
+          {contract.kind === 'ADDENDUM' ? addendumCopy('end') : copy('end')}
+        </dt>
+        <dd>
+          {version.termEndsOn === null
+            ? copy('missing')
+            : formatDate(version.termEndsOn)}
+        </dd>
         <dt>{ruleSetCopy('ruleSet')}</dt>
         <dd>
           {version.qualityRuleSet} v{version.qualityRuleSetVersion}
@@ -1166,33 +1196,35 @@ function ContractSummary({ contract }: { contract: ContractView }) {
               <caption>
                 {contract.origin === 'DIRECT'
                   ? directCopy('snapshot')
-                  : copy.price}{' '}
+                  : copy('price')}{' '}
                 ({version.pricingSnapshot.currency})
               </caption>
               <thead>
                 <tr>
-                  <th>{copy.service}</th>
-                  <th>{copy.quantity}</th>
-                  <th>{copy.net}</th>
-                  <th>{copy.lineTax}</th>
+                  <th>{copy('service')}</th>
+                  <th>{copy('quantity')}</th>
+                  <th>{copy('net')}</th>
+                  <th>{copy('lineTax')}</th>
                 </tr>
               </thead>
               <tbody>
                 {version.pricingSnapshot.lines.map((line, index) => (
                   <tr key={index}>
                     <td>{line.serviceName}</td>
-                    <td>{line.quantity}</td>
-                    <td>{line.lineNet}</td>
-                    <td>{line.lineTax}</td>
+                    <td>{formatDecimal(line.quantity)}</td>
+                    <td>{formatDecimal(line.lineNet)}</td>
+                    <td>{formatDecimal(line.lineTax)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <p>
-            {copy.subtotal}: {version.pricingSnapshot.subtotal} · {copy.tax}:{' '}
-            {version.pricingSnapshot.taxTotal} · {copy.total}:{' '}
-            {version.pricingSnapshot.total} {version.pricingSnapshot.currency}
+            {copy('subtotal')}:{' '}
+            {formatDecimal(version.pricingSnapshot.subtotal)} · {copy('tax')}:{' '}
+            {formatDecimal(version.pricingSnapshot.taxTotal)} · {copy('total')}:{' '}
+            {formatDecimal(version.pricingSnapshot.total)}{' '}
+            {version.pricingSnapshot.currency}
           </p>
         </>
       ) : (

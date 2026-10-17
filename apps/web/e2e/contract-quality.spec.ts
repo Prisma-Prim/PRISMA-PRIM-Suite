@@ -20,6 +20,7 @@ const actor = {
     contractPermissions: [
       'commercial.contract.read',
       'commercial.contract.prepare',
+      'commercial.contract.project.link',
     ],
     contractPermissionAssignmentId: 'contract-grant',
     contractPermissionSetVersion: 'v1',
@@ -33,10 +34,11 @@ const actor = {
     commercialIntakePermissionSetVersion: 'v1',
   },
 } satisfies ActorContext;
+const requestSubject = 'Contract checks Request';
 const detail = buildClientRequest({
   id: 'request-one',
   companyId: company.id,
-  subject: 'Contract checks Request',
+  subject: requestSubject,
   originalText: 'Synthetic captured evidence',
   capturedByWorkspaceMembershipId: 'member-one',
   capturedAt: '2026-10-07T06:00:00.000Z',
@@ -182,7 +184,7 @@ test('reviews attributed exact-version results, retries by keyboard and reopens 
   await page.goto('/?frame=prisme#requests');
   await page
     .getByRole('button')
-    .filter({ has: page.getByText(detail.subject, { exact: true }) })
+    .filter({ has: page.getByText(requestSubject, { exact: true }) })
     .click();
   const checks = page.getByRole('region', {
     name: 'Contract Quality Checks',
@@ -223,7 +225,7 @@ test('reviews attributed exact-version results, retries by keyboard and reopens 
   await page.reload();
   await page
     .getByRole('button')
-    .filter({ has: page.getByText(detail.subject, { exact: true }) })
+    .filter({ has: page.getByText(requestSubject, { exact: true }) })
     .click();
   await expect(
     checks.getByText('2026-10-08T00:00:00.000Z', { exact: true }),
