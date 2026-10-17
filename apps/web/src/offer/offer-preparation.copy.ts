@@ -1,3 +1,4 @@
+import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   defineMessages,
   formatMessage,
@@ -483,6 +484,7 @@ export function useOfferPreparationCopy() {
 
 export function useOfferVersionCopy() {
   const message = useMessages(offerPreparationMessages);
+  const { formatNumber } = useInterfaceLocale();
   return {
     prepare: message('versionPrepare'),
     create: message('versionCreate'),
@@ -492,9 +494,10 @@ export function useOfferVersionCopy() {
     empty: message('historyEmpty'),
     unavailable: message('historyUnavailable'),
     more: message('historyMore'),
-    open: (number: number) => formatMessage(message('historyOpen'), { number }),
+    open: (number: number) =>
+      formatMessage(message('historyOpen'), { number: formatNumber(number) }),
     predecessor: (number: number) =>
-      formatMessage(message('predecessor'), { number }),
+      formatMessage(message('predecessor'), { number: formatNumber(number) }),
     differences: message('differences'),
     noPredecessor: message('noPredecessor'),
     noDifferences: message('noDifferences'),

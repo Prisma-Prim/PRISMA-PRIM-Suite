@@ -16,6 +16,7 @@ import {
   useInterfaceLocale,
 } from '../localization/interface-locale';
 import { OfferPanel } from './OfferPanel';
+import { OfferVersionHistory } from './OfferVersionHistory';
 import type {
   OfferClientResponseView,
   OfferQualityRunView,
@@ -1812,6 +1813,186 @@ it.each(['client', 'opportunity'] as const)(
       screen.queryByRole('combobox', { name: 'Destinataire légal' }),
     ).not.toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(access.onActorRevalidated).not.toHaveBeenCalled();
+    expect(access.onCompanyContextRejected).not.toHaveBeenCalled();
+    expect(access.onWorkspaceAccessRejected).not.toHaveBeenCalled();
+  },
+);
+
+const groupedVersionLocales = [
+  {
+    locale: 'ro',
+    language: 'Română',
+    open1000: 'Deschide versiunea 1.000',
+    open1001: 'Deschide versiunea 1.001',
+    predecessor1000: 'Versiunea precedentă: 1.000',
+    predecessor1001: 'Versiunea precedentă: 1.001',
+  },
+  {
+    locale: 'ru',
+    language: 'Русский',
+    open1000: 'Открыть версию 1\u00a0000',
+    open1001: 'Открыть версию 1\u00a0001',
+    predecessor1000: 'Предыдущая версия: 1\u00a0000',
+    predecessor1001: 'Предыдущая версия: 1\u00a0001',
+  },
+  {
+    locale: 'fr',
+    language: 'Français',
+    open1000: 'Ouvrir la version 1\u202f000',
+    open1001: 'Ouvrir la version 1\u202f001',
+    predecessor1000: 'Version précédente : 1\u202f000',
+    predecessor1001: 'Version précédente : 1\u202f001',
+  },
+  {
+    locale: 'en',
+    language: 'English',
+    open1000: 'Open version 1,000',
+    open1001: 'Open version 1,001',
+    predecessor1000: 'Previous version: 1,000',
+    predecessor1001: 'Previous version: 1,001',
+  },
+];
+
+it.each(groupedVersionLocales)(
+  'groups history ordinals in $locale accessible names without localizing exact request IDs or selection callbacks',
+  async ({ language, open1000, open1001 }) => {
+    localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const historical = pendingOffer({
+      versionNumber: 1000,
+      versionId: '1000',
+    });
+    historical.version.supersededByVersionId = '1001';
+    historical.version.supersededAt = '2026-09-29T09:00:00.000Z';
+    const head = pendingOffer({ versionNumber: 1001, versionId: '1001' });
+    head.version.predecessorVersionId = '1000';
+    const requests: string[] = [];
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        const path = input.toString();
+        expect(init?.method ?? 'GET').toBe('GET');
+        expect(new Headers(init?.headers).get('x-company-context-id')).toBe(
+          '3000',
+        );
+        requests.push(path);
+        if (path === '/api/offers/opportunities/4000/versions')
+          return response({
+            versions: [
+              {
+                id: '1001',
+                versionNumber: 1001,
+                createdAt: '2026-09-29T09:00:00.000Z',
+                supersededByVersionId: null,
+              },
+              {
+                id: '1000',
+                versionNumber: 1000,
+                createdAt: '2026-09-27T09:00:00.000Z',
+                supersededByVersionId: '1001',
+              },
+            ],
+            nextCursor: null,
+          });
+        if (path === '/api/offers/opportunities/4000/versions/1000')
+          return response({ offer: historical });
+        throw new Error(`Unexpected grouped-history request: ${path}`);
+      });
+    const onSelect = vi.fn<(offer: OfferView) => void>();
+    const reject = vi.fn(async () => undefined);
+    render(
+      <InterfaceLocaleProvider>
+        <LanguageControls />
+        <OfferVersionHistory
+          identity={identity}
+          companyId="3000"
+          opportunityId="4000"
+          offer={head}
+          reject={reject}
+          onSelect={onSelect}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    expect(
+      await screen.findAllByRole('button', { name: /^Open version /u }),
+    ).toHaveLength(2);
+    expect(requests).toEqual(['/api/offers/opportunities/4000/versions']);
+    const requestCount = fetch.mock.calls.length;
+    const languageControl = screen.getByRole('button', { name: language });
+    languageControl.focus();
+    fireEvent.click(languageControl);
+    expect(languageControl).toHaveFocus();
+    expect(fetch).toHaveBeenCalledTimes(requestCount);
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: open1001 })).toBeDisabled();
+    const historicalControl = screen.getByRole('button', {
+      name: open1000,
+    });
+    expect(historicalControl).toBeEnabled();
+    fireEvent.click(historicalControl);
+    await waitFor(() =>
+      expect(onSelect).toHaveBeenCalledExactlyOnceWith(historical),
+    );
+    expect(requests).toEqual([
+      '/api/offers/opportunities/4000/versions',
+      '/api/offers/opportunities/4000/versions/1000',
+    ]);
+    expect(onSelect.mock.calls[0]?.[0].version.versionNumber).toBe(1000);
+    expect(onSelect.mock.calls[0]?.[0].version.id).toBe('1000');
+    expect(head.version.versionNumber).toBe(1001);
+    expect(head.version.id).toBe('1001');
+  },
+);
+
+it.each(
+  groupedVersionLocales.flatMap((locale) => [
+    {
+      ...locale,
+      versionNumber: 1000,
+      predecessor: locale.predecessor1000,
+    },
+    {
+      ...locale,
+      versionNumber: 1001,
+      predecessor: locale.predecessor1001,
+    },
+  ]),
+)(
+  'groups predecessor ordinal $versionNumber in $locale while retaining the exact successor preparation context',
+  async ({ language, versionNumber, predecessor }) => {
+    localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const saved = pendingOffer({
+      versionNumber,
+      versionId: String(versionNumber),
+    });
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        expect(init?.method ?? 'GET').toBe('GET');
+        const path = input.toString();
+        if (path === '/api/offers/opportunities/opportunity-one')
+          return response({ offer: saved });
+        if (path.endsWith('/versions'))
+          return response({ versions: [], nextCursor: null });
+        return preparationRead(input);
+      });
+    const access = callbacks();
+    render(localizedTree({ access }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Prepare a new version' }),
+    );
+    await screen.findByRole('button', { name: 'Create new version' });
+    const requestCount = fetch.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: language }));
+    expect(fetch).toHaveBeenCalledTimes(requestCount);
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName === 'P' && element.textContent === predecessor,
+      ),
+    ).toBeVisible();
+    expect(saved.version.versionNumber).toBe(versionNumber);
+    expect(saved.version.id).toBe(String(versionNumber));
     expect(access.onActorRevalidated).not.toHaveBeenCalled();
     expect(access.onCompanyContextRejected).not.toHaveBeenCalled();
     expect(access.onWorkspaceAccessRejected).not.toHaveBeenCalled();
