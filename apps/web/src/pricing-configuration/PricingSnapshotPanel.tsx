@@ -3,8 +3,11 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { selectedWorkspaceId } from '../access/workspace-selection';
-import { formatApplicationDateTime } from '../presentation/date-time';
-import { pricingSnapshotCopy as copy } from './pricing-snapshot.copy';
+import {
+  useInterfaceLocale,
+  type InterfaceLocale,
+} from '../localization/interface-locale';
+import { usePricingSnapshotCopy } from './pricing-snapshot.copy';
 import './pricing-snapshots.css';
 
 const quantityGrammar = /^(0|[1-9][0-9]{0,8})(\.[0-9]{1,3})?$/u;
@@ -113,7 +116,6 @@ type CalculationAttempt = {
 type FieldFeedback = {
   kind: 'net-reduction';
   offeringId: string;
-  message: string;
 };
 type Feedback =
   | 'invalid'
@@ -143,6 +145,8 @@ export function PricingSnapshotPanel({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const copy = usePricingSnapshotCopy();
+  const { locale } = useInterfaceLocale();
   const [view, setView] = useState<ViewState>({ kind: 'loading' });
   const [drafts, setDrafts] = useState<Record<string, DraftLine>>({});
   const [detail, setDetail] = useState<DetailState>({ kind: 'closed' });
@@ -579,25 +583,25 @@ export function PricingSnapshotPanel({
       aria-labelledby={`${fieldId}-title`}
     >
       <header>
-        <p>{copy.provisional}</p>
-        <h4 id={`${fieldId}-title`}>{copy.title}</h4>
-        <p>{copy.explanation}</p>
+        <p>{copy('provisional')}</p>
+        <h4 id={`${fieldId}-title`}>{copy('title')}</h4>
+        <p>{copy('explanation')}</p>
       </header>
-      {view.kind === 'loading' ? <p role="status">{copy.loading}</p> : null}
-      {view.kind === 'denied' ? <p role="alert">{copy.denied}</p> : null}
+      {view.kind === 'loading' ? <p role="status">{copy('loading')}</p> : null}
+      {view.kind === 'denied' ? <p role="alert">{copy('denied')}</p> : null}
       {view.kind === 'error' ? (
         <p role="alert">
-          {copy.unavailable}{' '}
+          {copy('unavailable')}{' '}
           <button type="button" onClick={() => void load()}>
-            {copy.retry}
+            {copy('retry')}
           </button>
         </p>
       ) : null}
       {view.kind === 'ready' ? (
         <>
-          {!view.rule ? <p role="status">{copy.noRule}</p> : null}
+          {!view.rule ? <p role="status">{copy('noRule')}</p> : null}
           {view.rule && view.offerings.length === 0 ? (
-            <p role="status">{copy.noOfferings}</p>
+            <p role="status">{copy('noOfferings')}</p>
           ) : null}
           {view.rule && view.offerings.length > 0 ? (
             <form
@@ -608,12 +612,12 @@ export function PricingSnapshotPanel({
               }}
             >
               <p>
-                {copy.ruleVersion}: {view.rule.versionNumber}
+                {copy('ruleVersion')}: {view.rule.versionNumber}
               </p>
               <p id={`${fieldId}-selection-limit`} aria-live="polite">
                 {selectionLimitReached
-                  ? copy.selectionLimitReached
-                  : copy.selectionLimit}
+                  ? copy('selectionLimitReached')
+                  : copy('selectionLimit')}
               </p>
               <div className="pricing-snapshot-lines">
                 {view.offerings.map((offering) => {
@@ -650,13 +654,16 @@ export function PricingSnapshotPanel({
                           offering.serviceDefinition.name}
                       </label>
                       <small>
-                        {offering.serviceDefinition.code} · {copy.tariff}{' '}
+                        {offering.serviceDefinition.code} · {copy('tariff')}{' '}
                         {offering.tariff.versionNumber} ·{' '}
-                        {offering.tariff.unitAmount} {offering.tariff.currency}/
-                        {offering.tariff.unit}
+                        {formatSnapshotDecimal(
+                          offering.tariff.unitAmount,
+                          locale,
+                        )}{' '}
+                        {offering.tariff.currency}/{offering.tariff.unit}
                       </small>
                       <label>
-                        {copy.quantity}
+                        {copy('quantity')}
                         <input
                           inputMode="decimal"
                           value={draft.quantity}
@@ -691,12 +698,12 @@ export function PricingSnapshotPanel({
                                 }))
                               }
                             />
-                            {copy.applyAdjustment}
+                            {copy('applyAdjustment')}
                           </label>
                           {draft.adjustmentEnabled ? (
                             <>
                               <label>
-                                {copy.netReduction}
+                                {copy('netReduction')}
                                 <input
                                   inputMode="decimal"
                                   value={draft.netReduction}
@@ -728,11 +735,11 @@ export function PricingSnapshotPanel({
                                   id={`${fieldId}-${offering.id}-net-reduction-error`}
                                   role="alert"
                                 >
-                                  {netReductionFeedback.message}
+                                  {copy('netReductionInvalid')}
                                 </small>
                               ) : null}
                               <label>
-                                {copy.adjustmentReason}
+                                {copy('adjustmentReason')}
                                 <textarea
                                   value={draft.adjustmentReason}
                                   required
@@ -762,21 +769,21 @@ export function PricingSnapshotPanel({
               </div>
               {feedback ? (
                 <div role="alert">
-                  <p>{feedbackCopy(feedback)}</p>
+                  <p>{feedbackCopy(feedback, copy)}</p>
                   {feedback === 'stale' || feedback === 'not-effective' ? (
                     <button type="button" onClick={() => void load(true)}>
-                      {copy.reload}
+                      {copy('reload')}
                     </button>
                   ) : null}
                 </div>
               ) : null}
-              {unresolved ? <p role="alert">{copy.uncertain}</p> : null}
+              {unresolved ? <p role="alert">{copy('uncertain')}</p> : null}
               <button type="submit" disabled={pending}>
                 {pending
-                  ? copy.calculating
+                  ? copy('calculating')
                   : unresolved
-                    ? copy.retry
-                    : copy.calculate}
+                    ? copy('retry')
+                    : copy('calculate')}
               </button>
             </form>
           ) : null}
@@ -789,16 +796,16 @@ export function PricingSnapshotPanel({
             onOpen={(snapshotId) => void reopen(snapshotId)}
           />
           {detail.kind === 'loading' ? (
-            <p role="status">{copy.snapshotLoading}</p>
+            <p role="status">{copy('snapshotLoading')}</p>
           ) : null}
           {detail.kind === 'unavailable' ? (
             <div role="alert">
-              <p>{copy.snapshotUnavailable}</p>
+              <p>{copy('snapshotUnavailable')}</p>
               <button
                 type="button"
                 onClick={() => void reopen(detail.snapshotId)}
               >
-                {copy.retrySnapshot}
+                {copy('retrySnapshot')}
               </button>
             </div>
           ) : null}
@@ -829,25 +836,27 @@ function SnapshotHistory({
   onOlder: () => void;
   onOpen: (snapshotId: string) => void;
 }) {
+  const copy = usePricingSnapshotCopy();
+  const { locale, formatDateTime } = useInterfaceLocale();
   return (
     <section aria-labelledby="pricing-snapshot-history-title">
-      <h5 id="pricing-snapshot-history-title">{copy.snapshots}</h5>
-      {snapshots.length === 0 ? <p>{copy.noSnapshots}</p> : null}
+      <h5 id="pricing-snapshot-history-title">{copy('snapshots')}</h5>
+      {snapshots.length === 0 ? <p>{copy('noSnapshots')}</p> : null}
       <ul className="pricing-snapshot-history">
         {snapshots.map((snapshot) => (
           <li key={snapshot.id}>
             <button type="button" onClick={() => onOpen(snapshot.id)}>
-              {copy.reopen}: {snapshot.total} {snapshot.currency} ·{' '}
-              {formatApplicationDateTime(snapshot.calculatedAt)}
+              {copy('reopen')}: {formatSnapshotDecimal(snapshot.total, locale)}{' '}
+              {snapshot.currency} · {formatDateTime(snapshot.calculatedAt)}
             </button>
-            <small>{copy.provisional}</small>
+            <small>{copy('provisional')}</small>
           </li>
         ))}
       </ul>
-      {olderError ? <p role="alert">{copy.olderUnavailable}</p> : null}
+      {olderError ? <p role="alert">{copy('olderUnavailable')}</p> : null}
       {hasOlder ? (
         <button type="button" onClick={onOlder} disabled={olderPending}>
-          {copy.older}
+          {copy('older')}
         </button>
       ) : null}
     </section>
@@ -861,26 +870,28 @@ function SnapshotDetail({
   snapshot: PricingSnapshot;
   onClose: () => void;
 }) {
+  const copy = usePricingSnapshotCopy();
+  const { locale, formatDateTime } = useInterfaceLocale();
   return (
-    <section className="pricing-snapshot-detail" aria-label={copy.title}>
+    <section className="pricing-snapshot-detail" aria-label={copy('title')}>
       <button type="button" onClick={onClose}>
-        {copy.close}
+        {copy('close')}
       </button>
       <p>
-        <strong>{copy.provisional}</strong>
+        <strong>{copy('provisional')}</strong>
       </p>
       <p>
-        {copy.calculatedAt}: {formatApplicationDateTime(snapshot.calculatedAt)}
+        {copy('calculatedAt')}: {formatDateTime(snapshot.calculatedAt)}
       </p>
       <p>
-        {copy.calculatedBy}: {snapshot.calculatedByWorkspaceMembershipId}
+        {copy('calculatedBy')}: {snapshot.calculatedByWorkspaceMembershipId}
       </p>
       <p>
-        {copy.ruleVersion}: {snapshot.pricingRuleVersion.versionNumber}
+        {copy('ruleVersion')}: {snapshot.pricingRuleVersion.versionNumber}
       </p>
       {snapshot.clientReference ? (
         <p>
-          {copy.client}: {snapshot.clientReference.displayName}
+          {copy('client')}: {snapshot.clientReference.displayName}
         </p>
       ) : null}
       <ol>
@@ -888,42 +899,49 @@ function SnapshotDetail({
           <li key={`${snapshot.id}:${line.position}`}>
             <strong>{line.commercialLabel ?? line.serviceName}</strong>
             <span>
-              {copy.tariff}: {line.tariffVersionNumber}
+              {copy('tariff')}: {line.tariffVersionNumber}
             </span>
             <span>
-              {line.quantity} × {line.unitAmount} {line.currency}/{line.unit}
+              {formatSnapshotDecimal(line.quantity, locale)} ×{' '}
+              {formatSnapshotDecimal(line.unitAmount, locale)} {line.currency}/
+              {line.unit}
             </span>
             <span>
-              {copy.originalAmounts}: {line.lineNet} + {line.lineTax}{' '}
-              {line.currency}
+              {copy('originalAmounts')}:{' '}
+              {formatSnapshotDecimal(line.lineNet, locale)} +{' '}
+              {formatSnapshotDecimal(line.lineTax, locale)} {line.currency}
             </span>
             {line.adjustment ? (
               <div className="pricing-snapshot-adjustment-trace">
                 <span>
-                  {copy.adjustmentType}: {copy.fixedNetDiscount}
+                  {copy('adjustmentType')}: {copy('fixedNetDiscount')}
                 </span>
                 <span>
-                  {copy.netReduction}: {line.adjustment.netReduction}{' '}
+                  {copy('netReduction')}:{' '}
+                  {formatSnapshotDecimal(line.adjustment.netReduction, locale)}{' '}
                   {line.currency}
                 </span>
                 <span>
-                  {copy.taxReduction}: {line.adjustment.taxReduction}{' '}
+                  {copy('taxReduction')}:{' '}
+                  {formatSnapshotDecimal(line.adjustment.taxReduction, locale)}{' '}
                   {line.currency}
                 </span>
                 <span>
-                  {copy.adjustmentReason}: {line.adjustment.reason}
+                  {copy('adjustmentReason')}: {line.adjustment.reason}
                 </span>
                 <span>
-                  {copy.adjustedAmounts}: {line.adjustedLineNet} +{' '}
-                  {line.adjustedLineTax} {line.currency}
+                  {copy('adjustedAmounts')}:{' '}
+                  {formatSnapshotDecimal(line.adjustedLineNet, locale)} +{' '}
+                  {formatSnapshotDecimal(line.adjustedLineTax, locale)}{' '}
+                  {line.currency}
                 </span>
                 <span>
-                  {copy.adjustmentAppliedBy}:{' '}
+                  {copy('adjustmentAppliedBy')}:{' '}
                   {line.adjustment.appliedByWorkspaceMembershipId}
                 </span>
                 <span>
-                  {copy.adjustmentAppliedAt}:{' '}
-                  {formatApplicationDateTime(line.adjustment.appliedAt)}
+                  {copy('adjustmentAppliedAt')}:{' '}
+                  {formatDateTime(line.adjustment.appliedAt)}
                 </span>
               </div>
             ) : null}
@@ -932,29 +950,46 @@ function SnapshotDetail({
       </ol>
       <dl>
         <div>
-          <dt>{copy.subtotal}</dt>
+          <dt>{copy('subtotal')}</dt>
           <dd>
-            {snapshot.subtotal} {snapshot.currency}
+            {formatSnapshotDecimal(snapshot.subtotal, locale)}{' '}
+            {snapshot.currency}
           </dd>
         </div>
         <div>
-          <dt>{copy.tax}</dt>
+          <dt>{copy('tax')}</dt>
           <dd>
-            {snapshot.taxTotal} {snapshot.currency}
+            {formatSnapshotDecimal(snapshot.taxTotal, locale)}{' '}
+            {snapshot.currency}
           </dd>
         </div>
         <div>
-          <dt>{copy.total}</dt>
+          <dt>{copy('total')}</dt>
           <dd>
             <strong>
-              {snapshot.total} {snapshot.currency}
+              {formatSnapshotDecimal(snapshot.total, locale)}{' '}
+              {snapshot.currency}
             </strong>
           </dd>
         </div>
       </dl>
-      <p>{copy.provisional}</p>
+      <p>{copy('provisional')}</p>
     </section>
   );
+}
+
+function formatSnapshotDecimal(value: string, locale: InterfaceLocale): string {
+  // Keep every fractional digit, including trailing zeros, from the saved value.
+  // An unexpected non-decimal display value stays literal rather than coercing it.
+  if (!/^[0-9]+(?:\.[0-9]+)?$/u.test(value)) return value;
+  const [whole = '0', fraction] = value.split('.');
+  const formatter = new Intl.NumberFormat(locale);
+  const integer = formatter.format(BigInt(whole));
+  if (fraction === undefined) return integer;
+  const separator =
+    formatter.formatToParts(1.1).find((part) => part.type === 'decimal')
+      ?.value ?? '.';
+  return `${integer}${separator}${fraction}`;
 }
 
 function calculationAttempt(
@@ -1129,24 +1164,26 @@ function fieldFeedbackFor(
   return {
     kind: 'net-reduction',
     offeringId,
-    message: result.body.message,
   };
 }
 
-function feedbackCopy(feedback: Feedback): string {
+function feedbackCopy(
+  feedback: Feedback,
+  copy: ReturnType<typeof usePricingSnapshotCopy>,
+): string {
   switch (feedback) {
     case 'invalid':
-      return copy.corrected;
+      return copy('corrected');
     case 'too-many-lines':
-      return copy.tooManyLines;
+      return copy('tooManyLines');
     case 'stale':
-      return copy.stale;
+      return copy('stale');
     case 'not-effective':
-      return copy.notEffective;
+      return copy('notEffective');
     case 'mixed-currency':
-      return copy.mixedCurrency;
+      return copy('mixedCurrency');
     case 'conflict':
-      return copy.conflict;
+      return copy('conflict');
   }
   return unreachableFeedback(feedback);
 }

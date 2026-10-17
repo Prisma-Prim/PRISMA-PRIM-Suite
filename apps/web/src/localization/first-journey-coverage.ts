@@ -4,6 +4,7 @@ import { clientRegistrationMessages } from '../client/client-registration.copy';
 import { clientContactEditorMessages } from '../client/client-contact-editor.copy';
 import { pricingConfigurationMessages } from '../pricing-configuration/pricing-configuration.copy';
 import { localInstantMessages } from '../pricing-configuration/local-instant.copy';
+import { pricingSnapshotMessages } from '../pricing-configuration/pricing-snapshot.copy';
 import { contractSignatureMessages } from '../contract/contract-signature.copy';
 import { clientLegalEntitiesMessages } from '../client/client-legal-entities.copy';
 import { contractProjectsMessages } from '../contract/contract-projects.copy';
@@ -43,6 +44,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('clientContactEditor', clientContactEditorMessages);
   assertMessageCoverage('pricingConfiguration', pricingConfigurationMessages);
   assertMessageCoverage('localInstant', localInstantMessages);
+  assertMessageCoverage('pricingSnapshot', pricingSnapshotMessages);
   assertMessageCoverage('contractSignature', contractSignatureMessages);
   assertMessageCoverage('clientLegalEntities', clientLegalEntitiesMessages);
   assertMessageCoverage('contractProjects', contractProjectsMessages);

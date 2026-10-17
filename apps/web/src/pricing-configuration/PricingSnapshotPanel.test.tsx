@@ -5,11 +5,22 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { PricingSnapshotPanel } from './PricingSnapshotPanel';
+import {
+  InterfaceLocaleProvider,
+  interfaceLocales,
+  interfaceLocaleStorageKey,
+  useInterfaceLocale,
+} from '../localization/interface-locale';
+import {
+  assertMessageCoverage,
+  resolveMessage,
+} from '../localization/messages';
+import { pricingSnapshotMessages } from './pricing-snapshot.copy';
 
 // All amounts and labels are synthetic and illustrative.
 const OPPORTUNITY_A = '10000000-0000-4000-8000-000000000001';
@@ -253,6 +264,29 @@ function renderPanel(opportunityId = OPPORTUNITY_A, value = actor) {
   );
 }
 
+function LocaleChoices() {
+  const { changeLocale } = useInterfaceLocale();
+  return interfaceLocales.map((locale) => (
+    <button key={locale} type="button" onClick={() => changeLocale(locale)}>
+      Use {locale}
+    </button>
+  ));
+}
+
+function renderLocalizedPanel(value = actor) {
+  return render(
+    <InterfaceLocaleProvider>
+      <LocaleChoices />
+      <PricingSnapshotPanel
+        actor={value}
+        identity={deterministicBrowserIdentity()}
+        opportunityId={OPPORTUNITY_A}
+        onCompanyContextRejected={vi.fn()}
+      />
+    </InterfaceLocaleProvider>,
+  );
+}
+
 async function selectWorkedExample(): Promise<void> {
   for (const [label, quantity] of [
     ['Illustrative service A', '2.5'],
@@ -304,6 +338,560 @@ describe('PricingSnapshotPanel', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
+
+  it('localizes an entered adjustment and uncertain retry without changing draft, source versions or the exact command', async () => {
+    const saved = adjustedSnapshot();
+    const commands: {
+      payload: BodyInit | null | undefined;
+      key: string | null;
+    }[] = [];
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: (call, init) => {
+        commands.push({
+          payload: init?.body,
+          key: new Headers(init?.headers).get('idempotency-key'),
+        });
+        return call === 1
+          ? Response.json({}, { status: 503 })
+          : Response.json(saved, { status: 201 });
+      },
+    });
+    const rejected = vi.fn();
+    const revalidated = vi.fn();
+    const workspaceRejected = vi.fn();
+    localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    render(
+      <InterfaceLocaleProvider>
+        <LocaleChoices />
+        <PricingSnapshotPanel
+          actor={actor}
+          identity={deterministicBrowserIdentity()}
+          opportunityId={OPPORTUNITY_A}
+          onCompanyContextRejected={rejected}
+          onActorRevalidated={revalidated}
+          onWorkspaceAccessRejected={workspaceRejected}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    await selectWorkedExample();
+    await enterFirstAdjustment();
+    const literalReason = '  Motiv {literal} / Причина  ';
+    fireEvent.change(screen.getByLabelText('Adjustment reason'), {
+      target: { value: literalReason },
+    });
+    const reads = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Use fr' }));
+    expect(
+      screen.getByRole('heading', { name: 'Tarification illustrative' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Quantité')[0]).toHaveValue('2.5');
+    expect(screen.getByLabelText('Réduction nette')).toHaveValue('8.63');
+    expect(screen.getByLabelText('Motif de l’ajustement')).toHaveValue(
+      literalReason,
+    );
+    expect(screen.getByText(/Version du tarif 4/u)).toHaveTextContent(
+      '123,4500 EUR/illustrative-unit',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(reads);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Calculer et enregistrer' }),
+    );
+    await screen.findByText(
+      'Le résultat est incertain. Réessayer renvoie exactement les mêmes valeurs et la même clé.',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Use ru' }));
+    expect(
+      screen.getByText(
+        'Результат неизвестен. Повторная попытка отправит те же значения и тот же ключ.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Причина корректировки')).toHaveValue(
+      literalReason,
+    );
+    expect(screen.getByLabelText('Уменьшение нетто')).toBeDisabled();
+    expect(fetchMock).toHaveBeenCalledTimes(reads + 1);
+    expect(rejected).not.toHaveBeenCalled();
+    expect(revalidated).not.toHaveBeenCalled();
+    expect(workspaceRejected).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Повторить тот же расчёт' }),
+    );
+    await screen.findByText('337,02 EUR');
+    expect(commands).toHaveLength(2);
+    expect(commands[0]?.key).toBeTruthy();
+    expect(commands[1]).toEqual(commands[0]);
+    expect(commands[0]?.payload).toBe(
+      JSON.stringify({
+        pricingRuleVersionNumber: 3,
+        lines: [
+          {
+            offeringId: OFFERING_A,
+            tariffVersionNumber: 4,
+            quantity: '2.5',
+            adjustment: {
+              type: 'FIXED_NET_DISCOUNT',
+              netReduction: '8.63',
+              reason: literalReason,
+            },
+          },
+          { offeringId: OFFERING_B, tariffVersionNumber: 2, quantity: '1' },
+        ],
+      }),
+    );
+  });
+
+  it('retranslates validated server feedback on its submitted offering without rendering raw server prose', async () => {
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`POST ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json(
+          {
+            code: 'VALIDATION_ERROR',
+            field: 'lines[0].adjustment.netReduction',
+            message: 'Raw English server prose is not interface copy.',
+          },
+          { status: 400 },
+        ),
+    });
+    renderLocalizedPanel();
+    const selected = await screen.findByLabelText('Illustrative label B');
+    const group = selected.closest('fieldset');
+    if (!group) throw new Error('Expected the submitted offering group.');
+    fireEvent.click(selected);
+    fireEvent.change(within(group).getByLabelText('Quantity'), {
+      target: { value: '1.000' },
+    });
+    fireEvent.click(within(group).getByLabelText('Apply a fixed net discount'));
+    const reduction = within(group).getByLabelText('Net reduction');
+    fireEvent.change(reduction, { target: { value: '999.00' } });
+    const reason = within(group).getByLabelText('Adjustment reason');
+    fireEvent.change(reason, {
+      target: { value: '  Motiv literal / Причина  ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+    await screen.findByText(
+      'Enter a net reduction no greater than the original line net.',
+    );
+    const reads = fetchMock.mock.calls.length;
+    const association = reduction.getAttribute('aria-describedby');
+    expect(association).toBeTruthy();
+    for (const choice of [
+      {
+        locale: 'ro',
+        text: 'Introduceți o reducere netă care nu depășește valoarea netă inițială a liniei.',
+      },
+      {
+        locale: 'ru',
+        text: 'Введите уменьшение нетто, не превышающее исходную сумму нетто строки.',
+      },
+      {
+        locale: 'fr',
+        text: 'Saisissez une réduction nette ne dépassant pas le net d’origine de la ligne.',
+      },
+      {
+        locale: 'en',
+        text: 'Enter a net reduction no greater than the original line net.',
+      },
+    ]) {
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(reduction).toHaveAccessibleDescription(choice.text);
+      expect(reduction).toHaveAttribute('aria-describedby', association);
+      expect(reduction).toHaveAttribute('aria-invalid', 'true');
+      expect(reduction).toHaveValue('999.00');
+      expect(reason).toHaveValue('  Motiv literal / Причина  ');
+      expect(fetchMock).toHaveBeenCalledTimes(reads);
+      expect(
+        screen.queryByText('Raw English server prose is not interface copy.'),
+      ).not.toBeInTheDocument();
+    }
+    fireEvent.change(reduction, { target: { value: '0.01' } });
+    expect(reduction).not.toHaveAttribute('aria-describedby');
+    expect(reduction).toHaveAttribute('aria-invalid', 'false');
+    expect(postCalls(fetchMock)[0]?.body).toMatchObject({
+      lines: [{ offeringId: OFFERING_B, quantity: '1.000' }],
+    });
+  });
+
+  it('reopens historical adjustment amounts with exact precision and locale dates without reading successor tariffs', async () => {
+    const historical = adjustedSnapshot();
+    const saved = {
+      ...historical,
+      total: '9007199254740993.01',
+      lines: historical.lines.map((line) => ({
+        ...line,
+        quantity: '2.500',
+        unitAmount: '123.4500',
+      })),
+    };
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}`]: () =>
+        Response.json({ items: [saved] }),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}/${saved.id}`]: () =>
+        Response.json(saved),
+      [`GET /api/pricing-configuration/offerings/${OFFERING_A}/tariff-scope`]:
+        () =>
+          Response.json({
+            offeringId: OFFERING_A,
+            current: tariff(OFFERING_A, 9),
+          }),
+    });
+    renderLocalizedPanel();
+    fireEvent.click(
+      await screen.findByRole('button', { name: /Reopen snapshot/u }),
+    );
+    // The panel shares the title with the detail, so scope by its explicit Close action.
+    const opened = (
+      await screen.findByRole('button', { name: 'Close snapshot' })
+    ).closest('section');
+    if (!opened) throw new Error('Expected the opened Snapshot.');
+    const reads = fetchMock.mock.calls.length;
+    for (const choice of [
+      {
+        locale: 'ro',
+        amount: '9.007.199.254.740.993,01 EUR',
+        quantity: '2,500 × 123,4500 EUR/illustrative-unit',
+        date: '26 sept. 2026, 10:00',
+      },
+      {
+        locale: 'ru',
+        amount: '9\u00a0007\u00a0199\u00a0254\u00a0740\u00a0993,01 EUR',
+        quantity: '2,500 × 123,4500 EUR/illustrative-unit',
+        date: '26 сент. 2026 г., 10:00',
+      },
+      {
+        locale: 'fr',
+        amount: '9\u202f007\u202f199\u202f254\u202f740\u202f993,01 EUR',
+        quantity: '2,500 × 123,4500 EUR/illustrative-unit',
+        date: '26 sept. 2026, 10:00',
+      },
+      {
+        locale: 'en',
+        amount: '9,007,199,254,740,993.01 EUR',
+        quantity: '2.500 × 123.4500 EUR/illustrative-unit',
+        date: 'Sep 26, 2026, 10:00 AM',
+      },
+    ]) {
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(
+        within(opened).getByText(
+          (_, element) =>
+            element?.tagName === 'STRONG' &&
+            element.textContent === choice.amount,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(opened).getAllByText(choice.quantity, { exact: true }),
+      ).toHaveLength(2);
+      expect(opened).toHaveTextContent(choice.date);
+      expect(opened).toHaveTextContent('Exact synthetic adjustment reason');
+      expect(opened).toHaveTextContent('membership-adjuster');
+      expect(opened).toHaveTextContent('Illustrative Client');
+      expect(opened).not.toHaveTextContent(/Tariff Version: 9/u);
+      expect(fetchMock).toHaveBeenCalledTimes(reads);
+    }
+  });
+
+  it('requires every Snapshot translation and falls back to Romanian for a missing locale entry', () => {
+    expect(() =>
+      assertMessageCoverage('pricingSnapshot', pricingSnapshotMessages),
+    ).not.toThrow();
+    const incomplete = {
+      ...pricingSnapshotMessages,
+      translations: { ...pricingSnapshotMessages.translations, fr: {} },
+    };
+    expect(resolveMessage(incomplete, 'fr', 'title')).toBe(
+      'Tarificare ilustrativă',
+    );
+    expect(() => assertMessageCoverage('pricingSnapshot', incomplete)).toThrow(
+      'Missing translation: pricingSnapshot.fr.title',
+    );
+  });
+
+  it('retranslates failed older pages and pending or unavailable reopening without repeating a read', async () => {
+    const saved = snapshot();
+    let releaseDetail: ((response: Response) => void) | undefined;
+    const pendingDetail = new Promise<Response>((resolve) => {
+      releaseDetail = resolve;
+    });
+    const fetchMock = stubApi({
+      ...baseRoutes(),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}`]: (_call, _init, url) =>
+        url.searchParams.has('cursor')
+          ? Response.json({}, { status: 503 })
+          : Response.json({ items: [saved], nextCursor: 'same-older-page' }),
+      [`GET ${snapshotPath(OPPORTUNITY_A)}/${saved.id}`]: () => pendingDetail,
+    });
+    const choices = [
+      {
+        locale: 'ro',
+        olderError:
+          'Instantaneele de tarifare mai vechi nu au putut fi încărcate. Reîncercați.',
+        opening: 'Se deschide instantaneul de tarifare…',
+        unavailable:
+          'Acest instantaneu de tarifare nu a putut fi deschis. Reîncercați.',
+        retry: 'Reîncearcă deschiderea instantaneului',
+      },
+      {
+        locale: 'ru',
+        olderError:
+          'Не удалось загрузить более ранние снимки расчёта цены. Повторите попытку.',
+        opening: 'Открывается снимок расчёта цены…',
+        unavailable:
+          'Не удалось открыть этот снимок расчёта цены. Повторите попытку.',
+        retry: 'Повторить открытие снимка',
+      },
+      {
+        locale: 'fr',
+        olderError:
+          'Impossible de charger les instantanés de tarification plus anciens. Réessayez.',
+        opening: 'Ouverture de l’instantané de tarification…',
+        unavailable:
+          'Impossible d’ouvrir cet instantané de tarification. Réessayez.',
+        retry: 'Réessayer d’ouvrir l’instantané',
+      },
+      {
+        locale: 'en',
+        olderError: 'Older Pricing Snapshots could not be loaded. Try again.',
+        opening: 'Opening Pricing Snapshot…',
+        unavailable: 'This Pricing Snapshot could not be opened. Try again.',
+        retry: 'Retry opening snapshot',
+      },
+    ];
+    renderLocalizedPanel();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Load older snapshots' }),
+    );
+    await screen.findByText(
+      'Older Pricing Snapshots could not be loaded. Try again.',
+    );
+    let reads = fetchMock.mock.calls.length;
+    for (const choice of choices) {
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(screen.getByText(choice.olderError)).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledTimes(reads);
+    }
+    fireEvent.click(screen.getByRole('button', { name: /^Reopen snapshot/u }));
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter(
+          ([input, init]) =>
+            key(input, init) ===
+            `GET ${snapshotPath(OPPORTUNITY_A)}/${saved.id}`,
+        ),
+      ).toHaveLength(1),
+    );
+    reads = fetchMock.mock.calls.length;
+    for (const choice of choices) {
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(screen.getByText(choice.opening)).toHaveAttribute(
+        'role',
+        'status',
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(reads);
+    }
+    await act(async () => releaseDetail?.(Response.json({}, { status: 404 })));
+    for (const choice of choices) {
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(screen.getByText(choice.unavailable)).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: choice.retry }),
+      ).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledTimes(reads);
+    }
+  });
+
+  it.each([
+    {
+      locale: 'ro',
+      calculate: 'Calculează și salvează',
+      feedback: [
+        'Corectați valorile evidențiate și reîncercați.',
+        'Configurația s-a schimbat. Reîncărcați tarificarea înainte de un nou calcul.',
+        'O versiune declarată nu mai este în vigoare. Reîncărcați tarificarea înainte de a reîncerca.',
+        'Alegeți oferte de servicii care folosesc aceeași monedă.',
+        'Această reîncercare nu mai corespunde calculului inițial.',
+      ],
+    },
+    {
+      locale: 'ru',
+      calculate: 'Рассчитать и сохранить',
+      feedback: [
+        'Исправьте выделенные значения и повторите попытку.',
+        'Конфигурация изменилась. Перезагрузите расчёт цены перед новым расчётом.',
+        'Одна из указанных версий больше не действует. Перезагрузите расчёт цены перед повторной попыткой.',
+        'Выберите предложения услуг в одной валюте.',
+        'Эта повторная попытка больше не соответствует исходному расчёту.',
+      ],
+    },
+    {
+      locale: 'fr',
+      calculate: 'Calculer et enregistrer',
+      feedback: [
+        'Corrigez les valeurs signalées et réessayez.',
+        'La configuration a changé. Rechargez la tarification avant un nouveau calcul.',
+        'Une version déclarée n’est plus en vigueur. Rechargez la tarification avant de réessayer.',
+        'Choisissez des prestations utilisant une seule devise.',
+        'Cette nouvelle tentative ne correspond plus au calcul d’origine.',
+      ],
+    },
+    {
+      locale: 'en',
+      calculate: 'Calculate and save',
+      feedback: [
+        'Correct the highlighted values and try again.',
+        'Configuration changed. Reload pricing before calculating again.',
+        'One declared version is no longer effective. Reload pricing before trying again.',
+        'Choose offerings that use one currency.',
+        'This retry no longer matches the original calculation.',
+      ],
+    },
+  ])(
+    'presents validation and safe named conflicts in $locale with the original decimal draft',
+    async ({ locale, calculate, feedback }) => {
+      const outcomes = [
+        { status: 400, code: 'VALIDATION_ERROR' },
+        { status: 409, code: 'STALE_PRICING_RULE_VERSION' },
+        { status: 409, code: 'PRICING_RULE_NOT_EFFECTIVE' },
+        { status: 409, code: 'MIXED_CURRENCY' },
+        { status: 409, code: 'IDEMPOTENCY_CONFLICT' },
+      ];
+      const fetchMock = stubApi({
+        ...baseRoutes(),
+        [`POST ${snapshotPath(OPPORTUNITY_A)}`]: (call) => {
+          const outcome = outcomes[call - 1];
+          if (!outcome) throw new Error('Unexpected calculation.');
+          return Response.json(
+            { code: outcome.code },
+            { status: outcome.status },
+          );
+        },
+      });
+      renderLocalizedPanel();
+      await selectWorkedExample();
+      fireEvent.click(screen.getByRole('button', { name: `Use ${locale}` }));
+      for (const expected of feedback) {
+        fireEvent.click(screen.getByRole('button', { name: calculate }));
+        expect(
+          await screen.findByText(expected, { exact: true }),
+        ).toBeInTheDocument();
+        const count = fetchMock.mock.calls.length;
+        fireEvent.click(screen.getByRole('button', { name: 'Use en' }));
+        expect(screen.getAllByLabelText('Quantity')[0]).toHaveValue('2.5');
+        fireEvent.click(screen.getByRole('button', { name: `Use ${locale}` }));
+        expect(screen.getByText(expected, { exact: true })).toBeInTheDocument();
+        expect(fetchMock).toHaveBeenCalledTimes(count);
+      }
+      expect(postCalls(fetchMock)).toHaveLength(5);
+    },
+  );
+
+  it.each([
+    {
+      locale: 'ro',
+      loading: 'Se încarcă tarificarea…',
+      unavailable: 'Tarificarea nu a putut fi încărcată. Reîncercați.',
+      retry: 'Reîncearcă același calcul',
+      noRule:
+        'Nicio versiune a regulii de tarifare nu este în vigoare în prezent.',
+      noOfferings:
+        'Nu există nicio ofertă de serviciu cu o versiune de tarif în vigoare.',
+      denied:
+        'Accesul la tarificare nu este disponibil pentru această Oportunitate.',
+    },
+    {
+      locale: 'ru',
+      loading: 'Загрузка расчёта цены…',
+      unavailable: 'Не удалось загрузить расчёт цены. Повторите попытку.',
+      retry: 'Повторить тот же расчёт',
+      noRule: 'Сейчас нет действующей версии правила расчёта цены.',
+      noOfferings: 'Нет предложений услуг с действующей версией тарифа.',
+      denied: 'Расчёт цены недоступен для этой Возможности.',
+    },
+    {
+      locale: 'fr',
+      loading: 'Chargement de la tarification…',
+      unavailable: 'Impossible de charger la tarification. Réessayez.',
+      retry: 'Réessayer le même calcul',
+      noRule:
+        'Aucune version de règle de tarification n’est actuellement en vigueur.',
+      noOfferings:
+        'Aucune prestation avec une version de tarif en vigueur n’est disponible.',
+      denied:
+        'L’accès à la tarification n’est pas disponible pour cette Opportunité.',
+    },
+    {
+      locale: 'en',
+      loading: 'Loading pricing…',
+      unavailable: 'Pricing could not be loaded. Try again.',
+      retry: 'Retry the same calculation',
+      noRule: 'No Pricing Rule Version is currently effective.',
+      noOfferings: 'No offering with a current Tariff Version is available.',
+      denied: 'Pricing access is not available for this Opportunity.',
+    },
+  ])(
+    'renders loading, unavailable, empty configuration and denial in $locale',
+    async (choice) => {
+      let release: ((response: Response) => void) | undefined;
+      const first = new Promise<Response>((resolve) => {
+        release = resolve;
+      });
+      stubApi({
+        ...baseRoutes(),
+        'GET /api/pricing-configuration/rule-scope': (call) =>
+          call === 1 ? first : Response.json({ current: null }),
+      });
+      const firstRender = renderLocalizedPanel();
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(screen.getByRole('status')).toHaveTextContent(choice.loading);
+      await act(async () => release?.(Response.json({}, { status: 503 })));
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        choice.unavailable,
+      );
+      fireEvent.click(screen.getByRole('button', { name: choice.retry }));
+      expect(await screen.findByText(choice.noRule)).toBeInTheDocument();
+      firstRender.unmount();
+      stubApi({
+        ...baseRoutes(),
+        'GET /api/commercial-catalogue/offerings': () =>
+          Response.json({ items: [] }),
+      });
+      const empty = renderLocalizedPanel();
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(await screen.findByText(choice.noOfferings)).toBeInTheDocument();
+      empty.unmount();
+      const deniedFetch = stubApi({});
+      renderLocalizedPanel({
+        ...actor,
+        activeCompany: {
+          ...actor.activeCompany,
+          id: 'company-1',
+          displayName: 'PRISMA-PRIM',
+          pricingUserPermissions: [],
+        },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: `Use ${choice.locale}` }),
+      );
+      expect(screen.getByRole('alert')).toHaveTextContent(choice.denied);
+      expect(deniedFetch).not.toHaveBeenCalled();
+    },
+  );
 
   it('calculates the worked example, keeps exact strings, and reopens the saved snapshot through the API', async () => {
     const saved = snapshot();
@@ -678,7 +1266,7 @@ describe('PricingSnapshotPanel', () => {
         });
     }
     const fetchMock = stubApi(routes);
-    renderPanel();
+    renderLocalizedPanel();
 
     for (let index = 0; index < 20; index += 1) {
       const checkbox = await screen.findByLabelText(
@@ -694,6 +1282,13 @@ describe('PricingSnapshotPanel', () => {
 
     const first = screen.getByLabelText('Selectable service 1');
     const twentyFirst = screen.getByLabelText('Selectable service 21');
+    const reads = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Use fr' }));
+    expect(twentyFirst).toHaveAccessibleDescription(
+      '20 prestations sélectionnées. Désélectionnez-en une avant d’en choisir une autre.',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(reads);
+    fireEvent.click(screen.getByRole('button', { name: 'Use en' }));
     expect(twentyFirst).toBeDisabled();
     expect(twentyFirst).toHaveAccessibleDescription(
       '20 offerings selected. Deselect one before choosing another.',
@@ -1168,15 +1763,32 @@ describe('PricingSnapshotPanel', () => {
       [`POST ${snapshotPath(OPPORTUNITY_A)}`]: (call) =>
         call === 1 ? late : Response.json(saved, { status: 201 }),
     });
-    renderPanel();
+    renderLocalizedPanel();
     await selectWorkedExample();
     vi.useFakeTimers();
     fireEvent.click(screen.getByRole('button', { name: 'Calculate and save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use fr' }));
+    expect(
+      screen.getByRole('button', { name: 'Calcul en cours…' }),
+    ).toBeDisabled();
+    expect(screen.getAllByLabelText('Quantité')[0]).toHaveValue('2.5');
+    fireEvent.click(screen.getByRole('button', { name: 'Use en' }));
     await act(async () => vi.advanceTimersByTimeAsync(30_000));
     vi.useRealTimers();
     expect(
       await screen.findByText(/outcome is uncertain/u),
     ).toBeInTheDocument();
+    const requests = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Use ru' }));
+    expect(
+      screen.getByText(
+        'Результат неизвестен. Повторная попытка отправит те же значения и тот же ключ.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Количество')[0]).toHaveValue('2.5');
+    expect(screen.getAllByLabelText('Количество')[0]).toBeDisabled();
+    expect(fetchMock).toHaveBeenCalledTimes(requests);
+    fireEvent.click(screen.getByRole('button', { name: 'Use en' }));
     resolveLate?.(Response.json(snapshot(OPPORTUNITY_A, saved.id, '999.99')));
     await act(async () => Promise.resolve());
     expect(screen.queryByText('999.99 EUR')).not.toBeInTheDocument();
