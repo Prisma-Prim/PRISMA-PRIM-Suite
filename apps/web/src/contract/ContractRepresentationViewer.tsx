@@ -3,7 +3,7 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import { contractCopy as copy } from './contract.copy';
+import { useContractCopy } from './contract.copy';
 import { useContractDecisionCopy } from './contract-decision.copy';
 import type { ContractView } from './contract-response';
 import { useContractSignatureCopy } from './contract-signature.copy';
@@ -50,6 +50,7 @@ export function ContractRepresentationViewer({
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const copy = useContractCopy();
   const decisionCopy = useContractDecisionCopy();
   const signatureCopy = useContractSignatureCopy();
   const [view, setView] = useState<DocumentView>({ kind: 'closed' });
@@ -114,18 +115,20 @@ export function ContractRepresentationViewer({
     onWorkspaceAccessRejected,
   ]);
   return (
-    <section className="contract-representation" aria-label={copy.document}>
+    <section className="contract-representation" aria-label={copy('document')}>
       <button
         type="button"
         disabled={view.kind === 'loading'}
         onClick={() => setRequestNumber((number) => number + 1)}
       >
-        {requestNumber === 0 ? copy.openDocument : copy.reloadDocument}
+        {requestNumber === 0 ? copy('openDocument') : copy('reloadDocument')}
       </button>
-      {view.kind === 'loading' && <p role="status">{copy.documentLoading}</p>}
+      {view.kind === 'loading' && (
+        <p role="status">{copy('documentLoading')}</p>
+      )}
       {(view.kind === 'denied' || view.kind === 'error') && (
         <p role="alert">
-          {view.kind === 'denied' ? copy.denied : copy.documentError}
+          {view.kind === 'denied' ? copy('denied') : copy('documentError')}
         </p>
       )}
       {view.kind === 'ready' && (
@@ -138,10 +141,10 @@ export function ContractRepresentationViewer({
             <p>{decisionCopy('draft')}</p>
           )}
           <p>
-            {copy.checksum}: <code>{view.sha256}</code>
+            {copy('checksum')}: <code>{view.sha256}</code>
           </p>
           <iframe
-            title={copy.document}
+            title={copy('document')}
             sandbox=""
             referrerPolicy="no-referrer"
             srcDoc={view.html}

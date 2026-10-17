@@ -111,7 +111,11 @@ function reader(): ActorContext {
       ],
       commercialIntakePermissionAssignmentId: 'intake-1',
       commercialIntakePermissionSetVersion: 'v1',
-      contractPermissions: ['commercial.contract.read'],
+      contractPermissions: [
+        'commercial.contract.read',
+        'commercial.contract.approve',
+        'commercial.contract.signature.record',
+      ],
       contractApproverAssignmentId: 'approver-1',
       contractApproverPermissionSetVersion: 'v1',
     },

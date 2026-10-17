@@ -1,3 +1,4 @@
+import { render as renderWithEnglishLocale } from '../test/render-with-interface-locale';
 import {
   assertMessageCoverage,
   resolveMessage,
@@ -23,6 +24,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ContractPanel } from './ContractPanel';
+import { contractMessages } from './contract.copy';
 import {
   InterfaceLocaleProvider,
   interfaceLocales,
@@ -50,6 +52,869 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it.each(['loading', 'empty', 'error', 'denied'] as const)(
+    'retranslates the base %s state through every locale without repeating its reads or callbacks',
+    async (state) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      const current = actor(state === 'empty');
+      const onCompanyContextRejected = vi.fn();
+      const onActorRevalidated = vi.fn();
+      const onWorkspaceAccessRejected = vi.fn();
+      let finishRead: (value: Response) => void = () => {
+        throw new Error('No pending Contract read');
+      };
+      const pending = new Promise<Response>((resolve) => {
+        finishRead = resolve;
+      });
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input) => {
+          const path = input.toString();
+          if (path.endsWith('/access/current-actor')) return response(current);
+          if (path.includes('/offers/')) return response({ offer: null });
+          if (state === 'loading') return pending;
+          return response(
+            state === 'empty'
+              ? { contract: null }
+              : { message: 'Untrusted server wording' },
+            state === 'denied' ? 403 : state === 'error' ? 503 : 200,
+          );
+        });
+      render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            actor={current}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      await screen.findByText(resolveMessage(contractMessages, 'en', state));
+      await waitFor(() => expect(fetch).toHaveBeenCalled());
+      const calls = fetch.mock.calls.length;
+      const actorCallbacks = onActorRevalidated.mock.calls.length;
+      for (const locale of interfaceLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + locale }),
+        );
+        const copy = (key: (typeof contractMessages.keys)[number]) =>
+          resolveMessage(contractMessages, locale, key);
+        const panel = screen.getByRole('region', { name: copy('title') });
+        expect(
+          within(panel).getByRole('heading', { name: copy('title') }),
+        ).toBeVisible();
+        expect(within(panel).getByText(copy('banner'))).toBeVisible();
+        expect(within(panel).getByText(copy(state))).toBeVisible();
+        const reload = within(panel).getByRole('button', {
+          name: copy('refresh'),
+        });
+        if (state === 'loading') expect(reload).toBeDisabled();
+        else expect(reload).toBeEnabled();
+        if (state === 'empty') {
+          expect(within(panel).getByText(copy('awaiting'))).toBeVisible();
+          expect(
+            within(panel).queryByRole('button', { name: copy('create') }),
+          ).not.toBeInTheDocument();
+        }
+        expect(fetch).toHaveBeenCalledTimes(calls);
+        expect(onActorRevalidated).toHaveBeenCalledTimes(actorCallbacks);
+        expect(onCompanyContextRejected).not.toHaveBeenCalled();
+        expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+        expect(
+          screen.queryByText('Untrusted server wording'),
+        ).not.toBeInTheDocument();
+      }
+      expect(actorCallbacks).toBe(state === 'denied' ? 1 : 0);
+      expect(() =>
+        assertMessageCoverage('contract', contractMessages),
+      ).not.toThrow();
+      if (state === 'loading')
+        await act(async () => finishRead(response({ contract: null })));
+    },
+  );
+
+  it.each([403, 404, 503] as const)(
+    'retranslates viewer refusal HTTP %s without another exact read or disclosure',
+    async (status) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      const current = actor(false);
+      const onCompanyContextRejected = vi.fn();
+      const onActorRevalidated = vi.fn();
+      const onWorkspaceAccessRejected = vi.fn();
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input) => {
+          const path = input.toString();
+          if (path.endsWith('/access/current-actor')) return response(current);
+          if (path.endsWith('/representation'))
+            return response(
+              { message: 'Untrusted representation wording' },
+              status,
+            );
+          if (path.endsWith('/versions'))
+            return response({ items: [], nextCursor: null });
+          return response({ contract: fixture() });
+        });
+      render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            actor={current}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={onCompanyContextRejected}
+            onActorRevalidated={onActorRevalidated}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Open exact Contract document',
+        }),
+      );
+      const initialViewer = screen.getByRole('region', {
+        name: 'Illustrative Contract document',
+      });
+      await within(initialViewer).findByRole('alert');
+      const calls = fetch.mock.calls.length;
+      const actorCallbacks = onActorRevalidated.mock.calls.length;
+      for (const locale of interfaceLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + locale }),
+        );
+        const copy = (key: (typeof contractMessages.keys)[number]) =>
+          resolveMessage(contractMessages, locale, key);
+        const viewer = screen.getByRole('region', { name: copy('document') });
+        expect(viewer).toBe(initialViewer);
+        expect(within(viewer).getByRole('alert')).toHaveTextContent(
+          copy(status === 503 ? 'documentError' : 'denied'),
+        );
+        expect(
+          within(viewer).getByRole('button', { name: copy('reloadDocument') }),
+        ).toBeEnabled();
+        expect(screen.queryByTitle(copy('document'))).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(representation().sha256),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText('Untrusted representation wording'),
+        ).not.toBeInTheDocument();
+        expect(fetch).toHaveBeenCalledTimes(calls);
+        expect(onActorRevalidated).toHaveBeenCalledTimes(actorCallbacks);
+        expect(onCompanyContextRejected).not.toHaveBeenCalled();
+        expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+      }
+      expect(actorCallbacks).toBe(status === 403 ? 1 : 0);
+      expect(
+        fetch.mock.calls.filter(([path]) =>
+          path.toString().endsWith('/representation'),
+        ),
+      ).toHaveLength(1);
+      expect(
+        fetch.mock.calls
+          .find(([path]) => path.toString().endsWith('/representation'))?.[0]
+          .toString(),
+      ).toContain(
+        '/contracts/opportunities/opportunity-one/versions/version-one/representation',
+      );
+    },
+  );
+
+  it.each([
+    'company',
+    'workspace',
+    'membership',
+    'assignment',
+    'permission-version',
+    'contract-read',
+    'offer-read',
+    'client-read',
+    'opportunity',
+    'identity',
+  ] as const)(
+    'retires the locale-preserved base command on %s replacement before its late reply',
+    async (replacement) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      let finishCommand: (value: Response) => void = () => {
+        throw new Error('No pending Contract command');
+      };
+      const pending = new Promise<Response>((resolve) => {
+        finishCommand = resolve;
+      });
+      let commandSignal: AbortSignal | null | undefined;
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input, init) => {
+          if (init?.method === 'POST') {
+            commandSignal = init.signal;
+            return pending;
+          }
+          return input.toString().includes('/offers/')
+            ? acceptedOfferResponse()
+            : response({ contract: null });
+        });
+      const current = actor(true);
+      const company = current.activeCompany;
+      if (!company) throw new Error('Missing Company fixture');
+      const onCompanyContextRejected = vi.fn();
+      const onActorRevalidated = vi.fn();
+      const onWorkspaceAccessRejected = vi.fn();
+      const callbacks = {
+        onCompanyContextRejected,
+        onActorRevalidated,
+        onWorkspaceAccessRejected,
+      };
+      const view = render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            {...callbacks}
+            actor={current}
+            identity={identity}
+            opportunityId="opportunity-one"
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const conditions = await screen.findByRole('textbox', {
+        name: 'Special conditions',
+      });
+      fireEvent.change(conditions, {
+        target: { value: '  Original {client} — Условия\nfin  ' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Create Contract' }));
+      await waitFor(() => expect(commandSignal).toBeDefined());
+      const calls = fetch.mock.calls.length;
+      fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+      expect(
+        screen.getByRole('textbox', { name: 'Conditions particulières' }),
+      ).toBe(conditions);
+      expect(conditions).toHaveValue('  Original {client} — Условия\nfin  ');
+      expect(conditions).toBeDisabled();
+      expect(commandSignal?.aborted).toBe(false);
+      expect(fetch).toHaveBeenCalledTimes(calls);
+      const next: ActorContext = {
+        ...current,
+        workspaceId:
+          replacement === 'workspace' ? 'workspace-two' : current.workspaceId,
+        workspaceMembershipId:
+          replacement === 'membership'
+            ? 'member-two'
+            : current.workspaceMembershipId,
+        activeCompany: {
+          ...company,
+          id: replacement === 'company' ? 'company-two' : company.id,
+          contractPermissionAssignmentId:
+            replacement === 'assignment'
+              ? 'replacement-assignment'
+              : company.contractPermissionAssignmentId,
+          contractPermissionSetVersion:
+            replacement === 'permission-version'
+              ? undefined
+              : company.contractPermissionSetVersion,
+          contractPermissions:
+            replacement === 'contract-read' ? [] : company.contractPermissions,
+          offerPermissions:
+            replacement === 'offer-read' ? [] : company.offerPermissions,
+          clientPermissions:
+            replacement === 'client-read' ? [] : company.clientPermissions,
+        },
+      };
+      view.rerender(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            {...callbacks}
+            actor={next}
+            identity={
+              replacement === 'identity'
+                ? deterministicBrowserIdentity({
+                    'x-test-external-subject': 'replacement-reader',
+                  })
+                : identity
+            }
+            opportunityId={
+              replacement === 'opportunity'
+                ? 'opportunity-two'
+                : 'opportunity-one'
+            }
+          />
+        </InterfaceLocaleProvider>,
+      );
+      expect(commandSignal?.aborted).toBe(true);
+      await act(async () => finishCommand(response(fixture(), 201)));
+      expect(
+        screen.queryByText('Synthetic accepted scope'),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Contrat créé.')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(representation().sha256),
+      ).not.toBeInTheDocument();
+      expect(
+        fetch.mock.calls.filter(([, init]) => init?.method === 'POST'),
+      ).toHaveLength(1);
+      expect(onCompanyContextRejected).not.toHaveBeenCalled();
+      expect(onActorRevalidated).not.toHaveBeenCalled();
+      expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+    },
+  );
+
+  it('retranslates base Contract draft labels without replacing literal work or requesting data', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const onCompanyContextRejected = vi.fn();
+    const onActorRevalidated = vi.fn();
+    const onWorkspaceAccessRejected = vi.fn();
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input) =>
+        input.toString().includes('/offers/')
+          ? acceptedOfferResponse()
+          : response({ contract: null, precontract: null }),
+      );
+    render(
+      <InterfaceLocaleProvider>
+        <SignatureLocaleChoices />
+        <ContractPanel
+          actor={actor(true)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={onCompanyContextRejected}
+          onActorRevalidated={onActorRevalidated}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    const conditions = await screen.findByLabelText('Special conditions');
+    const start = screen.getByLabelText('Term start');
+    const end = screen.getByLabelText('Term end');
+    const literal = '  Condiții {client} — Договор\nDeuxième ligne  ';
+    fireEvent.change(conditions, { target: { value: literal } });
+    fireEvent.change(start, { target: { value: '2028-02-29' } });
+    fireEvent.change(end, { target: { value: '2028-03-01' } });
+    conditions.focus();
+    const callsBeforeLocale = fetch.mock.calls.length;
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+
+    expect(screen.getByLabelText('Conditions particulières')).toBe(conditions);
+    expect(conditions).toHaveValue(literal);
+    expect(conditions).toHaveFocus();
+    expect(conditions).toBeEnabled();
+    expect(screen.getByLabelText('Début de période')).toBe(start);
+    expect(start).toHaveValue('2028-02-29');
+    expect(screen.getByLabelText('Fin de période')).toBe(end);
+    expect(end).toHaveValue('2028-03-01');
+    expect(
+      screen.getByRole('button', { name: 'Créer le contrat' }),
+    ).toBeEnabled();
+    expect(fetch).toHaveBeenCalledTimes(callsBeforeLocale);
+    expect(onCompanyContextRejected).not.toHaveBeenCalled();
+    expect(onActorRevalidated).not.toHaveBeenCalled();
+    expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+  });
+  it('retranslates a loading and open exact representation without requesting or replacing its bytes', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const onCompanyContextRejected = vi.fn();
+    const onActorRevalidated = vi.fn();
+    const onWorkspaceAccessRejected = vi.fn();
+    let finishRepresentation: (value: Response) => void = () => {
+      throw new Error('The representation request has not started.');
+    };
+    const pending = new Promise<Response>((resolve) => {
+      finishRepresentation = resolve;
+    });
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input) => {
+        if (input.toString().endsWith('/representation')) return pending;
+        if (input.toString().endsWith('/versions'))
+          return response({ items: [fixture().version], nextCursor: null });
+        return response({ contract: fixture() });
+      });
+    render(
+      <InterfaceLocaleProvider>
+        <SignatureLocaleChoices />
+        <ContractPanel
+          actor={actor(false)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={onCompanyContextRejected}
+          onActorRevalidated={onActorRevalidated}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Open exact Contract document',
+      }),
+    );
+    await screen.findByText('Loading exact Contract document…');
+    const callsWhileLoading = fetch.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+    expect(
+      screen.getByText('Chargement du document exact du contrat…'),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', {
+        name: 'Recharger le document exact du contrat',
+      }),
+    ).toBeDisabled();
+    expect(fetch).toHaveBeenCalledTimes(callsWhileLoading);
+    await act(async () => finishRepresentation(response(representation())));
+    const frame = await screen.findByTitle('Document de contrat illustratif');
+    expect(frame).toHaveAttribute('srcdoc', representation().html);
+    expect(frame).toHaveAttribute('sandbox', '');
+    expect(frame).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(screen.getByText(representation().sha256)).toBeVisible();
+    const callsWhileOpen = fetch.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Choose ru' }));
+    expect(screen.getByTitle('Иллюстративный документ договора')).toBe(frame);
+    expect(frame).toHaveAttribute('srcdoc', representation().html);
+    expect(screen.getByText(representation().sha256)).toBeVisible();
+    expect(fetch).toHaveBeenCalledTimes(callsWhileOpen);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose ro' }));
+    expect(screen.getByTitle('Document de contract ilustrativ')).toBe(frame);
+    expect(frame).toHaveAttribute('srcdoc', representation().html);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose en' }));
+    expect(screen.getByTitle('Illustrative Contract document')).toBe(frame);
+    expect(frame).toHaveAttribute('srcdoc', representation().html);
+    expect(fetch).toHaveBeenCalledTimes(callsWhileOpen);
+    expect(onCompanyContextRejected).not.toHaveBeenCalled();
+    expect(onActorRevalidated).not.toHaveBeenCalled();
+    expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+    expect(
+      fetch.mock.calls.filter(([path]) =>
+        path.toString().endsWith('/representation'),
+      ),
+    ).toHaveLength(1);
+    expect(
+      fetch.mock.calls
+        .find(([path]) => path.toString().endsWith('/representation'))?.[0]
+        .toString(),
+    ).toContain(
+      '/contracts/opportunities/opportunity-one/versions/version-one/representation',
+    );
+  });
+  it.each([
+    [
+      'ro',
+      '29 feb. 2028',
+      '1 mar. 2028',
+      '9.007.199.254.740.993,01',
+      '9.007.199.254.740.993,123456789000000001',
+    ],
+    [
+      'ru',
+      '29 февр. 2028 г.',
+      '1 мар. 2028 г.',
+      '9\u00a0007\u00a0199\u00a0254\u00a0740\u00a0993,01',
+      '9\u00a0007\u00a0199\u00a0254\u00a0740\u00a0993,123456789000000001',
+    ],
+    [
+      'fr',
+      '29 févr. 2028',
+      '1 mars 2028',
+      '9\u202f007\u202f199\u202f254\u202f740\u202f993,01',
+      '9\u202f007\u202f199\u202f254\u202f740\u202f993,123456789000000001',
+    ],
+    [
+      'en',
+      'Feb 29, 2028',
+      'Mar 1, 2028',
+      '9,007,199,254,740,993.01',
+      '9,007,199,254,740,993.123456789000000001',
+    ],
+  ] as const)(
+    'presents exact recorded calendar dates and decimal values in %s while leaving business literals unchanged',
+    async (locale, date, endDate, amount, quantity) => {
+      vi.stubEnv('TZ', 'America/Los_Angeles');
+      window.localStorage.setItem(interfaceLocaleStorageKey, locale);
+      const stored = fixture();
+      const literal = 'Condiții {subtotal} — Договор\nDeuxième ligne';
+      const recorded = {
+        ...stored,
+        illustrativeReference: 1000,
+        version: {
+          ...stored.version,
+          termStartsOn: '2028-02-29',
+          termEndsOn: '2028-03-01',
+          scopeNote: literal,
+          commercialConditions: literal,
+          specialConditions: literal,
+          pricingSnapshot: {
+            ...stored.version.pricingSnapshot,
+            subtotal: '9007199254740993.01',
+            taxTotal: '0.00',
+            total: '9007199254740993.01',
+            lines: [
+              {
+                serviceName: literal,
+                quantity: '9007199254740993.123456789000000001',
+                lineNet: '9007199254740993.01',
+                lineTax: '0.00',
+              },
+            ],
+          },
+        },
+      };
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input) =>
+          input.toString().endsWith('/versions')
+            ? response({ items: [], nextCursor: null })
+            : response({ contract: recorded }),
+        );
+      render(
+        <InterfaceLocaleProvider>
+          <ContractPanel
+            actor={actor(false)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      expect(await screen.findByText(date)).toBeVisible();
+      expect(screen.getByText(endDate)).toBeVisible();
+      expect(screen.getByRole('cell', { name: amount })).toBeVisible();
+      expect(screen.getByRole('cell', { name: quantity })).toBeVisible();
+      expect(
+        screen.getByRole('cell', { name: locale === 'en' ? '0.00' : '0,00' }),
+      ).toBeVisible();
+      expect(
+        screen.getAllByText(literal, {
+          exact: true,
+          collapseWhitespace: false,
+        }),
+      ).toHaveLength(4);
+      expect(
+        screen.getByText('CONTRACT_QUALITY_ILLUSTRATIVE v1'),
+      ).toBeVisible();
+      const displayReference =
+        locale === 'en'
+          ? '1,000'
+          : locale === 'fr'
+            ? '1\u202f000'
+            : locale === 'ru'
+              ? '1\u00a0000'
+              : '1.000';
+      expect(
+        screen.getByText(
+          new RegExp(
+            displayReference.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&') + ' ·',
+            'u',
+          ),
+          { collapseWhitespace: false },
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByText(
+          new RegExp(
+            amount.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&') + ' EUR',
+            'u',
+          ),
+          { collapseWhitespace: false },
+        ),
+      ).toBeVisible();
+      expect(
+        fetch.mock.calls.every(([, init]) => init?.method !== 'POST'),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    [
+      400,
+      'Vérifiez les dates et les conditions du contrat.',
+      'Проверьте даты и условия договора.',
+    ],
+    [
+      404,
+      'La source du contrat est indisponible.',
+      'Источник договора недоступен.',
+    ],
+    [
+      409,
+      'Le contrat a changé ou existe déjà. Rechargez-le avant de continuer.',
+      'Договор изменился или уже существует. Перезагрузите его перед продолжением.',
+    ],
+  ] as const)(
+    'retranslates recorded base command feedback for HTTP %s without replaying it',
+    async (status, french, russian) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input, init) => {
+          if (init?.method === 'POST')
+            return response({ message: 'Untrusted server wording' }, status);
+          return input.toString().includes('/offers/')
+            ? acceptedOfferResponse()
+            : response({ contract: null });
+        });
+      render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            actor={actor(true)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const conditions = await screen.findByLabelText('Special conditions');
+      fireEvent.change(conditions, {
+        target: { value: 'Literal {client} — Условия' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Create Contract' }));
+      await screen.findByRole('alert');
+      const calls = fetch.mock.calls.length;
+      fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+      expect(screen.getByRole('alert')).toHaveTextContent(french);
+      expect(conditions).toHaveValue('Literal {client} — Условия');
+      expect(conditions).toBeEnabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Choose ru' }));
+      expect(screen.getByRole('alert')).toHaveTextContent(russian);
+      expect(
+        screen.queryByText('Untrusted server wording'),
+      ).not.toBeInTheDocument();
+      for (const locale of ['ro', 'en'] as const) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + locale }),
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          resolveMessage(
+            contractMessages,
+            locale,
+            status === 400
+              ? 'invalid'
+              : status === 404
+                ? 'unavailable'
+                : 'conflict',
+          ),
+        );
+        expect(
+          screen.getByRole('textbox', {
+            name: resolveMessage(contractMessages, locale, 'conditions'),
+          }),
+        ).toBe(conditions);
+        expect(conditions).toHaveValue('Literal {client} — Условия');
+        expect(conditions).toBeEnabled();
+      }
+      expect(fetch).toHaveBeenCalledTimes(calls);
+      expect(
+        fetch.mock.calls.filter(([, init]) => init?.method === 'POST'),
+      ).toHaveLength(1);
+    },
+  );
+
+  it('preserves the pending and uncertain Accepted-Offer command across languages with its original callbacks', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const onCompanyContextRejected = vi.fn();
+    const onActorRevalidated = vi.fn();
+    const onWorkspaceAccessRejected = vi.fn();
+    let finish: (value: Response) => void = () => {
+      throw new Error('No pending command');
+    };
+    const pending = new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+    const attempts: Array<{
+      path: string;
+      body: BodyInit | null | undefined;
+      key: string | null;
+      company: string | null;
+      workspace: string | null;
+    }> = [];
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        if (init?.method === 'POST') {
+          const headers = new Headers(init.headers);
+          attempts.push({
+            path: input.toString(),
+            body: init.body,
+            key: headers.get('idempotency-key'),
+            company: headers.get('x-company-context-id'),
+            workspace: headers.get('x-workspace-context-id'),
+          });
+          return attempts.length === 1 ? pending : response(fixture(), 201);
+        }
+        if (input.toString().endsWith('/versions'))
+          return response({ items: [], nextCursor: null });
+        return input.toString().includes('/offers/')
+          ? acceptedOfferResponse()
+          : response({ contract: null });
+      });
+    render(
+      <InterfaceLocaleProvider>
+        <SignatureLocaleChoices />
+        <ContractPanel
+          actor={actor(true)}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={onCompanyContextRejected}
+          onActorRevalidated={onActorRevalidated}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    const literal = '  Exact {client} — Условия\nfin  ';
+    const conditions = await screen.findByLabelText('Special conditions');
+    fireEvent.change(conditions, { target: { value: literal } });
+    fireEvent.change(screen.getByLabelText('Term start'), {
+      target: { value: '2028-02-29' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Contract' }));
+    await waitFor(() => expect(attempts).toHaveLength(1));
+    const calls = fetch.mock.calls.length;
+    for (const locale of ['ro', 'ru', 'en'] as const) {
+      fireEvent.click(screen.getByRole('button', { name: 'Choose ' + locale }));
+      expect(
+        screen.getByRole('button', {
+          name: resolveMessage(contractMessages, locale, 'running'),
+        }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('textbox', {
+          name: resolveMessage(contractMessages, locale, 'conditions'),
+        }),
+      ).toBe(conditions);
+      expect(conditions).toHaveValue(literal);
+      expect(conditions).toBeDisabled();
+      expect(fetch).toHaveBeenCalledTimes(calls);
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+    expect(
+      screen.getByRole('button', { name: 'Création du contrat…' }),
+    ).toBeDisabled();
+    expect(conditions).toHaveValue(literal);
+    expect(conditions).toBeDisabled();
+    expect(fetch).toHaveBeenCalledTimes(calls);
+    await act(async () => finish(response({}, 503)));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Le résultat est incertain. Réessayez exactement le même contrat.',
+    );
+    for (const locale of ['ro', 'en'] as const) {
+      fireEvent.click(screen.getByRole('button', { name: 'Choose ' + locale }));
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        resolveMessage(contractMessages, locale, 'uncertain'),
+      );
+      expect(
+        screen.getByRole('button', {
+          name: resolveMessage(contractMessages, locale, 'retry'),
+        }),
+      ).toBeEnabled();
+      expect(conditions).toHaveValue(literal);
+      expect(conditions).toBeDisabled();
+      expect(fetch).toHaveBeenCalledTimes(calls);
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Choose ru' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Результат неизвестен. Повторите ту же команду договора.',
+    );
+    expect(conditions).toHaveValue(literal);
+    expect(conditions).toBeDisabled();
+    expect(fetch).toHaveBeenCalledTimes(calls);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Повторить ту же команду договора' }),
+    );
+    expect(await screen.findByText('Договор создан.')).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts[0]?.path).toMatch(
+      /\/contracts\/opportunities\/opportunity-one$/u,
+    );
+    expect(attempts[0]?.body).toBe(
+      JSON.stringify({
+        acceptedOfferVersionId: 'accepted-version',
+        termStartsOn: '2028-02-29',
+        termEndsOn: null,
+        specialConditions: literal,
+      }),
+    );
+    expect(attempts[0]?.key).toEqual(expect.any(String));
+    expect(attempts[0]?.key).not.toBe('');
+    expect(attempts[0]?.company).toBe('company-one');
+    expect(onCompanyContextRejected).not.toHaveBeenCalled();
+    expect(onActorRevalidated).not.toHaveBeenCalled();
+    expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+  });
+
+  it('retires a language-preserved pending Contract command on authority loss and ignores its late success', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    let finish: (value: Response) => void = () => {
+      throw new Error('No pending command');
+    };
+    const pending = new Promise<Response>((resolve) => {
+      finish = resolve;
+    });
+    let commandSignal: AbortSignal | null | undefined;
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        if (init?.method === 'POST') {
+          commandSignal = init.signal;
+          return pending;
+        }
+        return input.toString().includes('/offers/')
+          ? acceptedOfferResponse()
+          : response({ contract: null });
+      });
+    const current = actor(true);
+    const onCompanyContextRejected = vi.fn();
+    const onActorRevalidated = vi.fn();
+    const onWorkspaceAccessRejected = vi.fn();
+    const properties = {
+      identity,
+      opportunityId: 'opportunity-one',
+      onCompanyContextRejected,
+      onActorRevalidated,
+      onWorkspaceAccessRejected,
+    };
+    const view = render(
+      <InterfaceLocaleProvider>
+        <SignatureLocaleChoices />
+        <ContractPanel {...properties} actor={current} />
+      </InterfaceLocaleProvider>,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Create Contract' }),
+    );
+    await waitFor(() => expect(commandSignal).toBeDefined());
+    const calls = fetch.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+    expect(commandSignal?.aborted).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(calls);
+    view.rerender(
+      <InterfaceLocaleProvider>
+        <SignatureLocaleChoices />
+        <ContractPanel
+          {...properties}
+          actor={{ ...current, activeCompany: undefined }}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    expect(commandSignal?.aborted).toBe(true);
+    await act(async () => finish(response(fixture(), 201)));
+    expect(
+      screen.queryByText('Synthetic accepted scope'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Contrat créé.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', {
+        name: 'Réessayer exactement le même contrat',
+      }),
+    ).not.toBeInTheDocument();
+    expect(onCompanyContextRejected).not.toHaveBeenCalled();
+    expect(onActorRevalidated).not.toHaveBeenCalled();
+    expect(onWorkspaceAccessRejected).not.toHaveBeenCalled();
+  });
   it('C7 creates a Precontract with an identical uncertain retry and opens it as its own agreement', async () => {
     window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
     const precontract = precontractUiFixture();
@@ -2678,7 +3543,7 @@ describe('ContractPanel', () => {
         opportunityId: 'opportunity-one',
         onCompanyContextRejected: () => undefined,
       };
-      const view = render(<ContractPanel {...properties} />);
+      const view = renderWithEnglishLocale(<ContractPanel {...properties} />);
       fireEvent.click(
         await screen.findByRole('button', {
           name: 'Open exact Contract document',
@@ -2961,7 +3826,7 @@ describe('ContractPanel', () => {
         opportunityId: 'opportunity-one',
         onCompanyContextRejected: () => undefined,
       };
-      const view = render(<ContractPanel {...properties} />);
+      const view = renderWithEnglishLocale(<ContractPanel {...properties} />);
       fireEvent.click(
         await screen.findByRole('button', {
           name: 'Open exact Contract document',
@@ -3034,14 +3899,7 @@ describe('ContractPanel', () => {
           : { contract: fixture() },
       ),
     );
-    render(
-      <ContractPanel
-        actor={actor(false)}
-        identity={identity}
-        opportunityId="opportunity-one"
-        onCompanyContextRejected={() => undefined}
-      />,
-    );
+    renderEnglishReader();
     fireEvent.click(
       await screen.findByRole('button', {
         name: 'Open exact Contract document',
@@ -3060,7 +3918,7 @@ describe('ContractPanel', () => {
     const fetch = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(response({ contract: fixture() }));
-    render(
+    renderWithEnglishLocale(
       <ContractPanel
         actor={actor(false)}
         identity={identity}
@@ -3109,7 +3967,7 @@ describe('ContractPanel', () => {
         });
       return response({ contract: null });
     });
-    render(
+    renderWithEnglishLocale(
       <ContractPanel
         actor={actor(true)}
         identity={identity}
@@ -3151,7 +4009,7 @@ describe('ContractPanel', () => {
         return response(run);
       return response({ contract: fixture() });
     });
-    render(
+    renderWithEnglishLocale(
       <ContractPanel
         actor={actor(false)}
         identity={identity}
@@ -3292,7 +4150,19 @@ describe('ContractPanel', () => {
         expect(
           within(checks).getByText('CONTRACT_QUALITY_ILLUSTRATIVE v2'),
         ).toBeVisible();
-        expect(screen.getByText(/335\.08 EUR/u)).toBeVisible();
+        expect(
+          screen.getByText(locale === 'en' ? /335\.08 EUR/u : /335,08 EUR/u),
+        ).toBeVisible();
+        expect(
+          screen.getByRole('cell', {
+            name: locale === 'en' ? '291.37' : '291,37',
+          }),
+        ).toBeVisible();
+        expect(
+          screen.getByRole('cell', {
+            name: locale === 'en' ? '43.71' : '43,71',
+          }),
+        ).toBeVisible();
       },
     );
     it('keeps an unadjusted Contract on v1 without the adjusted notice', async () => {
