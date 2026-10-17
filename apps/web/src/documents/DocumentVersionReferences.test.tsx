@@ -66,6 +66,7 @@ const draft = {
   status: 'draft',
   createdAt: addedAt,
   createdBy: { displayName: 'Document Registrar' },
+  pdfContent: { state: 'absent' },
   representations: [
     reference('draft-editable', 1, 'editable', 'https://example.test/v2.docx'),
     reference('draft-rendered', 2, 'rendered', 'https://example.test/v2.pdf'),
@@ -80,6 +81,7 @@ const official = {
   designatedAt: '2026-09-29T09:00:00.000Z',
   designatedBy: { displayName: 'Document Approver' },
   frozen: { title: 'Questionnaire', purpose: 'Assessment' },
+  pdfContent: { state: 'absent' },
   representations: [
     reference(
       'official-editable',

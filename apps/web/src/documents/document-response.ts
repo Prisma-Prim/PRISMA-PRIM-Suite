@@ -1,3 +1,7 @@
+import {
+  readDocumentPdfContent,
+  type DocumentPdfContent,
+} from './document-pdf-response';
 export interface WorkingDocument {
   id: string;
   companyId: string;
@@ -228,6 +232,7 @@ interface DocumentVersionBase {
   createdAt: string;
   createdByDisplayName: string;
   references: DocumentVersionReference[];
+  pdfContent: DocumentPdfContent;
 }
 export type DocumentRepresentationForm =
   'editable' | 'rendered' | 'signed' | 'other';
@@ -314,6 +319,7 @@ function readDocumentVersion(value: unknown): DocumentVersion {
     createdAt: instant(row.createdAt),
     createdByDisplayName: string(record(row.createdBy).displayName),
     references,
+    pdfContent: readDocumentPdfContent(row.pdfContent),
   };
   switch (row.status) {
     case 'draft':

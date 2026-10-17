@@ -1,3 +1,10 @@
+import { requireQuestionnairePdfStructure } from './document-pdf-validation.js';
+import { DocumentPdfStorage } from './document-pdf-storage.js';
+import { DocumentMalwareScanner } from './document-malware-scanner.js';
+import type {
+  DocumentPdfContent,
+  ValidatedQuestionnairePdf,
+} from './document-pdf.types.js';
 import { createHash } from 'node:crypto';
 import {
   BadRequestException,
@@ -63,6 +70,14 @@ export interface WorkingVersion {
 type VersionCommandAction = typeof documentVersionCommands.$inferSelect.action;
 type CommandRow = typeof documentVersionCommands.$inferSelect;
 type DocumentRow = typeof workingDocuments.$inferSelect;
+interface VersionCommandIdentity {
+  action: VersionCommandAction;
+  documentId: string;
+  versionId: string | null;
+  expectedRevision: number;
+  idempotencyKey: string;
+  fingerprintBody?: Readonly<Record<string, unknown>>;
+}
 interface AppliedCommand {
   versionId: string;
   versionNumber: number;
@@ -86,6 +101,8 @@ export class DocumentVersionsService {
     private readonly database: DatabaseContext,
     private readonly clients: ClientOperationalReferenceService,
     private readonly boundary: DocumentReadBoundary,
+    private readonly pdfs: DocumentPdfStorage,
+    private readonly scanner: DocumentMalwareScanner,
   ) {}
 
   /**
@@ -255,6 +272,14 @@ export class DocumentVersionsService {
             asc(documentRepresentations.position),
           )
           .limit(MAXIMUM_DOCUMENT_VERSIONS * 10);
+        const pdfs = await this.pdfs.metadata(
+          {
+            workspaceId: actor.workspaceId,
+            companyId: visible.companyId,
+            documentId: visible.document.id,
+          },
+          await this.authorization.hasDocumentContentRead(actor),
+        );
         const referenceReader = canReadReference(actor);
         const grouped = new Map<string, DocumentVersionView>();
         for (const row of rows) {
@@ -285,6 +310,7 @@ export class DocumentVersionsService {
               designatorDisplayName: row.designatorDisplayName,
               supersededByVersionNumber: row.supersededByVersionNumber,
               reference: item,
+              pdfContent: pdfs.get(row.version.id) ?? { state: 'absent' },
             }),
           );
         }
@@ -352,6 +378,113 @@ export class DocumentVersionsService {
     });
   }
 
+  /** Scan outside a transaction; revalidate the same live authority and draft on commit. */
+  async uploadContent(
+    actor: ActorContext,
+    input: {
+      documentId: string;
+      versionId: string;
+      expectedRevision: number;
+      idempotencyKey: string;
+      pdf: ValidatedQuestionnairePdf;
+    },
+  ): Promise<DocumentVersionReceipt> {
+    const command: VersionCommandIdentity = {
+      action: 'representation_added',
+      documentId: input.documentId,
+      versionId: input.versionId,
+      expectedRevision: input.expectedRevision,
+      idempotencyKey: input.idempotencyKey,
+      fingerprintBody: {
+        form: 'other',
+        fileName: input.pdf.fileName,
+        size: input.pdf.size,
+        sha256: input.pdf.sha256,
+      },
+    };
+    const replay = await this.database.transaction(async () => {
+      // Serialize receipt and revision reads with a concurrent commit of this
+      // key. This short transaction still ends before external scanning.
+      await this.lockCommandKey(actor, command.idempotencyKey);
+      const { companyId, recorded } = await this.authorizePdfUpload(
+        actor,
+        command,
+      );
+      const visible = await this.boundary.requireVisible(
+        actor,
+        input.documentId,
+      );
+      const scope = {
+        workspaceId: actor.workspaceId,
+        companyId,
+        documentId: input.documentId,
+      };
+      await this.requireVersionOf(scope, input.versionId);
+      if (recorded) return recorded;
+      await this.clients.lockActiveReferenceClient(
+        actor,
+        visible.document.clientId,
+      );
+      if (visible.document.workingRevision !== input.expectedRevision)
+        throw documentRevisionConflict();
+      await this.requirePdfDraft(scope, input.versionId);
+      return null;
+    });
+    if (replay) return replay;
+    const scan = await this.scanner.scan(input.pdf.bytes);
+    await requireQuestionnairePdfStructure(input.pdf.bytes);
+    return this.execute(actor, {
+      ...command,
+      authorize: async () =>
+        (await this.authorizePdfUpload(actor, command)).companyId,
+      apply: async (scope, document) => {
+        const draft = await this.requirePdfDraft(scope, input.versionId);
+        const representationId = await this.pdfs.insert({
+          scope,
+          versionId: input.versionId,
+          membershipId: actor.workspaceMembershipId,
+          uploadRevision: document.workingRevision + 1,
+          pdf: input.pdf,
+          scan,
+        });
+        return {
+          versionId: draft.id,
+          versionNumber: draft.number,
+          relatedVersionNumber: null,
+          representationId,
+          representationForm: 'other',
+          appendedAfterDesignation: false,
+        };
+      },
+    });
+  }
+
+  /**
+   * Live upload authority precedes an actor-key fingerprint check, including
+   * Company changes. A matching receipt is released only after visibility is
+   * rechecked by the caller. Repeat under execute's key lock after scanning.
+   */
+  private async authorizePdfUpload(
+    actor: ActorContext,
+    command: VersionCommandIdentity,
+  ): Promise<{
+    companyId: string;
+    recorded: DocumentVersionReceipt | null;
+  }> {
+    const companyId =
+      await this.authorization.requireDocumentContentUpload(actor);
+    const recorded = await this.replayCommand(actor, command, companyId);
+    return { companyId, recorded };
+  }
+
+  private async requirePdfDraft(scope: DocumentScope, versionId: string) {
+    const version = (await this.versionsOf(scope)).find(
+      (candidate) => candidate.id === versionId,
+    );
+    if (version?.status !== 'draft') throw documentVersionStateInvalid();
+    return version;
+  }
+
   async addRepresentation(
     actor: ActorContext,
     request: {
@@ -413,6 +546,21 @@ export class DocumentVersionsService {
     });
   }
 
+  private async lockCommandKey(
+    actor: ActorContext,
+    idempotencyKey: string,
+  ): Promise<void> {
+    const lockKey = JSON.stringify([
+      'document.version',
+      actor.workspaceId,
+      actor.workspaceMembershipId,
+      idempotencyKey,
+    ]);
+    await this.database.connection.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+    );
+  }
+
   /**
    * The common command contract, in the delivered correction's order: the
    * per-actor key lock, live authority, visibility, replay, the original
@@ -437,15 +585,7 @@ export class DocumentVersionsService {
     },
   ): Promise<DocumentVersionReceipt> {
     return this.database.transaction(async () => {
-      const lockKey = JSON.stringify([
-        'document.version',
-        actor.workspaceId,
-        actor.workspaceMembershipId,
-        command.idempotencyKey,
-      ]);
-      await this.database.connection.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
-      );
+      await this.lockCommandKey(actor, command.idempotencyKey);
       const companyId = await command.authorize();
       const visible = await this.boundary.requireVisible(
         actor,
@@ -458,38 +598,9 @@ export class DocumentVersionsService {
       };
       if (command.versionId !== null)
         await this.requireVersionOf(scope, command.versionId);
-      const fingerprint = createHash('sha256')
-        .update(
-          JSON.stringify({
-            companyId,
-            documentId: command.documentId,
-            versionId: command.versionId,
-            action: command.action,
-            expectedRevision: command.expectedRevision,
-            ...command.fingerprintBody,
-          }),
-        )
-        .digest('hex');
-      const [replay] = await this.database.connection
-        .select()
-        .from(documentVersionCommands)
-        .where(
-          and(
-            eq(documentVersionCommands.workspaceId, actor.workspaceId),
-            eq(
-              documentVersionCommands.actorMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(documentVersionCommands.idempotencyKey, command.idempotencyKey),
-          ),
-        );
-      if (replay) {
-        if (replay.requestFingerprint !== fingerprint)
-          throw new ConflictException(
-            'Idempotency-Key was already used for another Version command.',
-          );
-        return receipt(replay);
-      }
+      const fingerprint = versionCommandFingerprint(command, companyId);
+      const replay = await this.replayCommand(actor, command, companyId);
+      if (replay) return replay;
       // Match the Client union/reversal lock order and refuse a superseded
       // original Client, which stays readable but read-only.
       await this.clients.lockActiveReferenceClient(
@@ -549,6 +660,35 @@ export class DocumentVersionsService {
       if (!recorded) throw new Error('The Version command was not recorded.');
       return receipt(recorded);
     });
+  }
+
+  private async replayCommand(
+    actor: ActorContext,
+    command: VersionCommandIdentity,
+    companyId: string,
+  ): Promise<DocumentVersionReceipt | null> {
+    const [recorded] = await this.database.connection
+      .select()
+      .from(documentVersionCommands)
+      .where(
+        and(
+          eq(documentVersionCommands.workspaceId, actor.workspaceId),
+          eq(
+            documentVersionCommands.actorMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(documentVersionCommands.idempotencyKey, command.idempotencyKey),
+        ),
+      );
+    if (!recorded) return null;
+    if (
+      recorded.requestFingerprint !==
+      versionCommandFingerprint(command, companyId)
+    )
+      throw new ConflictException(
+        'Idempotency-Key was already used for another Version command.',
+      );
+    return receipt(recorded);
   }
 
   /** A Version of another Document is the detail read's safe not-found. */
@@ -984,6 +1124,7 @@ function versionView(row: {
   designatorDisplayName: string | null;
   supersededByVersionNumber: number | null;
   reference: DocumentVersionReference;
+  pdfContent: DocumentPdfContent;
 }): DocumentVersionView {
   const { version } = row;
   const base = {
@@ -992,6 +1133,7 @@ function versionView(row: {
     createdAt: version.createdAt.toISOString(),
     createdBy: { displayName: row.creatorDisplayName },
     representations: [row.reference],
+    pdfContent: row.pdfContent,
   };
   switch (version.status) {
     case 'draft':
@@ -1038,4 +1180,22 @@ function designation(row: {
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected Document Version value: ${String(value)}`);
+}
+
+function versionCommandFingerprint(
+  command: VersionCommandIdentity,
+  companyId: string,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        companyId,
+        documentId: command.documentId,
+        versionId: command.versionId,
+        action: command.action,
+        expectedRevision: command.expectedRevision,
+        ...command.fingerprintBody,
+      }),
+    )
+    .digest('hex');
 }

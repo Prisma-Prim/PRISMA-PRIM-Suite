@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Get,
   Headers,
+  Header,
   HttpCode,
   Param,
   Post,
@@ -26,6 +27,7 @@ export class DocumentVersionsController {
   constructor(private readonly versions: DocumentVersionsService) {}
 
   @Get()
+  @Header('Cache-Control', 'private, no-store')
   list(
     @Req() request: ActorContextRequest,
     @Param('documentId') documentId: string,

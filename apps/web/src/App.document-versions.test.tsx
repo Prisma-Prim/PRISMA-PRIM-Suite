@@ -26,6 +26,34 @@ afterEach(() => vi.unstubAllGlobals());
 
 it.each([
   [
+    'company_document_content_reader_assignment.granted',
+    { bundle: 'Company Document Content Reader' },
+    approverTarget,
+    'granted Company confidential PDF read',
+    'Target: Document Approver — PRISMA-PRIM',
+  ],
+  [
+    'company_document_content_reader_assignment.revoked',
+    { bundle: 'Company Document Content Reader' },
+    approverTarget,
+    'revoked Company confidential PDF read',
+    'Target: Document Approver — PRISMA-PRIM',
+  ],
+  [
+    'company_document_content_uploader_assignment.granted',
+    { bundle: 'Company Document Content Uploader' },
+    approverTarget,
+    'granted Company confidential PDF upload',
+    'Target: Document Approver — PRISMA-PRIM',
+  ],
+  [
+    'company_document_content_uploader_assignment.revoked',
+    { bundle: 'Company Document Content Uploader' },
+    approverTarget,
+    'revoked Company confidential PDF upload',
+    'Target: Document Approver — PRISMA-PRIM',
+  ],
+  [
     'document.version.drafted',
     { versionNumber: 2, sourceVersionNumber: 1 },
     documentTarget,

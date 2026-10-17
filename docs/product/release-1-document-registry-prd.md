@@ -1,7 +1,7 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; typed references in #401; wider governance remains Draft
-**Version:** 0.9
+**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; typed references in #401; stored questionnaire PDFs in #633; wider governance remains Draft
+**Version:** 1.0
 **Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -140,7 +140,7 @@ Question source: S03. Provenance owner: `docs/product/iurie-business-answer-cove
 
 ## 15. Readiness
 
-The working-reference registration slice is approved in section 17, Project association in section 18, bounded working-reference correction in section 19, its read-only correction history in section 20 and provisional official Versions in section 21. Wider registration families, formal content correction, numbering, retention and provider-storage work remain blocked on their own normalized contracts. Those deferred decisions do not block the approved bounded slices.
+The working-reference registration slice is approved in section 17, Project association in section 18, bounded working-reference correction in section 19, its read-only correction history in section 20 and provisional official Versions in section 21. Wider registration families, formal content correction, numbering, retention and provider-storage work beyond section 22 remain blocked on their own normalized contracts. Those deferred decisions do not block the approved bounded slices.
 
 ## 16. Evidence authority boundary
 
@@ -438,3 +438,125 @@ Excluded, and not presented as business fact:
 - changing a reference's form or position in place, removing an appended reference, and appending to a superseded Version;
 - Evidence Links and knowledge indexing;
 - Offer and Contract Documents, which reuse this model only through their own capability sections.
+
+## 22. Approved provisional stored questionnaire PDFs (#633)
+
+Dan explicitly approved this bounded MVP scope on 2026-10-16 in
+[#60](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/60#issuecomment-6218569852):
+Company-confidential questionnaire PDFs, upload and download, preservation of
+all official Versions, corrections by successor Version, no deletion, and
+explicit content rights distinct from metadata without automatic expansion of
+existing assignments. His answer was “Oui, valider ce périmètre provisoire”.
+This is Dan's provisional product approval, not Iurie evidence or approval of
+other Document families, retention, real assignments or operational use.
+
+### Stored content and Version meaning
+
+A registered working questionnaire may hold preserved PDF Representations for
+its Versions, independently of its existing unverified external references.
+An authorized uploader adds or replaces the current PDF only while the Version
+is draft. Every upload appends a new immutable Representation; no previous bytes
+are overwritten or removed. The newest explicitly successful upload is the
+current draft PDF. Each PDF is bounded to 5 MiB.
+
+Dan explicitly confirmed draft correction on 2026-10-16 in
+[#633](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/633#issuecomment-6219349016):
+“Oui, permettre la correction du brouillon”. This supersedes the implementing
+agent's proposed single-file slot; it does not require officializing a mistaken
+working file merely to correct it. Prior uploads remain reopenable with their
+exact Representation identity, actor, server time and Document revision, under
+the same independent content-read permission. History is newest first, at most
+20 entries per page, with explicit continuation until all prior uploads are
+reachable. No total upload cap is introduced by the page size.
+The system records provider-independent Representation identity, exact bytes,
+SHA-256, media type, size, safe filename, clean-scan result, actor and server time.
+
+Designation freezes the current PDF held by that Version with its existing reference
+and metadata snapshot. Neither official nor superseded Versions accept content
+replacement, removal or a new upload. Starting a successor draft copies only
+the existing eligible external references under section 21; it copies no stored
+PDF. A corrected PDF is uploaded to that new draft, preserving every predecessor.
+This slice introduces no removal, deletion, archive, purge, discard or retention
+schedule. The existing URL correction and typed-reference rules stay unchanged.
+Stored bytes are preserved content; scanning does not make them signed, sent,
+accepted, approved for knowledge indexing or verified business evidence.
+
+### Independent content authority
+
+The [authorization PRD](tenant-company-client-authorization-prd.md#8-initial-permission-families)
+owns separate opt-in Company Document Content Reader v1 and Company Document
+Content Uploader v1 assignments. A download requires current metadata-read and
+content-read authority, selected Company context and the original Client read
+boundary. An upload additionally requires current content-upload and existing
+Version-management authority. The original Client and its Company relationship
+must still be active for a new upload. A superseded original stays readable.
+Existing Registrar, Approver, Company Context Access, Workspace Owner and
+reference-read assignments gain no content rights automatically.
+
+A metadata-only reader may see that a Version has stored PDF content, but
+receives no filename, checksum, bytes or download capability. Content metadata
+and every download recheck live content authority. Client or Project visibility
+and an external reference URL never authorize stored bytes. New grants and
+revocation use the existing explicit Company assignment administration; no
+migration grants authority or changes the first-tenant Approver configuration.
+
+### Upload safety and atomicity
+
+Treat filenames, declared types and bytes as untrusted. Bound the actual stream,
+validate PDF type/signature, and quarantine bytes until a real configured malware
+scanner reports clean. Record its identity and result. Missing configuration,
+scanner outage, malformed or unsupported scanner result, infection, invalid type
+or excess size publishes no content. Do not equate a PDF header or successful
+transport with a clean scan. There is no inline preview, OCR or execution.
+
+Scan outside the short database transaction. Before committing, revalidate live
+authority and target state under the same Document working-revision and original
+Client lock order as existing Version commands. Upload uses the existing
+`representation_added` command semantic with form `other` and no post-designation
+append. Its immutable bytes/metadata, revision increment, durable receipt,
+`document.representation.added` event and Client operational-use fence advance
+commit or roll back together. Event metadata remains Version/form facts only;
+filename, checksum, bytes and provider location never enter it.
+
+An exact actor/Workspace-scoped replay rechecks live authority and confirms the
+recorded receipt without another scan, upload, event or fence advance. Replaying
+a prior upload never restores it as current or rewrites a later successful upload. Different
+input or Company under the same key conflicts. A stale revision or a concurrent designation refuses the new upload without overwrite.
+No mutation follows a Client union to a different canonical Client.
+
+### Download, storage and failure recovery
+
+Download addresses the current PDF of an exact Document Version, or an exact
+preserved Representation from its upload history, through the authenticated
+application boundary. Return byte-identical PDF as an attachment with a safe
+filename, `nosniff` and private/no-store caching; expose no public file URL,
+filesystem path or provider credential. The UI displays the exact Version and
+keeps absent, loading, denied, validation, stale, uncertain and unavailable states
+distinct. An uncertain upload preserves its exact file, payload identity and key
+for explicit retry; a conflict requires reload. Authority/context changes retire
+pending UI work and suppress late replies. A later refresh failure never changes
+confirmed upload success into uncertainty.
+
+[ADR 0008](../adr/0008-bounded-document-content-storage.md) owns the initial private
+PostgreSQL byte-storage adapter and fail-closed scanner boundary. Provider
+independence and future external adapters remain intact. API container storage
+is not durable content storage. Metadata and history survive storage failure;
+the UI reports safe unavailability rather than inventing absence or success.
+Production still requires configured scanning, protected transport/storage and
+recovery evidence under the Platform PRD; no real-data deployment is authorized
+by this implementation.
+
+### Acceptance proof and provisional choices
+
+Public PostgreSQL REST tests prove independent grants, exact bytes, revocation,
+cross-scope refusal, clean/malformed/infected/unavailable scanning, exact retries,
+concurrent upload/designation and official-successor preservation. Scanner
+adapter tests own its real external protocol; disposable real ClamAV proof uses
+synthetic clean PDF and EICAR content. Component and desktop/narrow browser
+journeys prove upload, unchanged retry, reload, download and authority loss.
+
+Iurie may validate or replace the provisional questionnaire family and size
+bound through a later focused contract. Other families,
+formats, provider sync, general malware operations, sending, signature, evidence
+reuse, indexing, retention and deletion remain deferred. The substitution register
+indexes the provisional storage scope without recording an Iurie decision.

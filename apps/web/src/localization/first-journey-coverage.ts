@@ -5,10 +5,12 @@ import { clientContactEditorMessages } from '../client/client-contact-editor.cop
 import { pricingConfigurationMessages } from '../pricing-configuration/pricing-configuration.copy';
 import { localInstantMessages } from '../pricing-configuration/local-instant.copy';
 import { contractSignatureMessages } from '../contract/contract-signature.copy';
+import { clientLegalEntitiesMessages } from '../client/client-legal-entities.copy';
 import { contractProjectsMessages } from '../contract/contract-projects.copy';
 import { contractProjectCreateMessages } from '../contract/contract-project-create.copy';
 import { contractPrecontractMessages } from '../contract/contract-precontract.copy';
 import { contractRuleSetMessages } from '../contract/contract-rule-set.copy';
+import { documentPdfMessages } from '../documents/document-pdf.copy';
 import { offerBindingMessages } from '../offer/offer-binding.copy';
 import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
 import { commercialRequestMessages } from '../commercial-intake/commercial-request.copy';
@@ -42,10 +44,12 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('pricingConfiguration', pricingConfigurationMessages);
   assertMessageCoverage('localInstant', localInstantMessages);
   assertMessageCoverage('contractSignature', contractSignatureMessages);
+  assertMessageCoverage('clientLegalEntities', clientLegalEntitiesMessages);
   assertMessageCoverage('contractProjects', contractProjectsMessages);
   assertMessageCoverage('contractProjectCreate', contractProjectCreateMessages);
   assertMessageCoverage('contractPrecontract', contractPrecontractMessages);
   assertMessageCoverage('contractRuleSet', contractRuleSetMessages);
+  assertMessageCoverage('documentPdf', documentPdfMessages);
   assertMessageCoverage('offerBinding', offerBindingMessages);
   assertMessageCoverage('profitability', profitabilityMessages);
   assertMessageCoverage('salesStage', salesStageMessages);

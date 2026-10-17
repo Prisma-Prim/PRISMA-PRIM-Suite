@@ -19,7 +19,7 @@ import {
   readClientLegalEntityMutation,
   type ClientLegalEntity,
 } from './client-legal-entities-response';
-import { clientLegalEntitiesCopy as copy } from './client-legal-entities.copy';
+import { useClientLegalEntitiesCopy } from './client-legal-entities.copy';
 import './client-legal-entities.css';
 
 const MAXIMUM_LEGAL_NAME_LENGTH = 200;
@@ -57,6 +57,14 @@ type Editor =
       draft: Draft;
     };
 
+type ValidationMessageKey =
+  | 'legalNameRequired'
+  | 'legalNameTooLong'
+  | 'taxIdTooLong'
+  | 'legalAddressTooLong'
+  | 'unchanged'
+  | 'invalid';
+
 type Outcome =
   | {
       status:
@@ -68,7 +76,7 @@ type Outcome =
         | 'recorded'
         | 'corrected';
     }
-  | { status: 'invalid'; message: string; field?: DraftField };
+  | { status: 'invalid'; messageKey: ValidationMessageKey; field?: DraftField };
 
 /**
  * The additional Client Legal Entities of one visible dossier. Mutations use
@@ -100,6 +108,7 @@ export function ClientLegalEntities({
   onClientVersionChanged: (clientVersion: number) => void;
   onActivityRecorded: () => Promise<void>;
 }) {
+  const copy = useClientLegalEntitiesCopy();
   const titleId = useId();
   const formTitleId = useId();
   const fieldErrorId = useId();
@@ -229,7 +238,7 @@ export function ClientLegalEntities({
       values: checked.values,
     });
     if (!mutation) {
-      setOutcome({ status: 'invalid', message: copy.unchanged });
+      setOutcome({ status: 'invalid', messageKey: 'unchanged' });
       return;
     }
     // An uncertain outcome keeps the exact body and key, so saving the
@@ -279,10 +288,7 @@ export function ClientLegalEntities({
         }
         if (result.status === 'validation') {
           retryCommand.current = undefined;
-          setOutcome({
-            status: 'invalid',
-            message: result.message ?? copy.invalid,
-          });
+          setOutcome({ status: 'invalid', messageKey: 'invalid' });
           return;
         }
         if (result.status !== 'ok') {
@@ -408,7 +414,7 @@ export function ClientLegalEntities({
             label={copy.legalNameLabel}
             value={editor.draft.legalName}
             required
-            error={fieldError(outcome, 'legalName')}
+            error={fieldError(outcome, 'legalName', copy)}
             errorId={fieldErrorId}
             register={(element) => {
               fields.current.legalName = element;
@@ -421,7 +427,7 @@ export function ClientLegalEntities({
             id={`${formTitleId}-tax-id`}
             label={copy.taxIdLabel}
             value={editor.draft.taxId}
-            error={fieldError(outcome, 'taxId')}
+            error={fieldError(outcome, 'taxId', copy)}
             errorId={fieldErrorId}
             register={(element) => {
               fields.current.taxId = element;
@@ -435,7 +441,7 @@ export function ClientLegalEntities({
             label={copy.legalAddressLabel}
             value={editor.draft.legalAddress}
             multiline
-            error={fieldError(outcome, 'legalAddress')}
+            error={fieldError(outcome, 'legalAddress', copy)}
             errorId={fieldErrorId}
             register={(element) => {
               fields.current.legalAddress = element;
@@ -477,6 +483,7 @@ function ListContent({
   onRetry: () => void;
   onCorrect: (legalEntity: ClientLegalEntity) => void;
 }) {
+  const copy = useClientLegalEntitiesCopy();
   switch (list.status) {
     case 'loading':
       return (
@@ -550,6 +557,7 @@ function MutationFeedback({
   outcome: Outcome;
   onReload: () => void;
 }) {
+  const copy = useClientLegalEntitiesCopy();
   switch (outcome.status) {
     case 'submitting':
       return (
@@ -560,7 +568,7 @@ function MutationFeedback({
     case 'invalid':
       return outcome.field ? null : (
         <ClientDirectoryFeedback role="alert" tone="error">
-          {outcome.message}
+          {copy[outcome.messageKey]}
         </ClientDirectoryFeedback>
       );
     case 'uncertain':
@@ -657,28 +665,28 @@ function checkDraft(
   draft: Draft,
 ):
   | { status: 'valid'; values: Values }
-  | { status: 'invalid'; message: string; field: DraftField } {
+  | { status: 'invalid'; messageKey: ValidationMessageKey; field: DraftField } {
   const legalName = draft.legalName.trim();
   const taxId = draft.taxId.trim();
   const legalAddress = draft.legalAddress.trim();
   if (!legalName)
     return {
       status: 'invalid',
-      message: copy.legalNameRequired,
+      messageKey: 'legalNameRequired',
       field: 'legalName',
     };
   if (legalName.length > MAXIMUM_LEGAL_NAME_LENGTH)
     return {
       status: 'invalid',
-      message: copy.legalNameTooLong,
+      messageKey: 'legalNameTooLong',
       field: 'legalName',
     };
   if (taxId.length > MAXIMUM_TAX_ID_LENGTH)
-    return { status: 'invalid', message: copy.taxIdTooLong, field: 'taxId' };
+    return { status: 'invalid', messageKey: 'taxIdTooLong', field: 'taxId' };
   if (legalAddress.length > MAXIMUM_LEGAL_ADDRESS_LENGTH)
     return {
       status: 'invalid',
-      message: copy.legalAddressTooLong,
+      messageKey: 'legalAddressTooLong',
       field: 'legalAddress',
     };
   return {
@@ -751,9 +759,13 @@ function compareText(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function fieldError(outcome: Outcome, field: DraftField): string | undefined {
+function fieldError(
+  outcome: Outcome,
+  field: DraftField,
+  copy: Readonly<Record<ValidationMessageKey, string>>,
+): string | undefined {
   return outcome.status === 'invalid' && outcome.field === field
-    ? outcome.message
+    ? copy[outcome.messageKey]
     : undefined;
 }
 

@@ -100,6 +100,7 @@ function serve(detail: unknown) {
             status: workingDocument.version.status,
             createdAt: workingDocument.createdAt,
             createdBy: { displayName: documentReader.displayName },
+            pdfContent: { state: 'absent' },
             representations: [
               {
                 ...workingDocument.version.representation,

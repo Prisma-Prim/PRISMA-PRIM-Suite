@@ -1,3 +1,6 @@
+import { DocumentContentController } from './documents/document-content.controller.js';
+import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
+import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
 import { ContractAgreementsController } from './contract/contract-agreements.controller.js';
 import { ContractModule } from './contract/contract.module.js';
 import {
@@ -116,9 +119,12 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyTaskManagerAssignmentController,
     DocumentsController,
     DocumentVersionsController,
+    DocumentContentController,
     DocumentProjectsController,
     CompanyDocumentRegistrarAssignmentController,
     CompanyDocumentApproverAssignmentController,
+    CompanyDocumentContentReaderAssignmentController,
+    CompanyDocumentContentUploaderAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,
     ProjectResponsibilityController,

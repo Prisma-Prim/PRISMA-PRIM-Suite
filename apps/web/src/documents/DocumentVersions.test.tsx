@@ -133,6 +133,7 @@ const draft = (number: number, url: string, granted = true) => ({
   status: 'draft',
   createdAt: number === 1 ? CREATED : CREATED_2,
   createdBy: { displayName: 'Document Registrar' },
+  pdfContent: { state: 'absent' },
   representations: [reference(`reference-version-${number}`, url, granted)],
 });
 const official = (

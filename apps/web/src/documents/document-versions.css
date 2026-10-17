@@ -171,3 +171,17 @@
   color: var(--shell-muted);
   font-size: 0.875rem;
 }
+
+.working-document-pdf {
+  min-width: 0;
+  padding-block: 0.75rem;
+  border-top: 1px solid var(--line, #dce4eb);
+  overflow-wrap: anywhere;
+}
+.working-document-pdf input[type='file'] {
+  max-width: 100%;
+}
+.working-document-pdf button {
+  max-width: 100%;
+  white-space: normal;
+}

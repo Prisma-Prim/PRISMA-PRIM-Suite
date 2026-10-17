@@ -434,6 +434,146 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-document-content-reader-assignments:
+    post:
+      operationId: grantCompanyDocumentContentReaderAssignment
+      summary: Grant the opt-in Company Document Content Reader v1 bundle to an active Workspace Membership
+      description: >-
+        Requires `company.assignment.manage`. The captured v1 bundle contains
+        exactly `document.content.read`. It grants no Company context,
+        Client read, Document metadata or reference read, Version management,
+        or other content permission. No existing assignment is expanded.
+        The actual grant records one minimal bundle-label Activity event.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Document Content Reader assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentContentReaderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-document-content-reader-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyDocumentContentReaderAssignment
+      summary: Revoke the Company Document Content Reader assignment
+      description: >-
+        An actual revocation records one
+        `company_document_content_reader_assignment.revoked` event whose metadata is
+        limited to the bundle label; a repeat, replay or denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Document Content Reader assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentContentReaderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-document-content-uploader-assignments:
+    post:
+      operationId: grantCompanyDocumentContentUploaderAssignment
+      summary: Grant the opt-in Company Document Content Uploader v1 bundle to an active Workspace Membership
+      description: >-
+        Requires `company.assignment.manage`. The captured v1 bundle contains
+        exactly `document.content.upload`. It grants no Company context,
+        Client read, Document metadata or reference read, Version management,
+        or other content permission. No existing assignment is expanded.
+        The actual grant records one minimal bundle-label Activity event.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Document Content Uploader assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentContentUploaderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-document-content-uploader-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyDocumentContentUploaderAssignment
+      summary: Revoke the Company Document Content Uploader assignment
+      description: >-
+        An actual revocation records one
+        `company_document_content_uploader_assignment.revoked` event whose metadata is
+        limited to the bundle label; a repeat, replay or denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Document Content Uploader assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentContentUploaderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
   /api/clients:
     get:
       operationId: listActiveCompanyClients
@@ -1214,6 +1354,159 @@ paths:
           description: The actor lacks current Document read authority or a valid active Company context.
         '404':
           description: No working Document with a readable original Client is visible in the active Company.
+  /api/documents/{documentId}/versions/{versionId}/content:
+    parameters:
+      - in: path
+        name: documentId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: versionId
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: preserveDocumentQuestionnairePdf
+      summary: Preserve a clean PDF in a mutable questionnaire draft
+      description: >-
+        Requires live Company context, Client read, Document metadata read,
+        Registrar v3 Version management and separate Content Reader and Content
+        Uploader v1 assignments. Scans before the atomic commit, then rechecks
+        all authority, original Client state, exact revision and draft status.
+        Every upload appends immutable bytes and provenance; a draft replacement
+        preserves every prior upload. Official content cannot be replaced.
+        An exact successful replay returns its original receipt without a new
+        scan, revision, Activity event or change to the current PDF.
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: query
+          name: expectedRevision
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483646 }
+        - in: query
+          name: fileName
+          required: true
+          schema: { type: string, minLength: 5, maxLength: 120 }
+          description: Trimmed PDF filename ending in .pdf; no slash, backslash, control or format characters.
+      requestBody:
+        required: true
+        content:
+          application/pdf:
+            schema: { type: string, format: binary, maxLength: 5242880 }
+      responses:
+        '201':
+          description: Durable representation_added receipt; original receipt on exact replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRepresentationAddedReceipt'
+        '400':
+          description: Invalid PDF, unsafe filename, idempotent command or failed malware scan.
+        '401': { description: No verified identity. }
+        '403': { description: Missing or revoked live authority. }
+        '404':
+          { description: Document or Version is not visible in this scope. }
+        '409':
+          description: Stale revision, conflicting replay or non-draft Version.
+        '413': { description: Actual bytes or Content-Length exceed 5 MiB. }
+        '503':
+          description: Scanner is unconfigured, unavailable or did not prove clean content.
+    get:
+      operationId: downloadCurrentDocumentQuestionnairePdf
+      summary: Download the current preserved PDF of this exact Version
+      description: >-
+        Requires separate live Content Reader v1 authority in addition to Company,
+        Client and Document metadata read. Returns byte-exact application/pdf with
+        attachment filename, private no-store and nosniff. Metadata alone grants
+        no content access. No public or signed storage URL is returned.
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: Current immutable PDF bytes.
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '401': { description: No verified identity. }
+        '403': { description: Missing or revoked live content authority. }
+        '404':
+          {
+            description: No preserved PDF visible at this exact scope and Version.,
+          }
+        '503':
+          { description: Preserved content integrity could not be verified. }
+  /api/documents/{documentId}/versions/{versionId}/content/history:
+    get:
+      operationId: listDocumentQuestionnairePdfUploads
+      summary: Read immutable PDF upload history with explicit continuation
+      description: >-
+        Uses the same live content-read boundary as download. Returns at most20
+        uploads ordered by decreasing Document revision. A continuation cursor
+        preserves access to every older upload without a total-history cap.
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: documentId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: beforeRevision
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      responses:
+        '200':
+          description: A bounded immutable-history page; private no-store.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentPdfUploadHistory' }
+        '400': { description: Invalid or unknown query parameter. }
+        '401': { description: No verified identity. }
+        '403': { description: Missing or revoked live content authority. }
+        '404':
+          { description: Document or Version is not visible in this scope. }
+  /api/documents/{documentId}/versions/{versionId}/content/{representationId}:
+    get:
+      operationId: downloadPreservedDocumentQuestionnairePdf
+      summary: Reopen one exact immutable upload, including an earlier draft PDF
+      description: >-
+        Uses the same current content-read authority as current download. An old
+        Representation ID never bypasses revocation or Workspace/Company scope.
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: documentId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: representationId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Exact immutable upload bytes; attachment, private no-store, nosniff.
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '401': { description: No verified identity. }
+        '403': { description: Missing or revoked live content authority. }
+        '404':
+          {
+            description: Representation is absent or outside this exact scope and Version.,
+          }
+        '503':
+          { description: Preserved content integrity could not be verified. }
   /api/documents/{documentId}/versions:
     get:
       operationId: listDocumentVersions
@@ -3752,6 +4045,62 @@ components:
           const: v1
         active:
           type: boolean
+    CompanyDocumentContentReaderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Document Content Reader
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
+    CompanyDocumentContentUploaderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Document Content Uploader
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
     CompanyProjectApproverAssignment:
       type: object
       additionalProperties: false
@@ -4605,6 +4954,78 @@ components:
           type: string
         after:
           type: string
+    DocumentPreservedPdf:
+      type: object
+      required:
+        [
+          representationId,
+          revision,
+          fileName,
+          mediaType,
+          size,
+          sha256,
+          storedAt,
+          storedBy,
+          scan,
+        ]
+      properties:
+        representationId: { type: string, format: uuid }
+        revision: { type: integer, minimum: 2, maximum: 2147483647 }
+        fileName: { type: string, minLength: 5, maxLength: 120 }
+        mediaType: { type: string, const: application/pdf }
+        size: { type: integer, minimum: 1, maximum: 5242880 }
+        sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+        storedAt: { type: string, format: date-time }
+        storedBy: { $ref: '#/components/schemas/DocumentActorLabel' }
+        scan:
+          type: object
+          additionalProperties: false
+          required: [outcome, engine, scannedAt]
+          properties:
+            outcome: { type: string, const: clean }
+            engine: { type: string, minLength: 1, maxLength: 200 }
+            scannedAt: { type: string, format: date-time }
+    DocumentPdfContent:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [state]
+          properties:
+            state: { type: string, const: absent }
+        - type: object
+          additionalProperties: false
+          required: [state, access]
+          properties:
+            state: { type: string, const: stored }
+            access: { type: string, const: denied }
+        - allOf:
+            - $ref: '#/components/schemas/DocumentPreservedPdf'
+            - type: object
+              required: [state, access]
+              properties:
+                state: { type: string, const: stored }
+                access: { type: string, const: granted }
+          unevaluatedProperties: false
+    DocumentPdfUploadHistory:
+      type: object
+      additionalProperties: false
+      required: [uploads, nextBeforeRevision]
+      properties:
+        uploads:
+          type: array
+          maxItems: 20
+          items:
+            allOf:
+              - $ref: '#/components/schemas/DocumentPreservedPdf'
+              - type: object
+                required: [current]
+                properties:
+                  current: { type: boolean }
+            unevaluatedProperties: false
+        nextBeforeRevision:
+          oneOf:
+            - { type: 'null' }
+            - { type: integer, minimum: 2, maximum: 2147483647 }
     DocumentVersionsRead:
       type: object
       additionalProperties: false
@@ -4642,7 +5063,8 @@ components:
     DraftDocumentVersion:
       type: object
       additionalProperties: false
-      required: [id, number, status, createdAt, createdBy, representations]
+      required:
+        [id, number, status, createdAt, createdBy, representations, pdfContent]
       properties:
         id:
           type: string
@@ -4659,6 +5081,8 @@ components:
           format: date-time
         createdBy:
           $ref: '#/components/schemas/DocumentActorLabel'
+        pdfContent:
+          $ref: '#/components/schemas/DocumentPdfContent'
         representations:
           $ref: '#/components/schemas/DocumentVersionReferences'
     OfficialDocumentVersion:
@@ -4672,6 +5096,7 @@ components:
           createdAt,
           createdBy,
           representations,
+          pdfContent,
           designatedAt,
           designatedBy,
           frozen,
@@ -4692,6 +5117,8 @@ components:
           format: date-time
         createdBy:
           $ref: '#/components/schemas/DocumentActorLabel'
+        pdfContent:
+          $ref: '#/components/schemas/DocumentPdfContent'
         representations:
           $ref: '#/components/schemas/DocumentVersionReferences'
         designatedAt:
@@ -4712,6 +5139,7 @@ components:
           createdAt,
           createdBy,
           representations,
+          pdfContent,
           designatedAt,
           designatedBy,
           frozen,
@@ -4734,6 +5162,8 @@ components:
           format: date-time
         createdBy:
           $ref: '#/components/schemas/DocumentActorLabel'
+        pdfContent:
+          $ref: '#/components/schemas/DocumentPdfContent'
         representations:
           $ref: '#/components/schemas/DocumentVersionReferences'
         designatedAt:
@@ -5282,6 +5712,34 @@ components:
           enum:
             - v1
             - v2
+        documentPermissions:
+          type: array
+          uniqueItems: true
+          description: Current captured Document permissions; content grants never expand metadata or Version-management authority.
+          items:
+            type: string
+            enum:
+              - document.read
+              - document.register
+              - document.reference.read
+              - document.correct
+              - document.project.manage
+              - document.version.manage
+              - document.version.designate_official
+              - document.content.read
+              - document.content.upload
+        documentContentReaderAssignmentId:
+          type: string
+          format: uuid
+        documentContentReaderPermissionSetVersion:
+          type: string
+          const: v1
+        documentContentUploaderAssignmentId:
+          type: string
+          format: uuid
+        documentContentUploaderPermissionSetVersion:
+          type: string
+          const: v1
         projectApproverPermissions:
           type: array
           uniqueItems: true

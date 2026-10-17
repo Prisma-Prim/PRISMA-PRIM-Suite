@@ -160,6 +160,8 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
   company_sales_stage_configuration: {
     v1: ['commercial.sales_stage.configure'],
   },
+  company_document_content_reader: { v1: ['document.content.read'] },
+  company_document_content_uploader: { v1: ['document.content.upload'] },
 };
 
 const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
@@ -185,6 +187,8 @@ const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
   company_profitability_contributor: 'Company Profitability Contributor',
   company_profitability_director: 'Company Profitability Director',
   company_sales_stage_configuration: 'Company Sales Stage Configuration',
+  company_document_content_reader: 'Company Document Content Reader',
+  company_document_content_uploader: 'Company Document Content Uploader',
 };
 
 const BUNDLES = Object.keys(EXPECTED).filter(
@@ -294,9 +298,9 @@ describe('Company role permission set version CHECK', () => {
   const bundle = '"company_role_assignments"."bundle"::text';
   const version = '"company_role_assignments"."permission_set_version"';
   const singleVersionBundles =
-    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration'";
+    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader'";
   const versionedBundles =
-    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration'";
+    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader'";
   const EXPECTED_CHECK = [
     '(',
     `        (${bundle} = 'company_director_client_access'`,

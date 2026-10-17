@@ -76,6 +76,14 @@ const targetTypes = {
     'company_role_assignment',
   'company_document_registrar_assignment.granted': 'company_role_assignment',
   'company_document_registrar_assignment.revoked': 'company_role_assignment',
+  'company_document_content_reader_assignment.granted':
+    'company_role_assignment',
+  'company_document_content_reader_assignment.revoked':
+    'company_role_assignment',
+  'company_document_content_uploader_assignment.granted':
+    'company_role_assignment',
+  'company_document_content_uploader_assignment.revoked':
+    'company_role_assignment',
   'company_document_approver_assignment.granted': 'company_role_assignment',
   'company_document_approver_assignment.revoked': 'company_role_assignment',
   'client.created': 'client_account',
