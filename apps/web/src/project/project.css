@@ -450,3 +450,19 @@
   border-radius: 6px;
   background: #fff;
 }
+
+.project-template-choice,
+.project-template-plan {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  grid-column: 1 / -1;
+}
+.project-template-choice > label {
+  margin-bottom: -0.25rem;
+}
+.project-template-plan h4,
+.project-template-plan h5,
+.project-template-plan p {
+  margin: 0;
+}

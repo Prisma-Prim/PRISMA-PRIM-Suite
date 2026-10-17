@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { companyAuthorityWithoutProjectTemplate } from './project-authority';
 import {
   conflictCode,
   createAuthenticatedApiClient,
@@ -65,7 +66,7 @@ export function ProjectResponsible(props: Props) {
     actor.workspaceMembershipId,
     actor.active,
     actor.workspacePermissions,
-    actor.activeCompany,
+    companyAuthorityWithoutProjectTemplate(actor.activeCompany),
     props.projectId,
   ]);
   return <Responsible key={authority} {...props} />;

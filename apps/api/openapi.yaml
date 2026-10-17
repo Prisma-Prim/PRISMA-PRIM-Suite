@@ -1813,6 +1813,72 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-project-template-user-assignments:
+    post:
+      operationId: grantCompanyProjectTemplateUserAssignment
+      summary: Grant the opt-in Company Project Template User v1 bundle to an active Workspace Membership
+      description: >-
+        Captures v1, which contains exactly `project.template.read` and
+        `project.template.instantiate`. It confers no Company context, Project read, Client
+        read or any other authority. Exactly one
+        `company_project_template_user_assignment.granted` event is recorded per
+        actual state change; a repeat, a replay or a denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active captured Company Project Template User v1 assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectTemplateUserAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-project-template-user-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyProjectTemplateUserAssignment
+      summary: Revoke the Company Project Template User assignment
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked captured Company Project Template User assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectTemplateUserAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
   /api/projects/{projectId}/tasks:
     post:
       operationId: createProjectTask
@@ -2245,6 +2311,125 @@ paths:
             No valid active Company context, or the reader lacks captured
             Company Task Manager v1 `task.read`, Project read or Client read in
             the active Company, exactly as `GET /api/assigned-tasks` refuses.
+  /api/project-templates:
+    get:
+      operationId: listIllustrativeProjectTemplates
+      summary: Read identified immutable illustrative Template Versions
+      description: >-
+        Requires explicit project.template.read plus current Company context and
+        Project read. Grants no authority to start real work. Business source text
+        is preserved independently of interface locale.
+      tags:
+        - Project templates
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+      responses:
+        '200':
+          description: Available immutable illustrative source definitions.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - templates
+                properties:
+                  templates:
+                    type: array
+                    maxItems: 1
+                    items:
+                      $ref: '#/components/schemas/ProjectTemplateDefinition'
+        '401':
+          description: No verified External Principal.
+        '403':
+          description: A current independent permission or Company prerequisite is missing.
+  /api/projects/from-template:
+    post:
+      operationId: createProjectFromIllustrativeTemplate
+      summary: Atomically create a preparatory Project and four independent Task copies
+      description: >-
+        Requires the dedicated captured Template User v1 plus current independent
+        Project creation, Task Manager and active original Client relationship
+        authority. Exact actor/Workspace replay revalidates authority and confirms
+        the original Project identity using current Project display facts; changed
+        key reuse conflicts. A new creation records one ordinary Project creation
+        and four ordinary Task creation events in the same transaction. No existing
+        Project is retrofitted. No stage advancement, publishing or operational
+        activation occurs.
+      tags:
+        - Project templates
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectFromTemplateInput'
+      responses:
+        '201':
+          description: >-
+            The created preparatory Project, or current readable facts for the
+            original exact replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateCreatedProject'
+        '400':
+          description: Malformed title, Client, key or unsupported Template Version.
+        '401':
+          description: No verified External Principal.
+        '403':
+          description: A current independent permission or Company prerequisite is missing.
+        '404':
+          description: No readable active original Client matches the selected Company.
+        '409':
+          description: The idempotency key belongs to another normalized creation intent.
+  /api/projects/{projectId}/template:
+    get:
+      operationId: readCopiedProjectTemplate
+      summary: Reopen the original immutable copied plan and Task identities
+      description: >-
+        Requires explicit Template read, Project read, Task read and the original
+        Client/read relationship in the active Company. Historical readable original
+        Clients and closed Projects retain their original copied provenance. Manual
+        Projects return template:null. Source definitions are the preserved original
+        snapshot, not current configuration or current editable Task titles.
+      tags:
+        - Project templates
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The copied plan or null for an ordinary manual Project.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - template
+                properties:
+                  template:
+                    oneOf:
+                      - $ref: '#/components/schemas/CopiedProjectTemplate'
+                      - type: 'null'
+        '400':
+          description: Malformed Project identifier.
+        '401':
+          description: No verified External Principal.
+        '403':
+          description: A current independent permission or Company prerequisite is missing.
+        '404':
+          description: No readable Project in the selected Company.
+
 components:
   parameters:
     IdempotencyKey:
@@ -3427,6 +3612,8 @@ components:
             - company_director_client_assignment.revoked
             - company_project_approver_assignment.granted
             - company_project_approver_assignment.revoked
+            - company_project_template_user_assignment.granted
+            - company_project_template_user_assignment.revoked
             - client.created
             - client_company_relationship.established
             - client.corrected
@@ -3540,6 +3727,7 @@ components:
             - Company Context Access
             - Company Director Client Access
             - Company Project Approver
+            - Company Project Template User
     ClientCorrectedMetadata:
       type: object
       additionalProperties: false
@@ -3894,6 +4082,7 @@ components:
             - Company Context Access
             - Company Director Client Access
             - Company Project Approver
+            - Company Project Template User
         permissionSetVersion:
           type:
             - string
@@ -4129,6 +4318,227 @@ components:
           const: v1
         active:
           type: boolean
+    CompanyProjectTemplateUserAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Project Template User
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
+    ProjectTemplateTaskDefinition:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - title
+        - required
+      properties:
+        key:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_]{0,99}$
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        required:
+          const: true
+    CopiedProjectTemplateTask:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - title
+        - required
+        - taskId
+      properties:
+        key:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_]{0,99}$
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        required:
+          const: true
+        taskId:
+          type: string
+          format: uuid
+    ProjectTemplateStageDefinition:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - title
+        - tasks
+      properties:
+        key:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_]{0,99}$
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        tasks:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/ProjectTemplateTaskDefinition'
+    CopiedProjectTemplateStage:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - title
+        - tasks
+      properties:
+        key:
+          type: string
+          pattern: ^[A-Za-z][A-Za-z0-9_]{0,99}$
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        tasks:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/CopiedProjectTemplateTask'
+    ProjectTemplateDefinition:
+      type: object
+      additionalProperties: false
+      required:
+        - templateKey
+        - version
+        - title
+        - illustrative
+        - stages
+      properties:
+        templateKey:
+          type: string
+          const: CONSULTING_PREPARATION_ILLUSTRATIVE
+        version:
+          type: integer
+          const: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        illustrative:
+          const: true
+        stages:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/ProjectTemplateStageDefinition'
+    CopiedProjectTemplate:
+      type: object
+      additionalProperties: false
+      required:
+        - templateKey
+        - version
+        - title
+        - illustrative
+        - stages
+      properties:
+        templateKey:
+          type: string
+          const: CONSULTING_PREPARATION_ILLUSTRATIVE
+        version:
+          type: integer
+          const: 1
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        illustrative:
+          const: true
+        stages:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/CopiedProjectTemplateStage'
+    CreateProjectFromTemplateInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - clientAccountId
+        - templateKey
+        - templateVersion
+      properties:
+        title:
+          type: string
+          pattern: \S
+          description: Trimmed by the Project owner to 1–200 characters before persistence.
+        clientAccountId:
+          type: string
+          format: uuid
+        templateKey:
+          type: string
+          const: CONSULTING_PREPARATION_ILLUSTRATIVE
+        templateVersion:
+          type: integer
+          const: 1
+    TemplateCreatedProject:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - companyId
+        - clientAccountId
+        - clientDisplayName
+        - title
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        clientAccountId:
+          type: string
+          format: uuid
+        clientDossierId:
+          type: string
+          format: uuid
+        clientDisplayName:
+          type: string
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        createdAt:
+          type: string
+          format: date-time
     ProjectStatus:
       type: string
       description: >-
@@ -5738,6 +6148,47 @@ components:
           type: string
           format: uuid
         documentContentUploaderPermissionSetVersion:
+          type: string
+          const: v1
+        projectTemplatePermissions:
+          type: array
+          uniqueItems: true
+          maxItems: 2
+          items:
+            type: string
+            enum:
+              - project.template.read
+              - project.template.instantiate
+          description: >-
+            Only the live dedicated captured v1 grants these permissions; it confers no
+            independent Project, Task, stage, publishing or lifecycle authority.
+        projectTemplatePermissionAssignmentId:
+          type: string
+          format: uuid
+        projectTemplatePermissionSetVersion:
+          type: string
+          const: v1
+        projectPermissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - project.read
+              - project.create
+              - project.update
+        taskPermissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - task.read
+              - task.manage
+        taskPermissionAssignmentId:
+          type: string
+          format: uuid
+        taskPermissionSetVersion:
           type: string
           const: v1
         projectApproverPermissions:

@@ -1,3 +1,12 @@
+import {
+  ProjectTemplateSelector,
+  ProjectTemplatePlan,
+  canUseProjectTemplate,
+  canInstantiateProjectTemplate,
+  projectTemplateAuthority,
+} from './ProjectTemplate';
+import { useProjectTemplateCopy } from './project-template.copy';
+import type { TemplateSelection } from './project-template-response';
 import { ProjectDocuments } from './ProjectDocuments';
 import { ProjectLifecycle, ProjectStatusLabel } from './ProjectLifecycle';
 import { ProjectContracts } from '../contract/ProjectContracts';
@@ -72,8 +81,27 @@ type SelectedProject = {
   identityRevision: number;
   requestedTask?: RequestedTask;
 };
-type Registration = { title: string; clientAccountId: string; key: string };
-type Feedback = 'error' | 'validation' | 'conflict' | null;
+type Registration = {
+  title: string;
+  clientAccountId: string;
+  key: string;
+  source:
+    | { kind: 'manual' }
+    | { kind: 'template'; templateKey: string; templateVersion: number };
+};
+type TemplateCreationFeedback =
+  | 'denied'
+  | 'creationMissing'
+  | 'creationUnavailable'
+  | 'creationUncertain'
+  | 'creationConflict'
+  | 'creationValidation';
+type Feedback =
+  | 'error'
+  | 'validation'
+  | 'conflict'
+  | { kind: 'template'; message: TemplateCreationFeedback }
+  | null;
 /** A detail read, optionally requested with a Task target, or a registration. */
 type ProjectRequest =
   | {
@@ -112,6 +140,14 @@ export function ProjectWorkspace({
   projectOpenRequestId?: number;
 }) {
   const copy = useProjectCopy();
+  const templateCopy = useProjectTemplateCopy();
+  const templateAuthority = projectTemplateAuthority(actor);
+  const previousTemplateAuthority = useRef(templateAuthority);
+  const [deniedTemplateAuthority, setDeniedTemplateAuthority] = useState<
+    string | null
+  >(null);
+  const [templateSelection, setTemplateSelection] =
+    useState<TemplateSelection | null>(null);
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
@@ -205,8 +241,10 @@ export function ProjectWorkspace({
    * Reads the rows and Client choices under the current Client identity
    * revision, superseding any list read still in flight. A failed refresh
    * keeps the loaded rows; only a failed first read reports the load error.
+   * Template denial recovery first withholds rows, then revalidates only the
+   * Project read; its earlier Client choices remain creation-selection hints.
    */
-  function readList() {
+  function readList(recovery?: { clientChoices: ClientChoice[] }) {
     listRequest.current?.abort();
     const controller = new AbortController();
     listRequest.current = controller;
@@ -227,37 +265,47 @@ export function ProjectWorkspace({
             companyContextId: companyId,
             signal: controller.signal,
           }),
-          api.request<unknown>('/clients', {
-            companyContextId: companyId,
-            signal: controller.signal,
-          }),
+          recovery
+            ? undefined
+            : api.request<unknown>('/clients', {
+                companyContextId: companyId,
+                signal: controller.signal,
+              }),
         ]);
         if (controller.signal.aborted) return;
         if (
           projects.status === 'unauthorized' ||
-          clients.status === 'unauthorized'
+          clients?.status === 'unauthorized'
         ) {
           await identity.rejectSession();
           return;
         }
-        if (projects.status === 'forbidden' || clients.status === 'forbidden') {
+        if (
+          projects.status === 'forbidden' ||
+          clients?.status === 'forbidden'
+        ) {
           deny();
           return;
         }
+        const clientChoices = recovery
+          ? recovery.clientChoices
+          : clients?.status === 'ok' &&
+              Array.isArray(clients.value) &&
+              clients.value.every(isClient)
+            ? clients.value
+            : undefined;
         if (
           projects.status !== 'ok' ||
-          clients.status !== 'ok' ||
           !Array.isArray(projects.value) ||
           !projects.value.every(isProject) ||
-          !Array.isArray(clients.value) ||
-          !clients.value.every(isClient)
+          clientChoices === undefined
         )
           throw new Error('Load failed');
         const rows = withConfirmedRegistrations(projects.value, listRead);
         setLoad({
           kind: 'ready',
           projects: rows,
-          clients: clients.value,
+          clients: clientChoices,
           identityRevision: startedUnder,
         });
       } catch {
@@ -307,6 +355,8 @@ export function ProjectWorkspace({
     setPending(false);
     setTitle('');
     setClientAccountId('');
+    setTemplateSelection(null);
+    setDeniedTemplateAuthority(null);
     retry.current = null;
     confirmedRegistrations.current.clear();
     consumedProjectRequest.current = latestProjectRequest.current?.requestId;
@@ -325,6 +375,20 @@ export function ProjectWorkspace({
     generation,
     identity,
   ]);
+  // Dedicated Template authority retires its choices and commands without
+  // discarding independently authorized manual Project or Task work.
+  useEffect(() => {
+    if (previousTemplateAuthority.current === templateAuthority) return;
+    previousTemplateAuthority.current = templateAuthority;
+    setDeniedTemplateAuthority(null);
+    setTemplateSelection(null);
+    if (retry.current?.source.kind !== 'template') return;
+    retry.current = null;
+    if (!registering.current) return;
+    request.current?.abort();
+    setPending(false);
+    setFeedback(null);
+  }, [templateAuthority]);
   // A confirmed Client union or reversal moves the derived dossier identity
   // of the loaded rows. They are re-read once, by their single owner, and a
   // list read still in flight under the previous identity is superseded
@@ -477,12 +541,14 @@ export function ProjectWorkspace({
     const controller = new AbortController();
     request.current = controller;
     registering.current = command !== undefined;
+    let phase: 'preparing' | 'sent' | 'confirmed' = 'preparing';
     const startedUnder = identityRevision.current;
     setPending(true);
     setSelected(null);
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
+      phase = 'sent';
       const result = await api.request<unknown>(path, {
         companyContextId: companyId,
         signal: controller.signal,
@@ -496,6 +562,12 @@ export function ProjectWorkspace({
               body: JSON.stringify({
                 title: command.title,
                 clientAccountId: command.clientAccountId,
+                ...(command.source.kind === 'template'
+                  ? {
+                      templateKey: command.source.templateKey,
+                      templateVersion: command.source.templateVersion,
+                    }
+                  : {}),
               }),
             }
           : {}),
@@ -506,13 +578,30 @@ export function ProjectWorkspace({
         return;
       }
       if (result.status === 'forbidden') {
-        deny();
+        if (command?.source.kind === 'template') {
+          setTemplateSelection(null);
+          setDeniedTemplateAuthority(templateAuthority);
+          retry.current = null;
+          setFeedback({ kind: 'template', message: 'denied' });
+          // A Template refusal does not establish loss of independent Project
+          // access. Revalidate that server-owned read before restoring rows.
+          // Prior Client choices are only hints; creation still checks them.
+          setLoad({ kind: 'loading' });
+          readList({
+            clientChoices: load.kind === 'ready' ? load.clients : [],
+          });
+        } else deny();
         return;
       }
       if (result.status !== 'ok' || !isProject(result.value)) {
-        setFeedback(messageFor(result));
+        setFeedback(
+          command?.source.kind === 'template'
+            ? templateCreationMessage(result)
+            : messageFor(result),
+        );
         return;
       }
+      phase = 'confirmed';
       setDetailPanel('tasks');
       if (projectRequest.kind === 'open') {
         // A requested Task opens only after its own Project read succeeds.
@@ -555,9 +644,21 @@ export function ProjectWorkspace({
       retry.current = null;
       setTitle('');
       setClientAccountId('');
+      setTemplateSelection(null);
       await onActivityRecorded();
     } catch {
-      if (!controller.signal.aborted) setFeedback('error');
+      if (!controller.signal.aborted)
+        setFeedback(
+          command?.source.kind === 'template' && phase !== 'confirmed'
+            ? {
+                kind: 'template',
+                message:
+                  phase === 'sent'
+                    ? 'creationUncertain'
+                    : 'creationUnavailable',
+              }
+            : 'error',
+        );
     } finally {
       if (!controller.signal.aborted) setPending(false);
     }
@@ -569,13 +670,29 @@ export function ProjectWorkspace({
       setFeedback('validation');
       return;
     }
+    const source: Registration['source'] = templateSelection
+      ? {
+          kind: 'template',
+          templateKey: templateSelection.templateKey,
+          templateVersion: templateSelection.version,
+        }
+      : { kind: 'manual' };
     const command =
       retry.current?.title === normalized &&
-      retry.current.clientAccountId === clientAccountId
+      retry.current.clientAccountId === clientAccountId &&
+      JSON.stringify(retry.current.source) === JSON.stringify(source)
         ? retry.current
-        : { title: normalized, clientAccountId, key: crypto.randomUUID() };
+        : {
+            title: normalized,
+            clientAccountId,
+            key: crypto.randomUUID(),
+            source,
+          };
     retry.current = command;
-    void run('/projects', { kind: 'register', command });
+    void run(
+      source.kind === 'template' ? '/projects/from-template' : '/projects',
+      { kind: 'register', command },
+    );
   }
   function moveDetailTab(
     event: KeyboardEvent<HTMLButtonElement>,
@@ -783,18 +900,35 @@ export function ProjectWorkspace({
                   />
                 </>
               )}
+              {canInstantiateProjectTemplate(actor) &&
+                deniedTemplateAuthority !== templateAuthority && (
+                  <ProjectTemplateSelector
+                    key={templateAuthority}
+                    actor={actor}
+                    identity={identity}
+                    selection={templateSelection}
+                    onSelection={setTemplateSelection}
+                    disabled={pending}
+                  />
+                )}
               {load.clients.length === 0 && <p>{copy.noClients}</p>}
               <button
                 type="submit"
                 disabled={pending || load.clients.length === 0}
               >
-                {copy.create}
+                {templateSelection ? templateCopy('create') : copy.create}
               </button>
             </form>
           )}
         </>
       )}
-      {feedback && <p role="alert">{copy[feedback]}</p>}
+      {feedback && (
+        <p role="alert">
+          {typeof feedback === 'string'
+            ? copy[feedback]
+            : templateCopy(feedback.message)}
+        </p>
+      )}
       {selected && (
         <article
           className={isPrisme ? 'project-detail-card' : undefined}
@@ -920,6 +1054,15 @@ export function ProjectWorkspace({
               </button>
             </div>
           )}
+          {canUseProjectTemplate(actor) &&
+            actor.activeCompany?.taskPermissions?.includes('task.read') && (
+              <ProjectTemplatePlan
+                key={`${selected.project.id}:${templateAuthority}`}
+                actor={actor}
+                identity={identity}
+                projectId={selected.project.id}
+              />
+            )}
           <div
             className="project-detail-panel"
             id="project-documents-panel"
@@ -1021,4 +1164,20 @@ function messageFor(result: ApiResult<unknown>): Exclude<Feedback, null> {
     : result.status === 'conflict'
       ? 'conflict'
       : 'error';
+}
+
+function templateCreationMessage(
+  result: ApiResult<unknown>,
+): Extract<Feedback, { kind: 'template' }> {
+  return {
+    kind: 'template',
+    message:
+      result.status === 'notFound'
+        ? 'creationMissing'
+        : result.status === 'validation'
+          ? 'creationValidation'
+          : result.status === 'conflict'
+            ? 'creationConflict'
+            : 'creationUncertain',
+  };
 }

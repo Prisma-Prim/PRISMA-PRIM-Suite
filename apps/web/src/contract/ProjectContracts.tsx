@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { companyAuthorityWithoutProjectTemplate } from '../project/project-authority';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
@@ -20,7 +21,15 @@ type View =
 export function ProjectContracts(props: Props) {
   return (
     <ProjectContractsSession
-      key={JSON.stringify([props.projectId, props.actor])}
+      key={JSON.stringify([
+        props.projectId,
+        {
+          ...props.actor,
+          activeCompany: companyAuthorityWithoutProjectTemplate(
+            props.actor.activeCompany,
+          ),
+        },
+      ])}
       {...props}
     />
   );

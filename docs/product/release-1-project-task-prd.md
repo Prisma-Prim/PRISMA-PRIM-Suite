@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407; remaining capability Draft\
-**Version:** 0.8\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634; remaining capability Draft\
+**Version:** 0.9\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -454,3 +454,126 @@ Excluded, and not presented as business fact:
 - approval delegated to anyone other than the Approver bundle holder.
 
 **Delivery.** #406 delivers the statuses, the Approver bundle, activation, hold and resumption. #407 delivers completion, cancellation, the closed-Project rules and the list default.
+
+## 24. Approved provisional creation from an illustrative Template (#634)
+
+Dan approved this bounded example and dedicated opt-in authority on 2026-10-16.
+His explicit authority answer was “Oui, des droits dédiés explicites”: Template
+Version creation, Project creation from a model and stage advancement require
+separately assigned dedicated rights, distinct from `project.update`; no existing
+assignment expands automatically. Task assignment retains its existing authority.
+This is a provisional MVP choice for later business validation, not evidence that
+Iurie has approved an operational category, workflow or real mission start.
+
+### Example and first observable outcome
+
+The identified initial model is `CONSULTING_PREPARATION_ILLUSTRATIVE`, Version 1,
+with the preserved business title “Préparation d’une mission de conseil”. It has
+two ordered stages, with two required Tasks in each:
+
+| Stage       | Required copied Tasks                         |
+| ----------- | --------------------------------------------- |
+| Cadrage     | Clarifier la demande; Confirmer le périmètre  |
+| Préparation | Recueillir le questionnaire; Préparer le plan |
+
+The initial Version is an immutable, code-defined illustrative configuration.
+The interface labels it illustrative and states that it authorizes no real
+operational work. It is not silently installed as a real Company's business
+policy. The user explicitly chooses the exact Version and an existing active
+Client related to the active Company, supplies the normal Project title, and
+creates one preparatory Project (§15) and four independent Task copies atomically.
+No existing Project receives a model, stage or Task retroactively.
+
+Each copied Task starts `todo`, priority `normal`, unassigned and undated. Its
+manager explicitly assigns and declares completion using §§18, 20 and 22.
+Assignment never grants access, and completion is the existing manual declaration,
+not verified questionnaire content or approval to start a mission. All existing
+Task edit, eligibility, state, date, version, retry, history and closed-Project
+rules remain unchanged. Editing a copied Task changes only that Task; the
+preserved source title, stage and exact Template Version remain historical facts.
+
+### Authority and read boundary
+
+The new opt-in **Company Project Template User v1** contains exactly
+`project.template.read` and `project.template.instantiate`. The existing
+administrator with `company.assignment.manage` explicitly grants or revokes its
+captured v1 for an active same-Workspace member and active Company. It confers no
+Company context, Client read, Project create, Task read/manage, lifecycle,
+Template Version publication or stage advancement authority. Existing bundles,
+assignments, migration backfills, Workspace ownership and Project responsibility
+grant nothing; null or unknown captured versions fail closed.
+
+Source catalogue read requires the dedicated read plus current Company context
+and Project read. Copied-plan read additionally requires current Task read and
+the Project's original Client/read relationship boundary because it includes real
+Task identifiers. Instantiation requires the dedicated instantiate authority plus
+independent current Project creation and Task Manager authority, with the active
+original Client and Company relationship. Access owns live captured-grant
+validation and serializes successful creation against revocation or suspension.
+
+The assignment lifecycle is
+`company_project_template_user_assignment.granted` and
+`company_project_template_user_assignment.revoked`, under the authorization PRD
+§8's existing Company-scoped administration and minimal bundle-label convention.
+The bundle is never configured or assigned implicitly to any real user.
+
+### Preservation, retry and atomicity
+
+Creation preserves the exact source key, Version, business title, ordered stage
+and Task definitions, and stable mapping to the four copied Task identifiers.
+This immutable snapshot is independent of later source configuration. Reopening
+shows that original plan and the real independently editable Tasks; it never
+substitutes current Template contents. No route edits or deletes copied
+provenance. No source edit changes an existing Project's copies or history.
+
+A stable actor/Workspace idempotency key covers the full normalized creation
+intent: Company, original Client, Project title and exact source key/Version.
+Identical concurrent retries create exactly one Project and four Tasks. Exact
+committed replay rechecks current dedicated and independent prerequisites and
+Project visibility before confirming the original Project identity; the normal
+Project read supplies current display facts. A changed key reuse conflicts,
+including reuse of a manually registered Project's creation key. Replay does not
+repeat writes and may confirm the earlier creation after original Client
+supersession or Project closure if current read authority remains valid.
+
+Project creation, immutable provenance, four Tasks, durable creation identity,
+one ordinary `project.created` event and four ordinary `task.created` events
+commit together, using the existing original Client operational-use fence and
+lock order. Failure records none. The original Project creation event and each
+Task history retain server actor/time attribution. No new stage-completion event
+is fabricated by merely creating a copied plan.
+
+The browser preserves the exact uncertain command's title, Client, Template
+Version and idempotency key for explicit retry. A changed intention uses a new
+key. Authority/session/Company changes discard old drafts/replies under the
+existing owner boundary. Loading, empty, validation, denied, missing, unavailable,
+uncertain retry and conflicting-key recovery remain distinct. Interface controls
+and accessible names use ro/ru/fr/en; switching locale preserves business source
+text and entered work.
+
+### Following approved outcomes and remaining limits
+
+Dan also approved required Task completion before a deliberate stage advance,
+and immutable new Template Versions that never rewrite existing Projects.
+These are separate following vertical outcomes after #634: the first creation
+journey exposes no stage-advance or publish command, confers none of their
+permissions, and claims no completed stage gate. The stage gate must require
+current `done` for every required Task; cancellation does not satisfy it. It
+must serialize against existing Task commands and never change Project lifecycle
+or authorize an actual operational start.
+
+Publication/version evolution will let an explicitly authorized configuration
+user create a successor and a second Project while the first retains its exact
+copy. The general workflow editor, real category catalogue, dependencies,
+automatic assignments/due dates, reminders, Document evidence integration,
+Standards, Contract automation, lifecycle changes and real business readiness
+remain excluded. #634 alone earns no complete PJ-4 or TA-4 coverage credit.
+
+### Public proof
+
+Authenticated REST with disposable PostgreSQL proves exact copy/reopen, scope,
+independent permission prerequisites, rejection/rollback, concurrent retries,
+Task assignment/completion/reopening, historical original Clients and migration
+preservation. Real App desktop 1440px and narrow 390px journeys prove selection,
+creation, reload, independent Task outcome, unchanged retry, authority loss,
+locale continuity and horizontal fit with screenshots from `testInfo.outputPath`.

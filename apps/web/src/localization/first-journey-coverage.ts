@@ -23,6 +23,7 @@ import { clientDirectoryMessages } from '../client/client-directory.copy';
 import { appMessages } from '../app.copy';
 import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
+import { projectTemplateMessages } from '../project/project-template.copy';
 import { operationalHomeMessages } from '../operational-home/operational-home-localized.copy';
 import { sessionRevocationMessages } from '../access/workspace-session-revocation.copy';
 import { selectMessages } from '../presentation/select.copy';
@@ -69,6 +70,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('fiber', fiberMessages);
   assertMessageCoverage('companyContext', companyContextMessages);
   assertMessageCoverage('companyRegistration', companyRegistrationMessages);
+  assertMessageCoverage('projectTemplate', projectTemplateMessages);
   assertMessageCoverage('operationalHome', operationalHomeMessages);
   assertMessageCoverage('sessionRevocation', sessionRevocationMessages);
   assertMessageCoverage('select', selectMessages);

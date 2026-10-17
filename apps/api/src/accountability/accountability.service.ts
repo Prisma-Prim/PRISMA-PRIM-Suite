@@ -2903,6 +2903,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_project_approver_assignment.revoked':
     case 'company_sales_stage_configuration_assignment.granted':
     case 'company_sales_stage_configuration_assignment.revoked':
+    case 'company_project_template_user_assignment.granted':
+    case 'company_project_template_user_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,

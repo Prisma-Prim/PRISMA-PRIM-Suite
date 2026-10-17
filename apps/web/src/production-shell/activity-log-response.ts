@@ -64,6 +64,8 @@ const targetTypes = {
     'company_role_assignment',
   'company_sales_stage_configuration_assignment.revoked':
     'company_role_assignment',
+  'company_project_template_user_assignment.granted': 'company_role_assignment',
+  'company_project_template_user_assignment.revoked': 'company_role_assignment',
   'company_project_approver_assignment.granted': 'company_role_assignment',
   'company_project_approver_assignment.revoked': 'company_role_assignment',
   'company_context_assignment.granted': 'company_role_assignment',

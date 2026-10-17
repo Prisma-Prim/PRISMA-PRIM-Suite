@@ -80,6 +80,8 @@ import {
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
+  COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+  COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
   type CompanyDirectorClientPermissionSetVersion,
@@ -125,7 +127,8 @@ type BundleDefinition = {
     | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
     | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
-    | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL;
+    | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
+    | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL;
   permissionSetVersion:
     | CompanyDirectorClientPermissionSetVersion
     | DocumentPermissionSetVersion
@@ -266,7 +269,13 @@ const PROJECT_APPROVER_BUNDLE: BundleDefinition = {
   label: COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+const PROJECT_TEMPLATE_USER_BUNDLE: BundleDefinition = {
+  value: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+  label: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
@@ -864,6 +873,36 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       SALES_STAGE_CONFIGURATION_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantProjectTemplateUser(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PROJECT_TEMPLATE_USER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeProjectTemplateUser(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PROJECT_TEMPLATE_USER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1538,6 +1577,10 @@ function assignmentAction(
       return granted
         ? 'company_sales_stage_configuration_assignment.granted'
         : 'company_sales_stage_configuration_assignment.revoked';
+    case COMPANY_PROJECT_TEMPLATE_USER_BUNDLE:
+      return granted
+        ? 'company_project_template_user_assignment.granted'
+        : 'company_project_template_user_assignment.revoked';
     case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
       return granted
         ? COMPANY_DIRECTOR_CLIENT_ASSIGNMENT_GRANTED_ACTION
@@ -1785,6 +1828,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_PROJECT_TEMPLATE_USER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Project Template User version.');
+      return {
+        ...base,
+        bundle: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
   }

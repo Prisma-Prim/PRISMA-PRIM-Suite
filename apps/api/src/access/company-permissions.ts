@@ -267,6 +267,11 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Document Content Uploader',
     versions: { v1: ['document.content.upload'] },
   },
+  // Dedicated opt-in creation only; existing Project/Task assignments never expand.
+  company_project_template_user: {
+    label: 'Company Project Template User',
+    versions: { v1: ['project.template.read', 'project.template.instantiate'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -753,4 +758,19 @@ export function contractApproverPermissionsFor(
   version: unknown,
 ): readonly CompanyContractPermission[] {
   return companyRolePermissionsFor(COMPANY_CONTRACT_APPROVER_BUNDLE, version);
+}
+
+export const COMPANY_PROJECT_TEMPLATE_USER_BUNDLE =
+  'company_project_template_user' satisfies CompanyRoleBundle;
+export const COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_project_template_user.label;
+export type CompanyProjectTemplatePermission =
+  CompanyRolePermission<'company_project_template_user'>;
+export function projectTemplatePermissionsFor(
+  version: unknown,
+): readonly CompanyProjectTemplatePermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+    version,
+  );
 }
