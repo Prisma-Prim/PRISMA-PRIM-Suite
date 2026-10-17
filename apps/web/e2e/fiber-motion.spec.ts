@@ -1,6 +1,9 @@
 import { expect, test, type Route } from '@playwright/test';
 import { actorContextFixture } from './actor-context.fixture';
 
+// Retain active-rendering coverage independently of functional-test defaults.
+test.use({ contextOptions: { reducedMotion: 'no-preference' } });
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({ json: actorContextFixture }),

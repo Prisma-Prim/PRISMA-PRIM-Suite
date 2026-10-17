@@ -11,6 +11,7 @@ import {
   type TestInfo,
 } from '@playwright/test';
 import { openSelect, selectOption } from './select-option';
+import { unionLocators } from './locator-union';
 
 // TE-2 (#597): one commercial case from Request to signed agreement, Project
 // and Activity, driven through the real UI, API and PostgreSQL. Synthetic data
@@ -2512,11 +2513,19 @@ test('follows one commercial case from Request to signed agreement, Project and 
       // Each row's content without its rendered time: a formatted server
       // time can spell a typed date or an amount on some run dates.
       const rowContent = rows.locator(':scope > div');
-      for (const value of forbidden)
-        await expect(rowContent.filter({ hasText: value })).toHaveCount(0);
+      await expect(
+        unionLocators(
+          forbidden.map((value) => rowContent.filter({ hasText: value })),
+        ),
+      ).toHaveCount(0);
       await expect(rows.filter({ hasText: opportunityTitle })).toHaveCount(3);
-      for (const label of [clientName, companyName])
-        await expect(commercialRows.filter({ hasText: label })).toHaveCount(0);
+      await expect(
+        unionLocators(
+          [clientName, companyName].map((label) =>
+            commercialRows.filter({ hasText: label }),
+          ),
+        ),
+      ).toHaveCount(0);
       await expectNoActivityLeak(request, {
         companyId,
         expectedCommercialEvents: commercialEvents.length,
