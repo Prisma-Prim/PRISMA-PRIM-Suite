@@ -18,7 +18,9 @@ import type { ClientContact } from './ClientContactEditor';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import './client-duplicate-review.css';
-import { clientWorkspaceCopy as copy } from './client-workspace.copy';
+import { useClientDuplicateReviewCopy } from './client-duplicate-review.copy';
+import { useClientDossierCopy } from './client-dossier.copy';
+import { useClientContactEditorCopy } from './client-contact-editor.copy';
 
 interface DossierFields {
   displayName: string;
@@ -95,6 +97,7 @@ export function ClientDuplicateReviewPanel({
   onActivityRecorded: () => Promise<void>;
   onClientsChanged: () => Promise<void>;
 }) {
+  const copy = useClientDuplicateReviewCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const openingTrigger = useRef<Element | null>(null);
   const receiveComparisonHeading = useCallback(
@@ -454,8 +457,10 @@ function DuplicateComparison({
   onAttach: (candidateId: string) => Promise<void>;
   onHeadingReady: (heading: HTMLHeadingElement | null) => void;
 }) {
+  const copy = { ...useClientDossierCopy(), ...useClientDuplicateReviewCopy() };
   const fields = [
     [
+      'recordState',
       copy.duplicateRecordState,
       detail.proposal.kind === 'registration'
         ? copy.duplicateRegistrationProposal
@@ -463,27 +468,37 @@ function DuplicateComparison({
       copy.version(detail.candidate.version),
     ],
     [
+      'displayName',
       copy.displayNameLabel,
       detail.proposal.fields.displayName,
       detail.candidate.displayName,
     ],
-    [copy.taxIdLabel, detail.proposal.fields.taxId, detail.candidate.taxId],
     [
+      'taxId',
+      copy.taxIdLabel,
+      detail.proposal.fields.taxId,
+      detail.candidate.taxId,
+    ],
+    [
+      'address',
       copy.addressLabel,
       detail.proposal.fields.address,
       detail.candidate.address,
     ],
     [
+      'telephone',
       copy.telephoneLabel,
       detail.proposal.fields.telephone,
       detail.candidate.telephone,
     ],
     [
+      'generalEmail',
       copy.generalEmailLabel,
       detail.proposal.fields.generalEmail,
       detail.candidate.generalEmail,
     ],
     [
+      'businessActivity',
       copy.businessActivityLabel,
       detail.proposal.fields.businessActivity,
       detail.candidate.businessActivity,
@@ -513,8 +528,8 @@ function DuplicateComparison({
           </tr>
         </thead>
         <tbody>
-          {fields.map(([label, proposal, candidate]) => (
-            <tr key={label}>
+          {fields.map(([field, label, proposal, candidate]) => (
+            <tr key={field}>
               <th scope="row">{label}</th>
               <td data-label={copy.duplicateProposalColumn}>
                 {proposal ?? copy.notProvided}
@@ -643,6 +658,7 @@ function ReviewContacts({
   contacts: readonly ClientContact[];
   emptyCopy: string;
 }) {
+  const copy = { ...useClientDossierCopy(), ...useClientContactEditorCopy() };
   if (contacts.length === 0) return <p>{emptyCopy}</p>;
   return (
     <ol className="client-review-contacts">
