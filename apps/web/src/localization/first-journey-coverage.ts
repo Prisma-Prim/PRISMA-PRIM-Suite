@@ -28,6 +28,7 @@ import { clientDirectoryMessages } from '../client/client-directory.copy';
 import { clientDossierMessages } from '../client/client-dossier.copy';
 import { clientCorrectionHistoryMessages } from '../client/client-correction-history.copy';
 import { appMessages } from '../app.copy';
+import { activityLogMessages } from '../production-shell/activity-log.copy';
 import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
 import { projectTemplateMessages } from '../project/project-template.copy';
@@ -86,6 +87,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
     clientCorrectionHistoryMessages,
   );
   assertMessageCoverage('app', appMessages);
+  assertMessageCoverage('activityLog', activityLogMessages);
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);
   assertMessageCoverage('serviceCatalogue', serviceCatalogueMessages);
   assertMessageCoverage('publicWelcome', publicWelcomeMessages);
