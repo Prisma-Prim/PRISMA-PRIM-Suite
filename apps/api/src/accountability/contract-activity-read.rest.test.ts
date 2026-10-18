@@ -65,6 +65,7 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   let harness: PostgresRestTestHarness;
   let origin: string;
   let pool: Pool;
+  let setup: PreparedCompany;
 
   beforeAll(async () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
@@ -99,6 +100,7 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
     await pool.query(
       'TRUNCATE activity_log_events, workspace_memberships, internal_users, workspaces CASCADE',
     );
+    setup = await preparedCompany();
   });
 
   afterAll(async () => {
@@ -107,7 +109,6 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   });
 
   it('projects a recorded Contract sequence to an authorized reader and nothing to a reader without Contract read', async () => {
-    const setup = await preparedCompany();
     const contract = await createdContract(setup, 'sequence');
     const { opportunityId } = contract;
     const v1 = contract.v1;
@@ -308,7 +309,6 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   });
 
   it('denies every reader lacking part of the Contract or linked Project authority', async () => {
-    const setup = await preparedCompany();
     const contract = await linkedContract(setup, 'matrix');
     const reader = await preparedReader(setup.companyId, READER_ASSIGNMENTS);
     expect(reader.activeCompany.contractPermissions).toContain(
@@ -434,7 +434,6 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   });
 
   it('omits every event whose Contract, version, owning Opportunity or linked Project cannot be resolved and keeps a resolvable sibling', async () => {
-    const setup = await preparedCompany();
     const lostOpportunity = await createdContract(setup, 'lost-opportunity');
     const lostContract = await createdContract(setup, 'lost-contract');
     const lostVersion = await createdContract(setup, 'lost-version');
@@ -522,7 +521,6 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   });
 
   it('omits a Project link without its link record or with another creation flag and keeps its sibling link', async () => {
-    const setup = await preparedCompany();
     const contract = await linkedContract(setup, 'link-record');
     tick();
     const created = record(
@@ -597,7 +595,6 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   });
 
   it('omits a Project link recorded for an executed Addendum and keeps its parent link', async () => {
-    const setup = await preparedCompany();
     const parent = await linkedContract(setup, 'addendum-link');
     tick();
     const addendum = record(
@@ -688,7 +685,6 @@ withPostgres('Contract events in the commercial Activity Log REST', () => {
   });
 
   it('fills the page with valid events past newer rows that fail closed, including a source or Snapshot unlike the resolved Contract', async () => {
-    const setup = await preparedCompany();
     const contract = await createdContract(setup, 'bounded');
     await preparedReader(setup.companyId, READER_ASSIGNMENTS);
     const valid = contractEvents(await activityLog(READER, setup.companyId));
