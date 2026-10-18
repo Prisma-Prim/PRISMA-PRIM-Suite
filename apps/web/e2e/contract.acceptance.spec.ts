@@ -587,12 +587,22 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
     stored.version,
   );
   await checks.getByRole('button', { name: 'Reopen recorded checks' }).click();
-  await checks
-    .getByRole('button', {
-      name: 'Reopen run · ' + text(oldRun.evaluatedAt),
-      exact: true,
-    })
-    .click();
+  const recordedRunAction = checks
+    .getByRole('button', { name: /^Reopen run · /u })
+    .filter({
+      has: page.locator(`time[datetime="${text(oldRun.evaluatedAt)}"]`),
+    });
+  await expect(recordedRunAction).toHaveCount(1);
+  await expect(recordedRunAction).toContainText('(UTC)');
+  await expect(recordedRunAction.locator('time')).toHaveAttribute(
+    'datetime',
+    text(oldRun.evaluatedAt),
+  );
+  const exactRunResponse = page.waitForResponse((response) =>
+    response.url().endsWith(qualityPath + '/' + text(oldRun.id)),
+  );
+  await recordedRunAction.click();
+  expect((await exactRunResponse).status()).toBe(200);
   await expect(checks.getByText('WARNING', { exact: true })).toHaveCount(1);
   await expect(
     checks.getByText(text(oldRun.actorWorkspaceMembershipId), { exact: true }),

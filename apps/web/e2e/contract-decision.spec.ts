@@ -1,3 +1,4 @@
+import { contractQualityLocales } from '../src/test/contract-quality-localization-fixture';
 import { expect, test } from '@playwright/test';
 import type { ActorContext } from '../src/access-types';
 import { contractDecisionMessages } from '../src/contract/contract-decision.copy';
@@ -142,6 +143,11 @@ for (const locale of interfaceLocales)
   test(`approver-only approval retry and rejection remain readable in ${locale}`, async ({
     page,
   }, testInfo) => {
+    const qualityLocale = contractQualityLocales.find(
+      (item) => item.code === locale,
+    );
+    if (!qualityLocale)
+      throw new Error('Missing independent Quality locale expectation');
     await page.addInitScript(
       (value) =>
         window.localStorage.setItem('prisma-prim.interface-locale', value),
@@ -296,7 +302,7 @@ for (const locale of interfaceLocales)
       .click();
     await expect(decision.getByRole('alert')).toHaveText(copy('warnings'));
     await page
-      .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+      .getByRole('button', { name: qualityLocale.run, exact: true })
       .click();
     await decision.getByRole('checkbox').check();
     const approve = decision.getByRole('button', {
@@ -339,10 +345,10 @@ for (const locale of interfaceLocales)
     await open('reject');
     decision = page.getByRole('region', { name: copy('title'), exact: true });
     await page
-      .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+      .getByRole('button', { name: qualityLocale.run, exact: true })
       .click();
     await expect(
-      page.getByText('Contract checks completed with errors.', { exact: true }),
+      page.getByText(qualityLocale.errors, { exact: true }),
     ).toBeVisible();
     await decision
       .getByRole('textbox', { name: copy('reason'), exact: true })
