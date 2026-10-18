@@ -1,3 +1,4 @@
+import { ProjectStage } from './ProjectStage';
 import {
   ProjectTemplateSelector,
   ProjectTemplatePlan,
@@ -1061,6 +1062,15 @@ export function ProjectWorkspace({
                 actor={actor}
                 identity={identity}
                 projectId={selected.project.id}
+              />
+            )}
+          {canUseProjectTemplate(actor) &&
+            actor.activeCompany?.taskPermissions?.includes('task.read') && (
+              <ProjectStage
+                actor={actor}
+                identity={identity}
+                projectId={selected.project.id}
+                onActivityRecorded={onActivityRecorded}
               />
             )}
           <div

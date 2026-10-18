@@ -1,3 +1,5 @@
+import type { ProjectStageChangedActivityEvent } from '../project-template/project-stage.types.js';
+import type { ProjectStageTaskProof } from '../project-template/project-stage.types.js';
 import type { ContractQualityRuleSetVersion } from '../contract/contract-quality.js';
 import type { ContractEventSource } from '../contract/contract-source.js';
 import type { OfferQualityRuleSetVersion } from '../offer/offer-quality.js';
@@ -40,6 +42,7 @@ import {
   projectCreationEvents,
   projectResponsibilityEvents,
   projectLifecycleTransitions,
+  projectStageTransitions,
   projectStartDeclarations,
   projects,
   activityLogEvents,
@@ -678,6 +681,34 @@ export class AccountabilityService {
         afterDisplayLabel: input.after?.displayLabel ?? null,
         occurredAt: input.occurredAt,
       });
+  }
+
+  /** One immutable event/transition source; its Activity projection excludes Task proof. */
+  async recordProjectStageChanged(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    stageRevision: number;
+    fromStageKey: string;
+    fromStageTitle: string;
+    toStageKey: string;
+    toStageTitle: string;
+    requiredTasks: ProjectStageTaskProof[];
+    occurredAt: Date;
+  }) {
+    const { actor, ...facts } = input;
+    const [row] = await this.databaseContext.connection
+      .insert(projectStageTransitions)
+      .values({
+        ...facts,
+        workspaceId: actor.workspaceId,
+        actorInternalUserId: actor.internalUserId,
+        actorMembershipId: actor.workspaceMembershipId,
+        actorDisplayName: actor.displayName,
+      })
+      .returning();
+    if (!row) throw new Error('Project stage transition was not recorded.');
+    return row;
   }
 
   // The append-only `project.lifecycle.changed` record. The caller commits it
@@ -1778,6 +1809,96 @@ export class AccountabilityService {
     );
   }
 
+  /** Existing Activity endpoint authority plus independent copied-plan visibility. */
+  private async projectStageEvents(
+    actor: ActorContext,
+  ): Promise<ProjectStageChangedActivityEvent[]> {
+    const company = actor.activeCompany;
+    if (
+      !company?.projectPermissions?.includes('project.read') ||
+      company.projectTemplatePermissionSetVersion !== 'v1' ||
+      !company.projectTemplatePermissionAssignmentId ||
+      !company.projectTemplatePermissions?.includes('project.template.read') ||
+      !company.taskPermissions?.includes('task.read') ||
+      (!actor.workspacePermissions.includes('client.manage') &&
+        !company.clientPermissions.includes('client.read'))
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select({
+        id: projectStageTransitions.id,
+        projectId: projectStageTransitions.projectId,
+        companyId: projectStageTransitions.companyId,
+        stageRevision: projectStageTransitions.stageRevision,
+        fromStageKey: projectStageTransitions.fromStageKey,
+        toStageKey: projectStageTransitions.toStageKey,
+        occurredAt: projectStageTransitions.occurredAt,
+        actorInternalUserId: projectStageTransitions.actorInternalUserId,
+        actorDisplayName: projectStageTransitions.actorDisplayName,
+        projectTitle: projects.title,
+      })
+      .from(projectStageTransitions)
+      .innerJoin(
+        projects,
+        and(
+          eq(projects.workspaceId, projectStageTransitions.workspaceId),
+          eq(projects.companyId, projectStageTransitions.companyId),
+          eq(projects.id, projectStageTransitions.projectId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
+        ),
+      )
+      .innerJoin(
+        clientCompanyRelationships,
+        and(
+          eq(clientCompanyRelationships.workspaceId, projects.workspaceId),
+          eq(clientCompanyRelationships.companyId, projects.companyId),
+          eq(
+            clientCompanyRelationships.clientAccountId,
+            projects.clientAccountId,
+          ),
+          eq(clientCompanyRelationships.status, 'active'),
+        ),
+      )
+      .where(
+        and(
+          eq(projectStageTransitions.workspaceId, actor.workspaceId),
+          eq(projectStageTransitions.companyId, company.id),
+        ),
+      )
+      .orderBy(
+        desc(projectStageTransitions.occurredAt),
+        desc(projectStageTransitions.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map((row) => ({
+      id: row.id,
+      action: 'project.stage.changed',
+      occurredAt: row.occurredAt.toISOString(),
+      actor: {
+        internalUserId: row.actorInternalUserId,
+        displayName: row.actorDisplayName,
+      },
+      target: {
+        type: 'project',
+        projectId: row.projectId,
+        projectTitle: row.projectTitle,
+        companyId: row.companyId,
+      },
+      metadata: {
+        stageRevision: row.stageRevision,
+        fromStageKey: row.fromStageKey,
+        toStageKey: row.toStageKey,
+      },
+    }));
+  }
+
   async recordClientUnion(input: {
     actor: ActorContext;
     reviewReference: string;
@@ -2785,6 +2906,7 @@ export class AccountabilityService {
       ...(await this.projectEvents(actor)),
       ...(await this.projectResponsibilityEvents(actor)),
       ...(await this.projectLifecycleEvents(actor)),
+      ...(await this.projectStageEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentVersionEvents(actor)),
@@ -2905,6 +3027,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_sales_stage_configuration_assignment.revoked':
     case 'company_project_template_user_assignment.granted':
     case 'company_project_template_user_assignment.revoked':
+    case 'company_project_stage_advancer_assignment.granted':
+    case 'company_project_stage_advancer_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,

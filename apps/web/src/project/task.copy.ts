@@ -12,7 +12,7 @@ export const taskCopy = {
   } satisfies Record<TaskEvent['action'], string>,
   title: 'Tasks',
   warning:
-    'Manual preparation Tasks. Each state records a declaration; it does not approve execution or satisfy a business gate.',
+    'Manual preparation Tasks. Each state records a declaration; it does not authorize a real engagement to start.',
   loading: 'Loading Tasks…',
   error: 'Tasks could not be loaded. Reload to try again.',
   denied: 'Task, Project and Client read access are required for this Company.',

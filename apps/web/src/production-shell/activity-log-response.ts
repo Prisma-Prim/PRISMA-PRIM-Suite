@@ -1,3 +1,4 @@
+import { readStageActivityMetadata } from '../project/project-stage-response';
 import { readOptionalResponsibleMember } from '../project/project-responsible-response';
 import { readLifecycleActivityMetadata } from '../project/project-lifecycle-response';
 import {
@@ -66,6 +67,10 @@ const targetTypes = {
     'company_role_assignment',
   'company_project_template_user_assignment.granted': 'company_role_assignment',
   'company_project_template_user_assignment.revoked': 'company_role_assignment',
+  'company_project_stage_advancer_assignment.granted':
+    'company_role_assignment',
+  'company_project_stage_advancer_assignment.revoked':
+    'company_role_assignment',
   'company_project_approver_assignment.granted': 'company_role_assignment',
   'company_project_approver_assignment.revoked': 'company_role_assignment',
   'company_context_assignment.granted': 'company_role_assignment',
@@ -96,6 +101,7 @@ const targetTypes = {
   'project.created': 'project',
   'project.responsible.changed': 'project',
   'project.lifecycle.changed': 'project',
+  'project.stage.changed': 'project',
   'task.created': 'task',
   'task.updated': 'task',
   'task.status.changed': 'task',
@@ -159,6 +165,21 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
   if (!isActivityAction(action) || target.type !== targetTypes[action])
     invalid();
   switch (action) {
+    case 'project.stage.changed': {
+      const metadata = readStageActivityMetadata(value.metadata);
+      if (!metadata) return undefined;
+      return {
+        ...recorded(value),
+        action,
+        target: {
+          type: 'project',
+          projectId: identifier(target.projectId),
+          projectTitle: text(target.projectTitle),
+          companyId: identifier(target.companyId),
+        },
+        metadata,
+      };
+    }
     case 'project.lifecycle.changed': {
       const metadata = readLifecycleActivityMetadata(value.metadata);
       if (!metadata) return undefined;

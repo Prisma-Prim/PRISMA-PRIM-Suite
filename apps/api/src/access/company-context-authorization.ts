@@ -66,6 +66,8 @@ import {
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialIntakeVersionsWith,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
+  COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
+  projectStagePermissionsFor,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
   projectTemplatePermissionsFor,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
@@ -1293,6 +1295,7 @@ export class CompanyContextAuthorization {
         COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
         COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+        COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
@@ -1474,6 +1477,16 @@ export class CompanyContextAuthorization {
         company.opportunityManagerPermissionAssignmentId = row.assignmentId;
         company.opportunityManagerPermissionSetVersion =
           row.permissionSetVersion;
+      }
+      if (
+        row.bundle === COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.projectStagePermissions = [
+          ...projectStagePermissionsFor(row.permissionSetVersion),
+        ];
+        company.projectStagePermissionAssignmentId = row.assignmentId;
+        company.projectStagePermissionSetVersion = 'v1';
       }
       if (
         row.bundle === COMPANY_PROJECT_TEMPLATE_USER_BUNDLE &&

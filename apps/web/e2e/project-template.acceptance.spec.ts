@@ -481,6 +481,239 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
   ).toHaveCount(0);
 });
 
+// #687: real App, API and disposable PostgreSQL. Only transport failure replies are injected.
+test('advances the preserved first Project stage explicitly and retries its exact committed intent across locales', async ({
+  page,
+}, testInfo) => {
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'narrow' : 'desktop';
+  const companyId = required('ACCEPTANCE_PRIMARY_COMPANY_ID');
+  const membershipId = required('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID');
+  await grantTemplate(page.request, membershipId, companyId);
+  const stageGrant = await page.request.post(
+    `${apiOrigin}/api/company-project-stage-advancer-assignments`,
+    {
+      headers: { ...owner, 'idempotency-key': randomUUID() },
+      data: { workspaceMembershipId: membershipId, companyId },
+    },
+  );
+  expect(stageGrant.status()).toBe(201);
+  const headers = { ...ada, 'x-company-context-id': companyId };
+  const clientResponse = await page.request.post(`${apiOrigin}/api/clients`, {
+    headers: { ...headers, 'idempotency-key': randomUUID() },
+    data: { displayName: `Stage Client ${suffix}` },
+  });
+  expect(clientResponse.status()).toBe(201);
+  const clientValue: unknown = await clientResponse.json();
+  const clientId = identifier(clientValue);
+  const title = `Stage preparation ${suffix}`;
+  const creation = await page.request.post(
+    `${apiOrigin}/api/projects/from-template`,
+    {
+      headers: { ...headers, 'idempotency-key': randomUUID() },
+      data: {
+        title,
+        clientAccountId: clientId,
+        templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
+        templateVersion: 1,
+      },
+    },
+  );
+  expect(creation.status()).toBe(201);
+  const created: unknown = await creation.json();
+  const projectId = identifier(created);
+  await page.goto('/');
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    companyId,
+  );
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await navigate(page, 'Projects', narrow);
+  const projects = page.locator('.project-workspace');
+  await projects
+    .getByRole('list', { name: 'Projects', exact: true })
+    .getByRole('button')
+    .filter({ hasText: title })
+    .click();
+  const stage = projects.locator('.project-stage');
+  const tasks = page.locator('.project-tasks');
+  await expect(
+    stage.getByText(
+      'Complete both required Tasks before advancing. Cancelled Tasks do not satisfy this gate.',
+    ),
+  ).toBeVisible();
+  await expect(
+    stage.getByRole('button', { name: 'Advance to Préparation' }),
+  ).toBeDisabled();
+  await noOverflow(page);
+  await stage.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath(`stage-${suffix}-blocked.png`),
+  });
+  await tasks
+    .getByRole('button', { name: 'Clarifier la demande', exact: true })
+    .click();
+  await tasks.getByRole('button', { name: 'Mark done', exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Reopen Task', exact: true }),
+  ).toBeVisible();
+  await tasks
+    .getByRole('button', { name: 'Confirmer le périmètre', exact: true })
+    .click();
+  await tasks.getByRole('button', { name: 'Cancel Task', exact: true }).click();
+  await tasks
+    .getByLabel('Cancellation reason')
+    .fill('Cancellation is not completion.');
+  await tasks
+    .getByRole('button', { name: 'Save cancellation', exact: true })
+    .click();
+  await expect(
+    tasks.getByRole('button', { name: 'Reopen Task', exact: true }),
+  ).toBeVisible();
+  await stage.getByRole('button', { name: 'Reload stage progress' }).click();
+  await expect(
+    stage.getByText('Confirmer le périmètre — Cancelled'),
+  ).toBeVisible();
+  await expect(
+    stage.getByRole('button', { name: 'Advance to Préparation' }),
+  ).toBeDisabled();
+  await tasks.getByRole('button', { name: 'Reopen Task', exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Mark done', exact: true }),
+  ).toBeVisible();
+  await tasks.getByRole('button', { name: 'Mark done', exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Reopen Task', exact: true }),
+  ).toBeVisible();
+  await stage.getByRole('button', { name: 'Reload stage progress' }).click();
+  await expect(
+    stage.getByRole('button', { name: 'Advance to Préparation' }),
+  ).toBeEnabled();
+  const writes: { body: string | null; key: string | undefined }[] = [];
+  await page.route(
+    `**/api/projects/${projectId}/stage-advance`,
+    async (route) => {
+      writes.push({
+        body: route.request().postData(),
+        key: route.request().headers()['idempotency-key'],
+      });
+      if (writes.length === 1)
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 'project_stage_conflict' }),
+        });
+      if (writes.length === 2) {
+        const committed = await route.fetch();
+        expect(committed.status()).toBe(201);
+        return route.fulfill({
+          status: 503,
+          body: 'Synthetic lost stage confirmation',
+        });
+      }
+      return route.continue();
+    },
+  );
+  await stage.getByRole('button', { name: 'Advance to Préparation' }).click();
+  await expect(
+    stage.getByText(
+      'Stage progress changed or this intent conflicts. Reload before choosing another action.',
+    ),
+  ).toBeVisible();
+  await stage.getByRole('button', { name: 'Reload stage progress' }).click();
+  await expect(
+    stage.getByRole('button', { name: 'Advance to Préparation' }),
+  ).toBeEnabled();
+  await projects
+    .getByRole('textbox', { name: 'Project title', exact: true })
+    .fill('Retain entered work through stage retry');
+  await stage.getByRole('button', { name: 'Advance to Préparation' }).click();
+  await expect(
+    stage.getByText(
+      'The stage change could not be confirmed. Retry the exact same intent explicitly.',
+    ),
+  ).toBeVisible();
+  const language = page
+    .locator('.interface-locale-control')
+    .getByRole('combobox');
+  await selectOption(language, 'ru');
+  await expect(
+    stage.getByRole('button', { name: 'Повторить переход этапа' }),
+  ).toBeVisible();
+  await noOverflow(page);
+  await stage.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: testInfo.outputPath(`stage-${suffix}-uncertain-ru.png`),
+  });
+  await selectOption(language, 'fr');
+  await expect(
+    stage.getByRole('button', { name: 'Réessayer le changement d’étape' }),
+  ).toBeVisible();
+  await selectOption(language, 'en');
+  await expect(
+    projects.getByRole('textbox', { name: 'Project title', exact: true }),
+  ).toHaveValue('Retain entered work through stage retry');
+  await stage.getByRole('button', { name: 'Retry stage advance' }).click();
+  await expect(
+    stage.getByText(
+      'Last supported stage. No further transition is available.',
+    ),
+  ).toBeVisible();
+  expect(writes).toHaveLength(3);
+  expect(writes[2]).toEqual(writes[1]);
+  expect(writes[1]?.key).not.toBe(writes[0]?.key);
+  await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+  await expect(stage.getByText('Ada Ionescu', { exact: true })).toBeVisible();
+  await expect(
+    projects
+      .getByRole('region', { name: 'Lifecycle' })
+      .getByText('Preparatory', { exact: true }),
+  ).toBeVisible();
+  await tasks
+    .getByRole('button', { name: 'Clarifier la demande', exact: true })
+    .click();
+  await tasks.getByRole('button', { name: 'Reopen Task', exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Mark done', exact: true }),
+  ).toBeVisible();
+  await stage.getByRole('button', { name: 'Reload stage progress' }).click();
+  await expect(
+    stage.getByText(
+      'Last supported stage. No further transition is available.',
+    ),
+  ).toBeVisible();
+  for (const locale of ['ro', 'ru', 'fr', 'en']) {
+    await selectOption(language, locale);
+    await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+    await noOverflow(page);
+    await stage.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(`stage-${suffix}-reached-${locale}.png`),
+    });
+  }
+  await page.reload();
+  await projects
+    .getByRole('list', { name: 'Projects', exact: true })
+    .getByRole('button')
+    .filter({ hasText: title })
+    .click();
+  await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+  await expect(
+    stage.getByText(
+      'Last supported stage. No further transition is available.',
+    ),
+  ).toBeVisible();
+  await noOverflow(page);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath(`stage-${suffix}-history-reloaded.png`),
+    fullPage: true,
+  });
+});
+
 async function grantTemplate(
   request: APIRequestContext,
   membershipId: string,

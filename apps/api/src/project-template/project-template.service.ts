@@ -115,60 +115,61 @@ export class ProjectTemplateService {
 
   async read(actor: ActorContext, projectId: string) {
     return this.database.transaction(
-      async () => {
-        const companyId = await this.access.requireActor(actor, {
-          copiedPlan: true,
-        });
-        await this.projects.read(actor, projectId);
-        const [instance] = await this.database.connection
-          .select()
-          .from(projectTemplateInstances)
-          .where(
-            and(
-              eq(projectTemplateInstances.workspaceId, actor.workspaceId),
-              eq(projectTemplateInstances.companyId, companyId),
-              eq(projectTemplateInstances.projectId, projectId),
-            ),
-          );
-        if (!instance) return { template: null };
-        const snapshot = readTemplateSnapshot(instance.snapshot);
-        const copies = await this.database.connection
-          .select()
-          .from(projectTemplateTaskCopies)
-          .where(
-            and(
-              eq(projectTemplateTaskCopies.workspaceId, actor.workspaceId),
-              eq(projectTemplateTaskCopies.companyId, companyId),
-              eq(projectTemplateTaskCopies.projectId, projectId),
-            ),
-          )
-          .orderBy(asc(projectTemplateTaskCopies.position));
-        const expectedCount = snapshot.stages.reduce(
-          (count, stage) => count + stage.tasks.length,
-          0,
-        );
-        if (copies.length !== expectedCount)
-          throw new Error('Incomplete stored Project Template Task copies.');
-        let position = 0;
-        return {
-          template: {
-            ...snapshot,
-            stages: snapshot.stages.map((stage) => ({
-              ...stage,
-              tasks: stage.tasks.map((task) => {
-                const copy = copies[position];
-                if (!copy || copy.position !== position)
-                  throw new Error(
-                    'Invalid stored Project Template Task order.',
-                  );
-                position += 1;
-                return { ...task, taskId: copy.taskId };
-              }),
-            })),
-          },
-        };
-      },
+      () => this.readWithinTransaction(actor, projectId),
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
     );
+  }
+
+  /** The caller owns the snapshot when composing copied-plan progress. */
+  async readWithinTransaction(actor: ActorContext, projectId: string) {
+    const companyId = await this.access.requireActor(actor, {
+      copiedPlan: true,
+    });
+    await this.projects.read(actor, projectId);
+    const [instance] = await this.database.connection
+      .select()
+      .from(projectTemplateInstances)
+      .where(
+        and(
+          eq(projectTemplateInstances.workspaceId, actor.workspaceId),
+          eq(projectTemplateInstances.companyId, companyId),
+          eq(projectTemplateInstances.projectId, projectId),
+        ),
+      );
+    if (!instance) return { template: null };
+    const snapshot = readTemplateSnapshot(instance.snapshot);
+    const copies = await this.database.connection
+      .select()
+      .from(projectTemplateTaskCopies)
+      .where(
+        and(
+          eq(projectTemplateTaskCopies.workspaceId, actor.workspaceId),
+          eq(projectTemplateTaskCopies.companyId, companyId),
+          eq(projectTemplateTaskCopies.projectId, projectId),
+        ),
+      )
+      .orderBy(asc(projectTemplateTaskCopies.position));
+    const expectedCount = snapshot.stages.reduce(
+      (count, stage) => count + stage.tasks.length,
+      0,
+    );
+    if (copies.length !== expectedCount)
+      throw new Error('Incomplete stored Project Template Task copies.');
+    let position = 0;
+    return {
+      template: {
+        ...snapshot,
+        stages: snapshot.stages.map((stage) => ({
+          ...stage,
+          tasks: stage.tasks.map((task) => {
+            const copy = copies[position];
+            if (!copy || copy.position !== position)
+              throw new Error('Invalid stored Project Template Task order.');
+            position += 1;
+            return { ...task, taskId: copy.taskId };
+          }),
+        })),
+      },
+    };
   }
 }

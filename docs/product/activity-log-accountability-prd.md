@@ -123,6 +123,32 @@ actor/time and their existing projections; no stage-completion event is invented
 Failed creation and exact committed replay add no event. The dedicated Company
 Project Template User grant/revocation follows the authorization PRD §8 convention.
 
+For the [illustrative Project stage gate](release-1-project-task-prd.md#stage-progress-and-deliberate-advance-687),
+each committed Cadrage→Préparation transition records one stable
+`project.stage.changed` event targeting the original Project in its Company,
+with server actor/time. It commits atomically with progress/revision, immutable
+source/target facts and required Task identities/versions, the command receipt and
+original Client operational-use fence. Failed commands and exact committed replays
+add no event or fence advance. Read/initialization never fabricates an event.
+
+Activity metadata contains exactly the resulting stage revision and source/target
+stage identities. Task identities/versions remain in immutable Project-owned
+transition evidence, rather than duplicated in the general Activity payload.
+Project-owned stage detail/history requires the copied-plan read prerequisites
+(Template, Project, Task and original Client/Company visibility), independently of
+the new advance grant. The Activity projection additionally passes the delivered
+Activity endpoint's current actor and target-visibility boundary; it introduces no
+new general Activity permission. It is restricted to the recording Workspace and
+Company, requires those copied-plan reads and participates in the existing bounded
+newest-first page. Project-only or other Company/Workspace readers receive no stage,
+Task or transition identifier through that projection. Dedicated grant/revoke events
+follow authorization PRD §8's existing minimal bundle-label convention.
+
+An ordinary authorized reopening of a previously required Task preserves the
+reached stage and immutable transition proof (#687, Dan's 2026-10-18 decision).
+It records its ordinary Task history; it never rewrites the stage event or fabricates
+a rollback event.
+
 For the [Project responsible member](release-1-project-task-prd.md#21-approved-project-responsible-member-367) slice, each material change records one `project.responsible.changed` event targeting the Project. It records the server actor membership and time, the resulting responsibility revision, and the previous and new responsible member (membership identifier and display label, or none). The event commits with the responsibility, command receipt and original Client fence. Rejected commands, no-ops and exact replays record none. Projection requires the same current Project read and original Client/Company boundary as `project.created`; Workspace ownership or Client visibility alone discloses nothing. No email or other member-directory data is recorded.
 
 For the [provisional Project lifecycle](release-1-project-task-prd.md#23-approved-provisional-project-lifecycle-406), each committed transition records one `project.lifecycle.changed` event targeting the Project. The event is written in the same transaction as the status change, the lifecycle revision increment, the transition record, the durable receipt and the original Client operational-use fence advance. It records the server actor membership and time.

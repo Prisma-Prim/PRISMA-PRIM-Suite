@@ -1,3 +1,4 @@
+import { CompanyProjectStageAdvancerAssignmentController } from './access/company-project-stage-advancer-assignment.controller.js';
 import { DocumentContentController } from './documents/document-content.controller.js';
 import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
 import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
@@ -120,6 +121,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
   controllers: [
     ProjectTemplateController,
     CompanyProjectTemplateUserAssignmentController,
+    CompanyProjectStageAdvancerAssignmentController,
     ProjectContractsController,
     TaskController,
     CompanyTaskManagerAssignmentController,

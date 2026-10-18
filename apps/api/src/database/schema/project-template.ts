@@ -25,6 +25,8 @@ export const projectTemplateInstances = pgTable(
     idempotencyKey: text('idempotency_key').notNull(),
     fingerprint: text('fingerprint').notNull(),
     snapshot: jsonb('snapshot').$type<unknown>().notNull(),
+    currentStageKey: text('current_stage_key'),
+    stageRevision: integer('stage_revision').default(0).notNull(),
   },
   (table) => [
     uniqueIndex('project_template_instances_scope_project_unique').on(
@@ -60,6 +62,10 @@ export const projectTemplateInstances = pgTable(
         workspaceMemberships.id,
       ],
     }),
+    check(
+      'project_template_instances_progress_check',
+      sql`(${table.stageRevision} = 0 AND ${table.currentStageKey} IS NULL) OR (${table.stageRevision} = 1 AND ${table.currentStageKey} = 'preparation')`,
+    ),
     check(
       'project_template_instances_snapshot_check',
       sql`jsonb_typeof(${table.snapshot}) = 'object'`,

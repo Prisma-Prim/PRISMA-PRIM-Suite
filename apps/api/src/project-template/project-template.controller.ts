@@ -14,13 +14,33 @@ import {
   ActorContextAdapter,
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
+import { ProjectStageService } from './project-stage.service.js';
 import { ProjectTemplateService } from './project-template.service.js';
 
 @Controller()
 @UseGuards(ActorContextAdapter)
 export class ProjectTemplateController {
-  constructor(private readonly templates: ProjectTemplateService) {}
+  constructor(
+    private readonly templates: ProjectTemplateService,
+    private readonly stages: ProjectStageService,
+  ) {}
 
+  @Get('projects/:projectId/stage-progress')
+  progress(
+    @Req() request: ActorContextRequest,
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ) {
+    return this.stages.read(actor(request), projectId);
+  }
+  @Post('projects/:projectId/stage-advance')
+  advance(
+    @Req() request: ActorContextRequest,
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.stages.advance({ actor: actor(request), projectId, body, key });
+  }
   @Get('project-templates')
   catalogue(@Req() request: ActorContextRequest) {
     return this.templates.catalogue(actor(request));

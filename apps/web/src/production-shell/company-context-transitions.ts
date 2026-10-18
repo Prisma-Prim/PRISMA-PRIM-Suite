@@ -79,6 +79,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_sales_stage_configuration_assignment.revoked'
     | 'company_project_template_user_assignment.granted'
     | 'company_project_template_user_assignment.revoked'
+    | 'company_project_stage_advancer_assignment.granted'
+    | 'company_project_stage_advancer_assignment.revoked'
     | 'company_project_approver_assignment.granted'
     | 'company_project_approver_assignment.revoked'
     | 'company.registered'
@@ -491,6 +493,7 @@ export type ActivityLogEvent =
   | OpportunityStageChangedActivityLogEvent
   | SalesStageConfiguredActivityLogEvent
   | ProjectLifecycleChangedActivityLogEvent
+  | ProjectStageChangedActivityEvent
   | DocumentProjectActivityLogEvent
   | OrdinaryActivityLogEvent
   | ClientUnionActivityLogEvent
@@ -974,4 +977,18 @@ function withoutActiveCompany(actor: ActorContext): ActorContext {
   const workspaceActor = { ...actor };
   delete workspaceActor.activeCompany;
   return workspaceActor;
+}
+
+export interface ProjectStageChangedActivityEvent {
+  id: string;
+  action: 'project.stage.changed';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'project';
+    projectId: string;
+    projectTitle: string;
+    companyId: string;
+  };
+  metadata: { stageRevision: number; fromStageKey: string; toStageKey: string };
 }
