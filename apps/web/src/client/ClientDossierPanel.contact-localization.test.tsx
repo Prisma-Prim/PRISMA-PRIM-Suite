@@ -20,6 +20,10 @@ import { ClientDossierPanel } from './ClientDossierPanel';
 const locales = [
   {
     code: 'ro',
+    form: 'Corectează dosarul Clientului',
+    save: 'Salvează corectarea',
+    pending: 'Se salvează…',
+    dossierName: 'Numele afișat al Clientului',
     group: 'Contact 1',
     name: 'Numele Contactului',
     position: 'Funcția Contactului',
@@ -33,6 +37,10 @@ const locales = [
   },
   {
     code: 'ru',
+    form: 'Исправить досье Клиента',
+    save: 'Сохранить исправление',
+    pending: 'Сохранение…',
+    dossierName: 'Отображаемое название Клиента',
     group: 'Контакт 1',
     name: 'Имя Контакта',
     position: 'Должность Контакта',
@@ -46,6 +54,10 @@ const locales = [
   },
   {
     code: 'fr',
+    form: 'Corriger le dossier du Client',
+    save: 'Enregistrer la correction',
+    pending: 'Enregistrement…',
+    dossierName: 'Nom affiché du Client',
     group: 'Contact 1',
     name: 'Nom du Contact',
     position: 'Fonction du Contact',
@@ -59,6 +71,10 @@ const locales = [
   },
   {
     code: 'en',
+    form: 'Correct Client dossier',
+    save: 'Save correction',
+    pending: 'Saving…',
+    dossierName: 'Client display name',
     group: 'Contact 1',
     name: 'Contact name',
     position: 'Contact position',
@@ -72,6 +88,10 @@ const locales = [
   },
 ] satisfies ReadonlyArray<{
   code: InterfaceLocale;
+  form: string;
+  save: string;
+  pending: string;
+  dossierName: string;
   group: string;
   name: string;
   position: string;
@@ -191,10 +211,8 @@ for (const initialLocale of locales) {
       const view = renderDossier(initialLocale.code);
       await screen.findByRole('heading', { name: savedDossier.displayName });
       await waitFor(() => expect(view.fetchMock).toHaveBeenCalledTimes(2));
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Correct Client dossier' }),
-      );
-      const form = screen.getByRole('form', { name: 'Correct Client dossier' });
+      fireEvent.click(screen.getByRole('button', { name: initialLocale.form }));
+      const form = screen.getByRole('form', { name: initialLocale.form });
       const contact = within(form).getByRole('group', {
         name: initialLocale.group,
       });
@@ -211,7 +229,7 @@ for (const initialLocale of locales) {
         return node.checked;
       });
       fireEvent.click(
-        within(form).getByRole('button', { name: 'Save correction' }),
+        within(form).getByRole('button', { name: initialLocale.save }),
       );
       expect(screen.getByRole('alert')).toHaveTextContent(
         initialLocale.errors[invalid.field],
@@ -225,9 +243,7 @@ for (const initialLocale of locales) {
         expect(screen.getByRole('alert')).toHaveTextContent(
           locale.errors[invalid.field],
         );
-        expect(
-          screen.getByRole('form', { name: 'Correct Client dossier' }),
-        ).toBe(form);
+        expect(screen.getByRole('form', { name: locale.form })).toBe(form);
         expect(within(form).getAllByRole('textbox')).toEqual(textNodes);
         expect(draftValues(form)).toEqual(values);
         expect(within(form).getAllByRole('checkbox')).toEqual(checkboxNodes);
@@ -436,11 +452,9 @@ it.each(fixedContactServerCases)(
     const view = renderDossier('ro', response.promise);
     await screen.findByRole('heading', { name: savedDossier.displayName });
     await waitFor(() => expect(view.fetchMock).toHaveBeenCalledTimes(2));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Correct Client dossier' }),
-    );
-    const form = screen.getByRole('form', { name: 'Correct Client dossier' });
-    const name = within(form).getByLabelText('Client display name');
+    fireEvent.click(screen.getByRole('button', { name: locales[0].form }));
+    const form = screen.getByRole('form', { name: locales[0].form });
+    const name = within(form).getByLabelText(locales[0].dossierName);
     fireEvent.change(name, { target: { value: '  Știință {клиент}  ' } });
     const values = draftValues(form);
     const nodes = within(form).getAllByRole('textbox');
@@ -449,7 +463,7 @@ it.each(fixedContactServerCases)(
     const preferences = within(contact).getByLabelText(locales[0].preferences);
     const preferenceAssociation = preferences.getAttribute('aria-describedby');
     fireEvent.click(
-      within(form).getByRole('button', { name: 'Save correction' }),
+      within(form).getByRole('button', { name: locales[0].save }),
     );
     await waitFor(() => expect(view.fetchMock).toHaveBeenCalledTimes(3));
     const command = view.fetchMock.mock.calls[2]?.[1];
@@ -468,7 +482,7 @@ it.each(fixedContactServerCases)(
     for (const locale of locales) {
       selectOption(screen.getByRole('combobox'), locale.code);
       expect(
-        within(form).getByRole('button', { name: 'Saving…' }),
+        within(form).getByRole('button', { name: locale.pending }),
       ).toBeDisabled();
       expect(draftValues(form)).toEqual(values);
       expect(view.fetchMock).toHaveBeenCalledTimes(3);
@@ -512,34 +526,98 @@ it.each(fixedContactServerCases)(
 
 it.each([
   {
+    outcome: 'unchanged',
+    message: 'The Client correction must change at least one field.',
+    translations: {
+      ro: 'Corectarea Clientului trebuie să modifice cel puțin un câmp.',
+      ru: 'Исправление Клиента должно изменять хотя бы одно поле.',
+      fr: 'La correction du Client doit modifier au moins un champ.',
+      en: 'The Client correction must change at least one field.',
+    },
+  },
+  {
+    outcome: 'unknown correction field',
+    message: 'Unknown Client correction field.',
+    translations: {
+      ro: 'Câmp necunoscut în corectarea Clientului.',
+      ru: 'Неизвестное поле исправления Клиента.',
+      fr: 'Champ de correction du Client inconnu.',
+      en: 'Unknown Client correction field.',
+    },
+  },
+  {
+    outcome: 'missing correction field',
+    message: 'At least one Client field is required.',
+    translations: {
+      ro: 'Este necesar cel puțin un câmp al Clientului.',
+      ru: 'Требуется хотя бы одно поле Клиента.',
+      fr: 'Au moins un champ du Client est requis.',
+      en: 'At least one Client field is required.',
+    },
+  },
+  {
+    outcome: 'expected version',
+    message:
+      'Expected Client version must be an integer between 1 and 2147483646.',
+    translations: {
+      ro: 'Versiunea așteptată a Clientului trebuie să fie un număr întreg între 1 și 2147483646.',
+      ru: 'Ожидаемая версия Клиента должна быть целым числом от 1 до 2147483646.',
+      fr: 'La version attendue du Client doit être un entier entre 1 et 2147483646.',
+      en: 'Expected Client version must be an integer between 1 and 2147483646.',
+    },
+  },
+  {
+    outcome: 'correction idempotency key',
+    message: 'Idempotency-Key was already used for another Client correction.',
+    translations: {
+      ro: 'Idempotency-Key a fost deja folosită pentru o altă corectare a Clientului.',
+      ru: 'Idempotency-Key уже использован для другого исправления Клиента.',
+      fr: 'Idempotency-Key a déjà été utilisé pour une autre correction du Client.',
+      en: 'Idempotency-Key was already used for another Client correction.',
+    },
+  },
+  {
     outcome: 'general',
     message: 'Client display name is too long.',
-    expected: 'Client display name is too long.',
+    translations: {
+      ro: 'Numele afișat al Clientului este prea lung.',
+      ru: 'Отображаемое название Клиента слишком длинное.',
+      fr: 'Le nom affiché du Client est trop long.',
+      en: 'Client display name is too long.',
+    },
   },
   {
     outcome: 'unknown',
     message: 'Unrecognized dossier validation {literal}',
-    expected: 'Unrecognized dossier validation {literal}',
+    translations: {
+      ro: 'Corectarea Clientului nu este validă.',
+      ru: 'Исправление Клиента недействительно.',
+      fr: 'La correction du Client n’est pas valide.',
+      en: 'The Client correction is invalid.',
+    },
   },
   {
     outcome: 'missing',
     message: undefined,
-    expected: 'The Client correction is invalid.',
+    translations: {
+      ro: 'Corectarea Clientului nu este validă.',
+      ru: 'Исправление Клиента недействительно.',
+      fr: 'La correction du Client n’est pas valide.',
+      en: 'The Client correction is invalid.',
+    },
   },
 ])(
-  'preserves excluded $outcome dossier validation behavior across locales',
+  'keeps $outcome dossier validation semantic across locales without exposing unknown server details',
   async (example) => {
     const response = heldResponse();
     const view = renderDossier('ro', response.promise);
     await screen.findByRole('heading', { name: savedDossier.displayName });
     await waitFor(() => expect(view.fetchMock).toHaveBeenCalledTimes(2));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Correct Client dossier' }),
-    );
-    const form = screen.getByRole('form', { name: 'Correct Client dossier' });
+    fireEvent.click(screen.getByRole('button', { name: locales[0].form }));
+    const form = screen.getByRole('form', { name: locales[0].form });
     const values = draftValues(form);
     fireEvent.click(
-      within(form).getByRole('button', { name: 'Save correction' }),
+      within(form).getByRole('button', { name: locales[0].save }),
     );
     await waitFor(() => expect(view.fetchMock).toHaveBeenCalledTimes(3));
     response.release(
@@ -548,7 +626,10 @@ it.each([
     await screen.findByRole('alert');
     for (const locale of locales) {
       selectOption(screen.getByRole('combobox'), locale.code);
-      expect(screen.getByRole('alert').textContent).toBe(example.expected);
+      expect(screen.getByRole('alert').textContent).toBe(
+        example.translations[locale.code],
+      );
+      expect(screen.getByRole('form', { name: locale.form })).toBe(form);
       expect(draftValues(form)).toEqual(values);
       expect(view.fetchMock).toHaveBeenCalledTimes(3);
       expectNoCallbacks(view);

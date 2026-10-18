@@ -5,7 +5,7 @@ import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
 } from '../api/latest-authenticated-request';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   ClientContactDescription,
   type ClientContact,
@@ -16,7 +16,7 @@ import {
   type ClientCorrection,
   type ClientCorrectionChange,
 } from './client-correction-history';
-import { clientCorrectionHistoryCopy as copy } from './client-correction-history.copy';
+import { useClientCorrectionHistoryCopy } from './client-correction-history.copy';
 import './client-correction-history.css';
 
 interface LoadedHistory {
@@ -45,6 +45,7 @@ export function ClientCorrectionHistory({
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const copy = useClientCorrectionHistoryCopy();
   const titleId = useId();
   const contentId = useId();
   const [expanded, setExpanded] = useState(false);
@@ -180,6 +181,8 @@ function HistoryContent({
   onRetry: () => void;
   onShowOlder: (cursor: string) => void;
 }) {
+  const copy = useClientCorrectionHistoryCopy();
+  const { formatDateTime } = useInterfaceLocale();
   switch (history.status) {
     case 'loading':
       return (
@@ -219,7 +222,7 @@ function HistoryContent({
               <li key={correction.id}>
                 <p className="client-correction-history-attribution">
                   <time dateTime={correction.occurredAt}>
-                    {formatApplicationDateTime(correction.occurredAt)}
+                    {formatDateTime(correction.occurredAt)}
                   </time>
                   <span>{copy.correctedBy(correction.actorDisplayName)}</span>
                 </p>
@@ -255,6 +258,7 @@ function HistoryContent({
 }
 
 function FieldChange({ change }: { change: ClientCorrectionChange }) {
+  const copy = useClientCorrectionHistoryCopy();
   return (
     <div>
       <dt>{copy.fieldLabels[change.field]}</dt>
@@ -284,6 +288,7 @@ function ContactVersion({
   label: string;
   contacts: ClientContact[];
 }) {
+  const copy = useClientCorrectionHistoryCopy();
   const labelId = useId();
   return (
     <div role="group" aria-labelledby={labelId}>
