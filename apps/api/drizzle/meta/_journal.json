@@ -484,6 +484,13 @@
       "when": 1792188953954,
       "tag": "0068_project_template_copies",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792304553355,
+      "tag": "0069_project_stage_advance",
+      "breakpoints": true
     }
   ]
 }

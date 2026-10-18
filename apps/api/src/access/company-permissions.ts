@@ -272,6 +272,11 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Project Template User',
     versions: { v1: ['project.template.read', 'project.template.instantiate'] },
   },
+  // Independent opt-in stage command only; all read prerequisites remain separate.
+  company_project_stage_advancer: {
+    label: 'Company Project Stage Advancer',
+    versions: { v1: ['project.stage.advance'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -771,6 +776,21 @@ export function projectTemplatePermissionsFor(
 ): readonly CompanyProjectTemplatePermission[] {
   return companyRolePermissionsFor(
     COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+    version,
+  );
+}
+
+export const COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE =
+  'company_project_stage_advancer' satisfies CompanyRoleBundle;
+export const COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_project_stage_advancer.label;
+export type CompanyProjectStagePermission =
+  CompanyRolePermission<'company_project_stage_advancer'>;
+export function projectStagePermissionsFor(
+  version: unknown,
+): readonly CompanyProjectStagePermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
     version,
   );
 }

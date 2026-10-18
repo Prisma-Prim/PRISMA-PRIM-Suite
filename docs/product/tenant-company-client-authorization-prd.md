@@ -270,6 +270,26 @@ Company-scoped assignment administration and minimal bundle-label Activity
 convention. Each actual grant/revocation records one transition, and exact retries
 record none. No user or business title substitutes for the explicit assignment.
 
+The [illustrative Project stage gate](release-1-project-task-prd.md#stage-progress-and-deliberate-advance-687)
+adds independent opt-in **Company Project Stage Advancer v1**, containing exactly
+`project.stage.advance`. The administrator with `company.assignment.manage`
+explicitly grants/revokes its captured v1 for an active same-Workspace membership
+and active Company. Null or unknown captured versions fail closed. No existing
+assignment, Workspace ownership, Project responsibility, Task assignment or
+migration confers it, and Project Template User v1 and `project.update` remain
+unchanged.
+
+The bundle grants no Company context, Template/Project/Task/original-Client read,
+Task management, Project lifecycle or Template publication authority. Advancing
+requires those independent copied-plan read prerequisites, including `task.read`
+without requiring `task.manage`; ordinary Task completion and reopening still
+require their existing Task Manager authority. Live dedicated and independent
+read grants are checked before confirming a committed receipt and serialized
+against successful revocation or suspension for a new command. Its lifecycle is
+`company_project_stage_advancer_assignment.granted` and
+`company_project_stage_advancer_assignment.revoked`, using the existing minimal
+bundle-label event and Company assignment administration convention.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.

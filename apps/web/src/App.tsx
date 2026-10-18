@@ -1,3 +1,4 @@
+import { useProjectStageCopy } from './project/project-stage.copy';
 import {
   useDocumentPdfCopy,
   type DocumentPdfCopy,
@@ -765,6 +766,7 @@ function ActivityLog({
   const stageCopy = useSalesStageCopy();
   const pdfActionLabels = useDocumentPdfCopy().activityActionLabels;
   const templateCopy = useProjectTemplateCopy();
+  const projectStageCopy = useProjectStageCopy();
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">
       <div className="activity-log-heading">
@@ -801,6 +803,7 @@ function ActivityLog({
                       stageCopy,
                       pdfActionLabels,
                       templateCopy,
+                      projectStageCopy,
                     )}
                   </strong>
                   <span id={openedRequest ? targetId : undefined}>
@@ -844,6 +847,7 @@ function activityDescription(
   stageCopy: SalesStageCopy,
   pdfActionLabels: DocumentPdfCopy['activityActionLabels'],
   templateCopy: ReturnType<typeof useProjectTemplateCopy>,
+  projectStageCopy: ReturnType<typeof useProjectStageCopy>,
 ): string {
   const actorName =
     'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
@@ -878,6 +882,11 @@ function activityDescription(
     ...contractActivityCopy.actionLabels,
     ...invitationActivityActionLabels,
     ...pdfActionLabels,
+    'project.stage.changed': projectStageCopy('activity'),
+    'company_project_stage_advancer_assignment.granted':
+      projectStageCopy('granted'),
+    'company_project_stage_advancer_assignment.revoked':
+      projectStageCopy('revoked'),
     'company_project_template_user_assignment.granted': templateCopy('granted'),
     'company_project_template_user_assignment.revoked': templateCopy('revoked'),
     'opportunity.stage.changed': stageCopy('activityStageChanged'),

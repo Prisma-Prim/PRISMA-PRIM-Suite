@@ -551,16 +551,61 @@ uncertain retry and conflicting-key recovery remain distinct. Interface controls
 and accessible names use ro/ru/fr/en; switching locale preserves business source
 text and entered work.
 
-### Following approved outcomes and remaining limits
+### Stage progress and deliberate advance (#687)
 
-Dan also approved required Task completion before a deliberate stage advance,
-and immutable new Template Versions that never rewrite existing Projects.
-These are separate following vertical outcomes after #634: the first creation
-journey exposes no stage-advance or publish command, confers none of their
-permissions, and claims no completed stage gate. The stage gate must require
-current `done` for every required Task; cancellation does not satisfy it. It
-must serialize against existing Task commands and never change Project lifecycle
-or authorize an actual operational start.
+Dan approved the first stage gate in [owner decision6218705144](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/63#issuecomment-6218705144).
+On 2026-10-18 he also approved the reopening rule recorded in #687: an ordinary
+authorized reopening of a previously required Task preserves the stage reached,
+its immutable transition and captured Task/version proof. Existing independent
+Task, open-Project and active original-Client rules still govern that reopening;
+there is no automatic stage rollback.
+
+The preserved illustrative Version 1 exposes Cadrage initially, revision zero,
+without inventing a prior completion or writing an initialization event. Progress
+reads use the copied-plan boundary above, independently of advance authority.
+The gate uses the stable copied Task identities and their current execution states,
+never editable titles, unrelated Tasks or today's source configuration. Only both
+required Cadrage Tasks currently `done` satisfy it; cancellation is insufficient.
+Task completion never advances a stage automatically.
+
+The independently assigned Company Project Stage Advancer v1 grants only
+`project.stage.advance` (authorization PRD §8). A deliberate command requires it
+and the independent copied-plan reads, including Task **read**, not Task Manager
+authority. Ordinary Task writes retain their existing independent `task.manage`
+requirement. The command carries the observed source stage and stage revision and
+an explicit target. Only Cadrage→Préparation exists; Préparation displays as the
+last supported stage with its own preserved required Task mapping. There is no
+backward, skip or final-completion command and no Project lifecycle mutation or
+real mission-start authority.
+
+A new transition requires an open Project and the active original Client and
+Company relationship. It serializes with Task commands, Project closure, Client
+operational-use fencing and successful authority revocation or suspension. If
+reopening wins, the gate fails. If advance wins, an independently authorized
+reopening remains allowed and leaves the stage and captured proof intact.
+
+The actor/Workspace idempotency key covers the full normalized Company, original
+Project, expected stage/revision and target. Changed intent conflicts. An identical
+committed receipt is resolved after live dedicated authority and copied-plan
+visibility, before the old expected revision, closed Project or superseded Client
+can reject a new mutation. It confirms only the recorded result; a normal progress
+read supplies current facts. A rejected or stale command changes no progress,
+receipt, history, event or Client fence.
+
+The resulting stage/revision, transition identity, server actor/time, preserved
+source/target facts, required Task identities/versions, command receipt and original
+Client fence commit atomically with one `project.stage.changed` event. Task proof
+belongs to immutable Project transition evidence; the Activity projection contains
+only revision and source/target identity (Activity PRD §7). Reading history does
+not require advance authority. Additive migration preserves existing source copies,
+Task histories, identifiers and captured grants, assigns no authority and gives no
+ordinary Project a model or Tasks.
+
+### Remaining limits
+
+Immutable successor Template Versions that never rewrite existing Projects remain
+a separate following vertical outcome after #687. This bounded illustrative gate
+confers no publication authority or complete PJ-4/TA-4 coverage credit.
 
 Publication/version evolution will let an explicitly authorized configuration
 user create a successor and a second Project while the first retains its exact

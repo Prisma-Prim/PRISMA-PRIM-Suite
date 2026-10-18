@@ -99,6 +99,7 @@ describe.skipIf(!databaseUrl)(
         key?: string | null;
         company?: string;
         subject?: string;
+        workspace?: string;
       } = {},
     ) {
       const {
@@ -118,6 +119,9 @@ describe.skipIf(!databaseUrl)(
           ...(company ? { 'x-company-context-id': company } : {}),
           ...(key === null ? {} : { 'idempotency-key': key }),
           'content-type': 'application/json',
+          ...(options.workspace
+            ? { 'x-workspace-context-id': options.workspace }
+            : {}),
         },
         ...(value === undefined ? {} : { body: JSON.stringify(value) }),
       });
@@ -177,6 +181,891 @@ describe.skipIf(!databaseUrl)(
         (SELECT count(*)::int FROM project_template_task_copies) AS copies`);
       return result.rows;
     }
+
+    it('reads the first preserved stage and blocks progress until both mapped required Tasks are done', async () => {
+      await grant('template');
+      const projectId = string((await createTemplate()).id);
+      const plan = object(
+        (await read(`/projects/${projectId}/template`)).template,
+      );
+      const firstStage = objects(plan.stages)[0];
+      if (!firstStage) throw new Error('The preserved first stage is missing.');
+      const requiredIds = objects(firstStage.tasks).map((task) => task.taskId);
+      const progress = await read(`/projects/${projectId}/stage-progress`);
+      expect(progress).toMatchObject({
+        progress: {
+          currentStageKey: 'scoping',
+          stageRevision: 0,
+          gate: 'required_tasks_incomplete',
+          canAdvance: false,
+          transitions: [],
+        },
+      });
+      const facts = object(progress.progress);
+      expect(objects(facts.requiredTasks).map((task) => task.taskId)).toEqual(
+        requiredIds,
+      );
+      expect(objects(facts.requiredTasks).map((task) => task.status)).toEqual([
+        'todo',
+        'todo',
+      ]);
+      expect(await read(`/projects/${projectId}`)).toMatchObject({
+        status: 'preparatory',
+      });
+    });
+
+    it('deliberately advances only after both stable required Tasks are done and preserves proof after an ordinary reopening', async () => {
+      await grant('template');
+      const projectId = string((await createTemplate()).id);
+      const commandPath = `/projects/${projectId}/stage-advance`;
+      const intent = {
+        expectedStageKey: 'scoping',
+        expectedStageRevision: 0,
+        targetStageKey: 'preparation',
+      };
+      expect(
+        (await request(commandPath, { method: 'POST', value: intent })).status,
+      ).toBe(403);
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: membershipId,
+        companyId,
+      });
+      expect(
+        (await request(commandPath, { method: 'POST', value: intent })).status,
+      ).toBe(409);
+      const initial = object(
+        (await read(`/projects/${projectId}/stage-progress`)).progress,
+      );
+      const required = objects(initial.requiredTasks);
+      const first = required[0];
+      const second = required[1];
+      if (!first || !second) throw new Error('Missing required gate Tasks.');
+      await command(`/tasks/${string(first.taskId)}/complete`, {
+        expectedVersion: 1,
+      });
+      await command(`/tasks/${string(second.taskId)}/cancel`, {
+        expectedVersion: 1,
+        reason: 'Not evidence of completion',
+      });
+      expect(
+        (await request(commandPath, { method: 'POST', value: intent })).status,
+      ).toBe(409);
+      await command(`/tasks/${string(second.taskId)}/reopen`, {
+        expectedVersion: 2,
+      });
+      await command(`/tasks/${string(second.taskId)}/complete`, {
+        expectedVersion: 3,
+      });
+      expect(await read(`/projects/${projectId}/stage-progress`)).toMatchObject(
+        {
+          progress: {
+            currentStageKey: 'scoping',
+            canAdvance: true,
+            gate: 'ready',
+          },
+        },
+      );
+      const key = randomUUID();
+      const receipt = await command(commandPath, intent, { key });
+      expect(receipt).toMatchObject({
+        projectId,
+        stageRevision: 1,
+        fromStageKey: 'scoping',
+        toStageKey: 'preparation',
+      });
+      expect(await command(commandPath, intent, { key })).toEqual(receipt);
+      const reached = await read(`/projects/${projectId}/stage-progress`);
+      expect(reached).toMatchObject({
+        progress: {
+          currentStageKey: 'preparation',
+          stageRevision: 1,
+          gate: 'last_supported_stage',
+          canAdvance: false,
+        },
+      });
+      const history = objects(object(reached.progress).transitions);
+      expect(history).toHaveLength(1);
+      expect(history[0]).toMatchObject({
+        stageRevision: 1,
+        fromStageKey: 'scoping',
+        toStageKey: 'preparation',
+        requiredTasks: [
+          { taskId: first.taskId, version: 2 },
+          { taskId: second.taskId, version: 4 },
+        ],
+      });
+      await command(`/tasks/${string(first.taskId)}/reopen`, {
+        expectedVersion: 2,
+      });
+      expect(await read(`/projects/${projectId}/stage-progress`)).toEqual(
+        reached,
+      );
+      expect(await read(`/projects/${projectId}`)).toMatchObject({
+        status: 'preparatory',
+      });
+      expect(
+        (
+          await request(commandPath, {
+            method: 'POST',
+            value: { ...intent, expectedStageRevision: 1 },
+            key,
+          })
+        ).status,
+      ).toBe(409);
+    });
+
+    it('projects one minimal stage event only through copied-plan visibility and does not require advance authority for Project history', async () => {
+      await grant('template');
+      const projectId = string((await createTemplate()).id);
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: membershipId,
+        companyId,
+      });
+      const initial = object(
+        (await read(`/projects/${projectId}/stage-progress`)).progress,
+      );
+      for (const task of objects(initial.requiredTasks))
+        await command(`/tasks/${string(task.taskId)}/complete`, {
+          expectedVersion: 1,
+        });
+      await command(`/projects/${projectId}/stage-advance`, {
+        expectedStageKey: 'scoping',
+        expectedStageRevision: 0,
+        targetStageKey: 'preparation',
+      });
+      const event = objects((await read('/activity-log')).events).filter(
+        (event) => event.action === 'project.stage.changed',
+      );
+      expect(event).toHaveLength(1);
+      expect(event[0]).toMatchObject({
+        target: { type: 'project', projectId, companyId },
+        metadata: {
+          stageRevision: 1,
+          fromStageKey: 'scoping',
+          toStageKey: 'preparation',
+        },
+      });
+      expect(Object.keys(object(object(event[0]).metadata)).sort()).toEqual([
+        'fromStageKey',
+        'stageRevision',
+        'toStageKey',
+      ]);
+      expect(JSON.stringify(event)).not.toContain('requiredTasks');
+      const anaId = string(
+        (await read('/access/current-actor', { subject: 'ana', company: '' }))
+          .workspaceMembershipId,
+      );
+      await grant('client', anaId);
+      await grant('project', anaId);
+      expect(
+        (
+          await request(`/projects/${projectId}/stage-progress`, {
+            subject: 'ana',
+          })
+        ).status,
+      ).toBe(403);
+      expect(
+        objects(
+          (await read('/activity-log', { subject: 'ana' })).events,
+        ).filter((event) => event.action === 'project.stage.changed'),
+      ).toEqual([]);
+      await grant('task', anaId);
+      await grant('template', anaId);
+      expect(
+        await read(`/projects/${projectId}/stage-progress`, { subject: 'ana' }),
+      ).toMatchObject({
+        progress: {
+          stageRevision: 1,
+          transitions: [
+            expect.objectContaining({
+              fromStageKey: 'scoping',
+              toStageKey: 'preparation',
+            }),
+          ],
+        },
+      });
+      expect(
+        objects(
+          (await read('/activity-log', { subject: 'ana' })).events,
+        ).filter((event) => event.action === 'project.stage.changed'),
+      ).toHaveLength(1);
+    });
+
+    async function stageFixture(allTasksDone = false) {
+      await grant('template');
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: membershipId,
+        companyId,
+      });
+      const projectId = string((await createTemplate()).id);
+      const plan = object(
+        (await read(`/projects/${projectId}/template`)).template,
+      );
+      const stages = objects(plan.stages);
+      const firstStage = stages[0];
+      if (!firstStage) throw new Error('Missing first stage.');
+      const requiredTasks = objects(firstStage.tasks);
+      const selectedTasks = allTasksDone
+        ? stages.flatMap((stage) => objects(stage.tasks))
+        : requiredTasks;
+      for (const task of selectedTasks)
+        await command(`/tasks/${string(task.taskId)}/complete`, {
+          expectedVersion: 1,
+        });
+      return {
+        projectId,
+        requiredTasks,
+        path: `/projects/${projectId}/stage-advance`,
+        intent: {
+          expectedStageKey: 'scoping',
+          expectedStageRevision: 0,
+          targetStageKey: 'preparation',
+        },
+      };
+    }
+    async function grantStageReader() {
+      const anaId = string(
+        (await read('/access/current-actor', { subject: 'ana', company: '' }))
+          .workspaceMembershipId,
+      );
+      for (const kind of ['project', 'client', 'task', 'template'] as const)
+        await grant(kind, anaId);
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: anaId,
+        companyId,
+      });
+      return anaId;
+    }
+    async function stageCounts() {
+      return (
+        await harness.pool.query(
+          `SELECT
+        (SELECT count(*)::int FROM project_stage_commands) AS receipts,
+        (SELECT count(*)::int FROM project_stage_transitions) AS transitions,
+        (SELECT coalesce(sum(stage_revision),0)::int FROM project_template_instances) AS revisions,
+        (SELECT version FROM client_accounts WHERE id = $1) AS fence`,
+          [clientId],
+        )
+      ).rows;
+    }
+    /** Wait for an observed database lock, never elapsed time as proof of order. */
+    async function observedWaiters(pattern: string, expected: number) {
+      const deadline = Date.now() + 2000;
+      do {
+        const result = await harness.pool.query<{ count: string }>(
+          `SELECT count(DISTINCT activity.pid)::text AS count
+          FROM pg_locks waiting JOIN pg_stat_activity activity ON activity.pid = waiting.pid
+          WHERE NOT waiting.granted AND activity.datname = current_database() AND activity.query ILIKE $1`,
+          [pattern],
+        );
+        if (Number(result.rows[0]?.count) >= expected) return;
+        await new Promise<void>((resolve) => setImmediate(resolve));
+      } while (Date.now() < deadline);
+      throw new Error(
+        `Expected ${expected} observed lock waiters for ${pattern}.`,
+      );
+    }
+    async function orderedClientCommands(
+      first: () => Promise<Response>,
+      second: () => Promise<Response>,
+    ) {
+      const barrier = await harness.pool.connect();
+      let firstResponse: Promise<Response> | undefined,
+        secondResponse: Promise<Response> | undefined;
+      try {
+        await barrier.query('BEGIN');
+        await barrier.query(
+          'SELECT id FROM client_accounts WHERE id = $1 FOR SHARE',
+          [clientId],
+        );
+        firstResponse = first();
+        await observedWaiters('%from "client_accounts"%for update%', 1);
+        secondResponse = second();
+        await observedWaiters('%from "client_accounts"%for update%', 2);
+        await barrier.query('COMMIT');
+        return [await firstResponse, await secondResponse];
+      } finally {
+        await barrier.query('ROLLBACK');
+        barrier.release();
+        // Drain the exact owned HTTP calls even if the ordering assertion fails.
+        await firstResponse?.catch(() => undefined);
+        await secondResponse?.catch(() => undefined);
+      }
+    }
+    it.each(['reopen_first', 'advance_first'] as const)(
+      'forces %s at the original Client barrier and preserves the winning outcome',
+      async (order) => {
+        const f = await stageFixture();
+        await grantStageReader();
+        const task = f.requiredTasks[0];
+        if (!task) throw new Error('Missing gate Task.');
+        const reopen = () =>
+          request(`/tasks/${string(task.taskId)}/reopen`, {
+            method: 'POST',
+            value: { expectedVersion: 2 },
+          });
+        const advance = () =>
+          request(f.path, { method: 'POST', value: f.intent, subject: 'ana' });
+        const responses = await orderedClientCommands(
+          order === 'reopen_first' ? reopen : advance,
+          order === 'reopen_first' ? advance : reopen,
+        );
+        expect(responses.map((response) => response.status)).toEqual(
+          order === 'reopen_first' ? [201, 409] : [201, 201],
+        );
+        const p = object(
+          (await read(`/projects/${f.projectId}/stage-progress`)).progress,
+        );
+        expect(p.stageRevision).toBe(order === 'reopen_first' ? 0 : 1);
+        expect(objects(p.transitions)).toHaveLength(
+          order === 'reopen_first' ? 0 : 1,
+        );
+        expect(await read(`/tasks/${string(task.taskId)}`)).toMatchObject({
+          task: { status: 'todo', version: 3 },
+        });
+        if (order === 'advance_first')
+          expect(objects(p.transitions)[0]).toMatchObject({
+            requiredTasks: [
+              expect.objectContaining({ taskId: task.taskId, version: 2 }),
+              expect.anything(),
+            ],
+          });
+      },
+    );
+    it.each(['close_first', 'advance_first'] as const)(
+      'forces %s against Project closure without changing Task or lifecycle contracts',
+      async (order) => {
+        const f = await stageFixture(true);
+        await grantStageReader();
+        await command('/company-project-approver-assignments', {
+          workspaceMembershipId: membershipId,
+          companyId,
+        });
+        const key = randomUUID();
+        const advance = () =>
+          request(f.path, {
+            method: 'POST',
+            value: f.intent,
+            key,
+            subject: 'ana',
+          });
+        const close = () =>
+          request(`/projects/${f.projectId}/lifecycle-transitions`, {
+            method: 'POST',
+            value: {
+              action: 'cancel',
+              expectedLifecycleRevision: 0,
+              reason: 'Explicit closure',
+            },
+          });
+        const responses = await orderedClientCommands(
+          order === 'close_first' ? close : advance,
+          order === 'close_first' ? advance : close,
+        );
+        expect(responses.map((response) => response.status)).toEqual(
+          order === 'close_first' ? [200, 409] : [201, 409],
+        );
+        if (order === 'advance_first') {
+          expect((await close()).status).toBe(200);
+          const before = await stageCounts();
+          expect((await advance()).status).toBe(201);
+          expect(await stageCounts()).toEqual(before);
+        }
+        expect(await read(`/projects/${f.projectId}`)).toMatchObject({
+          status: 'cancelled',
+        });
+        expect(
+          (
+            await request(f.path, {
+              method: 'POST',
+              value: f.intent,
+              subject: 'ana',
+            })
+          ).status,
+        ).toBe(409);
+      },
+    );
+    it('serializes identical in-flight retries at the actor key and keeps exactly one receipt, transition and fence advance', async () => {
+      const f = await stageFixture();
+      const key = randomUUID();
+      const before = await stageCounts();
+      const barrier = await harness.pool.connect();
+      let first: Promise<Response> | undefined,
+        second: Promise<Response> | undefined;
+      try {
+        await barrier.query('BEGIN');
+        await barrier.query(
+          'SELECT id FROM client_accounts WHERE id=$1 FOR SHARE',
+          [clientId],
+        );
+        first = request(f.path, { method: 'POST', value: f.intent, key });
+        await observedWaiters('%from "client_accounts"%for update%', 1);
+        second = request(f.path, { method: 'POST', value: f.intent, key });
+        await observedWaiters('%update "internal_users"%', 1);
+        await barrier.query('COMMIT');
+        const a = await first,
+          b = await second;
+        expect([a.status, b.status]).toEqual([201, 201]);
+        expect(await body(b)).toEqual(await body(a));
+      } finally {
+        await barrier.query('ROLLBACK');
+        barrier.release();
+        await first?.catch(() => undefined);
+        await second?.catch(() => undefined);
+      }
+      expect(await stageCounts()).toMatchObject([
+        {
+          receipts: 1,
+          transitions: 1,
+          revisions: 1,
+          fence: Number(object(before[0]).fence) + 1,
+        },
+      ]);
+    });
+    it('rolls progress, receipt, event and original Client fence back together after a final write failure', async () => {
+      const f = await stageFixture();
+      const before = await stageCounts();
+      const source = await read(`/projects/${f.projectId}/template`);
+      const key = randomUUID();
+      await harness.pool.query(
+        `CREATE FUNCTION reject_stage_fence() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic final fence failure'; END $$`,
+      );
+      await harness.pool.query(
+        `CREATE TRIGGER reject_stage_fence BEFORE UPDATE ON client_accounts FOR EACH ROW EXECUTE FUNCTION reject_stage_fence()`,
+      );
+      try {
+        expect(
+          (await request(f.path, { method: 'POST', value: f.intent, key }))
+            .status,
+        ).toBe(500);
+        expect(await stageCounts()).toEqual(before);
+        expect(
+          await read(`/projects/${f.projectId}/stage-progress`),
+        ).toMatchObject({ progress: { stageRevision: 0, transitions: [] } });
+        expect(await read(`/projects/${f.projectId}/template`)).toEqual(source);
+        expect(
+          objects((await read('/activity-log')).events).filter(
+            (event) => event.action === 'project.stage.changed',
+          ),
+        ).toEqual([]);
+      } finally {
+        await harness.pool.query(
+          'DROP TRIGGER reject_stage_fence ON client_accounts',
+        );
+        await harness.pool.query('DROP FUNCTION reject_stage_fence()');
+      }
+      expect(
+        (await request(f.path, { method: 'POST', value: f.intent, key }))
+          .status,
+      ).toBe(201);
+    });
+    it('rejects stale, unsupported and malformed intent without writes, then rechecks live dedicated and independent authority on exact committed replay', async () => {
+      const f = await stageFixture();
+      const before = await stageCounts();
+      for (const value of [
+        { ...f.intent, expectedStageRevision: 1 },
+        { ...f.intent, targetStageKey: 'scoping' },
+        { ...f.intent, expectedStageKey: 'preparation' },
+      ])
+        expect((await request(f.path, { method: 'POST', value })).status).toBe(
+          409,
+        );
+      for (const value of [
+        { ...f.intent, extra: true },
+        { ...f.intent, expectedStageRevision: '0' },
+        { ...f.intent, expectedStageRevision: -1 },
+      ])
+        expect((await request(f.path, { method: 'POST', value })).status).toBe(
+          400,
+        );
+      expect(
+        (await request(f.path, { method: 'POST', value: f.intent, key: null }))
+          .status,
+      ).toBe(400);
+      expect(await stageCounts()).toEqual(before);
+      const key = randomUUID();
+      const receipt = await command(f.path, f.intent, { key });
+      const committed = await stageCounts();
+      const revoke = (path: string) =>
+        request(`${path}/${membershipId}/${companyId}`, { method: 'DELETE' });
+      expect(
+        (await revoke('/company-project-stage-advancer-assignments')).status,
+      ).toBe(200);
+      expect(
+        (await request(f.path, { method: 'POST', value: f.intent, key }))
+          .status,
+      ).toBe(403);
+      // A stage-specific refusal does not revoke the independently authorized Project or Tasks.
+      expect((await request(`/projects/${f.projectId}`)).status).toBe(200);
+      expect((await request(`/projects/${f.projectId}/tasks`)).status).toBe(
+        200,
+      );
+      expect(
+        (await request(`/projects/${f.projectId}/stage-progress`)).status,
+      ).toBe(200);
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: membershipId,
+        companyId,
+      });
+      expect(await command(f.path, f.intent, { key })).toEqual(receipt);
+      expect((await revoke(assignments.task)).status).toBe(200);
+      expect(
+        (await request(f.path, { method: 'POST', value: f.intent, key }))
+          .status,
+      ).toBe(403);
+      expect(
+        (await request(`/projects/${f.projectId}/stage-progress`)).status,
+      ).toBe(403);
+      expect(await stageCounts()).toEqual(committed);
+    });
+    it('uses copied Task identities despite title correction and ignores unrelated done manual Tasks', async () => {
+      await grant('template');
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: membershipId,
+        companyId,
+      });
+      const projectId = string((await createTemplate()).id);
+      const stage = object(
+        (await read(`/projects/${projectId}/stage-progress`)).progress,
+      );
+      const first = objects(stage.requiredTasks)[0];
+      if (!first) throw new Error('Missing mapped Task.');
+      const edit = await request(`/tasks/${string(first.taskId)}`, {
+        method: 'PATCH',
+        value: {
+          expectedVersion: 1,
+          title: 'Unrelated editable title',
+          assigneeMembershipId: null,
+          dueDate: null,
+          priority: 'normal',
+        },
+      });
+      expect(edit.status).toBe(200);
+      for (const title of ['Clarifier la demande', 'Confirmer le périmètre']) {
+        const manual = await command(`/projects/${projectId}/tasks`, { title });
+        await command(`/tasks/${string(manual.id)}/complete`, {
+          expectedVersion: 1,
+        });
+      }
+      expect(
+        (
+          await request(`/projects/${projectId}/stage-advance`, {
+            method: 'POST',
+            value: {
+              expectedStageKey: 'scoping',
+              expectedStageRevision: 0,
+              targetStageKey: 'preparation',
+            },
+          })
+        ).status,
+      ).toBe(409);
+      const facts = object(
+        (await read(`/projects/${projectId}/stage-progress`)).progress,
+      );
+      expect(objects(facts.requiredTasks).map((task) => task.taskId)).toEqual(
+        objects(stage.requiredTasks).map((task) => task.taskId),
+      );
+      expect(objects(facts.requiredTasks)[0]).toMatchObject({
+        title: 'Clarifier la demande',
+        status: 'todo',
+        version: 2,
+      });
+    });
+
+    it.each(['revoke_first', 'advance_first'] as const)(
+      'forces %s against successful dedicated authority revocation',
+      async (order) => {
+        const f = await stageFixture();
+        const anaId = string(
+          (await read('/access/current-actor', { subject: 'ana', company: '' }))
+            .workspaceMembershipId,
+        );
+        for (const kind of ['project', 'client', 'task', 'template'] as const)
+          await grant(kind, anaId);
+        await command('/company-project-stage-advancer-assignments', {
+          workspaceMembershipId: anaId,
+          companyId,
+        });
+        const advance = () =>
+          request(f.path, { method: 'POST', value: f.intent, subject: 'ana' });
+        const revoke = () =>
+          request(
+            `/company-project-stage-advancer-assignments/${anaId}/${companyId}`,
+            { method: 'DELETE' },
+          );
+        const barrier = await harness.pool.connect();
+        let first: Promise<Response> | undefined,
+          second: Promise<Response> | undefined;
+        try {
+          await barrier.query('BEGIN');
+          if (order === 'revoke_first') {
+            await barrier.query(
+              `SELECT id FROM company_role_assignments WHERE workspace_membership_id=$1 AND bundle='company_project_stage_advancer' FOR SHARE`,
+              [anaId],
+            );
+            first = revoke();
+            await observedWaiters('%update "company_role_assignments"%', 1);
+            second = advance();
+            await observedWaiters('%update "internal_users"%', 1);
+          } else {
+            await barrier.query(
+              'SELECT id FROM client_accounts WHERE id=$1 FOR SHARE',
+              [clientId],
+            );
+            first = advance();
+            await observedWaiters('%from "client_accounts"%for update%', 1);
+            second = revoke();
+            await observedWaiters(
+              '%from "workspace_memberships"%for update%',
+              1,
+            );
+          }
+          await barrier.query('COMMIT');
+          expect([(await first).status, (await second).status]).toEqual(
+            order === 'revoke_first' ? [200, 403] : [201, 200],
+          );
+        } finally {
+          await barrier.query('ROLLBACK');
+          barrier.release();
+          await first?.catch(() => undefined);
+          await second?.catch(() => undefined);
+        }
+        expect((await advance()).status).toBe(403);
+        const progress = object(
+          (
+            await read(`/projects/${f.projectId}/stage-progress`, {
+              subject: 'ana',
+            })
+          ).progress,
+        );
+        expect(progress.stageRevision).toBe(order === 'revoke_first' ? 0 : 1);
+        expect(
+          (await request(`/projects/${f.projectId}/tasks`, { subject: 'ana' }))
+            .status,
+        ).toBe(200);
+      },
+    );
+    it.each(['suspend_first', 'advance_first'] as const)(
+      'forces %s against membership suspension',
+      async (order) => {
+        const f = await stageFixture();
+        const anaId = string(
+          (await read('/access/current-actor', { subject: 'ana', company: '' }))
+            .workspaceMembershipId,
+        );
+        for (const kind of ['project', 'client', 'task', 'template'] as const)
+          await grant(kind, anaId);
+        await command('/company-project-stage-advancer-assignments', {
+          workspaceMembershipId: anaId,
+          companyId,
+        });
+        const advance = () =>
+          request(f.path, { method: 'POST', value: f.intent, subject: 'ana' });
+        const suspend = () =>
+          request('/workspace-membership-suspensions', {
+            method: 'POST',
+            value: { workspaceMembershipId: anaId },
+          });
+        const barrier = await harness.pool.connect();
+        let first: Promise<Response> | undefined,
+          second: Promise<Response> | undefined;
+        try {
+          await barrier.query('BEGIN');
+          if (order === 'suspend_first') {
+            // The public suspension first holds its target authority rows FOR UPDATE.
+            // Block only its following receipt INSERT, then observe the stage actor waiting
+            // behind that already-held authority. A shared target row alone cannot force it.
+            await barrier.query(
+              'LOCK TABLE workspace_membership_suspension_commands IN SHARE MODE',
+            );
+            first = suspend();
+            await observedWaiters(
+              '%insert into "workspace_membership_suspension_commands"%',
+              1,
+            );
+            second = advance();
+            await observedWaiters('%update "internal_users"%', 1);
+          } else {
+            await barrier.query(
+              'SELECT id FROM client_accounts WHERE id=$1 FOR SHARE',
+              [clientId],
+            );
+            first = advance();
+            await observedWaiters('%from "client_accounts"%for update%', 1);
+            second = suspend();
+            await observedWaiters(
+              '%from "workspace_memberships"%for update%',
+              1,
+            );
+          }
+          await barrier.query('COMMIT');
+          expect([(await first).status, (await second).status]).toEqual(
+            order === 'suspend_first' ? [201, 403] : [201, 201],
+          );
+        } finally {
+          await barrier.query('ROLLBACK');
+          barrier.release();
+          await first?.catch(() => undefined);
+          await second?.catch(() => undefined);
+        }
+        expect((await advance()).status).toBe(403);
+        expect(
+          object(
+            (await read(`/projects/${f.projectId}/stage-progress`)).progress,
+          ).stageRevision,
+        ).toBe(order === 'suspend_first' ? 0 : 1);
+        expect(
+          (
+            await request(`/projects/${f.projectId}/stage-progress`, {
+              subject: 'ana',
+            })
+          ).status,
+        ).toBe(403);
+      },
+    );
+    it('confirms an exact historical receipt after original Client supersession but refuses new mutation without exposing union details', async () => {
+      const f = await stageFixture();
+      const key = randomUUID();
+      const receipt = await command(f.path, f.intent, { key });
+      const second = string(
+        (
+          await command('/clients', {
+            displayName: 'Historical second identity',
+          })
+        ).id,
+      );
+      // Controlled legacy duplicate fixture; the governed union itself uses REST.
+      await harness.pool.query(
+        "UPDATE client_accounts SET tax_id='STAGE-687-LEGACY' WHERE id=ANY($1::uuid[])",
+        [[clientId, second]],
+      );
+      const review = await command(`/clients/${clientId}/union-reviews`, {});
+      expect(review.outcome).toBe('comparison');
+      await command(
+        `/client-union-reviews/${string(review.reviewReference)}/confirm`,
+        {
+          canonicalClientId: second,
+          fields: {
+            displayName: clientId,
+            taxId: clientId,
+            address: clientId,
+            telephone: clientId,
+            generalEmail: clientId,
+            businessActivity: clientId,
+          },
+          companyIds: [companyId],
+          reviewedDifferences: true,
+          reason: 'Legacy duplicate identity.',
+        },
+      );
+      const before = await stageCounts();
+      expect(await command(f.path, f.intent, { key })).toEqual(receipt);
+      expect(
+        (await request(f.path, { method: 'POST', value: f.intent })).status,
+      ).toBe(404);
+      const progress = await read(`/projects/${f.projectId}/stage-progress`);
+      expect(progress).toMatchObject({
+        progress: { currentStageKey: 'preparation', stageRevision: 1 },
+      });
+      expect(JSON.stringify(progress)).not.toContain('canonicalClient');
+      expect(await stageCounts()).toEqual(before);
+    });
+    it('conflicts on every changed normalized intent under an actor key, including a different Project or authorized Company', async () => {
+      const f = await stageFixture();
+      const key = randomUUID();
+      await command(f.path, f.intent, { key });
+      for (const value of [
+        { ...f.intent, expectedStageKey: 'preparation' },
+        { ...f.intent, expectedStageRevision: 1 },
+        { ...f.intent, targetStageKey: 'scoping' },
+      ])
+        expect(
+          (await request(f.path, { method: 'POST', value, key })).status,
+        ).toBe(409);
+      const otherProject = string((await createTemplate()).id);
+      expect(
+        (
+          await request(`/projects/${otherProject}/stage-advance`, {
+            method: 'POST',
+            value: f.intent,
+            key,
+          })
+        ).status,
+      ).toBe(409);
+      const originalCompany = companyId;
+      const company = string(
+        (
+          await command('/companies', {
+            displayName: 'Other stage-intent Company',
+          })
+        ).id,
+      );
+      companyId = company;
+      for (const kind of ['project', 'client', 'task', 'template'] as const)
+        await grant(kind);
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: membershipId,
+        companyId,
+      });
+      expect(
+        (await request(f.path, { method: 'POST', value: f.intent, key }))
+          .status,
+      ).toBe(409);
+      companyId = originalCompany;
+      expect(await command(f.path, f.intent, { key })).toMatchObject({
+        projectId: f.projectId,
+        stageRevision: 1,
+      });
+    });
+
+    it('reveals no stage facts or Activity identifiers to another Company or Workspace and grants no implicit advance authority', async () => {
+      const f = await stageFixture();
+      await command(f.path, f.intent);
+      const otherCompany = string(
+        (await command('/companies', { displayName: 'Independent Company' }))
+          .id,
+      );
+      const originalCompany = companyId;
+      companyId = otherCompany;
+      for (const kind of ['project', 'client', 'task', 'template'] as const)
+        await grant(kind);
+      await command('/company-project-stage-advancer-assignments', {
+        workspaceMembershipId: membershipId,
+        companyId,
+      });
+      expect(
+        (await request(`/projects/${f.projectId}/stage-progress`)).status,
+      ).toBe(404);
+      expect(
+        (await request(f.path, { method: 'POST', value: f.intent })).status,
+      ).toBe(404);
+      expect(JSON.stringify(await read('/activity-log'))).not.toContain(
+        f.projectId,
+      );
+      expect(
+        (
+          await request(`/projects/${f.projectId}/stage-progress`, {
+            company: originalCompany,
+            subject: 'uninvited',
+          })
+        ).status,
+      ).toBe(403);
+      companyId = originalCompany;
+      expect(
+        (
+          await request(`/projects/${f.projectId}/stage-progress`, {
+            workspace: '00000000-0000-4000-8000-000000000999',
+          })
+        ).status,
+      ).toBe(403);
+      const actor = object((await read('/access/current-actor')).activeCompany);
+      expect(actor.projectStagePermissions).toEqual(['project.stage.advance']);
+      expect(actor.projectTemplatePermissions).toEqual([
+        'project.template.read',
+        'project.template.instantiate',
+      ]);
+      expect(actor.projectPermissions).not.toContain('project.stage.advance');
+    });
 
     it('reads source definitions without Client access while protecting every real Project and Task boundary', async () => {
       await grant('template');

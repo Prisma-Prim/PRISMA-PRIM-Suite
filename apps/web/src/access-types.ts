@@ -105,6 +105,9 @@ export interface ActorContext {
     >;
     opportunityManagerPermissionAssignmentId?: string;
     opportunityManagerPermissionSetVersion?: 'v1' | 'v2';
+    projectStagePermissions?: Array<'project.stage.advance'>;
+    projectStagePermissionAssignmentId?: string;
+    projectStagePermissionSetVersion?: 'v1';
     projectTemplatePermissions?: Array<
       'project.template.read' | 'project.template.instantiate'
     >;

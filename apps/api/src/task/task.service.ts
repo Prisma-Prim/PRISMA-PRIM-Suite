@@ -107,6 +107,38 @@ export class TaskService {
       { isolationLevel: 'repeatable read' },
     );
   }
+  /** Current gate facts for the exact copied Tasks, inside the Project command snapshot.
+   * Task retains ownership of execution state; this read requires no manager grant.
+   * Mutating callers first hold the original Client barrier shared by Task writes.
+   */
+  async readStageGateWithinTransaction(input: {
+    actor: ActorContext;
+    projectId: string;
+    taskIds: readonly string[];
+  }) {
+    const companyId = await this.access.requireActor(input.actor);
+    await this.projects.read(input.actor, input.projectId);
+    const rows = await this.database.connection
+      .select({
+        taskId: tasks.id,
+        status: tasks.status,
+        version: tasks.version,
+      })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.workspaceId, input.actor.workspaceId),
+          eq(tasks.companyId, companyId),
+          eq(tasks.projectId, input.projectId),
+          inArray(tasks.id, [...input.taskIds]),
+        ),
+      );
+    return input.taskIds.map((taskId) => {
+      const task = rows.find((row) => row.taskId === taskId);
+      if (!task) throw new NotFoundException();
+      return task;
+    });
+  }
   /** Reads without side effects: no event, command outcome or reversal-fence advance. */
   async listAssigned(
     actor: ActorContext,

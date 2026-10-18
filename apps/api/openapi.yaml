@@ -1879,6 +1879,71 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-project-stage-advancer-assignments:
+    post:
+      operationId: grantCompanyProjectStageAdvancerAssignment
+      summary: Grant the opt-in Company Project Stage Advancer v1 bundle to an active Workspace Membership
+      description: >-
+        Captures v1, which contains exactly `project.stage.advance`. It confers no Company context, Project read, Client
+        read, Task read or any other authority. Exactly one
+        `company_project_stage_advancer_assignment.granted` event is recorded per
+        actual state change; a repeat, a replay or a denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active captured Company Project Stage Advancer v1 assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectStageAdvancerAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-project-stage-advancer-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyProjectStageAdvancerAssignment
+      summary: Revoke the Company Project Stage Advancer assignment
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked captured Company Project Stage Advancer assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectStageAdvancerAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
   /api/projects/{projectId}/tasks:
     post:
       operationId: createProjectTask
@@ -2429,6 +2494,86 @@ paths:
           description: A current independent permission or Company prerequisite is missing.
         '404':
           description: No readable Project in the selected Company.
+
+  /api/projects/{projectId}/stage-progress:
+    get:
+      operationId: readProjectStageProgress
+      summary: Read current copied stage, mapped Task outcomes and immutable transition history
+      description: >-
+        Requires live independent Template, Project, Task and original Client read in
+        the active Company; no stage-advance grant is needed. No writes or events.
+        Ordinary Projects return progress:null. The original copied snapshot and stable
+        Task identities own the gate; cancelled Tasks never satisfy it.
+      tags: [Project templates]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Current preserved progress and Project-owned history, or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [progress]
+                properties:
+                  progress:
+                    oneOf:
+                      - $ref: '#/components/schemas/ProjectStageProgress'
+                      - type: 'null'
+        '400': { description: Malformed Project identifier. }
+        '401': { description: No verified External Principal. }
+        '403':
+          { description: Independent copied-plan authority is unavailable. }
+        '404': { description: No readable Project in the selected Company. }
+  /api/projects/{projectId}/stage-advance:
+    post:
+      operationId: advanceIllustrativeProjectStage
+      summary: Deliberately advance only Cadrage to Préparation after both mapped Tasks are done
+      description: >-
+        Requires independently assigned captured Company Project Stage Advancer v1 and
+        copied-plan visibility, including Task read but not Task manage. New mutations
+        require an open Project and active original Client. Serializes with existing
+        Task commands, closure, Client fencing and successful revocation/suspension.
+        The actor/Workspace key covers Company, Project, observed stage/revision and target.
+        After live dedicated/read authority and visibility, identical committed replay
+        returns its receipt before old-stage, closed or superseded mutation guards.
+        Changed intent conflicts. A new transition atomically records progress, immutable
+        Task/version proof, receipt, one minimal project.stage.changed event and Client fence.
+        Reopening an earlier Task preserves reached stage and proof. No lifecycle mutation,
+        backward/skip/final transition, automatic advance or real mission start exists.
+      tags: [Project templates]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/ProjectId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectStageAdvanceInput'
+      responses:
+        '201':
+          description: One committed transition receipt, including an identical authorized replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectStageReceipt'
+        '400':
+          description: Invalid intent, Project identifier or idempotency key.
+        '401': { description: No verified External Principal. }
+        '403':
+          {
+            description: Live dedicated or independent read authority is unavailable.,
+          }
+        '404':
+          {
+            description: No readable copied Project or active original Client for a new mutation.,
+          }
+        '409':
+          description: Incomplete required Tasks, stale revision, unsupported transition, closed Project or changed key intent.
 
 components:
   parameters:
@@ -3511,6 +3656,7 @@ components:
         - $ref: '#/components/schemas/ClientRequestClientAssociatedActivityEvent'
         - $ref: '#/components/schemas/ClientUnionProjection'
         - $ref: '#/components/schemas/ProjectLifecycleChangedActivityEvent'
+        - $ref: '#/components/schemas/ProjectStageChangedActivityEvent'
         - $ref: '#/components/schemas/DocumentRepresentationAddedActivityEvent'
         - $ref: '#/components/schemas/DocumentRepresentationRemovedActivityEvent'
     ClientRequestClientAssociatedActivityEvent:
@@ -3614,6 +3760,8 @@ components:
             - company_project_approver_assignment.revoked
             - company_project_template_user_assignment.granted
             - company_project_template_user_assignment.revoked
+            - company_project_stage_advancer_assignment.granted
+            - company_project_stage_advancer_assignment.revoked
             - client.created
             - client_company_relationship.established
             - client.corrected
@@ -3728,6 +3876,7 @@ components:
             - Company Director Client Access
             - Company Project Approver
             - Company Project Template User
+            - Company Project Stage Advancer
     ClientCorrectedMetadata:
       type: object
       additionalProperties: false
@@ -4083,6 +4232,7 @@ components:
             - Company Director Client Access
             - Company Project Approver
             - Company Project Template User
+            - Company Project Stage Advancer
         permissionSetVersion:
           type:
             - string
@@ -6150,6 +6300,13 @@ components:
         documentContentUploaderPermissionSetVersion:
           type: string
           const: v1
+        projectStagePermissions:
+          type: array
+          uniqueItems: true
+          maxItems: 1
+          items: { type: string, const: project.stage.advance }
+        projectStagePermissionAssignmentId: { type: string, format: uuid }
+        projectStagePermissionSetVersion: { type: string, const: v1 }
         projectTemplatePermissions:
           type: array
           uniqueItems: true
@@ -6646,3 +6803,285 @@ components:
         Requires current Client read and captured resolver-enabled v2 authority
         in every captured Company. Internal ID and exact attribution are disclosed only
         here. Reversal appends its own reason and preserves the original reason.
+
+    CompanyProjectStageAdvancerAssignment:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'id',
+            'workspaceMembershipId',
+            'companyId',
+            'bundle',
+            'permissionSetVersion',
+            'active',
+          ],
+        'properties':
+          {
+            'id': { 'type': 'string', 'format': 'uuid' },
+            'workspaceMembershipId': { 'type': 'string', 'format': 'uuid' },
+            'companyId': { 'type': 'string', 'format': 'uuid' },
+            'bundle':
+              { 'type': 'string', 'const': 'Company Project Stage Advancer' },
+            'permissionSetVersion': { 'type': 'string', 'const': 'v1' },
+            'active': { 'type': 'boolean' },
+          },
+      }
+
+    ProjectStageAdvanceInput:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['expectedStageKey', 'expectedStageRevision', 'targetStageKey'],
+        'properties':
+          {
+            'expectedStageKey':
+              { 'type': 'string', 'pattern': '^[A-Za-z][A-Za-z0-9_]{0,99}$' },
+            'expectedStageRevision':
+              { 'type': 'integer', 'minimum': 0, 'maximum': 2147483647 },
+            'targetStageKey':
+              { 'type': 'string', 'pattern': '^[A-Za-z][A-Za-z0-9_]{0,99}$' },
+          },
+      }
+
+    ProjectStageReceipt:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'projectId',
+            'transitionId',
+            'stageRevision',
+            'fromStageKey',
+            'toStageKey',
+          ],
+        'properties':
+          {
+            'projectId': { 'type': 'string', 'format': 'uuid' },
+            'transitionId': { 'type': 'string', 'format': 'uuid' },
+            'stageRevision': { 'type': 'integer', 'const': 1 },
+            'fromStageKey': { 'type': 'string', 'const': 'scoping' },
+            'toStageKey': { 'type': 'string', 'const': 'preparation' },
+          },
+      }
+
+    ProjectStageTaskProof:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['taskId', 'version'],
+        'properties':
+          {
+            'taskId': { 'type': 'string', 'format': 'uuid' },
+            'version':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+          },
+      }
+
+    ProjectStageTransition:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'projectId',
+            'transitionId',
+            'stageRevision',
+            'fromStageKey',
+            'toStageKey',
+            'fromStageTitle',
+            'toStageTitle',
+            'occurredAt',
+            'actor',
+            'requiredTasks',
+          ],
+        'properties':
+          {
+            'projectId': { 'type': 'string', 'format': 'uuid' },
+            'transitionId': { 'type': 'string', 'format': 'uuid' },
+            'stageRevision': { 'type': 'integer', 'const': 1 },
+            'fromStageKey': { 'type': 'string', 'const': 'scoping' },
+            'toStageKey': { 'type': 'string', 'const': 'preparation' },
+            'fromStageTitle':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'toStageTitle':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'occurredAt': { 'type': 'string', 'format': 'date-time' },
+            'actor':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'required':
+                  ['internalUserId', 'workspaceMembershipId', 'displayName'],
+                'properties':
+                  {
+                    'internalUserId': { 'type': 'string', 'format': 'uuid' },
+                    'workspaceMembershipId':
+                      { 'type': 'string', 'format': 'uuid' },
+                    'displayName':
+                      { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+                  },
+              },
+            'requiredTasks':
+              {
+                'type': 'array',
+                'minItems': 2,
+                'maxItems': 2,
+                'items':
+                  { '$ref': '#/components/schemas/ProjectStageTaskProof' },
+              },
+          },
+      }
+
+    ProjectStageRequiredTask:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required': ['taskId', 'key', 'title', 'required', 'status', 'version'],
+        'properties':
+          {
+            'taskId': { 'type': 'string', 'format': 'uuid' },
+            'key':
+              { 'type': 'string', 'pattern': '^[A-Za-z][A-Za-z0-9_]{0,99}$' },
+            'title': { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'required': { 'type': 'boolean', 'const': true },
+            'status':
+              {
+                'type': 'string',
+                'enum': ['todo', 'in_progress', 'blocked', 'done', 'cancelled'],
+              },
+            'version':
+              { 'type': 'integer', 'minimum': 1, 'maximum': 2147483647 },
+          },
+      }
+
+    ProjectStageProgress:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          [
+            'currentStageKey',
+            'currentStageTitle',
+            'stageRevision',
+            'nextStage',
+            'requiredTasks',
+            'gate',
+            'canAdvance',
+            'transitions',
+          ],
+        'properties':
+          {
+            'currentStageKey':
+              { 'type': 'string', 'enum': ['scoping', 'preparation'] },
+            'currentStageTitle':
+              { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+            'stageRevision': { 'type': 'integer', 'enum': [0, 1] },
+            'nextStage':
+              {
+                'oneOf':
+                  [
+                    {
+                      'type': 'object',
+                      'additionalProperties': false,
+                      'required': ['key', 'title'],
+                      'properties':
+                        {
+                          'key': { 'type': 'string', 'const': 'preparation' },
+                          'title':
+                            {
+                              'type': 'string',
+                              'minLength': 1,
+                              'maxLength': 200,
+                            },
+                        },
+                    },
+                    { 'type': 'null' },
+                  ],
+              },
+            'requiredTasks':
+              {
+                'type': 'array',
+                'minItems': 2,
+                'maxItems': 2,
+                'items':
+                  { '$ref': '#/components/schemas/ProjectStageRequiredTask' },
+              },
+            'gate':
+              {
+                'type': 'string',
+                'enum':
+                  [
+                    'required_tasks_incomplete',
+                    'advance_authority_required',
+                    'project_closed',
+                    'original_client_inactive',
+                    'last_supported_stage',
+                    'ready',
+                  ],
+              },
+            'canAdvance': { 'type': 'boolean' },
+            'transitions':
+              {
+                'type': 'array',
+                'maxItems': 1,
+                'items':
+                  { '$ref': '#/components/schemas/ProjectStageTransition' },
+              },
+          },
+      }
+
+    ProjectStageChangedActivityEvent:
+      {
+        'type': 'object',
+        'additionalProperties': false,
+        'required':
+          ['id', 'action', 'occurredAt', 'actor', 'target', 'metadata'],
+        'properties':
+          {
+            'id': { 'type': 'string', 'format': 'uuid' },
+            'action': { 'type': 'string', 'const': 'project.stage.changed' },
+            'occurredAt': { 'type': 'string', 'format': 'date-time' },
+            'actor':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'required': ['internalUserId', 'displayName'],
+                'properties':
+                  {
+                    'internalUserId': { 'type': 'string', 'format': 'uuid' },
+                    'displayName':
+                      { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+                  },
+              },
+            'target':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'required': ['type', 'projectId', 'projectTitle', 'companyId'],
+                'properties':
+                  {
+                    'type': { 'type': 'string', 'const': 'project' },
+                    'projectId': { 'type': 'string', 'format': 'uuid' },
+                    'projectTitle':
+                      { 'type': 'string', 'minLength': 1, 'maxLength': 200 },
+                    'companyId': { 'type': 'string', 'format': 'uuid' },
+                  },
+              },
+            'metadata':
+              {
+                'type': 'object',
+                'additionalProperties': false,
+                'required': ['stageRevision', 'fromStageKey', 'toStageKey'],
+                'properties':
+                  {
+                    'stageRevision': { 'type': 'integer', 'const': 1 },
+                    'fromStageKey': { 'type': 'string', 'const': 'scoping' },
+                    'toStageKey': { 'type': 'string', 'const': 'preparation' },
+                  },
+              },
+          },
+      }

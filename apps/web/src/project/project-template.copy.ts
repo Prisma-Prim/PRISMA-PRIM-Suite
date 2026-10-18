@@ -55,7 +55,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     sourceVersion: 'Versiune',
     required: 'Obligatorie',
     planNotice:
-      'Definițiile originale sunt păstrate. Sarcinile se atribuie și se încheie explicit; progresul etapelor nu este încă disponibil.',
+      'Definițiile originale sunt păstrate. Sarcinile se atribuie și se încheie explicit; trecerea etapelor rămâne o acțiune explicită.',
     planError: 'Planul original nu a putut fi încărcat.',
   },
   ru: {
@@ -88,7 +88,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     sourceVersion: 'Версия',
     required: 'Обязательная',
     planNotice:
-      'Исходные определения сохранены. Назначение и завершение Задач выполняются явно; переход между этапами пока недоступен.',
+      'Исходные определения сохранены. Назначение и завершение Задач выполняются явно; переход между этапами остаётся явным действием.',
     planError: 'Не удалось загрузить исходный план.',
   },
   fr: {
@@ -121,7 +121,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     sourceVersion: 'Version',
     required: 'Obligatoire',
     planNotice:
-      'Les définitions d’origine sont préservées. L’attribution et l’achèvement des Tâches sont explicites ; le passage d’étape n’est pas encore disponible.',
+      'Les définitions d’origine sont préservées. L’attribution et l’achèvement des Tâches sont explicites ; le passage d’étape reste une action explicite.',
     planError: 'Le plan d’origine n’a pas pu être chargé.',
   },
   en: {
@@ -154,7 +154,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     sourceVersion: 'Version',
     required: 'Required',
     planNotice:
-      'Original definitions are preserved. Tasks are assigned and completed explicitly; stage advancement is not yet available.',
+      'Original definitions are preserved. Tasks are assigned and completed explicitly; stage advancement remains an explicit action.',
     planError: 'The original plan could not be loaded.',
   },
 });

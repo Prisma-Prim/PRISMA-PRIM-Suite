@@ -144,3 +144,76 @@ it('requires an administrator’s deliberate grant and revoke of the dedicated c
   ]);
   expect(writes[0]?.key).not.toBe(writes[1]?.key);
 });
+
+it('assigns and revokes only the independent captured stage-advance bundle through the existing Company administrator', async () => {
+  let active = false;
+  const writes: { path: string; method: string; body: unknown }[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, options?: RequestInit) => {
+      if (path === '/api/company-context-assignments/administration') {
+        const base = administration(active);
+        return Response.json({
+          ...base,
+          assignments: base.assignments.map((assignment) => ({
+            ...assignment,
+            bundle: 'Company Project Stage Advancer',
+          })),
+        });
+      }
+      if (path.startsWith('/api/company-project-stage-advancer-assignments')) {
+        const body: unknown =
+          typeof options?.body === 'string'
+            ? JSON.parse(options.body)
+            : undefined;
+        writes.push({ path, method: options?.method ?? 'GET', body });
+        active = options?.method === 'POST';
+        return Response.json(
+          {
+            id: 'stage-grant',
+            workspaceMembershipId: memberId,
+            companyId,
+            active,
+            bundle: 'Company Project Stage Advancer',
+            permissionSetVersion: 'v1',
+          },
+          { status: active ? 201 : 200 },
+        );
+      }
+      return new Response(null, { status: 404 });
+    }),
+  );
+  view();
+  await screen.findByLabelText('Workspace member');
+  expect(writes).toEqual([]);
+  changeValue(screen.getByLabelText('Workspace member'), memberId);
+  changeValue(screen.getByLabelText('Company'), companyId);
+  changeValue(screen.getByLabelText('Access bundle'), 'project-stage-advancer');
+  expect(screen.getByLabelText('Access bundle')).toHaveTextContent(
+    'Project Stage Advancer',
+  );
+  expect(
+    screen.getByText(
+      'Grants only deliberate stage advance. Company context, Template read, Project, Task and original Client read remain separate. Task management and lifecycle approval are not included.',
+    ),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+  await screen.findByText('Access granted. Server state refreshed.');
+  expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+    'Granted — captured version v1',
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
+  await screen.findByText('Access revoked. Server state refreshed.');
+  expect(writes).toEqual([
+    {
+      path: '/api/company-project-stage-advancer-assignments',
+      method: 'POST',
+      body: { workspaceMembershipId: memberId, companyId },
+    },
+    {
+      path: `/api/company-project-stage-advancer-assignments/${memberId}/${companyId}`,
+      method: 'DELETE',
+      body: undefined,
+    },
+  ]);
+});
