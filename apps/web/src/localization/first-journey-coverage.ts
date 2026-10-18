@@ -24,6 +24,8 @@ import { commercialRequestMessages } from '../commercial-intake/commercial-reque
 import { opportunityOutcomeMessages } from '../commercial-intake/opportunity-outcome.copy';
 import { salesStageMessages } from '../commercial-intake/sales-stage.copy';
 import { clientDirectoryMessages } from '../client/client-directory.copy';
+import { clientDossierMessages } from '../client/client-dossier.copy';
+import { clientCorrectionHistoryMessages } from '../client/client-correction-history.copy';
 import { appMessages } from '../app.copy';
 import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
@@ -74,6 +76,11 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('profitability', profitabilityMessages);
   assertMessageCoverage('salesStage', salesStageMessages);
   assertMessageCoverage('clientDirectory', clientDirectoryMessages);
+  assertMessageCoverage('clientDossier', clientDossierMessages);
+  assertMessageCoverage(
+    'clientCorrectionHistory',
+    clientCorrectionHistoryMessages,
+  );
   assertMessageCoverage('app', appMessages);
   assertMessageCoverage('interfaceLocale', interfaceLocaleMessages);
   assertMessageCoverage('serviceCatalogue', serviceCatalogueMessages);

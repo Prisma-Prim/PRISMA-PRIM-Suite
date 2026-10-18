@@ -266,6 +266,7 @@ export function ClientContactDescription({
 }: {
   contact: ClientContact;
 }) {
+  const copy = useClientContactEditorCopy();
   const roles = contact.decisionRoles ?? [];
   return (
     <>

@@ -25,6 +25,8 @@ const keys = [
   'technical',
   'blocker',
   'contactCommunicationPreferencesLabel',
+  'contactDecisionRolesSummary',
+  'contactCommunicationPreferencesSummary',
   'contactCommunicationPreferencesHelp',
   'contactCommunicationPreferencesTooLong',
   'addContact',
@@ -34,6 +36,9 @@ const keys = [
 
 export const clientContactEditorMessages = defineMessages(keys, {
   ro: {
+    contactDecisionRolesSummary: 'Roluri în luarea deciziilor: {roles}',
+    contactCommunicationPreferencesSummary:
+      'Preferințe de comunicare: {preferences}',
     contactsEditLabel: 'Contacte editabile',
     contactEditorLabel: 'Contact {position}',
     contactNameLabel: 'Numele Contactului',
@@ -60,6 +65,9 @@ export const clientContactEditorMessages = defineMessages(keys, {
     contactsInvalid: 'Fiecare Contact trebuie să aibă un nume.',
   },
   ru: {
+    contactDecisionRolesSummary: 'Роли в принятии решений: {roles}',
+    contactCommunicationPreferencesSummary:
+      'Предпочтения по общению: {preferences}',
     contactsEditLabel: 'Редактируемые Контакты',
     contactEditorLabel: 'Контакт {position}',
     contactNameLabel: 'Имя Контакта',
@@ -84,6 +92,9 @@ export const clientContactEditorMessages = defineMessages(keys, {
     contactsInvalid: 'У каждого Контакта должно быть имя.',
   },
   fr: {
+    contactDecisionRolesSummary: 'Rôles dans la décision : {roles}',
+    contactCommunicationPreferencesSummary:
+      'Préférences de communication : {preferences}',
     contactsEditLabel: 'Contacts modifiables',
     contactEditorLabel: 'Contact {position}',
     contactNameLabel: 'Nom du Contact',
@@ -110,6 +121,9 @@ export const clientContactEditorMessages = defineMessages(keys, {
     contactsInvalid: 'Chaque Contact doit avoir un nom.',
   },
   en: {
+    contactDecisionRolesSummary: 'Decision roles: {roles}',
+    contactCommunicationPreferencesSummary:
+      'Communication preferences: {preferences}',
     contactsEditLabel: 'Editable Contacts',
     contactEditorLabel: 'Contact {position}',
     contactNameLabel: 'Contact name',
@@ -150,6 +164,14 @@ export function useClientContactEditorCopy() {
     contactPositionLabel: message('contactPositionLabel'),
     contactPositionTooLong: message('contactPositionTooLong'),
     contactDecisionRolesLabel: message('contactDecisionRolesLabel'),
+    contactDecisionRolesSummary: (labels: readonly string[]) =>
+      formatMessage(message('contactDecisionRolesSummary'), {
+        roles: labels.join(', '),
+      }),
+    contactCommunicationPreferencesSummary: (preferences: string) =>
+      formatMessage(message('contactCommunicationPreferencesSummary'), {
+        preferences,
+      }),
     contactDecisionRoleLabels: {
       final_decision_maker: message('final_decision_maker'),
       influencer: message('influencer'),

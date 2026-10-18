@@ -23,12 +23,16 @@ import {
   type ClientContactDraft,
   type ClientContactValidationIssue,
 } from './ClientContactEditor';
-import { clientWorkspaceCopy as copy } from './client-workspace.copy';
+import {
+  clientDossierValidationIssue,
+  useClientDossierCopy,
+  type ClientDossierValidationIssue,
+} from './client-dossier.copy';
 import { useClientContactEditorCopy } from './client-contact-editor.copy';
 import {
-  clientContactServerValidationIssue,
-  useClientContactServerValidationCopy,
-  type ClientContactServerValidationIssue,
+  clientRegistrationValidationIssue,
+  useClientRegistrationCopy,
+  type ClientRegistrationValidationIssue,
 } from './client-registration.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
@@ -82,14 +86,14 @@ type CorrectionState =
     }
   | {
       status: 'validation';
-      source: 'serverContact';
-      issue: ClientContactServerValidationIssue;
+      source: 'sharedClient';
+      issue: ClientRegistrationValidationIssue;
       field?: undefined;
     }
   | {
       status: 'validation';
       source: 'dossier';
-      message: string;
+      issue: ClientDossierValidationIssue;
       field?: 'displayName';
     };
 
@@ -125,8 +129,9 @@ export function ClientDossierPanel({
   onOpenRequests?: (client: { id: string; displayName: string }) => void;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
+  const copy = useClientDossierCopy();
   const contactCopy = useClientContactEditorCopy();
-  const contactServerValidationCopy = useClientContactServerValidationCopy();
+  const sharedClientCopy = useClientRegistrationCopy();
   const [correctionOpen, setCorrectionOpen] = useState(false);
   const correctionTrigger = useRef<HTMLButtonElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
@@ -230,7 +235,7 @@ export function ClientDossierPanel({
       setCorrectionState({
         status: 'validation',
         source: 'dossier',
-        message: copy.displayNameRequired,
+        issue: 'displayNameRequired',
         field: 'displayName',
       });
       return;
@@ -313,15 +318,23 @@ export function ClientDossierPanel({
           return;
         }
         if (result.status === 'validation') {
-          const issue = clientContactServerValidationIssue(result.message);
+          const dossierIssue = clientDossierValidationIssue(result.message);
+          const sharedIssue =
+            result.message === undefined
+              ? 'registrationInvalid'
+              : clientRegistrationValidationIssue(result.message);
           setCorrectionState(
-            issue === undefined
+            dossierIssue !== undefined || sharedIssue === 'registrationInvalid'
               ? {
                   status: 'validation',
                   source: 'dossier',
-                  message: result.message ?? copy.correctionInvalid,
+                  issue: dossierIssue ?? 'correctionInvalid',
                 }
-              : { status: 'validation', source: 'serverContact', issue },
+              : {
+                  status: 'validation',
+                  source: 'sharedClient',
+                  issue: sharedIssue,
+                },
           );
           return;
         }
@@ -389,9 +402,9 @@ export function ClientDossierPanel({
         >
           {correctionState.source === 'localContact'
             ? contactCopy.validation(correctionState.issue)
-            : correctionState.source === 'serverContact'
-              ? contactServerValidationCopy(correctionState.issue)
-              : correctionState.message}
+            : correctionState.source === 'sharedClient'
+              ? sharedClientCopy.validation(correctionState.issue)
+              : copy[correctionState.issue]}
         </ClientDirectoryFeedback>
       )}
       {correctionState.status === 'success' && (
@@ -630,6 +643,7 @@ function DossierValue({
   label: string;
   value: string | null;
 }) {
+  const copy = useClientDossierCopy();
   return (
     <div>
       <dt>{label}</dt>
@@ -653,6 +667,7 @@ function CorrectionForm({
   onDraftChange: (draft: DossierDraft) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const copy = useClientDossierCopy();
   const fields = [
     ['displayName', copy.displayNameLabel],
     ['taxId', copy.taxIdLabel],
