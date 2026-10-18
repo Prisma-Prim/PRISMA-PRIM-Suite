@@ -358,7 +358,7 @@ function readDocumentVersionReference(
     addedByDisplayName: string(record(row.addedBy).displayName),
   };
 }
-function isRepresentationForm(
+export function isRepresentationForm(
   value: unknown,
 ): value is DocumentRepresentationForm {
   return (

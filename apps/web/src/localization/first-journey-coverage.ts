@@ -14,6 +14,9 @@ import { contractProjectCreateMessages } from '../contract/contract-project-crea
 import { contractPrecontractMessages } from '../contract/contract-precontract.copy';
 import { contractRuleSetMessages } from '../contract/contract-rule-set.copy';
 import { documentPdfMessages } from '../documents/document-pdf.copy';
+import { documentsMessages } from '../documents/documents.copy';
+import { documentVersionsMessages } from '../documents/document-versions.copy';
+import { documentCorrectionHistoryMessages } from '../documents/document-correction-history.copy';
 import { offerBindingMessages } from '../offer/offer-binding.copy';
 import { offerPreparationMessages } from '../offer/offer-preparation.copy';
 import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
@@ -58,6 +61,12 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('contractPrecontract', contractPrecontractMessages);
   assertMessageCoverage('contractRuleSet', contractRuleSetMessages);
   assertMessageCoverage('documentPdf', documentPdfMessages);
+  assertMessageCoverage('documents', documentsMessages);
+  assertMessageCoverage('documentVersions', documentVersionsMessages);
+  assertMessageCoverage(
+    'documentCorrectionHistory',
+    documentCorrectionHistoryMessages,
+  );
   assertMessageCoverage('offerBinding', offerBindingMessages);
   assertMessageCoverage('offerPreparation', offerPreparationMessages);
   assertMessageCoverage('profitability', profitabilityMessages);
