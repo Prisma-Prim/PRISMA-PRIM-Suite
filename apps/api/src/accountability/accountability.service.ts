@@ -1,3 +1,5 @@
+import type { ProjectTemplateVersion } from '../project-template/project-template.definition.js';
+import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
 import type { ProjectStageChangedActivityEvent } from '../project-template/project-stage.types.js';
 import type { ProjectStageTaskProof } from '../project-template/project-stage.types.js';
 import type { ContractQualityRuleSetVersion } from '../contract/contract-quality.js';
@@ -43,6 +45,7 @@ import {
   projectResponsibilityEvents,
   projectLifecycleTransitions,
   projectStageTransitions,
+  projectTemplateVersions,
   projectStartDeclarations,
   projects,
   activityLogEvents,
@@ -641,6 +644,77 @@ export class AccountabilityService {
       },
     }));
   }
+  /** Immutable Version creation is also its single attributable event source. */
+  async recordProjectTemplateVersionCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    snapshot: ProjectTemplateVersion;
+    sourceVersion: number;
+  }) {
+    const [row] = await this.databaseContext.connection
+      .insert(projectTemplateVersions)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        templateKey: input.snapshot.templateKey,
+        version: input.snapshot.version,
+        sourceVersion: input.sourceVersion,
+        snapshot: input.snapshot,
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorDisplayName: input.actor.displayName,
+      })
+      .returning();
+    if (!row) throw new Error('Template Version creation was not recorded.');
+    return row;
+  }
+
+  private async projectTemplateVersionEvents(
+    actor: ActorContext,
+  ): Promise<ProjectTemplateVersionCreatedActivityEvent[]> {
+    const company = actor.activeCompany;
+    if (
+      !company?.projectPermissions?.includes('project.read') ||
+      company.projectTemplatePermissionSetVersion !== 'v1' ||
+      !company.projectTemplatePermissionAssignmentId ||
+      !company.projectTemplatePermissions?.includes('project.template.read')
+    )
+      return [];
+    const rows = await this.databaseContext.connection
+      .select()
+      .from(projectTemplateVersions)
+      .where(
+        and(
+          eq(projectTemplateVersions.workspaceId, actor.workspaceId),
+          eq(projectTemplateVersions.companyId, company.id),
+        ),
+      )
+      .orderBy(
+        desc(projectTemplateVersions.occurredAt),
+        desc(projectTemplateVersions.id),
+      )
+      .limit(INITIAL_PAGE_SIZE);
+    return rows.map((row) => ({
+      id: row.id,
+      action: 'project.template.version.created',
+      occurredAt: row.occurredAt.toISOString(),
+      actor: {
+        internalUserId: row.actorInternalUserId,
+        displayName: row.actorDisplayName,
+      },
+      target: {
+        type: 'project_template_version',
+        versionId: row.id,
+        companyId: row.companyId,
+      },
+      metadata: {
+        templateKey: row.templateKey,
+        version: row.version,
+        sourceVersion: row.sourceVersion,
+      },
+    }));
+  }
+
   async recordProjectCreated(input: {
     actor: ActorContext;
     projectId: string;
@@ -2907,6 +2981,7 @@ export class AccountabilityService {
       ...(await this.projectResponsibilityEvents(actor)),
       ...(await this.projectLifecycleEvents(actor)),
       ...(await this.projectStageEvents(actor)),
+      ...(await this.projectTemplateVersionEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentVersionEvents(actor)),
@@ -3029,6 +3104,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_project_template_user_assignment.revoked':
     case 'company_project_stage_advancer_assignment.granted':
     case 'company_project_stage_advancer_assignment.revoked':
+    case 'company_project_template_configuration_assignment.granted':
+    case 'company_project_template_configuration_assignment.revoked':
       return {
         targetType: event.target.type,
         targetInternalUserId: event.target.internalUserId,

@@ -290,6 +290,27 @@ against successful revocation or suspension for a new command. Its lifecycle is
 `company_project_stage_advancer_assignment.revoked`, using the existing minimal
 bundle-label event and Company assignment administration convention.
 
+The [compatible illustrative Template successors](release-1-project-task-prd.md#compatible-immutable-successor-versions-695)
+add independent opt-in **Company Project Template Configuration v1**, containing
+exactly `project.template.version.create`. Existing Company assignment
+administration explicitly grants/revokes captured v1 for an active same-Workspace
+membership and Company, with null/unknown versions failing closed. Existing grants,
+Workspace ownership, Project responsibility and migration confer nothing. Project
+Template User v1 remains exactly read + instantiate.
+
+Configuration grants no context, Project/Template read, Client or Task authority.
+Publication independently requires current Company context, Project read and
+Template read; it requires no Client or Task authority merely to configure the
+four illustrative titles. Exact-version Project instantiation keeps its separate
+Project-create, Task Manager and active original Client/Company requirements.
+Publication rechecks dedicated creation and catalogue-read authority before
+confirming an exact committed receipt, and serializes against successful
+revocation/suspension. Its lifecycle is
+`company_project_template_configuration_assignment.granted` and
+`company_project_template_configuration_assignment.revoked`, under this section's
+existing Company administration, bundle-label-only metadata and one-event-per-actual-
+state-change convention. It adds no standalone Activity grant.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.

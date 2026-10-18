@@ -77,6 +77,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_opportunity_manager_assignment.revoked'
     | 'company_sales_stage_configuration_assignment.granted'
     | 'company_sales_stage_configuration_assignment.revoked'
+    | 'company_project_template_configuration_assignment.granted'
+    | 'company_project_template_configuration_assignment.revoked'
     | 'company_project_template_user_assignment.granted'
     | 'company_project_template_user_assignment.revoked'
     | 'company_project_stage_advancer_assignment.granted'
@@ -485,7 +487,20 @@ export interface ProjectLifecycleChangedActivityLogEvent {
  * Opportunity outcome change, an Offer event's response outcome and
  * simulated marker, and a Contract event's simulated marker or linked Project.
  */
+export interface ProjectTemplateVersionCreatedActivityEvent {
+  id: string;
+  action: 'project.template.version.created';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'project_template_version';
+    versionId: string;
+    companyId: string;
+  };
+  metadata: { templateKey: string; version: number; sourceVersion: number };
+}
 export type ActivityLogEvent =
+  | ProjectTemplateVersionCreatedActivityEvent
   | TaskActivityLogEvent
   | ProjectResponsibleChangedActivityLogEvent
   | OpportunityResponsibleChangedActivityLogEvent

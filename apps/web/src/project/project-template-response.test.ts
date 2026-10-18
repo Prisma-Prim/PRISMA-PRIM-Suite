@@ -14,12 +14,32 @@ describe('Project Template HTTP boundary', () => {
       templateFixture,
     ]);
     expect(readTemplateCatalogue({ templates: [] })).toEqual([]);
+    const successor = {
+      ...templateFixture,
+      version: 2,
+      stages: templateFixture.stages.map((stage) => ({
+        ...stage,
+        tasks: stage.tasks.map((task) => ({
+          ...task,
+          title:
+            task.key === 'clarify_request'
+              ? 'Published successor title'
+              : task.title,
+        })),
+      })),
+    };
+    expect(
+      readTemplateCatalogue({ templates: [successor, templateFixture] }),
+    ).toEqual([successor, templateFixture]);
+
     for (const value of [
       null,
       {},
       { templates: null },
       { templates: [{ ...templateFixture, templateKey: 'UNAPPROVED' }] },
-      { templates: [{ ...templateFixture, version: 2 }] },
+      { templates: [{ ...templateFixture, version: 0 }] },
+      { templates: [{ ...templateFixture, version: 1.5 }] },
+      { templates: [{ ...templateFixture, version: 2147483648 }] },
       { templates: [templateFixture, templateFixture] },
       { templates: [{ ...templateFixture, illustrative: false }] },
       { templates: [{ ...templateFixture, stages: [] }] },

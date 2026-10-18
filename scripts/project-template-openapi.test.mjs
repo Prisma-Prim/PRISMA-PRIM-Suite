@@ -76,7 +76,7 @@ const source = {
   ],
 };
 
-test('Template creation OpenAPI admits only the identified v1 intent and complete Project receipt', () => {
+test('Template creation OpenAPI admits a bounded exact Version intent and complete Project receipt', () => {
   const operation = contract.paths['/api/projects/from-template'].post;
   const validate = validator(
     operation.requestBody.content['application/json'].schema,
@@ -88,9 +88,14 @@ test('Template creation OpenAPI admits only the identified v1 intent and complet
     templateVersion: 1,
   };
   accepts(validate, input);
+  accepts(validate, { ...input, templateVersion: 2 });
   accepts(validate, { ...input, title: ' '.repeat(250) + 'Project' });
   for (const changed of [
-    { templateVersion: 2 },
+    { templateVersion: 0 },
+    { templateVersion: 1.5 },
+    { templateVersion: 2147483648 },
+    { templateVersion: '2' },
+    { templateVersion: null },
     { templateKey: 'UNAPPROVED' },
     { title: '' },
     { clientAccountId: 'hidden' },
@@ -117,9 +122,17 @@ test('Template creation OpenAPI admits only the identified v1 intent and complet
 
 test('Template source and copied-plan reads preserve two stages/four required Task identities', () => {
   const catalogue = response('/api/project-templates', 'get', '200');
-  accepts(catalogue, { templates: [source] });
+  const page = { templates: [source], headVersion: 1, nextBeforeVersion: null };
+  accepts(catalogue, page);
+  accepts(catalogue, {
+    templates: [{ ...source, version: 2 }, source],
+    headVersion: 2,
+    nextBeforeVersion: null,
+  });
+  assert.equal(catalogue({ templates: [source] }), false);
+  assert.equal(catalogue({ ...page, headVersion: 2147483648 }), false);
   assert.equal(
-    catalogue({ templates: [{ ...source, illustrative: false }] }),
+    catalogue({ ...page, templates: [{ ...source, illustrative: false }] }),
     false,
   );
   const plan = {
@@ -134,6 +147,7 @@ test('Template source and copied-plan reads preserve two stages/four required Ta
   };
   const validate = response('/api/projects/{projectId}/template', 'get', '200');
   accepts(validate, { template: plan });
+  accepts(validate, { template: { ...plan, version: 2 } });
   accepts(validate, { template: null });
   assert.equal(
     validate({ template: source }),

@@ -1,3 +1,8 @@
+import {
+  ProjectTemplateConfiguration,
+  canReadProjectTemplateCatalogue,
+} from './project/ProjectTemplateConfiguration';
+import { useProjectTemplateVersionCopy } from './project/project-template-version.copy';
 import { useProjectStageCopy } from './project/project-stage.copy';
 import {
   useDocumentPdfCopy,
@@ -66,6 +71,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
   const prismeCopy = usePrismeCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
+  const [templateCatalogueRevision, setTemplateCatalogueRevision] = useState(0);
   const [projectClientFilter, setProjectClientFilter] = useState<{
     navigationContext: string;
     clientDossierId: string;
@@ -505,32 +511,59 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         />
       ),
     });
-  if (canAccessProjects && access.actor.activeCompany)
+  if (
+    (canAccessProjects || canReadProjectTemplateCatalogue(access.actor)) &&
+    access.actor.activeCompany
+  )
     sections.push({
       id: 'projects',
       ...prismeCopy.sections.projects,
       content: (
-        <ProjectWorkspace
-          onOpenContract={openRequest}
-          key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
-          actor={access.actor}
-          identity={identity}
-          onActivityRecorded={refreshActivityLog}
-          clientFilter={
-            projectClientFilter?.navigationContext === navigationContext
-              ? projectClientFilter
-              : undefined
-          }
-          clientIdentityRevision={clientIdentityGeneration}
-          onOpenClientDossier={openClientDossier}
-          onOpenDocument={openDocument}
-          requestedProject={
-            requestedProject?.context === projectRequestContext
-              ? requestedProject
-              : undefined
-          }
-          projectOpenRequestId={projectOpenRequestId}
-        />
+        <>
+          {canAccessProjects && (
+            <ProjectWorkspace
+              catalogueRevision={templateCatalogueRevision}
+              onOpenContract={openRequest}
+              key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
+              actor={access.actor}
+              identity={identity}
+              onActivityRecorded={refreshActivityLog}
+              clientFilter={
+                projectClientFilter?.navigationContext === navigationContext
+                  ? projectClientFilter
+                  : undefined
+              }
+              clientIdentityRevision={clientIdentityGeneration}
+              onOpenClientDossier={openClientDossier}
+              onOpenDocument={openDocument}
+              requestedProject={
+                requestedProject?.context === projectRequestContext
+                  ? requestedProject
+                  : undefined
+              }
+              projectOpenRequestId={projectOpenRequestId}
+            />
+          )}
+          {canReadProjectTemplateCatalogue(access.actor) && (
+            <div
+              id={canAccessProjects ? undefined : 'projects'}
+              tabIndex={canAccessProjects ? undefined : -1}
+            >
+              <ProjectTemplateConfiguration
+                key={`template-configuration:${access.sessionGeneration}`}
+                actor={access.actor}
+                identity={identity}
+                onCatalogueChanged={() =>
+                  setTemplateCatalogueRevision((value) => value + 1)
+                }
+                onActivityRecorded={refreshActivityLog}
+                onActorRevalidated={acceptRevalidatedActor}
+                onCompanyContextRejected={rejectCompanyContext}
+                onWorkspaceAccessRejected={rejectWorkspaceAccess}
+              />
+            </div>
+          )}
+        </>
       ),
     });
   if (canReadTasks(access.actor))
@@ -767,6 +800,7 @@ function ActivityLog({
   const pdfActionLabels = useDocumentPdfCopy().activityActionLabels;
   const templateCopy = useProjectTemplateCopy();
   const projectStageCopy = useProjectStageCopy();
+  const templateVersionCopy = useProjectTemplateVersionCopy();
   return (
     <section className="activity-log" aria-labelledby="activity-log-title">
       <div className="activity-log-heading">
@@ -804,10 +838,16 @@ function ActivityLog({
                       pdfActionLabels,
                       templateCopy,
                       projectStageCopy,
+                      templateVersionCopy,
                     )}
                   </strong>
                   <span id={openedRequest ? targetId : undefined}>
-                    Target: {activityTargetDescription(event, stageCopy)}
+                    Target:{' '}
+                    {activityTargetDescription(
+                      event,
+                      stageCopy,
+                      templateVersionCopy,
+                    )}
                   </span>
                   {openedRequest && onOpenRequest ? (
                     <button
@@ -848,6 +888,7 @@ function activityDescription(
   pdfActionLabels: DocumentPdfCopy['activityActionLabels'],
   templateCopy: ReturnType<typeof useProjectTemplateCopy>,
   projectStageCopy: ReturnType<typeof useProjectStageCopy>,
+  templateVersionCopy: ReturnType<typeof useProjectTemplateVersionCopy>,
 ): string {
   const actorName =
     'kind' in event.actor ? clientUnionCopy.resolver : event.actor.displayName;
@@ -883,6 +924,11 @@ function activityDescription(
     ...invitationActivityActionLabels,
     ...pdfActionLabels,
     'project.stage.changed': projectStageCopy('activity'),
+    'project.template.version.created': templateVersionCopy('activity'),
+    'company_project_template_configuration_assignment.granted':
+      templateVersionCopy('granted'),
+    'company_project_template_configuration_assignment.revoked':
+      templateVersionCopy('revoked'),
     'company_project_stage_advancer_assignment.granted':
       projectStageCopy('granted'),
     'company_project_stage_advancer_assignment.revoked':
@@ -952,7 +998,12 @@ const STAGE_OPERATION_KEYS = {
 function activityTargetDescription(
   event: ActivityLogEvent,
   stageCopy: SalesStageCopy,
+  templateVersionCopy: ReturnType<typeof useProjectTemplateVersionCopy>,
 ): string {
+  if (event.action === 'project.template.version.created')
+    return formatMessage(templateVersionCopy('source'), {
+      version: event.metadata.version,
+    });
   switch (event.target.type) {
     case 'document_project':
       return `${documentsCopy.activityTarget}: ${event.target.documentTitle} — ${projectCopy.activityTarget}: ${event.target.projectTitle}`;

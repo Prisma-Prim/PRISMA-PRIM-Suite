@@ -9,6 +9,9 @@ export function companyAuthorityWithoutProjectTemplate(
       | 'projectStagePermissions'
       | 'projectStagePermissionAssignmentId'
       | 'projectStagePermissionSetVersion'
+      | 'projectTemplateConfigurationPermissions'
+      | 'projectTemplateConfigurationPermissionAssignmentId'
+      | 'projectTemplateConfigurationPermissionSetVersion'
       | 'projectTemplatePermissions'
       | 'projectTemplatePermissionAssignmentId'
       | 'projectTemplatePermissionSetVersion'
@@ -19,6 +22,9 @@ export function companyAuthorityWithoutProjectTemplate(
   delete authority.projectStagePermissions;
   delete authority.projectStagePermissionAssignmentId;
   delete authority.projectStagePermissionSetVersion;
+  delete authority.projectTemplateConfigurationPermissions;
+  delete authority.projectTemplateConfigurationPermissionAssignmentId;
+  delete authority.projectTemplateConfigurationPermissionSetVersion;
   delete authority.projectTemplatePermissions;
   delete authority.projectTemplatePermissionAssignmentId;
   delete authority.projectTemplatePermissionSetVersion;

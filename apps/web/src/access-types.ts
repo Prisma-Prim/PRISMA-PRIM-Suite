@@ -108,6 +108,9 @@ export interface ActorContext {
     projectStagePermissions?: Array<'project.stage.advance'>;
     projectStagePermissionAssignmentId?: string;
     projectStagePermissionSetVersion?: 'v1';
+    projectTemplateConfigurationPermissions?: Array<'project.template.version.create'>;
+    projectTemplateConfigurationPermissionAssignmentId?: string;
+    projectTemplateConfigurationPermissionSetVersion?: 'v1';
     projectTemplatePermissions?: Array<
       'project.template.read' | 'project.template.instantiate'
     >;

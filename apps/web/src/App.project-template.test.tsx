@@ -77,25 +77,45 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-it.each(['Template', 'Stage'] as const)(
+it.each(['Template', 'Stage', 'Configuration'] as const)(
   'preserves ordinary Project and Task work when a real App actor revalidation changes only dedicated %s authority',
   async (authority) => {
     const revalidatedActor: ActorContext =
-      authority === 'Template'
-        ? ordinaryActor
-        : {
+      authority === 'Configuration'
+        ? templateActor
+        : authority === 'Template'
+          ? ordinaryActor
+          : {
+              ...templateActor,
+              activeCompany: {
+                ...company,
+                projectTemplatePermissions: [
+                  'project.template.read',
+                  'project.template.instantiate',
+                ],
+                projectTemplatePermissionAssignmentId: 'template-grant',
+                projectTemplatePermissionSetVersion: 'v1',
+              },
+            };
+    const initialActor: ActorContext =
+      authority === 'Configuration'
+        ? {
             ...templateActor,
             activeCompany: {
-              ...company,
-              projectTemplatePermissions: [
-                'project.template.read',
-                'project.template.instantiate',
+              ...templateActor.activeCompany,
+              id: companyId,
+              displayName: company.displayName,
+              clientPermissions: [],
+              projectTemplateConfigurationPermissions: [
+                'project.template.version.create',
               ],
-              projectTemplatePermissionAssignmentId: 'template-grant',
-              projectTemplatePermissionSetVersion: 'v1',
+              projectTemplateConfigurationPermissionAssignmentId:
+                'configuration-grant',
+              projectTemplateConfigurationPermissionSetVersion: 'v1',
             },
-          };
-    let currentActor = templateActor;
+          }
+        : templateActor;
+    let currentActor = initialActor;
     let returnedUpdatedActor = false;
     vi.stubGlobal(
       'fetch',
@@ -104,6 +124,16 @@ it.each(['Template', 'Stage'] as const)(
         if (path === '/api/access/current-actor') {
           if (currentActor === revalidatedActor) returnedUpdatedActor = true;
           return Response.json(currentActor);
+        }
+        if (
+          authority === 'Configuration' &&
+          path.endsWith(
+            '/project-templates/CONSULTING_PREPARATION_ILLUSTRATIVE/versions',
+          ) &&
+          init?.method === 'POST'
+        ) {
+          currentActor = revalidatedActor;
+          return new Response(null, { status: 403 });
         }
         if (path === '/api/companies' && init?.method === 'POST') {
           // A failed public operation revalidates the selected Company actor.
@@ -134,7 +164,11 @@ it.each(['Template', 'Stage'] as const)(
         if (path === `/api/projects/${projectId}`)
           return Response.json(project);
         if (path === '/api/project-templates')
-          return Response.json({ templates: [templateFixture] });
+          return Response.json({
+            templates: [templateFixture],
+            headVersion: 1,
+            nextBeforeVersion: null,
+          });
         if (path === `/api/projects/${projectId}/template`)
           return Response.json({ template: copiedPlanFixture });
         if (path === `/api/projects/${projectId}/stage-progress`)
@@ -200,24 +234,44 @@ it.each(['Template', 'Stage'] as const)(
     const navigation = screen.getByRole('navigation', {
       name: 'Primary navigation',
     });
-    fireEvent.click(
-      within(navigation).getByRole('link', { name: 'Companies' }),
-    );
-    const registration = await screen.findByRole('region', {
-      name: 'Provider Company',
-    });
-    changeValue(
-      within(registration).getByRole('textbox', {
-        name: 'Company display name',
-      }),
-      'Attempted Company',
-    );
-    fireEvent.click(
-      within(registration).getByRole('button', { name: 'Register Company' }),
-    );
-    await within(registration).findByText(
-      'You do not have permission to register or view Companies in this Workspace.',
-    );
+    if (authority === 'Configuration') {
+      const configuration = await screen.findByRole('region', {
+        name: 'Template Versions',
+      });
+      changeValue(
+        await within(configuration).findByRole('textbox', {
+          name: 'Required Task 1 title',
+        }),
+        'Rejected dedicated publication',
+      );
+      fireEvent.click(
+        within(configuration).getByRole('button', {
+          name: 'Publish successor Version',
+        }),
+      );
+      await screen.findByText(
+        'A separate Company Project Template Configuration grant is required to publish.',
+      );
+    } else {
+      fireEvent.click(
+        within(navigation).getByRole('link', { name: 'Companies' }),
+      );
+      const registration = await screen.findByRole('region', {
+        name: 'Provider Company',
+      });
+      changeValue(
+        within(registration).getByRole('textbox', {
+          name: 'Company display name',
+        }),
+        'Attempted Company',
+      );
+      fireEvent.click(
+        within(registration).getByRole('button', { name: 'Register Company' }),
+      );
+      await within(registration).findByText(
+        'You do not have permission to register or view Companies in this Workspace.',
+      );
+    }
     await waitFor(() => expect(returnedUpdatedActor).toBe(true));
 
     fireEvent.click(within(navigation).getByRole('link', { name: 'Projects' }));
@@ -248,7 +302,7 @@ it.each(['Template', 'Stage'] as const)(
           name: 'Plan copied from template',
         }),
       ).not.toBeInTheDocument();
-    } else {
+    } else if (authority === 'Stage') {
       expect(
         within(retainedProjects).getByRole('region', {
           name: 'Plan copied from template',
@@ -262,6 +316,26 @@ it.each(['Template', 'Stage'] as const)(
           name: 'Advance to Préparation',
         }),
       ).toBeDisabled();
+    }
+    if (authority === 'Configuration') {
+      expect(
+        within(retainedProjects).getByRole('region', {
+          name: 'Plan copied from template',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(retainedProjects).getByRole('combobox', {
+          name: 'Project template',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByDisplayValue('Rejected dedicated publication'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'A separate Company Project Template Configuration grant is required to publish.',
+        ),
+      ).toBeInTheDocument();
     }
   },
 );

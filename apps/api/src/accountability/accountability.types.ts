@@ -1,3 +1,4 @@
+import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
 import type { ProjectStageChangedActivityEvent } from '../project-template/project-stage.types.js';
 import type { TaskEvent } from '../task/task.types.js';
 import type { ProjectResponsibleChangedActivityEvent } from '../project/project-responsibility.types.js';
@@ -35,6 +36,7 @@ import type {
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL,
+  COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL,
 } from '../access/company-permissions.js';
 import type { CommercialActivityRecord } from './commercial-activity-projection.js';
 import type { OfferActivityProjection } from './offer-activity-projection.js';
@@ -205,6 +207,8 @@ export type CanonicalActivityEvent =
         | 'company_project_template_user_assignment.granted'
         | 'company_project_template_user_assignment.revoked'
         | 'company_project_stage_advancer_assignment.granted'
+        | 'company_project_template_configuration_assignment.granted'
+        | 'company_project_template_configuration_assignment.revoked'
         | 'company_project_stage_advancer_assignment.revoked';
       target: {
         type: 'company_role_assignment';
@@ -240,6 +244,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL
+          | typeof COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL;
       };
       transitionId: string;
@@ -363,6 +368,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_project_template_user_assignment.granted'
     | 'company_project_template_user_assignment.revoked'
     | 'company_project_stage_advancer_assignment.granted'
+    | 'company_project_template_configuration_assignment.granted'
+    | 'company_project_template_configuration_assignment.revoked'
     | 'company_project_stage_advancer_assignment.revoked'
     | typeof CLIENT_CREATED_ACTION
     | typeof CLIENT_COMPANY_RELATIONSHIP_ESTABLISHED_ACTION
@@ -445,6 +452,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL
+          | typeof COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL;
       }
     | { changes: ClientCorrectionChanges }
@@ -622,7 +630,8 @@ export type ActivityLogEvent =
   | ProjectCreatedActivityEvent
   | ProjectResponsibleChangedActivityEvent
   | ProjectLifecycleChangedActivityEvent
-  | ProjectStageChangedActivityEvent;
+  | ProjectStageChangedActivityEvent
+  | ProjectTemplateVersionCreatedActivityEvent;
 
 export interface ProjectCreatedActivityEvent {
   id: string;

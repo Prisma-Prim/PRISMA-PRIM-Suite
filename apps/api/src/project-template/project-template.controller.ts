@@ -1,3 +1,4 @@
+import { ProjectTemplateVersionService } from './project-template-version.service.js';
 import {
   Body,
   Controller,
@@ -8,6 +9,7 @@ import {
   ParseUUIDPipe,
   Post,
   Req,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -23,6 +25,7 @@ export class ProjectTemplateController {
   constructor(
     private readonly templates: ProjectTemplateService,
     private readonly stages: ProjectStageService,
+    private readonly versions: ProjectTemplateVersionService,
   ) {}
 
   @Get('projects/:projectId/stage-progress')
@@ -42,8 +45,33 @@ export class ProjectTemplateController {
     return this.stages.advance({ actor: actor(request), projectId, body, key });
   }
   @Get('project-templates')
-  catalogue(@Req() request: ActorContextRequest) {
-    return this.templates.catalogue(actor(request));
+  catalogue(
+    @Req() request: ActorContextRequest,
+    @Query('beforeVersion') beforeVersion?: string,
+  ) {
+    return this.versions.catalogue(actor(request), beforeVersion);
+  }
+  @Get('project-templates/:templateKey/versions/:version')
+  source(
+    @Req() request: ActorContextRequest,
+    @Param('templateKey') templateKey: string,
+    @Param('version') version: string,
+  ) {
+    return this.versions.read(actor(request), templateKey, version);
+  }
+  @Post('project-templates/:templateKey/versions')
+  publish(
+    @Req() request: ActorContextRequest,
+    @Param('templateKey') templateKey: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.versions.publish({
+      actor: actor(request),
+      templateKey,
+      body,
+      key,
+    });
   }
   @Post('projects/from-template')
   create(

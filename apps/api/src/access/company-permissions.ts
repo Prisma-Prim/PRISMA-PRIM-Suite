@@ -277,6 +277,10 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Project Stage Advancer',
     versions: { v1: ['project.stage.advance'] },
   },
+  company_project_template_configuration: {
+    label: 'Company Project Template Configuration',
+    versions: { v1: ['project.template.version.create'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -791,6 +795,21 @@ export function projectStagePermissionsFor(
 ): readonly CompanyProjectStagePermission[] {
   return companyRolePermissionsFor(
     COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
+    version,
+  );
+}
+
+export const COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE =
+  'company_project_template_configuration' satisfies CompanyRoleBundle;
+export const COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_project_template_configuration.label;
+export type CompanyProjectTemplateConfigurationPermission =
+  CompanyRolePermission<'company_project_template_configuration'>;
+export function projectTemplateConfigurationPermissionsFor(
+  version: unknown,
+): readonly CompanyProjectTemplateConfigurationPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
     version,
   );
 }

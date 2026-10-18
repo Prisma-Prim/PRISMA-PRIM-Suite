@@ -48,7 +48,7 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
-    page.getByLabel('Active Company', { exact: true }),
+    page.getByRole('combobox', { name: 'Active Company', exact: true }),
     companyId,
   );
   if (narrow)
@@ -58,7 +58,9 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
   await clients
     .getByRole('button', { name: 'New Client', exact: true })
     .click();
-  await clients.getByLabel('Client display name').fill(clientTitle);
+  await clients
+    .getByRole('textbox', { name: 'Client display name', exact: true })
+    .fill(clientTitle);
   const clientWrite = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
@@ -101,13 +103,16 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
     ]),
   );
   await projects
-    .getByLabel('Project title', { exact: true })
+    .getByRole('textbox', { name: 'Project title', exact: true })
     .fill(projectTitle);
-  const clientChoice = projects.getByLabel('Client', { exact: true });
+  const clientChoice = projects.getByRole('combobox', {
+    name: 'Client',
+    exact: true,
+  });
   await selectOption(clientChoice, { label: clientTitle });
   await expect(clientChoice).toHaveAttribute('data-value', clientId);
   await selectOption(
-    projects.getByLabel('Project template', { exact: true }),
+    projects.getByRole('combobox', { name: 'Project template', exact: true }),
     'CONSULTING_PREPARATION_ILLUSTRATIVE:1',
   );
   await expect(
@@ -171,9 +176,9 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
     if (!locale || !titleLabel || !createLabel)
       throw new Error('Incomplete locale expectation.');
     await selectOption(page.locator('#interface-locale'), locale);
-    await expect(projects.getByLabel(titleLabel, { exact: true })).toHaveValue(
-      projectTitle,
-    );
+    await expect(
+      projects.getByRole('textbox', { name: titleLabel, exact: true }),
+    ).toHaveValue(projectTitle);
     await expect(
       projects.getByRole('button', { name: createLabel, exact: true }),
     ).toBeEnabled();
@@ -400,13 +405,16 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
     await route.fulfill({ response });
   });
   await projects
-    .getByLabel('Project title', { exact: true })
+    .getByRole('textbox', { name: 'Project title', exact: true })
     .fill(`Denied ${suffix}`);
-  await selectOption(projects.getByLabel('Client', { exact: true }), {
-    label: clientTitle,
-  });
   await selectOption(
-    projects.getByLabel('Project template', { exact: true }),
+    projects.getByRole('combobox', { name: 'Client', exact: true }),
+    {
+      label: clientTitle,
+    },
+  );
+  await selectOption(
+    projects.getByRole('combobox', { name: 'Project template', exact: true }),
     'CONSULTING_PREPARATION_ILLUSTRATIVE:1',
   );
   const heldCreation = page.waitForRequest(
@@ -443,7 +451,7 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
     }),
   ).toBeVisible();
   await expect(
-    projects.getByLabel('Project template', { exact: true }),
+    projects.getByRole('combobox', { name: 'Project template', exact: true }),
   ).toHaveCount(0);
   await expect(
     projects.getByRole('button', { name: 'Create Project', exact: true }),
@@ -526,7 +534,7 @@ test('advances the preserved first Project stage explicitly and retries its exac
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();
   await selectOption(
-    page.getByLabel('Active Company', { exact: true }),
+    page.getByRole('combobox', { name: 'Active Company', exact: true }),
     companyId,
   );
   if (narrow)
@@ -565,7 +573,7 @@ test('advances the preserved first Project stage explicitly and retries its exac
     .click();
   await tasks.getByRole('button', { name: 'Cancel Task', exact: true }).click();
   await tasks
-    .getByLabel('Cancellation reason')
+    .getByRole('textbox', { name: 'Cancellation reason', exact: true })
     .fill('Cancellation is not completion.');
   await tasks
     .getByRole('button', { name: 'Save cancellation', exact: true })
@@ -710,6 +718,404 @@ test('advances the preserved first Project stage explicitly and retries its exac
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: testInfo.outputPath(`stage-${suffix}-history-reloaded.png`),
+    fullPage: true,
+  });
+});
+
+// #695: real App, REST and disposable PostgreSQL; transport acknowledgements alone are injected.
+test('publishes immutable compatible successors and reopens independent exact-Version Projects across four locales', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'narrow' : 'desktop';
+  const membershipId = required('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID');
+  const companyTitle = `Successor Company ${suffix}`;
+  const companyResponse = await page.request.post(
+    `${apiOrigin}/api/companies`,
+    {
+      headers: { ...owner, 'idempotency-key': randomUUID() },
+      data: { displayName: companyTitle },
+    },
+  );
+  expect(companyResponse.status()).toBe(201);
+  const companyValue: unknown = await companyResponse.json();
+  const companyId = identifier(companyValue);
+  for (const path of [
+    'company-context-assignments',
+    'company-director-client-assignments',
+    'company-project-assignments',
+    'company-task-manager-assignments',
+    'company-project-template-user-assignments',
+    'company-project-stage-advancer-assignments',
+    'company-project-template-configuration-assignments',
+  ]) {
+    const response = await page.request.post(`${apiOrigin}/api/${path}`, {
+      headers: { ...owner, 'idempotency-key': randomUUID() },
+      data: { workspaceMembershipId: membershipId, companyId },
+    });
+    expect(response.status()).toBe(201);
+  }
+  const headers = { ...ada, 'x-company-context-id': companyId };
+  async function read(path: string) {
+    const response = await page.request.get(`${apiOrigin}/api${path}`, {
+      headers,
+    });
+    expect(response.status()).toBe(200);
+    const value: unknown = await response.json();
+    if (!record(value)) throw new Error('Expected public facts.');
+    return value;
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(
+    page.getByRole('combobox', { name: 'Active Company', exact: true }),
+    companyId,
+  );
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await navigate(page, 'Clients', narrow);
+  const clients = page.locator('.client-workspace');
+  await clients
+    .getByRole('button', { name: 'New Client', exact: true })
+    .click();
+  const clientTitle = `Successor Client ${suffix}`;
+  await clients
+    .getByRole('textbox', { name: 'Client display name', exact: true })
+    .fill(clientTitle);
+  const clientWrite = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname === '/api/clients',
+  );
+  await clients
+    .getByRole('button', { name: 'Create Client', exact: true })
+    .click();
+  expect((await clientWrite).status()).toBe(201);
+  await expect(
+    clients.getByRole('heading', { name: clientTitle, exact: true }),
+  ).toBeVisible();
+  await navigate(page, 'Projects', narrow);
+  const projects = page.locator('.project-workspace');
+  await projects.getByRole('button', { name: 'Reload Projects' }).click();
+  const selector = projects.getByRole('combobox', {
+    name: 'Project template',
+    exact: true,
+  });
+  async function createProject(title: string, version: number) {
+    await projects
+      .getByRole('textbox', { name: 'Project title', exact: true })
+      .fill(title);
+    await selectOption(
+      projects.getByRole('combobox', { name: 'Client', exact: true }),
+      { label: clientTitle },
+    );
+    await selectOption(
+      selector,
+      `CONSULTING_PREPARATION_ILLUSTRATIVE:${version}`,
+    );
+    const pending = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/api/projects/from-template',
+    );
+    await projects
+      .getByRole('button', {
+        name: 'Create Project from template',
+        exact: true,
+      })
+      .click();
+    const response = await pending;
+    expect(response.status()).toBe(201);
+    const value: unknown = await response.json();
+    await expect(
+      projects.getByRole('heading', { name: title, exact: true }),
+    ).toBeVisible();
+    return identifier(value);
+  }
+  const titleA = `Original A {source} — Демо ${suffix}`;
+  const projectA = await createProject(titleA, 1);
+  const tasks = page.locator('.project-tasks');
+  const stage = projects.locator('.project-stage');
+  async function complete(title: string) {
+    await tasks.getByRole('button', { name: title, exact: true }).click();
+    await tasks.getByRole('button', { name: 'Mark done', exact: true }).click();
+    await expect(
+      tasks.getByRole('button', { name: 'Reopen Task', exact: true }),
+    ).toBeVisible();
+  }
+  await complete(sourceTitles[0] ?? '');
+  await tasks.getByRole('button', { name: 'Reopen Task', exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Mark done', exact: true }),
+  ).toBeVisible();
+  await complete(sourceTitles[0] ?? '');
+  await complete(sourceTitles[1] ?? '');
+  await stage.getByRole('button', { name: 'Reload stage progress' }).click();
+  await stage.getByRole('button', { name: 'Advance to Préparation' }).click();
+  await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+  await tasks
+    .getByRole('button', { name: sourceTitles[0], exact: true })
+    .click();
+  await tasks.getByRole('button', { name: 'Reopen Task', exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Mark done', exact: true }),
+  ).toBeVisible();
+  const beforeA = {
+    source: await read(`/projects/${projectA}/template`),
+    tasks: await read(`/projects/${projectA}/tasks`),
+    progress: await read(`/projects/${projectA}/stage-progress`),
+  };
+  if (!Array.isArray(beforeA.tasks.tasks))
+    throw new Error('Expected copied Tasks.');
+  const taskValues: unknown[] = beforeA.tasks.tasks;
+  const historiesA = await Promise.all(
+    taskValues.map((task) => read(`/tasks/${identifier(task)}/history`)),
+  );
+  expect(beforeA.progress).toMatchObject({
+    progress: {
+      stageRevision: 1,
+      currentStageKey: 'preparation',
+      transitions: [expect.objectContaining({ stageRevision: 1 })],
+    },
+  });
+  await selectOption(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:1');
+  const configuration = page.locator('.project-template-configuration');
+  const changedTitle = `Clarifier {successeur} — Демо ${suffix}`;
+  const field = configuration.getByRole('textbox', {
+    name: 'Required Task 1 title',
+    exact: true,
+  });
+  await expect(
+    configuration.getByRole('button', { name: 'Publish successor Version' }),
+  ).toBeDisabled();
+  await field.fill('   ');
+  await expect(
+    configuration.getByRole('button', { name: 'Publish successor Version' }),
+  ).toBeDisabled();
+  await field.fill(changedTitle);
+  await expect(
+    configuration.getByRole('list', { name: 'Successor preview' }),
+  ).toContainText(changedTitle);
+  const writes: Array<{ body: string | null; key: string | undefined }> = [];
+  const versionPath =
+    '/api/project-templates/CONSULTING_PREPARATION_ILLUSTRATIVE/versions';
+  await page.route(`**${versionPath}`, async (route) => {
+    writes.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (writes.length === 1) {
+      const committed = await route.fetch();
+      expect(committed.status()).toBe(201);
+      return route.fulfill({
+        status: 503,
+        body: 'Synthetic lost publication acknowledgement',
+      });
+    }
+    return route.continue();
+  });
+  await configuration
+    .getByRole('button', { name: 'Publish successor Version' })
+    .click();
+  await expect(
+    configuration.getByRole('button', { name: 'Retry exact publication' }),
+  ).toBeVisible();
+  await expect(
+    configuration.getByRole('button', { name: 'Reload current Template head' }),
+  ).toBeDisabled();
+  const localeReads: string[] = [];
+  const observe = (request: import('@playwright/test').Request) => {
+    if (
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname.startsWith('/api/')
+    )
+      localeReads.push(request.url());
+  };
+  page.on('request', observe);
+  for (const [locale, fieldName, retryName] of [
+    ['ro', 'Titlul Sarcinii obligatorii 1', 'Reîncercați publicarea exactă'],
+    ['ru', 'Название обязательной Задачи 1', 'Повторить точную публикацию'],
+    ['fr', 'Titre de la Tâche requise 1', 'Réessayer la publication exacte'],
+    ['en', 'Required Task 1 title', 'Retry exact publication'],
+  ]) {
+    if (!locale || !fieldName || !retryName)
+      throw new Error('Incomplete locale expectation.');
+    await selectOption(page.locator('#interface-locale'), locale);
+    await expect(
+      configuration.getByRole('textbox', { name: fieldName, exact: true }),
+    ).toHaveValue(changedTitle);
+    await expect(
+      configuration.getByRole('textbox', { name: fieldName, exact: true }),
+    ).toBeDisabled();
+    await expect(
+      configuration.getByRole('button', { name: retryName, exact: true }),
+    ).toBeEnabled();
+    expect(writes).toHaveLength(1);
+    expect(localeReads).toEqual([]);
+    await noOverflow(page);
+    await configuration.scrollIntoViewIfNeeded();
+    await configuration.screenshot({
+      path: testInfo.outputPath(`successor-${suffix}-uncertain-${locale}.png`),
+    });
+  }
+  page.off('request', observe);
+  await configuration
+    .getByRole('button', { name: 'Retry exact publication' })
+    .click();
+  await expect(
+    configuration.getByText('Successor Version 2 published.', { exact: true }),
+  ).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[1]).toEqual(writes[0]);
+  expect(writes[0]?.key).toBeTruthy();
+  await expect(selector).toHaveAttribute(
+    'data-value',
+    'CONSULTING_PREPARATION_ILLUSTRATIVE:1',
+  );
+  const titleB = `Successor B ${suffix}`;
+  const projectB = await createProject(titleB, 2);
+  const plan = projects.getByRole('region', {
+    name: 'Plan copied from template',
+  });
+  await expect(
+    plan.getByText('Préparation d’une mission de conseil — Version 2', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    plan.getByText(`${changedTitle} — Required`, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    stage.getByRole('button', { name: 'Advance to Préparation' }),
+  ).toBeDisabled();
+  await complete(changedTitle);
+  await complete(sourceTitles[1] ?? '');
+  await stage.getByRole('button', { name: 'Reload stage progress' }).click();
+  await stage.getByRole('button', { name: 'Advance to Préparation' }).click();
+  await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+  await tasks.getByRole('button', { name: changedTitle, exact: true }).click();
+  await tasks.getByRole('button', { name: 'Reopen Task', exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Mark done', exact: true }),
+  ).toBeVisible();
+  await stage.getByRole('button', { name: 'Reload stage progress' }).click();
+  await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+  expect(await read(`/projects/${projectA}/template`)).toEqual(beforeA.source);
+  expect(await read(`/projects/${projectA}/tasks`)).toEqual(beforeA.tasks);
+  expect(await read(`/projects/${projectA}/stage-progress`)).toEqual(
+    beforeA.progress,
+  );
+  expect(
+    await Promise.all(
+      taskValues.map((task) => read(`/tasks/${identifier(task)}/history`)),
+    ),
+  ).toEqual(historiesA);
+  const tasksB = await read(`/projects/${projectB}/tasks`);
+  if (!Array.isArray(tasksB.tasks))
+    throw new Error('Expected successor Tasks.');
+  const copiedB: unknown[] = tasksB.tasks;
+  expect(copiedB).toHaveLength(4);
+  for (const copied of copiedB)
+    expect(taskValues.map(identifier)).not.toContain(identifier(copied));
+  await page.reload();
+  for (const [title, version, literal] of [
+    [titleA, 1, sourceTitles[0]],
+    [titleB, 2, changedTitle],
+  ]) {
+    if (
+      typeof title !== 'string' ||
+      typeof version !== 'number' ||
+      typeof literal !== 'string'
+    )
+      throw new Error('Incomplete Project expectation.');
+    await projects
+      .getByRole('list', { name: 'Projects', exact: true })
+      .getByRole('button')
+      .filter({ hasText: title })
+      .click();
+    await expect(
+      plan.getByText(
+        `Préparation d’une mission de conseil — Version ${version}`,
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      plan.getByText(`${literal} — Required`, { exact: true }),
+    ).toBeVisible();
+    await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+    await noOverflow(page);
+    await page.screenshot({
+      path: testInfo.outputPath(`successor-${suffix}-reopened-v${version}.png`),
+      fullPage: true,
+    });
+  }
+  await field.fill('My stale intention');
+  const third = await page.request.post(`${apiOrigin}${versionPath}`, {
+    headers: { ...headers, 'idempotency-key': randomUUID() },
+    data: {
+      sourceVersion: 2,
+      expectedHeadVersion: 2,
+      taskTitles: {
+        clarify_request: 'Concurrent later literal',
+        confirm_scope: sourceTitles[1],
+        collect_questionnaire: sourceTitles[2],
+        prepare_plan: sourceTitles[3],
+      },
+    },
+  });
+  expect(third.status()).toBe(201);
+  await configuration
+    .getByRole('button', { name: 'Publish successor Version' })
+    .click();
+  await expect(
+    configuration.getByText(
+      'The Template head changed. Explicitly reload before publishing again.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(field).toHaveValue('My stale intention');
+  await expect(field).toBeDisabled();
+  await configuration
+    .getByRole('button', { name: 'Reload current Template head' })
+    .click();
+  await expect(field).toHaveValue('Concurrent later literal');
+  await tasks
+    .getByRole('textbox', { name: 'Task title', exact: true })
+    .fill('Independent Task draft survives Configuration denial');
+  const revoked = await page.request.delete(
+    `${apiOrigin}/api/company-project-template-configuration-assignments/${membershipId}/${companyId}`,
+    { headers: { ...owner, 'idempotency-key': randomUUID() } },
+  );
+  expect(revoked.status()).toBe(200);
+  await field.fill('Denied successor literal');
+  await configuration
+    .getByRole('button', { name: 'Publish successor Version' })
+    .click();
+  await expect(
+    configuration.getByText(
+      'A separate Company Project Template Configuration grant is required to publish.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    tasks.getByRole('textbox', { name: 'Task title', exact: true }),
+  ).toHaveValue('Independent Task draft survives Configuration denial');
+  await expect(
+    projects.getByRole('heading', { name: titleB, exact: true }),
+  ).toBeVisible();
+  await expect(
+    plan.getByText('Préparation d’une mission de conseil — Version 2', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await noOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `successor-${suffix}-configuration-read-only.png`,
+    ),
     fullPage: true,
   });
 });

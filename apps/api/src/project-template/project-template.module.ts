@@ -1,3 +1,4 @@
+import { ProjectTemplateVersionService } from './project-template-version.service.js';
 import { ProjectStageAccessService } from '../access/project-stage-access.service.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
 import { ClientModule } from '../client/client.module.js';
@@ -23,8 +24,13 @@ import { ProjectTemplateService } from './project-template.service.js';
     ProjectTemplateAccessService,
     ProjectStageAccessService,
     ProjectTemplateService,
+    ProjectTemplateVersionService,
     ProjectStageService,
   ],
-  exports: [ProjectTemplateService, ProjectStageService],
+  exports: [
+    ProjectTemplateService,
+    ProjectStageService,
+    ProjectTemplateVersionService,
+  ],
 })
 export class ProjectTemplateModule {}

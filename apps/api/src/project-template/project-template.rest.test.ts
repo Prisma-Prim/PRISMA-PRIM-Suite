@@ -1594,7 +1594,9 @@ describe.skipIf(!databaseUrl)(
         [],
         {},
         creation({ templateKey: 'UNAPPROVED' }),
-        creation({ templateVersion: 2 }),
+        creation({ templateVersion: 0 }),
+        creation({ templateVersion: 1.5 }),
+        creation({ templateVersion: 2147483648 }),
         creation({ templateVersion: '1' }),
         creation({ title: '   ' }),
         creation({ title: 'x'.repeat(201) }),
@@ -1617,6 +1619,15 @@ describe.skipIf(!databaseUrl)(
           })
         ).status,
       ).toBe(400);
+      // A well-formed successor Version is supported only when published in this Company.
+      expect(
+        (
+          await request('/projects/from-template', {
+            method: 'POST',
+            value: creation({ templateVersion: 2 }),
+          })
+        ).status,
+      ).toBe(404);
       expect(await countRows()).toEqual([
         {
           projects: 0,

@@ -1,3 +1,4 @@
+import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
 import { useProjectStageCopy } from '../project/project-stage.copy';
 import { useDocumentPdfCopy } from '../documents/document-pdf.copy';
 import { useProjectTemplateCopy } from '../project/project-template.copy';
@@ -52,6 +53,7 @@ type AssignmentBundle =
   | 'opportunity-manager'
   | 'sales-stage-configuration'
   | 'project-template-user'
+  | 'project-template-configuration'
   | 'project-stage-advancer'
   | 'project'
   | 'project-approver'
@@ -85,6 +87,8 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'opportunity-manager': '/company-opportunity-manager-assignments',
   'sales-stage-configuration': '/company-sales-stage-configuration-assignments',
   'project-template-user': '/company-project-template-user-assignments',
+  'project-template-configuration':
+    '/company-project-template-configuration-assignments',
   'project-stage-advancer': '/company-project-stage-advancer-assignments',
   project: '/company-project-assignments',
   'project-approver': '/company-project-approver-assignments',
@@ -122,6 +126,7 @@ export function CompanyContextAccess({
   const decisionCopy = useContractDecisionCopy();
   const stageCopy = useSalesStageCopy();
   const templateCopy = useProjectTemplateCopy();
+  const templateVersionCopy = useProjectTemplateVersionCopy();
   const projectStageCopy = useProjectStageCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [workspaceMembershipId, setWorkspaceMembershipId] = useState('');
@@ -325,6 +330,7 @@ export function CompanyContextAccess({
       if (
         result.status === 'ok' &&
         command.bundle !== 'company-context' &&
+        command.bundle !== 'project-template-configuration' &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase()
       ) {
@@ -540,6 +546,10 @@ export function CompanyContextAccess({
               },
               { value: 'project-template-user', label: templateCopy('bundle') },
               {
+                value: 'project-template-configuration',
+                label: templateVersionCopy('bundle'),
+              },
+              {
                 value: 'project-stage-advancer',
                 label: projectStageCopy('bundle'),
               },
@@ -587,6 +597,7 @@ export function CompanyContextAccess({
                 value === 'opportunity-manager' ||
                 value === 'sales-stage-configuration' ||
                 value === 'project-template-user' ||
+                value === 'project-template-configuration' ||
                 value === 'project-stage-advancer' ||
                 value === 'company-context' ||
                 value === 'director-client' ||
@@ -645,6 +656,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'project-stage-advancer' && (
             <p>{projectStageCopy('prerequisites')}</p>
+          )}
+          {bundle === 'project-template-configuration' && (
+            <p>{templateVersionCopy('prerequisites')}</p>
           )}
           {bundle === 'project-template-user' && (
             <p>{templateCopy('prerequisites')}</p>
@@ -746,6 +760,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'opportunity-manager': copy.opportunityManagerBundle,
     'sales-stage-configuration': 'Company Sales Stage Configuration',
     'project-template-user': 'Company Project Template User',
+    'project-template-configuration': 'Company Project Template Configuration',
     'project-stage-advancer': 'Company Project Stage Advancer',
     'task-manager': copy.taskManagerBundle,
     'document-project-organizer': copy.documentProjectOrganizerBundle,

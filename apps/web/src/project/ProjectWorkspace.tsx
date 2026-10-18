@@ -121,6 +121,7 @@ export function ProjectWorkspace({
   onOpenContract,
   requestedProject,
   projectOpenRequestId = 0,
+  catalogueRevision = 0,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -139,6 +140,7 @@ export function ProjectWorkspace({
   requestedProject?: { projectId: string; taskId?: string; requestId: number };
   /** Increases whenever another section asks to open Projects. */
   projectOpenRequestId?: number;
+  catalogueRevision?: number;
 }) {
   const copy = useProjectCopy();
   const documentsCopy = useProjectDocumentsCopy();
@@ -908,6 +910,7 @@ export function ProjectWorkspace({
                     key={templateAuthority}
                     actor={actor}
                     identity={identity}
+                    catalogueRevision={catalogueRevision}
                     selection={templateSelection}
                     onSelection={setTemplateSelection}
                     disabled={pending}
