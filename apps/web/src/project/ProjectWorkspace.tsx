@@ -28,7 +28,7 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { useProjectCopy } from './project-localized.copy';
-import { projectDocumentsCopy } from './project-documents.copy';
+import { useProjectDocumentsCopy } from './project-documents.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
@@ -141,6 +141,7 @@ export function ProjectWorkspace({
   projectOpenRequestId?: number;
 }) {
   const copy = useProjectCopy();
+  const documentsCopy = useProjectDocumentsCopy();
   const templateCopy = useProjectTemplateCopy();
   const templateAuthority = projectTemplateAuthority(actor);
   const previousTemplateAuthority = useRef(templateAuthority);
@@ -1051,7 +1052,7 @@ export function ProjectWorkspace({
                 onClick={() => setDetailPanel('documents')}
                 onKeyDown={(event) => moveDetailTab(event, 'documents')}
               >
-                {projectDocumentsCopy.title}
+                {documentsCopy.title}
               </button>
             </div>
           )}
