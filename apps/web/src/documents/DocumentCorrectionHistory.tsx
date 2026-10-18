@@ -8,7 +8,7 @@ import {
   type DocumentCorrection,
   type DocumentCorrectionChange,
 } from './document-response';
-import { documentCorrectionHistoryCopy as copy } from './document-correction-history.copy';
+import { useDocumentCorrectionHistoryCopy } from './document-correction-history.copy';
 import './document-correction-history.css';
 
 interface LoadedHistory {
@@ -74,6 +74,7 @@ function CorrectionHistorySection({
   workingRevision: number;
   canReadReference: boolean;
 }) {
+  const copy = useDocumentCorrectionHistoryCopy();
   const titleId = useId();
   const contentId = useId();
   const [expanded, setExpanded] = useState(false);
@@ -221,6 +222,7 @@ function HistoryContent({
   onRetry: () => void;
   onLoadOlder: (beforeRevision: number) => void;
 }) {
+  const copy = useDocumentCorrectionHistoryCopy();
   switch (history.status) {
     case 'loading':
       return <p role="status">{copy.loading}</p>;
@@ -287,6 +289,7 @@ function HistoryContent({
 
 /** Recorded values render as inert text; a prior URL is never a link. */
 function FieldChange({ change }: { change: DocumentCorrectionChange }) {
+  const copy = useDocumentCorrectionHistoryCopy();
   return (
     <div>
       <dt>{copy.fieldLabels[change.field]}</dt>

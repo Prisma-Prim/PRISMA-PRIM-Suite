@@ -11,7 +11,7 @@ import {
   type WorkingDocument,
   type WorkingDocumentDetail,
 } from './document-response';
-import { documentsCopy as copy } from './documents.copy';
+import { useDocumentsCopy } from './documents.copy';
 import { DocumentCorrectionHistory } from './DocumentCorrectionHistory';
 import { DocumentVersions } from './DocumentVersions';
 import { formatApplicationDateTime } from '../presentation/date-time';
@@ -75,6 +75,7 @@ export function DocumentWorkspace({
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const copy = useDocumentsCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
   const [filter, setFilter] = useState<DocumentFilter>({
@@ -997,7 +998,7 @@ export function DocumentWorkspace({
               ) : (
                 <>
                   <h3>{detail.title}</h3>
-                  <p>{workingVersionLabel(detail.version.status)}</p>
+                  <p>{workingVersionLabel(detail.version.status, copy)}</p>
                   <p>{detail.clientDisplayName}</p>
                   {detail.clientDossierId &&
                     onOpenClientDossier &&
@@ -1192,6 +1193,7 @@ export function DocumentWorkspace({
 /** The working Version the detail shows: the draft, otherwise the official one. */
 function workingVersionLabel(
   status: WorkingDocument['version']['status'],
+  copy: Pick<ReturnType<typeof useDocumentsCopy>, 'draft' | 'official'>,
 ): string {
   switch (status) {
     case 'draft':
@@ -1211,6 +1213,7 @@ function ClientDossierButton({
   clientDossierId: string;
   onOpen: (clientDossierId: string) => void;
 }) {
+  const copy = useDocumentsCopy();
   return (
     <button type="button" onClick={() => onOpen(clientDossierId)}>
       {copy.openDossier}
@@ -1222,6 +1225,7 @@ function ClientDossierButton({
  * describes the external content, its acceptance as evidence or certification.
  */
 function RegistrationTime({ registeredAt }: { registeredAt: string }) {
+  const copy = useDocumentsCopy();
   return (
     <dl className="working-document-registration-time">
       <dt>{copy.registrationTime}</dt>
@@ -1245,11 +1249,12 @@ function ProjectAssociation({
   association: DocumentProjectAssociation;
   onOpenProject?: (projectId: string) => void;
 }) {
+  const copy = useDocumentsCopy();
   return (
     <>
       <dl className="working-document-project">
         <dt>{copy.project}</dt>
-        <dd>{projectAssociationLabel(association)}</dd>
+        <dd>{projectAssociationLabel(association, copy.notLinkedToProject)}</dd>
       </dl>
       {association.state === 'linked' && onOpenProject && (
         <OpenProjectButton
@@ -1267,6 +1272,7 @@ function OpenProjectButton({
   projectId: string;
   onOpen: (projectId: string) => void;
 }) {
+  const copy = useDocumentsCopy();
   return (
     <button type="button" onClick={() => onOpen(projectId)}>
       {copy.openProject}
@@ -1275,12 +1281,13 @@ function OpenProjectButton({
 }
 function projectAssociationLabel(
   association: DocumentProjectAssociation,
+  notLinkedToProject: string,
 ): string {
   switch (association.state) {
     case 'linked':
       return association.project.title;
     case 'unlinked':
-      return copy.notLinkedToProject;
+      return notLinkedToProject;
     default: {
       const exhaustive: never = association;
       return exhaustive;

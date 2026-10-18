@@ -18,14 +18,16 @@ import {
 import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import {
+  isRepresentationForm,
   readDocumentVersionReceipt,
   readDocumentVersions,
   type DocumentRepresentationForm,
   type DocumentVersion,
   type DocumentVersionReference,
   type DocumentVersions as VersionsRead,
+  type DocumentVersionReceipt,
 } from './document-response';
-import { documentVersionsCopy as copy } from './document-versions.copy';
+import { useDocumentVersionsCopy } from './document-versions.copy';
 import './document-versions.css';
 
 type ReadState =
@@ -65,7 +67,10 @@ type CommandState =
     }
   | { status: 'pending'; command: VersionCommand }
   | { status: 'uncertain'; command: VersionCommand }
-  | { status: 'confirmed'; message: string }
+  | {
+      status: 'confirmed';
+      receipt: Pick<DocumentVersionReceipt, 'action' | 'versionNumber'>;
+    }
   | {
       status: 'refused';
       reason:
@@ -177,6 +182,7 @@ function VersionsSection({
   onRefresh: () => Promise<void> | void;
   rejection: AccessRejection;
 }) {
+  const copy = useDocumentVersionsCopy();
   const titleId = useId();
   const confirmationId = useId();
   const [read, setRead] = useState<ReadState>({ status: 'loading' });
@@ -305,25 +311,12 @@ function VersionsSection({
             receipt.action !== next.action
           )
             throw new Error('Unexpected Version receipt');
-          const message = (() => {
-            switch (receipt.action) {
-              case 'designated_official':
-                return copy.designated(receipt.versionNumber);
-              case 'drafted':
-                return copy.drafted(receipt.versionNumber);
-              case 'representation_added':
-                return copy.referenceAdded(receipt.versionNumber);
-              case 'representation_removed':
-                return copy.referenceRemoved(receipt.versionNumber);
-              default: {
-                const exhaustive: never = receipt;
-                return exhaustive;
-              }
-            }
-          })();
           setCommand({
             status: 'confirmed',
-            message,
+            receipt: {
+              action: receipt.action,
+              versionNumber: receipt.versionNumber,
+            },
           });
           setReloads((count) => count + 1);
           // The owner reports its own refresh failure; the confirmed command
@@ -599,6 +592,7 @@ function VersionRow({
   ) => void;
   children: ReactNode;
 }) {
+  const copy = useDocumentVersionsCopy();
   return (
     <li
       className={`working-document-version working-document-version--${version.status}`}
@@ -657,6 +651,7 @@ function VersionRow({
 }
 
 function Designation({ version }: { version: DocumentVersion }) {
+  const copy = useDocumentVersionsCopy();
   switch (version.status) {
     case 'draft':
       return null;
@@ -714,6 +709,7 @@ function VersionReference({
   reference: DocumentVersionReference;
   showPrimary: boolean;
 }) {
+  const copy = useDocumentVersionsCopy();
   const label = (
     <span className="working-document-version-reference-label">
       {copy.formLabels[reference.form]} · {copy.position(reference.position)}
@@ -761,6 +757,7 @@ function ReferenceForm({
   busy: boolean;
   onAdd: (form: DocumentRepresentationForm, url: string) => void;
 }) {
+  const copy = useDocumentVersionsCopy();
   const id = useId();
   const [form, setForm] = useState<DocumentRepresentationForm>('other');
   const [url, setUrl] = useState('');
@@ -832,12 +829,6 @@ function ReferenceForm({
   );
 }
 
-function isRepresentationForm(
-  value: string,
-): value is DocumentRepresentationForm {
-  return copy.formOptions.some((option) => option.value === value);
-}
-
 function CommandFeedback({
   command,
   confirmationId,
@@ -857,6 +848,7 @@ function CommandFeedback({
   onRetry: (command: VersionCommand) => void;
   onReload: () => void;
 }) {
+  const copy = useDocumentVersionsCopy();
   switch (command.status) {
     case 'idle':
       return null;
@@ -906,7 +898,7 @@ function CommandFeedback({
     case 'pending':
       return <p role="status">{copy.pending}</p>;
     case 'confirmed':
-      return <p role="status">{command.message}</p>;
+      return <p role="status">{confirmedMessage(command.receipt, copy)}</p>;
     case 'uncertain':
       return (
         <>
@@ -919,7 +911,7 @@ function CommandFeedback({
     case 'refused':
       return (
         <>
-          <p role="alert">{refusalMessage(command.reason)}</p>
+          <p role="alert">{refusalMessage(command.reason, copy)}</p>
           {(command.reason === 'conflict' ||
             command.reason === 'unavailable') && (
             <button type="button" onClick={onReload}>
@@ -935,8 +927,29 @@ function CommandFeedback({
   }
 }
 
+function confirmedMessage(
+  receipt: Extract<CommandState, { status: 'confirmed' }>['receipt'],
+  copy: ReturnType<typeof useDocumentVersionsCopy>,
+): string {
+  switch (receipt.action) {
+    case 'designated_official':
+      return copy.designated(receipt.versionNumber);
+    case 'drafted':
+      return copy.drafted(receipt.versionNumber);
+    case 'representation_added':
+      return copy.referenceAdded(receipt.versionNumber);
+    case 'representation_removed':
+      return copy.referenceRemoved(receipt.versionNumber);
+    default: {
+      const exhaustive: never = receipt.action;
+      return exhaustive;
+    }
+  }
+}
+
 function refusalMessage(
   reason: Extract<CommandState, { status: 'refused' }>['reason'],
+  copy: ReturnType<typeof useDocumentVersionsCopy>,
 ): string {
   switch (reason) {
     case 'conflict':
