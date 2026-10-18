@@ -275,11 +275,11 @@ for (const frame of ['classic', 'prisme'] as const)
     await projectTasks
       .getByRole('button', { name: taskTitle, exact: true })
       .click();
-    await expect(
-      projectTasks.locator('dd').getByText(atelierTask.dueDate, {
-        exact: true,
-      }),
-    ).toBeVisible();
+    const atelierDueDate = projectTasks.locator(
+      `dd time[datetime="${atelierTask.dueDate}"]`,
+    );
+    await expect(atelierDueDate).toBeVisible();
+    await expect(atelierDueDate).toHaveText('Sep 30, 2026');
     await projectTasks.getByLabel('Task title').fill(draft);
 
     if (frame === 'prisme') await navigate(page, testInfo, 'My Tasks');
@@ -303,9 +303,11 @@ for (const frame of ['classic', 'prisme'] as const)
     await expect(
       projectTasks.getByRole('heading', { name: taskTitle, exact: true }),
     ).toBeVisible();
-    await expect(
-      projectTasks.locator('dd').getByText(betaTask.dueDate, { exact: true }),
-    ).toBeVisible();
+    const betaDueDate = projectTasks.locator(
+      `dd time[datetime="${betaTask.dueDate}"]`,
+    );
+    await expect(betaDueDate).toBeVisible();
+    await expect(betaDueDate).toHaveText('Oct 5, 2026');
     await expectValue(projectTasks.getByLabel('Task title'), taskTitle);
     await expect(
       projectTasks.getByRole('region', { name: 'Task history' }),
@@ -338,11 +340,11 @@ for (const frame of ['classic', 'prisme'] as const)
         .getByText(`Client: ${gamma.displayName}`),
     ).toBeVisible();
     await expect(projectTasks.getByText(readOnlyNotice)).toBeVisible();
-    await expect(
-      projectTasks.locator('dd').getByText(archivedTask.dueDate, {
-        exact: true,
-      }),
-    ).toBeVisible();
+    const archivedDueDate = projectTasks.locator(
+      `dd time[datetime="${archivedTask.dueDate}"]`,
+    );
+    await expect(archivedDueDate).toBeVisible();
+    await expect(archivedDueDate).toHaveText('Oct 12, 2026');
     await expect(
       projectTasks.getByRole('region', { name: 'Task history' }),
     ).toBeVisible();

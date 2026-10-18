@@ -371,7 +371,12 @@ test('manages manual Tasks through the production shell with retained retry and 
   await expect(
     history.getByText('Completion declared', { exact: true }),
   ).toBeVisible();
-  await expect(history.getByText('Before: 2026-10-15')).toBeVisible();
+  await expect(history.getByText('Before: Oct 15, 2026')).toBeVisible();
+  await expect(tasks.locator('.task-facts time')).toHaveAttribute(
+    'datetime',
+    '2026-10-20',
+  );
+  await expect(tasks.getByLabel('Due date')).toHaveValue('2026-10-20');
   await expect(history.getByText('Priority: Critical')).toBeVisible();
   await expect(history.getByText('Critical → Important')).toBeVisible();
   const detail = page.getByRole('article', { name: project.title });

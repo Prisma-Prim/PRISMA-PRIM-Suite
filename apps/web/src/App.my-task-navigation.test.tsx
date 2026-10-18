@@ -75,6 +75,10 @@ const assignedTask = (
 });
 const atelierTask = assignedTask(atelierProject, 'task-atelier', '2026-09-30');
 const betaTask = assignedTask(betaProject, 'task-beta', '2026-10-05');
+const dueDateLabels = new Map([
+  ['2026-09-30', 'Sep 30, 2026'],
+  ['2026-10-05', 'Oct 5, 2026'],
+]);
 type TaskState = Record<string, unknown> & { id: string; projectId: string };
 /** The Project title the My Tasks rows carry; Projects never presents it. */
 const titleReadWithMyTasks = 'Pregătire demo, as listed in My Tasks';
@@ -305,14 +309,19 @@ async function openedProject(client: typeof atelier) {
 }
 /** Waits until the opened Tasks panel shows that Task's detail. */
 function openedTask(task: { dueDate: string }) {
+  const dueDateLabel = dueDateLabels.get(task.dueDate);
+  if (dueDateLabel === undefined)
+    throw new Error(`No expected date label for fixture ${task.dueDate}.`);
   return waitFor(() => {
     const tasks = visibleTasks();
     expect(
       within(tasks).getByRole('heading', { name: taskTitle }),
     ).toBeVisible();
-    expect(
-      within(tasks).getByText(task.dueDate, { selector: 'dd' }),
-    ).toBeVisible();
+    const dueDate = tasks.querySelector(
+      `.task-facts time[datetime="${task.dueDate}"]`,
+    );
+    expect(dueDate).toBeVisible();
+    expect(dueDate?.textContent).toBe(dueDateLabel);
     return tasks;
   });
 }
@@ -510,7 +519,9 @@ describe('Opening an assigned Task from My Tasks through App', () => {
       await openedProject(beta);
       const tasks = await openedTask(betaTask);
       expect(
-        within(tasks).queryByText(atelierTask.dueDate, { selector: 'dd' }),
+        tasks.querySelector(
+          `.task-facts time[datetime="${atelierTask.dueDate}"]`,
+        ),
       ).not.toBeInTheDocument();
       expect(screen.getAllByRole('article')).toHaveLength(1);
       expect(server.count(taskRead(atelierTask))).toBe(atelierTaskReads);

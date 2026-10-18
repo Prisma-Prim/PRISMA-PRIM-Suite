@@ -101,6 +101,11 @@ const atelierTask = taskOf(
   'Chestionar inițial',
   '2026-09-30',
 );
+const dueDateLabels = new Map([
+  ['2026-09-28', 'Sep 28, 2026'],
+  ['2026-09-30', 'Sep 30, 2026'],
+  ['2026-10-05', 'Oct 5, 2026'],
+]);
 const atelierRow = `${sharedTitle} Client: ${atelier.displayName}`;
 const betaRow = `${sharedTitle} Client: ${beta.displayName}`;
 const betaProjectRead = `GET /api/projects/${betaProject.id}`;
@@ -320,14 +325,19 @@ const settle = () =>
   act(async () => await new Promise((resolve) => setTimeout(resolve)));
 /** Waits until the opened Tasks panel shows that Task's detail. */
 function openedTask(task: { title: string; dueDate: string }) {
+  const dueDateLabel = dueDateLabels.get(task.dueDate);
+  if (dueDateLabel === undefined)
+    throw new Error(`No expected date label for fixture ${task.dueDate}.`);
   return waitFor(() => {
     const tasks = tasksPanel();
     expect(
       within(tasks).getByRole('heading', { name: task.title }),
     ).toBeVisible();
-    expect(
-      within(tasks).getByText(task.dueDate, { selector: 'dd' }),
-    ).toBeVisible();
+    const dueDate = tasks.querySelector(
+      `.task-facts time[datetime="${task.dueDate}"]`,
+    );
+    expect(dueDate).toBeVisible();
+    expect(dueDate?.textContent).toBe(dueDateLabel);
     return tasks;
   });
 }
@@ -719,9 +729,11 @@ describe('Requested Task opens', () => {
         expect(within(panel).getByLabelText('Task title')).toHaveValue(
           shown.title,
         );
-        expect(
-          within(panel).getByText(shown.dueDate, { selector: 'dd' }),
-        ).toBeVisible();
+        const dueDate = panel.querySelector(
+          `.task-facts time[datetime="${shown.dueDate}"]`,
+        );
+        expect(dueDate).toBeVisible();
+        expect(dueDate?.textContent).toBe('Oct 5, 2026');
         return panel;
       });
       fireEvent.click(within(opened).getByRole('button', { name: 'New Task' }));

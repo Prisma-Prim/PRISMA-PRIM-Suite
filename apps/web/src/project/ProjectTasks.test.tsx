@@ -313,9 +313,15 @@ async function openSavedTask() {
       name: `${project.title} Client: ${project.clientDisplayName}`,
     }),
   );
-  fireEvent.click(await screen.findByRole('button', { name: savedTask.title }));
-  await screen.findByRole('heading', { name: savedTask.title });
-  return screen.getByRole('region', { name: 'Tasks' });
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  const navigation = await within(tasks).findByRole('navigation', {
+    name: 'Tasks',
+  });
+  fireEvent.click(
+    within(navigation).getByRole('button', { name: savedTask.title }),
+  );
+  await within(tasks).findByRole('heading', { name: savedTask.title });
+  return tasks;
 }
 
 it('filters loaded Tasks locally by title and current status while preserving server order', async () => {
@@ -2233,9 +2239,11 @@ it('keeps unsaved title, responsible member, date and priority through moves bet
   expect(
     within(tasks).getByText(anaPop.displayLabel, { selector: 'dd' }),
   ).toBeInTheDocument();
-  expect(
-    within(tasks).getByText(unsavedFields.dueDate, { selector: 'dd' }),
-  ).toBeInTheDocument();
+  const dueDate = tasks.querySelector(
+    `.task-facts time[datetime="${unsavedFields.dueDate}"]`,
+  );
+  expect(dueDate).toBeInTheDocument();
+  expect(dueDate?.textContent).toBe('Oct 15, 2026');
   expect(
     within(tasks).getByText('Critical', { selector: 'dd' }),
   ).toBeInTheDocument();
