@@ -1879,6 +1879,71 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-project-template-configuration-assignments:
+    post:
+      operationId: grantCompanyProjectTemplateConfigurationAssignment
+      summary: Grant the opt-in Company Project Template Configuration v1 bundle to an active Workspace Membership
+      description: >-
+        Captures v1, which contains exactly `project.template.version.create`. It grants
+        no Company context, Project/Template read, Client or Task authority. Exactly one
+        `company_project_template_configuration_assignment.granted` event is recorded per
+        actual state change; a repeat, a replay or a denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active captured Company Project Template Configuration v1 assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectTemplateConfigurationAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-project-template-configuration-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyProjectTemplateConfigurationAssignment
+      summary: Revoke the Company Project Template Configuration assignment
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked captured Company Project Template Configuration assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProjectTemplateConfigurationAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
   /api/company-project-stage-advancer-assignments:
     post:
       operationId: grantCompanyProjectStageAdvancerAssignment
@@ -2383,11 +2448,16 @@ paths:
       description: >-
         Requires explicit project.template.read plus current Company context and
         Project read. Grants no authority to start real work. Business source text
-        is preserved independently of interface locale.
+        is preserved independently of interface locale. Company successors form one linear
+        immutable succession from the unchanged code-defined v1 baseline. Returns at most
+        20 Versions newest first, with an explicit exclusive continuation cursor.
       tags:
         - Project templates
       parameters:
         - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: beforeVersion
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
       responses:
         '200':
           description: Available immutable illustrative source definitions.
@@ -2398,16 +2468,120 @@ paths:
                 additionalProperties: false
                 required:
                   - templates
+                  - headVersion
+                  - nextBeforeVersion
                 properties:
                   templates:
                     type: array
-                    maxItems: 1
+                    maxItems: 20
                     items:
                       $ref: '#/components/schemas/ProjectTemplateDefinition'
+                  headVersion:
+                    { type: integer, minimum: 1, maximum: 2147483647 }
+                  nextBeforeVersion:
+                    { type: [integer, 'null'], minimum: 1, maximum: 2147483647 }
+        '400':
+          description: The continuation cursor is malformed.
         '401':
           description: No verified External Principal.
         '403':
           description: A current independent permission or Company prerequisite is missing.
+  /api/project-templates/{templateKey}/versions/{version}:
+    get:
+      operationId: readExactIllustrativeProjectTemplateVersion
+      summary: Read one exact supported Company Template Version
+      description: Requires current Company context, Project read and captured Template read, independently of Client or Task authority. Other Company successors are never resolved.
+      tags: [Project templates]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: templateKey
+          required: true
+          schema: { type: string, const: CONSULTING_PREPARATION_ILLUSTRATIVE }
+        - in: path
+          name: version
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      responses:
+        '200':
+          description: The exact immutable source, including the unchanged code-defined v1 baseline.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [template]
+                properties:
+                  template:
+                    { $ref: '#/components/schemas/ProjectTemplateDefinition' }
+        '400': { description: Malformed model key or exact Version. }
+        '401': { description: No verified External Principal. }
+        '403':
+          { description: A current catalogue-read prerequisite is missing. }
+        '404':
+          { description: No supported exact Version exists in this Company. }
+  /api/project-templates/{templateKey}/versions:
+    post:
+      operationId: publishIllustrativeProjectTemplateSuccessor
+      summary: Create and immediately publish one immutable compatible Company successor
+      description: >-
+        Requires captured Company Project Template Configuration v1 plus independent current
+        Company context, Project read and Template read; requires no Client or Task authority.
+        Changes only the four normalized required Task titles, with at least one differing
+        from the exact observed source/head. The server assigns the next canonical Version.
+        Content, immutable lineage, head, receipt and one minimal Company Version event commit
+        together; no Client fence advances and no existing Project copy or history changes.
+        Actor/Workspace idempotency covers Company, source/head and all four normalized titles.
+        Live authority is rechecked and an identical committed receipt is resolved before the
+        old expected head. Different concurrent intentions from one head yield one successor
+        and one definite stale conflict requiring explicit reload; there is no implicit rebase.
+      tags: [Project templates]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: templateKey
+          required: true
+          schema: { type: string, const: CONSULTING_PREPARATION_ILLUSTRATIVE }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              {
+                $ref: '#/components/schemas/PublishProjectTemplateVersionInput',
+              }
+      responses:
+        '201':
+          description: The committed publication receipt, or the identical original receipt on authorized retry.
+          content:
+            application/json:
+              schema:
+                { $ref: '#/components/schemas/ProjectTemplateVersionReceipt' }
+        '400':
+          description: Malformed, unchanged, overflowing or incompatible publication intent.
+        '401': { description: No verified External Principal. }
+        '403':
+          {
+            description: Dedicated publication or independent catalogue authority is missing.,
+          }
+        '409':
+          description: Exact stale head or changed intention under an existing key.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code:
+                    {
+                      type: string,
+                      enum:
+                        [
+                          template_publication_stale_head,
+                          template_publication_key_conflict,
+                        ],
+                    }
   /api/projects/from-template:
     post:
       operationId: createProjectFromIllustrativeTemplate
@@ -2448,7 +2622,7 @@ paths:
         '403':
           description: A current independent permission or Company prerequisite is missing.
         '404':
-          description: No readable active original Client matches the selected Company.
+          description: No readable active original Client or exact supported source Version matches the selected Company.
         '409':
           description: The idempotency key belongs to another normalized creation intent.
   /api/projects/{projectId}/template:
@@ -3657,6 +3831,7 @@ components:
         - $ref: '#/components/schemas/ClientUnionProjection'
         - $ref: '#/components/schemas/ProjectLifecycleChangedActivityEvent'
         - $ref: '#/components/schemas/ProjectStageChangedActivityEvent'
+        - $ref: '#/components/schemas/ProjectTemplateVersionCreatedActivityEvent'
         - $ref: '#/components/schemas/DocumentRepresentationAddedActivityEvent'
         - $ref: '#/components/schemas/DocumentRepresentationRemovedActivityEvent'
     ClientRequestClientAssociatedActivityEvent:
@@ -3758,6 +3933,8 @@ components:
             - company_director_client_assignment.revoked
             - company_project_approver_assignment.granted
             - company_project_approver_assignment.revoked
+            - company_project_template_configuration_assignment.granted
+            - company_project_template_configuration_assignment.revoked
             - company_project_template_user_assignment.granted
             - company_project_template_user_assignment.revoked
             - company_project_stage_advancer_assignment.granted
@@ -3877,6 +4054,7 @@ components:
             - Company Project Approver
             - Company Project Template User
             - Company Project Stage Advancer
+            - Company Project Template Configuration
     ClientCorrectedMetadata:
       type: object
       additionalProperties: false
@@ -4233,6 +4411,7 @@ components:
             - Company Project Approver
             - Company Project Template User
             - Company Project Stage Advancer
+            - Company Project Template Configuration
         permissionSetVersion:
           type:
             - string
@@ -4496,6 +4675,34 @@ components:
           const: v1
         active:
           type: boolean
+    CompanyProjectTemplateConfigurationAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Project Template Configuration
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
     ProjectTemplateTaskDefinition:
       type: object
       additionalProperties: false
@@ -4591,7 +4798,8 @@ components:
           const: CONSULTING_PREPARATION_ILLUSTRATIVE
         version:
           type: integer
-          const: 1
+          minimum: 1
+          maximum: 2147483647
         title:
           type: string
           minLength: 1
@@ -4619,7 +4827,8 @@ components:
           const: CONSULTING_PREPARATION_ILLUSTRATIVE
         version:
           type: integer
-          const: 1
+          minimum: 1
+          maximum: 2147483647
         title:
           type: string
           minLength: 1
@@ -4653,7 +4862,8 @@ components:
           const: CONSULTING_PREPARATION_ILLUSTRATIVE
         templateVersion:
           type: integer
-          const: 1
+          minimum: 1
+          maximum: 2147483647
     TemplateCreatedProject:
       type: object
       additionalProperties: false
@@ -6307,6 +6517,15 @@ components:
           items: { type: string, const: project.stage.advance }
         projectStagePermissionAssignmentId: { type: string, format: uuid }
         projectStagePermissionSetVersion: { type: string, const: v1 }
+        projectTemplateConfigurationPermissions:
+          type: array
+          uniqueItems: true
+          maxItems: 1
+          items: { type: string, const: project.template.version.create }
+        projectTemplateConfigurationPermissionAssignmentId:
+          { type: string, format: uuid }
+        projectTemplateConfigurationPermissionSetVersion:
+          { type: string, const: v1 }
         projectTemplatePermissions:
           type: array
           uniqueItems: true
@@ -7085,3 +7304,74 @@ components:
               },
           },
       }
+
+    PublishProjectTemplateVersionInput:
+      type: object
+      additionalProperties: false
+      required: [sourceVersion, expectedHeadVersion, taskTitles]
+      properties:
+        sourceVersion: { type: integer, minimum: 1, maximum: 2147483646 }
+        expectedHeadVersion:
+          type: integer
+          minimum: 1
+          maximum: 2147483646
+          description: Must equal sourceVersion and the current Company head for a new command.
+        taskTitles:
+          type: object
+          additionalProperties: false
+          required:
+            [
+              clarify_request,
+              confirm_scope,
+              collect_questionnaire,
+              prepare_plan,
+            ]
+          properties:
+            clarify_request:
+              { $ref: '#/components/schemas/NormalizedTemplateTaskTitle' }
+            confirm_scope:
+              { $ref: '#/components/schemas/NormalizedTemplateTaskTitle' }
+            collect_questionnaire:
+              { $ref: '#/components/schemas/NormalizedTemplateTaskTitle' }
+            prepare_plan:
+              { $ref: '#/components/schemas/NormalizedTemplateTaskTitle' }
+    NormalizedTemplateTaskTitle:
+      type: string
+      pattern: \S
+      description: The owning Task grammar trims the value and requires 1–200 normalized characters.
+    ProjectTemplateVersionReceipt:
+      type: object
+      additionalProperties: false
+      required: [versionId, templateKey, version, sourceVersion]
+      properties:
+        versionId: { type: string, format: uuid }
+        templateKey:
+          { type: string, const: CONSULTING_PREPARATION_ILLUSTRATIVE }
+        version: { type: integer, minimum: 2, maximum: 2147483647 }
+        sourceVersion: { type: integer, minimum: 1, maximum: 2147483646 }
+    ProjectTemplateVersionCreatedActivityEvent:
+      type: object
+      additionalProperties: false
+      required: [id, action, occurredAt, actor, target, metadata]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, const: project.template.version.created }
+        occurredAt: { type: string, format: date-time }
+        actor: { $ref: '#/components/schemas/ActivityLogInternalUserReference' }
+        target:
+          type: object
+          additionalProperties: false
+          required: [type, versionId, companyId]
+          properties:
+            type: { type: string, const: project_template_version }
+            versionId: { type: string, format: uuid }
+            companyId: { type: string, format: uuid }
+        metadata:
+          type: object
+          additionalProperties: false
+          required: [templateKey, version, sourceVersion]
+          properties:
+            templateKey:
+              { type: string, const: CONSULTING_PREPARATION_ILLUSTRATIVE }
+            version: { type: integer, minimum: 2, maximum: 2147483647 }
+            sourceVersion: { type: integer, minimum: 1, maximum: 2147483646 }

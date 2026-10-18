@@ -123,6 +123,26 @@ actor/time and their existing projections; no stage-completion event is invented
 Failed creation and exact committed replay add no event. The dedicated Company
 Project Template User grant/revocation follows the authorization PRD §8 convention.
 
+For [compatible illustrative Template successors](release-1-project-task-prd.md#compatible-immutable-successor-versions-695),
+each committed publication records one `project.template.version.created` event
+targeting the immutable Template Version in its responsible Company. Version
+content/lineage, head advance, durable command receipt and the attributable event
+commit together; failed, denied, unchanged and exact replay commands record no new
+event. The server establishes actor/time. Metadata is limited to model key,
+resulting Version and source Version; it excludes business titles and Task content.
+No Client operational-use fence advances during configuration.
+
+The projection retains the delivered Activity route and ActorContextAdapter
+boundary and additionally requires current source-catalogue visibility: selected
+Company context, Project read and captured Template read. It introduces no
+standalone Activity grant and widens no earlier event family. Events participate
+in the normal bounded newest-first page; other Companies/Workspaces receive no
+Version identity, lineage, count or event disclosure. Configuration grant/revoke
+uses authorization PRD §8's existing minimal bundle-label administration events.
+Exact-version instantiation still records the ordinary Project/four Task creation
+events with the original Client fence; publishing never rewrites them or any
+copied-plan Task/stage history.
+
 For the [illustrative Project stage gate](release-1-project-task-prd.md#stage-progress-and-deliberate-advance-687),
 each committed Cadrage→Préparation transition records one stable
 `project.stage.changed` event targeting the original Project in its Company,

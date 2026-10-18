@@ -20,6 +20,7 @@ import { ProjectClosedGuard } from '../project/project-closed.guard.js';
 import { isOpenProjectStatus } from '../project/project-status.js';
 import { TaskService } from '../task/task.service.js';
 import { ProjectTemplateService } from './project-template.service.js';
+import { isCompatibleIllustrativeTemplate } from './project-template.definition.js';
 import {
   readStageTaskProof,
   stageCommand,
@@ -199,8 +200,7 @@ export class ProjectStageService {
       if (
         !from ||
         !to ||
-        template.templateKey !== 'CONSULTING_PREPARATION_ILLUSTRATIVE' ||
-        template.version !== 1 ||
+        !isCompatibleIllustrativeTemplate(template) ||
         from.key !== 'scoping' ||
         to.key !== 'preparation' ||
         instance.stageRevision !== command.expectedStageRevision ||

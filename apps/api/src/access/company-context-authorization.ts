@@ -70,6 +70,8 @@ import {
   projectStagePermissionsFor,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
   projectTemplatePermissionsFor,
+  projectTemplateConfigurationPermissionsFor,
+  COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
   salesStageConfigurationPermissionsFor,
   isOpportunityManagerPermissionSetVersion,
@@ -443,7 +445,13 @@ export class CompanyContextAuthorization {
     actor: ActorContext,
     lock = false,
   ): Promise<string> {
-    return this.requireProjectPermissionAssignment(actor, ['v1', 'v2'], lock);
+    const companyId = await this.requireProjectPermissionAssignment(
+      actor,
+      ['v1', 'v2'],
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, companyId, lock);
+    return companyId;
   }
 
   // Every delivered Project read and create accepts either captured version.
@@ -1295,6 +1303,7 @@ export class CompanyContextAuthorization {
         COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
         COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+        COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
@@ -1497,6 +1506,19 @@ export class CompanyContextAuthorization {
         ];
         company.projectTemplatePermissionAssignmentId = row.assignmentId;
         company.projectTemplatePermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.projectTemplateConfigurationPermissions = [
+          ...projectTemplateConfigurationPermissionsFor(
+            row.permissionSetVersion,
+          ),
+        ];
+        company.projectTemplateConfigurationPermissionAssignmentId =
+          row.assignmentId;
+        company.projectTemplateConfigurationPermissionSetVersion = 'v1';
       }
       // The configuration bundle carries Sales Stage configuration only. It
       // never contributes Company context; its prerequisites are evaluated

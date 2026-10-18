@@ -1,12 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { Select } from '../presentation/Select';
 import { useProjectTemplateCopy } from './project-template.copy';
+import { useProjectTemplateVersionCopy } from './project-template-version.copy';
 import {
   readCopiedTemplatePlan,
   readTemplateCatalogue,
+  readTemplateCataloguePage,
   type CopiedTemplatePlan,
   type SelectableTemplateVersion,
   type TemplateSelection,
@@ -41,16 +43,33 @@ export function ProjectTemplateSelector({
   selection,
   onSelection,
   disabled,
+  catalogueRevision = 0,
 }: Props & {
   selection: TemplateSelection | null;
   onSelection: (selection: TemplateSelection | null) => void;
   disabled: boolean;
+  catalogueRevision?: number;
 }) {
   const copy = useProjectTemplateCopy();
+  const versionCopy = useProjectTemplateVersionCopy();
   const [generation, setGeneration] = useState(0);
+  const [page, setPage] = useState<{
+    revision: number;
+    beforeVersion: number | undefined;
+  }>({ revision: catalogueRevision, beforeVersion: undefined });
+  const beforeVersion =
+    page.revision === catalogueRevision ? page.beforeVersion : undefined;
+  const priorTemplates = useRef<SelectableTemplateVersion[]>([]);
+  const latestSelection = useRef(selection);
+  latestSelection.current = selection;
   const [load, setLoad] = useState<
     | { kind: 'loading' | 'error' | 'denied' }
-    | { kind: 'ready'; templates: SelectableTemplateVersion[] }
+    | {
+        kind: 'ready';
+        templates: SelectableTemplateVersion[];
+        nextBeforeVersion: number | null;
+        revision: number;
+      }
   >({ kind: 'loading' });
   const companyId = actor.activeCompany?.id;
   useEffect(() => {
@@ -59,10 +78,15 @@ export function ProjectTemplateSelector({
     void (async () => {
       try {
         const api = await createAuthenticatedApiClient(identity);
-        const response = await api.request<unknown>('/project-templates', {
-          companyContextId: companyId,
-          signal: controller.signal,
-        });
+        const response = await api.request<unknown>(
+          beforeVersion === undefined
+            ? '/project-templates'
+            : `/project-templates?beforeVersion=${beforeVersion}`,
+          {
+            companyContextId: companyId,
+            signal: controller.signal,
+          },
+        );
         if (controller.signal.aborted) return;
         if (response.status === 'unauthorized') {
           await identity.rejectSession();
@@ -72,22 +96,58 @@ export function ProjectTemplateSelector({
           setLoad({ kind: 'denied' });
           return;
         }
-        const templates =
-          response.status === 'ok'
-            ? readTemplateCatalogue(response.value)
-            : undefined;
-        setLoad(templates ? { kind: 'ready', templates } : { kind: 'error' });
+        const value = response.status === 'ok' ? response.value : undefined;
+        const metadataPresent =
+          value !== null &&
+          typeof value === 'object' &&
+          ('headVersion' in value || 'nextBeforeVersion' in value);
+        const catalogue = metadataPresent
+          ? readTemplateCataloguePage(value)
+          : undefined;
+        const templates = metadataPresent
+          ? catalogue?.templates
+          : readTemplateCatalogue(value);
+        if (!templates) {
+          setLoad({ kind: 'error' });
+          return;
+        }
+        const selected = latestSelection.current;
+        const captured = selected
+          ? priorTemplates.current.find(
+              (template) =>
+                template.templateKey === selected.templateKey &&
+                template.version === selected.version,
+            )
+          : undefined;
+        const selectable =
+          captured &&
+          !templates.some((template) => template.version === captured.version)
+            ? [...templates, captured]
+            : templates;
+        priorTemplates.current = selectable;
+        setLoad({
+          kind: 'ready',
+          templates: selectable,
+          nextBeforeVersion: catalogue?.nextBeforeVersion ?? null,
+          revision: catalogueRevision,
+        });
       } catch {
         if (!controller.signal.aborted) setLoad({ kind: 'error' });
       }
     })();
     return () => controller.abort();
-  }, [companyId, identity, generation]);
-  if (load.kind !== 'ready')
+  }, [companyId, identity, generation, catalogueRevision, beforeVersion]);
+  if (load.kind !== 'ready' || load.revision !== catalogueRevision)
     return (
       <div className="project-template-choice">
-        <p role={load.kind === 'loading' ? 'status' : 'alert'}>
-          {copy(load.kind)}
+        <p
+          role={
+            load.kind === 'loading' || load.kind === 'ready'
+              ? 'status'
+              : 'alert'
+          }
+        >
+          {copy(load.kind === 'ready' ? 'loading' : load.kind)}
         </p>
         {load.kind === 'error' && (
           <button
@@ -129,6 +189,31 @@ export function ProjectTemplateSelector({
       />
       {load.templates.length === 0 && <p>{copy('empty')}</p>}
       {selection && <p className="project-warning">{copy('warning')}</p>}
+      {beforeVersion !== undefined && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() =>
+            setPage({ revision: catalogueRevision, beforeVersion: undefined })
+          }
+        >
+          {versionCopy('latest')}
+        </button>
+      )}
+      {load.nextBeforeVersion !== null && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() =>
+            setPage({
+              revision: catalogueRevision,
+              beforeVersion: load.nextBeforeVersion ?? undefined,
+            })
+          }
+        >
+          {versionCopy('more')}
+        </button>
+      )}
     </div>
   );
 }

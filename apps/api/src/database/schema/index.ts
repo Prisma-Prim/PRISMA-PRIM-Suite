@@ -26,3 +26,4 @@ export * from './profitability-estimate.js';
 export * from './document-pdfs.js';
 export * from './project-template.js';
 export * from './project-stage.js';
+export * from './project-template-version.js';

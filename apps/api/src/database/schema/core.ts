@@ -67,6 +67,7 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_document_content_uploader',
   'company_project_template_user',
   'company_project_stage_advancer',
+  'company_project_template_configuration',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -777,6 +778,8 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_project_template_user_assignment.revoked',
   'company_project_stage_advancer_assignment.granted',
   'company_project_stage_advancer_assignment.revoked',
+  'company_project_template_configuration_assignment.granted',
+  'company_project_template_configuration_assignment.revoked',
   'client.created',
   'client_company_relationship.established',
   'client.corrected',
@@ -847,7 +850,8 @@ export const activityLogEvents = pgTable(
               | 'Company Profitability Director'
               | 'Company Sales Stage Configuration'
               | 'Company Project Template User'
-              | 'Company Project Stage Advancer';
+              | 'Company Project Stage Advancer'
+              | 'Company Project Template Configuration';
           }
         | { changes: Record<string, { before: unknown; after: unknown }> }
         | { legalEntityId: string; values: ClientLegalEntityValues }

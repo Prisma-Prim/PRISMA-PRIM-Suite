@@ -17,7 +17,7 @@ export interface TemplateVersion {
 }
 export interface TemplateSelection {
   templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE';
-  version: 1;
+  version: number;
 }
 export type SelectableTemplateVersion = TemplateVersion & TemplateSelection;
 export interface CopiedTemplatePlan extends Omit<TemplateVersion, 'stages'> {
@@ -45,7 +45,7 @@ export function readTemplateCatalogue(
     if (
       !template ||
       template.templateKey !== 'CONSULTING_PREPARATION_ILLUSTRATIVE' ||
-      template.version !== 1 ||
+      !compatibleSource(template) ||
       versions.has(`${template.templateKey}:${template.version}`)
     )
       return;
@@ -57,6 +57,79 @@ export function readTemplateCatalogue(
     });
   }
   return templates;
+}
+export interface TemplateCataloguePage {
+  templates: SelectableTemplateVersion[];
+  headVersion: number;
+  nextBeforeVersion: number | null;
+}
+export function readTemplateCataloguePage(
+  value: unknown,
+): TemplateCataloguePage | undefined {
+  const templates = readTemplateCatalogue(value);
+  if (
+    !templates ||
+    !record(value) ||
+    !positiveVersion(value.headVersion) ||
+    !(
+      value.nextBeforeVersion === null ||
+      positiveVersion(value.nextBeforeVersion)
+    )
+  )
+    return;
+  const headVersion = value.headVersion;
+  const nextBeforeVersion = value.nextBeforeVersion;
+  if (
+    templates.some((template) => template.version > headVersion) ||
+    (nextBeforeVersion !== null &&
+      templates.at(-1)?.version !== nextBeforeVersion)
+  )
+    return;
+  return { templates, headVersion, nextBeforeVersion };
+}
+export function readTemplatePublication(value: unknown):
+  | {
+      versionId: string;
+      templateKey: string;
+      version: number;
+      sourceVersion: number;
+    }
+  | undefined {
+  if (
+    !record(value) ||
+    !uuid(value.versionId) ||
+    value.templateKey !== 'CONSULTING_PREPARATION_ILLUSTRATIVE' ||
+    !positiveVersion(value.version) ||
+    !positiveVersion(value.sourceVersion) ||
+    value.version !== value.sourceVersion + 1
+  )
+    return;
+  return {
+    versionId: value.versionId,
+    templateKey: value.templateKey,
+    version: value.version,
+    sourceVersion: value.sourceVersion,
+  };
+}
+function positiveVersion(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isSafeInteger(value) &&
+    value >= 1 &&
+    value <= 2147483647
+  );
+}
+function compatibleSource(template: TemplateVersion) {
+  return (
+    positiveVersion(template.version) &&
+    template.title === 'Préparation d’une mission de conseil' &&
+    template.stages.map((stage) => `${stage.key}:${stage.title}`).join('|') ===
+      'scoping:Cadrage|preparation:Préparation' &&
+    template.stages
+      .flatMap((stage) => stage.tasks.map((task) => task.key))
+      .join('|') ===
+      'clarify_request|confirm_scope|collect_questionnaire|prepare_plan'
+  );
 }
 export function readCopiedTemplatePlan(
   value: unknown,

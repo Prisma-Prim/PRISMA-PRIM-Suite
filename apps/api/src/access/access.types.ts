@@ -20,6 +20,7 @@ import type {
   CompanyProjectApproverPermission,
   CompanySalesStageConfigurationPermission,
   CompanyProjectTemplatePermission,
+  CompanyProjectTemplateConfigurationPermission,
   CompanyProjectStagePermission,
 } from './company-permissions.js';
 
@@ -95,6 +96,9 @@ export interface ActiveCompanyContext {
   projectStagePermissions?: CompanyProjectStagePermission[];
   projectStagePermissionAssignmentId?: string;
   projectStagePermissionSetVersion?: 'v1';
+  projectTemplateConfigurationPermissions?: CompanyProjectTemplateConfigurationPermission[];
+  projectTemplateConfigurationPermissionAssignmentId?: string;
+  projectTemplateConfigurationPermissionSetVersion?: 'v1';
   projectTemplatePermissions?: CompanyProjectTemplatePermission[];
   projectTemplatePermissionAssignmentId?: string;
   projectTemplatePermissionSetVersion?: 'v1';

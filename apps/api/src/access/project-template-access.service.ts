@@ -4,7 +4,10 @@ import { DatabaseContext } from '../database/database-context.js';
 import { companyRoleAssignments } from '../database/schema/core.js';
 import type { ActorContext } from './access.types.js';
 import { CompanyContextAuthorization } from './company-context-authorization.js';
-import { COMPANY_PROJECT_TEMPLATE_USER_BUNDLE } from './company-permissions.js';
+import {
+  COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
+  COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
+} from './company-permissions.js';
 import { TaskAccessService } from './task-access.service.js';
 
 /** Access owns live captured Template authority; no assignment implies other rights. */
@@ -20,6 +23,7 @@ export class ProjectTemplateAccessService {
     actor: ActorContext,
     options: {
       instantiate?: boolean;
+      publish?: boolean;
       copiedPlan?: boolean;
       lock?: boolean;
     } = {},
@@ -49,6 +53,29 @@ export class ProjectTemplateAccessService {
       );
     const [assignment] = options.lock ? await query.for('share') : await query;
     if (!assignment) throw new ForbiddenException();
+    if (options.publish) {
+      const [configuration] = await this.database.connection
+        .select({ id: companyRoleAssignments.id })
+        .from(companyRoleAssignments)
+        .where(
+          and(
+            eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+            eq(companyRoleAssignments.companyId, companyId),
+            eq(
+              companyRoleAssignments.workspaceMembershipId,
+              actor.workspaceMembershipId,
+            ),
+            eq(
+              companyRoleAssignments.bundle,
+              COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
+            ),
+            eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+            isNull(companyRoleAssignments.revokedAt),
+          ),
+        )
+        .for('share');
+      if (!configuration) throw new ForbiddenException();
+    }
     if (options.instantiate) {
       if (!actor.activeCompany?.projectPermissions?.includes('project.create'))
         throw new ForbiddenException();

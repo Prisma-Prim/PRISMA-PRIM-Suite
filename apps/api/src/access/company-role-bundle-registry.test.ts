@@ -17,6 +17,9 @@ import {
 // new version is added here deliberately, never by editing an existing one.
 const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
   company_project_stage_advancer: { v1: ['project.stage.advance'] },
+  company_project_template_configuration: {
+    v1: ['project.template.version.create'],
+  },
   company_project_template_user: {
     v1: ['project.template.read', 'project.template.instantiate'],
   },
@@ -171,6 +174,8 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
 const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
   company_project_template_user: 'Company Project Template User',
   company_project_stage_advancer: 'Company Project Stage Advancer',
+  company_project_template_configuration:
+    'Company Project Template Configuration',
   company_context_access: 'Company Context Access',
   company_director_client_access: 'Company Director Client Access',
   company_task_manager: 'Company Task Manager',
@@ -304,9 +309,9 @@ describe('Company role permission set version CHECK', () => {
   const bundle = '"company_role_assignments"."bundle"::text';
   const version = '"company_role_assignments"."permission_set_version"';
   const singleVersionBundles =
-    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer'";
+    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration'";
   const versionedBundles =
-    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer'";
+    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration'";
   const EXPECTED_CHECK = [
     '(',
     `        (${bundle} = 'company_director_client_access'`,

@@ -102,6 +102,11 @@ const targetTypes = {
   'project.responsible.changed': 'project',
   'project.lifecycle.changed': 'project',
   'project.stage.changed': 'project',
+  'project.template.version.created': 'project_template_version',
+  'company_project_template_configuration_assignment.granted':
+    'company_role_assignment',
+  'company_project_template_configuration_assignment.revoked':
+    'company_role_assignment',
   'task.created': 'task',
   'task.updated': 'task',
   'task.status.changed': 'task',
@@ -210,6 +215,28 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         },
         metadata: responsibleChange(value.metadata),
       };
+    case 'project.template.version.created': {
+      const metadata = value.metadata;
+      if (
+        !isRecord(metadata) ||
+        Object.keys(metadata).length !== 3 ||
+        metadata.templateKey !== 'CONSULTING_PREPARATION_ILLUSTRATIVE'
+      )
+        invalid();
+      const version = positiveInteger(metadata.version);
+      const sourceVersion = positiveInteger(metadata.sourceVersion);
+      if (version !== sourceVersion + 1) invalid();
+      return {
+        ...recorded(value),
+        action,
+        target: {
+          type: 'project_template_version',
+          versionId: identifier(target.versionId),
+          companyId: identifier(target.companyId),
+        },
+        metadata: { templateKey: metadata.templateKey, version, sourceVersion },
+      };
+    }
     case 'task.created':
     case 'task.updated':
     case 'task.status.changed':

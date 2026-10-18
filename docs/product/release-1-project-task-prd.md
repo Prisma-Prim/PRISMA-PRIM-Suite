@@ -560,7 +560,7 @@ its immutable transition and captured Task/version proof. Existing independent
 Task, open-Project and active original-Client rules still govern that reopening;
 there is no automatic stage rollback.
 
-The preserved illustrative Version 1 exposes Cadrage initially, revision zero,
+Every compatible preserved illustrative Version exposes Cadrage initially, revision zero,
 without inventing a prior completion or writing an initialization event. Progress
 reads use the copied-plan boundary above, independently of advance authority.
 The gate uses the stable copied Task identities and their current execution states,
@@ -601,18 +601,84 @@ not require advance authority. Additive migration preserves existing source copi
 Task histories, identifiers and captured grants, assigns no authority and gives no
 ordinary Project a model or Tasks.
 
+### Compatible immutable successor Versions (#695)
+
+Dan renewed delegated provisional MVP delivery on 2026-10-18. The bounded
+four-title successor contract is coordinator synthesis under that authorization,
+not an operational workflow decision supplied by Iurie. Dan's subsequent explicit
+approval ("Oui, retenir ces critères MVP provisoires"), normalized in
+[tracker #290](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/290#approved-provisional-pj-4--ta-4-completion-criteria--2026-10-18)
+and [#695 clarification](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/695#issuecomment-6249460126),
+defines two separate illustrative MVP completion criteria:
+
+- **PJ-4:** publish a successor model Version and create a Project from each
+  Version while preserving existing copies.
+- **TA-4:** copy and explicitly assign Tasks, require their completion before
+  stage advance, and preserve history after model evolution or Task reopening.
+
+These are new provisional criteria, not recovered historical Iurie evidence.
+Complete delivery and evidence are required before either capability receives
+credit; a child merge alone is insufficient. Nothing authorizes a real mission.
+
+An independently authorized configuration user changes only the four required
+Task titles. The model key and business title, stage titles, stable stage/Task
+keys, order, two-stage/four-Task shape and required flags remain fixed. Titles use
+§18's trimmed 1–200-character grammar; at least one normalized title must differ
+from the observed head. Unchanged, malformed or overflowing input records nothing.
+There is no structural or semantic editor.
+
+One explicit create-and-publish command produces an immediately selectable,
+immutable successor. The interface previews literal changed titles and explains
+that existing Projects retain their copies. Corrections publish another successor;
+there is no draft, approval, activation, update or delete lifecycle. Version 1
+remains the unchanged code-defined illustrative source, never a fabricated Company
+policy or backfilled publication.
+
+Successor identity is Workspace + Company + model key + exact Version. Each
+Company has one linear succession starting at the code-defined v1 baseline. Its
+catalogue/history is bounded with explicit continuation. Other Companies receive
+none of its successor titles, lineage, identifiers, counts, head or events. Older
+supported Versions remain explicitly selectable; later publication never rebases a
+captured Project-creation command. Exact-version instantiation retains every
+independent authority, original Client fence, immutable complete source snapshot,
+four independent initially normal-priority/todo/unassigned/undated copies, source
+mapping, receipt and ordinary Project/Task event rule above.
+
+Company Project Template Configuration v1 (authorization PRD §8) grants only
+Version creation. Publication additionally requires current Company context,
+Project read and Template read, independently of Client or Task authority because
+configuration contains no real instances. The command names its exact source and
+expected current head; the server assigns the canonical next Version. Different
+commands from one head yield one committed successor and one definite stale
+conflict requiring explicit reload, without implicit retry or rebase.
+
+An actor/Workspace idempotency key fingerprints Company, source/head and all four
+normalized titles. Identical retries converge; changed intention conflicts. Live
+creation and catalogue-read authority are rechecked, then an identical committed
+receipt is resolved before rejecting its now-old expected head. Publication
+serializes against successful revocation or suspension. Immutable content/lineage,
+head advance, durable receipt and one Company-scoped Version-creation event commit
+together; any failure records none. Configuration advances no Client operational-use
+fence. Activity PRD §7 owns the minimal authorized event projection.
+
+Publication never rewrites Project snapshots, copied Task identities or current
+contents, Task completion/reopening history, stage progress or transition evidence.
+The same stable-mapping, done-only Cadrage→Préparation gate works for every compatible
+successor copy. Ordinary old-stage Task reopening preserves the reached stage and
+history under #687. Four-language real App journeys preserve literal drafts,
+selected exact Version and uncertain command bytes/key across locale changes,
+without locale-only requests; context/session/access changes suppress stale data
+and late replies. Dedicated configuration denial preserves independent Project and
+Task work. Additive migration preserves existing rows, IDs, grants and all receipts,
+copies and histories, assigning no authority, successor or model retroactively.
+
 ### Remaining limits
 
-Immutable successor Template Versions that never rewrite existing Projects remain
-a separate following vertical outcome after #687. This bounded illustrative gate
-confers no publication authority or complete PJ-4/TA-4 coverage credit.
-
-Publication/version evolution will let an explicitly authorized configuration
-user create a successor and a second Project while the first retains its exact
-copy. The general workflow editor, real category catalogue, dependencies,
-automatic assignments/due dates, reminders, Document evidence integration,
-Standards, Contract automation, lifecycle changes and real business readiness
-remain excluded. #634 alone earns no complete PJ-4 or TA-4 coverage credit.
+The general workflow editor, real category catalogue, structural changes,
+dependencies, automatic assignments/due dates, reminders, Document evidence,
+Standards/Contract automation, lifecycle changes and real business readiness remain
+excluded. The approved PJ-4/TA-4 criteria above are limited to the illustrative
+model; they confer no wider configurable workflow or real mission-start authority.
 
 ### Public proof
 

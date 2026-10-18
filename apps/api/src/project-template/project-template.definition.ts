@@ -58,6 +58,33 @@ export const CONSULTING_PREPARATION_V1 = {
   ],
 } as const satisfies ProjectTemplateVersion;
 
+/** Compatibility concerns the preserved model structure, independently of editable Task titles. */
+export function isCompatibleIllustrativeTemplate(
+  source: ProjectTemplateVersion,
+) {
+  const baseline = CONSULTING_PREPARATION_V1;
+  return (
+    source.templateKey === baseline.templateKey &&
+    source.title === baseline.title &&
+    source.version >= 1 &&
+    source.version <= 2147483647 &&
+    source.stages.length === baseline.stages.length &&
+    baseline.stages.every((stage, position) => {
+      const actual = source.stages[position];
+      return (
+        actual?.key === stage.key &&
+        actual.title === stage.title &&
+        actual.tasks.length === stage.tasks.length &&
+        stage.tasks.every(
+          (task, index) =>
+            actual.tasks[index]?.key === task.key &&
+            actual.tasks[index]?.required === true,
+        )
+      );
+    })
+  );
+}
+
 export function templateCreationInput(value: unknown) {
   if (
     !record(value) ||
@@ -71,7 +98,10 @@ export function templateCreationInput(value: unknown) {
         ].includes(key),
     ) ||
     value.templateKey !== CONSULTING_PREPARATION_V1.templateKey ||
-    value.templateVersion !== CONSULTING_PREPARATION_V1.version
+    typeof value.templateVersion !== 'number' ||
+    !Number.isInteger(value.templateVersion) ||
+    value.templateVersion < 1 ||
+    value.templateVersion > 2147483647
   )
     throw new BadRequestException(
       'Select the identified illustrative Template Version.',
@@ -80,7 +110,7 @@ export function templateCreationInput(value: unknown) {
     title: readProjectTitle(value.title),
     clientAccountId: requireUuid(value.clientAccountId),
     templateKey: CONSULTING_PREPARATION_V1.templateKey,
-    templateVersion: CONSULTING_PREPARATION_V1.version,
+    templateVersion: value.templateVersion,
   };
 }
 

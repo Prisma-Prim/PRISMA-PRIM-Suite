@@ -1,5 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { ProjectTemplateVersionService } from './project-template-version.service.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import type { ActorContext } from '../access/access.types.js';
 import { ProjectTemplateAccessService } from '../access/project-template-access.service.js';
@@ -11,7 +12,6 @@ import {
 import { ProjectService } from '../project/project.service.js';
 import { TaskService } from '../task/task.service.js';
 import {
-  CONSULTING_PREPARATION_V1,
   readTemplateSnapshot,
   templateCreationInput,
 } from './project-template.definition.js';
@@ -21,19 +21,10 @@ export class ProjectTemplateService {
   constructor(
     private readonly database: DatabaseContext,
     private readonly access: ProjectTemplateAccessService,
+    private readonly versions: ProjectTemplateVersionService,
     private readonly projects: ProjectService,
     private readonly tasks: TaskService,
   ) {}
-
-  async catalogue(actor: ActorContext) {
-    return this.database.transaction(
-      async () => {
-        await this.access.requireActor(actor);
-        return { templates: [CONSULTING_PREPARATION_V1] };
-      },
-      { isolationLevel: 'repeatable read', accessMode: 'read only' },
-    );
-  }
 
   async create(actor: ActorContext, body: unknown, key: string | undefined) {
     const input = templateCreationInput(body);
@@ -75,6 +66,11 @@ export class ProjectTemplateService {
         // Project closure or original Client supersession; never copy again.
         return this.projects.read(actor, existing.projectId);
       }
+      const source = await this.versions.sourceWithinTransaction({
+        actor,
+        companyId,
+        version: input.templateVersion,
+      });
       const project = await this.projects.createNewWithinTransaction(
         actor,
         {
@@ -86,7 +82,7 @@ export class ProjectTemplateService {
       const copied = await this.tasks.createTemplateCopiesWithinTransaction({
         actor,
         projectId: project.id,
-        titles: CONSULTING_PREPARATION_V1.stages.flatMap((stage) =>
+        titles: source.stages.flatMap((stage) =>
           stage.tasks.map((task) => task.title),
         ),
       });
@@ -98,7 +94,7 @@ export class ProjectTemplateService {
         createdByMembershipId: actor.workspaceMembershipId,
         idempotencyKey,
         fingerprint,
-        snapshot: CONSULTING_PREPARATION_V1,
+        snapshot: source,
       });
       await this.database.connection.insert(projectTemplateTaskCopies).values(
         copied.map((task, position) => ({
