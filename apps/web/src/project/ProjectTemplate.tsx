@@ -189,6 +189,17 @@ export function ProjectTemplateSelector({
       />
       {load.templates.length === 0 && <p>{copy('empty')}</p>}
       {selection && <p className="project-warning">{copy('warning')}</p>}
+      {beforeVersion !== undefined && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() =>
+            setPage({ revision: catalogueRevision, beforeVersion: undefined })
+          }
+        >
+          {versionCopy('latest')}
+        </button>
+      )}
       {load.nextBeforeVersion !== null && (
         <button
           type="button"

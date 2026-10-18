@@ -1,6 +1,7 @@
 import { defineMessages, useMessages } from '../localization/messages';
 
 const keys = [
+  'latest',
   'region',
   'heading',
   'notice',
@@ -30,6 +31,7 @@ const keys = [
 ] as const;
 export const projectTemplateVersionMessages = defineMessages(keys, {
   en: {
+    latest: 'Return to latest Template Versions',
     region: 'Template Versions',
     heading: 'Publish a Template successor',
     notice:
@@ -66,6 +68,7 @@ export const projectTemplateVersionMessages = defineMessages(keys, {
     more: 'Load older Template Versions',
   },
   fr: {
+    latest: 'Revenir aux Versions récentes du modèle',
     region: 'Versions du modèle',
     heading: 'Publier une version suivante du modèle',
     notice:
@@ -102,6 +105,7 @@ export const projectTemplateVersionMessages = defineMessages(keys, {
     more: 'Charger les anciennes versions du modèle',
   },
   ro: {
+    latest: 'Reveniți la cele mai recente Versiuni ale modelului',
     region: 'Versiunile modelului',
     heading: 'Publicați o versiune succesoare a modelului',
     notice:
@@ -138,6 +142,7 @@ export const projectTemplateVersionMessages = defineMessages(keys, {
     more: 'Încărcați versiunile anterioare ale modelului',
   },
   ru: {
+    latest: 'Вернуться к последним Версиям шаблона',
     region: 'Версии шаблона',
     heading: 'Опубликовать следующую версию шаблона',
     notice:

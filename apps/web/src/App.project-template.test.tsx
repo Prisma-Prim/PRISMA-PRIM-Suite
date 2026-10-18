@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -9,7 +10,8 @@ import {
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
-import { changeValue } from './test/select-option';
+import { changeValue, selectOptionLabels } from './test/select-option';
+import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import {
   isLifecycleRead,
   preparatoryLifecycle,
@@ -75,6 +77,243 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
+});
+
+it('returns from the final historical page to unselected newer Versions before and after exact Project creation', async () => {
+  const catalogueReads: string[] = [];
+  const writes: { body: unknown; key: string | null }[] = [];
+  const createdProjects: (typeof project)[] = [];
+  let finishFirstCreation: ((response: Response) => void) | undefined;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(input.toString(), window.location.origin);
+      const path = url.pathname;
+      if (path === '/api/access/current-actor')
+        return Response.json(templateActor);
+      if (path === '/api/companies')
+        return Response.json([
+          { id: companyId, displayName: company.displayName },
+        ]);
+      if (path === '/api/activity-log') return Response.json({ events: [] });
+      if (path === '/api/operational-home')
+        return Response.json({ companyId, today: '2026-10-18', summaries: [] });
+      if (path === '/api/clients')
+        return Response.json([
+          { id: clientId, displayName: project.clientDisplayName },
+        ]);
+      if (path === '/api/projects') return Response.json(createdProjects);
+      if (path === '/api/assigned-tasks') return Response.json({ tasks: [] });
+      if (path === '/api/project-templates') {
+        catalogueReads.push(url.search);
+        const cursor = url.searchParams.get('beforeVersion');
+        expect(cursor === null || cursor === '2').toBe(true);
+        return Response.json({
+          templates:
+            cursor === '2'
+              ? [templateFixture]
+              : Array.from({ length: 20 }, (_, index) => ({
+                  ...templateFixture,
+                  version: 21 - index,
+                })),
+          headVersion: 21,
+          nextBeforeVersion: cursor === '2' ? null : 2,
+        });
+      }
+      if (path === '/api/projects/from-template' && init?.method === 'POST') {
+        const body: unknown = JSON.parse(
+          typeof init.body === 'string' ? init.body : '{}',
+        );
+        writes.push({
+          body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        if (writes.length === 1)
+          return new Promise<Response>((resolve) => {
+            finishFirstCreation = resolve;
+          });
+        const olderProject = {
+          ...project,
+          id: '30000000-0000-4000-8000-000000000002',
+          title: 'Exact Version 1 Project',
+        };
+        createdProjects.push(olderProject);
+        return Response.json(olderProject, { status: 201 });
+      }
+      if (path.endsWith('/template'))
+        return Response.json({
+          template: {
+            ...copiedPlanFixture,
+            version: path.includes(projectId) ? 20 : 1,
+          },
+        });
+      if (path.endsWith('/tasks'))
+        return Response.json({ mutable: true, tasks: [] });
+      if (path.endsWith('/eligible-task-assignees'))
+        return Response.json({ members: [] });
+      if (isLifecycleRead(path)) return Response.json(preparatoryLifecycle);
+      return new Response(null, { status: 404 });
+    }),
+  );
+  render(
+    <>
+      <InterfaceLocaleSelect />
+      <App identity={deterministicBrowserIdentity()} />
+    </>,
+  );
+  const projects = await screen.findByRole('region', { name: 'Projects' });
+  const selector = await within(projects).findByRole('combobox', {
+    name: 'Project template',
+  });
+  changeValue(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:21');
+  fireEvent.click(
+    within(projects).getByRole('button', {
+      name: 'Load older Template Versions',
+    }),
+  );
+  const olderSelector = await within(projects).findByRole('combobox', {
+    name: 'Project template',
+  });
+  expect(selectOptionLabels(olderSelector)).toContain(
+    'Préparation d’une mission de conseil — Version 1',
+  );
+  expect(selectOptionLabels(olderSelector)).toContain(
+    'Préparation d’une mission de conseil — Version 21',
+  );
+  expect(
+    within(projects).queryByRole('button', {
+      name: 'Load older Template Versions',
+    }),
+  ).not.toBeInTheDocument();
+  expect(catalogueReads).toContain('?beforeVersion=2');
+  fireEvent.click(
+    await within(projects).findByRole('button', {
+      name: 'Return to latest Template Versions',
+    }),
+  );
+  const newerSelector = await within(projects).findByRole('combobox', {
+    name: 'Project template',
+  });
+  expect(newerSelector).toHaveAttribute(
+    'data-value',
+    'CONSULTING_PREPARATION_ILLUSTRATIVE:21',
+  );
+  expect(selectOptionLabels(newerSelector)).toContain(
+    'Préparation d’une mission de conseil — Version 20',
+  );
+  changeValue(newerSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
+  changeValue(
+    within(projects).getByRole('textbox', { name: 'Project title' }),
+    'Exact Version 20 Project',
+  );
+  changeValue(
+    within(projects).getByRole('combobox', { name: 'Client' }),
+    clientId,
+  );
+  fireEvent.click(
+    within(projects).getByRole('button', {
+      name: 'Create Project from template',
+    }),
+  );
+  await waitFor(() => expect(writes).toHaveLength(1));
+  expect(writes[0]?.body).toEqual({
+    title: 'Exact Version 20 Project',
+    clientAccountId: clientId,
+    templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
+    templateVersion: 20,
+  });
+  expect(writes[0]?.key).toBeTruthy();
+  const readsBeforeLocales = [...catalogueReads];
+  for (const [locale, label] of [
+    ['ro', 'Model de Proiect'],
+    ['ru', 'Шаблон Проекта'],
+    ['fr', 'Modèle de Projet'],
+    ['en', 'Project template'],
+  ]) {
+    changeValue(
+      screen.getByRole('combobox', {
+        name: /Interface language|Limba interfeței|Язык интерфейса|Langue de l’interface/u,
+      }),
+      locale ?? '',
+    );
+    const captured = within(projects).getByRole('combobox', { name: label });
+    expect(captured).toHaveAttribute(
+      'data-value',
+      'CONSULTING_PREPARATION_ILLUSTRATIVE:20',
+    );
+    expect(captured).toBeDisabled();
+    expect(catalogueReads).toEqual(readsBeforeLocales);
+    expect(writes).toHaveLength(1);
+  }
+  await act(async () => {
+    if (!finishFirstCreation)
+      throw new Error('Expected an observed pending creation.');
+    const newerProject = { ...project, title: 'Exact Version 20 Project' };
+    createdProjects.push(newerProject);
+    finishFirstCreation(Response.json(newerProject, { status: 201 }));
+  });
+  await within(projects).findByRole('article', {
+    name: 'Exact Version 20 Project',
+  });
+  expect(newerSelector).toHaveAttribute('data-value', '');
+  fireEvent.click(
+    within(projects).getByRole('button', {
+      name: 'Load older Template Versions',
+    }),
+  );
+  const finalSelector = await within(projects).findByRole('combobox', {
+    name: 'Project template',
+  });
+  changeValue(finalSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:1');
+  changeValue(
+    within(projects).getByRole('textbox', { name: 'Project title' }),
+    'Exact Version 1 Project',
+  );
+  changeValue(
+    within(projects).getByRole('combobox', { name: 'Client' }),
+    clientId,
+  );
+  fireEvent.click(
+    within(projects).getByRole('button', {
+      name: 'Create Project from template',
+    }),
+  );
+  await within(projects).findByRole('article', {
+    name: 'Exact Version 1 Project',
+  });
+  expect(writes[1]?.body).toEqual({
+    title: 'Exact Version 1 Project',
+    clientAccountId: clientId,
+    templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE',
+    templateVersion: 1,
+  });
+  expect(finalSelector).toHaveAttribute('data-value', '');
+  fireEvent.click(
+    within(projects).getByRole('button', {
+      name: 'Return to latest Template Versions',
+    }),
+  );
+  const afterCreationSelector = await within(projects).findByRole('combobox', {
+    name: 'Project template',
+  });
+  changeValue(afterCreationSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
+  const readsBeforeReload = [...catalogueReads];
+  fireEvent.click(
+    within(projects).getByRole('button', { name: 'Reload Projects' }),
+  );
+  await within(projects).findByRole('button', {
+    name: 'Exact Version 1 Project Client: Independent Client',
+  });
+  const reloadedSelector = await within(projects).findByRole('combobox', {
+    name: 'Project template',
+  });
+  expect(reloadedSelector).toHaveAttribute('data-value', '');
+  changeValue(reloadedSelector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:20');
+  expect(reloadedSelector).toHaveAttribute(
+    'data-value',
+    'CONSULTING_PREPARATION_ILLUSTRATIVE:20',
+  );
+  expect(catalogueReads).toEqual([...readsBeforeReload, '']);
 });
 
 it.each(['Template', 'Stage', 'Configuration'] as const)(

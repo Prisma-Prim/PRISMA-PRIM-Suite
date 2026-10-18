@@ -1082,6 +1082,145 @@ test('publishes immutable compatible successors and reopens independent exact-Ve
     .getByRole('button', { name: 'Reload current Template head' })
     .click();
   await expect(field).toHaveValue('Concurrent later literal');
+  const beforePaginationB = {
+    source: await read(`/projects/${projectB}/template`),
+    tasks: await read(`/projects/${projectB}/tasks`),
+    progress: await read(`/projects/${projectB}/stage-progress`),
+    histories: await Promise.all(
+      copiedB.map((task) => read(`/tasks/${identifier(task)}/history`)),
+    ),
+  };
+  for (let version = 4; version <= 21; version += 1) {
+    const published = await page.request.post(`${apiOrigin}${versionPath}`, {
+      headers: { ...headers, 'idempotency-key': randomUUID() },
+      data: {
+        sourceVersion: version - 1,
+        expectedHeadVersion: version - 1,
+        taskTitles: {
+          clarify_request: `Pagination literal Version ${version} ${suffix}`,
+          confirm_scope: sourceTitles[1],
+          collect_questionnaire: sourceTitles[2],
+          prepare_plan: sourceTitles[3],
+        },
+      },
+    });
+    expect(published.status()).toBe(201);
+  }
+  const paginationProjectReload = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/projects',
+  );
+  await projects.getByRole('button', { name: 'Reload Projects' }).click();
+  expect((await paginationProjectReload).status()).toBe(200);
+  await projects
+    .getByRole('list', { name: 'Projects', exact: true })
+    .getByRole('button')
+    .filter({ hasText: titleB })
+    .click();
+  await expect(
+    plan.getByText('Préparation d’une mission de conseil — Version 2', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(stage.getByText('Cadrage → Préparation')).toBeVisible();
+  expect(await read(`/projects/${projectB}/template`)).toEqual(
+    beforePaginationB.source,
+  );
+  expect(await read(`/projects/${projectB}/tasks`)).toEqual(
+    beforePaginationB.tasks,
+  );
+  expect(await read(`/projects/${projectB}/stage-progress`)).toEqual(
+    beforePaginationB.progress,
+  );
+  expect(
+    await Promise.all(
+      copiedB.map((task) => read(`/tasks/${identifier(task)}/history`)),
+    ),
+  ).toEqual(beforePaginationB.histories);
+  await configuration
+    .getByRole('button', { name: 'Reload current Template head' })
+    .click();
+  await expect(field).toHaveValue(`Pagination literal Version 21 ${suffix}`);
+  await expect(
+    projects.getByRole('button', {
+      name: 'Load older Template Versions',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await selectOption(selector, 'CONSULTING_PREPARATION_ILLUSTRATIVE:21');
+  for (const [locale, olderName, latestName, templateName, version] of [
+    [
+      'ro',
+      'Încărcați versiunile anterioare ale modelului',
+      'Reveniți la cele mai recente Versiuni ale modelului',
+      'Model de Proiect',
+      20,
+    ],
+    [
+      'ru',
+      'Загрузить предыдущие версии шаблона',
+      'Вернуться к последним Версиям шаблона',
+      'Шаблон Проекта',
+      19,
+    ],
+    [
+      'fr',
+      'Charger les anciennes versions du modèle',
+      'Revenir aux Versions récentes du modèle',
+      'Modèle de Projet',
+      18,
+    ],
+    [
+      'en',
+      'Load older Template Versions',
+      'Return to latest Template Versions',
+      'Project template',
+      17,
+    ],
+  ] as const) {
+    await selectOption(page.locator('#interface-locale'), locale);
+    const localizedSelector = projects.getByRole('combobox', {
+      name: templateName,
+      exact: true,
+    });
+    await projects
+      .getByRole('button', { name: olderName, exact: true })
+      .click();
+    const latest = projects.getByRole('button', {
+      name: latestName,
+      exact: true,
+    });
+    await expect(latest).toBeVisible();
+    await expect(
+      projects.getByRole('button', { name: olderName, exact: true }),
+    ).toHaveCount(0);
+    await selectOption(
+      localizedSelector,
+      'CONSULTING_PREPARATION_ILLUSTRATIVE:1',
+    );
+    await noOverflow(page);
+    await projects.locator('.project-template-choice').screenshot({
+      path: testInfo.outputPath(`successor-${suffix}-pagination-${locale}.png`),
+    });
+    await latest.click();
+    await expect(
+      projects.getByRole('button', { name: olderName, exact: true }),
+    ).toBeVisible();
+    await expect(localizedSelector).toHaveAttribute(
+      'data-value',
+      'CONSULTING_PREPARATION_ILLUSTRATIVE:1',
+    );
+    await selectOption(
+      localizedSelector,
+      `CONSULTING_PREPARATION_ILLUSTRATIVE:${version}`,
+    );
+    await expect(localizedSelector).toHaveAttribute(
+      'data-value',
+      `CONSULTING_PREPARATION_ILLUSTRATIVE:${version}`,
+    );
+    await noOverflow(page);
+  }
   await tasks
     .getByRole('textbox', { name: 'Task title', exact: true })
     .fill('Independent Task draft survives Configuration denial');
