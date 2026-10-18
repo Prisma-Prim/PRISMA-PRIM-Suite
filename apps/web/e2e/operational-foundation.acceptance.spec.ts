@@ -196,11 +196,15 @@ test('operates the delivered Client, Project, Task and working Document journey 
     tasks.getByRole('heading', { name: taskTitle, exact: true }),
   ).toBeVisible();
   await expect(
-    tasks.locator('dd').getByText('2026-10-15', { exact: true }),
+    tasks.locator('dd').getByText('Oct 15, 2026', { exact: true }),
   ).toBeVisible();
   await expect(
     tasks.locator('dd').getByText('Important', { exact: true }),
   ).toBeVisible();
+  await expect(tasks.locator('.task-facts time')).toHaveAttribute(
+    'datetime',
+    '2026-10-15',
+  );
   await capture(
     page,
     testInfo,

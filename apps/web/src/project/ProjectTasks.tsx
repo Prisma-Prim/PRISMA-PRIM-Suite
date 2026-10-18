@@ -36,11 +36,13 @@ import {
   type TaskState,
   type TaskView,
 } from './task-response';
-import { taskCopy as copy } from './task.copy';
+import { useProjectTaskCopy } from './task.copy';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { Select } from '../presentation/Select';
 import './task.css';
 import {
+  TaskCalendarDate,
   TaskDeclarationFacts,
   TaskFieldsForm,
   TaskHistory,
@@ -112,6 +114,14 @@ type Command = { key: string } & (
 type Mutation =
   | { kind: 'idle' | 'blocked' }
   | { kind: 'pending' | 'uncertain'; command: Command };
+type TaskFeedback =
+  | 'membersError'
+  | 'closedRefusal'
+  | 'conflict'
+  | 'rejected'
+  | 'confirmed'
+  | 'uncertain'
+  | 'validation';
 type TaskFilter = 'all' | TaskState;
 // Responsible members are matched by membership identity so homonymous members stay distinct.
 type AssigneeFilter =
@@ -311,6 +321,8 @@ function TaskProject({
   onActivityRecorded,
   requestedTask,
 }: Props & { projectId: string }) {
+  const copy = useProjectTaskCopy();
+  const { locale } = useInterfaceLocale();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [selected, setSelected] = useState<string | null>(null);
@@ -319,7 +331,7 @@ function TaskProject({
   const [members, setMembers] = useState<Assignee[] | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
   const [reasonDraft, setReasonDraft] = useState<ReasonDraft | null>(null);
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<TaskFeedback | null>(null);
   const [taskSearch, setTaskSearch] = useState('');
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
   const [assigneeFilter, setAssigneeFilter] =
@@ -412,7 +424,7 @@ function TaskProject({
     setMembers(null);
     setDraft(emptyDraft);
     setReasonDraft(null);
-    setFeedback('');
+    setFeedback(null);
     setMutation({ kind: 'blocked' });
   }
   async function refresh(taskId: string | null, controller: AbortController) {
@@ -498,7 +510,7 @@ function TaskProject({
       } catch (error: unknown) {
         if (error instanceof ReadFailure && error.kind === 'denied')
           throw error;
-        if (!controller.signal.aborted) setFeedback(copy.membersError);
+        if (!controller.signal.aborted) setFeedback('membersError');
       }
     }
   }
@@ -514,7 +526,7 @@ function TaskProject({
     setDraft(emptyDraft);
     setReasonDraft(null);
     setMembers(null);
-    if (mutation.kind !== 'uncertain') setFeedback('');
+    if (mutation.kind !== 'uncertain') setFeedback(null);
     if (options.reload) {
       drafts.current.delete(taskId ?? 'create');
       setMutation((previous) =>
@@ -570,7 +582,7 @@ function TaskProject({
     const controller = new AbortController();
     mutationRequest.current = controller;
     setMutation({ kind: 'pending', command });
-    setFeedback('');
+    setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
@@ -603,13 +615,11 @@ function TaskProject({
           result.status === 'conflict' &&
           conflictCode(result) === 'project_closed'
         ) {
-          setFeedback(copy.closedRefusal);
+          setFeedback('closedRefusal');
           setMutation({ kind: 'blocked' });
           return;
         }
-        setFeedback(
-          result.status === 'conflict' ? copy.conflict : copy.rejected,
-        );
+        setFeedback(result.status === 'conflict' ? 'conflict' : 'rejected');
         setMutation({ kind: 'blocked' });
         return;
       }
@@ -631,7 +641,7 @@ function TaskProject({
           draft: saved.draft,
         });
       else drafts.current.delete(command.taskId ?? 'create');
-      setFeedback(copy.confirmed);
+      setFeedback('confirmed');
       setMutation({ kind: 'blocked' });
       setSelected(receipt.id);
       setDetail({ kind: 'loading' });
@@ -657,7 +667,7 @@ function TaskProject({
       }
     } catch {
       if (!controller.signal.aborted) {
-        setFeedback(copy.uncertain);
+        setFeedback('uncertain');
         setMutation({ kind: 'uncertain', command });
       }
     }
@@ -670,7 +680,7 @@ function TaskProject({
       title.length > 200 ||
       (draft.dueDate && !validTaskDate(draft.dueDate))
     ) {
-      setFeedback(copy.validation);
+      setFeedback('validation');
       return;
     }
     const body = {
@@ -856,7 +866,7 @@ function TaskProject({
                         id={`${dateRangeErrorId}-assignee-filter`}
                         value={assigneeFilterValue(assigneeFilter)}
                         options={[
-                          { value: 'all', label: copy.all },
+                          { value: 'all', label: copy.allAssignees },
                           { value: 'unassigned', label: copy.unassigned },
                           ...[...assigneeOptions.values()].map((member) => ({
                             value: `${memberValuePrefix}${member.workspaceMembershipId}`,
@@ -941,7 +951,7 @@ function TaskProject({
                     </span>
                     <span>
                       {task.assignee?.displayLabel ?? copy.unassigned} ·{' '}
-                      {task.dueDate ?? copy.noDate}
+                      <TaskCalendarDate value={task.dueDate} />
                     </span>
                   </li>
                 ))}
@@ -977,7 +987,9 @@ function TaskProject({
                     </div>
                     <div>
                       <dt>{copy.dueDate}</dt>
-                      <dd>{current.task.dueDate ?? copy.noDate}</dd>
+                      <dd>
+                        <TaskCalendarDate value={current.task.dueDate} />
+                      </dd>
                     </div>
                     <div>
                       <dt>{copy.priority}</dt>
@@ -993,7 +1005,7 @@ function TaskProject({
                       {copy.completion}{' '}
                       {current.task.completion.actor.displayName} {copy.at}{' '}
                       <time dateTime={current.task.completion.occurredAt}>
-                        {formatTime(current.task.completion.occurredAt)}
+                        {formatTime(current.task.completion.occurredAt, locale)}
                       </time>
                     </p>
                   )}
@@ -1056,7 +1068,7 @@ function TaskProject({
           </div>
         </>
       )}
-      {feedback && <p role="status">{feedback}</p>}
+      {feedback && <p role="status">{copy[feedback]}</p>}
       {mutation.kind === 'uncertain' && (
         <button type="button" onClick={() => void run(mutation.command)}>
           {copy.retry}

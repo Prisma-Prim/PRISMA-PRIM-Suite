@@ -1019,9 +1019,12 @@ for (const frame of ['classic', 'prisme'] as const) {
     await expect(
       projectTasks.getByRole('heading', { name: collect.title, exact: true }),
     ).toBeVisible();
-    await expect(
-      projectTasks.locator('dd').getByText(collect.dueDate, { exact: true }),
-    ).toBeVisible();
+    const taskDueDate = projectTasks.locator(
+      `dd time[datetime="${collect.dueDate}"]`,
+    );
+    await expect(taskDueDate).toBeVisible();
+    await expect(taskDueDate).toHaveAttribute('datetime', '2026-09-20');
+    await expect(taskDueDate).toHaveText('Sep 20, 2026');
     // The drill-downs reuse the mounted owners: one Project list read.
     expect(reads.projects).toBe(1);
     expect(reads.tasks).toEqual([signature.id, collect.id]);

@@ -32,7 +32,7 @@ import { useProjectDocumentsCopy } from './project-documents.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
-import { taskCopy } from './task.copy';
+import { useProjectTaskCopy } from './task.copy';
 import {
   isClosedProjectStatus,
   isProjectStatus,
@@ -145,6 +145,7 @@ export function ProjectWorkspace({
   const copy = useProjectCopy();
   const documentsCopy = useProjectDocumentsCopy();
   const templateCopy = useProjectTemplateCopy();
+  const taskCopy = useProjectTaskCopy();
   const templateAuthority = projectTemplateAuthority(actor);
   const previousTemplateAuthority = useRef(templateAuthority);
   const [deniedTemplateAuthority, setDeniedTemplateAuthority] = useState<

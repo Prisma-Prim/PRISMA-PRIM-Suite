@@ -9,7 +9,11 @@ import {
   type TaskPriority,
   type TaskView,
 } from './task-response';
-import { taskCopy as copy } from './task.copy';
+import { useProjectTaskCopy } from './task.copy';
+import {
+  useInterfaceLocale,
+  type InterfaceLocale,
+} from '../localization/interface-locale';
 
 export type Draft = {
   title: string;
@@ -34,6 +38,7 @@ export function TaskFieldsForm({
   onChange: (draft: Draft) => void;
   onSubmit: (event: FormEvent) => void;
 }) {
+  const copy = useProjectTaskCopy();
   const fieldId = useId();
   const unavailableMember =
     current?.assignee &&
@@ -126,21 +131,43 @@ export function TaskFieldsForm({
     </form>
   );
 }
-export function formatTime(value: string) {
-  return new Date(value).toLocaleString();
+/** Task timestamps retain their existing browser-local timezone convention. */
+export function formatTime(value: string, locale: InterfaceLocale) {
+  return new Date(value).toLocaleString(locale);
+}
+
+/** Calendar values keep their exact day; formatting never changes canonical inputs. */
+export function TaskCalendarDate({ value }: { value: string | null }) {
+  const copy = useProjectTaskCopy();
+  const { formatDate } = useInterfaceLocale();
+  return value === null ? (
+    copy.noDate
+  ) : (
+    <time dateTime={value}>{formatDate(value)}</time>
+  );
 }
 export function TaskHistory({ events }: { events: TaskEvent[] }) {
+  const copy = useProjectTaskCopy();
+  const { locale, formatDate } = useInterfaceLocale();
+  const eventLabels = {
+    'task.created': copy.created,
+    'task.updated': copy.updated,
+    'task.status.changed': copy.statusChanged,
+    'task.completed': copy.completed,
+    'task.cancelled': copy.cancelled,
+    'task.reopened': copy.reopened,
+  } satisfies Record<TaskEvent['action'], string>;
   return (
     <section className="task-history" aria-label={copy.history}>
       <h6>{copy.history}</h6>
       <ol>
         {events.map((event) => (
           <li key={event.id}>
-            <strong>{eventLabel(event)}</strong>
+            <strong>{eventLabels[event.action]}</strong>
             <p>
               {event.actor.displayName} ·{' '}
               <time dateTime={event.occurredAt}>
-                {formatTime(event.occurredAt)}
+                {formatTime(event.occurredAt, locale)}
               </time>{' '}
               · {copy.version} {event.metadata.version}
             </p>
@@ -150,7 +177,7 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
                   {event.metadata.initial.title} ·{' '}
                   {event.metadata.initial.assignee?.displayLabel ??
                     copy.unassigned}{' '}
-                  · {event.metadata.initial.dueDate ?? copy.noDate}
+                  · <TaskCalendarDate value={event.metadata.initial.dueDate} />
                 </p>
                 {/* A creation recorded before priority existed shows no priority line. */}
                 {event.metadata.initial.priority && (
@@ -186,9 +213,15 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
                   <HistoryChange
                     label={copy.dueDate}
                     before={
-                      event.metadata.changes.dueDate.before ?? copy.noDate
+                      event.metadata.changes.dueDate.before === null
+                        ? copy.noDate
+                        : formatDate(event.metadata.changes.dueDate.before)
                     }
-                    after={event.metadata.changes.dueDate.after ?? copy.noDate}
+                    after={
+                      event.metadata.changes.dueDate.after === null
+                        ? copy.noDate
+                        : formatDate(event.metadata.changes.dueDate.after)
+                    }
                   />
                 )}
                 {event.metadata.changes.priority && (
@@ -233,26 +266,6 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
     </section>
   );
 }
-function eventLabel(event: TaskEvent): string {
-  switch (event.action) {
-    case 'task.created':
-      return copy.created;
-    case 'task.updated':
-      return copy.updated;
-    case 'task.status.changed':
-      return copy.statusChanged;
-    case 'task.completed':
-      return copy.completed;
-    case 'task.cancelled':
-      return copy.cancelled;
-    case 'task.reopened':
-      return copy.reopened;
-    default: {
-      const exhaustive: never = event;
-      return exhaustive;
-    }
-  }
-}
 /** The current blockage or cancellation of a Task, with its declaring actor and server time. */
 export function TaskDeclarationFacts({
   kind,
@@ -261,13 +274,15 @@ export function TaskDeclarationFacts({
   kind: 'blocked' | 'cancelled';
   declaration: TaskDeclaration;
 }) {
+  const copy = useProjectTaskCopy();
+  const { locale } = useInterfaceLocale();
   return (
     <>
       <p>
         {kind === 'blocked' ? copy.blockedBy : copy.cancelledBy}{' '}
         {declaration.actor.displayName} {copy.at}{' '}
         <time dateTime={declaration.occurredAt}>
-          {formatTime(declaration.occurredAt)}
+          {formatTime(declaration.occurredAt, locale)}
         </time>
       </p>
       <dl className="task-facts task-facts--declaration">
@@ -298,6 +313,7 @@ export function TaskReasonForm({
   onSubmit: (event: FormEvent) => void;
   onDismiss: () => void;
 }) {
+  const copy = useProjectTaskCopy();
   const errorId = useId();
   return (
     <form className="task-reason" onSubmit={onSubmit} noValidate>
@@ -341,6 +357,7 @@ function HistoryChange({
   before: string;
   after: string;
 }) {
+  const copy = useProjectTaskCopy();
   return (
     <div>
       <dt>{label}</dt>
