@@ -10,7 +10,7 @@ import {
   readDocument,
   type WorkingDocument,
 } from '../documents/document-response';
-import { projectDocumentsCopy as copy } from './project-documents.copy';
+import { useProjectDocumentsCopy } from './project-documents.copy';
 import {
   isClosedProjectStatus,
   type ProjectStatus,
@@ -45,6 +45,7 @@ type Mutation =
   | { kind: 'pending' | 'uncertain'; command: Command };
 // The local query exists only while the selector is open, so closing it removes the query with it.
 type Selector = { load: Load; query: string };
+type Feedback = 'closedRefusal' | 'conflict' | 'uncertain' | 'confirmed';
 
 export function ProjectDocuments(props: Props) {
   const authority = JSON.stringify([
@@ -65,11 +66,12 @@ function ProjectDocumentSession({
   onActivityRecorded,
   onOpenDocument,
 }: Props) {
+  const copy = useProjectDocumentsCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [selector, setSelector] = useState<Selector | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
-  const [feedback, setFeedback] = useState('');
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [generation, setGeneration] = useState(0);
   const pending = useRef<AbortController | null>(null);
   // Only the selector's own read is tracked here, so closing it never touches a command request.
@@ -163,7 +165,7 @@ function ProjectDocumentSession({
     pending.current?.abort();
     pending.current = controller;
     setMutation({ kind: 'pending', command });
-    setFeedback('');
+    setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
@@ -200,20 +202,20 @@ function ProjectDocumentSession({
           result.status === 'conflict' &&
           conflictCode(result) === 'project_closed'
         ) {
-          setFeedback(copy.closedRefusal);
+          setFeedback('closedRefusal');
           setMutation({ kind: 'blocked' });
           return;
         }
-        setFeedback(copy.conflict);
+        setFeedback('conflict');
         setMutation({ kind: 'blocked' });
         return;
       }
       if (result.status !== 'ok' || !isReceipt(result.value, command)) {
-        setFeedback(copy.uncertain);
+        setFeedback('uncertain');
         setMutation({ kind: 'uncertain', command });
         return;
       }
-      setFeedback(copy.confirmed);
+      setFeedback('confirmed');
       setSelector(null);
       setMutation({ kind: 'blocked' });
       setLoad({ kind: 'loading' });
@@ -236,7 +238,7 @@ function ProjectDocumentSession({
       }
     } catch {
       if (!controller.signal.aborted) {
-        setFeedback(copy.uncertain);
+        setFeedback('uncertain');
         setMutation({ kind: 'uncertain', command });
       }
     }
@@ -336,7 +338,7 @@ function ProjectDocumentSession({
         type="button"
         disabled={busy}
         onClick={() => {
-          setFeedback('');
+          setFeedback(null);
           setGeneration((value) => value + 1);
           void onProjectChanged?.();
         }}
@@ -384,7 +386,7 @@ function ProjectDocumentSession({
           </button>
         </div>
       )}
-      {feedback && <p role="status">{feedback}</p>}
+      {feedback && <p role="status">{copy[feedback]}</p>}
       {mutation.kind === 'uncertain' && (
         <button type="button" onClick={() => void run(mutation.command)}>
           {copy.retry}
