@@ -36,6 +36,9 @@ const locales = [
       'Opozant',
     ],
     preferences: 'Preferințele de comunicare ale Contactului',
+    preferencesSummary:
+      'Preferințe de comunicare: Română {limbă}\nРусский; email dimineața',
+    rolesSummary: 'Roluri în luarea deciziilor: Decident final, Tehnic',
     help: 'Doar preferințe practice, precum limba, canalul preferat sau orele potrivite. Salvarea nu trimite mesaje și nu înregistrează consimțământ sau aprobare.',
     retry:
       'Crearea Clientului nu a putut fi confirmată. Reîncercați în siguranță cu aceleași date.',
@@ -71,6 +74,10 @@ const locales = [
       'Противник',
     ],
     preferences: 'Предпочтения Контакта по общению',
+    preferencesSummary:
+      'Предпочтения по общению: Română {limbă}\nРусский; email dimineața',
+    rolesSummary:
+      'Роли в принятии решений: Окончательный ЛПР, Техническая роль',
     help: 'Только практические предпочтения: язык, предпочтительный канал или удобное время. Сохранение не отправляет сообщений и не фиксирует согласие или одобрение.',
     retry:
       'Не удалось подтвердить создание Клиента. Безопасно повторите попытку с теми же данными.',
@@ -106,6 +113,9 @@ const locales = [
       'Opposant',
     ],
     preferences: 'Préférences de communication du Contact',
+    preferencesSummary:
+      'Préférences de communication : Română {limbă}\nРусский; email dimineața',
+    rolesSummary: 'Rôles dans la décision : Décideur final, Technique',
     help: 'Préférences pratiques uniquement : langue, canal préféré ou horaires adaptés. Leur enregistrement n’envoie aucun message et ne consigne ni consentement ni approbation.',
     retry:
       'La création du Client n’a pas pu être confirmée. Réessayez en toute sécurité avec les mêmes informations.',
@@ -141,6 +151,9 @@ const locales = [
       'Blocker',
     ],
     preferences: 'Contact communication preferences',
+    preferencesSummary:
+      'Communication preferences: Română {limbă}\nРусский; email dimineața',
+    rolesSummary: 'Decision roles: Final decision-maker, Technical',
     help: 'Practical preferences only, such as language, preferred channel or suitable times. Saving them sends no message and records no consent or approval.',
     retry:
       'The Client creation could not be confirmed. Retry the same details safely.',
@@ -525,13 +538,15 @@ for (const locale of locales) {
       'Director {funcție}',
     ])
       await expect(reading.getByText(value, { exact: true })).toBeVisible();
-    await expect(
-      reading.locator('.client-contact-communication-preferences'),
-    ).toHaveText(
-      'Communication preferences: Română {limbă}\nРусский; email dimineața',
+    const preferencesSummary = reading.locator(
+      '.client-contact-communication-preferences',
+    );
+    await expect(preferencesSummary).toHaveText(locale.preferencesSummary);
+    expect(await preferencesSummary.textContent()).toBe(
+      locale.preferencesSummary,
     );
     await expect(
-      reading.getByText('Decision roles: Final decision-maker, Technical', {
+      reading.getByText(locale.rolesSummary, {
         exact: true,
       }),
     ).toBeVisible();
