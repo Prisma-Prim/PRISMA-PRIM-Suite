@@ -16,7 +16,6 @@ import {
   readClientLegalEntityList,
   type ClientLegalEntity,
 } from '../client/client-legal-entities-response';
-import { formatApplicationDateTime } from '../presentation/date-time';
 import { Select } from '../presentation/Select';
 import {
   useOfferPreparationCopy,
@@ -29,7 +28,6 @@ import {
   readOfferDetail,
   readOfferSnapshotPage,
   offerClientResponseState,
-  offerQualityLabels,
   type OfferSnapshotSummary,
   type OfferView,
 } from './offer-response';
@@ -41,10 +39,9 @@ import { OfferTransmissionPanel } from './OfferTransmissionPanel';
 import { OfferClientResponsePanel } from './OfferClientResponsePanel';
 import { OfferVersionHistory } from './OfferVersionHistory';
 import {
-  offerDecisionCopy,
-  offerTransmissionCopy,
-  offerClientResponseCopy,
-} from './offer.copy';
+  useOfferTransmissionCopy,
+  useOfferClientResponseCopy,
+} from './offer-transmission-response.copy';
 
 type Ready = {
   kind: 'empty';
@@ -711,6 +708,8 @@ export function OfferPanel({
 function OfferSummary({ offer }: { offer: OfferView }) {
   const copy = useOfferPreparationCopy();
   const decisionCopy = useOfferDecisionCopy();
+  const transmissionCopy = useOfferTransmissionCopy();
+  const responseCopy = useOfferClientResponseCopy();
   const { formatDateTime, formatDecimal, formatNumber } =
     useOfferPresentation();
   const version = offer.version;
@@ -769,46 +768,42 @@ function OfferSummary({ offer }: { offer: OfferView }) {
           aria-labelledby="offer-transmission-evidence-title"
         >
           <h5 id="offer-transmission-evidence-title">
-            {offerTransmissionCopy.title}
+            {transmissionCopy.title}
           </h5>
-          <p>{offerTransmissionCopy.explanation}</p>
+          <p>{transmissionCopy.explanation}</p>
           <dl>
             <div>
-              <dt>{offerTransmissionCopy.actor}</dt>
+              <dt>{transmissionCopy.actor}</dt>
               <dd>
                 <code>{version.transmission.actorWorkspaceMembershipId}</code>
               </dd>
             </div>
             <div>
-              <dt>{offerTransmissionCopy.transmittedAt}</dt>
-              <dd>
-                {formatApplicationDateTime(version.transmission.transmittedAt)}
-              </dd>
+              <dt>{transmissionCopy.transmittedAt}</dt>
+              <dd>{formatDateTime(version.transmission.transmittedAt)}</dd>
             </div>
             <div>
-              <dt>{offerTransmissionCopy.note}</dt>
-              <dd>
-                {version.transmission.note ?? offerTransmissionCopy.noNote}
-              </dd>
+              <dt>{transmissionCopy.note}</dt>
+              <dd>{version.transmission.note ?? transmissionCopy.noNote}</dd>
             </div>
             <div>
-              <dt>{offerTransmissionCopy.run}</dt>
+              <dt>{transmissionCopy.run}</dt>
               <dd>
                 <code>{version.transmission.qualityRun.id}</code>
               </dd>
             </div>
             <div>
-              <dt>{offerTransmissionCopy.warnings}</dt>
+              <dt>{transmissionCopy.warnings}</dt>
               <dd>
                 {version.transmission.acknowledgedWarningCodes.length
                   ? version.transmission.acknowledgedWarningCodes
-                      .map((code) => offerQualityLabels[code])
+                      .map((code) => decisionCopy.qualityLabels[code])
                       .join(', ')
-                  : offerDecisionCopy.noWarnings}
+                  : decisionCopy.noWarnings}
               </dd>
             </div>
             <div>
-              <dt>{offerTransmissionCopy.checksum}</dt>
+              <dt>{transmissionCopy.checksum}</dt>
               <dd>
                 <code>{version.transmission.representationSha256}</code>
               </dd>
@@ -822,33 +817,29 @@ function OfferSummary({ offer }: { offer: OfferView }) {
           aria-labelledby="offer-client-response-evidence-title"
         >
           <h5 id="offer-client-response-evidence-title">
-            {offerClientResponseCopy.title}
+            {responseCopy.title}
           </h5>
-          <p>{offerClientResponseCopy.explanation}</p>
+          <p>{responseCopy.explanation}</p>
           <dl>
             <div>
-              <dt>{offerClientResponseCopy.actor}</dt>
+              <dt>{responseCopy.actor}</dt>
               <dd>
                 <code>{version.clientResponse.actorWorkspaceMembershipId}</code>
               </dd>
             </div>
             <div>
-              <dt>{offerClientResponseCopy.decidedAt}</dt>
-              <dd>
-                {formatApplicationDateTime(version.clientResponse.decidedAt)}
-              </dd>
+              <dt>{responseCopy.decidedAt}</dt>
+              <dd>{formatDateTime(version.clientResponse.decidedAt)}</dd>
             </div>
             {version.clientResponse.outcome !== 'EXPIRED' && (
               <div>
-                <dt>{offerClientResponseCopy.recordedReceivedAt}</dt>
-                <dd>
-                  {formatApplicationDateTime(version.clientResponse.receivedAt)}
-                </dd>
+                <dt>{responseCopy.recordedReceivedAt}</dt>
+                <dd>{formatDateTime(version.clientResponse.receivedAt)}</dd>
               </div>
             )}
             {version.clientResponse.outcome === 'REJECTED' && (
               <div>
-                <dt>{offerClientResponseCopy.reason}</dt>
+                <dt>{responseCopy.reason}</dt>
                 <dd>{version.clientResponse.reason}</dd>
               </div>
             )}
@@ -856,7 +847,7 @@ function OfferSummary({ offer }: { offer: OfferView }) {
         </section>
       )}
       {version.clientResponseState === 'PENDING' && version.validityElapsed && (
-        <p>{offerClientResponseCopy.pendingElapsed}</p>
+        <p>{responseCopy.pendingElapsed}</p>
       )}
       {version.decision && (
         <dl>

@@ -5,7 +5,7 @@ import {
   conflictCode,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { offerClientResponseCopy as copy } from './offer.copy';
+import { useOfferClientResponseCopy } from './offer-transmission-response.copy';
 import {
   readOfferClientResponse,
   type OfferClientResponseView,
@@ -46,6 +46,7 @@ export function OfferClientResponsePanel({
     signal: AbortSignal,
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
+  const copy = useOfferClientResponseCopy();
   const [state, setState] = useState<State>('idle');
   const [receivedAt, setReceivedAt] = useState('');
   const [reason, setReason] = useState('');

@@ -1453,13 +1453,13 @@ it.each([
       expect(screen.getByText('Membre décisionnaire')).toBeVisible();
     if (saved.version.transmission) {
       expect(
-        screen.getByRole('heading', { name: 'Simulated transmission' }),
+        screen.getByRole('heading', { name: 'Transmission simulée' }),
       ).toBeVisible();
       expect(screen.getByText('Simulation {note} / Примечание')).toBeVisible();
     }
     if (saved.version.clientResponse)
       expect(
-        screen.getByRole('heading', { name: 'Simulated Client response' }),
+        screen.getByRole('heading', { name: 'Réponse simulée du Client' }),
       ).toBeVisible();
     expect(fetch).toHaveBeenCalledTimes(requestCount);
     expect(access.onActorRevalidated).not.toHaveBeenCalled();
