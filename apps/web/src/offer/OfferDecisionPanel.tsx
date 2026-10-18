@@ -5,12 +5,12 @@ import {
   conflictCode,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { offerDecisionCopy as copy } from './offer.copy';
+import { useOfferDecisionCopy } from './offer-quality-decision.copy';
 import {
   readOfferDecision,
-  offerQualityLabels,
   type OfferView,
   type OfferDecisionView,
+  type OfferQualityRunView,
 } from './offer-response';
 
 type State =
@@ -46,10 +46,11 @@ export function OfferDecisionPanel({
     signal: AbortSignal,
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
+  const copy = useOfferDecisionCopy();
   const [state, setState] = useState<State>('idle');
   const [reason, setReason] = useState('');
   const [acknowledged, setAcknowledged] = useState<
-    Array<keyof typeof offerQualityLabels>
+    Array<OfferQualityRunView['results'][number]['code']>
   >([]);
   const attempt = useRef<Attempt | undefined>(undefined);
   const pending = useRef<AbortController | undefined>(undefined);
@@ -179,7 +180,7 @@ export function OfferDecisionPanel({
                       );
                     }}
                   />
-                  {offerQualityLabels[code]}
+                  {copy.qualityLabels[code]}
                 </label>
               ))}
             </fieldset>

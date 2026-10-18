@@ -400,8 +400,8 @@ it('keeps an exact reopened historical Version while translating its common summ
   expect(screen.getByText('Total enregistré · Modifié')).toBeVisible();
   expect(screen.getByText('Legal {identity} / Получатель')).toBeVisible();
   expect(screen.getByText('Company {original} / Компания')).toBeVisible();
-  expect(screen.getByText('Deciding membership')).toBeVisible();
-  expect(screen.getByText('Rejection reason')).toBeVisible();
+  expect(screen.getByText('Membre décisionnaire')).toBeVisible();
+  expect(screen.getByText('Motif du rejet')).toBeVisible();
   expect(screen.getByText('Literal {reason} / Причина')).toBeVisible();
   expect(screen.getByText('OFFER_ILLUSTRATIVE v1')).toBeVisible();
   expect(screen.getByText('OFFER_QUALITY_ILLUSTRATIVE v1')).toBeVisible();
@@ -1450,7 +1450,7 @@ it.each([
     expect(screen.getByText('OFFER_ILLUSTRATIVE v1')).toBeVisible();
     expect(screen.getByText('OFFER_QUALITY_ILLUSTRATIVE v1')).toBeVisible();
     if (saved.version.decision)
-      expect(screen.getByText('Deciding membership')).toBeVisible();
+      expect(screen.getByText('Membre décisionnaire')).toBeVisible();
     if (saved.version.transmission) {
       expect(
         screen.getByRole('heading', { name: 'Simulated transmission' }),
