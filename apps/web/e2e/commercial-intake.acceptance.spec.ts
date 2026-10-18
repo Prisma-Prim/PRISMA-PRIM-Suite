@@ -1677,6 +1677,14 @@ async function captureRequest(
   );
   await intake.getByRole('button', { name: 'Capture Request' }).click();
   expect((await response).status()).toBe(201);
+  const detail = intake.getByRole('article', {
+    name: input.subject,
+    exact: true,
+  });
+  await expect(detail).toBeVisible();
+  await expect(
+    detail.getByText(input.originalText, { exact: true }),
+  ).toBeVisible();
 }
 
 async function searchAndSelectClient(
