@@ -1,3 +1,4 @@
+import { contractQualityLocales } from '../test/contract-quality-localization-fixture';
 import { render as renderWithEnglishLocale } from '../test/render-with-interface-locale';
 import {
   assertMessageCoverage,
@@ -3047,7 +3048,7 @@ describe('ContractPanel', () => {
           },
         });
       });
-      render(
+      renderWithEnglishLocale(
         <ContractPanel
           actor={current}
           identity={identity}
@@ -3057,7 +3058,7 @@ describe('ContractPanel', () => {
       );
       fireEvent.click(
         await screen.findByRole('button', {
-          name: resolveMessage(contractDecisionMessages, 'ro', 'approve'),
+          name: resolveMessage(contractDecisionMessages, 'en', 'approve'),
         }),
       );
       await screen.findByText('1'.repeat(64));
@@ -3067,7 +3068,9 @@ describe('ContractPanel', () => {
       expect(
         await checks.findByText(committed.actorWorkspaceMembershipId),
       ).toBeVisible();
-      expect(checks.getByText(committed.evaluatedAt)).toBeVisible();
+      const evaluated = checks.getByText('Oct 7, 2026, 10:00:00 AM');
+      expect(evaluated).toBeVisible();
+      expect(evaluated).toHaveAttribute('datetime', committed.evaluatedAt);
       expect(
         checks.queryByText('No Contract Quality Check run yet.'),
       ).not.toBeInTheDocument();
@@ -3183,7 +3186,7 @@ describe('ContractPanel', () => {
         },
       });
     });
-    render(
+    renderWithEnglishLocale(
       <ContractPanel
         actor={current}
         identity={identity}
@@ -3199,7 +3202,7 @@ describe('ContractPanel', () => {
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument(),
     );
     const approve = screen.getByRole('button', {
-      name: resolveMessage(contractDecisionMessages, 'ro', 'approve'),
+      name: resolveMessage(contractDecisionMessages, 'en', 'approve'),
     });
     await waitFor(() => expect(approve).toBeEnabled());
     fireEvent.click(approve);
@@ -4033,7 +4036,9 @@ describe('ContractPanel', () => {
       await screen.findByText('Contract checks completed with warnings.'),
     ).toBeVisible();
     expect(commands[1]).toEqual(commands[0]);
-    expect(screen.getByText('2026-10-07T09:00:00.000Z')).toBeVisible();
+    const evaluated = screen.getByText('Oct 7, 2026, 9:00:00 AM');
+    expect(evaluated).toBeVisible();
+    expect(evaluated).toHaveAttribute('datetime', '2026-10-07T09:00:00.000Z');
     expect(screen.getByText('member-one')).toBeVisible();
     fireEvent.click(
       screen.getByRole('button', { name: 'Reopen recorded checks' }),
@@ -4144,8 +4149,13 @@ describe('ContractPanel', () => {
             resolveMessage(contractRuleSetMessages, locale, 'adjustedSnapshot'),
           ),
         ).toBeVisible();
+        const qualityLocale = contractQualityLocales.find(
+          (item) => item.code === locale,
+        );
+        if (!qualityLocale)
+          throw new Error('Missing independent Quality locale expectation');
         const checks = screen.getByRole('region', {
-          name: 'Contract Quality Checks',
+          name: qualityLocale.title,
         });
         expect(
           within(checks).getByText('CONTRACT_QUALITY_ILLUSTRATIVE v2'),

@@ -227,15 +227,23 @@ test('reviews attributed exact-version results, retries by keyboard and reopens 
     .getByRole('button')
     .filter({ has: page.getByText(requestSubject, { exact: true }) })
     .click();
-  await expect(
-    checks.getByText('2026-10-08T00:00:00.000Z', { exact: true }),
-  ).toBeVisible();
+  await expect(checks.locator('dl time')).toHaveText(
+    'Oct 8, 2026, 12:00:00 AM',
+  );
+  await expect(checks.locator('dl time')).toHaveAttribute(
+    'datetime',
+    '2026-10-08T00:00:00.000Z',
+  );
   await checks.getByRole('button', { name: 'Reopen recorded checks' }).click();
   await checks
-    .getByRole('button', { name: 'Reopen run · 2026-10-07T09:00:00.000Z' })
+    .getByRole('button', { name: 'Reopen run · Oct 7, 2026, 9:00:00 AM (UTC)' })
     .click();
   await expect(checks.getByText('WARNING', { exact: true })).toHaveCount(0);
-  await expect(checks.locator('time')).toHaveText('2026-10-07T09:00:00.000Z');
+  await expect(checks.locator('dl time')).toHaveText('Oct 7, 2026, 9:00:00 AM');
+  await expect(checks.locator('dl time')).toHaveAttribute(
+    'datetime',
+    '2026-10-07T09:00:00.000Z',
+  );
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     fullPage: true,

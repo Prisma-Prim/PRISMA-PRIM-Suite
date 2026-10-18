@@ -1,5 +1,8 @@
-import { useContractDirectCopy } from './contract-direct.copy';
-import { useContractAddendumCopy } from './contract-addendum.copy';
+import {
+  useContractQualityCopy,
+  useContractQualityRuleLabel,
+} from './contract-quality.copy';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -7,10 +10,6 @@ import {
   conflictCode,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import {
-  contractQualityCopy as copy,
-  contractQualityLabels,
-} from './contract.copy';
 import {
   readContractQualityRun,
   readContractQualityHistory,
@@ -57,8 +56,15 @@ export function ContractQualityPanel({
     signal: AbortSignal,
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
-  const addendumCopy = useContractAddendumCopy();
-  const directCopy = useContractDirectCopy();
+  const copy = useContractQualityCopy();
+  const ruleLabel = useContractQualityRuleLabel();
+  const { locale } = useInterfaceLocale();
+  const formatInstant = (value: string) =>
+    new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      timeStyle: 'medium',
+      timeZone: 'UTC',
+    }).format(new Date(value));
   const [run, setRun] = useState(initialRun);
   const [history, setHistory] = useState<{
     items: ContractQualityRunView[];
@@ -187,33 +193,35 @@ export function ContractQualityPanel({
       ? 'warnings'
       : 'success';
   return (
-    <section className="contract-quality" aria-label={copy.title}>
-      <h5>{copy.title}</h5>
-      {!run && state === 'idle' && <p>{copy.empty}</p>}
+    <section className="contract-quality" aria-label={copy('title')}>
+      <h5>{copy('title')}</h5>
+      {!run && state === 'idle' && <p>{copy('empty')}</p>}
       {state !== 'idle' && (
         <p
           role={state === 'running' || state === 'loading' ? 'status' : 'alert'}
         >
-          {copy[state]}
+          {copy(state)}
         </p>
       )}
       {run && (
         <>
-          <p role="status">{copy[outcome]}</p>
+          <p role="status">{copy(outcome)}</p>
           <dl>
-            <dt>{copy.version}</dt>
+            <dt>{copy('version')}</dt>
             <dd>
               <code>{run.contractVersionId}</code>
             </dd>
-            <dt>{copy.ruleSet}</dt>
+            <dt>{copy('ruleSet')}</dt>
             <dd>
               {run.ruleSet} v{run.ruleSetVersion}
             </dd>
-            <dt>{copy.evaluatedAt}</dt>
+            <dt>{copy('evaluatedAt')}</dt>
             <dd>
-              <time dateTime={run.evaluatedAt}>{run.evaluatedAt}</time>
+              <time dateTime={run.evaluatedAt}>
+                {formatInstant(run.evaluatedAt)}
+              </time>
             </dd>
-            <dt>{copy.actor}</dt>
+            <dt>{copy('actor')}</dt>
             <dd>
               <code>{run.actorWorkspaceMembershipId}</code>
             </dd>
@@ -221,16 +229,8 @@ export function ContractQualityPanel({
           <ul>
             {run.results.map((item) => (
               <li key={item.code}>
-                <span>
-                  {item.code === 'DIRECT_ORIGIN_REVIEWED'
-                    ? directCopy('review')
-                    : item.code === 'PARENT_EXECUTED'
-                      ? addendumCopy('parentExecuted')
-                      : item.code === 'CURRENCY_MATCHES_PARENT'
-                        ? addendumCopy('currencyMatches')
-                        : contractQualityLabels[item.code]}
-                </span>{' '}
-                <strong>{item.status}</strong>
+                <span>{ruleLabel(item.code)}</span>{' '}
+                <strong>{copy(item.status)}</strong>
               </li>
             ))}
           </ul>
@@ -243,10 +243,10 @@ export function ContractQualityPanel({
           onClick={() => void execute({ kind: 'run' })}
         >
           {state === 'uncertain'
-            ? copy.retry
+            ? copy('retry')
             : state === 'running'
-              ? copy.running
-              : copy.run}
+              ? copy('running')
+              : copy('run')}
         </button>
       )}
       {!denied && (
@@ -255,7 +255,7 @@ export function ContractQualityPanel({
           disabled={busy}
           onClick={() => void execute({ kind: 'history', cursor: null })}
         >
-          {copy.history}
+          {copy('history')}
         </button>
       )}
       {history && (
@@ -268,7 +268,10 @@ export function ContractQualityPanel({
                   disabled={busy}
                   onClick={() => void execute({ kind: 'reopen', id: item.id })}
                 >
-                  {copy.reopen} · {item.evaluatedAt}
+                  {copy('reopen')} ·{' '}
+                  <time dateTime={item.evaluatedAt}>
+                    {formatInstant(item.evaluatedAt)} (UTC)
+                  </time>
                 </button>
               </li>
             ))}
@@ -281,7 +284,7 @@ export function ContractQualityPanel({
                 void execute({ kind: 'history', cursor: history.nextCursor })
               }
             >
-              {copy.next}
+              {copy('next')}
             </button>
           )}
         </>

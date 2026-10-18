@@ -1,3 +1,4 @@
+import { contractQualityLocales } from '../src/test/contract-quality-localization-fixture';
 import { contractMessages } from '../src/contract/contract.copy';
 import { expect, test } from '@playwright/test';
 import { contractDecisionMessages } from '../src/contract/contract-decision.copy';
@@ -113,6 +114,11 @@ for (const locale of interfaceLocales)
           resolveMessage(contractPrecontractMessages, locale, key),
         decisionCopy = (key: (typeof contractDecisionMessages.keys)[number]) =>
           resolveMessage(contractDecisionMessages, locale, key);
+      const qualityLocale = contractQualityLocales.find(
+        (item) => item.code === locale,
+      );
+      if (!qualityLocale)
+        throw new Error('Missing independent Quality locale expectation');
       await page.addInitScript(
         ({ key, locale }) => window.localStorage.setItem(key, locale),
         { key: interfaceLocaleStorageKey, locale },
@@ -361,12 +367,12 @@ for (const locale of interfaceLocales)
       ).toBeVisible();
       await panel
         .getByRole('button', {
-          name: 'Run Contract Quality Checks',
+          name: qualityLocale.run,
           exact: true,
         })
         .click();
       await expect(
-        panel.getByText('Contract checks completed with warnings.', {
+        panel.getByText(qualityLocale.warnings, {
           exact: true,
         }),
       ).toBeVisible();

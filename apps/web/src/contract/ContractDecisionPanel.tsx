@@ -14,7 +14,7 @@ import {
   type ContractDecisionView,
 } from './contract-decision-response';
 import { useContractDecisionCopy } from './contract-decision.copy';
-import { contractQualityLabels } from './contract.copy';
+import { useContractQualityRuleLabel } from './contract-quality.copy';
 import { useInterfaceLocale } from '../localization/interface-locale';
 type Feedback =
   | 'idle'
@@ -56,6 +56,7 @@ export function ContractDecisionPanel({
   const addendumCopy = useContractAddendumCopy();
   const directCopy = useContractDirectCopy();
   const copy = useContractDecisionCopy();
+  const qualityLabel = useContractQualityRuleLabel();
   const { locale } = useInterfaceLocale();
   const [feedback, setFeedback] = useState<Feedback>('idle');
   const [reason, setReason] = useState('');
@@ -251,7 +252,7 @@ export function ContractDecisionPanel({
                   ? addendumCopy('parentExecuted')
                   : item.code === 'CURRENCY_MATCHES_PARENT'
                     ? addendumCopy('currencyMatches')
-                    : contractQualityLabels[item.code]}
+                    : qualityLabel(item.code)}
             </label>
           ))}
           <label>
