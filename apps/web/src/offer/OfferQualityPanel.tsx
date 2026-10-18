@@ -5,13 +5,11 @@ import {
   conflictCode,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { formatApplicationDateTime } from '../presentation/date-time';
 import {
   readOfferQualityRun,
-  offerQualityLabels,
   type OfferQualityRunView,
 } from './offer-response';
-import { offerQualityCopy as copy } from './offer.copy';
+import { useOfferQualityCopy } from './offer-quality-decision.copy';
 
 type CommandState =
   | 'idle'
@@ -46,6 +44,7 @@ export function OfferQualityPanel({
     signal: AbortSignal,
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
 }) {
+  const copy = useOfferQualityCopy();
   const [run, setRun] = useState(initialRun);
   const [state, setState] = useState<CommandState>('idle');
   const pending = useRef<AbortController | undefined>(undefined);
@@ -129,7 +128,7 @@ export function OfferQualityPanel({
           <dl>
             <div>
               <dt>{copy.evaluatedAt}</dt>
-              <dd>{formatApplicationDateTime(run.evaluatedAt)}</dd>
+              <dd>{copy.formatDateTime(run.evaluatedAt)}</dd>
             </div>
             <div>
               <dt>{copy.actor}</dt>
@@ -147,8 +146,8 @@ export function OfferQualityPanel({
           <ul>
             {run.results.map((result) => (
               <li key={result.code}>
-                <span>{offerQualityLabels[result.code]}</span>
-                <strong>{result.status}</strong>
+                <span>{copy.qualityLabels[result.code]}</span>
+                <strong>{copy.statusLabels[result.status]}</strong>
               </li>
             ))}
           </ul>

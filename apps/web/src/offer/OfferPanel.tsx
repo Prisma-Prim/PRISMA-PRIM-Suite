@@ -36,6 +36,7 @@ import {
 import './offer.css';
 import { OfferQualityPanel } from './OfferQualityPanel';
 import { OfferDecisionPanel } from './OfferDecisionPanel';
+import { useOfferDecisionCopy } from './offer-quality-decision.copy';
 import { OfferTransmissionPanel } from './OfferTransmissionPanel';
 import { OfferClientResponsePanel } from './OfferClientResponsePanel';
 import { OfferVersionHistory } from './OfferVersionHistory';
@@ -709,6 +710,7 @@ export function OfferPanel({
 
 function OfferSummary({ offer }: { offer: OfferView }) {
   const copy = useOfferPreparationCopy();
+  const decisionCopy = useOfferDecisionCopy();
   const { formatDateTime, formatDecimal, formatNumber } =
     useOfferPresentation();
   const version = offer.version;
@@ -859,25 +861,25 @@ function OfferSummary({ offer }: { offer: OfferView }) {
       {version.decision && (
         <dl>
           <div>
-            <dt>{offerDecisionCopy.actor}</dt>
+            <dt>{decisionCopy.actor}</dt>
             <dd>
               <code>{version.decision.actorWorkspaceMembershipId}</code>
             </dd>
           </div>
           <div>
-            <dt>{offerDecisionCopy.decidedAt}</dt>
-            <dd>{formatApplicationDateTime(version.decision.decidedAt)}</dd>
+            <dt>{decisionCopy.decidedAt}</dt>
+            <dd>{formatDateTime(version.decision.decidedAt)}</dd>
           </div>
           {version.decision.state === 'REJECTED' && (
             <div>
-              <dt>{offerDecisionCopy.reason}</dt>
+              <dt>{decisionCopy.reason}</dt>
               <dd>{version.decision.reason}</dd>
             </div>
           )}
           {version.decision.state === 'APPROVED' && (
             <>
               <div>
-                <dt>{offerDecisionCopy.decisionRun}</dt>
+                <dt>{decisionCopy.decisionRun}</dt>
                 <dd>
                   <code>{version.decision.qualityRun.id}</code> ·{' '}
                   {version.decision.qualityRun.ruleSet} v
@@ -885,17 +887,17 @@ function OfferSummary({ offer }: { offer: OfferView }) {
                 </dd>
               </div>
               <div>
-                <dt>{offerDecisionCopy.acknowledgedWarnings}</dt>
+                <dt>{decisionCopy.acknowledgedWarnings}</dt>
                 <dd>
                   {version.decision.acknowledgedWarningCodes.length
                     ? version.decision.acknowledgedWarningCodes
-                        .map((code) => offerQualityLabels[code])
+                        .map((code) => decisionCopy.qualityLabels[code])
                         .join(', ')
-                    : offerDecisionCopy.noWarnings}
+                    : decisionCopy.noWarnings}
                 </dd>
               </div>
               <div>
-                <dt>{offerDecisionCopy.approvedChecksum}</dt>
+                <dt>{decisionCopy.approvedChecksum}</dt>
                 <dd>
                   <code>{version.decision.representationSha256}</code>
                 </dd>
