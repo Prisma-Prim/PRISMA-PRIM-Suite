@@ -21,6 +21,7 @@ import { documentCorrectionHistoryMessages } from '../documents/document-correct
 import { offerBindingMessages } from '../offer/offer-binding.copy';
 import { offerPreparationMessages } from '../offer/offer-preparation.copy';
 import { offerQualityDecisionMessages } from '../offer/offer-quality-decision.copy';
+import { offerTransmissionResponseMessages } from '../offer/offer-transmission-response.copy';
 import { profitabilityMessages } from '../profitability-estimate/profitability.copy';
 import { commercialRequestMessages } from '../commercial-intake/commercial-request.copy';
 import { opportunityOutcomeMessages } from '../commercial-intake/opportunity-outcome.copy';
@@ -80,6 +81,10 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('offerBinding', offerBindingMessages);
   assertMessageCoverage('offerPreparation', offerPreparationMessages);
   assertMessageCoverage('offerQualityDecision', offerQualityDecisionMessages);
+  assertMessageCoverage(
+    'offerTransmissionResponse',
+    offerTransmissionResponseMessages,
+  );
   assertMessageCoverage('profitability', profitabilityMessages);
   assertMessageCoverage('salesStage', salesStageMessages);
   assertMessageCoverage('clientDirectory', clientDirectoryMessages);
