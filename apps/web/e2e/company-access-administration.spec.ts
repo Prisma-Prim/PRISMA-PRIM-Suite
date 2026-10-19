@@ -140,9 +140,15 @@ test('administers both existing Company access bundles by member and Company nam
   ).toBeVisible();
   await page.goto('/?frame=prisme#activity');
   await expect(
-    page.getByText('Ada Ionescu granted Company Context Access'),
+    page
+      .getByRole('region', { name: 'Activity Log', exact: true })
+      .getByText('Ada Ionescu granted Company Context Access'),
   ).toBeVisible();
-  await expect(page.getByText('Target: Mila Popescu — BIC')).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Activity Log', exact: true })
+      .getByText('Target: Mila Popescu — BIC'),
+  ).toBeVisible();
   await page.goto('/?frame=prisme#access');
   const memberSelect = page.getByLabel('Workspace member');
   await memberSelect.click();
@@ -388,9 +394,15 @@ test('confirms Workspace suspension and leaves active state after self-suspensio
   ).toBeVisible();
   await page.goto('/?frame=prisme#activity');
   await expect(
-    page.getByText('Ada Ionescu suspended Workspace access for'),
+    page
+      .getByRole('region', { name: 'Activity Log', exact: true })
+      .getByText('Ada Ionescu suspended Workspace access for'),
   ).toBeVisible();
-  await expect(page.getByText('Target: Mila Popescu')).toBeVisible();
+  await expect(
+    page
+      .getByRole('region', { name: 'Activity Log', exact: true })
+      .getByText('Target: Mila Popescu'),
+  ).toBeVisible();
   await page.goto('/?frame=prisme#access');
   const suspensionMember = page.getByRole('combobox', {
     name: 'Member to suspend',

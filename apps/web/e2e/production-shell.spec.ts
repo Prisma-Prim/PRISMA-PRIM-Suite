@@ -73,8 +73,12 @@ test('renders the production shell at the normal application entry point', async
   await expect(
     page.getByRole('heading', { name: 'Activity Log' }).first(),
   ).toBeVisible();
-  await expect(page.getByText('Ada Ionescu was provisioned')).toBeVisible();
-  await expect(page.getByText('Target: Ada Ionescu')).toBeVisible();
+  const activity = page.getByRole('region', {
+    name: 'Activity Log',
+    exact: true,
+  });
+  await expect(activity.getByText('Ada Ionescu was provisioned')).toBeVisible();
+  await expect(activity.getByText('Target: Ada Ionescu')).toBeVisible();
 
   const geometry = await page.evaluate(() => ({
     documentWidth: document.documentElement.scrollWidth,
@@ -1079,6 +1083,10 @@ test('creates and reuses one shared Client identity across two Company contexts'
     });
   });
 
+  const activity = page.getByRole('region', {
+    name: 'Activity Log',
+    exact: true,
+  });
   await page.goto('/?frame=classic');
   await selectOption(page.getByLabel('Active Company'), companies[0]!.id);
   await expect(page.getByText('No Clients for PRISMA-PRIM yet.')).toBeVisible();
@@ -1090,7 +1098,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
   ).toBeVisible();
   await expect(page.getByText(`Client ID: ${client.id}`)).toBeVisible();
   await expect(
-    page.getByText(`${actorContextFixture.displayName} created a Client`),
+    activity.getByText(`${actorContextFixture.displayName} created a Client`),
   ).toBeVisible();
 
   await selectOption(page.getByLabel('Active Company'), companies[1]!.id);
@@ -1102,7 +1110,7 @@ test('creates and reuses one shared Client identity across two Company contexts'
   await expect(page.getByText('Available in BIC')).toBeVisible();
   await expect(page.getByText(`Client ID: ${client.id}`)).toHaveCount(2);
   await expect(
-    page.getByText(
+    activity.getByText(
       `Target: ${client.displayName} — ${companies[1]!.displayName}`,
     ),
   ).toBeVisible();
@@ -1117,12 +1125,12 @@ test('creates and reuses one shared Client identity across two Company contexts'
   await correctionForm.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByText('Version 2')).toBeVisible();
   await expect(
-    page.getByText(
+    activity.getByText(
       `${actorContextFixture.displayName} corrected a Client dossier`,
     ),
   ).toBeVisible();
   await expect(
-    page.getByText(
+    activity.getByText(
       `Target: ${client.displayName} — ${companies[1]!.displayName}`,
     ),
   ).toHaveCount(2);
