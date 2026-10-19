@@ -614,7 +614,7 @@ it('loses the suspension owner and suppresses its late response when parent admi
     ),
   );
   expect(
-    screen.queryByRole('region', { name: 'Company access' }),
+    screen.queryByRole('region', { name: 'Доступ к компании' }),
   ).not.toBeInTheDocument();
   expect(props.onActivityRecorded).not.toHaveBeenCalled();
   expect(props.onWorkspaceAccessRejected).not.toHaveBeenCalled();

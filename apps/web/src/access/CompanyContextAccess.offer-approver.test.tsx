@@ -1,4 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+} from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
@@ -85,7 +89,7 @@ describe('Company Offer Approver administration', () => {
     selectOption(screen.getByLabelText('Access bundle'), 'offer-approver');
     expect(
       screen.getByText(
-        /Company Offer Approver v1 grants Offer read and decisions only/u,
+        'Company Offer Approver v1 grants Offer read, internal decisions and recorded simulated Client response. Company context and Opportunity read must be authorized separately. It grants no preparation, Client or Pricing authority.',
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));

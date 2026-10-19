@@ -5,10 +5,8 @@ import {
   screen,
   waitFor,
   within,
-} from '@testing-library/react';
+} from '../test/render-with-interface-locale';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { ReactNode } from 'react';
-import { InterfaceLocaleProvider } from '../localization/interface-locale';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
@@ -18,11 +16,6 @@ import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
 import { salesStageMessages } from '../commercial-intake/sales-stage.copy';
 import { resolveMessage } from '../localization/messages';
-
-function renderInEnglish(ui: ReactNode) {
-  localStorage.setItem('prisma-prim.interface-locale', 'en');
-  return render(ui, { wrapper: InterfaceLocaleProvider });
-}
 
 const memberId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ownerMembershipId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -150,7 +143,7 @@ describe('CompanyContextAccess', () => {
     chooseBundle('contract-approver');
     expect(
       screen.getByText(
-        resolveMessage(contractDecisionMessages, 'ro', 'prerequisites'),
+        resolveMessage(contractDecisionMessages, 'en', 'prerequisites'),
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
@@ -206,7 +199,7 @@ describe('CompanyContextAccess', () => {
     );
     expect(
       within(classicAccess).getByRole('region', {
-        name: 'Sesiunile furnizorului de identitate',
+        name: 'Identity-provider sessions',
       }),
     ).not.toHaveClass('session-revocations--prisme');
     classic.unmount();
@@ -226,11 +219,11 @@ describe('CompanyContextAccess', () => {
     expect(access.querySelector('form')).toHaveClass('company-access-form');
     expect(
       within(access).getByRole('region', {
-        name: 'Sesiunile furnizorului de identitate',
+        name: 'Identity-provider sessions',
       }),
     ).toHaveClass('session-revocations--prisme');
     expect(
-      within(access).getByRole('region', { name: 'Acces la spațiul de lucru' }),
+      within(access).getByRole('region', { name: 'Workspace access' }),
     ).toHaveClass('membership-suspension--prisme');
   });
 
@@ -831,7 +824,7 @@ describe('CompanyContextAccess', () => {
         ),
     );
 
-    renderInEnglish(
+    render(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
@@ -895,7 +888,7 @@ describe('CompanyContextAccess', () => {
           new Response(JSON.stringify(administration()), { status: 200 }),
         ),
     );
-    renderInEnglish(
+    render(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
@@ -927,7 +920,7 @@ describe('CompanyContextAccess', () => {
     const onPendingChange = vi.fn();
     const onActivityRecorded = vi.fn(async () => undefined);
     const onWorkspaceAccessRejected = vi.fn(async () => undefined);
-    const { rerender } = renderInEnglish(
+    const { rerender } = render(
       <WorkspaceMembershipSuspension
         actor={ownerActor}
         identity={identity}
@@ -996,7 +989,7 @@ describe('CompanyContextAccess', () => {
     const onPendingChange = vi.fn();
     const onActivityRecorded = vi.fn(async () => undefined);
     const onWorkspaceAccessRejected = vi.fn(async () => undefined);
-    const { rerender } = renderInEnglish(
+    const { rerender } = render(
       <WorkspaceMembershipSuspension
         actor={ownerActor}
         identity={firstIdentity}
@@ -1065,7 +1058,7 @@ describe('CompanyContextAccess', () => {
     const onPendingChange = vi.fn();
     const onActivityRecorded = vi.fn(async () => undefined);
     const onWorkspaceAccessRejected = vi.fn(async () => undefined);
-    const { rerender } = renderInEnglish(
+    const { rerender } = render(
       <WorkspaceMembershipSuspension
         actor={ownerActor}
         identity={firstIdentity}
@@ -1141,7 +1134,7 @@ describe('CompanyContextAccess', () => {
           ),
         ),
     );
-    renderInEnglish(
+    render(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
@@ -1185,7 +1178,7 @@ describe('CompanyContextAccess', () => {
           new Response(JSON.stringify(afterStaleDenial), { status: 200 }),
         ),
     );
-    renderInEnglish(
+    render(
       <CompanyContextAccess
         actor={ownerActor}
         identity={deterministicBrowserIdentity()}
@@ -1771,11 +1764,11 @@ describe('CompanyContextAccess', () => {
     const bundleSelect = screen.getByLabelText('Access bundle');
     selectOption(bundleSelect, 'sales-stage-configuration');
     expect(bundleSelect).toHaveTextContent(
-      resolveMessage(salesStageMessages, 'ro', 'configurationBundle'),
+      resolveMessage(salesStageMessages, 'en', 'configurationBundle'),
     );
     expect(
       screen.getByText(
-        resolveMessage(salesStageMessages, 'ro', 'configurationPrerequisites'),
+        resolveMessage(salesStageMessages, 'en', 'configurationPrerequisites'),
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
