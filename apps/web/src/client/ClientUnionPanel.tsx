@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { formatApplicationDateTime } from '../presentation/date-time';
+import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   handleAuthenticatedAccessRejection,
   runLatestAuthenticatedRequest,
@@ -20,8 +20,9 @@ import {
   type UnionField,
   type UnionHistory,
 } from './client-union-contract';
-import { clientUnionCopy as copy } from './client-union.copy';
-import { clientWorkspaceCopy as clientCopy } from './client-workspace.copy';
+import { clientUnionCopy as legacyCopy } from './client-union.copy';
+import { useClientUnionHistoryCopy } from './client-union-history.copy';
+import { useClientDossierCopy } from './client-dossier.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ClientContactDescription } from './ClientContactEditor';
 import { ClientUnionComparison } from './ClientUnionComparison';
@@ -40,14 +41,6 @@ type UnionView =
   | { kind: 'saved'; reference: string }
   | { kind: 'reversed' }
   | { kind: 'remediation' };
-const labels: Record<UnionField, string> = {
-  displayName: clientCopy.displayNameLabel,
-  taxId: clientCopy.taxIdLabel,
-  address: clientCopy.addressLabel,
-  telephone: clientCopy.telephoneLabel,
-  generalEmail: clientCopy.generalEmailLabel,
-  businessActivity: clientCopy.businessActivityLabel,
-};
 
 export function ClientUnionPanel({
   clientId,
@@ -74,6 +67,7 @@ export function ClientUnionPanel({
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
+  const copy = useClientUnionHistoryCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const openingTrigger = useRef<Element | null>(null);
   const receiveComparisonHeading = useCallback(
@@ -286,7 +280,9 @@ export function ClientUnionPanel({
       {feedback === 'refreshError' && <p role="alert">{copy.refreshError}</p>}
       {feedback === 'unavailable' && <p role="alert">{copy.unavailable}</p>}
       {feedback === 'reversalStale' && <p role="alert">{copy.reversalStale}</p>}
-      {view.kind === 'remediation' && <p role="alert">{copy.remediation}</p>}
+      {view.kind === 'remediation' && (
+        <p role="alert">{legacyCopy.remediation}</p>
+      )}
       {view.kind === 'comparison' && (
         <ClientUnionComparison
           key={view.comparison.reviewReference}
@@ -323,7 +319,7 @@ export function ClientUnionPanel({
       )}
       {view.kind === 'saved' && (
         <div>
-          {!onConfirmed && <p role="status">{copy.saved}</p>}
+          {!onConfirmed && <p role="status">{legacyCopy.saved}</p>}
           <button
             type="button"
             disabled={busy}
@@ -426,6 +422,16 @@ function Dossiers({
   clients: UnionComparison['clients'];
   canonicalClientId: string;
 }) {
+  const copy = useClientUnionHistoryCopy();
+  const clientCopy = useClientDossierCopy();
+  const labels: Record<UnionField, string> = {
+    displayName: clientCopy.displayNameLabel,
+    taxId: clientCopy.taxIdLabel,
+    address: clientCopy.addressLabel,
+    telephone: clientCopy.telephoneLabel,
+    generalEmail: clientCopy.generalEmailLabel,
+    businessActivity: clientCopy.businessActivityLabel,
+  };
   return (
     <div className="client-union-history-dossiers">
       {clients.map((client, index) => (
@@ -439,7 +445,7 @@ function Dossiers({
             {unionFields.map((field) => (
               <div key={field}>
                 <dt>{labels[field]}</dt>
-                <dd>{client[field] ?? copy.notProvided}</dd>
+                <dd>{client[field] ?? clientCopy.notProvided}</dd>
               </div>
             ))}
           </dl>
@@ -483,6 +489,8 @@ function UnionOperationDetail({
   onOpenCanonical: () => void;
   onReverse: (reason: string) => Promise<void>;
 }) {
+  const copy = useClientUnionHistoryCopy();
+  const { formatDateTime } = useInterfaceLocale();
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [attempted, setAttempted] = useState(false);
@@ -501,7 +509,7 @@ function UnionOperationDetail({
       <p className="client-union-history-attribution">
         {detail.actor.displayName} ·{' '}
         <time dateTime={detail.occurredAt}>
-          {formatApplicationDateTime(detail.occurredAt)}
+          {formatDateTime(detail.occurredAt)}
         </time>
       </p>
       <p>{detail.reason}</p>
@@ -532,7 +540,7 @@ function UnionOperationDetail({
           <p>
             {detail.reversal.actor.displayName} ·{' '}
             <time dateTime={detail.reversal.occurredAt}>
-              {formatApplicationDateTime(detail.reversal.occurredAt)}
+              {formatDateTime(detail.reversal.occurredAt)}
             </time>
           </p>
           <p>{detail.reversal.reason}</p>
