@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
-**Status:** Operational home approved by #398 (section 17); remaining capability Draft — role journeys and metrics beyond section 17 pending  
-**Version:** 0.4  
+**Status:** Operational home approved by #398 (section 17), latest dated Activity preview approved by #720 (section 18); remaining capability Draft — other role journeys and metrics pending  
+**Version:** 0.5  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -215,7 +215,7 @@ My Tasks keeps its own order and presentation. This deterministic ordering is th
 
 ### 17.4 Excluded
 
-- "What changed since yesterday" (session 28), a later Activity Log candidate;
+- elapsed-time "What changed since yesterday" filters (session 28); the bounded latest-dated Activity preview is separately approved in section 18;
 - a separate next-7-days view beyond the Due soon rule;
 - money, invoices, payments, audits, trainings, nonconformities, certificates and approval queues, whose capabilities do not exist;
 - Workspace-wide or "All Companies" views, which will reuse these definitions;
@@ -223,3 +223,41 @@ My Tasks keeps its own order and presentation. This deterministic ordering is th
 - configurable widgets, personalization, saved views, thresholds and time zones;
 - reminders, escalation and notification channels;
 - telemetry, exports and AI recommendations.
+
+## 18. Approved latest dated Activity preview (#720)
+
+Dan approved this addition on 2026-10-19 as the first of two small Home extensions. Five is a reversible display default selected under delegated product/technical authority, not newly collected Iurie evidence. This section approves only the bounded behavior below; the remaining Draft tracker, role journeys and metrics are unchanged.
+
+### 18.1 Reader and context
+
+Inside the existing operational Home availability gate (a selected Company and at least one current Client, Project or Task summary read), show **Recent changes** from the same currently guarded Activity page used by full Activity. An Activity-readable actor without any summary read retains full Activity but receives no new Home access.
+
+The context is the reader's current authorized Activity context. It may include already-authorized Workspace events as well as active-Company projections. Do not label all events Company-owned, introduce a Company-only or event-family filter, infer authority from an event, or add a separate permission, read, cache or stored dashboard model.
+
+### 18.2 Meaning and bound
+
+Preserve the server's newest-first order and take the first five records whose public projection contains `occurredAt`. The current source provides a globally ordered dated prefix of up to 100 records, followed by undated redacted projections; its first five dated records therefore supply this complete preview. Show fewer when fewer dated records exist, without a total count.
+
+“Recent” means latest publicly dated events, not an elapsed-time promise. No browser-clock cutoff, rolling 24-hour window or “since yesterday” calculation applies. A quiet context may display old events with their truthful localized dates.
+
+A redacted union projection has no public time. Exclude it solely because that public field is absent; never inspect or infer hidden time, assign a date or apply a temporal filter to it. Do not announce the existence or number of omitted projections. Full Activity retains them unchanged.
+
+### 18.3 Narration and navigation
+
+Reuse Activity's canonical action descriptions, actor and target displays, literal business labels/identifiers and locale-aware date formatter. Reuse its existing open intent only while App currently offers Request navigation, the event belongs to the selected Company and its existing projection supplies the required target. Request/Opportunity actions open the existing Request; Offer and Contract actions open the exact existing version. This preview grants no new target or restricted-detail navigation. Other targets remain nonclickable. An explicit **Open full Activity Log** action is always the existing full-history destination.
+
+The two presentations may coexist while section panels remain mounted. Their target description IDs must be distinct so each action remains associated with exactly its own description.
+
+### 18.4 State, refresh and retirement
+
+Loading, unavailable/error with explicit retry, and no dated events are distinct. A genuinely empty page and an undated-only page have the same no-dated wording. A failed, malformed or denied read never leaves an old successful preview or renders a false zero.
+
+Explicit refresh/retry calls the existing Activity refresh owner. Add no automatic polling or additional initial or locale-only HTTP read. Existing Company, session, identity, Membership, assignment, permission and captured-version retirement removes stale rows and target actions; delayed replies from retired contexts cannot restore them. The summary read remains independent, and full Activity retains its existing behavior.
+
+Own new feature strings centrally in Romanian, Russian, French and English, with Romanian default/fallback and required-key coverage. Switching locale preserves the currently mounted rows, focus, business values and current state without navigation, action or refresh. Late feedback follows the current locale.
+
+### 18.5 Acceptance and exclusions
+
+The public App seam with real locale/provider composition and HTTP-boundary doubles proves the exact five-record order, fewer/old events, empty versus undated-only, loading/error/retry and malformed refusal, current Home availability, existing target actions, stale Company/authority/session replies and locale-only zero I/O. The registered real-PostgreSQL operational-foundation browser journey proves the preview against its actual authorized returned page and full Activity navigation after genuine business mutations, at desktop 1440px and narrow 390px. Keyboard operation, no horizontal overflow and inspected original screenshots are required. Existing history, isolation, assertion and case budgets remain intact.
+
+No Activity recording/projection/parser, API/schema/authorization, event-family, export, count, elapsed-time query, notification, polling, new Home access or next-seven-days implementation is added. The separate next-seven-days view remains excluded by section 17.4 until its own approved slice.

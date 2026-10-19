@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ApplicationShell, type ApplicationSection } from './ApplicationShell';
 import { Select } from '../presentation/Select';
+import { ActivityLog } from './ActivityLog';
 
 const sections: ApplicationSection[] = [
   {
@@ -94,6 +95,49 @@ describe.each(['classic', 'prisme'] as const)(
 
       await waitFor(() =>
         expect(document.getElementById('projects')).toHaveFocus(),
+      );
+    });
+
+    it('focuses the full Activity region through its unique internal destination', async () => {
+      render(
+        <ApplicationShell
+          context={{
+            actorName: 'Director',
+            workspaceName: 'Workspace',
+            companyName: 'Company',
+          }}
+          sections={[
+            ...sections,
+            {
+              id: 'activity',
+              label: 'Activity Log',
+              description: 'Recorded activity',
+              content: (
+                <ActivityLog
+                  state={{ status: 'ready', events: [] }}
+                  activeCompanyId="company"
+                  onOpenRequest={undefined}
+                />
+              ),
+            },
+          ]}
+          companyContext={null}
+          userArea={null}
+        >
+          Classic heading
+        </ApplicationShell>,
+      );
+      act(() => {
+        window.history.pushState(null, '', `/?frame=${frame}#activity`);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+      const activity = screen.getByRole('region', { name: 'Activity Log' });
+      await waitFor(() => expect(activity).toHaveFocus());
+      expect(activity).toHaveAttribute('id', 'activity');
+      expect(activity).toHaveAttribute('tabindex', '-1');
+      expect(document.querySelectorAll('#activity')).toHaveLength(1);
+      expect(activity.closest('.application-section')).not.toHaveAttribute(
+        'id',
       );
     });
   },

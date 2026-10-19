@@ -496,3 +496,78 @@
     margin: 0;
   }
 }
+
+.operational-home-stack {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+.operational-home-recent {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.operational-home-recent .activity-log-heading p {
+  color: var(--shell-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.operational-home-recent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.operational-home-recent-actions button {
+  max-width: 100%;
+  white-space: normal;
+}
+.operational-home-recent {
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid var(--shell-line);
+  border-radius: 0.5rem;
+  background: var(--shell-surface);
+}
+.operational-home-recent-actions button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.35rem;
+  color: var(--shell-ink);
+  background: var(--shell-surface);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.operational-home-recent-actions button:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 2px;
+}
+.operational-home-recent-actions button:disabled {
+  cursor: default;
+}
+.prisme-shell .operational-home-recent {
+  padding: 0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.prisme-shell .operational-home-recent-actions {
+  padding: 0 26px 22px;
+}
+.prisme-shell .operational-home-recent > p {
+  margin: 22px 26px;
+  padding: 17px 19px;
+  border: 1px solid var(--shell-line);
+  border-radius: 8px;
+  color: var(--shell-muted);
+  background: #fafbfe;
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+@media (max-width: 820px) {
+  .prisme-shell .operational-home-recent-actions {
+    padding: 0 20px 20px;
+  }
+  .prisme-shell .operational-home-recent > p {
+    margin: 20px;
+  }
+}

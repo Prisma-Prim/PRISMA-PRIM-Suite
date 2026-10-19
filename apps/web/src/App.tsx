@@ -81,7 +81,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [projectOpenRequestId, setProjectOpenRequestId] = useState(0);
   const navigateToSection = useCallback(
     (
-      section: 'clients' | 'projects' | 'documents' | 'requests' | 'my-tasks',
+      section:
+        | 'clients'
+        | 'projects'
+        | 'documents'
+        | 'requests'
+        | 'my-tasks'
+        | 'activity',
     ) => {
       const nextUrl = new URL(window.location.href);
       nextUrl.hash = section;
@@ -313,6 +319,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         }}
         onOpenMyTasks={() => navigateToSection('my-tasks')}
         onOpenTask={openProject}
+        activity={{
+          state: access.activityLog,
+          activeCompanyId: activeCompany.id,
+          onRefresh: refreshActivityLog,
+          onOpenActivity: () => navigateToSection('activity'),
+          onOpenRequest: openRequest,
+        }}
       />
     ) : null;
 
