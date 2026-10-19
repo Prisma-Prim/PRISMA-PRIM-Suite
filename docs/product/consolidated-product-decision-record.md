@@ -3531,3 +3531,29 @@ The [October source reconciliation](commercial-source-reconciliation-2026-10.md)
 Under Dan's 2026-10-01 delegation to complete priority 4, coordinating root product review in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497) approves the existing reversible Draft choices and the bounded version/concurrency conventions needed to make them executable. The [Confirmed-Cost Profitability Estimate PRD §11](release-3-confirmed-cost-profitability-estimate-prd.md#11-decision-provenance-and-implementation-boundary) owns the dated decision provenance; its first-journey contract owns observable behavior. Dan's separate 2026-09-30 Contributor/Director permission decision remains owned by the authorization PRD. The Activity Log owner normalizes internal recording only, with no projection or access expansion.
 
 This is product-contract approval, not source evidence of a rounding/fiscal policy and not implemented runtime. The controlled E08 bytes, confidential-case boundary, existing illustrative history and October dossier evidence remain unchanged. No default target, business range, automatic fiscal/overhead/price formula, Offer authority, new numbered decision or functional MVP gain is asserted.
+
+### 34.7 Bounded Ideas intake and access separation — 2026-10-19
+
+[Dan's explicit access decision](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507)
+approves choosing, per Company, who consults Ideas/ordinary complaints, who records
+them and who may defer/reject an Idea. Existing assignments never expand
+automatically; actual people are chosen later. This is an access-separation
+choice, not a real grant, work/funding approval, complaint closure or full roadmap.
+
+Iurie's [session70 addition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5308298781)
+requests an Ideas register; that source's business interpretation separates it
+from corrective actions. [Session71 items360–362](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5308306511)
+support retained defer/reject reasons, attribution, optional reconsideration and
+Company/source classification. Their wider scoring, benefits, work conversion
+and reporting remain deferred; these source statements are not silently erased.
+
+The proposed [Company Ideas intake PRD](company-ideas-intake-prd.md) owns one bounded
+record/reopen and attributed defer/reject journey; [Authorization section8](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns
+its exact independent captured grants, [Activity section7](activity-log-accountability-prd.md#7-authorization-and-privacy) its restricted internal
+recording. Low-risk choices (plain-text source, field/page limits, immutable
+original with append-only review and no deletion) are explicit reversible product
+synthesis under section34.4, not new first-tenant evidence. This normalization
+adds no numbered decision, real assignment, runtime assertion or functional credit.
+Agents prepare the synthesis and self-review; Dan's required review of the concrete
+documentation PR remains pending and is not replaced by his earlier access decision.
+The separate ordinary-complaint contract still requires its own normalization.
