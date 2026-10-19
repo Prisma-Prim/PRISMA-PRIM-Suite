@@ -15,6 +15,7 @@ import {
 } from '@playwright/test';
 import { openSelect, selectOption } from './select-option';
 import { unionLocators } from './locator-union';
+import { findConfidentialCommercialValues } from './commercial-journey-confidentiality';
 
 // TE-2 (#597): one commercial case from Request to signed agreement, Project
 // and Activity, driven through the real UI, API and PostgreSQL. Synthetic data
@@ -2738,11 +2739,14 @@ test('follows one commercial case from Request to signed agreement, Project and 
       // Each row's content without its rendered time: a formatted server
       // time can spell a typed date or an amount on some run dates.
       const rowContent = rows.locator(':scope > div');
-      await expect(
-        unionLocators(
-          forbidden.map((value) => rowContent.filter({ hasText: value })),
-        ),
-      ).toHaveCount(0);
+      await expect
+        .poll(async () =>
+          findConfidentialCommercialValues({
+            body: JSON.stringify(await rowContent.allTextContents()),
+            forbidden,
+          }),
+        )
+        .toEqual([]);
       await expect(rows.filter({ hasText: opportunityTitle })).toHaveCount(3);
       await expect(
         unionLocators(
@@ -3204,8 +3208,13 @@ test('follows one commercial case from Request to signed agreement, Project and 
               headers: { ...identities.other, 'x-company-context-id': context },
             });
             const body = await response.text();
-            for (const identifier of journeyIdentifiers)
-              expect(body, `${context} ${path}`).not.toContain(identifier);
+            expect(
+              findConfidentialCommercialValues({
+                body,
+                forbidden: journeyIdentifiers,
+              }),
+              `${context} ${path}`,
+            ).toEqual([]);
             if (context === companyId)
               // The journey Company is not a valid active Company for the
               // BIC member: the safe denial, for the list reads as well.
@@ -3660,8 +3669,12 @@ async function expectNoActivityLeak(
       ),
     ),
   );
-  for (const value of [...forbidden, labels.clientName, labels.companyName])
-    expect(content, value).not.toContain(value);
+  expect(
+    findConfidentialCommercialValues({
+      body: content,
+      forbidden: [...forbidden, labels.clientName, labels.companyName],
+    }),
+  ).toEqual([]);
   // The Project title is the reference of the two Project links only.
   expect(
     commercial
@@ -3681,8 +3694,12 @@ async function expectNoActivityLeak(
       ),
     ),
   );
-  for (const value of typedTexts.filter((value) => value !== clientTaxId))
-    expect(page, value).not.toContain(value);
+  expect(
+    findConfidentialCommercialValues({
+      body: page,
+      forbidden: typedTexts.filter((value) => value !== clientTaxId),
+    }),
+  ).toEqual([]);
   expect(
     projected
       .filter((event) => JSON.stringify(event).includes(clientTaxId))
