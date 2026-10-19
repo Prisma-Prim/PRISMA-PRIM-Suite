@@ -73,6 +73,14 @@ with the owning feature, ready for localization, while the shared control owns
 the visible listbox, keyboard and typeahead behaviour, form participation,
 focus handling, and viewport-safe placement.
 
+Production slices use a custom presentation consistent with the accepted Prisme
+controls and tokens, including buttons, checkboxes and single-choice fields.
+Preserve semantic controls, keyboard operation, visible focus, validation and
+clear disabled states; decoration never replaces accessible behaviour. Inspect
+actual desktop and narrow screenshots for hierarchy, spacing, readable labels and
+horizontal fit. Reuse the shared Select contract above rather than introducing a
+separate control or a wider redesign.
+
 Generated Documents have separate accessibility requirements where applicable.
 
 ## 7. Localization and terminology

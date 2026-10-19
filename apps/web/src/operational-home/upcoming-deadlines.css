@@ -1,0 +1,134 @@
+.operational-home-upcoming {
+  min-width: 0;
+  margin: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 9px;
+  overflow-wrap: anywhere;
+}
+.operational-home-upcoming-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+}
+.operational-home-upcoming-intro h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1rem;
+}
+.operational-home-upcoming-intro p {
+  margin: 0.45rem 0 0;
+  color: var(--shell-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.operational-home-upcoming button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.75rem;
+  white-space: normal;
+}
+.operational-home-upcoming svg {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+}
+.operational-home-upcoming-panel {
+  min-width: 0;
+  border-top: 1px solid var(--shell-line);
+}
+.operational-home-upcoming-panel h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+.operational-home-upcoming-panel h5 {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.operational-home-upcoming-panel h4:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 4px;
+}
+.operational-home-upcoming-range,
+.operational-home-upcoming-page {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  color: var(--shell-muted);
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+.operational-home-upcoming-page {
+  padding-top: 0;
+}
+.operational-home-upcoming-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--shell-line);
+}
+.operational-home .operational-home-upcoming button:disabled {
+  color: var(--shell-muted);
+  background: var(--shell-canvas, #f7f9fc);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.prisme-shell .operational-home .operational-home-upcoming button {
+  min-height: 2.75rem;
+}
+.prisme-shell .operational-home-upcoming {
+  margin: 22px 26px 0;
+  background: #fff;
+}
+.prisme-shell .operational-home-upcoming-intro {
+  padding: 17px 20px;
+}
+.prisme-shell .operational-home-upcoming-intro > button {
+  flex-shrink: 0;
+  color: white;
+  border-color: var(--shell-blue);
+  background: var(--shell-blue);
+}
+.prisme-shell .operational-home-upcoming-intro > button:hover {
+  filter: brightness(0.96);
+}
+.prisme-shell .operational-home-upcoming-intro p {
+  font-size: 0.78rem;
+}
+.prisme-shell .operational-home-upcoming-intro h3 {
+  font-weight: 650;
+}
+.prisme-shell .operational-home-upcoming-intro h3 svg {
+  color: #7963c4;
+}
+.prisme-shell
+  .operational-home-upcoming-panel
+  .operational-home-overdue-heading {
+  border-bottom: 1px solid var(--shell-line);
+}
+@media (max-width: 820px) {
+  .prisme-shell .operational-home-upcoming {
+    margin: 20px 20px 0;
+  }
+  .operational-home-upcoming-intro {
+    display: grid;
+    justify-items: start;
+  }
+}
+@media (max-width: 650px) {
+  .operational-home-upcoming-pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .operational-home-upcoming-pagination button {
+    width: 100%;
+  }
+}

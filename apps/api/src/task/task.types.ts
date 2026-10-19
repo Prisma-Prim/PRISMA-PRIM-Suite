@@ -61,6 +61,20 @@ export interface TaskProjectLabels {
 }
 /** An open Task assigned to the reader, with the Project list's own labels. */
 export type AssignedTaskView = TaskView & { project: TaskProjectLabels };
+/** One current, complete page of the reader's dated open Tasks. */
+export type DueSoonTaskView = Extract<
+  AssignedTaskView,
+  { status: OpenTaskState }
+> & { dueDate: string };
+export interface DueSoonTasksPage {
+  companyId: string;
+  today: string;
+  throughDate: string;
+  total: number;
+  offset: number;
+  pageSize: 25;
+  tasks: DueSoonTaskView[];
+}
 export const ATTENTION_RULES = [
   'overdue',
   'critical',

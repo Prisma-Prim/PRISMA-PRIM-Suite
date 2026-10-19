@@ -41,6 +41,7 @@ import { projectTaskMessages } from '../project/task.copy';
 import { projectTemplateVersionMessages } from '../project/project-template-version.copy';
 import { projectDocumentsMessages } from '../project/project-documents.copy';
 import { projectStageMessages } from '../project/project-stage.copy';
+import { upcomingDeadlinesMessages } from '../operational-home/upcoming-deadlines.copy';
 import { recentChangesMessages } from '../operational-home/recent-changes.copy';
 import { operationalHomeMessages } from '../operational-home/operational-home-localized.copy';
 import { sessionRevocationMessages } from '../access/workspace-session-revocation.copy';
@@ -120,6 +121,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('projectStage', projectStageMessages);
   assertMessageCoverage('operationalHome', operationalHomeMessages);
   assertMessageCoverage('recentChanges', recentChangesMessages);
+  assertMessageCoverage('upcomingDeadlines', upcomingDeadlinesMessages);
   assertMessageCoverage('sessionRevocation', sessionRevocationMessages);
   assertMessageCoverage('select', selectMessages);
 }

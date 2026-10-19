@@ -39,6 +39,7 @@ import {
   cancelInput,
   createInput,
   editInput,
+  dueSoonTasksQuery,
   isOpenTaskState,
   overdueTasksQuery,
   readTaskView,
@@ -53,6 +54,7 @@ import {
   type AssignedTaskView,
   type AttentionRule,
   type CompanyOverdueTasks,
+  type DueSoonTasksPage,
   type TaskAttention,
   type TaskActor,
   type TaskChanges,
@@ -268,6 +270,79 @@ export class TaskService {
         return { ...view(row), project, rules, dueInDays };
       }),
     };
+  }
+  /** Complete own due-soon set: current authority, count and page share one snapshot. */
+  async listDueSoon(
+    actor: ActorContext,
+    query: unknown,
+  ): Promise<DueSoonTasksPage> {
+    const { offset } = dueSoonTasksQuery(query);
+    const today = operationalDate(this.clock.now());
+    const throughDate = calendarDateAfter(today, 7);
+    const pageSize = 25 as const;
+    return this.database.transaction(
+      async () => {
+        const companyId = await this.access.requireActor(actor);
+        const projects = new Map(
+          (await this.projects.list(actor)).map((project) => [
+            project.id,
+            {
+              id: project.id,
+              title: project.title,
+              clientDisplayName: project.clientDisplayName,
+            },
+          ]),
+        );
+        const page = { companyId, today, throughDate, offset, pageSize };
+        if (projects.size === 0) return { ...page, total: 0, tasks: [] };
+        const eligible = and(
+          eq(tasks.workspaceId, actor.workspaceId),
+          eq(tasks.companyId, companyId),
+          eq(tasks.assigneeMembershipId, actor.workspaceMembershipId),
+          inArray(tasks.status, [...OPEN_TASK_STATES]),
+          inArray(tasks.projectId, [...projects.keys()]),
+          gte(tasks.dueDate, today),
+          lte(tasks.dueDate, throughDate),
+        );
+        const [counted] = await this.database.connection
+          .select({ total: count() })
+          .from(tasks)
+          .where(eligible);
+        const total = counted?.total ?? 0;
+        if (offset >= total) return { ...page, total, tasks: [] };
+        const rows = await this.database.connection
+          .select()
+          .from(tasks)
+          .where(eligible)
+          .orderBy(asc(tasks.dueDate), asc(tasks.createdAt), asc(tasks.id))
+          .limit(pageSize)
+          .offset(offset);
+        return {
+          ...page,
+          total,
+          tasks: rows.map((row) => {
+            const project = projects.get(row.projectId);
+            const task = view(row);
+            if (!project || task.dueDate === null)
+              throw new Error('Invalid due-soon Task Project or date.');
+            switch (task.status) {
+              case 'todo':
+              case 'in_progress':
+              case 'blocked':
+                return { ...task, project, dueDate: task.dueDate };
+              case 'done':
+              case 'cancelled':
+                throw new Error('Invalid due-soon Task state.');
+              default: {
+                const exhaustive: never = task;
+                return exhaustive;
+              }
+            }
+          }),
+        };
+      },
+      { isolationLevel: 'repeatable read' },
+    );
   }
   /**
    * The Company overdue-Task list at the operational date of one sampled

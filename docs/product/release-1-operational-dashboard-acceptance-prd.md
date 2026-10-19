@@ -216,7 +216,6 @@ My Tasks keeps its own order and presentation. This deterministic ordering is th
 ### 17.4 Excluded
 
 - elapsed-time "What changed since yesterday" filters (session 28); the bounded latest-dated Activity preview is separately approved in section 18;
-- a separate next-7-days view beyond the Due soon rule;
 - money, invoices, payments, audits, trainings, nonconformities, certificates and approval queues, whose capabilities do not exist;
 - Workspace-wide or "All Companies" views, which will reuse these definitions;
 - commercial dashboards and Opportunity next actions;
@@ -260,4 +259,46 @@ Own new feature strings centrally in Romanian, Russian, French and English, with
 
 The public App seam with real locale/provider composition and HTTP-boundary doubles proves the exact five-record order, fewer/old events, empty versus undated-only, loading/error/retry and malformed refusal, current Home availability, existing target actions, stale Company/authority/session replies and locale-only zero I/O. The registered real-PostgreSQL operational-foundation browser journey proves the preview against its actual authorized returned page and full Activity navigation after genuine business mutations, at desktop 1440px and narrow 390px. Keyboard operation, no horizontal overflow and inspected original screenshots are required. Existing history, isolation, assertion and case budgets remain intact.
 
-No Activity recording/projection/parser, API/schema/authorization, event-family, export, count, elapsed-time query, notification, polling, new Home access or next-seven-days implementation is added. The separate next-seven-days view remains excluded by section 17.4 until its own approved slice.
+No Activity recording/projection/parser, API/schema/authorization, event-family, export, count, elapsed-time query, notification, polling, new Home access or next-seven-days implementation is added. The separate next-seven-days view is outside #720; its later approved scope is section 19.
+
+## 19. Approved personal upcoming deadlines (#721)
+
+Dan approved this bounded Home addition on 2026-10-19, after the latest dated
+Activity preview. It lifts only the former exclusion of a separate next-seven-days
+view; wider Draft dashboard scope remains unapproved.
+
+The view is the exact **My Tasks** set (Project/Task PRD §§18–20), intersected with
+§17.3's **Due soon** rule: the reader's own open, readable Tasks in the active
+Company, due from server today through today + 7 inclusive. It spans eight calendar
+dates. The one server instant and `Europe/Chisinau` owner remain §17.1; browser
+midnight and elapsed-hour windows do not apply. Project closure does not additionally
+filter this set. Original superseded Client labels and their current relationship
+visibility remain governed by My Tasks.
+
+`GET /api/due-soon-tasks` returns Company, exact today/through-date, full total,
+offset, fixed page size 25 and Task rows. The only query input is one nonnegative
+safe-integer offset; repeated, array, fractional, negative, unsafe and unsupported
+parameters are rejected. Current authority, count and rows share one repeatable-read
+snapshot. Pages use My Tasks order: due date, creation time, identifier. There is no
+silent total cap. Each request reflects current state; pagination does not claim a
+frozen snapshot across requests. Refresh restarts at zero; an out-of-range page
+offers back/refresh. A changed server date retires the old range and restarts zero.
+
+A Home-local accessible panel shows Company, range, total, Task title, state,
+manual priority, date and existing Project/Client labels. Previous, Next, Refresh,
+Close and exact Task opening use the existing Project navigation, without record
+identifiers in URL/history. Closing restores the opening action's focus. Loading,
+empty, out-of-range, forbidden and unavailable/retry remain distinct. Malformed or
+foreign responses expose no rows/counts; newer requests, close and App's existing
+Company/identity/session/membership/authority key retire older replies. Four-locale
+changes preserve the current page, business content, focus and request lifecycle.
+
+These reads create no event, command outcome, Task history/version, Client fence
+change, notification or background transition. My Tasks, My attention and Company
+overdue Tasks remain unchanged. Team/all-Companies views, configurable windows or
+time zones, calendars, reminders, exports and new permissions remain excluded.
+
+Public PostgreSQL REST and real App HTTP-boundary tests own set, date, authority,
+pagination, response refusal and stale-reply proof. Desktop 1440px/narrow 390px
+browser journeys cover the four locales and both frames; the registered disposable
+PostgreSQL acceptance journey proves exact Task opening and completion/reload.
