@@ -31,6 +31,7 @@ import { clientDirectoryMessages } from '../client/client-directory.copy';
 import { clientDossierMessages } from '../client/client-dossier.copy';
 import { clientDuplicateReviewMessages } from '../client/client-duplicate-review.copy';
 import { clientCorrectionHistoryMessages } from '../client/client-correction-history.copy';
+import { clientUnionHistoryMessages } from '../client/client-union-history.copy';
 import { appMessages } from '../app.copy';
 import { activityLogMessages } from '../production-shell/activity-log.copy';
 import { companyContextMessages } from '../company/company-context.copy';
@@ -92,6 +93,7 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('salesStage', salesStageMessages);
   assertMessageCoverage('clientDirectory', clientDirectoryMessages);
   assertMessageCoverage('clientDossier', clientDossierMessages);
+  assertMessageCoverage('clientUnionHistory', clientUnionHistoryMessages);
   assertMessageCoverage('clientDuplicateReview', clientDuplicateReviewMessages);
   assertMessageCoverage(
     'clientCorrectionHistory',
