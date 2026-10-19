@@ -197,13 +197,17 @@ test('registers and reopens a Company preparatory Project after reload', async (
     fullPage: true,
   });
   await page.goto('/?frame=prisme#activity');
+  const activity = page.getByRole('region', {
+    name: 'Activity Log',
+    exact: true,
+  });
   await expect(
-    page.getByText(
+    activity.getByText(
       `${actorContextFixture.displayName} created a preparatory Project`,
     ),
   ).toBeVisible();
   await expect(
-    page.getByText(`Target: Project: ${project.title}`),
+    activity.getByText(`Target: Project: ${project.title}`),
   ).toBeVisible();
   await page.goto('/?frame=prisme#projects');
   await page

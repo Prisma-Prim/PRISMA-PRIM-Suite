@@ -140,6 +140,13 @@ function renderHome(
   const view = render(
     <InterfaceLocaleProvider>
       <OperationalHome
+        activity={{
+          state: { status: 'ready', events: [] },
+          activeCompanyId: company.id,
+          onRefresh: async () => undefined,
+          onOpenActivity: () => undefined,
+          onOpenRequest: undefined,
+        }}
         workspaceMembershipId={attribution.workspaceMembershipId}
         company={company}
         identity={deterministicBrowserIdentity()}
@@ -263,8 +270,18 @@ describe('Company summary', () => {
     unmount();
 
     stub({ '/api/operational-home': [home([])] });
-    const { container } = renderHome();
-    await waitFor(() => expect(container).toBeEmptyDOMElement());
+    renderHome();
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: copy.title })).toBeNull(),
+    );
+    for (const summary of Object.values(copy.summaries)) {
+      expect(screen.queryByText(summary.label)).toBeNull();
+    }
+    expect(
+      screen.getByRole('region', { name: 'Recent changes' }),
+    ).toHaveTextContent(
+      'No dated events to show in the current Activity context.',
+    );
   });
 
   it('opens each destination through its callback, also for a zero count', async () => {

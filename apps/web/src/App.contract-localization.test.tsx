@@ -265,8 +265,13 @@ it.each([200, 404])(
         />
       </InterfaceLocaleProvider>,
     );
+    const activity = await screen.findByRole('region', {
+      name: 'Activity Log',
+    });
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Open agreement version' }),
+      await within(activity).findByRole('button', {
+        name: 'Open agreement version',
+      }),
     );
     await waitFor(() => expect(exactSignal).toBeDefined());
     const beforeLocale = fetch.mock.calls.length;

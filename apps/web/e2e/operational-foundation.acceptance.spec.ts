@@ -558,6 +558,145 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expectNoHorizontalOverflow(page);
 });
 
+test('shows the authorized PostgreSQL Activity prefix on Home without another read', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
+  ).toBeVisible();
+  const company = page.getByLabel('Active Company', { exact: true });
+  const navigation = page.getByRole('navigation', {
+    name: 'Primary navigation',
+  });
+  const clients = page.locator('.client-workspace');
+  const activity = page.locator('.activity-log');
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(company, { label: 'PRISMA-PRIM' });
+  await expect(company).toBeEnabled();
+  await expect(company).toHaveText('PRISMA-PRIM');
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await navigate(page, navigation, 'Clients', narrow);
+
+  // Three real registrations each produce a Client and Company-link event.
+  // This case owns its data and does not depend on the longer journey above.
+  const clientIds: string[] = [];
+  for (let index = 1; index <= 3; index += 1) {
+    const clientName = `Recent changes ${suffix} Client ${index}`;
+    await clients
+      .getByRole('button', { name: 'New Client', exact: true })
+      .click();
+    await clients.getByLabel('Client display name').fill(clientName);
+    const created = page.waitForResponse(
+      mutationResponse('POST', '/api/clients'),
+    );
+    await clients
+      .getByRole('button', { name: 'Create Client', exact: true })
+      .click();
+    clientIds.push(await responseId(created));
+    await expect(
+      clients.getByRole('heading', { name: clientName, exact: true }),
+    ).toBeVisible();
+    await clients.getByRole('button', { name: 'Close registration' }).click();
+  }
+
+  await navigate(page, navigation, 'Activity Log', narrow);
+  await expect(activity).toBeVisible();
+  const read = page.waitForResponse(
+    mutationResponse('GET', '/api/activity-log'),
+  );
+  await page.reload();
+  const response = await read;
+  expect(response.ok()).toBe(true);
+  const activityBody: unknown = await response.json();
+  const records = activityRecords(activityBody);
+  for (const clientId of clientIds) {
+    expect(
+      records
+        .filter((event) => event.target.clientAccountId === clientId)
+        .map((event) => event.action)
+        .sort(),
+    ).toEqual(['client.created', 'client_company_relationship.established']);
+  }
+  expectNoOtherCompanyActivity(
+    activityBody,
+    requiredEnvironment('ACCEPTANCE_OTHER_COMPANY_ID'),
+    requiredEnvironment('ACCEPTANCE_OTHER_PROJECT_ID'),
+  );
+  // Assert all six known mutation narrations independently before comparing
+  // the shared prefix. Other existing event families remain in server order.
+  for (const [index, event] of records.entries()) {
+    if (!clientIds.includes(String(event.target.clientAccountId))) continue;
+    if (!isRequiredAction(event.action))
+      throw new Error(`Unexpected Client mutation action: ${event.action}`);
+    await expect(
+      activity.getByRole('listitem').nth(index).locator('strong'),
+    ).toHaveText(`${event.actorDisplayName} ${actionLabels[event.action]}`);
+  }
+  // Home consumes this same authorized server page, without another Activity
+  // read. Its dated prefix is compared with actual server timestamps and the
+  // canonical complete ledger already checked above.
+  const datedPrefix = activityRecords(activityBody)
+    .filter((event) => event.occurredAt !== null)
+    .slice(0, 5);
+  expect(datedPrefix).toHaveLength(5);
+  const prefixDescriptions = (
+    await activity.locator('strong').allTextContents()
+  ).slice(0, 5);
+  const additionalActivityReads: Request[] = [];
+  const recordActivityRead = (request: Request) => {
+    if (
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname === '/api/activity-log'
+    )
+      additionalActivityReads.push(request);
+  };
+  page.on('request', recordActivityRead);
+  await navigate(page, navigation, 'Overview', narrow);
+  const recent = page.getByRole('region', {
+    name: 'Recent changes',
+    exact: true,
+  });
+  await expect(recent.getByRole('listitem')).toHaveCount(5);
+  await expect(recent.locator('strong')).toHaveText(prefixDescriptions);
+  expect(
+    await recent
+      .locator('time')
+      .evaluateAll((times) =>
+        times.map((time) => time.getAttribute('datetime')),
+      ),
+  ).toEqual(
+    datedPrefix.map((event) => {
+      if (event.occurredAt === null)
+        throw new Error('Expected a dated prefix record.');
+      return new Date(event.occurredAt).toISOString();
+    }),
+  );
+  expect(additionalActivityReads).toHaveLength(0);
+  await expectNoHorizontalOverflow(page);
+  await recent.screenshot({
+    path: testInfo.outputPath(
+      `operational-foundation-${narrow ? 'narrow' : 'desktop'}-recent.png`,
+    ),
+  });
+  const openActivity = recent.getByRole('button', {
+    name: 'Open full Activity Log',
+  });
+  await openActivity.focus();
+  await page.keyboard.press('Enter');
+  await expect(activity).toBeVisible();
+  await expect(page.locator('#activity')).toBeFocused();
+  expect(additionalActivityReads).toHaveLength(0);
+  page.off('request', recordActivityRead);
+  await expectNoHorizontalOverflow(page);
+});
+
 type RequiredAction =
   | 'project.responsible.changed'
   | 'document.project.linked'

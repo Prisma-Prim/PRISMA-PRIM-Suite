@@ -12,6 +12,7 @@ import {
 import { useOperationalHomeCopy } from './operational-home-localized.copy';
 import { MyAttention } from './MyAttention';
 import { OverdueTasksPanel } from './OverdueTasksPanel';
+import { RecentChanges, type RecentChangesProps } from './RecentChanges';
 import './operational-home.css';
 
 export type OperationalHomeCompany = { id: string; displayName: string };
@@ -49,7 +50,18 @@ const icons = {
  * one read, Refresh/Retry and late-reply suppression, and the on-demand
  * overdue panel. It never shows zeros for a failed or refused read.
  */
-export function OperationalHome({
+export function OperationalHome(
+  props: Props & { activity: RecentChangesProps },
+) {
+  return (
+    <div className="operational-home-stack">
+      <CompanySummary {...props} />
+      <RecentChanges {...props.activity} />
+    </div>
+  );
+}
+
+function CompanySummary({
   company,
   workspaceMembershipId,
   identity,

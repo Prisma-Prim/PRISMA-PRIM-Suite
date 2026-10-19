@@ -756,11 +756,17 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
   ).toHaveCount(0);
 
   await navigate('Activity Log');
+  const activity = page.getByRole('region', {
+    name: 'Activity Log',
+    exact: true,
+  });
   await expect(
-    page.getByText(`${actor.displayName} cancelled a Task`, { exact: true }),
+    activity.getByText(`${actor.displayName} cancelled a Task`, {
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
-    page
+    activity
       .getByText(`${actor.displayName} changed a Task's status`, {
         exact: true,
       })
