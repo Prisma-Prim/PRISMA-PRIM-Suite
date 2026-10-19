@@ -1,5 +1,10 @@
 import { changeValue } from '../test/select-option';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '../test/render-with-interface-locale';
 import { afterEach, expect, it, vi } from 'vitest';
 import { CompanyContextAccess } from '../access/CompanyContextAccess';
 import type { ActorContext } from '../access-types';

@@ -25,7 +25,8 @@ import {
   type CompanyAccessMember,
   companyAccessAdministrationResponse,
 } from './company-access-administration-response';
-import { companyContextAccessCopy as copy } from './company-context-access.copy';
+import { formatMessage } from '../localization/messages';
+import { useCompanyAssignmentCopy } from './company-assignment-localization.copy';
 import { WorkspaceSessionRevocations } from './WorkspaceSessionRevocations';
 import { WorkspaceMembershipSuspension } from './WorkspaceMembershipSuspension';
 import './access-administration.css';
@@ -122,6 +123,7 @@ export function CompanyContextAccess({
   onClientAuthorityChanged?: () => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
+  const copy = useCompanyAssignmentCopy();
   const profitabilityCopy = useProfitabilityCopy();
   const decisionCopy = useContractDecisionCopy();
   const stageCopy = useSalesStageCopy();
@@ -380,9 +382,9 @@ export function CompanyContextAccess({
         aria-labelledby="company-context-access-title"
         className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
       >
-        <p className="eyebrow">{copy.eyebrow}</p>
-        <h2 id="company-context-access-title">{copy.title}</h2>
-        <p role="status">{copy.loading}</p>
+        <p className="eyebrow">{copy('eyebrow')}</p>
+        <h2 id="company-context-access-title">{copy('title')}</h2>
+        <p role="status">{copy('loading')}</p>
       </section>
     );
   }
@@ -393,15 +395,15 @@ export function CompanyContextAccess({
         aria-labelledby="company-context-access-title"
         className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
       >
-        <p className="eyebrow">{copy.eyebrow}</p>
-        <h2 id="company-context-access-title">{copy.title}</h2>
-        <p role="alert">{copy.error}</p>
+        <p className="eyebrow">{copy('eyebrow')}</p>
+        <h2 id="company-context-access-title">{copy('title')}</h2>
+        <p role="alert">{copy('error')}</p>
         <button
           type="button"
           className={isPrisme ? 'company-access-primary-action' : undefined}
           onClick={() => void retryAdministration()}
         >
-          {copy.retry}
+          {copy('retry')}
         </button>
       </section>
     );
@@ -441,10 +443,10 @@ export function CompanyContextAccess({
       aria-labelledby="company-context-access-title"
       className={`company-access${isPrisme ? ' company-access--prisme' : ''}`}
     >
-      <p className="eyebrow">{copy.eyebrow}</p>
-      <h2 id="company-context-access-title">{copy.title}</h2>
-      <p>{copy.description}</p>
-      {!hasSelectableTargets && <p>{copy.empty}</p>}
+      <p className="eyebrow">{copy('eyebrow')}</p>
+      <h2 id="company-context-access-title">{copy('title')}</h2>
+      <p>{copy('description')}</p>
+      {!hasSelectableTargets && <p>{copy('empty')}</p>}
       {hasSelectableTargets && (
         <form
           className={isPrisme ? 'company-access-form' : undefined}
@@ -452,20 +454,21 @@ export function CompanyContextAccess({
           onSubmit={(event) => void submit(event, 'grant')}
         >
           <label htmlFor="context-access-member">
-            {copy.workspaceMemberLabel}
+            {copy('workspaceMemberLabel')}
           </label>
           <Select
             id="context-access-member"
             value={workspaceMembershipId}
             disabled={busy}
-            placeholder={copy.selectMember}
+            placeholder={copy('selectMember')}
             options={data.members.map((member) => ({
               value: member.workspaceMembershipId,
-              label: disambiguatedLabel(
-                memberLabel(member),
-                member.workspaceMembershipId,
-                duplicateMemberLabels,
-              ),
+              label: disambiguatedLabel({
+                label: memberLabel(member),
+                id: member.workspaceMembershipId,
+                duplicates: duplicateMemberLabels,
+                referenceLabel: copy('referenceLabel'),
+              }),
             }))}
             onValueChange={(value) => {
               resetCommand();
@@ -473,19 +476,20 @@ export function CompanyContextAccess({
             }}
           />
 
-          <label htmlFor="context-access-company">{copy.companyLabel}</label>
+          <label htmlFor="context-access-company">{copy('companyLabel')}</label>
           <Select
             id="context-access-company"
             value={companyId}
             disabled={busy}
-            placeholder={copy.selectCompany}
+            placeholder={copy('selectCompany')}
             options={data.companies.map((company) => ({
               value: company.id,
-              label: disambiguatedLabel(
-                company.displayName,
-                company.id,
-                duplicateCompanyLabels,
-              ),
+              label: disambiguatedLabel({
+                label: company.displayName,
+                id: company.id,
+                duplicates: duplicateCompanyLabels,
+                referenceLabel: copy('referenceLabel'),
+              }),
             }))}
             onValueChange={(value) => {
               resetCommand();
@@ -493,24 +497,24 @@ export function CompanyContextAccess({
             }}
           />
 
-          <label htmlFor="context-access-bundle">{copy.bundleLabel}</label>
+          <label htmlFor="context-access-bundle">{copy('bundleLabel')}</label>
           <Select
             id="context-access-bundle"
             value={bundle}
             disabled={busy}
             options={[
-              { value: 'company-context', label: copy.companyContextBundle },
+              { value: 'company-context', label: copy('companyContextBundle') },
               {
                 value: 'commercial-intake',
-                label: copy.commercialIntakeBundle,
+                label: copy('commercialIntakeBundle'),
               },
               {
                 value: 'service-catalogue',
-                label: copy.serviceCatalogueBundle,
+                label: copy('serviceCatalogueBundle'),
               },
               {
                 value: 'pricing-configuration',
-                label: copy.pricingConfigurationBundle,
+                label: copy('pricingConfigurationBundle'),
               },
               {
                 value: 'profitability-contributor',
@@ -520,25 +524,25 @@ export function CompanyContextAccess({
                 value: 'profitability-director',
                 label: profitabilityCopy('directorBundle'),
               },
-              { value: 'pricing-user', label: copy.pricingUserBundle },
-              { value: 'offer-preparer', label: copy.offerPreparerBundle },
+              { value: 'pricing-user', label: copy('pricingUserBundle') },
+              { value: 'offer-preparer', label: copy('offerPreparerBundle') },
               {
                 value: 'contract-preparer',
-                label: copy.contractPreparerBundle,
+                label: copy('contractPreparerBundle'),
               },
               { value: 'contract-approver', label: decisionCopy('bundle') },
-              { value: 'offer-approver', label: copy.offerApproverBundle },
+              { value: 'offer-approver', label: copy('offerApproverBundle') },
               {
                 value: 'pricing-adjustment',
-                label: copy.pricingAdjustmentBundle,
+                label: copy('pricingAdjustmentBundle'),
               },
               {
                 value: 'commercial-activity-reader',
-                label: copy.commercialActivityReaderBundle,
+                label: copy('commercialActivityReaderBundle'),
               },
               {
                 value: 'opportunity-manager',
-                label: copy.opportunityManagerBundle,
+                label: copy('opportunityManagerBundle'),
               },
               {
                 value: 'sales-stage-configuration',
@@ -553,14 +557,14 @@ export function CompanyContextAccess({
                 value: 'project-stage-advancer',
                 label: projectStageCopy('bundle'),
               },
-              { value: 'director-client', label: copy.directorClientBundle },
+              { value: 'director-client', label: copy('directorClientBundle') },
               {
                 value: 'document-project-organizer',
-                label: copy.documentProjectOrganizerBundle,
+                label: copy('documentProjectOrganizerBundle'),
               },
               {
                 value: 'document-registrar',
-                label: copy.documentRegistrarBundle,
+                label: copy('documentRegistrarBundle'),
               },
               {
                 value: 'document-content-reader',
@@ -572,11 +576,14 @@ export function CompanyContextAccess({
               },
               {
                 value: 'document-approver',
-                label: copy.documentApproverBundle,
+                label: copy('documentApproverBundle'),
               },
-              { value: 'project', label: copy.projectBundle },
-              { value: 'project-approver', label: copy.projectApproverBundle },
-              { value: 'task-manager', label: copy.taskManagerBundle },
+              { value: 'project', label: copy('projectBundle') },
+              {
+                value: 'project-approver',
+                label: copy('projectApproverBundle'),
+              },
+              { value: 'task-manager', label: copy('taskManagerBundle') },
             ]}
             onValueChange={(value) => {
               resetCommand();
@@ -619,15 +626,17 @@ export function CompanyContextAccess({
           {bundle === 'profitability-director' && (
             <p>{profitabilityCopy('directorPrerequisites')}</p>
           )}
-          {bundle === 'task-manager' && <p>{copy.taskManagerPrerequisites}</p>}
+          {bundle === 'task-manager' && (
+            <p>{copy('taskManagerPrerequisites')}</p>
+          )}
           {bundle === 'commercial-activity-reader' && (
-            <p>{copy.commercialActivityReaderPrerequisites}</p>
+            <p>{copy('commercialActivityReaderPrerequisites')}</p>
           )}
           {bundle === 'pricing-configuration' && (
-            <p>{copy.pricingConfigurationPrerequisites}</p>
+            <p>{copy('pricingConfigurationPrerequisites')}</p>
           )}
           {bundle === 'project-approver' && (
-            <p>{copy.projectApproverPrerequisites}</p>
+            <p>{copy('projectApproverPrerequisites')}</p>
           )}
           {bundle === 'document-content-reader' && (
             <p>{pdfCopy.t('readerPrerequisites')}</p>
@@ -636,23 +645,25 @@ export function CompanyContextAccess({
             <p>{pdfCopy.t('uploaderPrerequisites')}</p>
           )}
           {bundle === 'document-approver' && (
-            <p>{copy.documentApproverPrerequisites}</p>
+            <p>{copy('documentApproverPrerequisites')}</p>
           )}
-          {bundle === 'pricing-user' && <p>{copy.pricingUserPrerequisites}</p>}
+          {bundle === 'pricing-user' && (
+            <p>{copy('pricingUserPrerequisites')}</p>
+          )}
           {bundle === 'contract-preparer' && (
-            <p>{copy.contractPreparerPrerequisites}</p>
+            <p>{copy('contractPreparerPrerequisites')}</p>
           )}
           {bundle === 'contract-approver' && (
             <p>{decisionCopy('prerequisites')}</p>
           )}
           {bundle === 'offer-preparer' && (
-            <p>{copy.offerPreparerPrerequisites}</p>
+            <p>{copy('offerPreparerPrerequisites')}</p>
           )}
           {bundle === 'offer-approver' && (
-            <p>{copy.offerApproverPrerequisites}</p>
+            <p>{copy('offerApproverPrerequisites')}</p>
           )}
           {bundle === 'opportunity-manager' && (
-            <p>{copy.opportunityManagerPrerequisites}</p>
+            <p>{copy('opportunityManagerPrerequisites')}</p>
           )}
           {bundle === 'project-stage-advancer' && (
             <p>{projectStageCopy('prerequisites')}</p>
@@ -667,21 +678,25 @@ export function CompanyContextAccess({
             <p>{stageCopy('configurationPrerequisites')}</p>
           )}
           {bundle === 'pricing-adjustment' && (
-            <p>{copy.pricingAdjustmentPrerequisites}</p>
+            <p>{copy('pricingAdjustmentPrerequisites')}</p>
           )}
           {workspaceMembershipId && companyId && (
             <p role="status">
-              {copy.currentStateLabel}:{' '}
+              {copy('currentStateLabel')}:{' '}
               <strong>
                 {!activeAssignment
-                  ? copy.currentStateNotGranted
+                  ? copy('currentStateNotGranted')
                   : capturedVersion === null
-                    ? copy.currentStateGranted
-                    : copy.currentStateGrantedVersion(capturedVersion)}
+                    ? copy('currentStateGranted')
+                    : formatMessage(copy('currentStateGrantedVersion'), {
+                        version: capturedVersion,
+                      })}
               </strong>
             </p>
           )}
-          {capturedVersion !== null && <p>{copy.capturedVersionExplanation}</p>}
+          {capturedVersion !== null && (
+            <p>{copy('capturedVersionExplanation')}</p>
+          )}
 
           <button
             type="submit"
@@ -693,7 +708,7 @@ export function CompanyContextAccess({
               (activeAssignment && retrySubmission !== 'grant')
             }
           >
-            {copy.grant}
+            {copy('grant')}
           </button>
           <button
             type="button"
@@ -706,16 +721,16 @@ export function CompanyContextAccess({
             }
             onClick={(event) => void submit(event, 'revoke')}
           >
-            {copy.revoke}
+            {copy('revoke')}
           </button>
         </form>
       )}
       {mutation.status === 'ready' && (
         <p role="status">
-          {mutation.submission === 'grant' ? copy.granted : copy.revoked}
+          {mutation.submission === 'grant' ? copy('granted') : copy('revoked')}
         </p>
       )}
-      {unresolved && <p role="alert">{copy.error}</p>}
+      {unresolved && <p role="alert">{copy('error')}</p>}
       <WorkspaceSessionRevocations
         actor={actor}
         identity={identity}
@@ -727,11 +742,12 @@ export function CompanyContextAccess({
         identity={identity}
         members={data.members.map((member) => ({
           workspaceMembershipId: member.workspaceMembershipId,
-          label: disambiguatedLabel(
-            memberLabel(member),
-            member.workspaceMembershipId,
-            duplicateMemberLabels,
-          ),
+          label: disambiguatedLabel({
+            label: memberLabel(member),
+            id: member.workspaceMembershipId,
+            duplicates: duplicateMemberLabels,
+            referenceLabel: copy('referenceLabel'),
+          }),
         }))}
         disabled={pending}
         reloadAdministration={reloadAdministration}
@@ -744,35 +760,35 @@ export function CompanyContextAccess({
 }
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
-  const labels: Record<AssignmentBundle, AssignmentBundleLabel> = {
+  const labels = {
     'profitability-contributor': 'Company Profitability Contributor',
     'profitability-director': 'Company Profitability Director',
-    'commercial-intake': copy.commercialIntakeBundle,
-    'service-catalogue': copy.serviceCatalogueBundle,
-    'pricing-configuration': copy.pricingConfigurationBundle,
-    'pricing-user': copy.pricingUserBundle,
-    'offer-preparer': copy.offerPreparerBundle,
-    'contract-preparer': copy.contractPreparerBundle,
+    'commercial-intake': 'Company Commercial Intake',
+    'service-catalogue': 'Company Service Catalogue',
+    'pricing-configuration': 'Company Pricing Configuration',
+    'pricing-user': 'Company Pricing User',
+    'offer-preparer': 'Company Offer Preparer',
+    'contract-preparer': 'Company Contract Preparer',
     'contract-approver': 'Company Contract Approver',
-    'offer-approver': copy.offerApproverBundle,
-    'pricing-adjustment': copy.pricingAdjustmentBundle,
-    'commercial-activity-reader': copy.commercialActivityReaderBundle,
-    'opportunity-manager': copy.opportunityManagerBundle,
+    'offer-approver': 'Company Offer Approver',
+    'pricing-adjustment': 'Company Pricing Adjustment',
+    'commercial-activity-reader': 'Company Commercial Activity Reader',
+    'opportunity-manager': 'Company Opportunity Manager',
     'sales-stage-configuration': 'Company Sales Stage Configuration',
     'project-template-user': 'Company Project Template User',
     'project-template-configuration': 'Company Project Template Configuration',
     'project-stage-advancer': 'Company Project Stage Advancer',
-    'task-manager': copy.taskManagerBundle,
-    'document-project-organizer': copy.documentProjectOrganizerBundle,
+    'task-manager': 'Company Task Manager',
+    'document-project-organizer': 'Company Document Project Organizer',
     'document-registrar': 'Company Document Registrar',
     'document-content-reader': 'Company Document Content Reader',
     'document-content-uploader': 'Company Document Content Uploader',
-    'document-approver': copy.documentApproverBundle,
-    project: copy.projectBundle,
-    'project-approver': copy.projectApproverBundle,
+    'document-approver': 'Company Document Approver',
+    project: 'Company Project Access',
+    'project-approver': 'Company Project Approver',
     'director-client': 'Company Director Client Access',
     'company-context': 'Company Context Access',
-  };
+  } satisfies Record<AssignmentBundle, AssignmentBundleLabel>;
   return labels[bundle];
 }
 
@@ -790,13 +806,19 @@ function duplicatedLabels(labels: string[]): Set<string> {
   return duplicates;
 }
 
-function disambiguatedLabel(
-  label: string,
-  id: string,
-  duplicates: ReadonlySet<string>,
-): string {
+function disambiguatedLabel({
+  label,
+  id,
+  duplicates,
+  referenceLabel,
+}: {
+  label: string;
+  id: string;
+  duplicates: ReadonlySet<string>;
+  referenceLabel: string;
+}): string {
   if (!duplicates.has(label)) return label;
-  return `${label} — ${copy.referenceLabel} ${stableReference(id)}`;
+  return `${label} — ${referenceLabel} ${stableReference(id)}`;
 }
 
 function stableReference(id: string): string {
