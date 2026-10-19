@@ -12,8 +12,10 @@ import {
 import { useOperationalHomeCopy } from './operational-home-localized.copy';
 import { MyAttention } from './MyAttention';
 import { OverdueTasksPanel } from './OverdueTasksPanel';
+import { UpcomingDeadlines } from './UpcomingDeadlines';
 import { RecentChanges, type RecentChangesProps } from './RecentChanges';
 import './operational-home.css';
+import './upcoming-deadlines.css';
 
 export type OperationalHomeCompany = { id: string; displayName: string };
 
@@ -178,6 +180,14 @@ function CompanySummary({
           today={load.view.today}
           onOpenTask={onOpenTask}
           onOpenMyTasks={onOpenMyTasks}
+        />
+      )}
+      {overdueShown && availableSummaries.overdue_tasks && (
+        <UpcomingDeadlines
+          company={company}
+          workspaceMembershipId={workspaceMembershipId}
+          identity={identity}
+          onOpenTask={onOpenTask}
         />
       )}
       <header className="operational-home-heading">

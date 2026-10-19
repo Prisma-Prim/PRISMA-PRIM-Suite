@@ -158,6 +158,21 @@ export function cancelInput(value: unknown) {
 export function assignedTasksQuery(value: unknown): void {
   keys(object(value), []);
 }
+/** Fixed-size due-soon pages accept only one nonnegative safe-integer offset. */
+export function dueSoonTasksQuery(value: unknown): { offset: number } {
+  const row = object(value);
+  keys(row, ['offset']);
+  if (row.offset === undefined) return { offset: 0 };
+  if (
+    typeof row.offset !== 'string' ||
+    !/^\d+$/u.test(row.offset) ||
+    !Number.isSafeInteger(Number(row.offset))
+  )
+    throw new BadRequestException(
+      'A nonnegative safe-integer offset is required.',
+    );
+  return { offset: Number(row.offset) };
+}
 /** The Company overdue-Task list takes no query parameter either. */
 export function overdueTasksQuery(value: unknown): void {
   keys(object(value), []);
