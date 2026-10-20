@@ -311,6 +311,87 @@ revocation/suspension. Its lifecycle is
 existing Company administration, bundle-label-only metadata and one-event-per-actual-
 state-change convention. It adds no standalone Activity grant.
 
+For the [Company Ideas intake journey](company-ideas-intake-prd.md),
+[Dan's 2026-10-19 decision](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507)
+separates reading, recording and defer/reject review per Company. The bounded
+contract, approved through the capability PRD's delegated agent product review,
+uses three independent opt-in captured bundles:
+
+| Bundle                    | Exact captured v1 permissions |
+| ------------------------- | ----------------------------- |
+| Company Ideas Reader v1   | `idea.read`                   |
+| Company Ideas Recorder v1 | `idea.record`                 |
+| Company Ideas Reviewer v1 | `idea.disposition.record`     |
+
+An administrator with current `company.assignment.manage` explicitly grants or
+revokes each bundle for an active same-Workspace membership and active Company
+through existing Company assignment administration. No existing bundle, captured
+version, assignment, title, author identity, Workspace ownership or migration
+backfill gains any new permission. Null or unknown versions fail closed.
+
+Every operation independently requires current active Company context and live
+Reader v1. Recording additionally requires live Recorder v1; a disposition
+additionally requires live Reviewer v1. Neither mutation bundle includes read or
+Company context. Reviewer grants no Idea recording, work/funding approval,
+scoring, Task/Project conversion, confidential-record access or other business
+authority. A user who both records and reviews receives both explicit assignments
+and Reader. No named real person is assigned by this contract.
+
+Current authority is revalidated, including required assignments, membership,
+Internal User and Company, before reads and under transaction locks before a
+command or exact committed replay is confirmed. Captured assignment IDs/versions
+are exposed through the existing current-actor boundary for coherent UI retirement;
+those projections never substitute for live server checks.
+
+Each actual grant/revoke records its canonical
+`company_ideas_reader_assignment.granted` / `.revoked`,
+`company_ideas_recorder_assignment.granted` / `.revoked`, or
+`company_ideas_reviewer_assignment.granted` / `.revoked` transition under this
+section's existing Company assignment target, bundle-label-only metadata and
+one-event-per-actual-change convention. No-op, denied, failed and exact-replayed
+administration commands create no event. Existing administration visibility is
+unchanged; Ideas content/history remains a separate restricted capability.
+
+For [ordinary Company complaint intake](company-complaints-intake-prd.md),
+[Dan's 2026-10-19 choice](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507)
+separates consultation from recording by Company, with no automatic expansion or
+real-person assignment. The bounded contract uses two independent opt-in bundles:
+
+| Bundle                         | Exact captured v1 permissions |
+| ------------------------------ | ----------------------------- |
+| Company Complaints Reader v1   | `complaint.read`              |
+| Company Complaints Recorder v1 | `complaint.record`            |
+
+Current `company.assignment.manage` administers each captured assignment explicitly
+for an active same-Workspace membership and Company through the existing seam.
+No old bundle/version, title, Workspace ownership, author/responsible identity or
+migration grants either. Null/unknown captured versions fail closed. Both grant
+no Company context, Client/Project, Document, staff-directory, Activity, finance,
+assurance, sending, closure, notification or cross-Company authority.
+
+Every read requires live Reader plus active Company context/membership and current
+visibility of the original Client/relationship and optional associated Project
+through their owners. Recorder independently requires those reads plus its live
+captured grant for intake and bounded factual history/corrections. Superseded
+original Client permits only its owner's retained read semantics; each new write
+requires original Client/relationship active. Project read is required when linked,
+not Project mutation or an open lifecycle. Self-responsibility grants nothing.
+
+Commands and exact receipt replay recheck live grants and current related-read
+visibility under transaction locks. Resolve a matching committed receipt before
+new-write active-original and revision checks; a readable superseded original
+permits only that historical replay, never another write/event/fence. Lost current
+authority denies replay. UI current-actor captured IDs/versions retire stale state,
+never substitute for live checks. Client retains its operational-use/reversal fence
+and identity-first lock order.
+
+Actual grants/revocations emit `company_complaints_reader_assignment.granted` /
+`.revoked` and `company_complaints_recorder_assignment.granted` / `.revoked` using
+this section's existing Company assignment target, bundle-label-only metadata and
+one-event-per-actual-change convention. Failed, denied, no-op and exact-replayed
+administration commands emit none. Existing administration visibility stays as is;
+it never reveals Complaint content/history or adds complaint read implicitly.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.
