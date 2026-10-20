@@ -6,15 +6,26 @@ const DOCUMENTATION_FILE = /^docs\/(?:[^/]+\/)*[^/]+\.md$/u;
 
 /**
  * Classifies one change as documentation-only. It answers true only for a
- * pull request whose changed-file list was read and contains nothing but
- * Markdown under docs/; every doubt answers false so CI runs everything.
+ * pull request or ordinary main push whose complete changed-file list was
+ * proven and contains only allowed documents. Every doubt runs everything.
  */
-export function isDocumentationOnly({ event, files }) {
-  if (event !== 'pull_request') return false;
+export function isDocumentationOnly({ event, ref, forced, files }) {
+  if (
+    event !== 'pull_request' &&
+    !(event === 'push' && ref === 'refs/heads/main' && forced === false)
+  )
+    return false;
   if (!Array.isArray(files) || files.length === 0) return false;
-  return files.every(
-    (file) => typeof file === 'string' && DOCUMENTATION_FILE.test(file),
-  );
+  for (const file of files) {
+    if (
+      typeof file !== 'string' ||
+      !(file === 'AGENTS.md' || DOCUMENTATION_FILE.test(file)) ||
+      file.includes('\0') ||
+      file.split('/').some((segment) => segment === '.' || segment === '..')
+    )
+      return false;
+  }
+  return true;
 }
 
 /**
@@ -22,15 +33,53 @@ export function isDocumentationOnly({ event, files }) {
  * NUL-delimited output keeps every path byte-for-byte: no quoting, no
  * trimming, so a name with leading spaces cannot pass as a docs/ path.
  */
-export function changedFiles(base, head, run = spawnSync) {
+export function changedFiles(
+  base,
+  head,
+  run = spawnSync,
+  { requireAncestor = false } = {},
+) {
   if (!base || !head) return undefined;
+  if (requireAncestor) {
+    // Push metadata must name available commits, never a new branch's zero
+    // before revision. A divergent push cannot use a merge-base comparison.
+    const commit = /^(?!0{40}$)[0-9a-f]{40}$/u;
+    if (!commit.test(base) || !commit.test(head)) return undefined;
+    const checkout = run('git', ['rev-parse', '--verify', 'HEAD'], {
+      encoding: 'utf8',
+    });
+    if (
+      checkout.error ||
+      checkout.status !== 0 ||
+      checkout.stdout !== `${head}\n`
+    )
+      return undefined;
+    const ancestry = run('git', ['merge-base', '--is-ancestor', base, head], {
+      encoding: 'utf8',
+    });
+    if (ancestry.error || ancestry.status !== 0) return undefined;
+  }
   const result = run(
     'git',
-    ['diff', '--name-only', '--no-renames', '-z', `${base}...${head}`],
+    [
+      'diff',
+      '--name-only',
+      '--no-renames',
+      '-z',
+      requireAncestor ? `${base}..${head}` : `${base}...${head}`,
+    ],
     { encoding: 'utf8' },
   );
-  if (result.error || result.status !== 0) return undefined;
-  return result.stdout.split('\0').filter((path) => path.length > 0);
+  if (
+    result.error ||
+    result.status !== 0 ||
+    typeof result.stdout !== 'string' ||
+    (result.stdout !== '' && !result.stdout.endsWith('\0'))
+  )
+    return undefined;
+  if (result.stdout === '') return [];
+  const files = result.stdout.slice(0, -1).split('\0');
+  return files.some((path) => path.length === 0) ? undefined : files;
 }
 
 function argument(name) {
@@ -40,8 +89,8 @@ function argument(name) {
 
 function main() {
   // Locally: `node scripts/ci-change-scope.mjs --base origin/main` compares
-  // the current branch with main. In CI the workflow passes the event and
-  // the pull request's base and head commits through the environment.
+  // the current branch with main. CI supplies the event and its complete
+  // base/before and head commits through the environment.
   const localBase = argument('--base');
   const event = localBase ? 'pull_request' : process.env.EVENT_NAME;
   const base = localBase ?? process.env.BASE_SHA;
@@ -50,7 +99,11 @@ function main() {
   try {
     documentationOnly = isDocumentationOnly({
       event,
-      files: changedFiles(base, head),
+      ref: process.env.EVENT_REF,
+      forced: process.env.PUSH_FORCED === 'false' ? false : undefined,
+      files: changedFiles(base, head, spawnSync, {
+        requireAncestor: event === 'push',
+      }),
     });
   } catch {
     documentationOnly = false;
