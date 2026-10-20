@@ -454,7 +454,7 @@ test('database jobs start the cached pinned PostgreSQL and keep matching environ
   assert.equal([...image.matchAll(cacheKey)].length, 2);
 });
 
-test('the scope job classifies the exact pull request commits with full history', async () => {
+test('the scope job supplies exact PR or main-push revisions and safety metadata with full history', async () => {
   const { scope } = jobsIn(await readWorkflow());
   assert.match(
     scope,
@@ -464,13 +464,15 @@ test('the scope job classifies the exact pull request commits with full history'
   const classify = stepBody(scope, 'Classify changed files');
   assert.match(classify, /id: classify\n/);
   assert.match(classify, /EVENT_NAME: \$\{\{ github\.event_name \}\}/);
+  assert.match(classify, /EVENT_REF: \$\{\{ github\.ref \}\}/);
+  assert.match(classify, /PUSH_FORCED: \$\{\{ github\.event\.forced \}\}/);
   assert.match(
     classify,
-    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+    /BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.before \}\}/,
   );
   assert.match(
     classify,
-    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+    /HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/,
   );
   assert.match(classify, /run: node scripts\/ci-change-scope\.mjs\n/);
   assert.doesNotMatch(classify, /\bif:/);
