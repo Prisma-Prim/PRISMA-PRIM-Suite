@@ -3520,6 +3520,35 @@ Formal question-bank completeness is not the same as evidence sufficiency. A par
 
 Implementation issues must continue to derive from the owning canonical PRD after material blockers are closed, never directly from the raw interview.
 
+For the bounded [ordinary service complaint intake](company-complaints-intake-prd.md),
+[Dan's explicit 2026-10-19 decision](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507)
+settles separate Company consultation/recording access without expanding existing
+rights or assigning real people. [Iurie's session43 item226](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307431470)
+supports intake and factual action/response history; items227–230 remain later
+reminder, investigation, corrective-action/effectiveness and reporting needs.
+The capability PRD owns the bounded immutable original, self-responsibility,
+declared/unknown severity and deadline, and motivated append-only corrections;
+Authorization section8 owns exact independent grants; Activity section7 owns
+restricted internal recording. This is reversible product synthesis with sourced
+access authority, not a new Iurie answer, numbered decision, legal deadline,
+external transmission, assurance closure or whole-module credit. The Ideas and
+ordinary-complaint access decision does not decide HR, purchasing or risk permissions.
+
+The **2026-10-20 normalization** under [#731](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/731)
+uses explicit reversible agent synthesis for the bounded factual journey.
+[Dan's delegated review instruction](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237)
+removes the former mandatory human PRD-review gate. After ordered Standards then
+Spec PASS with zero findings, [root's actual 2026-10-20 product disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/731#issuecomment-6284035912)
+approves bounded v0.2; this is agent approval of the frozen contract, not Dan's
+personal review or runtime delivery. The [coordination
+instruction](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283696600)
+permits independent one-issue preparation while retaining canonical dependencies
+and exact-head review/CI gates. These are instructions, not Dan's personal review
+of this diff or approval of new business authority. The capability readiness owner
+records the explicitly authorized local preparation/implementation exception with
+fresh seam, ownership and fit checks; canonical publication still precedes runtime
+publication or merge.
+
 ### 34.5 October controlled commercial sources
 
 The [October source reconciliation](commercial-source-reconciliation-2026-10.md), delivered under #493, preserves generic provenance from the new dossier package and the separate acceptance/numbering clarification. The primary dossier is selected by Iurie; its historical price was commercial judgement before the formal method, with no standardized workbook. Representative document receipt now reduces collection gaps without validating reusable content or operational use.
