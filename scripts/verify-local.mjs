@@ -523,7 +523,7 @@ export async function runLocalVerification({
           .map((key) => [key, environment[key]]),
       ),
       database:
-        'isolated targets validated by doctor; credentials/URLs deliberately omitted',
+        'Database URLs/credentials omitted; required database checks, if any, are recorded in the selected doctor log.',
     },
     scope: null,
     families: pendingFamilies(plan, null),
