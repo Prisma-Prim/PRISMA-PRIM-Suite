@@ -1,5 +1,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { isIP } from 'node:net';
+import * as http from 'node:http';
+import * as https from 'node:https';
 
 function writeEvent(event, output = process.stdout) {
   output.write(
@@ -34,52 +36,99 @@ function apiIsHealthy(body) {
   }
 }
 
-async function probe(target, timeout, stopSignal) {
-  const deadline = new AbortController();
-  const timer = setTimeout(() => deadline.abort(), timeout);
-  try {
-    const response = await fetch(target.url, {
-      redirect: 'manual',
-      signal: AbortSignal.any([stopSignal, deadline.signal]),
-    });
-    if (response.status >= 300 && response.status < 400)
-      return { healthy: false, code: 'REDIRECT_REFUSED' };
-    if (response.status !== 200) return { healthy: false, code: 'HTTP_STATUS' };
-    const reader = response.body?.getReader();
-    const chunks = [];
-    let length = 0;
-    if (reader) {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        length += value.byteLength;
-        if (length > 1_024)
-          return { healthy: false, code: 'RESPONSE_TOO_LARGE' };
-        chunks.push(value);
-      }
-    }
-    let body;
-    try {
-      // Preserve a leading BOM so literal web and JSON validation cannot turn
-      // invalid health bytes into healthy or recovered observations.
-      body = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(
-        Buffer.concat(chunks),
-      );
-    } catch {
-      return { healthy: false, code: 'INVALID_RESPONSE' };
-    }
-    const healthy =
-      target.service === 'web' ? body === 'ok' : apiIsHealthy(body);
-    return { healthy, code: healthy ? 'OK' : 'INVALID_RESPONSE' };
-  } catch {
-    return {
-      healthy: false,
-      code: deadline.signal.aborted ? 'TIMEOUT' : 'CONNECTION_FAILED',
+function probe(target, timeout, stopSignal) {
+  if (stopSignal.aborted)
+    return Promise.resolve({ healthy: false, code: 'CONNECTION_FAILED' });
+  return new Promise((resolve) => {
+    const transport = target.url.protocol === 'https:' ? https : http;
+    const agent = new transport.Agent({ keepAlive: false });
+    let request;
+    let response;
+    let socket;
+    let socketClosed = Promise.resolve();
+    let requestClosed = Promise.resolve();
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      stopSignal.removeEventListener('abort', cancelled);
+      response?.destroy();
+      request?.destroy();
+      socket?.destroy();
+      agent.destroy();
+      // A request can be cancelled before its socket is assigned. Wait for the
+      // request close first, then for any socket it acquired, before reporting.
+      void requestClosed.then(() => socketClosed).then(() => resolve(result));
     };
-  } finally {
-    clearTimeout(timer);
-    deadline.abort();
-  }
+    const failed = () => finish({ healthy: false, code: 'CONNECTION_FAILED' });
+    const cancelled = () => failed();
+    const timer = setTimeout(
+      () => finish({ healthy: false, code: 'TIMEOUT' }),
+      timeout,
+    );
+    stopSignal.addEventListener('abort', cancelled, { once: true });
+    try {
+      request = transport.request(target.url, { agent }, (incoming) => {
+        response = incoming;
+        incoming.on('error', failed);
+        incoming.on('aborted', failed);
+        incoming.on('close', () => {
+          if (!incoming.complete) failed();
+        });
+        if (settled) {
+          incoming.destroy();
+          return;
+        }
+        if (incoming.statusCode >= 300 && incoming.statusCode < 400) {
+          finish({ healthy: false, code: 'REDIRECT_REFUSED' });
+          return;
+        }
+        if (incoming.statusCode !== 200) {
+          finish({ healthy: false, code: 'HTTP_STATUS' });
+          return;
+        }
+        const chunks = [];
+        let length = 0;
+        incoming.on('data', (chunk) => {
+          length += chunk.length;
+          if (length > 1_024) {
+            finish({ healthy: false, code: 'RESPONSE_TOO_LARGE' });
+            return;
+          }
+          chunks.push(chunk);
+        });
+        incoming.on('end', () => {
+          if (settled) return;
+          let body;
+          try {
+            // Preserve a leading BOM so literal web and JSON validation cannot
+            // turn invalid health bytes into healthy or recovered observations.
+            body = new TextDecoder('utf-8', {
+              fatal: true,
+              ignoreBOM: true,
+            }).decode(Buffer.concat(chunks));
+          } catch {
+            finish({ healthy: false, code: 'INVALID_RESPONSE' });
+            return;
+          }
+          const healthy =
+            target.service === 'web' ? body === 'ok' : apiIsHealthy(body);
+          finish({ healthy, code: healthy ? 'OK' : 'INVALID_RESPONSE' });
+        });
+      });
+      requestClosed = new Promise((closed) => request.once('close', closed));
+      request.on('error', failed);
+      request.on('socket', (assigned) => {
+        socket = assigned;
+        socketClosed = new Promise((closed) => assigned.once('close', closed));
+        if (settled) assigned.destroy();
+      });
+      request.end();
+    } catch {
+      failed();
+    }
+  });
 }
 
 const stop = new AbortController();

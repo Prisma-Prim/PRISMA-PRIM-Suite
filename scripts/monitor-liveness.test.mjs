@@ -780,3 +780,226 @@ test(
     assert.equal(process.stderr(), '');
   },
 );
+
+async function silentTcpFixture() {
+  const { createServer: createTcpServer } = await import('node:net');
+  const sockets = new Set();
+  let accepted = 0;
+  let peakSockets = 0;
+  let receivedBytes = 0;
+  let closedHandshakes = 0;
+  const server = createTcpServer((socket) => {
+    accepted += 1;
+    sockets.add(socket);
+    peakSockets = Math.max(peakSockets, sockets.size);
+    let received = false;
+    socket.on('close', () => {
+      sockets.delete(socket);
+      if (received) closedHandshakes += 1;
+    });
+    socket.on('error', () => {});
+    socket.on('data', (chunk) => {
+      received = true;
+      receivedBytes += chunk.length;
+    });
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  return {
+    origin: `https://127.0.0.1:${address.port}`,
+    accepted: () => accepted,
+    peakSockets: () => peakSockets,
+    receivedBytes: () => receivedBytes,
+    closedHandshakes: () => closedHandshakes,
+    openSockets: () => sockets.size,
+    close: async () => {
+      for (const socket of sockets) socket.destroy();
+      await new Promise((resolve) => server.close(resolve));
+    },
+  };
+}
+
+async function assertOwnedCleanup(predicate, label) {
+  const deadline = Date.now() + 1_000;
+  while (!predicate() && Date.now() < deadline) await delay(10);
+  assert.ok(predicate(), label);
+}
+
+async function assertSocketsClosed(server) {
+  await assertOwnedCleanup(
+    () => server.openSockets() === 0,
+    'all owned TCP sockets must close',
+  );
+}
+
+test(
+  'the public CLI destroys a stalled TLS connection at the probe deadline',
+  { timeout: 6_000 },
+  async (t) => {
+    const tls = await silentTcpFixture();
+    const api = await fixture('api');
+    const process = monitor(
+      { web: tls.origin, api: api.origin },
+      {
+        '--timeout-ms': '100',
+        '--interval-ms': '10',
+        '--failures': '1',
+      },
+    );
+    t.after(async () => {
+      try {
+        await process.stop();
+      } finally {
+        await Promise.all([tls.close(), api.close()]);
+      }
+    });
+    await process.waitFor(
+      () => tls.accepted() > 0 && tls.receivedBytes() > 0,
+      'the real TCP peer received a TLS ClientHello without replying',
+    );
+    await process.waitFor(
+      () =>
+        process
+          .events()
+          .some(
+            (event) =>
+              event.service === 'web' &&
+              event.transition === 'alert' &&
+              event.code === 'TIMEOUT',
+          ),
+      'the stalled handshake must reach the probe deadline',
+    );
+    await assertOwnedCleanup(
+      () => tls.closedHandshakes() > 0,
+      'a real unanswered TLS handshake must close at its deadline',
+    );
+    assert.equal(
+      tls.peakSockets(),
+      1,
+      'deadline cleanup precedes the next probe',
+    );
+    await process.stop();
+    await assertSocketsClosed(tls);
+    assert.equal(process.stderr(), '');
+    assert.equal(
+      process.events().filter((event) => event.code === 'STOPPED').length,
+      1,
+    );
+  },
+);
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  test(
+    `the public CLI exits and closes a pending TLS handshake on ${signal}`,
+    { timeout: 6_000 },
+    async (t) => {
+      const tls = await silentTcpFixture();
+      const api = await fixture('api');
+      const process = monitor(
+        { web: tls.origin, api: api.origin },
+        { '--timeout-ms': '30000', '--interval-ms': '30000' },
+      );
+      t.after(async () => {
+        try {
+          await process.stop();
+        } finally {
+          await Promise.all([tls.close(), api.close()]);
+        }
+      });
+      await process.waitFor(
+        () => tls.accepted() > 0 && tls.receivedBytes() > 0,
+        'the real TCP peer received a TLS ClientHello without replying',
+      );
+      await process.stop(signal);
+      await assertSocketsClosed(tls);
+      assert.equal(process.stderr(), '');
+      assert.deepEqual(
+        process.events().filter((event) => event.service === 'web'),
+        [],
+      );
+      assert.equal(
+        process.events().filter((event) => event.code === 'STOPPED').length,
+        1,
+      );
+    },
+  );
+}
+
+test(
+  'repeated public TLS deadlines do not accumulate pending connections',
+  { timeout: 6_000 },
+  async (t) => {
+    const tls = await silentTcpFixture();
+    const api = await fixture('api');
+    const process = monitor(
+      { web: tls.origin, api: api.origin },
+      { '--timeout-ms': '80', '--failures': '1' },
+    );
+    t.after(async () => {
+      try {
+        await process.stop();
+      } finally {
+        await Promise.all([tls.close(), api.close()]);
+      }
+    });
+    await process.waitFor(
+      () => tls.accepted() >= 3,
+      'three real TLS attempts must reach the silent TCP peer',
+    );
+    await process.stop();
+    await assertSocketsClosed(tls);
+    assert.equal(
+      tls.peakSockets(),
+      1,
+      'rounds must release the previous socket',
+    );
+    assert.deepEqual(
+      process
+        .events()
+        .filter((event) => event.service === 'web')
+        .map((event) => [event.transition, event.code]),
+      [['alert', 'TIMEOUT']],
+    );
+    assert.equal(process.stderr(), '');
+  },
+);
+
+test(
+  'the public CLI deadline closes HTTP connections that never send headers',
+  { timeout: 6_000 },
+  async (t) => {
+    const peer = await silentTcpFixture();
+    const api = await fixture('api');
+    const process = monitor(
+      { web: peer.origin.replace('https:', 'http:'), api: api.origin },
+      {
+        '--timeout-ms': '100',
+        '--interval-ms': '30000',
+        '--failures': '1',
+      },
+    );
+    t.after(async () => {
+      try {
+        await process.stop();
+      } finally {
+        await Promise.all([peer.close(), api.close()]);
+      }
+    });
+    await process.waitFor(
+      () => peer.accepted() > 0 && peer.receivedBytes() > 0,
+      'the real TCP peer must receive the HTTP request without replying',
+    );
+    await process.waitFor(
+      () =>
+        process
+          .events()
+          .some((event) => event.service === 'web' && event.code === 'TIMEOUT'),
+      'missing HTTP headers must reach the same probe deadline',
+    );
+    await assertSocketsClosed(peer);
+    await process.stop();
+    assert.equal(process.stderr(), '');
+  },
+);
