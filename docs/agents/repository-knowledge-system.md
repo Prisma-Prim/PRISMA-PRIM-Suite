@@ -97,6 +97,6 @@ Do not create:
 
 ## 8. Change and review rule
 
-Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, and removes stale duplicates. Review follows the [review round](issue-execution.md#review-round) in AI agent issue execution: one self-review before publication and, for documentation, the repository owner's review instead of an automated review round.
+Documentation follows the same one-issue delivery discipline as code. A focused documentation PR names the owner being changed, preserves links from entry points, and removes stale duplicates. Review follows the [review round](issue-execution.md#review-round) in AI agent issue execution: agents' applicable Standards/Spec preparation and recorded disposition suffice for documentation and PRD pull requests, without mandatory owner review or an automated review round.
 
 The minimum verification for a documentation-only change is the repository formatting check plus link and pointer inspection for every changed authority. Additional checks run when scripts, configuration or generated artifacts change.
