@@ -246,6 +246,29 @@ Typed metadata carries only the owning estimate identifier and version number, p
 
 These are **internal recording semantics only**. No Activity read surface, commercial allowlist, count, filter, export or target link returns them in this journey, even to an existing Activity reader. Neither profitability bundle confers Activity Log access. The authorization PRD §8 owns the separate Contributor/Director assignment grant/revoke events and their unchanged administration visibility. An approved event contract is not evidence of runtime delivery.
 
+For the proposed [Company Ideas intake journey](company-ideas-intake-prd.md), each
+committed submission records one `idea.recorded` and each committed defer/reject
+review records one `idea.disposition.recorded`, under the responsible Workspace
+and Company with server actor membership/time and exact Idea/revision identity.
+The successful business mutation, aggregate revision, durable receipt and event
+commit atomically. Invalid, denied, failed, stale and exact-replayed commands
+create no new success event; response-construction failure rolls back the unit.
+
+Typed metadata is limited to the resulting aggregate revision and, for a
+disposition, `deferred` or `rejected`. Description, origin, reason, reconsideration
+date and other confidential text remain in the Ideas-owned records, not the
+Activity payload or diagnostics. These events use a separate restricted recording
+family, following the existing confidential profitability precedent; introducing
+a generic target type without a visibility contract is not permitted.
+
+This is **internal recording only**: no generic Activity/Home projection, count,
+filter, target link, export or search reveals these events, including to existing
+Workspace/Company administrators or Activity readers. Ideas' own detail/history
+requires current Ideas Reader and Company context. None of the three Ideas bundles
+confers Activity read. The authorization PRD section8 owns the separate existing-
+visibility grant/revoke administration events. Recording authority is not delivery
+proof or authority to approve work/funding, score or convert Ideas.
+
 For [ordinary complaint intake and factual history](company-complaints-intake-prd.md),
 one committed intake records `complaint.recorded`, one intake successor records
 `complaint.intake.corrected`, and a committed action/response/journal correction
