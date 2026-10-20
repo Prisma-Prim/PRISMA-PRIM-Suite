@@ -1,3 +1,4 @@
+import { ideasMessages } from '../ideas/ideas.copy';
 import { companyAssignmentMessages } from '../access/company-assignment-localization.copy';
 import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
@@ -55,6 +56,7 @@ import { interfaceLocaleMessages } from './interface-locale.copy';
 import { assertMessageCoverage } from './messages';
 
 export function assertFirstJourneyTranslationCoverage(): void {
+  assertMessageCoverage('ideas', ideasMessages);
   assertMessageCoverage('companyAssignment', companyAssignmentMessages);
   assertMessageCoverage('commercialRequest', commercialRequestMessages);
   assertMessageCoverage('opportunityOutcome', opportunityOutcomeMessages);
