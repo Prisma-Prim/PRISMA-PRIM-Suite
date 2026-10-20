@@ -1,10 +1,7 @@
 name: CI
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -193,7 +190,7 @@ jobs:
         run: pnpm --filter @prisma-prim/web test:browser --shard=${{ matrix.shard }}/3
 
       - name: Namespace browser run metadata
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         # Every shard writes Playwright's browser/.last-run.json; keep one visible
         # per shard so the merged evidence does not keep only the last writer.
         run: |
@@ -203,7 +200,7 @@ jobs:
           fi
 
       - name: Upload browser evidence
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: browser-evidence-part-browser-${{ matrix.shard }}-${{ github.run_id }}
@@ -248,7 +245,7 @@ jobs:
         run: node scripts/verify-acceptance-evidence.mjs
 
       - name: Namespace acceptance run metadata
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         # Every shard writes Playwright's acceptance/.last-run.json; keep one visible
         # per shard so the merged evidence does not keep only the last writer.
         run: |
@@ -258,7 +255,7 @@ jobs:
           fi
 
       - name: Upload acceptance evidence
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
           name: browser-evidence-part-acceptance-${{ matrix.shard }}-${{ github.run_id }}
@@ -373,7 +370,7 @@ jobs:
         run: node scripts/verify-ci-results.mjs
 
       - name: Download complete browser evidence
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/download-artifact@v4
         with:
           pattern: browser-evidence-part-*-${{ github.run_id }}
@@ -381,10 +378,10 @@ jobs:
           merge-multiple: true
 
       - name: Upload complete browser evidence
-        if: ${{ always() && github.event_name == 'pull_request' }}
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-artifact@v4
         with:
-          name: browser-evidence-pr-${{ github.event.pull_request.number }}
+          name: browser-evidence-pr-${{ github.event.pull_request.number || github.run_id }}
           overwrite: true
           path: browser-evidence/
           if-no-files-found: warn

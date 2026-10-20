@@ -196,12 +196,10 @@ test('independent test families and packaging share only the fast prerequisite a
   assert.doesNotMatch(await readWorkflow(), /continue-on-error/);
 });
 
-test('CI preserves triggers, read-only proof access and cancels obsolete PR or main runs', async () => {
+test('CI is explicitly manual, preserves read-only proof access and cancels obsolete manual runs', async () => {
   const workflow = await readWorkflow();
-  assert.match(
-    workflow,
-    /on:\n {2}pull_request:\n {2}push:\n {4}branches:\n {6}- main\n/,
-  );
+  assert.match(workflow, /on:\n {2}workflow_dispatch:\n/);
+  assert.doesNotMatch(workflow, /^ {2}(?:pull_request|push|schedule):/m);
   assert.match(workflow, /permissions:\n {2}contents: read\n/);
   const concurrencyStart = workflow.indexOf('\nconcurrency:\n');
   const jobsStart = workflow.indexOf('\njobs:\n');
