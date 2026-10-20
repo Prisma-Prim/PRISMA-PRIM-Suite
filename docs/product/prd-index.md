@@ -101,6 +101,19 @@ runtime and implementation readiness are not inferred. It consumes Authorization
 bounded addition does not approve scoring, funding, work conversion, the broader
 risk/improvement module or a reordered whole-release roadmap.
 
+### Bounded ordinary service complaints
+
+The [Company complaint intake PRD](company-complaints-intake-prd.md) defines
+ordinary intake and factual action/response/correction history under [Dan's
+2026-10-19 access-separation decision](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507).
+It is Approved v0.2 by [root's 2026-10-20 product disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/731#issuecomment-6284035912)
+after ordered Standards/Spec PASS. Its readiness section owns the explicit local-
+work exception and canonical-publication dependency. It proves no runtime delivery
+or actual assignment.
+Authorization, Activity, Client/Project, UX and Platform owners retain
+their boundaries. No sending, automatic closure, assurance appeal, reminder,
+finance or attachment capability is approved by this bounded addition.
+
 ## 8. Delivered foundation and live work routing
 
 The original MVP issue is a historical commercial capability source, not the current complete product authority. The Access and Accountability Release 0 sequence through #22 is delivered. The business-independent Company/RBAC foundation through #64–#67 and the narrow Company Context Access assignment in #88 are also delivered.

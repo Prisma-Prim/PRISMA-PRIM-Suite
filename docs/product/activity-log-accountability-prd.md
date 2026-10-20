@@ -269,6 +269,31 @@ confers Activity read. The authorization PRD section8 owns the separate existing
 visibility grant/revoke administration events. Recording authority is not delivery
 proof or authority to approve work/funding, score or convert Ideas.
 
+For [ordinary complaint intake and factual history](company-complaints-intake-prd.md),
+one committed intake records `complaint.recorded`, one intake successor records
+`complaint.intake.corrected`, and a committed action/response/journal correction
+records `complaint.journal.recorded`. Every event has exact Complaint identity,
+responsible Workspace/Company, server actor membership/time and resulting aggregate
+revision. Journal metadata additionally identifies only kind (`action`, `response`
+or `correction`); no complainant, subject, reason, severity, text or declared date.
+
+The material record/history, aggregate revision, durable receipt, original Client
+operational-use fence and event commit atomically through Accountability's public
+recording boundary. Failed response construction rolls back the unit. Invalid,
+denied, stale, failed, normalized no-op and exact-replayed commands create no
+event or fence advance.
+Corrections append and retain all earlier facts, attribution and reasons; there is
+no deletion or rewrite of the original intake or journal entry.
+
+These events use a separate restricted recording family with **no generic read
+projection**. Activity/Home/search/count/filter/export/target links return none,
+including to existing Company/Workspace administrators and Activity readers.
+Complaint-owned history requires live Reader, Company context and current related
+Client/Project prerequisites. Neither complaint bundle grants Activity read.
+Assignment administration events retain authorization section8's existing safe
+visibility and bundle-label-only semantics. Recording a response proves no sending,
+receipt, closure, effectiveness or assurance judgment.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.
