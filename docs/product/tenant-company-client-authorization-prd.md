@@ -314,8 +314,8 @@ state-change convention. It adds no standalone Activity grant.
 For the [Company Ideas intake journey](company-ideas-intake-prd.md),
 [Dan's 2026-10-19 decision](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507)
 separates reading, recording and defer/reject review per Company. The bounded
-proposed contract, pending the capability PRD's concrete owner review, uses three
-independent opt-in captured bundles:
+contract, approved through the capability PRD's delegated agent product review,
+uses three independent opt-in captured bundles:
 
 | Bundle                    | Exact captured v1 permissions |
 | ------------------------- | ----------------------------- |

@@ -96,8 +96,8 @@ Do not decompose these releases into implementation issues merely to populate a 
 The [Company Ideas intake PRD](company-ideas-intake-prd.md) defines the separately
 selected record/reopen and attributed defer/reject journey, under [Dan's
 2026-10-19 access-separation decision](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507).
-Its status is Ready for product review; runtime and implementation readiness are
-not inferred. It consumes Authorization, Activity, UX and Platform owners. This
+Its status is Approved under [delegated agent product review](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/726#issuecomment-6283532399);
+runtime and implementation readiness are not inferred. It consumes Authorization, Activity, UX and Platform owners. This
 bounded addition does not approve scoring, funding, work conversion, the broader
 risk/improvement module or a reordered whole-release roadmap.
 

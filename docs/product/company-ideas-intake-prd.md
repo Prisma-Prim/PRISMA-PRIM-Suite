@@ -1,8 +1,9 @@
 # PRD — Company Ideas intake and disposition history
 
-**Status:** Ready for product review — access separation approved; runtime not delivered  
-**Version:** 0.1  
-**Access decision / proposal date:** 2026-10-19  
+**Status:** Approved — bounded contract; runtime not delivered  
+**Version:** 0.2  
+**Access decision date:** 2026-10-19  
+**Delegated agent product review:** 2026-10-20  
 **Product owner:** Dan Popescu  
 **Business evidence:** Iurie interview sessions 70–71; see section 21  
 **Contract boundary:** Record/reopen Ideas and retain attributed defer/reject history
@@ -117,7 +118,7 @@ of generated content or provider permission. Body/origin/reason are untrusted te
 Description and origin are required nonblank text; every disposition requires a
 nonblank reason. Whitespace-only input is invalid, but accepted text, including
 spaces, line breaks, diacritics and Cyrillic, is preserved literally. Technical
-limits proposed for normalization: description 5,000 characters, origin 300,
+limits selected for this bounded contract: description 5,000 characters, origin 300,
 reason 2,000; reject excess without truncation or hidden normalization. These
 bounds use JavaScript string length as a reversible implementation choice.
 An optional reconsideration date must be a valid calendar date in `YYYY-MM-DD`
@@ -336,16 +337,18 @@ Company, with people selected later. [Durable decision](https://github.com/Prism
 This approves access **separation only**: no automatic expansion, no named
 assignment, no funding/work approval, no scoring or conversion right. An earlier
 request for simpler explanation was not approval; this later explicit yes is the
-approved source. This PRD requires final product review and live issue readiness before implementation.
+approved source. The delegated agent product-review disposition is recorded in [#726](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/726#issuecomment-6283532399); reviewed canonical publication and live issue readiness remain required before implementation.
 
 No new Iurie questionnaire is needed for the bounded purpose. Excluded work/funding
 approval, scoring, conversion and original-text correction remain separate future
-contracts. Agents own synthesis, technical choices and Standards/Spec self-review
-preparation under Dan's delegation. Separately, AGENTS and issue-execution require
-Dan's review of the concrete documentation PR before merge, instead of automated
-Codex review. The prior access decision and agent self-review do not substitute
-for that owner review. This document remains Ready for product review until that
-reviewed publication; infer neither runtime delivery nor additional authority.
+contracts. Under [Dan's 2026-10-20 delegation](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237),
+agents own synthesis, technical choices and the applicable Standards/Spec
+preparation; routine documentation and PRD delivery requires no separate human
+document review. After both axes passed without findings, the coordinator
+approved this bounded contract. This is delegated agent product review, not a
+claim that Dan personally reviewed the diff. Approved contract status does not
+prove runtime delivery, broaden business authority or replace canonical
+publication and fresh implementation readiness.
 
 ## 22. Technical research and ADR dependencies
 
@@ -364,7 +367,7 @@ be on main and the tracker must point to it; ownership/dedup, one-session fit an
 current public seams must be rechecked in the fresh author session. Preceding
 #721/#725 was merged at `1db7781ba18ef3597c3d88e6af3066dfda46f469`;
 it is no longer an open prerequisite. No implementation issue is ready merely
-because this proposed PRD exists.
+because this approved PRD exists.
 
 This PRD defines Idea and Disposition locally in section 8. The small canonical
 glossary addition is deliberately staged with the later complete sensitive

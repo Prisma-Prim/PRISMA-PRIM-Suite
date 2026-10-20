@@ -3547,13 +3547,16 @@ support retained defer/reject reasons, attribution, optional reconsideration and
 Company/source classification. Their wider scoring, benefits, work conversion
 and reporting remain deferred; these source statements are not silently erased.
 
-The proposed [Company Ideas intake PRD](company-ideas-intake-prd.md) owns one bounded
+The bounded [Company Ideas intake PRD](company-ideas-intake-prd.md) owns one bounded
 record/reopen and attributed defer/reject journey; [Authorization section8](tenant-company-client-authorization-prd.md#8-initial-permission-families) owns
 its exact independent captured grants, [Activity section7](activity-log-accountability-prd.md#7-authorization-and-privacy) its restricted internal
 recording. Low-risk choices (plain-text source, field/page limits, immutable
 original with append-only review and no deletion) are explicit reversible product
 synthesis under section34.4, not new first-tenant evidence. This normalization
 adds no numbered decision, real assignment, runtime assertion or functional credit.
-Agents prepare the synthesis and self-review; Dan's required review of the concrete
-documentation PR remains pending and is not replaced by his earlier access decision.
+On 2026-10-20, [Dan delegated routine documentation/PRD review to agents](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237),
+removing the separate human document-review prerequisite. Following both passing
+Standards and Spec axes, the [coordinator approved this bounded contract](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/726#issuecomment-6283532399).
+This records agent product review under delegated authority, not personal review
+by Dan, runtime delivery or broader business approval.
 The separate ordinary-complaint contract still requires its own normalization.
