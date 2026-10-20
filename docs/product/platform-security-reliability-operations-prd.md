@@ -61,6 +61,10 @@ Metrics, logs and traces are tenant-safe, structured and actionable. They expose
 
 Business Activity Log remains the authority for user-visible critical actions.
 
+[Section 19](#19-bounded-webapi-liveness-monitor) owns the approved bounded
+operator liveness monitor; it does not satisfy production alert delivery or
+incident-response ownership.
+
 ## 8. Incident response
 
 Before production, identify:
@@ -175,3 +179,60 @@ Using the existing GRUP DEMO ISO14001 Opportunity and exact CF-1 Snapshot, Ana p
 Every new command has a released stable key and complete payload. Approval keeps expected revision 1 and its declared warning codes even when creation replay returns a later root revision. The seed never harvests new warnings or a latest Quality Check run to change a retry. Ordinary owning-module receipts and current authority checks recover exact committed results after interruption, response loss, expiry or later operator versions; a conflicting unfinished step is refused by the normal API. Revoked grants remain revoked, operator corrections are never overwritten and malformed consumed identity, provenance, compatibility or decision state stops the run before its next write.
 
 Each commercial step reopens its exact public result. Offer Quality Checks expose no per-run read, so an identical public command replay reopens the recorded explicit run through its normal receipt; Contract runs use their exact public read. Neither substitutes a latest run. The manifest preparation entries name Version identifiers, quality entries name the explicit run identifiers and approval entries name decision identifiers. Their `confirmed` outcome means the public command acknowledged a commit or identical replay and its result was reopened; it makes no unsupported claim that this run created a record. Existing `created`, `replayed` and `present` meanings remain unchanged. Substitution rows SUB-RO-02/SUB-RO-03 index the fixture profiles and approval examples; real first-tenant authority remains a separate configuration decision.
+
+## 19. Bounded web/API liveness monitor
+
+Under Dan's delegated reversible technical choices and independent-progress
+instruction, [#738](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/738)
+approves one local operator CLI observing explicitly supplied web and API origins.
+The whole Platform PRD remains Draft. This section decides local mechanics; the
+issue and its merged evidence own implementation state. There is no business
+permission, served endpoint, provider, dependency or deployment change.
+
+The monitor requests only the web's existing `/health` and API's `/api/health`.
+Web health requires successful status and literal `ok`; API health requires
+successful status and bounded valid JSON with service `prisma-prim-api` and status
+`ok`. HTML/login fallbacks, malformed or oversized bodies, redirects, non-success
+status, timeout and connection failure never establish health. Response bodies
+are limited to 1,024 bytes and requests/body reads share one deadline; redirects
+are refused. HTTP targets are literal loopback only for
+local use; future deployed targets require HTTPS. Origins cannot contain embedded
+credentials, query, fragment or a non-origin path. Targets are caller-selected,
+not a served arbitrary-URL or discovery interface.
+
+Each service maintains its own observation state. Technical defaults are a
+30-second pause between completed probe rounds, a 5-second request timeout,
+three consecutive failures before one alert and
+two consecutive successes before recovery. Healthy samples break a pre-alert
+failure streak; failures break a pending recovery streak. Continued failure or a
+changed failure category emits no duplicate alert. Initial health and meaningful
+alert/recovery transitions produce structured output without per-poll flooding.
+Explicit positive decimal-integer overrides permit short deterministic local
+exercises: interval 1–3,600,000 ms, request timeout 1–300,000 ms, and either
+consecutive-observation threshold 1–1,000. These are reversible technical bounds
+and debounce choices, not an availability SLA or on-call commitment.
+
+Output contains schema version, fixed safe service label, UTC time, bounded code
+and count, transition/disposition and a fixed
+[response-guide reference](../agents/railway-activation.md#verification-budget-backups-and-rollback).
+It excludes supplied origins, response content/headers, credentials, raw errors,
+stacks, environment contents and business records. No disk-retention feature,
+provider notification or business Activity event is introduced. SIGINT/SIGTERM
+cancel requests and timers and yield a bounded, stable stop disposition; invalid
+configuration fails closed without echoing input. Cleanup affects owned monitor
+resources only.
+
+Acceptance exercises the public CLI against two actual owned local HTTP servers:
+healthy observations, independent failure/alert episodes, measured subsequent
+success/recovery, safe malformed/oversized/stalled/redirect responses and bounded
+signal shutdown. Deterministic clock/transport-boundary tests cover streak
+orderings without mocking monitor state. No runtime fixture substitutes for an
+observed endpoint, and no external target is probed by this implementation proof.
+
+The monitor performs no restart, rollback, deployment, revocation, incident
+communication or acknowledgment-based health change. Liveness establishes neither
+database readiness nor Clerk, latency, security, job or optional-provider health.
+Hosted supervision, real alert recipient/channel and delivery proof, incident
+ownership/escalation, protected diagnostic access/retention and response rehearsal
+remain activation requirements. This bounded delivery alone earns no whole MP-3 or
+production-operations acceptance credit.
