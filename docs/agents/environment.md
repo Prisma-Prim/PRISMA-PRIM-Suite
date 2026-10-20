@@ -49,7 +49,7 @@ image/token endpoints for these checks while retaining the existing image versio
 ECR Public remains an external dependency with its own availability and rate
 limits; acquiring an image does not prove that packaging or the complete verification gate executed.
 
-`pnpm verify` remains a broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration; publication and merge require the [complete local integration evidence gate](issue-execution.md#complete-local-integration-evidence), including safe PostgreSQL, Chromium and real packaging. The complete GitHub workflow is available through explicit manual dispatch when independent verification is requested; never report an unexecuted workflow as passed.
+`pnpm verify` remains a broader development check: formatting, lint, type-check, unit/script suites and production build. PostgreSQL-backed API suites can skip there without a safe local `_test` target, and it does not include every browser/packaging family. Targeted checks and `pnpm verify:docs` support iteration; publication and merge require the [complete local integration evidence gate](issue-execution.md#complete-local-integration-evidence), including safe PostgreSQL, Chromium and real packaging when the canonical change classifier requires those families. The complete GitHub workflow is available through explicit manual dispatch when independent verification is requested; never report an unexecuted workflow as passed.
 
 Narrow seams for targeted runs:
 

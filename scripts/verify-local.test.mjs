@@ -216,7 +216,8 @@ test(
 );
 
 test('changing a synthetic report label cannot replace the fixed production command plan', async (t) => {
-  const { options, output } = await fixture(t);
+  const { options, output, git } = await fixture(t);
+  git('update-ref', 'refs/remotes/origin/main', options.source);
   options.families[0].args = ['-e', 'process.exit(0)'];
   const report = await runLocalVerification(options);
   report.schema = 'prisma-prim-local-verification/v1';
@@ -319,4 +320,22 @@ test('the separate frozen Railway dependency prerequisite cannot silently use mi
     /pnpm --dir \.railway install --frozen-lockfile/,
   );
   assert.ok(report.families.every((family) => family.status === 'unexecuted'));
+});
+
+test('a finite process deadline terminates a real child and cannot produce successful evidence', async (t) => {
+  const { options } = await fixture(t);
+  options.signal = AbortSignal.timeout(1000);
+  options.families = [
+    {
+      id: 'deadline-child',
+      command: process.execPath,
+      args: ['-e', 'setInterval(() => {}, 1000)'],
+      timeoutMilliseconds: 50,
+    },
+  ];
+  const report = await runLocalVerification(options);
+  assert.equal(report.status, 'failed');
+  assert.equal(report.families[0].status, 'timed_out');
+  assert.ok(['SIGTERM', 'SIGKILL'].includes(report.families[0].signal));
+  assert.equal(report.families[0].timeoutMilliseconds, 50);
 });

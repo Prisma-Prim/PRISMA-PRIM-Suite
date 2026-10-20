@@ -15,12 +15,32 @@ import { isAbsolute, join, relative, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { createProcessGroupController } from './process-group.mjs';
+import { changedFiles, isDocumentationOnly } from './ci-change-scope.mjs';
 
 const schema = 'prisma-prim-local-verification/v1';
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const now = () => new Date().toISOString();
 const pnpm = (id, ...args) => ({ id, command: 'pnpm', args });
-// Commands stay owned by the existing packages/scripts. No selection or reuse.
+const defaultProcessTimeout = 45 * 60_000;
+const aggregateProcessBudgets = Object.freeze({
+  'api-parallel': {
+    minutes: 270,
+    basis:
+      '2 x 3 x 45 min: conservative process cap for all API parallel shards combined',
+  },
+  browser: {
+    minutes: 270,
+    basis:
+      '2 x 3 x 45 min: conservative process cap for all browser shards combined',
+  },
+  acceptance: {
+    minutes: 180,
+    basis:
+      '2 x 2 x 45 min: conservative process cap for both acceptance shards combined',
+  },
+});
+// Commands stay owned by the existing packages/scripts. Only the canonical
+// documentation-only policy may make heavy families unnecessary; no API reuse.
 export const verificationFamilies = Object.freeze(
   [
     {
@@ -85,7 +105,15 @@ export const verificationFamilies = Object.freeze(
       args: ['scripts/railway-packaging-smoke.sh'],
     },
   ].map((family) =>
-    Object.freeze({ ...family, args: Object.freeze(family.args) }),
+    Object.freeze({
+      ...family,
+      args: Object.freeze(family.args),
+      timeoutMilliseconds:
+        (aggregateProcessBudgets[family.id]?.minutes ?? 45) * 60_000,
+      timeoutBasis:
+        aggregateProcessBudgets[family.id]?.basis ??
+        '45 min process safety cap for an unchanged single workflow family',
+    }),
   ),
 );
 
@@ -129,6 +157,55 @@ const optionalSettings = [
   'POSTGRES_IMAGE_ARCHIVE',
   'pnpm_config_verify_deps_before_run',
 ];
+
+const documentationOnlyReason =
+  'Documentation-only change proven by scripts/ci-change-scope.mjs (#730): only root AGENTS.md and docs/**/*.md differ from the current base integration.';
+
+function verificationScope(root, provenance) {
+  let files;
+  try {
+    files = changedFiles(
+      provenance.baseHead,
+      provenance.checkoutHead,
+      (command, args, options) =>
+        spawnSync(command, args, { ...options, cwd: root }),
+      { requireAncestor: true },
+    );
+  } catch {
+    files = undefined;
+  }
+  return isDocumentationOnly({ event: 'pull_request', files })
+    ? { kind: 'docs_only', reason: documentationOnlyReason }
+    : {
+        kind: 'complete',
+        reason:
+          'Complete verification required: documentation-only eligibility was not proven by scripts/ci-change-scope.mjs (#730).',
+      };
+}
+
+function requiredFamilies(scope) {
+  return verificationFamilies.map((family, index) => ({
+    ...family,
+    args:
+      scope.kind === 'docs_only' && family.id === 'doctor'
+        ? ['scripts/agent-doctor.mjs']
+        : family.args,
+    required: scope.kind !== 'docs_only' || index < 6,
+  }));
+}
+
+function pendingFamilies(plan, scope) {
+  return plan.map((family) => ({
+    ...family,
+    required: family.required !== false,
+    status: family.required === false ? 'not_required' : 'unexecuted',
+    reason: family.required === false ? scope.reason : null,
+    exitCode: null,
+    signal: null,
+    startedAt: null,
+    finishedAt: null,
+  }));
+}
 
 function git(root, ...args) {
   const result = spawnSync('git', args, {
@@ -216,7 +293,15 @@ function sanitize(text, environment) {
   return safe;
 }
 
-async function execute({ command, args }, root, environment, log, signal) {
+async function execute(
+  { command, args, timeoutMilliseconds = defaultProcessTimeout },
+  root,
+  environment,
+  log,
+  signal,
+) {
+  if (!Number.isInteger(timeoutMilliseconds) || timeoutMilliseconds <= 0)
+    throw new Error('Process safety cap must be a finite positive integer.');
   await writeFile(log, '');
   if (signal?.aborted)
     return { exitCode: null, signal: null, status: 'interrupted' };
@@ -249,14 +334,18 @@ async function execute({ command, args }, root, environment, log, signal) {
   const interrupted = new Promise((resolveInterrupt) => {
     resolveInterruption = resolveInterrupt;
   });
-  const interrupt = () => resolveInterruption(null);
-  const timeout = setTimeout(interrupt, 45 * 60 * 1000);
+  const interrupt = () => resolveInterruption('interrupted');
+  const timeout = setTimeout(
+    () => resolveInterruption('timed_out'),
+    timeoutMilliseconds,
+  );
   signal?.addEventListener('abort', interrupt, { once: true });
   try {
     const result = await Promise.race([closed, interrupted]);
-    if (child.pid && (result === null || (await groups.isLive(child.pid))))
+    const wasInterrupted = typeof result === 'string';
+    if (child.pid && (wasInterrupted || (await groups.isLive(child.pid))))
       await groups.terminate(child, closed, 1_000);
-    return result ?? { ...(await closed), status: 'interrupted' };
+    return wasInterrupted ? { ...(await closed), status: result } : result;
   } finally {
     clearTimeout(timeout);
     signal?.removeEventListener('abort', interrupt);
@@ -304,7 +393,16 @@ async function railwayDependencyVersions(root) {
   }
 }
 
-async function versions(root, environment) {
+async function versions(root, environment, documentationOnly) {
+  const tools = {
+    node: process.version,
+    pnpm: version('pnpm', ['--version'], root),
+    platform: process.platform,
+    architecture: process.arch,
+    kernel: release(),
+    availableParallelism: availableParallelism(),
+  };
+  if (documentationOnly) return tools;
   const requireWeb = createRequire(join(root, 'apps/web/package.json'));
   const requireApi = createRequire(join(root, 'apps/api/package.json'));
   const { chromium } = requireWeb('@playwright/test');
@@ -328,8 +426,7 @@ async function versions(root, environment) {
   )
     throw new Error('Invalid PostgreSQL server version.');
   return {
-    node: process.version,
-    pnpm: version('pnpm', ['--version'], root),
+    ...tools,
     docker: version(
       'docker',
       ['version', '--format', '{{.Server.Version}}'],
@@ -338,10 +435,6 @@ async function versions(root, environment) {
     chromium: version(chromium.executablePath(), ['--version'], root),
     playwright: requireWeb('@playwright/test/package.json').version,
     postgres,
-    platform: process.platform,
-    architecture: process.arch,
-    kernel: release(),
-    availableParallelism: availableParallelism(),
   };
 }
 
@@ -359,7 +452,7 @@ async function inventory(directory, prefix = '') {
 }
 
 function render(report) {
-  return `Local verification: **${report.status}** (${report.mode}).\n\nSelf-reported local execution; no GitHub runner attestation.\n\nSource: \`${report.provenance?.sourceHead ?? 'unavailable'}\`\nBase: \`${report.provenance?.baseHead ?? 'unavailable'}\`\nTested integration tree: \`${report.provenance?.integrationTree ?? 'unavailable'}\`\nUTC: ${report.startedAt} — ${report.finishedAt}\n\n| Family | Result | Exit |\n| --- | --- | --- |\n${report.families.map((family) => `| ${family.id} | ${family.status} | ${family.exitCode ?? '—'} |`).join('\n')}\n\nConfiguration, exact argv, input hashes and artifact inventory: manifest.json.\nArtifact publication: **not published by this command**. Attach the validated manifest and reviewed synthetic evidence archive to the PR's evidence release, then record actual asset URLs and digests in the PR.\n${report.refusal ? `\nRefusal: ${report.refusal}\n` : ''}`;
+  return `Local verification: **${report.status}** (${report.mode}).\nScope: ${report.scope?.kind ?? 'unproven'} — ${report.scope?.reason ?? 'classification unavailable'}\n\nSelf-reported local execution; no GitHub runner attestation.\n\nSource: \`${report.provenance?.sourceHead ?? 'unavailable'}\`\nBase: \`${report.provenance?.baseHead ?? 'unavailable'}\`\nTested integration tree: \`${report.provenance?.integrationTree ?? 'unavailable'}\`\nUTC: ${report.startedAt} — ${report.finishedAt}\n\n| Family | Result | Exit | Process cap (min) | Exact argv |\n| --- | --- | --- | --- | --- |\n${report.families.map((family) => `| ${family.id} | ${family.status} | ${family.exitCode ?? '—'} | ${(family.timeoutMilliseconds ?? defaultProcessTimeout) / 60_000} | \`${JSON.stringify([family.command, ...family.args])}\` |`).join('\n')}\n\nThese are process safety caps; scenario and assertion deadlines remain unchanged. API parallel/browser: 270 min = 2 x 3 x 45 min; acceptance: 180 min = 2 x 2 x 45 min; other families: 45 min. These conservative aggregate ceilings are not runtime benchmarks or business-test deadlines.\n\nConfiguration, exact argv, input hashes and artifact inventory: manifest.json.\nArtifact publication: **not published by this command**. Attach the validated manifest and reviewed synthetic evidence archive to the PR's evidence release, then record actual asset URLs and digests in the PR.\n${report.refusal ? `\nRefusal: ${report.refusal}\n` : ''}`;
 }
 
 export async function runLocalVerification({
@@ -432,14 +525,8 @@ export async function runLocalVerification({
       database:
         'isolated targets validated by doctor; credentials/URLs deliberately omitted',
     },
-    families: plan.map((family) => ({
-      ...family,
-      status: 'unexecuted',
-      exitCode: null,
-      signal: null,
-      startedAt: null,
-      finishedAt: null,
-    })),
+    scope: null,
+    families: pendingFamilies(plan, null),
     artifacts: [],
   };
   await mkdir(join(output, 'logs'));
@@ -448,6 +535,12 @@ export async function runLocalVerification({
   let browserEvidenceFresh = false;
   try {
     report.provenance = await snapshot(root, source, base);
+    report.scope = verificationScope(root, report.provenance);
+    if (mode === 'complete')
+      report.families = pendingFamilies(
+        requiredFamilies(report.scope),
+        report.scope,
+      );
     for (const path of Object.keys(report.provenance.inputs)) {
       const watcher = watch(join(root, path), () => {
         sourceChanged = true;
@@ -457,7 +550,12 @@ export async function runLocalVerification({
       });
       watchers.push(watcher);
     }
-    if (mode === 'complete') {
+    if (mode === 'complete' && report.scope.kind === 'docs_only')
+      report.prerequisites.railway = {
+        status: 'not_required',
+        reason: report.scope.reason,
+      };
+    if (mode === 'complete' && report.scope.kind !== 'docs_only') {
       report.prerequisites.railway = { status: 'failed' };
       const installed = await railwayDependencyVersions(root);
       report.prerequisites.railway = {
@@ -479,6 +577,7 @@ export async function runLocalVerification({
       `${JSON.stringify(report, null, 2)}\n`,
     );
     for (const family of report.families) {
+      if (!family.required) continue;
       if (
         sourceChanged ||
         JSON.stringify(await snapshot(root, source, base)) !==
@@ -524,10 +623,18 @@ export async function runLocalVerification({
       )
         break;
       if (mode === 'complete' && family.id === 'doctor')
-        report.versions = await versions(root, environment);
+        report.versions = await versions(
+          root,
+          environment,
+          report.scope.kind === 'docs_only',
+        );
     }
     report.status = report.families.every(
-      (family) => family.status === 'passed',
+      (family) =>
+        family.status === 'passed' ||
+        (!family.required &&
+          family.status === 'not_required' &&
+          family.reason === report.scope.reason),
     )
       ? 'passed'
       : 'failed';
@@ -562,7 +669,11 @@ export async function runLocalVerification({
       path,
       sha256: hash(await readFile(join(output, path))),
     });
-  if (mode === 'complete' && report.status === 'passed') {
+  if (
+    mode === 'complete' &&
+    report.scope?.kind !== 'docs_only' &&
+    report.status === 'passed'
+  ) {
     const paths = report.artifacts.map((artifact) => artifact.path);
     if (
       !['browser', 'acceptance', 'acceptance-evidence-probe'].every((family) =>
@@ -606,24 +717,62 @@ export async function validateLocalEvidence({
     report.refusal
   )
     throw new Error('Incomplete report.');
-  const plan = report.families.map(({ id, command, args }) => ({
-    id,
-    command,
-    args,
-  }));
+
+  if (report.provenance?.baseRef !== 'origin/main')
+    throw new Error('Evidence requires the current origin/main base.');
+  const current = await snapshot(
+    root,
+    report.provenance.sourceRef,
+    report.provenance.baseRef,
+  );
+  if (JSON.stringify(current) !== JSON.stringify(report.provenance))
+    throw new Error('Stale source/base/integration inputs.');
+  const scope = verificationScope(root, current);
+  if (JSON.stringify(scope) !== JSON.stringify(report.scope))
+    throw new Error(
+      'Incomplete or altered required verification families: source-derived scope differs.',
+    );
+  const expected = requiredFamilies(scope);
+  const plan = report.families.map(
+    ({ id, command, args, timeoutMilliseconds, timeoutBasis, required }) => ({
+      id,
+      command,
+      args,
+      timeoutMilliseconds,
+      timeoutBasis,
+      required,
+    }),
+  );
   if (
-    JSON.stringify(plan) !== JSON.stringify(verificationFamilies) ||
-    report.families.some(
-      (family) =>
-        family.status !== 'passed' ||
-        family.exitCode !== 0 ||
+    JSON.stringify(plan) !== JSON.stringify(expected) ||
+    report.families.some((family) => {
+      if (family.required)
+        return (
+          family.status !== 'passed' ||
+          family.exitCode !== 0 ||
+          family.signal !== null ||
+          !family.startedAt ||
+          !family.finishedAt ||
+          family.reason !== null
+        );
+      return (
+        family.status !== 'not_required' ||
+        family.reason !== scope.reason ||
+        family.exitCode !== null ||
         family.signal !== null ||
-        !family.startedAt ||
-        !family.finishedAt,
-    )
+        family.startedAt !== null ||
+        family.finishedAt !== null
+      );
+    })
   )
     throw new Error('Incomplete or altered required verification families.');
-  if (
+  if (scope.kind === 'docs_only') {
+    if (
+      JSON.stringify(report.prerequisites?.railway) !==
+      JSON.stringify({ status: 'not_required', reason: scope.reason })
+    )
+      throw new Error('Unproven not_required Railway prerequisite.');
+  } else if (
     report.prerequisites?.railway?.status !== 'passed' ||
     JSON.stringify(await railwayDependencyVersions(root)) !==
       JSON.stringify(report.prerequisites.railway.installed)
@@ -636,16 +785,6 @@ export async function validateLocalEvidence({
     JSON.stringify(effectiveOverrides)
   )
     throw new Error('Required configuration changed.');
-  if (
-    JSON.stringify(
-      await snapshot(
-        root,
-        report.provenance.sourceRef,
-        report.provenance.baseRef,
-      ),
-    ) !== JSON.stringify(report.provenance)
-  )
-    throw new Error('Stale source/base/integration inputs.');
   const actualPaths = (await inventory(output)).filter(
     (path) => !['manifest.json', 'report.md'].includes(path),
   );

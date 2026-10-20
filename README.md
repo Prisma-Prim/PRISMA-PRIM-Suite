@@ -213,7 +213,7 @@ pnpm verify
 pnpm test
 ```
 
-`pnpm verify` runs formatting, lint, type-check, unit/script suites and the production build for development. Publication and merge require the [complete local integration evidence gate](docs/agents/issue-execution.md#complete-local-integration-evidence), including PostgreSQL, Playwright and Railway packaging. The complete GitHub workflow remains available through explicit manual dispatch for requested independent verification.
+`pnpm verify` runs formatting, lint, type-check, unit/script suites and the production build for development. Publication and merge require the [complete local integration evidence gate](docs/agents/issue-execution.md#complete-local-integration-evidence), including PostgreSQL, Playwright and Railway packaging for changes outside the canonical documentation-only allowlist. The complete GitHub workflow remains available through explicit manual dispatch for requested independent verification.
 
 For Codex Cloud setup, maintenance, isolated database variables, and cache-reset instructions, see [AI agent environment contract](docs/agents/environment.md).
 
