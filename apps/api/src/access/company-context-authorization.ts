@@ -1,4 +1,6 @@
 import {
+  COMPANY_COMPLAINTS_READER_BUNDLE,
+  COMPANY_COMPLAINTS_RECORDER_BUNDLE,
   COMPANY_CONTRACT_PREPARER_BUNDLE,
   contractPreparerPermissionsFor,
   contractApproverPermissionsFor,
@@ -1015,6 +1017,36 @@ export class CompanyContextAuthorization {
     return company.id;
   }
 
+  async requireComplaintRead(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (!company) throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      sql`(${companyRoleAssignments.bundle}::text = ${COMPANY_COMPLAINTS_READER_BUNDLE} AND ${eq(companyRoleAssignments.permissionSetVersion, 'v1')})`,
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
+  }
+
+  async requireComplaintRecord(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const companyId = await this.requireComplaintRead(actor, lock);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
+      sql`(${companyRoleAssignments.bundle}::text = ${COMPANY_COMPLAINTS_RECORDER_BUNDLE} AND ${eq(companyRoleAssignments.permissionSetVersion, 'v1')})`,
+      lock,
+    );
+    return companyId;
+  }
+
   async requireOfferAccess(
     actor: ActorContext,
     required: readonly CompanyOfferPermission[],
@@ -1305,6 +1337,8 @@ export class CompanyContextAuthorization {
         COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
         COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
+        COMPANY_COMPLAINTS_READER_BUNDLE,
+        COMPANY_COMPLAINTS_RECORDER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
@@ -1346,6 +1380,20 @@ export class CompanyContextAuthorization {
         displayName: row.displayName,
         clientPermissions: [],
       };
+      if (
+        row.bundle === COMPANY_COMPLAINTS_READER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.complaintReaderAssignmentId = row.assignmentId;
+        company.complaintReaderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_COMPLAINTS_RECORDER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.complaintRecorderAssignmentId = row.assignmentId;
+        company.complaintRecorderPermissionSetVersion = 'v1';
+      }
       if (row.bundle === COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE) {
         if (
           row.permissionSetVersion !== 'v1' &&

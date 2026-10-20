@@ -498,6 +498,13 @@
       "when": 1792323905226,
       "tag": "0070_project_template_successors",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1792519501932,
+      "tag": "0072_company_complaints",
+      "breakpoints": true
     }
   ]
 }

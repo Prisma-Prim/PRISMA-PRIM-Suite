@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -29,6 +29,28 @@ export class ProjectService {
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
   ) {}
+
+  // The Project owner supplies readable references without fetching its full
+  // register or imposing a lifecycle restriction on completed Projects.
+  async prepareReferenceReadSelection(actor: ActorContext) {
+    const companyId = await this.authorization.requireProjectAccess(
+      actor,
+      true,
+    );
+    const clients = await this.clients.prepareOperationalReadSelection(actor);
+    return {
+      selection: this.databaseContext.connection
+        .select({ id: projects.id })
+        .from(projects)
+        .where(
+          and(
+            eq(projects.workspaceId, actor.workspaceId),
+            eq(projects.companyId, companyId),
+            inArray(projects.clientAccountId, clients.selection),
+          ),
+        ),
+    };
+  }
 
   async list(actor: ActorContext) {
     const companyId = await this.authorization.requireProjectAccess(actor);

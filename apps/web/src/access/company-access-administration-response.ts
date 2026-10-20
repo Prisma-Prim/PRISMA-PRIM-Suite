@@ -2,6 +2,8 @@
 // An unlisted label or version fails closed; the screen never infers one.
 const CAPTURED_VERSIONS = {
   'Company Context Access': [null],
+  'Company Complaints Reader': ['v1'],
+  'Company Complaints Recorder': ['v1'],
   'Company Director Client Access': ['v1', 'v2'],
   'Company Document Registrar': ['v1', 'v2', 'v3'],
   'Company Document Approver': ['v1'],

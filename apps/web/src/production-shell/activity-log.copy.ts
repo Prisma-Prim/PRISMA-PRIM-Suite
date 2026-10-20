@@ -86,6 +86,10 @@ const keys = [
   'contract_version.rejected',
   'contract_version.signature_recorded',
   'contract_project.linked',
+  'company_complaints_reader_assignment.granted',
+  'company_complaints_reader_assignment.revoked',
+  'company_complaints_recorder_assignment.granted',
+  'company_complaints_recorder_assignment.revoked',
   'company_task_manager_assignment.granted',
   'company_task_manager_assignment.revoked',
   'company_project_assignment.granted',
@@ -124,6 +128,14 @@ const keys = [
 
 export const activityLogMessages = defineMessages(keys, {
   en: {
+    'company_complaints_reader_assignment.granted':
+      'granted Company Complaints Reader',
+    'company_complaints_reader_assignment.revoked':
+      'revoked Company Complaints Reader',
+    'company_complaints_recorder_assignment.granted':
+      'granted Company Complaints Recorder',
+    'company_complaints_recorder_assignment.revoked':
+      'revoked Company Complaints Recorder',
     responseAccepted: 'Accepted',
     responseRejected: 'Rejected by the Client',
     responseExpired: 'Expired',
@@ -275,6 +287,14 @@ export const activityLogMessages = defineMessages(keys, {
       'revoked Company Document Approver',
   },
   ro: {
+    'company_complaints_reader_assignment.granted':
+      'a acordat citirea reclamațiilor Companiei',
+    'company_complaints_reader_assignment.revoked':
+      'a revocat citirea reclamațiilor Companiei',
+    'company_complaints_recorder_assignment.granted':
+      'a acordat înregistrarea reclamațiilor Companiei',
+    'company_complaints_recorder_assignment.revoked':
+      'a revocat înregistrarea reclamațiilor Companiei',
     responseAccepted: 'Acceptată',
     responseRejected: 'Respinsă de Client',
     responseExpired: 'Expirată',
@@ -444,6 +464,14 @@ export const activityLogMessages = defineMessages(keys, {
       'a revocat Aprobare Documente a Companiei',
   },
   ru: {
+    'company_complaints_reader_assignment.granted':
+      '— предоставление права: Чтение жалоб Компании',
+    'company_complaints_reader_assignment.revoked':
+      '— отзыв права: Чтение жалоб Компании',
+    'company_complaints_recorder_assignment.granted':
+      '— предоставление права: Регистрация жалоб Компании',
+    'company_complaints_recorder_assignment.revoked':
+      '— отзыв права: Регистрация жалоб Компании',
     responseAccepted: 'Принято',
     responseRejected: 'Отклонено Клиентом',
     responseExpired: 'Срок истёк',
@@ -607,6 +635,14 @@ export const activityLogMessages = defineMessages(keys, {
       '— отзыв права: Одобрение Документов Компании',
   },
   fr: {
+    'company_complaints_reader_assignment.granted':
+      'a accordé la lecture des réclamations de la Compagnie',
+    'company_complaints_reader_assignment.revoked':
+      'a révoqué la lecture des réclamations de la Compagnie',
+    'company_complaints_recorder_assignment.granted':
+      'a accordé l’enregistrement des réclamations de la Compagnie',
+    'company_complaints_recorder_assignment.revoked':
+      'a révoqué l’enregistrement des réclamations de la Compagnie',
     responseAccepted: 'Acceptée',
     responseRejected: 'Rejetée par le Client',
     responseExpired: 'Expirée',

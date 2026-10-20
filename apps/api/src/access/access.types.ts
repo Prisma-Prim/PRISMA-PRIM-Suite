@@ -40,6 +40,10 @@ export type WorkspacePermission =
 export interface ActiveCompanyContext {
   id: string;
   displayName: string;
+  complaintReaderAssignmentId?: string;
+  complaintReaderPermissionSetVersion?: 'v1';
+  complaintRecorderAssignmentId?: string;
+  complaintRecorderPermissionSetVersion?: 'v1';
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
   documentPermissionSetVersion?: DocumentPermissionSetVersion;

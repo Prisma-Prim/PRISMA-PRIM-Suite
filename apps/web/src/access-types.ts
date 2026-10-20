@@ -15,6 +15,10 @@ export interface ActorContext {
   activeCompany?: {
     id: string;
     displayName: string;
+    complaintReaderAssignmentId?: string;
+    complaintReaderPermissionSetVersion?: 'v1';
+    complaintRecorderAssignmentId?: string;
+    complaintRecorderPermissionSetVersion?: 'v1';
     taskPermissions?: Array<'task.read' | 'task.manage'>;
     taskPermissionAssignmentId?: string;
     taskPermissionSetVersion?: 'v1';

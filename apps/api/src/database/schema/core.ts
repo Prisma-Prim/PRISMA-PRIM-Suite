@@ -68,6 +68,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_project_template_user',
   'company_project_stage_advancer',
   'company_project_template_configuration',
+  'company_complaints_reader',
+  'company_complaints_recorder',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -780,6 +782,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_project_stage_advancer_assignment.revoked',
   'company_project_template_configuration_assignment.granted',
   'company_project_template_configuration_assignment.revoked',
+  'company_complaints_reader_assignment.granted',
+  'company_complaints_reader_assignment.revoked',
+  'company_complaints_recorder_assignment.granted',
+  'company_complaints_recorder_assignment.revoked',
   'client.created',
   'client_company_relationship.established',
   'client.corrected',
@@ -825,6 +831,8 @@ export const activityLogEvents = pgTable(
         | { identityProvider: string }
         | {
             bundle:
+              | 'Company Complaints Reader'
+              | 'Company Complaints Recorder'
               | 'Company Task Manager'
               | 'Company Context Access'
               | 'Company Director Client Access'

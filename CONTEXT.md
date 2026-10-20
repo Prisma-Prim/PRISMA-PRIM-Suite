@@ -172,6 +172,14 @@ _Avoid_: Start checklist, kickoff checklist, verified dossier
 A Start Declaration with at least one missing item, accepted by the approver with a recorded reason, completion responsible and completion deadline.
 _Avoid_: Waiver, override
 
+**Complaint**:
+A Company-owned ordinary service complaint whose original intake and factual follow-up remain attributable.
+_Avoid_: Assurance case, resolved case, Client Request
+
+**Complaint Journal Entry**:
+One immutable factual action, response or motivated correction within a Complaint.
+_Avoid_: Sent message, closure, investigation outcome
+
 ## Knowledge and traceability
 
 **Document**:

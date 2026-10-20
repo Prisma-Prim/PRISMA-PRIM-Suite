@@ -10,6 +10,8 @@ import type {
   ClientLegalEntityValues,
 } from '../client/client-legal-entity.types.js';
 import type {
+  COMPANY_COMPLAINTS_READER_BUNDLE_LABEL,
+  COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL,
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
@@ -156,6 +158,10 @@ export type CanonicalActivityEvent =
   | {
       actor: ActorContext;
       action:
+        | 'company_complaints_reader_assignment.granted'
+        | 'company_complaints_reader_assignment.revoked'
+        | 'company_complaints_recorder_assignment.granted'
+        | 'company_complaints_recorder_assignment.revoked'
         | 'company_task_manager_assignment.granted'
         | 'company_task_manager_assignment.revoked'
         | 'company_document_project_organizer_assignment.granted'
@@ -219,6 +225,8 @@ export type CanonicalActivityEvent =
       };
       metadata: {
         bundle:
+          | typeof COMPANY_COMPLAINTS_READER_BUNDLE_LABEL
+          | typeof COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
@@ -309,6 +317,10 @@ export type CanonicalActivityEvent =
 export interface OrdinaryActivityLogEvent {
   id: string;
   action:
+    | 'company_complaints_reader_assignment.granted'
+    | 'company_complaints_reader_assignment.revoked'
+    | 'company_complaints_recorder_assignment.granted'
+    | 'company_complaints_recorder_assignment.revoked'
     | 'workspace_invitation.issued'
     | 'workspace_invitation.revoked'
     | 'workspace_invitation.accepted'
@@ -427,6 +439,8 @@ export interface OrdinaryActivityLogEvent {
     | { identityProvider: string }
     | {
         bundle:
+          | typeof COMPANY_COMPLAINTS_READER_BUNDLE_LABEL
+          | typeof COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL

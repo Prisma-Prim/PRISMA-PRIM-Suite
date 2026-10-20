@@ -1,5 +1,11 @@
 import { ActivityLog } from './production-shell/ActivityLog';
 import {
+  ComplaintWorkspace,
+  canReadComplaints,
+  complaintAuthorityKey,
+} from './complaints/ComplaintWorkspace';
+import { useComplaintCopy } from './complaints/complaints.copy';
+import {
   ProjectTemplateConfiguration,
   canReadProjectTemplateCatalogue,
 } from './project/ProjectTemplateConfiguration';
@@ -36,6 +42,7 @@ import { useProductionShellContext } from './production-shell/useProductionShell
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
+  const complaintCopy = useComplaintCopy();
   const prismeCopy = usePrismeCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [templateCatalogueRevision, setTemplateCatalogueRevision] = useState(0);
@@ -330,6 +337,22 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     ) : null;
 
   const sections: ApplicationSection[] = [];
+  if (canReadComplaints(access.actor))
+    sections.push({
+      id: 'complaints',
+      label: complaintCopy('title'),
+      description: complaintCopy('description'),
+      content: (
+        <ComplaintWorkspace
+          key={`complaints:${access.sessionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}:${complaintAuthorityKey(access.actor)}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
   if (canAccessCommercial && access.actor.activeCompany)
     sections.push({
       id: 'requests',

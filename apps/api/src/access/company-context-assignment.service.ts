@@ -28,6 +28,10 @@ import {
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
+  COMPANY_COMPLAINTS_READER_BUNDLE,
+  COMPANY_COMPLAINTS_RECORDER_BUNDLE,
+  COMPANY_COMPLAINTS_READER_BUNDLE_LABEL,
+  COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL,
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
@@ -108,6 +112,8 @@ export const INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION = Symbol(
 type BundleDefinition = {
   value: Bundle;
   label:
+    | typeof COMPANY_COMPLAINTS_READER_BUNDLE_LABEL
+    | typeof COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL
     | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
@@ -144,6 +150,16 @@ type BundleDefinition = {
     | null;
 };
 
+const COMPLAINTS_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_COMPLAINTS_READER_BUNDLE,
+  label: COMPANY_COMPLAINTS_READER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const COMPLAINTS_RECORDER_BUNDLE: BundleDefinition = {
+  value: COMPANY_COMPLAINTS_RECORDER_BUNDLE,
+  label: COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const TASK_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_MANAGER_BUNDLE,
   label: COMPANY_TASK_MANAGER_BUNDLE_LABEL,
@@ -291,6 +307,8 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_COMPLAINTS_READER_BUNDLE,
+  COMPANY_COMPLAINTS_RECORDER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
@@ -787,6 +805,64 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       COMMERCIAL_ACTIVITY_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantComplaintsReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMPLAINTS_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeComplaintsReader(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMPLAINTS_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantComplaintsRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMPLAINTS_RECORDER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeComplaintsRecorder(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      COMPLAINTS_RECORDER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1568,6 +1644,14 @@ function assignmentAction(
 ): CompanyAssignmentAction {
   const granted = operation === 'grant';
   switch (bundle) {
+    case COMPANY_COMPLAINTS_READER_BUNDLE:
+      return granted
+        ? 'company_complaints_reader_assignment.granted'
+        : 'company_complaints_reader_assignment.revoked';
+    case COMPANY_COMPLAINTS_RECORDER_BUNDLE:
+      return granted
+        ? 'company_complaints_recorder_assignment.granted'
+        : 'company_complaints_recorder_assignment.revoked';
     case COMPANY_TASK_MANAGER_BUNDLE:
       return granted
         ? 'company_task_manager_assignment.granted'
@@ -1718,6 +1802,23 @@ function assignmentRecord(
     active,
   };
   switch (assignment.bundle) {
+    case COMPANY_COMPLAINTS_READER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Complaints Reader version.');
+      return {
+        ...base,
+        bundle: COMPANY_COMPLAINTS_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_COMPLAINTS_RECORDER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Complaints Recorder version.');
+      return {
+        ...base,
+        bundle: COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+
     case COMPANY_TASK_MANAGER_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')
         throw new Error('Invalid Company Task Manager version.');

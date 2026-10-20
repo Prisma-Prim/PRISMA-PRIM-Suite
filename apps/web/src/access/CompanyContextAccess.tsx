@@ -1,3 +1,4 @@
+import { useComplaintCopy } from '../complaints/complaints.copy';
 import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
 import { useProjectStageCopy } from '../project/project-stage.copy';
 import { useDocumentPdfCopy } from '../documents/document-pdf.copy';
@@ -33,6 +34,8 @@ import './access-administration.css';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
+  | 'complaints-reader'
+  | 'complaints-recorder'
   | 'task-manager'
   | 'company-context'
   | 'director-client'
@@ -63,6 +66,8 @@ type AssignmentBundle =
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'complaints-reader': '/company-complaints-reader-assignments',
+  'complaints-recorder': '/company-complaints-recorder-assignments',
   'profitability-contributor': '/company-profitability-contributor-assignments',
   'profitability-director': '/company-profitability-director-assignments',
   'task-manager': '/company-task-manager-assignments',
@@ -124,6 +129,7 @@ export function CompanyContextAccess({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const copy = useCompanyAssignmentCopy();
+  const complaintCopy = useComplaintCopy();
   const profitabilityCopy = useProfitabilityCopy();
   const decisionCopy = useContractDecisionCopy();
   const stageCopy = useSalesStageCopy();
@@ -505,6 +511,14 @@ export function CompanyContextAccess({
             options={[
               { value: 'company-context', label: copy('companyContextBundle') },
               {
+                value: 'complaints-reader',
+                label: complaintCopy('readerBundle'),
+              },
+              {
+                value: 'complaints-recorder',
+                label: complaintCopy('recorderBundle'),
+              },
+              {
                 value: 'commercial-intake',
                 label: copy('commercialIntakeBundle'),
               },
@@ -588,6 +602,8 @@ export function CompanyContextAccess({
             onValueChange={(value) => {
               resetCommand();
               if (
+                value === 'complaints-reader' ||
+                value === 'complaints-recorder' ||
                 value === 'profitability-contributor' ||
                 value === 'profitability-director' ||
                 value === 'task-manager' ||
@@ -620,6 +636,12 @@ export function CompanyContextAccess({
             }}
           />
 
+          {bundle === 'complaints-reader' && (
+            <p>{complaintCopy('readerPrerequisites')}</p>
+          )}
+          {bundle === 'complaints-recorder' && (
+            <p>{complaintCopy('recorderPrerequisites')}</p>
+          )}
           {bundle === 'profitability-contributor' && (
             <p>{profitabilityCopy('contributorPrerequisites')}</p>
           )}
@@ -761,6 +783,8 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
+    'complaints-reader': 'Company Complaints Reader',
+    'complaints-recorder': 'Company Complaints Recorder',
     'profitability-contributor': 'Company Profitability Contributor',
     'profitability-director': 'Company Profitability Director',
     'commercial-intake': 'Company Commercial Intake',

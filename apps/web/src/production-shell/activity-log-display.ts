@@ -119,6 +119,18 @@ export function useActivityLogDisplay() {
       'contract_version.signature_recorded',
     ),
     'contract_project.linked': message('contract_project.linked'),
+    'company_complaints_reader_assignment.granted': message(
+      'company_complaints_reader_assignment.granted',
+    ),
+    'company_complaints_reader_assignment.revoked': message(
+      'company_complaints_reader_assignment.revoked',
+    ),
+    'company_complaints_recorder_assignment.granted': message(
+      'company_complaints_recorder_assignment.granted',
+    ),
+    'company_complaints_recorder_assignment.revoked': message(
+      'company_complaints_recorder_assignment.revoked',
+    ),
     'company_task_manager_assignment.granted': message(
       'company_task_manager_assignment.granted',
     ),

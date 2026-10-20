@@ -97,6 +97,10 @@ import { OfferController } from './offer/offer.controller.js';
 import { OfferModule } from './offer/offer.module.js';
 import { ProfitabilityEstimateModule } from './profitability-estimate/profitability-estimate.module.js';
 import { ProfitabilityEstimateController } from './profitability-estimate/profitability-estimate.controller.js';
+import { CompanyComplaintsReaderAssignmentController } from './access/company-complaints-reader-assignment.controller.js';
+import { CompanyComplaintsRecorderAssignmentController } from './access/company-complaints-recorder-assignment.controller.js';
+import { ComplaintsModule } from './complaints/complaints.module.js';
+import { ComplaintsController } from './complaints/complaints.controller.js';
 
 @Module({
   imports: [
@@ -118,6 +122,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OfferModule,
     ContractModule,
     ProfitabilityEstimateModule,
+    ComplaintsModule,
   ],
   controllers: [
     ProjectTemplateController,
@@ -178,6 +183,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ContractController,
     ContractAgreementsController,
     ProfitabilityEstimateController,
+    ComplaintsController,
+    CompanyComplaintsReaderAssignmentController,
+    CompanyComplaintsRecorderAssignmentController,
   ],
   providers: [
     VerifiedPrincipalAdapter,

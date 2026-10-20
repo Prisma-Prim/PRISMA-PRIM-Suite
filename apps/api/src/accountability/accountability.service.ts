@@ -76,6 +76,7 @@ import {
   contracts,
   contractVersions,
   profitabilityEstimateEvents,
+  complaintEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
@@ -1117,6 +1118,38 @@ export class AccountabilityService {
           currency: input.currency,
         },
       });
+  }
+
+  async recordComplaintEvent(
+    input: {
+      actor: ActorContext;
+      companyId: string;
+      complaintId: string;
+      occurredAt: Date;
+    } & (
+      | { action: 'complaint.recorded'; revision: 1 }
+      | { action: 'complaint.intake.corrected'; revision: number }
+      | {
+          action: 'complaint.journal.recorded';
+          revision: number;
+          kind: 'action' | 'response' | 'correction';
+        }
+    ),
+  ): Promise<void> {
+    await this.databaseContext.connection.insert(complaintEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      complaintId: input.complaintId,
+      revision: input.revision,
+      action: input.action,
+      actorMembershipId: input.actor.workspaceMembershipId,
+      actorInternalUserId: input.actor.internalUserId,
+      occurredAt: input.occurredAt,
+      metadata:
+        input.action === 'complaint.journal.recorded'
+          ? { revision: input.revision, kind: input.kind }
+          : { revision: input.revision },
+    });
   }
 
   // Confidential profitability events have no Activity read projection.
@@ -3052,6 +3085,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.companyId}`,
       };
+    case 'company_complaints_reader_assignment.granted':
+    case 'company_complaints_reader_assignment.revoked':
+    case 'company_complaints_recorder_assignment.granted':
+    case 'company_complaints_recorder_assignment.revoked':
     case 'company_task_manager_assignment.granted':
     case 'company_task_manager_assignment.revoked':
     case 'company_document_project_organizer_assignment.granted':

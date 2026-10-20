@@ -42,6 +42,7 @@ export function SectionIcon({
     companies: Building2,
     documents: Mail,
     requests: ClipboardList,
+    complaints: ClipboardList,
     catalogue: BookOpen,
     pricing: SlidersHorizontal,
     activity: Activity,

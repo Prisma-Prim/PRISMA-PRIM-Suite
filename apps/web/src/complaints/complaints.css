@@ -1,0 +1,244 @@
+.complaints-workspace {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+  max-width: 72rem;
+  color: #15233b;
+}
+.complaint-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.complaint-heading h2,
+.complaint-heading p,
+.complaint-card h3,
+.complaint-card p {
+  margin: 0;
+}
+.complaint-heading p {
+  max-width: 44rem;
+  margin-top: 0.5rem;
+  color: #5e677b;
+  line-height: 1.65;
+}
+.complaint-card {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1.4rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 4px 20px #15233b05;
+}
+.complaint-form,
+.complaint-fields,
+.complaint-history {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.complaint-field {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.complaints-workspace label {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.complaints-workspace input,
+.complaints-workspace textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #dce1eb;
+  border-radius: 0.65rem;
+  background: #fff;
+  color: #15233b;
+  font: inherit;
+}
+.complaints-workspace textarea {
+  min-height: 8rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+.complaints-workspace input:focus-visible,
+.complaints-workspace textarea:focus-visible,
+.complaints-workspace .complaint-button:focus-visible,
+.complaints-workspace a:focus-visible {
+  outline: 3px solid #c4b1fd;
+  outline-offset: 3px;
+}
+.complaint-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid #7355da;
+  border-radius: 0.7rem;
+  background: #7355da;
+  color: #fff;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  text-align: center;
+}
+.complaint-button:hover:enabled {
+  border-color: #5e40c0;
+  background: #5e40c0;
+}
+.complaint-button--secondary {
+  border-color: #ded5f8;
+  background: #f8f5ff;
+  color: #6143c4;
+}
+.complaint-button--secondary:hover:enabled {
+  background: #ede6ff;
+  color: #5033b0;
+}
+.complaints-workspace .complaint-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.complaint-self {
+  justify-content: flex-start;
+  width: 100%;
+  border-color: #e6eaf1;
+  background: #fff;
+  color: #46506a;
+  text-align: left;
+}
+.complaint-self[aria-pressed='true'] {
+  border-color: #9a77e9;
+  background: #f5f0ff;
+  color: #6143c4;
+}
+.complaint-self:hover:enabled {
+  border-color: #9a77e9;
+  background: #f5f0ff;
+  color: #6143c4;
+}
+.complaint-actions,
+.complaint-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+.complaint-list,
+.complaint-history {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.complaint-list {
+  display: grid;
+  gap: 0.8rem;
+}
+.complaint-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.complaint-facts {
+  display: grid;
+  gap: 0.8rem;
+  margin: 0;
+}
+.complaint-facts dt,
+.complaint-muted {
+  font-size: 0.82rem;
+  color: #657087;
+}
+.complaint-facts dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+.complaint-status,
+.complaint-note {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #ede0a4;
+  border-radius: 0.75rem;
+  background: #fff9e5;
+  color: #665016;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.complaint-status[data-kind='saved'] {
+  border-color: #ded5f8;
+  background: #f5f0ff;
+  color: #6143c4;
+}
+@media (min-width: 700px) {
+  .complaint-fields,
+  .complaint-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .complaint-field--wide {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 450px) {
+  .complaint-card {
+    padding: 1rem;
+  }
+  .complaint-actions > .complaint-button {
+    width: 100%;
+  }
+}
+
+.complaint-history-entry {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  padding: 1.2rem 0;
+  border-top: 1px solid #e6eaf1;
+}
+.complaints-workspace h3,
+.complaints-workspace h4,
+.complaints-workspace blockquote {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.complaints-workspace blockquote {
+  padding: 0.9rem 1rem;
+  border-left: 3px solid #9a77e9;
+  background: #f8f5ff;
+}
+.complaints-workspace h3:focus-visible {
+  outline: 3px solid #c4b1fd;
+  outline-offset: 4px;
+}
+.complaint-pagination {
+  margin-top: 0.5rem;
+}
+
+.complaints-workspace [aria-invalid='true'] {
+  border-color: #a84567;
+}
+.complaint-original-reference {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+}
+.complaint-original-reference h5 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

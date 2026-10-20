@@ -281,6 +281,14 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Project Template Configuration',
     versions: { v1: ['project.template.version.create'] },
   },
+  company_complaints_reader: {
+    label: 'Company Complaints Reader',
+    versions: { v1: ['complaint.read'] },
+  },
+  company_complaints_recorder: {
+    label: 'Company Complaints Recorder',
+    versions: { v1: ['complaint.record'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -813,3 +821,12 @@ export function projectTemplateConfigurationPermissionsFor(
     version,
   );
 }
+
+export const COMPANY_COMPLAINTS_READER_BUNDLE =
+  'company_complaints_reader' satisfies CompanyRoleBundle;
+export const COMPANY_COMPLAINTS_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_complaints_reader.label;
+export const COMPANY_COMPLAINTS_RECORDER_BUNDLE =
+  'company_complaints_recorder' satisfies CompanyRoleBundle;
+export const COMPANY_COMPLAINTS_RECORDER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_complaints_recorder.label;

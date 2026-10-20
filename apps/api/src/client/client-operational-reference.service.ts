@@ -54,6 +54,37 @@ export interface LockedClientLegalRecipient {
 export class ClientOperationalReferenceService {
   constructor(private readonly databaseContext: DatabaseContext) {}
 
+  // Keep original-reference eligibility in the Client owner. Returning the
+  // selection inside an object avoids executing/materializing every Client;
+  // a caller may compose count/page queries within its own read snapshot.
+  async prepareOperationalReadSelection(actor: ActorContext) {
+    const companyId = this.requireClientRead(actor);
+    await this.lockClientReadAuthority(actor, companyId);
+    return {
+      selection: this.databaseContext.connection
+        .select({ id: clientAccounts.id })
+        .from(clientAccounts)
+        .innerJoin(
+          clientCompanyRelationships,
+          and(
+            eq(
+              clientCompanyRelationships.workspaceId,
+              clientAccounts.workspaceId,
+            ),
+            eq(clientCompanyRelationships.clientAccountId, clientAccounts.id),
+            eq(clientCompanyRelationships.companyId, companyId),
+            eq(clientCompanyRelationships.status, 'active'),
+          ),
+        )
+        .where(
+          and(
+            eq(clientAccounts.workspaceId, actor.workspaceId),
+            inArray(clientAccounts.status, ['active', 'superseded']),
+          ),
+        ),
+    };
+  }
+
   async readReferenceClient(actor: ActorContext, originalClientId: string) {
     const companyId = this.requireClientRead(actor);
     const [client] = await this.databaseContext.connection
