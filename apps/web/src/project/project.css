@@ -170,6 +170,56 @@
   border-radius: 6px;
   background: #fff;
 }
+.prisme-shell .project-workspace--prisme .project-closed-filter {
+  min-height: 44px;
+  cursor: pointer;
+}
+.prisme-shell
+  .project-workspace--prisme
+  .project-closed-filter
+  input[type='checkbox'] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 1px solid var(--shell-muted);
+  border-radius: 4px;
+  color: #fff;
+  background: var(--shell-surface);
+  cursor: pointer;
+}
+.prisme-shell .project-closed-filter input[type='checkbox']::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.35rem;
+  border: solid currentColor;
+  border-width: 0 0 2px 2px;
+  transform: translateY(-0.1rem) rotate(-45deg) scale(0);
+}
+.prisme-shell .project-closed-filter input[type='checkbox']:checked {
+  border-color: var(--shell-blue);
+  background: var(--shell-blue);
+}
+.prisme-shell .project-closed-filter input[type='checkbox']:checked::before {
+  transform: translateY(-0.1rem) rotate(-45deg) scale(1);
+}
+.prisme-shell .project-closed-filter input[type='checkbox']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+@media (forced-colors: active) {
+  .prisme-shell
+    .project-workspace--prisme
+    .project-closed-filter
+    input[type='checkbox'] {
+    appearance: auto;
+  }
+  .prisme-shell .project-closed-filter input[type='checkbox']::before {
+    content: none;
+  }
+}
 .prisme-shell .project-workspace--prisme .project-registration,
 .prisme-shell .project-detail-card {
   max-width: none;

@@ -437,6 +437,119 @@ it('filters loaded Projects by visible title or Client without requesting again 
   ).not.toBeInTheDocument();
 });
 
+it('finds an already loaded Project by Romanian plain spelling without rewriting its title', async () => {
+  const project = {
+    ...validProject,
+    title: 'Pregătire Ștefan',
+  };
+  const fetch = vi.fn(async (url: string) =>
+    Response.json(
+      url === '/api/clients'
+        ? [{ id: 'client', displayName: 'Synthetic Client' }]
+        : [project],
+    ),
+  );
+  stubFetch('fetch', fetch);
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const list = await screen.findByRole('list', { name: 'Projects' });
+  const rowName = 'Pregătire Ștefan Client: Synthetic Client';
+  expect(within(list).getByRole('button', { name: rowName })).toBeVisible();
+  const readsAfterLoad = fetch.mock.calls.length;
+
+  changeValue(
+    screen.getByRole('searchbox', { name: 'Find Projects' }),
+    'Stefan',
+  );
+
+  expect(within(list).getByRole('button', { name: rowName })).toBeVisible();
+  expect(fetch).toHaveBeenCalledTimes(readsAfterLoad);
+});
+
+it.each([
+  { title: 'Mână în târg', client: 'Client', query: '  MANA IN TARG  ' },
+  { title: 'Plan țară', client: 'Client', query: 'PLAN TARA' },
+  { title: 'Plan ţară', client: 'Client', query: 'plan tara' },
+  { title: 'Plan', client: 'Ștefan Ţară', query: 'stefan tara' },
+  { title: 'MANA IN TARG', client: 'Client', query: 'mână în târg' },
+  {
+    title: 'Prega\u0306tire S\u0326tefan T\u0326ara\u0306',
+    client: 'Client',
+    query: 'pregatire stefan tara',
+  },
+  {
+    title: 'Pregătire Ştefan Ţară',
+    client: 'Client',
+    query: 'prega\u0306tire s\u0326tefan t\u0326ara\u0306',
+  },
+])(
+  'matches Romanian spelling in loaded title "$title" and Client "$client"',
+  async ({ title, client, query }) => {
+    const project = { ...validProject, title, clientDisplayName: client };
+    const fetch = vi.fn(async (url: string) =>
+      Response.json(
+        url === '/api/clients'
+          ? [{ id: 'client', displayName: client }]
+          : [project],
+      ),
+    );
+    stubFetch('fetch', fetch);
+    render(
+      <ProjectWorkspace
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    const list = await screen.findByRole('list', { name: 'Projects' });
+    const originalRow = within(list).getByRole('button');
+    const readsAfterLoad = fetch.mock.calls.length;
+
+    changeValue(
+      screen.getByRole('searchbox', { name: 'Find Projects' }),
+      query,
+    );
+
+    expect(within(list).getByRole('button')).toBe(originalRow);
+    expect(originalRow).toHaveTextContent(title);
+    expect(originalRow).toHaveTextContent(client);
+    expect(fetch).toHaveBeenCalledTimes(readsAfterLoad);
+  },
+);
+
+it('preserves the Russian й and и distinction while accepting their canonical representation', async () => {
+  const projects = [
+    { ...validProject, id: 'short-i', title: 'Проект й' },
+    { ...validProject, id: 'i', title: 'Проект и' },
+  ];
+  stubFetch('fetch', async (url: string) =>
+    Response.json(
+      url === '/api/clients'
+        ? [{ id: 'client', displayName: 'Synthetic Client' }]
+        : projects,
+    ),
+  );
+  render(
+    <ProjectWorkspace
+      actor={actor}
+      identity={deterministicBrowserIdentity()}
+    />,
+  );
+  const list = await screen.findByRole('list', { name: 'Projects' });
+  const search = screen.getByRole('searchbox', { name: 'Find Projects' });
+
+  changeValue(search, 'И');
+  expect(within(list).getAllByRole('button')).toHaveLength(1);
+  expect(within(list).getByRole('button')).toHaveTextContent('Проект и');
+
+  changeValue(search, 'и\u0306');
+  expect(within(list).getAllByRole('button')).toHaveLength(1);
+  expect(within(list).getByRole('button')).toHaveTextContent('Проект й');
+});
+
 it('uses an authorized dossier identity for navigation and an exact loaded filter', async () => {
   const openDossier = vi.fn();
   const projects = [
