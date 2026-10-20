@@ -290,10 +290,8 @@ test('the public complete plan caps parallelism without replacing scripts or ser
     '--maxWorkers=2',
   ]);
   assert.deepEqual(args.browser, [
-    '--filter',
-    '@prisma-prim/web',
-    'test:browser',
-    '--workers=2',
+    'scripts/verify-local-browser.mjs',
+    'browser',
   ]);
   assert.deepEqual(args['api-serial'], [
     '--filter',
@@ -301,9 +299,8 @@ test('the public complete plan caps parallelism without replacing scripts or ser
     'test:postgres:serial',
   ]);
   assert.deepEqual(args.acceptance, [
-    '--filter',
-    '@prisma-prim/web',
-    'test:browser:acceptance',
+    'scripts/verify-local-browser.mjs',
+    'acceptance',
   ]);
   assert.throws(() => {
     args['api-parallel'].push('--exclude=required.test.ts');

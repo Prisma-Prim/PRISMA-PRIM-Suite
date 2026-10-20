@@ -16,6 +16,7 @@ import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { createProcessGroupController } from './process-group.mjs';
 import { changedFiles, isDocumentationOnly } from './ci-change-scope.mjs';
+import { validateLocalBrowserEvidence } from './verify-local-browser.mjs';
 
 const schema = 'prisma-prim-local-verification/v1';
 const hash = (value) => createHash('sha256').update(value).digest('hex');
@@ -78,19 +79,16 @@ export const verificationFamilies = Object.freeze(
       'run',
       '--maxWorkers=2',
     ),
-    pnpm(
-      'browser',
-      '--filter',
-      '@prisma-prim/web',
-      'test:browser',
-      '--workers=2',
-    ),
-    pnpm(
-      'acceptance',
-      '--filter',
-      '@prisma-prim/web',
-      'test:browser:acceptance',
-    ),
+    {
+      id: 'browser',
+      command: 'node',
+      args: ['scripts/verify-local-browser.mjs', 'browser'],
+    },
+    {
+      id: 'acceptance',
+      command: 'node',
+      args: ['scripts/verify-local-browser.mjs', 'acceptance'],
+    },
     {
       id: 'acceptance-evidence',
       command: 'node',
@@ -183,13 +181,15 @@ function verificationScope(root, provenance) {
       };
 }
 
-function requiredFamilies(scope) {
+function requiredFamilies(scope, output) {
   return verificationFamilies.map((family, index) => ({
     ...family,
     args:
       scope.kind === 'docs_only' && family.id === 'doctor'
         ? ['scripts/agent-doctor.mjs']
-        : family.args,
+        : ['browser', 'acceptance'].includes(family.id)
+          ? [...family.args, '--output', output]
+          : family.args,
     required: scope.kind !== 'docs_only' || index < 6,
   }));
 }
@@ -344,7 +344,11 @@ async function execute(
     const result = await Promise.race([closed, interrupted]);
     const wasInterrupted = typeof result === 'string';
     if (child.pid && (wasInterrupted || (await groups.isLive(child.pid))))
-      await groups.terminate(child, closed, 1_000);
+      await groups.terminate(
+        child,
+        closed,
+        args[0] === 'scripts/verify-local-browser.mjs' ? 10_000 : 1_000,
+      );
     return wasInterrupted ? { ...(await closed), status: result } : result;
   } finally {
     clearTimeout(timeout);
@@ -452,7 +456,7 @@ async function inventory(directory, prefix = '') {
 }
 
 function render(report) {
-  return `Local verification: **${report.status}** (${report.mode}).\nScope: ${report.scope?.kind ?? 'unproven'} — ${report.scope?.reason ?? 'classification unavailable'}\n\nSelf-reported local execution; no GitHub runner attestation.\n\nSource: \`${report.provenance?.sourceHead ?? 'unavailable'}\`\nBase: \`${report.provenance?.baseHead ?? 'unavailable'}\`\nTested integration tree: \`${report.provenance?.integrationTree ?? 'unavailable'}\`\nUTC: ${report.startedAt} — ${report.finishedAt}\n\n| Family | Result | Exit | Process cap (min) | Exact argv |\n| --- | --- | --- | --- | --- |\n${report.families.map((family) => `| ${family.id} | ${family.status} | ${family.exitCode ?? '—'} | ${(family.timeoutMilliseconds ?? defaultProcessTimeout) / 60_000} | \`${JSON.stringify([family.command, ...family.args])}\` |`).join('\n')}\n\nThese are process safety caps; scenario and assertion deadlines remain unchanged. API parallel/browser: 270 min = 2 x 3 x 45 min; acceptance: 180 min = 2 x 2 x 45 min; other families: 45 min. These conservative aggregate ceilings are not runtime benchmarks or business-test deadlines.\n\nConfiguration, exact argv, input hashes and artifact inventory: manifest.json.\nArtifact publication: **not published by this command**. Attach the validated manifest and reviewed synthetic evidence archive to the PR's evidence release, then record actual asset URLs and digests in the PR.\n${report.refusal ? `\nRefusal: ${report.refusal}\n` : ''}`;
+  return `Local verification: **${report.status}** (${report.mode}).\nScope: ${report.scope?.kind ?? 'unproven'} — ${report.scope?.reason ?? 'classification unavailable'}\n\nSelf-reported local execution; no GitHub runner attestation.\n\nSource: \`${report.provenance?.sourceHead ?? 'unavailable'}\`\nBase: \`${report.provenance?.baseHead ?? 'unavailable'}\`\nTested integration tree: \`${report.provenance?.integrationTree ?? 'unavailable'}\`\nUTC: ${report.startedAt} — ${report.finishedAt}\n\n| Family | Result | Exit | Process cap (min) | Exact argv |\n| --- | --- | --- | --- | --- |\n${report.families.map((family) => `| ${family.id} | ${family.status} | ${family.exitCode ?? '—'} | ${(family.timeoutMilliseconds ?? defaultProcessTimeout) / 60_000} | \`${JSON.stringify([family.command, ...family.args])}\` |`).join('\n')}\n\nBrowser/acceptance use fresh local prebuilds before Playwright. Browser build argv: [pnpm, build, --mode, local-demo] in apps/web; acceptance first adds [pnpm, --filter, @prisma-prim/api, build] at the root. Preview argv: [pnpm, preview, --host, 127.0.0.1, --port, 4173] in apps/web. Exact build/test/preview argv, public environment, guarded input/output inventories and startup180s (guard+preview only) are recorded under local-browser/<family>/manifest.json. Child logs require operator selection before publication. The independent evidence probe remains mandatory after acceptance failure, without making the failed family pass.\n\nThese are process safety caps; scenario and assertion deadlines remain unchanged. API parallel/browser: 270 min = 2 x 3 x 45 min; acceptance: 180 min = 2 x 2 x 45 min; other families: 45 min. These conservative aggregate ceilings are not runtime benchmarks or business-test deadlines.\n\nConfiguration, exact argv, input hashes and artifact inventory: manifest.json.\nArtifact publication: **not published by this command**. Attach the validated manifest and reviewed synthetic evidence archive to the PR's evidence release, then record actual asset URLs and digests in the PR.\n${report.refusal ? `\nRefusal: ${report.refusal}\n` : ''}`;
 }
 
 export async function runLocalVerification({
@@ -533,12 +537,13 @@ export async function runLocalVerification({
   const watchers = [];
   let sourceChanged = false;
   let browserEvidenceFresh = false;
+  let acceptanceIntegrityFailure = null;
   try {
     report.provenance = await snapshot(root, source, base);
     report.scope = verificationScope(root, report.provenance);
     if (mode === 'complete')
       report.families = pendingFamilies(
-        requiredFamilies(report.scope),
+        requiredFamilies(report.scope, output),
         report.scope,
       );
     for (const path of Object.keys(report.provenance.inputs)) {
@@ -578,10 +583,23 @@ export async function runLocalVerification({
     );
     for (const family of report.families) {
       if (!family.required) continue;
+      const failureProbe =
+        family.id === 'acceptance-evidence' &&
+        !signal?.aborted &&
+        (acceptanceIntegrityFailure ||
+          report.families.some(
+            (result) =>
+              result.id === 'acceptance' &&
+              result.startedAt &&
+              result.status !== 'passed',
+          ));
+      // A failed acceptance must still exercise the independent diagnostic probe.
+      // Source drift remains a fatal refusal; it cannot make a probe a merge gate.
       if (
-        sourceChanged ||
-        JSON.stringify(await snapshot(root, source, base)) !==
-          JSON.stringify(report.provenance)
+        !failureProbe &&
+        (sourceChanged ||
+          JSON.stringify(await snapshot(root, source, base)) !==
+            JSON.stringify(report.provenance))
       )
         throw new Error('Source/base/inputs changed during verification.');
       family.startedAt = now();
@@ -600,26 +618,31 @@ export async function runLocalVerification({
         ),
       );
       family.finishedAt = now();
-      if (
-        sourceChanged ||
-        JSON.stringify(await snapshot(root, source, base)) !==
-          JSON.stringify(report.provenance)
-      )
-        throw new Error('Source/base/inputs changed during verification.');
+      try {
+        if (
+          sourceChanged ||
+          JSON.stringify(await snapshot(root, source, base)) !==
+            JSON.stringify(report.provenance)
+        )
+          throw new Error('Source/base/inputs changed during verification.');
+      } catch (error) {
+        if (family.id !== 'acceptance' || signal?.aborted) throw error;
+        acceptanceIntegrityFailure = error;
+        report.refusal =
+          'Source/base/inputs changed; acceptance evidence probe is diagnostic only.';
+      }
       if (
         family.status !== 'passed' &&
-        !(
-          family.id === 'acceptance' &&
-          family.signal === null &&
-          family.exitCode !== null
-        )
+        !(family.id === 'acceptance' && !signal?.aborted)
       )
         break;
       if (
         family.id === 'acceptance-evidence' &&
-        report.families.some(
-          (result) => result.id === 'acceptance' && result.status !== 'passed',
-        )
+        (acceptanceIntegrityFailure ||
+          report.families.some(
+            (result) =>
+              result.id === 'acceptance' && result.status !== 'passed',
+          ))
       )
         break;
       if (mode === 'complete' && family.id === 'doctor')
@@ -732,7 +755,7 @@ export async function validateLocalEvidence({
     throw new Error(
       'Incomplete or altered required verification families: source-derived scope differs.',
     );
-  const expected = requiredFamilies(scope);
+  const expected = requiredFamilies(scope, resolve(output));
   const plan = report.families.map(
     ({ id, command, args, timeoutMilliseconds, timeoutBasis, required }) => ({
       id,
@@ -780,6 +803,13 @@ export async function validateLocalEvidence({
     throw new Error(
       'Railway dependency prerequisite changed or is incomplete.',
     );
+  if (scope.kind !== 'docs_only')
+    for (const family of ['browser', 'acceptance'])
+      await validateLocalBrowserEvidence({
+        root,
+        output: resolve(output),
+        family,
+      });
   if (
     JSON.stringify(report.configuration.overrides) !==
     JSON.stringify(effectiveOverrides)
