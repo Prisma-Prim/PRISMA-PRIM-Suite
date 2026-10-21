@@ -1592,6 +1592,287 @@ describe('CommercialIntakeWorkspace', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('retires a late All Requests response after selecting My open cases even when transport ignores abort', async () => {
+    const lateAll = deferredResponse();
+    const fetchMock = vi
+      .fn()
+      .mockReturnValueOnce(lateAll.promise)
+      .mockResolvedValueOnce(Response.json({ items: [listItem(77)] }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderWorkspace();
+    changeValue(
+      screen.getByRole('combobox', { name: 'Request view' }),
+      'mine_open',
+    );
+    expect(
+      await screen.findByRole('button', { name: requestButton(77) }),
+    ).toBeVisible();
+    await act(async () => {
+      lateAll.resolve(
+        Response.json({ items: newestPage, nextCursor: 'retired-all' }),
+      );
+    });
+    expect(visibleRequests()).toBe(1);
+    expect(
+      screen.queryByRole('button', { name: requestButton(0) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Show older Requests' }),
+    ).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/commercial-intake/requests?limit=25&view=mine_open',
+      expect.anything(),
+    );
+  });
+
+  it('retires an older page and resets cursors on each view switch while preserving the loaded text filter', async () => {
+    const lateOlder = deferredResponse();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({ items: newestPage, nextCursor: 'all-older' }),
+      )
+      .mockReturnValueOnce(lateOlder.promise)
+      .mockResolvedValueOnce(
+        Response.json({ items: [listItem(77)], nextCursor: 'mine-older' }),
+      )
+      .mockResolvedValueOnce(Response.json({ items: [listItem(78)] }))
+      .mockResolvedValueOnce(Response.json({ items: newestPage }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderWorkspace();
+    await screen.findByRole('button', { name: requestButton(0) });
+    changeValue(
+      screen.getByLabelText('Filter loaded Client Requests'),
+      'Client Request 78',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+    changeValue(
+      screen.getByRole('combobox', { name: 'Request view' }),
+      'mine_open',
+    );
+    expect(
+      await screen.findByText(commercialIntakeCopy.filterNoMatch),
+    ).toBeVisible();
+    await act(async () => {
+      lateOlder.resolve(
+        Response.json({ items: olderPage, nextCursor: 'retired-older' }),
+      );
+    });
+    expect(screen.getByLabelText('Filter loaded Client Requests')).toHaveValue(
+      'Client Request 78',
+    );
+    expect(
+      screen.queryByRole('button', { name: requestButton(26) }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: requestButton(78) }),
+    ).toBeVisible();
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/commercial-intake/requests?limit=25&cursor=mine-older&view=mine_open',
+      expect.anything(),
+    );
+    changeValue(screen.getByRole('combobox', { name: 'Request view' }), 'all');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(5));
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/commercial-intake/requests?limit=25',
+      expect.anything(),
+    );
+    expect(screen.getByLabelText('Filter loaded Client Requests')).toHaveValue(
+      'Client Request 78',
+    );
+  });
+
+  it('keeps a selected detail and exact uncertain next-action retry across a view switch and refreshes the current view after save', async () => {
+    const literal = '  Call {Client} / Позвонить  ';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json(createdRequest))
+      .mockRejectedValueOnce(new TypeError('Connection lost'))
+      .mockResolvedValueOnce(Response.json({ items: [] }))
+      .mockResolvedValueOnce(updateResult(literal, 2))
+      .mockResolvedValueOnce(Response.json({ items: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    await openDetailForEditing();
+    changeValue(screen.getByLabelText('Next action'), literal);
+    fireEvent.click(screen.getByRole('button', { name: 'Save next action' }));
+    await screen.findByRole('button', { name: 'Retry update' });
+    const originalBody = commandBodyOf(fetchMock.mock.calls[2]?.[1]);
+    const originalKey = idempotencyKeyOf(fetchMock.mock.calls[2]?.[1]);
+    changeValue(
+      screen.getByRole('combobox', { name: 'Request view' }),
+      'mine_open',
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    expect(screen.getByText(createdRequest.originalText)).toBeVisible();
+    expect(screen.getByLabelText('Next action')).toHaveValue(literal);
+    expect(screen.getByLabelText('Next action')).toBeDisabled();
+    expect(screen.getByText('Version: 1')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry update' }));
+    expect(await screen.findByText('Version: 2')).toBeVisible();
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(6));
+    expect(commandBodyOf(fetchMock.mock.calls[4]?.[1])).toBe(originalBody);
+    expect(idempotencyKeyOf(fetchMock.mock.calls[4]?.[1])).toBe(originalKey);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
+      '/api/commercial-intake/requests?limit=25&view=mine_open',
+      expect.anything(),
+    );
+    expect(screen.getByText(createdRequest.originalText)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Requests' }));
+    expect(
+      await screen.findByText(
+        'No open cases are assigned to you in PRISMA-PRIM.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('keeps a capture draft and its uncertain command identity when the personal view is empty', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockRejectedValueOnce(new TypeError('Connection lost'))
+      .mockResolvedValueOnce(Response.json({ items: [] }))
+      .mockRejectedValueOnce(new TypeError('Connection lost'));
+    vi.stubGlobal('fetch', fetchMock);
+    renderWorkspace();
+    await screen.findByText('Quality process preparation');
+    fillRequiredFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
+    await screen.findByRole('alert');
+    changeValue(
+      screen.getByRole('combobox', { name: 'Request view' }),
+      'mine_open',
+    );
+    expect(
+      await screen.findByText(
+        'No open cases are assigned to you in PRISMA-PRIM.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByLabelText('Original request text')).toHaveValue(
+      createdRequest.originalText,
+    );
+    expect(screen.getByLabelText('Next action')).toHaveValue(
+      createdRequest.initialOpportunity.nextAction,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Capture Request' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    expect(commandBodyOf(fetchMock.mock.calls[3]?.[1])).toBe(
+      commandBodyOf(fetchMock.mock.calls[1]?.[1]),
+    );
+    expect(idempotencyKeyOf(fetchMock.mock.calls[3]?.[1])).toBe(
+      idempotencyKeyOf(fetchMock.mock.calls[1]?.[1]),
+    );
+  });
+
+  it('separates an empty personal set, malformed replies and an older-page retry after no loaded text match', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json({ items: [] }))
+      .mockResolvedValueOnce(requestListPage())
+      .mockResolvedValueOnce(Response.json({ items: 'malformed' }))
+      .mockResolvedValueOnce(
+        Response.json({ items: [listItem(77)], nextCursor: 'mine-retry' }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(Response.json({ items: [listItem(78)] }));
+    vi.stubGlobal('fetch', fetchMock);
+    renderWorkspace();
+    await screen.findByText('Quality process preparation');
+    const view = screen.getByRole('combobox', { name: 'Request view' });
+    changeValue(view, 'mine_open');
+    expect(
+      await screen.findByText(
+        'No open cases are assigned to you in PRISMA-PRIM.',
+      ),
+    ).toBeVisible();
+    changeValue(view, 'all');
+    await screen.findByText('Quality process preparation');
+    changeValue(view, 'mine_open');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      commercialIntakeCopy.error,
+    );
+    expect(
+      screen.queryByText('No open cases are assigned to you in PRISMA-PRIM.'),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: commercialIntakeCopy.retry }),
+    );
+    await screen.findByRole('button', { name: requestButton(77) });
+    changeValue(
+      screen.getByLabelText('Filter loaded Client Requests'),
+      'Client Request 78',
+    );
+    expect(screen.getByText(commercialIntakeCopy.filterNoMatch)).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+    expect(
+      await screen.findByText(commercialIntakeCopy.olderError),
+    ).toBeVisible();
+    expect(screen.getByText(commercialIntakeCopy.filterNoMatch)).toBeVisible();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show older Requests' }),
+    );
+    expect(
+      await screen.findByRole('button', { name: requestButton(78) }),
+    ).toBeVisible();
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      7,
+      '/api/commercial-intake/requests?limit=25&cursor=mine-retry&view=mine_open',
+      expect.anything(),
+    );
+  });
+
+  it('retires a delayed personal page and resets the view when Company context changes', async () => {
+    const latePersonal = deferredResponse();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ items: [listItem(0)] }))
+      .mockReturnValueOnce(latePersonal.promise)
+      .mockResolvedValueOnce(
+        Response.json({
+          items: [{ ...listItem(99), subject: 'New Company Request' }],
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const { selectCompany } = renderWorkspace();
+    await screen.findByRole('button', { name: requestButton(0) });
+    changeValue(
+      screen.getByRole('combobox', { name: 'Request view' }),
+      'mine_open',
+    );
+    selectCompany(actorForCompany('company-2', 'Second Company'));
+    expect(await screen.findByText('New Company Request')).toBeVisible();
+    await act(async () => {
+      latePersonal.resolve(Response.json({ items: [listItem(77)] }));
+    });
+    expect(
+      screen.queryByRole('button', { name: requestButton(77) }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Request view' }),
+    ).toHaveAttribute('data-value', 'all');
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/commercial-intake/requests?limit=25',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'x-company-context-id': 'company-2',
+        }),
+      }),
+    );
+  });
+
   it('pages past the newest 25 Requests and reopens an older one', async () => {
     vi.stubGlobal(
       'fetch',

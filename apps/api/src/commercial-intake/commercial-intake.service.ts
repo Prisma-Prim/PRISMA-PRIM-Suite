@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, lt, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, lte, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import { CommercialResponsibleAccessService } from '../access/commercial-responsible-access.service.js';
@@ -39,6 +39,7 @@ import {
   opportunityHistoryCursor,
   readCommercialIntakeCursor,
   readCommercialIntakeLimit,
+  readCommercialIntakeView,
   readOpportunityHistoryCursor,
 } from './commercial-intake-pagination.js';
 import type {
@@ -1090,15 +1091,19 @@ export class CommercialIntakeService {
 
   async list(
     actor: ActorContext,
-    limitInput: unknown,
-    cursorInput: unknown,
+    query: {
+      readonly limit: unknown;
+      readonly cursor: unknown;
+      readonly viewQuery: unknown;
+    },
   ): Promise<CommercialIntakeListPage> {
     const companyId = await this.authorization.requireCommercialIntakeAccess(
       actor,
       'read',
     );
-    const limit = readCommercialIntakeLimit(limitInput);
-    const cursor = readCommercialIntakeCursor(cursorInput);
+    const limit = readCommercialIntakeLimit(query.limit);
+    const cursor = readCommercialIntakeCursor(query.cursor);
+    const view = readCommercialIntakeView(query.viewQuery);
     const rows = await this.databaseContext.connection
       .select({
         request: clientRequests,
@@ -1130,6 +1135,15 @@ export class CommercialIntakeService {
         and(
           eq(clientRequests.workspaceId, actor.workspaceId),
           eq(clientRequests.companyId, companyId),
+          view === 'mine_open'
+            ? and(
+                eq(
+                  opportunities.responsibleWorkspaceMembershipId,
+                  actor.workspaceMembershipId,
+                ),
+                inArray(opportunities.status, ['OPEN', 'ON_HOLD']),
+              )
+            : undefined,
           cursor
             ? sql<boolean>`(${clientRequests.capturedAt}, ${clientRequests.id})
                 < (${cursor.capturedAt}::timestamptz, ${cursor.id}::uuid)`
