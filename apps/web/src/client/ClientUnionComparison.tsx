@@ -5,17 +5,10 @@ import {
   type UnionComparison,
   type UnionField,
 } from './client-union-contract';
-import { clientUnionCopy as copy } from './client-union.copy';
-import { clientWorkspaceCopy as clientCopy } from './client-workspace.copy';
-
-const labels: Record<UnionField, string> = {
-  displayName: clientCopy.displayNameLabel,
-  taxId: clientCopy.taxIdLabel,
-  address: clientCopy.addressLabel,
-  telephone: clientCopy.telephoneLabel,
-  generalEmail: clientCopy.generalEmailLabel,
-  businessActivity: clientCopy.businessActivityLabel,
-};
+import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
+import { useClientDossierCopy } from './client-dossier.copy';
+import { useClientContactEditorCopy } from './client-contact-editor.copy';
+import { useClientUnionHistoryCopy } from './client-union-history.copy';
 
 export function ClientUnionComparison({
   comparison,
@@ -30,6 +23,18 @@ export function ClientUnionComparison({
   onConfirm: (value: unknown) => Promise<void>;
   onHeadingReady: Ref<HTMLHeadingElement>;
 }) {
+  const copy = useClientUnionConfirmationCopy();
+  const clientCopy = useClientDossierCopy();
+  const contactCopy = useClientContactEditorCopy();
+  const historyCopy = useClientUnionHistoryCopy();
+  const labels = {
+    displayName: clientCopy.displayNameLabel,
+    taxId: clientCopy.taxIdLabel,
+    address: clientCopy.addressLabel,
+    telephone: clientCopy.telephoneLabel,
+    generalEmail: clientCopy.generalEmailLabel,
+    businessActivity: clientCopy.businessActivityLabel,
+  } satisfies Record<UnionField, string>;
   const id = useId();
   const [canonicalClientId, setCanonical] = useState('');
   const [fields, setFields] = useState<Record<UnionField, string>>({
@@ -82,14 +87,14 @@ export function ClientUnionComparison({
         {comparison.clients.map((client, sourceIndex) => (
           <article
             key={client.id}
-            aria-label={copy.source({
+            aria-label={historyCopy.source({
               number: sourceIndex + 1,
               name: client.displayName,
             })}
           >
             <header>
               <h5>
-                {copy.source({
+                {historyCopy.source({
                   number: sourceIndex + 1,
                   name: client.displayName,
                 })}
@@ -100,18 +105,18 @@ export function ClientUnionComparison({
               {unionFields.map((field) => (
                 <div key={field}>
                   <dt>{labels[field]}</dt>
-                  <dd>{client[field] ?? copy.notProvided}</dd>
+                  <dd>{client[field] ?? clientCopy.notProvided}</dd>
                 </div>
               ))}
             </dl>
             <div className="client-union-contacts">
               <h5>{clientCopy.contactsLabel}</h5>
-              {client.contacts.length === 0 && <p>{copy.noContacts}</p>}
+              {client.contacts.length === 0 && <p>{historyCopy.noContacts}</p>}
               <ol>
                 {client.contacts.map((contact, contactIndex) => (
                   <li key={contactIndex}>
                     <p className="client-union-source-label">
-                      {copy.contactSource({
+                      {historyCopy.contactSource({
                         source: sourceIndex + 1,
                         contact: contactIndex + 1,
                       })}
@@ -119,36 +124,37 @@ export function ClientUnionComparison({
                     <strong>{contact.name}</strong>
                     <dl>
                       <div>
-                        <dt>{clientCopy.contactTelephoneLabel}</dt>
-                        <dd>{contact.telephone ?? copy.notProvided}</dd>
+                        <dt>{contactCopy.contactTelephoneLabel}</dt>
+                        <dd>{contact.telephone ?? clientCopy.notProvided}</dd>
                       </div>
                       <div>
-                        <dt>{clientCopy.contactEmailLabel}</dt>
-                        <dd>{contact.email ?? copy.notProvided}</dd>
+                        <dt>{contactCopy.contactEmailLabel}</dt>
+                        <dd>{contact.email ?? clientCopy.notProvided}</dd>
                       </div>
                       <div>
-                        <dt>{clientCopy.contactPositionLabel}</dt>
-                        <dd>{contact.position ?? copy.notProvided}</dd>
+                        <dt>{contactCopy.contactPositionLabel}</dt>
+                        <dd>{contact.position ?? clientCopy.notProvided}</dd>
                       </div>
                       <div>
-                        <dt>{clientCopy.contactDecisionRolesLabel}</dt>
+                        <dt>{contactCopy.contactDecisionRolesLabel}</dt>
                         <dd>
                           {contact.decisionRoles?.length
                             ? contact.decisionRoles
                                 .map(
                                   (role) =>
-                                    clientCopy.contactDecisionRoleLabels[role],
+                                    contactCopy.contactDecisionRoleLabels[role],
                                 )
                                 .join(', ')
-                            : copy.notProvided}
+                            : clientCopy.notProvided}
                         </dd>
                       </div>
                       <div>
                         <dt>
-                          {clientCopy.contactCommunicationPreferencesLabel}
+                          {contactCopy.contactCommunicationPreferencesLabel}
                         </dt>
                         <dd>
-                          {contact.communicationPreferences ?? copy.notProvided}
+                          {contact.communicationPreferences ??
+                            clientCopy.notProvided}
                         </dd>
                       </div>
                     </dl>
@@ -196,7 +202,7 @@ export function ClientUnionComparison({
               describedBy={errorId}
               options={comparison.clients.map((client, index) => ({
                 value: client.id,
-                label: copy.source({
+                label: historyCopy.source({
                   number: index + 1,
                   name: client.displayName,
                 }),
@@ -224,7 +230,7 @@ export function ClientUnionComparison({
                       placeholder={copy.choose}
                       options={comparison.clients.map((client, index) => ({
                         value: client.id,
-                        label: copy.source({
+                        label: historyCopy.source({
                           number: index + 1,
                           name: client.displayName,
                         }),
@@ -242,7 +248,7 @@ export function ClientUnionComparison({
                   {source && (
                     <p id={valueId} className="client-union-retained-value">
                       <span>{copy.retainedSource(sourceIndex + 1)}</span>{' '}
-                      <strong>{source[field] ?? copy.notProvided}</strong>
+                      <strong>{source[field] ?? clientCopy.notProvided}</strong>
                     </p>
                   )}
                 </div>
