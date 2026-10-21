@@ -301,7 +301,11 @@ test('CLI records finite aggregate process ceilings and refuses altered deadline
   );
   assert.match(
     await readFile(join(output, 'report.md'), 'utf8'),
-    /process safety caps.*scenario.*unchanged/is,
+    /process safety caps.*browser\/acceptance scenario budgets remain unchanged/is,
+  );
+  assert.match(
+    await readFile(join(output, 'report.md'), 'utf8'),
+    /API parallel\/serial argv uses --testTimeout=15000; canonical API configuration and manual Actions retain the implicit 5000 ms default\. A local pass does not establish completion within 5000 ms/,
   );
   manifest.families.find(
     (family) => family.id === 'browser',

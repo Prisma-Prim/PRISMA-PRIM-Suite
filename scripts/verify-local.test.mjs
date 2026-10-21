@@ -270,7 +270,7 @@ test('a tracked source edit restored before child exit still invalidates evidenc
   assert.match(report.refusal, /changed during verification/);
 });
 
-test('the public complete plan caps parallelism without replacing scripts or serial requirements', () => {
+test('the public complete plan fixes local execution policy without replacing scripts or serial requirements', () => {
   const args = Object.fromEntries(
     verificationFamilies.map((family) => [family.id, family.args]),
   );
@@ -280,6 +280,7 @@ test('the public complete plan caps parallelism without replacing scripts or ser
     '@prisma-prim/api',
     'test:parallel',
     '--maxWorkers=1',
+    '--testTimeout=15000',
   ]);
   assert.deepEqual(args['web-unit'], [
     '--filter',
@@ -297,6 +298,7 @@ test('the public complete plan caps parallelism without replacing scripts or ser
     '--filter',
     '@prisma-prim/api',
     'test:postgres:serial',
+    '--testTimeout=15000',
   ]);
   assert.deepEqual(args.acceptance, [
     'scripts/verify-local-browser.mjs',
