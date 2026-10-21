@@ -33,6 +33,8 @@ import type {
   COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
+  COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL,
+  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL,
@@ -199,7 +201,11 @@ export type CanonicalActivityEvent =
         | 'company_profitability_contributor_assignment.granted'
         | 'company_profitability_contributor_assignment.revoked'
         | 'company_profitability_director_assignment.granted'
+        | 'company_operational_risk_reader_assignment.granted'
+        | 'company_operational_risk_recorder_assignment.granted'
         | 'company_profitability_director_assignment.revoked'
+        | 'company_operational_risk_reader_assignment.revoked'
+        | 'company_operational_risk_recorder_assignment.revoked'
         | 'company_project_approver_assignment.granted'
         | 'company_project_approver_assignment.revoked'
         | 'company_sales_stage_configuration_assignment.granted'
@@ -241,6 +247,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
+          | typeof COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL
@@ -360,7 +368,11 @@ export interface OrdinaryActivityLogEvent {
     | 'company_profitability_contributor_assignment.granted'
     | 'company_profitability_contributor_assignment.revoked'
     | 'company_profitability_director_assignment.granted'
+    | 'company_operational_risk_reader_assignment.granted'
+    | 'company_operational_risk_recorder_assignment.granted'
     | 'company_profitability_director_assignment.revoked'
+    | 'company_operational_risk_reader_assignment.revoked'
+    | 'company_operational_risk_recorder_assignment.revoked'
     | 'company_project_approver_assignment.granted'
     | 'company_project_approver_assignment.revoked'
     | 'company_sales_stage_configuration_assignment.granted'
@@ -449,6 +461,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
+          | typeof COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL

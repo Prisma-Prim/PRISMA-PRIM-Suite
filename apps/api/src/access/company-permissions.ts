@@ -281,6 +281,14 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Project Template Configuration',
     versions: { v1: ['project.template.version.create'] },
   },
+  company_operational_risk_reader: {
+    label: 'Company Operational Risk Reader',
+    versions: { v1: ['risk.read'] },
+  },
+  company_operational_risk_recorder: {
+    label: 'Company Operational Risk Recorder',
+    versions: { v1: ['risk.record'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -810,6 +818,30 @@ export function projectTemplateConfigurationPermissionsFor(
 ): readonly CompanyProjectTemplateConfigurationPermission[] {
   return companyRolePermissionsFor(
     COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
+    version,
+  );
+}
+
+export const COMPANY_OPERATIONAL_RISK_READER_BUNDLE =
+  'company_operational_risk_reader' satisfies CompanyRoleBundle;
+export const COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_operational_risk_reader.label;
+export const COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE =
+  'company_operational_risk_recorder' satisfies CompanyRoleBundle;
+export const COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_operational_risk_recorder.label;
+export type CompanyOperationalRiskPermission =
+  | CompanyRolePermission<'company_operational_risk_reader'>
+  | CompanyRolePermission<'company_operational_risk_recorder'>;
+export function operationalRiskReaderPermissionsFor(version: unknown) {
+  return companyRolePermissionsFor(
+    COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+    version,
+  );
+}
+export function operationalRiskRecorderPermissionsFor(version: unknown) {
+  return companyRolePermissionsFor(
+    COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
     version,
   );
 }

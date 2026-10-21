@@ -17,6 +17,7 @@ import type { ActorContext } from '../access-types';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { useProfitabilityCopy } from '../profitability-estimate/profitability.copy';
+import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { Select } from '../presentation/Select';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import {
@@ -59,10 +60,14 @@ type AssignmentBundle =
   | 'project'
   | 'project-approver'
   | 'profitability-contributor'
-  | 'profitability-director';
+  | 'profitability-director'
+  | 'operational-risk-reader'
+  | 'operational-risk-recorder';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'operational-risk-reader': '/company-operational-risk-reader-assignments',
+  'operational-risk-recorder': '/company-operational-risk-recorder-assignments',
   'profitability-contributor': '/company-profitability-contributor-assignments',
   'profitability-director': '/company-profitability-director-assignments',
   'task-manager': '/company-task-manager-assignments',
@@ -125,6 +130,7 @@ export function CompanyContextAccess({
 }) {
   const copy = useCompanyAssignmentCopy();
   const profitabilityCopy = useProfitabilityCopy();
+  const riskCopy = useOperationalRiskCopy();
   const decisionCopy = useContractDecisionCopy();
   const stageCopy = useSalesStageCopy();
   const templateCopy = useProjectTemplateCopy();
@@ -333,6 +339,8 @@ export function CompanyContextAccess({
         result.status === 'ok' &&
         command.bundle !== 'company-context' &&
         command.bundle !== 'project-template-configuration' &&
+        command.bundle !== 'operational-risk-reader' &&
+        command.bundle !== 'operational-risk-recorder' &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase()
       ) {
@@ -524,6 +532,14 @@ export function CompanyContextAccess({
                 value: 'profitability-director',
                 label: profitabilityCopy('directorBundle'),
               },
+              {
+                value: 'operational-risk-reader',
+                label: riskCopy('readerBundle'),
+              },
+              {
+                value: 'operational-risk-recorder',
+                label: riskCopy('recorderBundle'),
+              },
               { value: 'pricing-user', label: copy('pricingUserBundle') },
               { value: 'offer-preparer', label: copy('offerPreparerBundle') },
               {
@@ -590,6 +606,8 @@ export function CompanyContextAccess({
               if (
                 value === 'profitability-contributor' ||
                 value === 'profitability-director' ||
+                value === 'operational-risk-reader' ||
+                value === 'operational-risk-recorder' ||
                 value === 'task-manager' ||
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
@@ -625,6 +643,12 @@ export function CompanyContextAccess({
           )}
           {bundle === 'profitability-director' && (
             <p>{profitabilityCopy('directorPrerequisites')}</p>
+          )}
+          {bundle === 'operational-risk-reader' && (
+            <p>{riskCopy('readerPrerequisites')}</p>
+          )}
+          {bundle === 'operational-risk-recorder' && (
+            <p>{riskCopy('recorderPrerequisites')}</p>
           )}
           {bundle === 'task-manager' && (
             <p>{copy('taskManagerPrerequisites')}</p>
@@ -761,6 +785,8 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
+    'operational-risk-reader': 'Company Operational Risk Reader',
+    'operational-risk-recorder': 'Company Operational Risk Recorder',
     'profitability-contributor': 'Company Profitability Contributor',
     'profitability-director': 'Company Profitability Director',
     'commercial-intake': 'Company Commercial Intake',

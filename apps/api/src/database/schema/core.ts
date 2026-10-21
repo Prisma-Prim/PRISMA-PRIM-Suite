@@ -68,6 +68,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_project_template_user',
   'company_project_stage_advancer',
   'company_project_template_configuration',
+  'company_operational_risk_reader',
+  'company_operational_risk_recorder',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -772,6 +774,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_profitability_contributor_assignment.revoked',
   'company_profitability_director_assignment.granted',
   'company_profitability_director_assignment.revoked',
+  'company_operational_risk_reader_assignment.granted',
+  'company_operational_risk_reader_assignment.revoked',
+  'company_operational_risk_recorder_assignment.granted',
+  'company_operational_risk_recorder_assignment.revoked',
   'company_sales_stage_configuration_assignment.granted',
   'company_sales_stage_configuration_assignment.revoked',
   'company_project_template_user_assignment.granted',
@@ -848,6 +854,8 @@ export const activityLogEvents = pgTable(
               | 'Company Project Approver'
               | 'Company Profitability Contributor'
               | 'Company Profitability Director'
+              | 'Company Operational Risk Reader'
+              | 'Company Operational Risk Recorder'
               | 'Company Sales Stage Configuration'
               | 'Company Project Template User'
               | 'Company Project Stage Advancer'

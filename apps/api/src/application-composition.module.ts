@@ -1,3 +1,7 @@
+import { CompanyOperationalRiskReaderAssignmentController } from './access/company-operational-risk-reader-assignment.controller.js';
+import { OperationalRiskModule } from './operational-risk/operational-risk.module.js';
+import { OperationalRiskController } from './operational-risk/operational-risk.controller.js';
+import { CompanyOperationalRiskRecorderAssignmentController } from './access/company-operational-risk-recorder-assignment.controller.js';
 import { CompanyProjectTemplateConfigurationAssignmentController } from './access/company-project-template-configuration-assignment.controller.js';
 import { CompanyProjectStageAdvancerAssignmentController } from './access/company-project-stage-advancer-assignment.controller.js';
 import { DocumentContentController } from './documents/document-content.controller.js';
@@ -100,6 +104,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    OperationalRiskModule,
     ProjectTemplateModule,
     TaskModule,
     DocumentsModule,
@@ -120,6 +125,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    OperationalRiskController,
     ProjectTemplateController,
     CompanyProjectTemplateUserAssignmentController,
     CompanyProjectTemplateConfigurationAssignmentController,
@@ -166,6 +172,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyPricingAdjustmentAssignmentController,
     CompanyCommercialActivityReaderAssignmentController,
     CompanyProfitabilityContributorAssignmentController,
+    CompanyOperationalRiskReaderAssignmentController,
+    CompanyOperationalRiskRecorderAssignmentController,
     CompanyProfitabilityDirectorAssignmentController,
     CompanyOfferPreparerAssignmentController,
     CompanyContractPreparerAssignmentController,

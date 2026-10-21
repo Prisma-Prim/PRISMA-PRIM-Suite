@@ -114,6 +114,18 @@ Authorization, Activity, Client/Project, UX and Platform owners retain
 their boundaries. No sending, automatic closure, assurance appeal, reminder,
 finance or attachment capability is approved by this bounded addition.
 
+### Bounded Company operational-risk intake
+
+The [Company operational-risk intake PRD](company-operational-risk-intake-prd.md)
+prepares an unassessed manual record/reopen, factual follow-up and preserved intake-
+correction journey. Dan's separate 2026-10-21 access choice permits explicit
+Company consultation/recording assignments without expanding existing rights.
+Its status is Approved — bounded first journey, v1.0, following root's ordered
+Standards then Spec agent review on 2026-10-21; runtime delivery is not inferred. Authorization, Activity, UX and Platform retain their ownership.
+The capability's readiness section owns the local-work/publication boundary.
+Scoring, responsible-person assignment, structured journal correction, escalation
+and the broader Risk/improvement module remain outside this first journey.
+
 ## 8. Delivered foundation and live work routing
 
 The original MVP issue is a historical commercial capability source, not the current complete product authority. The Access and Accountability Release 0 sequence through #22 is delivered. The business-independent Company/RBAC foundation through #64–#67 and the narrow Company Context Access assignment in #88 are also delivered.

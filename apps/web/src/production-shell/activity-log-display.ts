@@ -1,3 +1,4 @@
+import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { useWorkspaceInvitationsCopy } from '../access/workspace-invitations.copy';
 import { useOpportunityOutcomeCopy } from '../commercial-intake/opportunity-outcome.copy';
 import {
@@ -52,7 +53,14 @@ export function useActivityLogDisplay() {
     >['metadata']['outcome'],
     string
   >;
+  const risk = useOperationalRiskCopy();
   const actionLabels = {
+    'company_operational_risk_reader_assignment.granted': risk('readerGranted'),
+    'company_operational_risk_reader_assignment.revoked': risk('readerRevoked'),
+    'company_operational_risk_recorder_assignment.granted':
+      risk('recorderGranted'),
+    'company_operational_risk_recorder_assignment.revoked':
+      risk('recorderRevoked'),
     'internal_user.provisioned': message('internal_user.provisioned'),
     'workspace_membership.suspended': message('workspace_membership.suspended'),
     'workspace_sessions.revoked': message('workspace_sessions.revoked'),

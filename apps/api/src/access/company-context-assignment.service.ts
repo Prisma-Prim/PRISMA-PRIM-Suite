@@ -80,6 +80,10 @@ import {
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
+  COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+  COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL,
+  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
+  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL,
@@ -130,6 +134,8 @@ type BundleDefinition = {
     | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
     | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
     | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+    | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
+    | typeof COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL
@@ -144,6 +150,16 @@ type BundleDefinition = {
     | null;
 };
 
+const OPERATIONAL_RISK_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+  label: COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const OPERATIONAL_RISK_RECORDER_BUNDLE: BundleDefinition = {
+  value: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
+  label: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const TASK_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_MANAGER_BUNDLE,
   label: COMPANY_TASK_MANAGER_BUNDLE_LABEL,
@@ -291,6 +307,8 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
@@ -794,6 +812,72 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  async grantOperationalRiskReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPERATIONAL_RISK_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeOperationalRiskReader({
+    actor,
+    workspaceMembershipId,
+    companyId,
+    idempotencyKey,
+  }: {
+    actor: ActorContext;
+    workspaceMembershipId: unknown;
+    companyId: unknown;
+    idempotencyKey: string | undefined;
+  }): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPERATIONAL_RISK_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+  async grantOperationalRiskRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPERATIONAL_RISK_RECORDER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeOperationalRiskRecorder({
+    actor,
+    workspaceMembershipId,
+    companyId,
+    idempotencyKey,
+  }: {
+    actor: ActorContext;
+    workspaceMembershipId: unknown;
+    companyId: unknown;
+    idempotencyKey: string | undefined;
+  }): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      OPERATIONAL_RISK_RECORDER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
   async grantProfitabilityContributor(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -1640,6 +1724,14 @@ function assignmentAction(
       return granted
         ? 'company_commercial_activity_reader_assignment.granted'
         : 'company_commercial_activity_reader_assignment.revoked';
+    case COMPANY_OPERATIONAL_RISK_READER_BUNDLE:
+      return granted
+        ? 'company_operational_risk_reader_assignment.granted'
+        : 'company_operational_risk_reader_assignment.revoked';
+    case COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE:
+      return granted
+        ? 'company_operational_risk_recorder_assignment.granted'
+        : 'company_operational_risk_recorder_assignment.revoked';
     case COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE:
       return granted
         ? 'company_profitability_contributor_assignment.granted'
@@ -1875,6 +1967,22 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_OPERATIONAL_RISK_READER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Operational Risk version.');
+      return {
+        ...base,
+        bundle: COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Operational Risk version.');
+      return {
+        ...base,
+        bundle: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE:

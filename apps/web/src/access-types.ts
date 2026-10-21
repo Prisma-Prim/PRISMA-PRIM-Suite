@@ -105,6 +105,11 @@ export interface ActorContext {
     >;
     opportunityManagerPermissionAssignmentId?: string;
     opportunityManagerPermissionSetVersion?: 'v1' | 'v2';
+    operationalRiskPermissions?: Array<'risk.read' | 'risk.record'>;
+    operationalRiskReaderAssignmentId?: string;
+    operationalRiskReaderPermissionSetVersion?: 'v1';
+    operationalRiskRecorderAssignmentId?: string;
+    operationalRiskRecorderPermissionSetVersion?: 'v1';
     projectStagePermissions?: Array<'project.stage.advance'>;
     projectStagePermissionAssignmentId?: string;
     projectStagePermissionSetVersion?: 'v1';

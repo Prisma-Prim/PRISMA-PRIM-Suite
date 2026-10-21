@@ -65,6 +65,14 @@ const targetTypes = {
     'company_role_assignment',
   'company_sales_stage_configuration_assignment.revoked':
     'company_role_assignment',
+  'company_operational_risk_reader_assignment.granted':
+    'company_role_assignment',
+  'company_operational_risk_reader_assignment.revoked':
+    'company_role_assignment',
+  'company_operational_risk_recorder_assignment.granted':
+    'company_role_assignment',
+  'company_operational_risk_recorder_assignment.revoked':
+    'company_role_assignment',
   'company_project_template_user_assignment.granted': 'company_role_assignment',
   'company_project_template_user_assignment.revoked': 'company_role_assignment',
   'company_project_stage_advancer_assignment.granted':
