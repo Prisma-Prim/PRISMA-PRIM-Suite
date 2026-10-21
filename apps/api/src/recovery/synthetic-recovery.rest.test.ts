@@ -32,6 +32,7 @@ import {
   type PostgresRestTestHarness,
 } from '../database/postgres-rest-test-harness.js';
 import { runDemonstrationSeedCommand } from '../demonstration/demonstration-seed.command.js';
+import { resolveRecoveryTestContainer } from '../../test-support/recovery-test-container.js';
 import {
   prepareRecoveryPublicEvidence,
   startRecoveryScannerFixture,
@@ -39,10 +40,7 @@ import {
 
 const execute = promisify(execFile);
 const databaseUrl = process.env.TEST_DATABASE_URL;
-const container =
-  process.env.RECOVERY_TEST_CONTAINER ??
-  (process.env.CI === 'true' ? 'ci-postgres' : undefined);
-const withRecovery = databaseUrl && container ? describe : describe.skip;
+const withRecovery = databaseUrl ? describe : describe.skip;
 const workspaceId = '00000000-0000-4000-8000-000000000736';
 const workspaceName = 'Isolated recovery DEMO Workspace';
 const owner = {
@@ -136,6 +134,7 @@ const callerBoundRejectionFixtures = [
 
 /** Actual compiled operator entry, supplied PostgreSQL and ordinary public reads. */
 withRecovery('retained synthetic recovery through the compiled CLI', () => {
+  let container: string | undefined;
   let source: IsolatedPostgresTestDatabase;
   let sourceApplication: PostgresRestTestHarness | undefined;
   let destination: IsolatedPostgresTestDatabase | undefined;
@@ -151,10 +150,20 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
   const originalEnvironment = { ...process.env };
 
   beforeAll(async () => {
-    if (!databaseUrl || !container)
-      throw new Error(
-        'A supplied PostgreSQL17 target and existing tool container are required.',
-      );
+    if (!databaseUrl)
+      throw new Error('A supplied PostgreSQL17 test target is required.');
+    container = await resolveRecoveryTestContainer({
+      databaseUrl,
+      explicitContainer: process.env.RECOVERY_TEST_CONTAINER,
+      continuousIntegration: process.env.CI === 'true',
+      runDocker: async (args) =>
+        (
+          await execute('docker', args, {
+            timeout: 10_000,
+            maxBuffer: 65_536,
+          })
+        ).stdout,
+    });
     temporaryRoot = await mkdtemp(join(tmpdir(), 'prisma-recovery736-'));
     const compiledRoot = join(temporaryRoot, 'compiled');
     const revision = (
