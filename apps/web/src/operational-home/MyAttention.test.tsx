@@ -6,6 +6,7 @@ import {
   type InterfaceLocale,
 } from '../localization/interface-locale';
 import { MyAttention } from './MyAttention';
+import { deterministicBrowserIdentity } from '../access-composition';
 import { operationalHomeCopy as copy } from './operational-home.copy';
 import { readOperationalHome } from './operational-home-response';
 
@@ -117,6 +118,8 @@ it('shows every Task fact and rule, then opens the Task and My Tasks through exi
   render(
     <InterfaceLocaleProvider>
       <MyAttention
+        identity={deterministicBrowserIdentity()}
+        workspaceMembershipId={attribution.workspaceMembershipId}
         attention={attention()}
         company={company}
         today={today}
@@ -156,7 +159,7 @@ it('shows every Task fact and rule, then opens the Task and My Tasks through exi
     taskId: 'signature',
   });
   fireEvent.click(
-    within(region).getByRole('button', { name: copy.attention.seeAll }),
+    within(region).getByRole('button', { name: copy.attention.openMyTasks }),
   );
   expect(onOpenMyTasks).toHaveBeenCalledOnce();
 });
@@ -166,6 +169,8 @@ it('states the empty Company/date and the bounded total', () => {
   const { rerender } = render(
     <InterfaceLocaleProvider>
       <MyAttention
+        identity={deterministicBrowserIdentity()}
+        workspaceMembershipId={attribution.workspaceMembershipId}
         attention={{ matchingCount: 0, tasks: [] }}
         company={company}
         today={today}
@@ -181,6 +186,8 @@ it('states the empty Company/date and the bounded total', () => {
   rerender(
     <InterfaceLocaleProvider>
       <MyAttention
+        identity={deterministicBrowserIdentity()}
+        workspaceMembershipId={attribution.workspaceMembershipId}
         attention={attention(12)}
         company={company}
         today={today}
@@ -223,6 +230,8 @@ it.each(localizedLargeOverdueLabels)(
     render(
       <InterfaceLocaleProvider>
         <MyAttention
+          identity={deterministicBrowserIdentity()}
+          workspaceMembershipId={attribution.workspaceMembershipId}
           attention={view.attention}
           company={company}
           today={today}
