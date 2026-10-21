@@ -279,7 +279,7 @@ test('the public complete plan caps parallelism without replacing scripts or ser
     '--filter',
     '@prisma-prim/api',
     'test:parallel',
-    '--maxWorkers=2',
+    '--maxWorkers=1',
   ]);
   assert.deepEqual(args['web-unit'], [
     '--filter',

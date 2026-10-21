@@ -67,7 +67,7 @@ export const verificationFamilies = Object.freeze(
       '--filter',
       '@prisma-prim/api',
       'test:parallel',
-      '--maxWorkers=2',
+      '--maxWorkers=1',
     ),
     pnpm('api-serial', '--filter', '@prisma-prim/api', 'test:postgres:serial'),
     pnpm(
