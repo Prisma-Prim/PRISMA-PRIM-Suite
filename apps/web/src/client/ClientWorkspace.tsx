@@ -15,7 +15,7 @@ import {
 } from '../api/latest-authenticated-request';
 import { ClientDossierPanel } from './ClientDossierPanel';
 import { ClientUnionPanel } from './ClientUnionPanel';
-import { clientUnionCopy } from './client-union.copy';
+import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
 import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
 import {
   optionalProperty,
@@ -89,6 +89,7 @@ export function ClientWorkspace({
 }) {
   const directoryCopy = useClientDirectoryCopy();
   const copy = useClientRegistrationCopy();
+  const unionConfirmationCopy = useClientUnionConfirmationCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const registrationTrigger = useRef<HTMLButtonElement>(null);
@@ -849,7 +850,7 @@ export function ClientWorkspace({
         confirmedUnionClientId !== undefined &&
         confirmedUnionClientId === selectedClientId && (
           <ClientDirectoryFeedback role="status" tone="success">
-            {clientUnionCopy.saved}
+            {unionConfirmationCopy.saved}
           </ClientDirectoryFeedback>
         )}
       {canReadClientDossiers && (
