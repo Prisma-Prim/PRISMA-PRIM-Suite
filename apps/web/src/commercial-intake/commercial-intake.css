@@ -238,6 +238,7 @@
   .commercial-intake-client-association
   button:not(:where(.shared-select__trigger)),
 .prisme-shell .commercial-intake-next-action-actions button,
+.prisme-shell .contract-panel button:not(:where(.shared-select__trigger)),
 .prisme-shell .commercial-intake-filter button,
 .prisme-shell .commercial-intake-restriction button,
 .prisme-shell .commercial-intake-sales-stages > button,
@@ -255,7 +256,8 @@
 }
 
 .prisme-shell .commercial-intake-form > button,
-.prisme-shell .commercial-intake-next-action-actions button[type='submit'] {
+.prisme-shell .commercial-intake-next-action-actions button[type='submit'],
+.prisme-shell .contract-panel button[type='submit'] {
   border-color: var(--shell-blue);
   color: #fff;
   background: var(--shell-blue);
@@ -275,7 +277,8 @@
 .prisme-shell .commercial-intake-form > button:not(:disabled):hover,
 .prisme-shell
   .commercial-intake-next-action-actions
-  button[type='submit']:not(:disabled):hover {
+  button[type='submit']:not(:disabled):hover,
+.prisme-shell .contract-panel button[type='submit']:not(:disabled):hover {
   border-color: #5943bd;
   color: #fff;
   background: #5943bd;

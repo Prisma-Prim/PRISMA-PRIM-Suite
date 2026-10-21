@@ -131,3 +131,99 @@
   display: block;
   margin-top: 0.5rem;
 }
+
+.prisme-shell .contract-panel input:not([type='checkbox']):not([type='radio']),
+.prisme-shell .contract-panel textarea {
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 7px;
+  color: var(--shell-ink);
+  background: var(--shell-surface);
+  line-height: 1.4;
+}
+.prisme-shell
+  .contract-panel
+  input:not([type='checkbox']):not([type='radio']):disabled,
+.prisme-shell .contract-panel textarea:disabled {
+  color: var(--shell-muted);
+  background: color-mix(in srgb, var(--shell-surface) 72%, var(--shell-line));
+  cursor: not-allowed;
+}
+.prisme-shell
+  .contract-panel
+  button:not(:where(.shared-select__trigger)):focus-visible,
+.prisme-shell .contract-panel input:focus-visible,
+.prisme-shell .contract-panel textarea:focus-visible {
+  outline: 2px solid var(--shell-focus);
+  outline-offset: 3px;
+}
+.prisme-shell .contract-panel .contract-warning-acknowledgement,
+.prisme-shell .contract-panel .contract-project-choice {
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  align-items: center;
+  cursor: pointer;
+}
+.prisme-shell .contract-panel input:is([type='checkbox'], [type='radio']) {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--shell-muted);
+  border-radius: 4px;
+  color: #fff;
+  background: var(--shell-surface);
+  cursor: pointer;
+}
+.prisme-shell .contract-panel input[type='checkbox']::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.35rem;
+  border: solid currentColor;
+  border-width: 0 0 2px 2px;
+  transform: translateY(-0.1rem) rotate(-45deg) scale(0);
+}
+.prisme-shell .contract-panel input[type='checkbox']:checked::before {
+  transform: translateY(-0.1rem) rotate(-45deg) scale(1);
+}
+.prisme-shell .contract-panel input[type='radio'] {
+  border-radius: 50%;
+}
+.prisme-shell .contract-panel input[type='radio']::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+  transform: scale(0);
+}
+.prisme-shell .contract-panel input[type='radio']:checked::before {
+  transform: scale(1);
+}
+.prisme-shell
+  .contract-panel
+  input:is([type='checkbox'], [type='radio']):checked {
+  border-color: var(--shell-blue);
+  background: var(--shell-blue);
+}
+.prisme-shell
+  .contract-panel
+  input:is([type='checkbox'], [type='radio']):disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+@media (forced-colors: active) {
+  .prisme-shell .contract-panel input:is([type='checkbox'], [type='radio']) {
+    appearance: auto;
+  }
+  .prisme-shell
+    .contract-panel
+    input:is([type='checkbox'], [type='radio'])::before {
+    content: none;
+  }
+}
