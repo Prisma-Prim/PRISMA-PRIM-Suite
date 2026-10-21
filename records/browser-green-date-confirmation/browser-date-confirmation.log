@@ -1,0 +1,23 @@
+[2m[WebServer] [22m(node:204202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m[2m$ vite preview --host 127.0.0.1 --port 4173[22m
+[2m[WebServer] [22m(node:204220) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:204263) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:204263) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [operational-acceptance-desktop] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL (24.6s)
+(node:204381) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:204381) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [operational-acceptance-narrow] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL (24.2s)
+
+  2 passed (1.2m)
+real 76.22
+user 42.44
+sys 15.90

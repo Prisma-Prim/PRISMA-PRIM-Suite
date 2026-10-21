@@ -1,0 +1,10 @@
+{
+  "source": "apps/web/src/production-shell/ActivityLog.localization.test.tsx",
+  "source_sha256": "1cec51e77886010ca1910550decc0e602aa2af4c3c3096db0000c5ee618dc9d0",
+  "evidence": {
+    "activity-delta-types.json": "2bbdd600d74ca2cb5d0566a800163f7801fa27ac1338e52336719ed79fa4e4aa",
+    "activity-delta-strict-types-resolved.log": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+    "activity-delta-prettier.log": "9223d4a25efb480b12769a7c0ddfeaada1bd0b4855ffc473178f1b1049ba27aa",
+    "activity-delta-eslint.log": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c"
+  }
+}

@@ -1,0 +1,4 @@
+COMMAND: pnpm --filter @prisma-prim/web build --mode local-demo
+START=2026-10-20T17:00:11Z
+END=2026-10-20T17:01:11Z
+EXIT=0

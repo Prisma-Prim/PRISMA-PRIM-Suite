@@ -1,0 +1,11 @@
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/web
+
+
+ Test Files  1 passed (1)
+      Tests  22 passed (22)
+   Start at  14:53:49
+   Duration  25.56s (transform 2.60s, setup 1.70s, import 2.65s, tests 9.58s, environment 9.19s)
+
+
+EXIT=0

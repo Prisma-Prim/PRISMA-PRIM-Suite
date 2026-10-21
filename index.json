@@ -1,0 +1,866 @@
+{
+  "schema": "bounded-local-evidence-selection-index/v1",
+  "entries": [
+    {
+      "path": "README.md",
+      "origin": "derived-preparation-metadata",
+      "bytes": 4468,
+      "sha256": "08d640a477dbb5a1dfedf80190a744bb9e916e7749efd270edd28fbce4d13796",
+      "transform": "new metadata; no new execution or replacement authority"
+    },
+    {
+      "path": "execution-summary.json",
+      "origin": "derived-preparation-metadata",
+      "bytes": 5792,
+      "sha256": "ecb1d2454288aabd50f49251902efcef7e160cd81b222c3168e1987195a2107f",
+      "transform": "new metadata; no new execution or replacement authority"
+    },
+    {
+      "path": "omissions.json",
+      "origin": "derived-preparation-metadata",
+      "bytes": 70194,
+      "sha256": "df22749288b96d015d015e2c174b3f180e82a0b33b504e2f91edeef510d2a9ed",
+      "transform": "new metadata; no new execution or replacement authority"
+    },
+    {
+      "path": "packet.json",
+      "origin": "derived-preparation-metadata",
+      "bytes": 1703,
+      "sha256": "8cb42175eb6e0a20a79d50af7506e80880de2ea731677f2cc786ac8496e453c8",
+      "transform": "new metadata; no new execution or replacement authority"
+    },
+    {
+      "path": "records/acceptance-strict-types.log",
+      "origin": "/workspace/work/ideas-runtime733/acceptance-strict-types.log",
+      "bytes": 8,
+      "sha256": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/acceptance-types.json",
+      "origin": "/workspace/work/ideas-runtime733/acceptance-types.json",
+      "bytes": 507,
+      "sha256": "93f7fd1f964eeb388748b14ab65abfde8768616c6aa6778bcca00f2bb09b897c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/activity-delta-check-manifest.json",
+      "origin": "/workspace/work/ideas-runtime733/activity-delta-check-manifest.json",
+      "bytes": 610,
+      "sha256": "fb1ae8c79fa3427ec0ca4a92531d24fec14c1cb63299f98fc7650d6b86fc3ff2",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/activity-delta-eslint.log",
+      "origin": "/workspace/work/ideas-runtime733/activity-delta-eslint.log",
+      "bytes": 8,
+      "sha256": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/activity-delta-prettier.log",
+      "origin": "/workspace/work/ideas-runtime733/activity-delta-prettier.log",
+      "bytes": 74,
+      "sha256": "9223d4a25efb480b12769a7c0ddfeaada1bd0b4855ffc473178f1b1049ba27aa",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/activity-delta-strict-types-resolved.log",
+      "origin": "/workspace/work/ideas-runtime733/activity-delta-strict-types-resolved.log",
+      "bytes": 8,
+      "sha256": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/activity-delta-types.json",
+      "origin": "/workspace/work/ideas-runtime733/activity-delta-types.json",
+      "bytes": 481,
+      "sha256": "2bbdd600d74ca2cb5d0566a800163f7801fa27ac1338e52336719ed79fa4e4aa",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/activity-localization-choices-group-complete.log",
+      "origin": "/workspace/work/ideas-runtime733/activity-localization-choices-group-complete.log",
+      "bytes": 246,
+      "sha256": "ae04ffa2b34bd161f257403b2deb6664ff15152452996c4321a1bcdb721b515c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/additive-migration-complete.log",
+      "origin": "/workspace/work/ideas-runtime733/additive-migration-complete.log",
+      "bytes": 616,
+      "sha256": "9ab1a6e5913ab2d44925f8928e1d4f7d678126a4f0860bea52bac7fbc4da8cee",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/api-final-focused-typecheck.log",
+      "origin": "/workspace/work/ideas-runtime733/api-final-focused-typecheck.log",
+      "bytes": 68,
+      "sha256": "422c55ce581d37182b1f96f884e6e86c39b766c5b3bd694dff92c59db6bc865a",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/api-final-publication-source-after.json",
+      "origin": "/workspace/work/ideas-runtime733/api-final-publication-source-after.json",
+      "bytes": 166,
+      "sha256": "406a6b1ca3e9742321cdff19a22bc675ee37886bac842080090bc8a2f0c12705",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/api-final-publication-source-before.json",
+      "origin": "/workspace/work/ideas-runtime733/api-final-publication-source-before.json",
+      "bytes": 166,
+      "sha256": "15596034622f69b0a500a89081c41be1e045218508c438f1f17603439d101742",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/api-final-publication-typecheck-command.log",
+      "origin": "/workspace/work/ideas-runtime733/api-final-publication-typecheck-command.log",
+      "bytes": 109,
+      "sha256": "649e9547c04fdc11bb05532c4e7cda59a0048523f78c0f5d1cf33ed0e05eac99",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/api-final-publication-typecheck.log",
+      "origin": "/workspace/work/ideas-runtime733/api-final-publication-typecheck.log",
+      "bytes": 55,
+      "sha256": "b968aab9bb9c4efa0ec3698fc8e290e0dcd93be6be91f45535a02acba3b31502",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/assignment-bootstrap-budget-source.json",
+      "origin": "/workspace/work/ideas-runtime733/assignment-bootstrap-budget-source.json",
+      "bytes": 313,
+      "sha256": "b1d2a25f1ddc28f2b50e77fd59c9488c12b80007788d324db6f51901674bd6c8",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-accepted-doctor-postgres.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-accepted-doctor-postgres.log",
+      "bytes": 870,
+      "sha256": "02d564780b41f7d40ee9cb94d63283991a1aa334c329aeaa91e5b4bb48b1d6c7",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-api-prebuild-command.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-api-prebuild-command.log",
+      "bytes": 98,
+      "sha256": "501eb8087dd85d34b102f75bfb4722328c953d43733333eb85feb359e979f935",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-api-prebuild.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-api-prebuild.log",
+      "bytes": 55,
+      "sha256": "6c4c0c5929c5dccec67ade0717b85fcfef2e2c16b9c808f6a886d6701737a2aa",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-date-api-continuity-before.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-date-api-continuity-before.log",
+      "bytes": 197,
+      "sha256": "b1d3163e2e80cd334897b5527aa93fd342db45d31bf720d82db639da8b9fb6bf",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-date-api-continuity-preparation.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-date-api-continuity-preparation.json",
+      "bytes": 680,
+      "sha256": "eca5d8e46483fe2668fc7aab79002469a70edaee1846e58245c98688b14c0a7f",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-date-confirmation-cleanup.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-date-confirmation-cleanup.log",
+      "bytes": 87,
+      "sha256": "65c12e4c20cc6cbf3dae4ddabb91f8c054d34310808733d43e434f8f62cd4e62",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-date-web-after.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-date-web-after.json",
+      "bytes": 614837,
+      "sha256": "cb74596c1030d6f0f2cdbb06b9a586b44621200c2ef016bba17b55faf902c156",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-date-web-before.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-date-web-before.json",
+      "bytes": 616161,
+      "sha256": "13cca8f0be305fbfdbafcbf7cad576c4781efd6f4908bcbbf974bb2a8f2a5df6",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-date-web-prebuild-command.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-date-web-prebuild-command.log",
+      "bytes": 123,
+      "sha256": "80b074829a3f097913b91a78f78c285901a60577dd02606c2f87916c58142e51",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-date-web-prebuild.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-date-web-prebuild.log",
+      "bytes": 1086,
+      "sha256": "1342bfd9f23c4fb8fe174709b12e930091f88c40bf4152675bc063876e8fd2a9",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-defects-corrected.md",
+      "origin": "/workspace/work/ideas-runtime733/browser-defects-corrected.md",
+      "bytes": 1457,
+      "sha256": "866d0bef952742d19cd297e1d1abe63aa9539ba4fabfe004cf460baf9062accd",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/.ideas-acceptance-css-fixed-preview.config.ts",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/.ideas-acceptance-css-fixed-preview.config.ts",
+      "bytes": 573,
+      "sha256": "8987340709a7d2efc235356cecc1e60f222d5a8e02395dd735ad77dc02ccfca8",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/browser-green-date-confirmation/.ideas-acceptance-preview.config.ts",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/.ideas-acceptance-preview.config.ts",
+      "bytes": 562,
+      "sha256": "e6b1ac23c861a0d988c0dd0a56f6946e90dbec878413ee1a35bace18bef1eb19",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/browser-green-date-confirmation/.ideas-acceptance-startup.config.ts",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/.ideas-acceptance-startup.config.ts",
+      "bytes": 1854,
+      "sha256": "bbe6cebd153d070185d264530d0330932c1030472cf56c4d76f4a7ec0e92356d",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/.last-run.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/.last-run.json",
+      "bytes": 45,
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png",
+      "bytes": 141657,
+      "sha256": "929dd2439d8a6509caa8582f1544a99e9bb73a882011129cb9ed1b2d3d2175a0",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png",
+      "bytes": 129267,
+      "sha256": "4a901c6a9ea2de6b18e7878d21aea227083cc4d150ca932c66faf1a4e0aea7f2",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png",
+      "bytes": 151401,
+      "sha256": "bc07f3e0065adf67671f4d0ac48aef86761c2c8163d6bb4eb0c722e59423b083",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png",
+      "bytes": 151436,
+      "sha256": "a79eb24c9ac6e5c7df7cb638133f7b605b3706795ed964172eed85a0a98ac64c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png",
+      "bytes": 146650,
+      "sha256": "1023d40a2b6dc28a37b4600cd811978cc334d8ecd7e3ba137bc7ac7fd31ba48f",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png",
+      "bytes": 162346,
+      "sha256": "62a7d7dbdef57ec09bcbc7c765fd17aafa6012ed058d5f1cc2e396095e7e50f6",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png",
+      "bytes": 118662,
+      "sha256": "7c10c9d17d13f04538acc497c83aa8730b900054287777654df95fad17489d24",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "bytes": 72425,
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png",
+      "bytes": 3245,
+      "sha256": "62614002d652039368858a83c17f7361c04d00d6feb597dabce3101fd9d128b2",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png",
+      "bytes": 106977,
+      "sha256": "308f15fb99290bbf86abb51bf22b24d4a0aca0161ae7fcc430f10b092a55c821",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png",
+      "bytes": 96260,
+      "sha256": "0073d0e03dde910c6ca10d236f64a564e0ae7836fa51a247394f2b51f9cb0d3e",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png",
+      "bytes": 113021,
+      "sha256": "d3a62b29e6e967f10c55216d94003937940f3b289de7b0b4ce10fd5cd96679ab",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png",
+      "bytes": 112524,
+      "sha256": "d116f27930dfd99fc184509d261cec65d44bbaea1bd46e7843e717836e35ec21",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png",
+      "bytes": 109195,
+      "sha256": "0025f85b0210b251528364c6ab8cf3d9baef51842a9102faf3a762fb635e87c1",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png",
+      "bytes": 122081,
+      "sha256": "a3faacb9d5f756399640ac7fa02fb9b5e59602b193a2fec8c259d02a3e003e90",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png",
+      "bytes": 87971,
+      "sha256": "79a07b6a404e8369e5f232b4eb78b34357f72a084add8cf2ec369926cd8b8185",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "bytes": 40313,
+      "sha256": "a14d174b6fad2d86423fc2a773935ed5b87c95a3c8c6e9701e8aa00999cf7ea6",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png",
+      "bytes": 1841,
+      "sha256": "b6ac10e36afde313c26941e126cd5a7092b2eda6223410ef3a20e89c9651cc73",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/archive-manifest.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/archive-manifest.json",
+      "bytes": 6523,
+      "sha256": "e714334c56c80b79185a29750a70abf2058b9492c6776c46df55c59b738131d0",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-confirmation-command.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-confirmation-command.log",
+      "bytes": 216,
+      "sha256": "e12ae4b0d7cd2d461ad4a57335e5e344319071030eca649cfbc0a3d2cf4a3715",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-confirmation-guard.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-confirmation-guard.log",
+      "bytes": 165,
+      "sha256": "a7df06db471d88ed148b46a644965b4bc143333feeddaa6f6e71e56d67688bc9",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-confirmation-manifest-after.sha256",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-confirmation-manifest-after.sha256",
+      "bytes": 138,
+      "sha256": "fdada6aba5c286dc44575a2d6aa980c47fe418d905af36852585aa4cefdbd940",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-confirmation-manifest-before.sha256",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-confirmation-manifest-before.sha256",
+      "bytes": 138,
+      "sha256": "fdada6aba5c286dc44575a2d6aa980c47fe418d905af36852585aa4cefdbd940",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-confirmation.exit",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-confirmation.exit",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-confirmation.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-confirmation.log",
+      "bytes": 1705,
+      "sha256": "1cbb8cf45e02370fdeeb8a41139e555311f2f37c98cc9083b69e53e1ef9b9076",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-fixed-reuse-manifest.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-fixed-reuse-manifest.json",
+      "bytes": 1811269,
+      "sha256": "e930b6f66c7a9a416ee95e05163d4574def0694fc0d89d965766fc6e090f9921",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-pg-readiness.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-pg-readiness.log",
+      "bytes": 147,
+      "sha256": "eac4cdb912a6d348a73064683316c51a65e9ac37347c9b61a61e7c9a49e01ba0",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/browser-date-review-summary.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/browser-date-review-summary.json",
+      "bytes": 1120,
+      "sha256": "f549124974b2461e14e677b96b42fe05ec4a32eed17e625bb1057f2fe9a9ac09",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-green-date-confirmation/verify-browser-date-fixed-builds.py",
+      "origin": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/verify-browser-date-fixed-builds.py",
+      "bytes": 7132,
+      "sha256": "47e9a152796d641a8342572fd4b4f0fcb5db3718bc419150d7cc982af41bf8b6",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/browser-originals-visual-inspection.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-originals-visual-inspection.json",
+      "bytes": 8606,
+      "sha256": "676afb408e057e431cb0f6eae82477efb852700cdb2e77b3882ef3ae559ba00c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-preview-reuse-manifest.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-preview-reuse-manifest.json",
+      "bytes": 1544566,
+      "sha256": "a47204f75ac6cce5132a279cc3348e3dca9358a6ad8060a308947aaf756cd094",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-red-date-accessible-name/browser-css-confirmation-command.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-red-date-accessible-name/browser-css-confirmation-command.log",
+      "bytes": 216,
+      "sha256": "1e073e68b7c68e8284cdfccd1e696f536671c03fa267eb032bef9a28296138ec",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-red-date-accessible-name/browser-css-confirmation.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-red-date-accessible-name/browser-css-confirmation.log",
+      "bytes": 7465,
+      "sha256": "f80ac60f324c4e4c683f0801c6338428498b8b2ea6c6990ab6e559951f945663",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-red-select-appearance/browser-preview-run-command.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-red-select-appearance/browser-preview-run-command.log",
+      "bytes": 199,
+      "sha256": "44b36681e6b5d1a89a965869002a93a62ea16d2f1ca175cefd6659ef4c1a2a24",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-red-select-appearance/browser-preview-run.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-red-select-appearance/browser-preview-run.log",
+      "bytes": 8980,
+      "sha256": "73b1d197a747a1f950e3e077ad8c56079a6a71a5a3d31a120577addd77d1e27c",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-resume-doctor-confirmed-probe.log",
+      "origin": "/workspace/work/ideas-runtime733/browser-resume-doctor-confirmed-probe.log",
+      "bytes": 840,
+      "sha256": "71b4fc37800bbb7743c9c43bb73760268a920524be56f7904b40636660b952b2",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/browser-temporary-config-cleanup.json",
+      "origin": "/workspace/work/ideas-runtime733/browser-temporary-config-cleanup.json",
+      "bytes": 1116,
+      "sha256": "8bb7f74eebce5a421485d64371d82b4a99e34e72537293b8fe26220283e6561d",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/current-acceptance-status.md",
+      "origin": "/workspace/work/ideas-runtime733/current-acceptance-status.md",
+      "bytes": 3647,
+      "sha256": "9955bf75e18bb92918077ddf7c7fbd1b6c5ef803b82f2de69698a69d0c5a5d6b",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/date-ui-app19-command.log",
+      "origin": "/workspace/work/ideas-runtime733/date-ui-app19-command.log",
+      "bytes": 377,
+      "sha256": "26aee1c29cd4fd5a58fbb43087d13e29b4b904915870d31bc5f743fc1dea747b",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/date-ui-app19.log",
+      "origin": "/workspace/work/ideas-runtime733/date-ui-app19.log",
+      "bytes": 377,
+      "sha256": "4603a7d946398ac25c38b5da5ce32334276df53eddf09838536eb28101aec595",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/disposition-green.log",
+      "origin": "/workspace/work/ideas-runtime733/disposition-green.log",
+      "bytes": 611,
+      "sha256": "689c3f08f14e3458db2ade2f3d68bebf8219eb43e7704d157b9eb20ec7214e1f",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/disposition-red.log",
+      "origin": "/workspace/work/ideas-runtime733/disposition-red.log",
+      "bytes": 2364,
+      "sha256": "251fd60f2b5dddf4d59101b2b796afb3497056bd1261cb2b251e2593d72866d0",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/doctor-assignment-bootstrap-postgres.log",
+      "origin": "/workspace/work/ideas-runtime733/doctor-assignment-bootstrap-postgres.log",
+      "bytes": 741,
+      "sha256": "a4abc3083895f218d4c56c35baeebe990b30e79f5cff1eaee4830e4074d27c9f",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/doctor-web-postgres.log",
+      "origin": "/workspace/work/ideas-runtime733/doctor-web-postgres.log",
+      "bytes": 721,
+      "sha256": "90434249220ca1644a1518d12ee9a74552d5d8a7a603e5212d2df4f6c857840d",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/final-packet/evidence-manifest.json",
+      "origin": "/workspace/work/ideas-runtime733/final-packet/evidence-manifest.json",
+      "bytes": 51200,
+      "sha256": "f74a5551179a26a3a0c760c028a84a5ebe956098a174fa82a86f59c49d0551d1",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/final-packet/published-commit-binding.json",
+      "origin": "/workspace/work/ideas-runtime733/final-packet/published-commit-binding.json",
+      "bytes": 8348,
+      "sha256": "1888f4487ce8ca440ec39e5326d0ad84ed2b6e3886b451fcada3ab642c3c48e2",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/final-packet/source-manifest.json",
+      "origin": "/workspace/work/ideas-runtime733/final-packet/source-manifest.json",
+      "bytes": 8302,
+      "sha256": "904ce2a091c934be2d9901dc7ac2dd5bfcb9ece2bb858b4a087e7f41da681a45",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/first-green.log",
+      "origin": "/workspace/work/ideas-runtime733/first-green.log",
+      "bytes": 607,
+      "sha256": "ffae038d45d00d746298dff7fca3565a823442c755dcb4d0453f7e0d4202e35f",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/first-red.log",
+      "origin": "/workspace/work/ideas-runtime733/first-red.log",
+      "bytes": 1661,
+      "sha256": "d055ea1530d300e0734125ae1878ce5e819fd03a35c0284b58e3dddf6dd10968",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/follow-ups-for-pr.md",
+      "origin": "/workspace/work/ideas-runtime733/follow-ups-for-pr.md",
+      "bytes": 532,
+      "sha256": "0cb80bdebb47b4f703d9068fbbb5e7bf247d665b0eda1eba35c7455ec9a4f511",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/historical-source/apps/web/e2e/ideas.acceptance.spec.ts",
+      "origin": "0f7f1fc21711db24a4776dd9be9941df77cb0131:apps/web/e2e/ideas.acceptance.spec.ts",
+      "bytes": 9617,
+      "sha256": "4ee369c9577acf6360b3bf830ff3c2274dad617469890a613da0b7143f068a2a",
+      "transform": "git-show exact bytes; match original successful-run input hash",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/historical-source/apps/web/playwright.acceptance.config.ts",
+      "origin": "0f7f1fc21711db24a4776dd9be9941df77cb0131:apps/web/playwright.acceptance.config.ts",
+      "bytes": 1832,
+      "sha256": "674efb794601a5756774ff5008a36c24e21ad6f4b52d0abbd7750985ae7e3611",
+      "transform": "git-show exact bytes; match original successful-run input hash",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/ideas-assignment-bootstrap-bounded-complete.log",
+      "origin": "/workspace/work/ideas-runtime733/ideas-assignment-bootstrap-bounded-complete.log",
+      "bytes": 619,
+      "sha256": "3c69aab6f38a817351f80ea4820efba2b9d96e932e01876a6cccb451787e4ce4",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/ideas-assignment-registry-complete.log",
+      "origin": "/workspace/work/ideas-runtime733/ideas-assignment-registry-complete.log",
+      "bytes": 4026,
+      "sha256": "8067734bda15a2e1755e4dab96ce1eb99bc82bb32c08124635de29edf45df3e2",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/ideas-date-accessible-name-fix.json",
+      "origin": "/workspace/work/ideas-runtime733/ideas-date-accessible-name-fix.json",
+      "bytes": 761,
+      "sha256": "4fedc5e67bc06c739ee82513a3840967e4b80886cc7fe726d30fcba8b9366063",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/ideas-date-accessible-name-fix.patch",
+      "origin": "/workspace/work/ideas-runtime733/ideas-date-accessible-name-fix.patch",
+      "bytes": 2218,
+      "sha256": "3f25f3d1eb379b0717a6637612986868a3982f1d49a93ca846c0160290d6b583",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/ideas-rest-27-contracts-complete.log",
+      "origin": "/workspace/work/ideas-runtime733/ideas-rest-27-contracts-complete.log",
+      "bytes": 834,
+      "sha256": "23e088f569f8b29b4ce253968aea7a81e58d0dd3acde57935db3918941c50576",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/ideas-rest-complete-post616-red.log",
+      "origin": "/workspace/work/ideas-runtime733/ideas-rest-complete-post616-red.log",
+      "bytes": 3925,
+      "sha256": "3bdd0af4b7dfd1c53d433bf25b9cee19f1e4e822f046395e05cf641a6cc5fc0a",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/ideas-select-css-fix.json",
+      "origin": "/workspace/work/ideas-runtime733/ideas-select-css-fix.json",
+      "bytes": 456,
+      "sha256": "842748165c9b900b2fe5326431c261fac6ab465fceb8b91c70b3114fc5bddec1",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/ideas-select-css-fix.patch",
+      "origin": "/workspace/work/ideas-runtime733/ideas-select-css-fix.patch",
+      "bytes": 1079,
+      "sha256": "9f7dd1263b95aa4b7c90591915d456b4312c09fb88c64e914df1b991b0949c86",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": false
+    },
+    {
+      "path": "records/ideas-two-cases-diagnostic-summary.json",
+      "origin": "/workspace/work/ideas-runtime733/ideas-two-cases-diagnostic-summary.json",
+      "bytes": 5194,
+      "sha256": "7668bc85097780c05c634f2f3b6f6a0290e073ee1e2e2f565974e02ed4ee2c04",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/retry-input-green.log",
+      "origin": "/workspace/work/ideas-runtime733/retry-input-green.log",
+      "bytes": 609,
+      "sha256": "fb39f4fa4a4e846c9bb78700f35f1318adc81f1b8afe6735ae55cd57dc21a793",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/retry-input-red.log",
+      "origin": "/workspace/work/ideas-runtime733/retry-input-red.log",
+      "bytes": 1435,
+      "sha256": "10e631cefa6eb89b189391dd5579f522d0acc9650036f59383774887bff192ef",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/review-prebrowser/manifest.json",
+      "origin": "/workspace/work/ideas-runtime733/review-prebrowser/manifest.json",
+      "bytes": 8514,
+      "sha256": "f0c13580209ba0ce262a88ae987773eae967886c5574a1648e41143a1953da0a",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/review-prebrowser/root-css-delta-review.md",
+      "origin": "/workspace/work/ideas-runtime733/review-prebrowser/root-css-delta-review.md",
+      "bytes": 1863,
+      "sha256": "bd2f340892659004f2187a65f951d856e6551257730a071dad4fb5bc422fd881",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/review-prebrowser/spec-review.md",
+      "origin": "/workspace/work/ideas-runtime733/review-prebrowser/spec-review.md",
+      "bytes": 2658,
+      "sha256": "d50dfb1527d48e4587800f3d78051c0ee41b142faf455b123b574c992fc9f144",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/review-prebrowser/standards-review.md",
+      "origin": "/workspace/work/ideas-runtime733/review-prebrowser/standards-review.md",
+      "bytes": 2399,
+      "sha256": "b1438a0c223a9a98ecda64526a9c98b1b6e8bfab2e3e249319d9294293b8cf4e",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/root-test-split-review.json",
+      "origin": "/workspace/work/ideas-runtime733/root-test-split-review.json",
+      "bytes": 429,
+      "sha256": "9b696646b3322996a5d0208c868a2a8768b1f2cdc22572497a1c846a309b4dda",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/scoped-eslint.log",
+      "origin": "/workspace/work/ideas-runtime733/scoped-eslint.log",
+      "bytes": 12,
+      "sha256": "1ca4a13146b2891c0e462123ac0cb848f92e6221f18b870a1b78c232d1956c35",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/scoped-format.log",
+      "origin": "/workspace/work/ideas-runtime733/scoped-format.log",
+      "bytes": 2848,
+      "sha256": "c3374a1c3c3b4ad2f07f59af5087b2dfcbdfb2eedc5b21ed0be8bddbb1dce7f8",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/structural-review-notes.md",
+      "origin": "/workspace/work/ideas-runtime733/structural-review-notes.md",
+      "bytes": 1720,
+      "sha256": "e8ad2c54d3dd3a8c4f65b07ac35b8e7dd9ceba4866fae57bb7b23a325c59c236",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/web-administration-activity-localization.log",
+      "origin": "/workspace/work/ideas-runtime733/web-administration-activity-localization.log",
+      "bytes": 2313,
+      "sha256": "f07a5533c9845ef3163dbff6c8b8f596b307d39b7eacef9055fa30cb64fd1f76",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "records/web-final-focused-typecheck.log",
+      "origin": "/workspace/work/ideas-runtime733/web-final-focused-typecheck.log",
+      "bytes": 77,
+      "sha256": "5ef873892ab70b7231c21b53869651f085d66d5727a735e8e78ea77399ad494a",
+      "transform": "none; exact bytes",
+      "inOriginal300Index": true
+    },
+    {
+      "path": "source-binding.json",
+      "origin": "derived-preparation-metadata",
+      "bytes": 22042,
+      "sha256": "77b20566503fd727e49c4b7c75a345a730dd989057382e6cf331c975f1387a56",
+      "transform": "new metadata; no new execution or replacement authority"
+    }
+  ],
+  "indexSelfHash": "Provided in preparation-receipt.json outside packet to avoid circular hashing.",
+  "original300IndexSHA256": "f74a5551179a26a3a0c760c028a84a5ebe956098a174fa82a86f59c49d0551d1"
+}

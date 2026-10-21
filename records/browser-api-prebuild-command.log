@@ -1,0 +1,3 @@
+COMMAND: pnpm --filter @prisma-prim/api build
+START=2026-10-20T15:50:04Z
+END=2026-10-20T15:53:36Z

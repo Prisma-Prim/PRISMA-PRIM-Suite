@@ -1,0 +1,39 @@
+--- reviewed/apps/web/src/ideas/ideas-workspace.css
++++ apps/web/src/ideas/ideas-workspace.css
+@@ -16,7 +16,8 @@
+ .ideas-workspace h4 {
+   color: #15233b;
+ }
+-.ideas-workspace button {
++.ideas-workspace
++  button:not(:where(.shared-select__trigger, .shared-select__option)) {
+   min-height: 44px;
+   max-width: 100%;
+   padding: 0.65rem 1rem;
+@@ -30,16 +31,23 @@
+   text-align: start;
+   cursor: pointer;
+ }
+-.ideas-workspace button:hover:not(:disabled) {
++.ideas-workspace
++  button:not(:where(.shared-select__trigger, .shared-select__option)):hover:not(
++    :disabled
++  ) {
+   background: #f4f0ff;
+ }
+-.ideas-workspace button:focus-visible,
++.ideas-workspace
++  button:not(
++    :where(.shared-select__trigger, .shared-select__option)
++  ):focus-visible,
+ .ideas-workspace textarea:focus-visible,
+ .ideas-workspace input:focus-visible {
+   outline: 3px solid #7355da;
+   outline-offset: 3px;
+ }
+-.ideas-workspace button:disabled {
++.ideas-workspace
++  button:not(:where(.shared-select__trigger, .shared-select__option)):disabled {
+   opacity: 0.6;
+   cursor: not-allowed;
+ }

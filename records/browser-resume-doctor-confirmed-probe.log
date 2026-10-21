@@ -1,0 +1,12 @@
+PASS node: Node v24.19.0 is checked against >=24.0.0 <25.0.0; CI pins 24.
+PASS pnpm: pnpm 11.20.0; repository expects 11.20.0.
+PASS workspace: pnpm-workspace.yaml is present.
+PASS lockfile: pnpm-lock.yaml is present.
+PASS dependencies: The root node_modules directory is present.
+FAIL chromium: Playwright Chromium is missing or not executable.
+  Fix: Run bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install --with-deps chromium.
+PASS database-variables: DATABASE_URL and TEST_DATABASE_URL contain valid PostgreSQL targets.
+PASS database-safety: Development and test databases are distinct numeric-loopback targets; the test name ends in _test.
+PASS postgres: The isolated PostgreSQL test database accepts a read-only connectivity probe; expected server_version_num >= 170000 and < 180000, detected 170011.
+
+EXIT=1

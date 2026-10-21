@@ -1,0 +1,6 @@
+COMMAND: pnpm --filter @prisma-prim/web exec vitest run src/App.ideas.test.tsx --maxWorkers=1 --no-file-parallelism
+START=2026-10-20T16:58:58Z
+7ad9463bd6d29f193ea3de94a180b8caa72fe7a92518e7896a480f44ac05b1b3  apps/web/src/ideas/IdeasWorkspace.tsx
+b865973d42303fd46e346a175bdbafa4148919e7a45eaa4a512766645215ea9b  apps/web/src/App.ideas.test.tsx
+END=2026-10-20T16:59:18Z
+EXIT=0

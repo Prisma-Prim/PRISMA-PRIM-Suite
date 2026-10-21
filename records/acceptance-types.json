@@ -1,0 +1,16 @@
+{
+  "extends": "/workspace/worktrees/ideas-runtime733/apps/web/tsconfig.app.json",
+  "compilerOptions": {
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "/workspace/worktrees/ideas-runtime733/apps/web/node_modules/@types"
+    ]
+  },
+  "include": [
+    "/workspace/worktrees/ideas-runtime733/apps/web/e2e/ideas.acceptance.spec.ts",
+    "/workspace/worktrees/ideas-runtime733/apps/web/playwright.acceptance.config.ts",
+    "/workspace/worktrees/ideas-runtime733/apps/web/src/vite-env.d.ts"
+  ]
+}

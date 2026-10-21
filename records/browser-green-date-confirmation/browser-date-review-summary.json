@@ -1,0 +1,32 @@
+{
+  "manifest": {
+    "bytes": 1811269,
+    "sha256": "e930b6f66c7a9a416ee95e05163d4574def0694fc0d89d965766fc6e090f9921"
+  },
+  "guard": {
+    "bytes": 7132,
+    "sha256": "47e9a152796d641a8342572fd4b4f0fcb5db3718bc419150d7cc982af41bf8b6"
+  },
+  "active_config": {
+    "bytes": 573,
+    "sha256": "8987340709a7d2efc235356cecc1e60f222d5a8e02395dd735ad77dc02ccfca8"
+  },
+  "input_count": 1131,
+  "output_count": 879,
+  "api_inputs": 589,
+  "api_outputs": 862,
+  "module_files": 4025,
+  "source_helpers": 53,
+  "environment": {
+    "VITE_ACCESS_IDENTITY_MODE": "local-demo",
+    "VITE_DEMO_EXTERNAL_PROVIDER": "local-demo",
+    "VITE_DEMO_EXTERNAL_SUBJECT": "local-demonstration-user",
+    "VITE_DEMO_DISPLAY_NAME": "Ada Ionescu",
+    "VITE_DEMO_EMAIL": "ada@example.test",
+    "ACCEPTANCE_API_URL": "http://127.0.0.1:4174",
+    "VITE_API_URL": null,
+    "NODE_ENV": null
+  },
+  "api_attribution": "PASS exit0/211.94s; unchanged source/config/shared inputs, dependencies/environment and complete emitted API file-set/hashes",
+  "pending": "Root provenance review before any browser/guard invocation. PG remains stopped."
+}

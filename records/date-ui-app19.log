@@ -1,0 +1,15 @@
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/web
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  16:59:01
+   Duration  17.25s (transform 4.93s, setup 852ms, import 5.98s, tests 6.49s, environment 3.32s)
+
+real 20.21
+user 18.35
+sys 5.66
+
+EXIT=0

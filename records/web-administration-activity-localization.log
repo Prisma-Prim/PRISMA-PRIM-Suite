@@ -1,0 +1,38 @@
+300f2e4d1a37e34b8112bc51d0cce2fb85cdebf1dae29ef69c71c2352ec5bbc2  apps/web/src/access/CompanyContextAccess.ideas.test.tsx
+dd3b9b259a85be03b6338c52e8de703e3c591cc19d61d53b6ea88fa035f7eb77  apps/web/src/access/CompanyContextAccess.tsx
+4741769d77e6b18a511c31a72f092150762b8a4b454cba69efcf3b904c47de58  apps/web/src/production-shell/ActivityLog.localization.test.tsx
+efae48d1023441c162400fa176b3021e96644e4db18010ab318a152c7f324c05  apps/web/src/test/activity-localization-fixture.ts
+187b5e7962124729fc658646895ecdb566d4532432979be252143f2f8bc6cd0b  apps/web/src/ideas/ideas-activity-response.test.ts
+d5dfba9ae412eaa0293076678ae35f64e9b6f3f3e45215b62f1f6bb50bd782dd  apps/web/src/ideas/ideas.copy.ts
+619b65e1e67f7af62cf66f3a78f185da9c16da129d5e9ff6bd79459023d3bfd3  apps/web/src/localization/first-journey-coverage.ts
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/web
+
+ ❯ src/production-shell/ActivityLog.localization.test.tsx (22 tests | 1 failed) 67929ms
+   × renders all 106 admitted actions and 18 target types in ro without exposing canonical codes 33074ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/production-shell/ActivityLog.localization.test.tsx > renders all 106 admitted actions and 18 target types in ro without exposing canonical codes
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/production-shell/ActivityLog.localization.test.tsx:158:17
+    156| });
+    157|
+    158| it.each(locales)(
+       |                 ^
+    159|   'renders all 106 admitted actions and 18 target types in %s without …
+    160|   (locale) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 28 passed (29)
+   Start at  14:40:30
+   Duration  131.45s (transform 10.24s, setup 6.86s, import 13.74s, tests 75.13s, environment 30.47s)
+
+undefined
+/workspace/worktrees/ideas-runtime733/apps/web:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/access/CompanyContextAccess.ideas.test.tsx src/production-shell/ActivityLog.localization.test.tsx src/ideas/ideas-activity-response.test.ts '--maxWorkers=1' --no-file-parallelism
+EXIT_CODE=1

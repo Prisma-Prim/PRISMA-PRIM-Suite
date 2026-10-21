@@ -1,0 +1,15 @@
+faba7650468ba6b1fbff7f9f1b202980e5049d7c73e8009a4dd9b6052c807676  apps/api/src/ideas/ideas.rest.test.ts
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/api
+
+[Nest] 187376  - 10/20/2026, 2:21:43 PM   ERROR [SyntheticIdeasDiagnostics] Synthetic capture control733
+
+ Test Files  1 passed (1)
+      Tests  27 passed (27)
+   Start at  14:20:58
+   Duration  102.52s (transform 12.95s, setup 0ms, import 22.44s, tests 78.30s, environment 0ms)
+
+EXIT_CODE=0

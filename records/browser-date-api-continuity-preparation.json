@@ -1,0 +1,11 @@
+{
+  "kind": "Read-only API source/output continuity preparation; no test/build/doctor or complete guard executed",
+  "prior_manifest_sha256": "a47204f75ac6cce5132a279cc3348e3dca9358a6ad8060a308947aaf756cd094",
+  "api_input_count": 589,
+  "api_output_count": 862,
+  "api_inputs_exact_match": true,
+  "api_outputs_exact_match": true,
+  "api_input_map_sha256": "19bafd9292f87d91fe865a3d1a9b5185089065bcf59d29393680028706109a23",
+  "api_output_map_sha256": "725f818b4a51e7dbac00c1619cb2033dcc6cad6572fe009a1267fcab3345c516",
+  "limitation": "Module/tool/link/environment checks remain unchanged fail-closed in launch guard; not newly executed here. No new qualifying build result."
+}

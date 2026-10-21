@@ -1,0 +1,164 @@
+{
+  "exitCode": 1,
+  "events": 387,
+  "cases": [
+    {
+      "label": "CASE.begin pagination UTC=2026-10-20T14:13:45.559Z budget=30000",
+      "startMs": 49073.972217,
+      "budgetMs": 30000,
+      "endMs": 88858.724102,
+      "deadlineMs": 79073.972217,
+      "requestsStartedBeforeDeadline": 72,
+      "pendingHTTPAtDeadline": [
+        {
+          "begin": {
+            "sequence": 284,
+            "atMs": 75863.621711,
+            "label": "HTTP.begin GET /ideas/27605d16-ced0-40ba-b97a-e6b6b41f8329/dispositions"
+          },
+          "route": "GET /ideas/27605d16-ced0-40ba-b97a-e6b6b41f8329/dispositions",
+          "end": {
+            "sequence": 287,
+            "atMs": 79667.867902,
+            "label": "HTTP.response #284 status=200"
+          },
+          "status": 200,
+          "durationMs": 3804.2461909999984
+        }
+      ],
+      "pendingJSONAtDeadline": [],
+      "completedHTTPDurationSumMs": 29314.685926000035,
+      "maxCompletedHTTPRequestMs": 4285.317670000004,
+      "lastEventsBeforeDeadline": [
+        {
+          "sequence": 277,
+          "atMs": 71469.717509,
+          "label": "JSON.end #276"
+        },
+        {
+          "sequence": 278,
+          "atMs": 71475.538267,
+          "label": "HTTP.begin GET /ideas/27605d16-ced0-40ba-b97a-e6b6b41f8329/dispositions"
+        },
+        {
+          "sequence": 279,
+          "atMs": 74961.065191,
+          "label": "HTTP.response #278 status=200"
+        },
+        {
+          "sequence": 280,
+          "atMs": 74961.828116,
+          "label": "JSON.begin HTTP#278"
+        },
+        {
+          "sequence": 281,
+          "atMs": 74962.772182,
+          "label": "JSON.end #280"
+        },
+        {
+          "sequence": 282,
+          "atMs": 74973.162297,
+          "label": "EXPLAIN.history.begin"
+        },
+        {
+          "sequence": 283,
+          "atMs": 75860.762658,
+          "label": "EXPLAIN.history.end"
+        },
+        {
+          "sequence": 284,
+          "atMs": 75863.621711,
+          "label": "HTTP.begin GET /ideas/27605d16-ced0-40ba-b97a-e6b6b41f8329/dispositions"
+        }
+      ],
+      "completedJSONDurationSumMs": 95.50831199999811,
+      "eventualTotalMs": 39784.75188499999
+    },
+    {
+      "label": "CASE.begin limits UTC=2026-10-20T14:14:16.038Z budget=15000",
+      "startMs": 79560.805446,
+      "budgetMs": 15000,
+      "deadlineMs": 94560.805446,
+      "requestsStartedBeforeDeadline": 37,
+      "pendingHTTPAtDeadline": [
+        {
+          "begin": {
+            "sequence": 384,
+            "atMs": 94294.697804,
+            "label": "HTTP.begin POST /ideas/f42f1f7d-ba76-4be0-a9b6-b4256bf1ebd8/dispositions"
+          },
+          "route": "POST /ideas/f42f1f7d-ba76-4be0-a9b6-b4256bf1ebd8/dispositions",
+          "end": {
+            "sequence": 385,
+            "atMs": 94686.748961,
+            "label": "HTTP.response #384 status=400"
+          },
+          "status": 400,
+          "durationMs": 392.05115700000897
+        }
+      ],
+      "pendingJSONAtDeadline": [],
+      "completedHTTPDurationSumMs": 24126.620252999972,
+      "maxCompletedHTTPRequestMs": 3336.675715999998,
+      "lastEventsBeforeDeadline": [
+        {
+          "sequence": 377,
+          "atMs": 93674.727972,
+          "label": "HTTP.response #376 status=400"
+        },
+        {
+          "sequence": 378,
+          "atMs": 93683.900099,
+          "label": "HTTP.begin POST /ideas/f42f1f7d-ba76-4be0-a9b6-b4256bf1ebd8/dispositions"
+        },
+        {
+          "sequence": 379,
+          "atMs": 93894.448702,
+          "label": "HTTP.response #378 status=400"
+        },
+        {
+          "sequence": 380,
+          "atMs": 93905.379592,
+          "label": "HTTP.begin POST /ideas/f42f1f7d-ba76-4be0-a9b6-b4256bf1ebd8/dispositions"
+        },
+        {
+          "sequence": 381,
+          "atMs": 94110.553603,
+          "label": "HTTP.response #380 status=400"
+        },
+        {
+          "sequence": 382,
+          "atMs": 94110.972392,
+          "label": "HTTP.begin POST /ideas/f42f1f7d-ba76-4be0-a9b6-b4256bf1ebd8/dispositions"
+        },
+        {
+          "sequence": 383,
+          "atMs": 94294.292992,
+          "label": "HTTP.response #382 status=400"
+        },
+        {
+          "sequence": 384,
+          "atMs": 94294.697804,
+          "label": "HTTP.begin POST /ideas/f42f1f7d-ba76-4be0-a9b6-b4256bf1ebd8/dispositions"
+        }
+      ],
+      "completedJSONDurationSumMs": 39.01083999998809
+    }
+  ],
+  "diagnosticPhases": {
+    "EXPLAIN.list": {
+      "startMs": 54270.266838,
+      "endMs": 54345.523348,
+      "durationMs": 75.25650999999925
+    },
+    "EXPLAIN.history": {
+      "startMs": 74973.162297,
+      "endMs": 75860.762658,
+      "durationMs": 887.6003610000043
+    }
+  },
+  "observationLimit": "Trace adds clock reads, response.json wrappers and stderr writes. Timed-out pagination continues during limits; later-window timing is confounded and is not infrastructure attribution.",
+  "restoredUTC": "2026-10-20T14:16:09.746199+00:00",
+  "restoredSHA256": "1043b0facc5dd037ef704e32c38742973fe517f3a4129c01042b53301285e3b7",
+  "diagnosticLogSHA256": "56e5612cbd78fb8052ed41bc71718d137610bded9cc88da6072e1a37ae94adaf"
+}

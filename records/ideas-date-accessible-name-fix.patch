@@ -1,0 +1,56 @@
+--- before/IdeasWorkspace.tsx
++++ after/IdeasWorkspace.tsx
+@@ -670,29 +670,31 @@
+                   />
+                 </label>
+                 {kind === 'deferred' && (
+-                  <label htmlFor="idea-date">
+-                    {copy('date')}
+-                    <input
+-                      id="idea-date"
+-                      type="date"
+-                      value={date}
+-                      disabled={
+-                        busy ||
+-                        reviewSave.status === 'stale' ||
+-                        reviewSave.status === 'conflict'
+-                      }
+-                      aria-describedby="idea-date-help"
+-                      onChange={(event) => {
+-                        setDate(event.target.value);
+-                        if (
+-                          reviewSave.status !== 'stale' &&
+-                          reviewSave.status !== 'conflict'
+-                        )
+-                          setReviewSave({ status: 'idle' });
+-                      }}
+-                    />
++                  <>
++                    <label htmlFor="idea-date">
++                      {copy('date')}
++                      <input
++                        id="idea-date"
++                        type="date"
++                        value={date}
++                        disabled={
++                          busy ||
++                          reviewSave.status === 'stale' ||
++                          reviewSave.status === 'conflict'
++                        }
++                        aria-describedby="idea-date-help"
++                        onChange={(event) => {
++                          setDate(event.target.value);
++                          if (
++                            reviewSave.status !== 'stale' &&
++                            reviewSave.status !== 'conflict'
++                          )
++                            setReviewSave({ status: 'idle' });
++                        }}
++                      />
++                    </label>
+                     <small id="idea-date-help">{copy('dateHelp')}</small>
+-                  </label>
++                  </>
+                 )}
+                 <button
+                   type="submit"

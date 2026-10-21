@@ -1,0 +1,78 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/api
+
+[Nest] 186023  - 10/20/2026, 1:52:29 PM   ERROR [SyntheticIdeasDiagnostics] Synthetic capture control733
+ ❯ src/ideas/ideas.rest.test.ts (24 tests | 4 failed) 199408ms
+     × replays exact committed results after later reviews and distinguishes changed keys from stale new intent 5709ms
+     × rejects a reconsideration-date field on rejection without changing the saved aggregate 5194ms
+     × keeps restricted Idea content, identities, events and counts out of ordinary Activity and Home, including administration 5392ms
+     × preserves literal boundary lengths and rejects invalid or out-of-scope business input 6998ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/ideas/ideas.rest.test.ts > Company Ideas public REST boundary > replays exact committed results after later reviews and distinguishes changed keys from stale new intent
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/ideas/ideas.rest.test.ts:228:3
+    226|   });
+    227|
+    228|   it('replays exact committed results after later reviews and distingu…
+       |   ^
+    229|     const fixture = await prepared();
+    230|     const original = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/ideas/ideas.rest.test.ts > Company Ideas public REST boundary > rejects a reconsideration-date field on rejection without changing the saved aggregate
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/ideas/ideas.rest.test.ts:305:3
+    303|   });
+    304|
+    305|   it('rejects a reconsideration-date field on rejection without changi…
+       |   ^
+    306|     const fixture = await prepared();
+    307|     const created = await saved(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/ideas/ideas.rest.test.ts > Company Ideas public REST boundary > keeps restricted Idea content, identities, events and counts out of ordinary Activity and Home, including administration
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ src/ideas/ideas.rest.test.ts:445:3
+    443|   }, 15000);
+    444|
+    445|   it('keeps restricted Idea content, identities, events and counts out…
+       |   ^
+    446|     const fixture = await prepared();
+    447|     const scope = { companyId: fixture.companyId };
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/ideas/ideas.rest.test.ts > Company Ideas public REST boundary > preserves literal boundary lengths and rejects invalid or out-of-scope business input
+AssertionError: expected 500 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 500
+
+ ❯ src/ideas/ideas.rest.test.ts:921:480
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 20 passed (24)
+   Start at  13:50:51
+   Duration  250.25s (transform 29.32s, setup 0ms, import 49.49s, tests 199.41s, environment 1ms)
+
+undefined
+/workspace/worktrees/ideas-runtime733/apps/api:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/ideas/ideas.rest.test.ts '--maxWorkers=1' --no-file-parallelism
+EXIT_CODE=1

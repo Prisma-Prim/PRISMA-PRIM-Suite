@@ -1,0 +1,6 @@
+START=2026-10-20T17:04:33Z
+ideas733-postgres
+PORT=32797
+/var/run/postgresql:5432 - accepting connections
+END=2026-10-20T17:04:35Z
+READINESS_EXIT=0

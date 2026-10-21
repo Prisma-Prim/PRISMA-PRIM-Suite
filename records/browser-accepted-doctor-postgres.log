@@ -1,0 +1,12 @@
+PASS node: Node v24.19.0 is checked against >=24.0.0 <25.0.0; CI pins 24.
+FAIL pnpm: pnpm could not report its version (ETIMEDOUT).
+  Fix: Run repository commands through bash scripts/agent-pnpm.sh to activate pnpm 11.20.0 without a system-global install.
+PASS workspace: pnpm-workspace.yaml is present.
+PASS lockfile: pnpm-lock.yaml is present.
+PASS dependencies: The root node_modules directory is present.
+SKIP chromium: Playwright Chromium is not required by the selected profile.
+PASS database-variables: DATABASE_URL and TEST_DATABASE_URL contain valid PostgreSQL targets.
+PASS database-safety: Development and test databases are distinct numeric-loopback targets; the test name ends in _test.
+PASS postgres: The isolated PostgreSQL test database accepts a read-only connectivity probe; expected server_version_num >= 170000 and < 180000, detected 170011.
+
+EXIT=1

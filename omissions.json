@@ -1,0 +1,1276 @@
+{
+  "schema": "bounded-evidence-selection-omissions/v1",
+  "fullOriginalIndex": "records/final-packet/evidence-manifest.json",
+  "originalIndexedFiles": 300,
+  "originalIndexedBytes": 43913759,
+  "selectedOriginalIndexedFiles": 89,
+  "omittedOriginalIndexedFiles": 211,
+  "omissions": [
+    {
+      "originRelativePath": "acceptance-api-build.log",
+      "bytes": 13,
+      "sha256": "9aba080a04d36f3c5b3e64cf2e200d70a422c78297ff80bac5f5551def846538",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "acceptance-browser-behavior.log",
+      "bytes": 9567,
+      "sha256": "f2d955d3d396c803121d8dba6a650dbe02ac12836f7a1e37e3283178919d7aa5",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "acceptance-browser-first.log",
+      "bytes": 1017,
+      "sha256": "df0312de889d8cd1e81a92783cd0c766fbe234e4444f0b318a23e526fa439171",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "acceptance-browser-list-recovery.log",
+      "bytes": 9000,
+      "sha256": "42c595815f569ec1345779c8a250904e3143a41bdd3cbcd9e22a038e1d17d328",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "acceptance-browser-startup180.log",
+      "bytes": 1038,
+      "sha256": "a49c55db004ad82bb49faa4787ca06504280fe14dc219ace488e1c5c979c154b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "acceptance-web-build-green.log",
+      "bytes": 1046,
+      "sha256": "9613e5554ec35b8cf3e568fb00fc98b5f4f37073be0dd81cb7cb4fb3278117f7",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "acceptance-web-build.log",
+      "bytes": 2687,
+      "sha256": "fc0736f5c932852f16254401870e1f57796bebdcfb4bdcdf4841b74bd62b723d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "activity-delta-strict-types.log",
+      "bytes": 609,
+      "sha256": "f377abec616323c5c4a50979747ba804d9782d5ce963fe252cd8e80dedece0e6",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "activity-locale-phase-diagnostic.log",
+      "bytes": 259,
+      "sha256": "1a49a85d091ebddf8ea935d81697b13633468f9cb8b78d3fb40643c59be9807d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "activity-locale-phase-journal-run.log",
+      "bytes": 259,
+      "sha256": "ea0814f97196750ccc093f3522825ab2dc63a0c6974772749e6bc8f3bd81597e",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "activity-locale-phase-journal.log",
+      "bytes": 637,
+      "sha256": "7b2671b60b3bbe6d940393363ec5a44f5c62c313d70801138c3593b82f8ca390",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "activity-localization-row-snapshot.log",
+      "bytes": 1380,
+      "sha256": "a307086ead35d3900f8d6230e145e09da2c79b9d8c253ea093daf987a07b9d8b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "api-capture-review-typecheck.log",
+      "bytes": 15,
+      "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "api-consistent-read-typecheck.log",
+      "bytes": 27,
+      "sha256": "055c9b6ac2a5ee9965e34a340ca2613ea8555112aab87ec6de095c9137e9f8ed",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-19-calendar-complete.log",
+      "bytes": 658,
+      "sha256": "fa31b14795936b51baf689cba332d28a550fcf70b872a84086053776ff4093d8",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-http-retirement-green-repeat.log",
+      "bytes": 353,
+      "sha256": "8cf6873bdeb3e58a7350053d7054bf0017df5eb3e4d2f6e484a397a85b86e693",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-http-retirement-green.log",
+      "bytes": 39202,
+      "sha256": "3a8ada696793b3d5e393974c4eebbfa6594277dedc7c98cedb3b30d99862bff4",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-http-retirement-red.log",
+      "bytes": 18452,
+      "sha256": "9afa37d69fe8bff9e57729fecda0e90e897e7df35fcb656879f2944fc54f7adb",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-reader-green.log",
+      "bytes": 235,
+      "sha256": "91c51d7240dbc3e04b91f969c741d0601ba11fd04a025a640f1a2d90032de381",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-record-format.log",
+      "bytes": 125,
+      "sha256": "d20d5b3da9608e77cada74cdf390a471d7137a56f75c3567379f81068df72a3d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-record-green.log",
+      "bytes": 238,
+      "sha256": "510de845cc4e6f1edab51306d36523c0722961c79d22ab20589edf3275222b04",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-record-red.log",
+      "bytes": 35713,
+      "sha256": "3e5c2c8e0dabf34b050bacd1e6ae0c7b66721a99f80af9b19ea788550971946e",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-red.log",
+      "bytes": 34500,
+      "sha256": "9f92aedc9b9a6e07c1d81784bea481a6c3477ff04d09799d94540957c79f2bd7",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-retirement-format.log",
+      "bytes": 112,
+      "sha256": "cc878cec50d628887e5a3ea272676c3ec12b5105f0fe6731a626b62358ce66a5",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-retirement-green.log",
+      "bytes": 338,
+      "sha256": "413d8aae27c9d634c87a4fd54799d856f5247b20b935b0bd268cea03859c7e68",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "app-retirement-tests.log",
+      "bytes": 1444,
+      "sha256": "f55534463cae68f13ca5ee0897ca745eca57df2688f5ab759285981a9e4f89b7",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "assignment-setup-recurrence.md",
+      "bytes": 2613,
+      "sha256": "5ce08ee1b8c7c8e63b006f4f44a02a40941618fba4342ff2e5c2de73c3894e34",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "atomic-projection-tests.log",
+      "bytes": 607,
+      "sha256": "f320752660d1163de408b09ca3f40b6ac018e6607010b797b074493620072d55",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "auth-review-race-tests.log",
+      "bytes": 1749,
+      "sha256": "03362f540ffeb57d9031cf8281316fd42caa6e4bf7db7b9f69738e457aef92a1",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "authority-race-format.log",
+      "bytes": 35,
+      "sha256": "f9b10d2a33e4a71c6acfc88c3d8568a578a5dfc8b86eb6595bfe62334a3a6b03",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "authority-race-tests.log",
+      "bytes": 610,
+      "sha256": "fc71f9eb735ef000c1770d12a563f04376cafb9bd64ed6e67a62af593ceeb8f0",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-accepted-pg-readiness.log",
+      "bytes": 98,
+      "sha256": "e3965eb3250b68e88dd162c781aeb8ee92c65425fc1e6127913059fee63938e5",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-accepted-pg-start.log",
+      "bytes": 18,
+      "sha256": "d9000a82d6359435a6fa52464d5dc0f8ef62888a765356f5a04855859ff36d49",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-assignment-delta-eslint.log",
+      "bytes": 8,
+      "sha256": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-assignment-delta-prettier.log",
+      "bytes": 74,
+      "sha256": "9223d4a25efb480b12769a7c0ddfeaada1bd0b4855ffc473178f1b1049ba27aa",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-build-after-prebuild.json",
+      "bytes": 349354,
+      "sha256": "798bece85a7e5d86049d56b7f4f52a10dec34800f1148ff7138e5bfd7103f3d2",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-build-before-prebuild.json",
+      "bytes": 349512,
+      "sha256": "03e6d0524a72be31f794e614868828094ffa5a52aa7f355823a8e1534b1a0d04",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-api-continuity-before.log",
+      "bytes": 180,
+      "sha256": "2227516fbe19d3a54bc7bebd0be7989348fd38dd76bcf6bf91765558ceac5f77",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-confirmation-cleanup.log",
+      "bytes": 73,
+      "sha256": "20b5db21e191aa04b9276a09098eae1e107c690b1dc0cc8be281b5c29cfc7af1",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-confirmation-command.log",
+      "bytes": 216,
+      "sha256": "1e073e68b7c68e8284cdfccd1e696f536671c03fa267eb032bef9a28296138ec",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-confirmation-guard.log",
+      "bytes": 168,
+      "sha256": "3dda3b4385f040d4def32de815e1176f76f3ce868b960482076bef109907bbf6",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-confirmation-launcher-time-path-failure.log",
+      "bytes": 61,
+      "sha256": "4d77a8c5174ec4b36b18480ac77f8c99fb5bb490e34b1ce7cba49e7a7e07738c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-confirmation.log",
+      "bytes": 7465,
+      "sha256": "f80ac60f324c4e4c683f0801c6338428498b8b2ea6c6990ab6e559951f945663",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-final-guard-summary.json",
+      "bytes": 2515,
+      "sha256": "a9b96800ee707f7cb56465722e0bc608025fba8015f7297171afaaa11fcbf78c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-final-launch-manifest.json",
+      "bytes": 1810927,
+      "sha256": "57dfa690279ba1c17b89f35de065c6102bf5435969baa48707520f72522b912e",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-fixed-reuse-manifest.json",
+      "bytes": 1810927,
+      "sha256": "26b3762778e4c76e2633156cdf6bfb2e61dcd2036b07cf321a36a4702ddc6030",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-preview-proposal.md",
+      "bytes": 2727,
+      "sha256": "37abf53f88d03b2dec566dd4458224a0a09aaf7688a3e422a52d17135d6922b8",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-preview-review-summary.json",
+      "bytes": 1307,
+      "sha256": "844e4625840fee47114450c587b27ee3d81dc0c24786533b04ce86dba18a7a85",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-provenance-after.log",
+      "bytes": 180,
+      "sha256": "467d83736a07dfe402d2785e0861c1c69082e6d1ac184f0649bc05fcc8d32722",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-v2-proposed/browser-css-fixed-reuse-manifest.json",
+      "bytes": 1810927,
+      "sha256": "26b3762778e4c76e2633156cdf6bfb2e61dcd2036b07cf321a36a4702ddc6030",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-v2-proposed/browser-css-preview-proposal.md",
+      "bytes": 2727,
+      "sha256": "37abf53f88d03b2dec566dd4458224a0a09aaf7688a3e422a52d17135d6922b8",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-v2-proposed/browser-css-preview-review-summary.json",
+      "bytes": 1307,
+      "sha256": "844e4625840fee47114450c587b27ee3d81dc0c24786533b04ce86dba18a7a85",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-web-after.json",
+      "bytes": 614837,
+      "sha256": "7ecaf86273211f5c634f35346e08756c9a6a25593dfe342c10284407d6c1e9d3",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-web-before.json",
+      "bytes": 615338,
+      "sha256": "34d321a94b3af2a8d2c157c571ee671c9d0bdc63f2c3af921a08c0e19f5ea4d8",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-web-prebuild-command.log",
+      "bytes": 116,
+      "sha256": "44f4a9f5891aaa70e1e36fe269ad8997e6335356a62e70c3e9c3cebc44e08922",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-css-web-prebuild.log",
+      "bytes": 1089,
+      "sha256": "277ca3ed1cdd27b81f6c5933767b0185291f47ac83e6553ec7a008c22d1e47e0",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-date-confirmation-command.log",
+      "bytes": 216,
+      "sha256": "e12ae4b0d7cd2d461ad4a57335e5e344319071030eca649cfbc0a3d2cf4a3715",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-date-confirmation-guard.log",
+      "bytes": 165,
+      "sha256": "a7df06db471d88ed148b46a644965b4bc143333feeddaa6f6e71e56d67688bc9",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-date-confirmation.log",
+      "bytes": 1705,
+      "sha256": "1cbb8cf45e02370fdeeb8a41139e555311f2f37c98cc9083b69e53e1ef9b9076",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-date-fixed-reuse-manifest.json",
+      "bytes": 1811269,
+      "sha256": "e930b6f66c7a9a416ee95e05163d4574def0694fc0d89d965766fc6e090f9921",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-date-pg-readiness.log",
+      "bytes": 147,
+      "sha256": "eac4cdb912a6d348a73064683316c51a65e9ac37347c9b61a61e7c9a49e01ba0",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-date-provenance-after.log",
+      "bytes": 177,
+      "sha256": "1499f126f7ef7ef0c48f2e040a005a5b5959bd450a5824e3dd17092a8bb7cf3b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-date-review-summary.json",
+      "bytes": 1120,
+      "sha256": "f549124974b2461e14e677b96b42fe05ec4a32eed17e625bb1057f2fe9a9ac09",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-doctor-recurrence.md",
+      "bytes": 2368,
+      "sha256": "1a21059496dc269cc0a91105eb01a34d59dc6fdc9f70123f0fe4d6f3c4c26079",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-first-behavior/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/error-context.md",
+      "bytes": 1824,
+      "sha256": "5918ea4b5da183c213f9f255ef6711a04b11a990e326450b7a6226a674fcacb8",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-first-behavior/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/test-failed-1.png",
+      "bytes": 70348,
+      "sha256": "7b989f99584ce8aa8330d9ddc00f07374ead8afdcaa9997c8d409f4444d9b343",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-first-behavior/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip",
+      "bytes": 1005123,
+      "sha256": "0f635cef04395943542eceaac27a2a248d474d96592e19662b8f526822d08508",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-first-behavior/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/error-context.md",
+      "bytes": 822,
+      "sha256": "956f2e192fcbfe3ef8aced688dd5836ffda7ad4a3af573170034d7ee4370b350",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-first-behavior/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/test-failed-1.png",
+      "bytes": 31145,
+      "sha256": "4bc76217ae723a2f9e82f66876fa2cb2ce5b8f1af6858a27e051c28793d865dd",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-first-behavior/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip",
+      "bytes": 564150,
+      "sha256": "2c060a45187f13453fb5a6b61d6fb4d628a82235ccdcef1b10d9659c1894b673",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-failure/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/error-context.md",
+      "bytes": 2121,
+      "sha256": "c311135e62eada0b2caf777f1301a502ea06050157c3d21db9aa6dc2056d9e55",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-failure/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "bytes": 72425,
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-failure/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/test-failed-1.png",
+      "bytes": 81534,
+      "sha256": "3fb39f1762f7ec80079e692fd91edd51c9f82b418bdcd48715f2b493e4ffa9a8",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-failure/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip",
+      "bytes": 1121807,
+      "sha256": "e544b195223b676caca1bffafe35498c0308396d007bc5e9fc2baaa00c419d7c",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-failure/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/error-context.md",
+      "bytes": 694,
+      "sha256": "bd95437ec54628e22d0ffa59e1977110a55fb8588751d883b5881b37dfbaa419",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-failure/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/test-failed-1.png",
+      "bytes": 25738,
+      "sha256": "23eb49a87a8cc60b976cf1543dccc08f9845db8ef53a33ad324051aaf6f0ede9",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-failure/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip",
+      "bytes": 547447,
+      "sha256": "f22ebcbd6515a81ff3bffdb2d6622af3b10c537ec7da18313aac5427d0c2c37f",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-list-recovery-postgres.log",
+      "bytes": 9656,
+      "sha256": "ab166c80c661e29c52fd2b1ef571e423dec8b5e1321a90c4a1358adde6d7569b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-original-chromium-probe-observation.json",
+      "bytes": 666,
+      "sha256": "0d5e80392dc0f2b33384918da575959108475da5cf2d22acbfd0d0caf9bbc29e",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-original-chromium-probe-wrapper-exit.log",
+      "bytes": 16,
+      "sha256": "57fa055d9d1982ede089ef7a8d97f93d019b1376046e5203430367f4f61e1fa2",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview-manifest.json",
+      "bytes": 1680,
+      "sha256": "639b2b2c1a29d24e7b132e5a7276939c8810374e5a36ee45fa3e1291d080c414",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/.last-run.json",
+      "bytes": 145,
+      "sha256": "eb7ed56ac8c9e474836b14ca8304d7616e0ca9748df06a80b3e7b49876d7bbb6",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/error-context.md",
+      "bytes": 2121,
+      "sha256": "c311135e62eada0b2caf777f1301a502ea06050157c3d21db9aa6dc2056d9e55",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "bytes": 72425,
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/test-failed-1.png",
+      "bytes": 81534,
+      "sha256": "3fb39f1762f7ec80079e692fd91edd51c9f82b418bdcd48715f2b493e4ffa9a8",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip",
+      "bytes": 1121807,
+      "sha256": "e544b195223b676caca1bffafe35498c0308396d007bc5e9fc2baaa00c419d7c",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/error-context.md",
+      "bytes": 694,
+      "sha256": "bd95437ec54628e22d0ffa59e1977110a55fb8588751d883b5881b37dfbaa419",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/test-failed-1.png",
+      "bytes": 25738,
+      "sha256": "23eb49a87a8cc60b976cf1543dccc08f9845db8ef53a33ad324051aaf6f0ede9",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-originals-before-preview/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip",
+      "bytes": 547447,
+      "sha256": "f22ebcbd6515a81ff3bffdb2d6622af3b10c537ec7da18313aac5427d0c2c37f",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-prerequisite-composition.json",
+      "bytes": 1211,
+      "sha256": "e17922bfcfe2753d4da7669fed449bcab631802cc1a40fe92a3d710ddd6b035d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-preview-immediate-guard.log",
+      "bytes": 173,
+      "sha256": "c6be0c0234ef74a4f9a238c3cc2d8e676f36127a6aed884ba11a944da21b5b0f",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-preview-prepare.log",
+      "bytes": 150,
+      "sha256": "5767847ebfac849afd5a3a5c20af0efea1b482e0ff792ff576754fd07c107548",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-preview-proposal.md",
+      "bytes": 2681,
+      "sha256": "682399788a490b707a77cc4cf57e38b2f4a204249b2570ec209439e9a6458fc7",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-preview-review-summary.json",
+      "bytes": 2938,
+      "sha256": "6b8baa1f847d3bbd3e570881151ea7f117e217ba02b335e7774e45b8719d68ea",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-preview-run-command.log",
+      "bytes": 199,
+      "sha256": "44b36681e6b5d1a89a965869002a93a62ea16d2f1ca175cefd6659ef4c1a2a24",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-preview-run.log",
+      "bytes": 8980,
+      "sha256": "73b1d197a747a1f950e3e077ad8c56079a6a71a5a3d31a120577addd77d1e27c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/.last-run.json",
+      "bytes": 145,
+      "sha256": "eb7ed56ac8c9e474836b14ca8304d7616e0ca9748df06a80b3e7b49876d7bbb6",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/error-context.md",
+      "bytes": 3117,
+      "sha256": "b3332c7b57baf10c70332b4ada5ad4368c08c84629cc3ec8218a21b0da74c025",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png",
+      "bytes": 129059,
+      "sha256": "8fb15f62b99241408755fc031b7bbddb06696fd033dd4b19a2ca1c9d47c48c85",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "bytes": 72425,
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png",
+      "bytes": 3245,
+      "sha256": "62614002d652039368858a83c17f7361c04d00d6feb597dabce3101fd9d128b2",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/test-failed-1.png",
+      "bytes": 87514,
+      "sha256": "5672f4cfed84a1d577c4750675cbc5f7a38047dfbacc02502bf4af818857dcb1",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip",
+      "bytes": 6766957,
+      "sha256": "e1c2a42ecf2f81b4a0ddf307be7963f85769a52d91c8292f227029293777b839",
+      "reason": "Exceeds approved 5 MiB individual-blob bound; original preserved, not split/recompressed."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/error-context.md",
+      "bytes": 2205,
+      "sha256": "a0df6f3b87cd900e9b49996b35ce0a1e3ea87e5afc4b2c2b8313262db1e25eb2",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png",
+      "bytes": 95721,
+      "sha256": "52f00bbf43fe010f15e99b983dc211e118795306e15202a2d3c6833a59cf3a68",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "bytes": 39954,
+      "sha256": "bf8fd5f964df52bbb68c081ddc96db1754706341f7059201a6176ffa9d586b99",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png",
+      "bytes": 1841,
+      "sha256": "b6ac10e36afde313c26941e126cd5a7092b2eda6223410ef3a20e89c9651cc73",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/test-failed-1.png",
+      "bytes": 46328,
+      "sha256": "7c408469bd066e8221c714dd31966e08f41c1de5bb13df72ba9661c8cacd8b03",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip",
+      "bytes": 7044000,
+      "sha256": "ea2aecdd58bf75ea38c5890632351a4b1b5364e668298f2668627597a2e6f44f",
+      "reason": "Exceeds approved 5 MiB individual-blob bound; original preserved, not split/recompressed."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/archive-manifest.json",
+      "bytes": 4828,
+      "sha256": "6a833f07fbb387e5931879d0c8cf393e78b92737f0ad5ea982cd19d4a4cfc74b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/browser-css-confirmation-guard.log",
+      "bytes": 168,
+      "sha256": "3dda3b4385f040d4def32de815e1176f76f3ce868b960482076bef109907bbf6",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/browser-css-final-guard-summary.json",
+      "bytes": 2515,
+      "sha256": "a9b96800ee707f7cb56465722e0bc608025fba8015f7297171afaaa11fcbf78c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-date-accessible-name/browser-css-final-launch-manifest.json",
+      "bytes": 1810927,
+      "sha256": "57dfa690279ba1c17b89f35de065c6102bf5435969baa48707520f72522b912e",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/browser-preview-immediate-guard.log",
+      "bytes": 173,
+      "sha256": "c6be0c0234ef74a4f9a238c3cc2d8e676f36127a6aed884ba11a944da21b5b0f",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/browser-preview-reuse-manifest.json",
+      "bytes": 1544566,
+      "sha256": "a47204f75ac6cce5132a279cc3348e3dca9358a6ad8060a308947aaf756cd094",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/browser-preview-review-summary.json",
+      "bytes": 2938,
+      "sha256": "6b8baa1f847d3bbd3e570881151ea7f117e217ba02b335e7774e45b8719d68ea",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/.last-run.json",
+      "bytes": 145,
+      "sha256": "eb7ed56ac8c9e474836b14ca8304d7616e0ca9748df06a80b3e7b49876d7bbb6",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/error-context.md",
+      "bytes": 2943,
+      "sha256": "572e72c13c91b8d9547eeef22491d456e4aa1462c16331f94b1a8c29ce9ce36a",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "bytes": 72425,
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/test-failed-1.png",
+      "bytes": 85209,
+      "sha256": "0f2181a45a8cb26a59bfea8e8eaecd3614197113c3b40b5174b46a058e1d75ef",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip",
+      "bytes": 1342706,
+      "sha256": "23e06bced4a1fe8bb0d20b004035419e1dce6127d6d806f327da04ead55fb92a",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/error-context.md",
+      "bytes": 2031,
+      "sha256": "4c31251c55885be1832fe04407dbc888553ffa67541dd237df8fee69307b4c5c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "bytes": 39954,
+      "sha256": "bf8fd5f964df52bbb68c081ddc96db1754706341f7059201a6176ffa9d586b99",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/test-failed-1.png",
+      "bytes": 40993,
+      "sha256": "b96c8744321a5b85e93842bd8ec66cf4c1feac02266be86e61c65588ffc7b027",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/original-results/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip",
+      "bytes": 843386,
+      "sha256": "bf43532949f740f2b9d4a8098d44eb6ec0a954258c338eda83e81e73b4023bc5",
+      "reason": "Historical opaque failure trace excluded from selected targeted packet; original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/temporary-config-inventory.json",
+      "bytes": 563,
+      "sha256": "2f75714dbfce8f2503cdc17061d952f3241560ce546bcb5bd748cb919a480814",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/web-dist/prisme/wave-dark-desktop.png",
+      "bytes": 201853,
+      "sha256": "3eee96fa6da87bff3c31506d7b534de5779146a56187cbf6d5c38687dabbd98d",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/web-dist/prisme/wave-dark-mobile.png",
+      "bytes": 90749,
+      "sha256": "053e3edd9dbb624511cd88e27b82e341b90de858bf78abf9e469c1791299469f",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/web-dist/prisme/wave-light-desktop.png",
+      "bytes": 373927,
+      "sha256": "221d722bdaa7e6da92e0263fb9891738371c6b887edbeb6d8b47d1d76bd3c2b8",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-red-select-appearance/web-dist/prisme/wave-light-mobile.png",
+      "bytes": 68110,
+      "sha256": "d3bac6b135d5a1176eeca2ecb3880b33fd5812aa39d0ae1b432a33a5bdb3ac8d",
+      "reason": "Historical failed-state image or unrelated emitted static asset; all 18 successful originals selected."
+    },
+    {
+      "originRelativePath": "browser-resume-doctor.log",
+      "bytes": 840,
+      "sha256": "71b4fc37800bbb7743c9c43bb73760268a920524be56f7904b40636660b952b2",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-resume-pg-readiness.log",
+      "bytes": 98,
+      "sha256": "2952876ed79ecdc4d9a5aae73ca3bf0d209272284d0dd8c2149bfaaea9efd2e6",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-resume-pg-start.log",
+      "bytes": 18,
+      "sha256": "d9000a82d6359435a6fa52464d5dc0f8ef62888a765356f5a04855859ff36d49",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-resume-setup-cleanup-snapshot.log",
+      "bytes": 8,
+      "sha256": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-resume-setup-stop.log",
+      "bytes": 64,
+      "sha256": "2e65b7b0761f0b60f133140368224861688d10cd6e274171a8bc710705b31a5b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-runtime-source-guard-before.json",
+      "bytes": 10163,
+      "sha256": "6763a83ccd7903a7299b398d1aa500fd385876aeeef753afde024452e4fe57c1",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-setup-evidence-manifest.json",
+      "bytes": 1343,
+      "sha256": "5ef55e2ca583d879e342154c41f016ef2fe1ce4610346144b6f57737619bd2a8",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-web-prebuild-command.log",
+      "bytes": 116,
+      "sha256": "dd6fd3b0aba21c88710bba4288a2f704dbc879ef4a985d502ee0b796c196bca9",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "browser-web-prebuild.log",
+      "bytes": 1089,
+      "sha256": "3966872a9b10518b58e33ebc62655d85b80889fbc34e0ce06fdb48d7ac02099d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "capture-format.log",
+      "bytes": 1347,
+      "sha256": "5b2dd0d28875aa164e6aa8ddc6fb7fdd457de150baa7b226f194ab3d8969de80",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "capture-tests.log",
+      "bytes": 6062,
+      "sha256": "d8784651363fd9b8ea104ff7b636c772c44700dbe4bda1a15866249aaa4ff316",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "capture-typecheck.log",
+      "bytes": 4601,
+      "sha256": "ee2e24b8f6bdfb5a312823356c7a0a442714f2e938485948d61722406582f03a",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "complementary-web-source-manifest.json",
+      "bytes": 1767,
+      "sha256": "38cfe267bb7f0157c4ac2752a3edc7ee99a07e45859fdd74ba4efd0dabd9d4d5",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "consistent-read-authority-quiescent-repeat.log",
+      "bytes": 3816,
+      "sha256": "a23f3a188aad8316cc1fa02c5b450044b69d123c21c0cb7e1954ba8bb2b23dcf",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "consistent-read-authority.log",
+      "bytes": 3816,
+      "sha256": "922941c75b2ea480f63619ec5fa724cc3a5d4a546231aaad4ce114fe7445c2dd",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "date-ui-eslint.log",
+      "bytes": 37,
+      "sha256": "0d30f26140531a30b8d62f5c27d51e66f52a82e2e8480d24349bba6fc362b872",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "date-ui-prettier.log",
+      "bytes": 105,
+      "sha256": "bd6147de3de065ce18702676827fb1fdb5aa8e94a48ce77bac48bb44d918012e",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "date-ui-statics-command.log",
+      "bytes": 52,
+      "sha256": "75ecf27ae1098f310e4eaca5ace395eca6bc270755c49507238d2b71ee34f9b3",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "disposition-format.log",
+      "bytes": 475,
+      "sha256": "2a647c15c66746a1074ce457c2edebcbd0b81d99f9d5d4eeb4818c194b37a90a",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "doctor-acceptance.log",
+      "bytes": 776,
+      "sha256": "130298cf566faf3521231cfdd1d24e68ff8e6164899e6086693abb7b97607ef9",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "doctor-base.log",
+      "bytes": 608,
+      "sha256": "63dca98754b88ca714989354d533167a14f9db6e2879a85d43957b509b975ea1",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "doctor-capture.log",
+      "bytes": 721,
+      "sha256": "90434249220ca1644a1518d12ee9a74552d5d8a7a603e5212d2df4f6c857840d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "doctor-post616-postgres.log",
+      "bytes": 745,
+      "sha256": "f4380aee403262da42e08de5cd3d355b419bf238a064457204b1f560233c5583",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "doctor-resume-postgres-quiescent.log",
+      "bytes": 745,
+      "sha256": "f4380aee403262da42e08de5cd3d355b419bf238a064457204b1f560233c5583",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "doctor-resume-postgres.log",
+      "bytes": 860,
+      "sha256": "763186921006d9700a7bcbe13e74f2452f5c9e2763c3c6e0e97961858bee5159",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "doctor-resume-web.log",
+      "bytes": 608,
+      "sha256": "d038b3b84874c8ceade8112b5660a2233ff943dbe16fa89b400da297f85c784b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "environment616-recurrence.md",
+      "bytes": 4329,
+      "sha256": "aaf11a852e61b70bdb8095395ad4784fc5200f5fc7d02de3422aa34739497e83",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "execution-note.md",
+      "bytes": 46177,
+      "sha256": "b40324450a3cf2d66e25b9d8bff5e0485d765e126415b3ee0ebdb64071dc6338",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "first-green-format.log",
+      "bytes": 317,
+      "sha256": "40518563ea75afd538cdb008989a54cdc61acac56d5cc2b0de97b3c1a048b678",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "ideas-rest-complete-post616-green.log",
+      "bytes": 11611,
+      "sha256": "0689922488dbf38c791ab3a39f5932d12024b3c13bb2102e96ba494d0d618212",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "ideas-rest-proven-delta.log",
+      "bytes": 636,
+      "sha256": "ae2d4f01ec3c27e9ff55b72faefc1e7274738370aab76514742f5eb497b20c3b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "ideas-select-css-format.log",
+      "bytes": 53,
+      "sha256": "cb1450f59cc30fcdfcde7996f9f8627474a9410fe7ad288ae9603770e0b42093",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "ideas-two-cases-diagnostic.log",
+      "bytes": 35132,
+      "sha256": "56e5612cbd78fb8052ed41bc71718d137610bded9cc88da6072e1a37ae94adaf",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "integration-before-main4f/manifest.json",
+      "bytes": 9189,
+      "sha256": "3572ed3504d516f766aea1ca30bd465fdc9782f4cdfbd16713ea4d44ff8f01ac",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "integration-before-main4f/sources/CONTEXT.md",
+      "bytes": 9060,
+      "sha256": "fcf3c4a7ddcfc9bfe9252f3fb33b026849bd0ae6750b0a9270d1c3e86b8b2363",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "integration-before-main4f/sources/apps/api/drizzle/meta/0071_snapshot.json",
+      "bytes": 699469,
+      "sha256": "cb42d8202556d95b5c7e4b9c31f241d11e6731fb134a5a1e8342f0d83bf6cce3",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "integration-before-main4f/sources/apps/api/drizzle/meta/_journal.json",
+      "bytes": 10854,
+      "sha256": "386d1f18eeff0c13067822dd4f95445577289fe7951aa34262019d818d5abdcf",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "list-read-authority-green.log",
+      "bytes": 1678,
+      "sha256": "2792fbf5dd3ea2908e0e4e259700b979575422094ba4e09e2ad2a0a57a162b4f",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "list-read-identity-only-green.log",
+      "bytes": 622,
+      "sha256": "c47bfc79ea266d51f7c386e4e358d76bebefd1fc4895ec62d313ee13eef2f96f",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "list-read-serialization-green.log",
+      "bytes": 623,
+      "sha256": "a312a5dc71bfaa7522891a04aaed5ea44a844c4c340cb06900147299368524d3",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "list-read-serialization-red.log",
+      "bytes": 1827,
+      "sha256": "8c4623be023116f37a7b6ca334336395a81cfbb735df253425c0ba7ed4c70541",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "main-integration-ff.log",
+      "bytes": 1925,
+      "sha256": "ef412dcf7ef1baf6967cda403cc09766815b6302187f0d080980fae844ec1f2a",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "main-integration-preparation.json",
+      "bytes": 504,
+      "sha256": "b0ef21403bf64e7bc750d6826029b07a3c823adf32a316dbfcc027fbb83970b5",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "migration-generate.log",
+      "bytes": 5531,
+      "sha256": "fd92b7911120482b71e6522df48384effa17a4a0b27169dfa6540f4ac66b5e6e",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "next-browser-command.md",
+      "bytes": 4412,
+      "sha256": "b0197d9381be5c20b2c846c869299c0da012f82a6fc0cd2d8f62e75fc2855b41",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "next-date-browser-plan.md",
+      "bytes": 3861,
+      "sha256": "2fadb441ba484d61f90497ae18fde69f32e7f35c41951c5052b7886401cee27f",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "next-lot-commands.md",
+      "bytes": 5063,
+      "sha256": "cf13f998a8c964b8214dd28d3692b32c26f25daafd632e6b0aea6ad527f86e0d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "next-lot.md",
+      "bytes": 5362,
+      "sha256": "921bad89364f1470be9b5bcc9f8cdf185e1fa9f5406b5dddd023ed7c0bee01f3",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "next-sequential-source-manifest.json",
+      "bytes": 805,
+      "sha256": "f3c9b0b1b9ebf16810a38112f243c9632272be171393b26a2765c9a05fd80657",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-assignment-bootstrap-restart.log",
+      "bytes": 134,
+      "sha256": "b039f95b4f89cb13c97b6dd73a1aa8cc23708a81067f5fb8271e6e06ed18e4c4",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-assignment-bounded-cleanup-snapshot.log",
+      "bytes": 8,
+      "sha256": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-assignment-bounded-stop.log",
+      "bytes": 63,
+      "sha256": "78b8aebd82ccdf813c4dd2a30047cff2775ad7fbf9377be9350c415ca6239c89",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-assignment-cleanup-snapshot.log",
+      "bytes": 8,
+      "sha256": "0e606818852cc6d4e60902e87575d34ac32240a5d6906a692c9213d2c43e035c",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-assignment-setup-private.log",
+      "bytes": 5981,
+      "sha256": "e73ce46b1fcfec95905b9310bf263ccd39f652531ace64ab5b44f703b4f2eeb1",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-current-lot-stop.log",
+      "bytes": 64,
+      "sha256": "32f35891ec0efef2570a09ed72026f9038f6bbba31ee7a6b0115b206c5eb5bce",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-lane-stop.log",
+      "bytes": 84,
+      "sha256": "f19b2960f3e20c4a13cf0bdc1b927af26b2346c8d56ee5047f6ee8b8f44660a9",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-repeat-cleanup-diagnostic.log",
+      "bytes": 943,
+      "sha256": "11daaf0096f6472abbb4afc651874c1abc967a3b1f246c291efd8c277ad50da4",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-rest-complete-calendar-current.log",
+      "bytes": 9482,
+      "sha256": "5ea21e76c7ffdc3cba479ea854ce216edb585736de01518a21eec130d82535ca",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-rest-complete-post616.log",
+      "bytes": 10243,
+      "sha256": "a8636f6a9bfb9c322f3bc4687ce8f1eed4789251481fbe5a1e27f73cb64f50c1",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pg-resume-diagnostics.log",
+      "bytes": 4890,
+      "sha256": "d38c661ddaa83412612299fc1c9ba21da3bbad6d956e62a0bda1eb326004d3fc",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "post-assignment-lot/evidence-manifest.json",
+      "bytes": 3388,
+      "sha256": "1ce50d8173014858108fc6e921d0ad9073f38c5035b1520c16e6f9a05ae347fd",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "post-assignment-lot/manifest.json",
+      "bytes": 8813,
+      "sha256": "2a357dce3688819244d33064f2fda26065fe922d22b1c38a706f6dfdfcadbb65",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "post-sensitive-lot/manifest.json",
+      "bytes": 8798,
+      "sha256": "cb120ad697062882081724971d2dc1ff6bcb89305f1d5cfb6be37e01219f1c30",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "pr-body-preparation.md",
+      "bytes": 9369,
+      "sha256": "0a8965065b5de9846d5d2ecd8f44e1a0a9ce35fd44cbf0c82528c5d7ecd12227",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "preparation-source-hashes.json",
+      "bytes": 2312,
+      "sha256": "4d84897537575352815ec5daac8ee49772381a94f0c10af537e85a54cbd03658",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "race-format.log",
+      "bytes": 35,
+      "sha256": "f6680835f0e85c940ea97190d7806d99cd60c716854d58d6f25c88997bf66cae",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "read-serialization-identity-only-postgres-code.log",
+      "bytes": 4828,
+      "sha256": "f6bb6b048238d238a69522ef70789a11e9df88005249057811eb93d8ee24110b",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "read-serialization-postgres-code.log",
+      "bytes": 3614,
+      "sha256": "d7a7c1c452eefd9fc9aa18b5280543c2ddbc6ba1a7be8364637f1ad8cca55daf",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "read-serialization-postgres.log",
+      "bytes": 4796,
+      "sha256": "e659012de3fff20dd9c9b9eba26aeb72ecdc81116e985d20fcfe8483c6abde8a",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "resume-manifest-20261020/source-manifest.json",
+      "bytes": 11031,
+      "sha256": "7cff5570896097c969ff6cc932dd454d68daddf9cbe283106cd649ba10e2e698",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "resumed-lot-checkpoint/manifest.json",
+      "bytes": 10709,
+      "sha256": "6aa142d2f42b069e24316e3eba65b551bd449fe20ca99e6b318d93c84fae122d",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "review-prebrowser/sources/CONTEXT.md",
+      "bytes": 9060,
+      "sha256": "fcf3c4a7ddcfc9bfe9252f3fb33b026849bd0ae6750b0a9270d1c3e86b8b2363",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "review-prebrowser/sources/apps/api/drizzle/meta/0071_snapshot.json",
+      "bytes": 699469,
+      "sha256": "cb42d8202556d95b5c7e4b9c31f241d11e6731fb134a5a1e8342f0d83bf6cce3",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "review-prebrowser/sources/apps/api/drizzle/meta/_journal.json",
+      "bytes": 10854,
+      "sha256": "386d1f18eeff0c13067822dd4f95445577289fe7951aa34262019d818d5abdcf",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "reviewer-activity-format.log",
+      "bytes": 510,
+      "sha256": "e8a2723996eec411a38218eecb7a6fb1e4200f1a802cb7aaea47098c6ad45007",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "reviewer-activity-green.log",
+      "bytes": 236,
+      "sha256": "857e75b4e6b6252028374b44a2e61e8ab75556f47f332cd5701ae444e8489534",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "reviewer-activity-red.log",
+      "bytes": 40527,
+      "sha256": "726b12bfa21c611257ccbd904ca46a62ff12e82de7b6f177aa745c6080a8cdf1",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "temporary-diagnostic-manifest.json",
+      "bytes": 6896,
+      "sha256": "2422e0733ab4af3329e95f2b81fab1ef8c9a69fc2d0e0e47f237eb3622b8b12f",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "ui-prepare-format.log",
+      "bytes": 723,
+      "sha256": "4506849ef41bfcc8b31bb829b77b25f5d2c3ad284e5c80b27de533046eabfecc",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "web-auxiliary-evidence-manifest.json",
+      "bytes": 1166,
+      "sha256": "13fba640ed80ef1a9bc3aa414165f80aecddb4090fa3c5ca662e5aabd9ce942a",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    },
+    {
+      "originRelativePath": "web-capture-typecheck.log",
+      "bytes": 24,
+      "sha256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737",
+      "reason": "Historical/duplicate/supporting material outside selected targeted proof; full index and original preserved."
+    }
+  ]
+}

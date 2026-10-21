@@ -1,0 +1,8 @@
+{
+  "path": "apps/web/src/ideas/ideas-workspace.css",
+  "before_sha256": "0a6f751f30a918a09ea30a117f8f74b97c6ea0bfdb04e5a2de4a7f331b77fc81",
+  "after_sha256": "87428ddd0026b598127f498638c1acf2f74ebbf7529de8fc5cf7f1c9f28fea11",
+  "changes": "only four Ideas button selectors exclude canonical Select trigger and option; declarations unchanged",
+  "original_red": "browser-red-select-appearance/original-results",
+  "assertions_and_budgets_changed": false
+}

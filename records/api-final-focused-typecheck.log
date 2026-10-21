@@ -1,0 +1,3 @@
+4f693ccb3b09cb173cae578640005dd3ae0b48a6
+$ tsc --noEmit
+EXIT_CODE=0

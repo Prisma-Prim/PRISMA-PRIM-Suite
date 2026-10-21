@@ -1,0 +1,89 @@
+[2m[WebServer] [22m(node:198181) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m[2m$ vite preview --host 127.0.0.1 --port 4173[22m
+[2m[WebServer] [22m(node:198226) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:198320) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:198320) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [operational-acceptance-desktop] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL (2.1m)
+(node:198520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:198520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [operational-acceptance-narrow] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL (2.4m)
+
+
+  1) [operational-acceptance-desktop] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+
+    [31mTest timeout of 120000ms exceeded.[39m
+
+    Error: apiRequestContext.delete: Test timeout of 120000ms exceeded.
+
+      37 |         data: { companyId, workspaceMembershipId },
+      38 |       })
+    > 39 |     : await request.delete(`${route}/${workspaceMembershipId}/${companyId}`, {
+         |                           ^
+      40 |         headers: { ...owner, 'idempotency-key': randomUUID() },
+      41 |       });
+      42 |   expect(response.status()).toBe(active ? 201 : 200);
+        at assign (/workspace/worktrees/ideas-runtime733/apps/web/e2e/ideas.acceptance.spec.ts:39:27)
+        at /workspace/worktrees/ideas-runtime733/apps/web/e2e/ideas.acceptance.spec.ts:240:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [operational-acceptance-narrow] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+
+    [31mTest timeout of 120000ms exceeded.[39m
+
+    Error: apiRequestContext.delete: Test timeout of 120000ms exceeded.
+
+      37 |         data: { companyId, workspaceMembershipId },
+      38 |       })
+    > 39 |     : await request.delete(`${route}/${workspaceMembershipId}/${companyId}`, {
+         |                           ^
+      40 |         headers: { ...owner, 'idempotency-key': randomUUID() },
+      41 |       });
+      42 |   expect(response.status()).toBe(active ? 201 : 200);
+        at assign (/workspace/worktrees/ideas-runtime733/apps/web/e2e/ideas.acceptance.spec.ts:39:27)
+        at /workspace/worktrees/ideas-runtime733/apps/web/e2e/ideas.acceptance.spec.ts:240:13
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [operational-acceptance-desktop] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+    [operational-acceptance-narrow] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+undefined
+/workspace/worktrees/ideas-runtime733/apps/web:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: playwright test --config .ideas-acceptance-css-fixed-preview.config.ts e2e/ideas.acceptance.spec.ts '--workers=1'
+real 421.76
+user 181.96
+sys 60.61

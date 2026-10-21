@@ -1,0 +1,75 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/api
+
+ ❯ src/access/company-ideas-assignment.rest.test.ts (6 tests | 6 skipped) 37233ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/access/company-ideas-assignment.rest.test.ts > Ideas assignment administration and live authorization
+Error: Hook timed out in 30000ms.
+If this is a long-running hook, pass a timeout value as the last argument or configure it globally with "hookTimeout".
+ ❯ src/access/company-ideas-assignment.rest.test.ts:50:3
+     48|   let sequence = 0;
+     49|
+     50|   beforeAll(async () => {
+       |   ^
+     51|     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.'…
+     52|     isolated = await createIsolatedPostgresTestDatabase({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/access/company-ideas-assignment.rest.test.ts > Ideas assignment administration and live authorization
+Error: Failed to clean up isolated target database.
+ ❯ collectCleanupFailures src/database/owned-resource-cleanup.ts:70:9
+     68|     } catch (error) {
+     69|       failures.push(
+     70|         new Error(`Failed to ${failureAction} ${resource.name}.`, {
+       |         ^
+     71|           cause: error,
+     72|         }),
+ ❯ Object.close src/database/owned-resource-cleanup.ts:31:29
+ ❯ src/access/company-ideas-assignment.rest.test.ts:81:5
+
+Caused by: Error: Timed out waiting for the target database connection-count query to finish.
+ ❯ getConnectionCountBeforeDeadline src/database/isolated-postgres-test-lifecycle.ts:67:26
+ ❯ waitForTargetDatabaseConnectionsToClose src/database/isolated-postgres-test-lifecycle.ts:131:35
+ ❯ cleanupIsolatedTargetDatabase src/database/isolated-postgres-test-lifecycle.ts:160:5
+ ❯ Object.cleanupTargetDatabase [as cleanup] src/database/isolated-postgres-test-database.ts:43:5
+ ❯ collectCleanupFailures src/database/owned-resource-cleanup.ts:67:7
+ ❯ Object.close src/database/owned-resource-cleanup.ts:31:29
+ ❯ src/access/company-ideas-assignment.rest.test.ts:81:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯⎯ Uncaught Exception ⎯⎯⎯⎯⎯
+Error: Connection terminated unexpectedly
+ ❯ Connection.<anonymous> ../../../document-content/node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/client.js:199:73
+ ❯ Object.onceWrapper node:events:630:28
+ ❯ Connection.emit node:events:509:28
+ ❯ Socket.<anonymous> ../../../document-content/node_modules/.pnpm/pg@8.22.0/node_modules/pg/lib/connection.js:63:12
+ ❯ Socket.emit node:events:509:28
+ ❯ TCP.<anonymous> node:net:355:12
+
+This error originated in "src/access/company-ideas-assignment.rest.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  94 passed | 6 skipped (100)
+     Errors  1 error
+   Start at  15:02:47
+   Duration  156.32s (transform 61.53s, setup 0ms, import 114.98s, tests 39.17s, environment 1ms)
+
+undefined
+/workspace/worktrees/ideas-runtime733/apps/api:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/access/company-ideas-assignment.rest.test.ts src/access/company-role-bundle-registry.test.ts '--maxWorkers=1' --no-file-parallelism
+
+EXIT=1

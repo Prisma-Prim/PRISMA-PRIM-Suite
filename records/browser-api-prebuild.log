@@ -1,0 +1,6 @@
+$ nest build
+real 211.94
+user 319.91
+sys 46.12
+
+EXIT=0

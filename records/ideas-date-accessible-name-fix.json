@@ -1,0 +1,9 @@
+{
+  "source": "apps/web/src/ideas/IdeasWorkspace.tsx",
+  "before_sha256": "baf1ca7396446bb703f1af10aecb783412a33401dbfc0a9d0acd1102483f9253",
+  "after_sha256": "7ad9463bd6d29f193ea3de94a180b8caa72fe7a92518e7896a480f44ac05b1b3",
+  "same_pattern_audit": "Only small/help inside a label in IdeasWorkspace was idea-date-help. Description/origin/reason labels have no nested helper text; Disposition has a separate label.",
+  "test_changes": false,
+  "api_changes": false,
+  "next_checks_after_lane": "Scoped Prettier + ESLint + web strict types, existing App.ideas.test.tsx complete19 cases. Then prove original API inputs/outputs unchanged, actual web-only rebuild, new frozen provenance/guard and two-project browser confirmation only after root coordination."
+}

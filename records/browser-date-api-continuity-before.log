@@ -1,0 +1,6 @@
+PASS: all API/shared inputs, guarded module/tool/env state and complete API outputs match the real API PASS; only the two authorized web UI corrections differ.
+real 8.75
+user 2.65
+sys 5.42
+
+EXIT=0

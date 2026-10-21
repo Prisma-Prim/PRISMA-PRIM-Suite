@@ -1,0 +1,41 @@
+{
+  "schema": "bounded-targeted-local-evidence-packet/v1",
+  "preparedAt": "2026-10-21T21:11:54.762326+00:00",
+  "pr": 751,
+  "publishedHead": "0f7f1fc21711db24a4776dd9be9941df77cb0131",
+  "plannedUniqueParentlessRef": "local-evidence/pr-751/0f7f1fc2-targeted-20261021",
+  "published": false,
+  "retrieved": false,
+  "fullIntegrationGateQualified": false,
+  "limits": {
+    "maximumRunBytes": 20971520,
+    "maximumBlobBytes": 5242880
+  },
+  "publicationMechanism": "Reuse the approved #750 fallback exercised by #752: exact selected blobs, one tree, a parentless commit, and a unique refs/heads/local-evidence/pr-751/... ref. The coordinator owns remote writes, actual GET retrieval and every SHA256 comparison. Preparation writes no product or evidence ref.",
+  "precedent": {
+    "pr": 752,
+    "ref": "refs/heads/local-evidence/pr-752/9130d359-targeted-20261021",
+    "commit": "2c492b16b82c5e34dbef75a6870b785263d9def8",
+    "retrievalRecordedFiles": 48
+  },
+  "safetyReview": {
+    "credentialMarkerCategories": [
+      "private-key-header",
+      "github-token",
+      "aws-access-key",
+      "stripe-or-clerk-secret",
+      "jwt-shape",
+      "bearer-value",
+      "credentialed-nonlocal-url"
+    ],
+    "matches": [],
+    "allSelectedTextDecodedUTF8": true,
+    "selectedOriginalBytesUnmodified": true,
+    "allSelected18PNGsViewed": true,
+    "noArchivesDatabasesPrivateKeysOrRealDocumentsSelected": true,
+    "limitation": "Bounded marker/content review, not exhaustive secret or PII detection; coordinator final review remains.",
+    "selectedNarrativeLogsConfigurationsAndScriptsRead": true,
+    "credentialOrPrivateContentObserved": false
+  },
+  "historicalClaimsRemainHistorical": true
+}

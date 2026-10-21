@@ -1,0 +1,5 @@
+{
+  "before_sha256": "4cedc38ff361132518e6b9fb8d5b871421049dc73947a24a69b8c26e84fac369",
+  "after_sha256": "ced5e41f06b1a5b331fb2921257f609d6f4252f1abf52cb0b62fba503f594b16",
+  "changes": "only new file beforeAll explicit120000ms plus English comment; no test/assertion/other hook/config/helper/product change"
+}

@@ -1,0 +1,6 @@
+{
+  "source_sha256": "faba7650468ba6b1fbff7f9f1b202980e5049d7c73e8009a4dd9b6052c807676",
+  "patch_sha256": "65f27800a53f8bc5186bf9a8b3f1bc0196919c7019af1a5484843591f18805a3",
+  "temporary_trace_removed": true,
+  "review": "Root read the complete 74-line test-only delta; original assertions retained across five independent public contracts, original per-case budgets retained. Not final Standards/Spec or execution evidence."
+}

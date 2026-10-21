@@ -1,0 +1,84 @@
+{
+  "schema": "targeted-ideas-execution-summary/v1",
+  "pr": 751,
+  "issue": 733,
+  "status": "Prepared selected historical local evidence; not published, retrieved or merge qualified.",
+  "currentPublishedHead": "0f7f1fc21711db24a4776dd9be9941df77cb0131",
+  "currentBase": "4fa112c6e47c3af5942269adaeb03d96a850c05d",
+  "historicalSource": {
+    "RESTBase": "1db7781ba18ef3597c3d88e6af3066dfda46f469",
+    "laterBase": "4f693ccb3b09cb173cae578640005dd3ae0b48a6",
+    "originalFeatureCommit": "c30db029a9d2327d42eab5f41f9a675b9f6477ff",
+    "limitation": "Historical runs used WIP sources rather than the current head. Exact input hashes and subsequent content bindings remain attributed separately."
+  },
+  "results": {
+    "ideasREST": "27/27 PASS,102.52s; exact original test SHA faba7650468ba6b1fbff7f9f1b202980e5049d7c73e8009a4dd9b6052c807676.",
+    "latestApp": "19/19 PASS,20.21s.",
+    "migration": "1/1 PASS,30.41s.",
+    "registry": "94/94 PASS in an earlier mixed run; the 6 assignment cases were skipped because their bootstrap failed. That aggregate run failed.",
+    "assignmentConfirmation": "6/6 PASS,140.08s; only the new suite bootstrap uses 120 s.",
+    "accessAdministration": "2/2 PASS in the earlier mixed web run, whose Activity owner failed.",
+    "activityParser": "5/5 PASS in the earlier mixed web run, whose Activity owner failed.",
+    "activityLocalization": "22/22 PASS,25.56s, after the preserved earlier failures.",
+    "strictAPIIncludingTests": "PASS,69.99s,17:17:09–17:18:19UTC on20October.",
+    "apiBuild": "PASS,211.94s;589API/shared inputs and862API outputs retained in the guard.",
+    "latestWebBuild": "PASS,59.97s, including strict tsc-b; mode local-demo.",
+    "browser": "2/2 PASS,76.22s, desktop1440 and narrow390; all 18 successful PNG originals retained."
+  },
+  "browser": {
+    "command": "pnpm --filter @prisma-prim/web exec playwright test --config .ideas-acceptance-css-fixed-preview.config.ts e2e/ideas.acceptance.spec.ts --workers=1",
+    "startUTC": "2026-10-20T17:05:05Z",
+    "endUTC": "2026-10-20T17:06:21Z",
+    "exit": 0,
+    "temporaryConfig": "records/browser-green-date-confirmation/.ideas-acceptance-css-fixed-preview.config.ts",
+    "actualConfigurationDelta": "Imports the registered config; changes only webServer.command to the frozen-build guard plus fresh preview, and webServer.timeout to180000ms. Scenario120000ms, expectations, projects, global setup and reuseExistingServer=false remain unchanged.",
+    "publicEnvironment": {
+      "VITE_ACCESS_IDENTITY_MODE": "local-demo",
+      "VITE_DEMO_EXTERNAL_PROVIDER": "local-demo",
+      "VITE_DEMO_EXTERNAL_SUBJECT": "local-demonstration-user",
+      "VITE_DEMO_DISPLAY_NAME": "Ada Ionescu",
+      "VITE_DEMO_EMAIL": "ada@example.test",
+      "ACCEPTANCE_API_URL": "http://127.0.0.1:4174",
+      "VITE_API_URL": null,
+      "NODE_ENV": null
+    },
+    "actualDetailedJSONReporterRetained": false,
+    "retainedResultBoundaries": "Original stdout with2pass, commandUTC/exit, .last-run.json status passed, manifestbefore/after and18PNGs; no fabricated detailed JSON test report.",
+    "successfulTraceRetained": false,
+    "tracePolicy": "The original registered configuration uses retain-on-failure. A passing run does not retain a trace under that policy."
+  },
+  "earlierFailures": [
+    "Two aggregate REST cases exceeded original30s/15s; independently split contracts kept assertions/budgets, then whole27 passed. No infrastructure cause established.",
+    "Activity Romanian case timed out15s; test-only DOM row snapshots/scoped locale group fixed, then whole22 passed.",
+    "Assignment beforeAll30s failed before6cases with cleanup error; only new suite bootstrap now120s, then6passed.",
+    "Desktop/narrow Select appearance assertions failed, then nested date help polluted exact accessible name; two product-owned UI corrections retained original assertions and final2passed."
+  ],
+  "reviewDisposition": {
+    "standards": "Existing preparation0blocking,1grouped nonblocking positional-identifier interface observation.",
+    "spec": "Existing preparation found 0 source findings. Required browser proof was completed afterward; the full integration gate is still pending.",
+    "laterCorrections": "Root reviewed bounded Select CSS and date-label changes; the other 47 reviewed source files remained byte-identical.",
+    "newReviewRoundPerformedByPreparation": false,
+    "publishedHeadAutomatedReview": "Not requested."
+  },
+  "privacyInspection": {
+    "allSelected18PNGsViewed": true,
+    "visibleData": "Synthetic Ideas acceptance desktop/narrow, mixed-language fixture text, Ada Ionescu/ada@example.test, and the synthetic Operational Acceptance Workspace. No real documents or Client data observed.",
+    "scope": "Publication safety inspection, not a new full UI acceptance review. Historical full-page images also expose inherited language picker/skip-link overlays covered separately by #762."
+  },
+  "remainingGates": [
+    "Deliver #749 and integrate its actual main revision into #751.",
+    "Complete all 16 required families on the actual resulting published head and base.",
+    "Publish selected evidence, verify retrieval, complete the required final review, then merge with an exact-head guard."
+  ],
+  "claimsNotMade": [
+    "Full16success",
+    "Current0fHEADexecuted",
+    "Packagingpassed",
+    "GitHubrunnerattestation",
+    "Mergeeligibility",
+    "WholeIdeas/Sarcina completion",
+    "Deployment",
+    "MVPpointcredit"
+  ],
+  "doctorAttribution": "The selected original web-postgres doctor reports 9 passing probes. Later selected probes fail at pnpm or Chromium, and the assignment postgres profile passes 8 with 1 Chromium skip. They remain original failures/skips; no new 9/9 doctor result or resolved environment is claimed."
+}

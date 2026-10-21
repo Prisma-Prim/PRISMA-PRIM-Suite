@@ -1,0 +1,60 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/api
+
+ ❯ src/ideas/ideas.rest.test.ts (3 tests | 1 failed) 10944ms
+     × a separately granted reviewer appends defer and reject reasons while preserving the original 986ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/ideas/ideas.rest.test.ts > Company Ideas public REST boundary > a separately granted reviewer appends defer and reject reasons while preserving the original
+AssertionError: expected { …(8) } to match object { idea: { …(4) }, entry: { …(6) } }
+(11 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "entry": {
+-     "kind": "deferred",
+-     "precedingRevision": 1,
+-     "reason": "Review after the pilot",
+-     "reconsiderationDate": "2026-01-31",
+-     "recordedBy": {
+-       "workspaceMembershipId": "302bdf63-6aeb-430e-bf51-8609a25a80af",
+-     },
+-     "revision": 2,
+-   },
+-   "idea": {
++   "companyId": "cf6919ae-bead-47c5-8108-45d66b5f617b",
+    "description": "Reduce repeated questionnaire entry",
+-     "disposition": "deferred",
++   "disposition": "new",
+    "id": "1e75f530-aabd-4dff-a564-663a90243ef0",
+-     "revision": 2,
++   "origin": "Internal suggestion",
++   "revision": 1,
++   "submittedAt": "2026-10-20T05:25:32.441Z",
++   "submittedBy": {
++     "displayName": "Synthetic Ideas Owner",
++     "internalUserId": "59a0e648-df67-4d8b-be5c-8dc63349b27a",
++     "workspaceMembershipId": "efbbafb1-b335-4259-9b43-ded913e6ba40",
+    },
+  }
+
+ ❯ src/ideas/ideas.rest.test.ts:157:43
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed (3)
+   Start at  05:24:52
+   Duration  40.81s (transform 20.56s, setup 0ms, import 29.46s, tests 10.94s, environment 0ms)
+
+undefined
+/workspace/worktrees/ideas-runtime733/apps/api:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run --no-file-parallelism src/ideas/ideas.rest.test.ts

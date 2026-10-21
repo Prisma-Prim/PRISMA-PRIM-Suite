@@ -1,0 +1,4 @@
+COMMAND: pnpm --filter @prisma-prim/web exec playwright test --config .ideas-acceptance-css-fixed-preview.config.ts e2e/ideas.acceptance.spec.ts --workers=1
+START=2026-10-20T17:05:05Z
+END=2026-10-20T17:06:21Z
+EXIT=0

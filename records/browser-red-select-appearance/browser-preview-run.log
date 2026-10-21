@@ -1,0 +1,111 @@
+[2m[WebServer] [22m(node:196245) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m[2m$ vite preview --host 127.0.0.1 --port 4173[22m
+[2m[WebServer] [22m(node:196263) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:196313) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:196313) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [operational-acceptance-desktop] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL (22.2s)
+(node:196437) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:196437) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [operational-acceptance-narrow] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL (32.8s)
+
+
+  1) [operational-acceptance-desktop] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+
+    Error: [31mTimed out 5000ms waiting for [39m[2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCSS[2m([22m[32mexpected[39m[2m)[22m
+
+    Locator: locator('.ideas-workspace').locator('article').getByLabel('Disposition', { exact: true }).and(getByRole('combobox'))
+    Expected string: [32m"1[7m2[27mpx"[39m
+    Received string: [31m"1[7m6[27mpx"[39m
+    Call log:
+    [2m  - Expect "toHaveCSS" with timeout 5000ms[22m
+    [2m  - waiting for locator('.ideas-workspace').locator('article').getByLabel('Disposition', { exact: true }).and(getByRole('combobox'))[22m
+    [2m    8 × locator resolved to <button type="button" role="combobox" value="deferred" id="idea-disposition" aria-expanded="false" data-value="deferred" aria-haspopup="listbox" class="shared-select__trigger" aria-controls="idea-disposition-_r_7_-listbox">…</button>[22m
+    [2m      - unexpected value "16px"[22m
+
+
+       at select-appearance.ts:31
+
+      29 |     `${layout.rootFontSize * 0.65}px`,
+      30 |   );
+    > 31 |   await expect(trigger).toHaveCSS(
+         |                         ^
+      32 |     'padding-right',
+      33 |     `${layout.rootFontSize * 0.75}px`,
+      34 |   );
+        at expectSelectAppearance (/workspace/worktrees/ideas-runtime733/apps/web/e2e/select-appearance.ts:31:25)
+        at /workspace/worktrees/ideas-runtime733/apps/web/e2e/ideas.acceptance.spec.ts:139:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [operational-acceptance-narrow] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+
+    Error: [31mTimed out 5000ms waiting for [39m[2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCSS[2m([22m[32mexpected[39m[2m)[22m
+
+    Locator: locator('.ideas-workspace').locator('article').getByLabel('Disposition', { exact: true }).and(getByRole('combobox'))
+    Expected string: [32m"4[7m8[27mpx"[39m
+    Received string: [31m"4[7m4[27mpx"[39m
+    Call log:
+    [2m  - Expect "toHaveCSS" with timeout 5000ms[22m
+    [2m  - waiting for locator('.ideas-workspace').locator('article').getByLabel('Disposition', { exact: true }).and(getByRole('combobox'))[22m
+    [2m    8 × locator resolved to <button type="button" role="combobox" value="deferred" id="idea-disposition" aria-expanded="false" data-value="deferred" aria-haspopup="listbox" class="shared-select__trigger" aria-controls="idea-disposition-_r_6_-listbox">…</button>[22m
+    [2m      - unexpected value "44px"[22m
+
+
+       at select-appearance.ts:23
+
+      21 |   expect(Math.abs(layout.triggerWidth - layout.fieldWidth)).toBeLessThan(1);
+      22 |   await expect(trigger).toHaveCSS('display', 'grid');
+    > 23 |   await expect(trigger).toHaveCSS(
+         |                         ^
+      24 |     'min-height',
+      25 |     `${layout.rootFontSize * (layout.narrow ? 3 : 2.75)}px`,
+      26 |   );
+        at expectSelectAppearance (/workspace/worktrees/ideas-runtime733/apps/web/e2e/select-appearance.ts:23:25)
+        at /workspace/worktrees/ideas-runtime733/apps/web/e2e/ideas.acceptance.spec.ts:139:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip
+    Usage:
+
+        pnpm exec playwright show-trace test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [operational-acceptance-desktop] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+    [operational-acceptance-narrow] › e2e/ideas.acceptance.spec.ts:62:1 › records and reopens the literal Idea, appends both attributed dispositions, and enforces independent live rights through real App and PostgreSQL 
+undefined
+/workspace/worktrees/ideas-runtime733/apps/web:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: playwright test --config .ideas-acceptance-preview.config.ts e2e/ideas.acceptance.spec.ts '--workers=1'
+real 126.90
+user 72.44
+sys 27.71
+
+EXIT=1

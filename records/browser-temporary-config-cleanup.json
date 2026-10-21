@@ -1,0 +1,24 @@
+{
+  "time_utc": "2026-10-20T17:09:34.873810+00:00",
+  "configurations": [
+    {
+      "path": "apps/web/.ideas-acceptance-startup.config.ts",
+      "archive": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/.ideas-acceptance-startup.config.ts",
+      "sha256": "bbe6cebd153d070185d264530d0330932c1030472cf56c4d76f4a7ec0e92356d",
+      "removed": true
+    },
+    {
+      "path": "apps/web/.ideas-acceptance-preview.config.ts",
+      "archive": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/.ideas-acceptance-preview.config.ts",
+      "sha256": "e6b1ac23c861a0d988c0dd0a56f6946e90dbec878413ee1a35bace18bef1eb19",
+      "removed": true
+    },
+    {
+      "path": "apps/web/.ideas-acceptance-css-fixed-preview.config.ts",
+      "archive": "/workspace/work/ideas-runtime733/browser-green-date-confirmation/.ideas-acceptance-css-fixed-preview.config.ts",
+      "sha256": "8987340709a7d2efc235356cecc1e60f222d5a8e02395dd735ad77dc02ccfca8",
+      "removed": true
+    }
+  ],
+  "dependency_links": "Three owned node_modules links retained for root checks, excluded from product patch."
+}

@@ -1,0 +1,204 @@
+{
+  "commit": "c30db029a9d2327d42eab5f41f9a675b9f6477ff",
+  "base": "4f693ccb3b09cb173cae578640005dd3ae0b48a6",
+  "files": {
+    "CONTEXT.md": {
+      "bytes": 9060,
+      "sha256": "fcf3c4a7ddcfc9bfe9252f3fb33b026849bd0ae6750b0a9270d1c3e86b8b2363"
+    },
+    "apps/api/drizzle/0071_company_ideas.sql": {
+      "bytes": 12710,
+      "sha256": "106fca494c161bbdca63c22b3e94439958c5fe6e858ef887267c117d25bc5296"
+    },
+    "apps/api/drizzle/meta/0071_snapshot.json": {
+      "bytes": 699469,
+      "sha256": "cb42d8202556d95b5c7e4b9c31f241d11e6731fb134a5a1e8342f0d83bf6cce3"
+    },
+    "apps/api/drizzle/meta/_journal.json": {
+      "bytes": 10854,
+      "sha256": "386d1f18eeff0c13067822dd4f95445577289fe7951aa34262019d818d5abdcf"
+    },
+    "apps/api/src/access/access.types.ts": {
+      "bytes": 5752,
+      "sha256": "2d7fb23a4ac9fb44c23d5f06f4fa494c591591a1f08c2a8d5c29355ae87b30b2"
+    },
+    "apps/api/src/access/company-context-assignment.service.ts": {
+      "bytes": 64786,
+      "sha256": "9311f8b90db5ad2ad9fcc4f54305e963e5661ec2394f9a618fd7009981dc772a"
+    },
+    "apps/api/src/access/company-context-assignment.types.ts": {
+      "bytes": 7034,
+      "sha256": "576b9e6c37547fa54ec284ba906a6e5cd8e13ea706cfa6459ff0b8653fc9e43e"
+    },
+    "apps/api/src/access/company-context-authorization.ts": {
+      "bytes": 65707,
+      "sha256": "d768534ce7cd7229a3f3e9d82fe5a5ed294d2085420e9182fc62c8880abcda1f"
+    },
+    "apps/api/src/access/company-ideas-assignment.rest.test.ts": {
+      "bytes": 11316,
+      "sha256": "ced5e41f06b1a5b331fb2921257f609d6f4252f1abf52cb0b62fba503f594b16"
+    },
+    "apps/api/src/access/company-ideas-reader-assignment.controller.ts": {
+      "bytes": 1719,
+      "sha256": "e4cbb693f9de7bdd4d416ee62cc06cbd93efb8246221d0fbffc71fd722b8a1bd"
+    },
+    "apps/api/src/access/company-ideas-recorder-assignment.controller.ts": {
+      "bytes": 1727,
+      "sha256": "e8d3238a0af56a211f3f695958238e1dee6b66c1f7e15d865c8de917e264415d"
+    },
+    "apps/api/src/access/company-ideas-reviewer-assignment.controller.ts": {
+      "bytes": 1727,
+      "sha256": "c38e4e808d791598705f4324b35086d9388dbcf9c5762dff62c48c0f82a589e8"
+    },
+    "apps/api/src/access/company-permissions.ts": {
+      "bytes": 33475,
+      "sha256": "44b3fd44f746a2e8aceb3602838384196829d10d4ed7cfac14a81707849b8d3d"
+    },
+    "apps/api/src/access/company-role-bundle-registry.test.ts": {
+      "bytes": 14608,
+      "sha256": "7bc59dda4cf9dd2fe931fc1ef2eb20436a25bf7179d3b39bc86771f86adad5f9"
+    },
+    "apps/api/src/accountability/accountability.service.ts": {
+      "bytes": 120576,
+      "sha256": "366034debcd649becf2858c88798b5ed040e980b5ee0ea3d02bfc78204775bbd"
+    },
+    "apps/api/src/accountability/accountability.types.ts": {
+      "bytes": 25818,
+      "sha256": "d31fc37a3b401a415d322ddfb007bc650ea689cef5ff7f37f11bb797133e279f"
+    },
+    "apps/api/src/application-composition.module.ts": {
+      "bytes": 12882,
+      "sha256": "55c43249427082b0900466523e2d93223833363e6776c4957a339430889d5877"
+    },
+    "apps/api/src/database/schema/core.ts": {
+      "bytes": 36639,
+      "sha256": "5c77449d6271e3541b4b2d9018cd50f88a8403c5cab721118ac1d13d5a4d2b2c"
+    },
+    "apps/api/src/database/schema/ideas.ts": {
+      "bytes": 7569,
+      "sha256": "c39fc95823c48456b35313071090b1d8e88bb8e2386c285e1074517025014268"
+    },
+    "apps/api/src/database/schema/index.ts": {
+      "bytes": 835,
+      "sha256": "733702f59175474965c279f8042bb80a71e0237c468b3bceeca2a0b044d37030"
+    },
+    "apps/api/src/ideas/ideas.controller.ts": {
+      "bytes": 1897,
+      "sha256": "e51775872fe972474d0dc6e9e1ab405da69a907a391ed37752c5132b81838911"
+    },
+    "apps/api/src/ideas/ideas.migration.test.ts": {
+      "bytes": 7564,
+      "sha256": "a8ea98783ebb727c4f4687c3b11f2f333e36d48bd81f8b6d60aac4a8b7c34054"
+    },
+    "apps/api/src/ideas/ideas.module.ts": {
+      "bytes": 564,
+      "sha256": "a7b9d52e0d39c4d1fc479d8a94d276809d34dcfc2070e147d171ced14eb49673"
+    },
+    "apps/api/src/ideas/ideas.response.ts": {
+      "bytes": 3446,
+      "sha256": "a5ab052f421da1c28454966f879f5f65900b6afff0a56ef058341fb8e05a1dc5"
+    },
+    "apps/api/src/ideas/ideas.rest.test.ts": {
+      "bytes": 65456,
+      "sha256": "5737a6061b9b4e4ddc7e9a5a0b748ddcb53694c1de93192ad9ceecbf886ba066"
+    },
+    "apps/api/src/ideas/ideas.service.ts": {
+      "bytes": 16715,
+      "sha256": "97d9772cc75c72cf6ec80c38eaf745d10bbed0a19f75eae2ace038afc1c76a43"
+    },
+    "apps/api/src/ideas/ideas.types.ts": {
+      "bytes": 992,
+      "sha256": "0ad01271aad051fb28b12b3a9e91bf8431a192109adb56706fb91131f5eaeec1"
+    },
+    "apps/api/src/ideas/ideas.validation.ts": {
+      "bytes": 2406,
+      "sha256": "e8937e35ef8a5b67d9f6bce82a15bb2e43c7c9e349abbfe8000a994c22b47683"
+    },
+    "apps/web/e2e/ideas.acceptance.spec.ts": {
+      "bytes": 9617,
+      "sha256": "4ee369c9577acf6360b3bf830ff3c2274dad617469890a613da0b7143f068a2a"
+    },
+    "apps/web/playwright.acceptance.config.ts": {
+      "bytes": 1832,
+      "sha256": "674efb794601a5756774ff5008a36c24e21ad6f4b52d0abbd7750985ae7e3611"
+    },
+    "apps/web/src/App.ideas.test.tsx": {
+      "bytes": 26853,
+      "sha256": "b865973d42303fd46e346a175bdbafa4148919e7a45eaa4a512766645215ea9b"
+    },
+    "apps/web/src/App.tsx": {
+      "bytes": 28934,
+      "sha256": "a3c0baed5b3a06302a0825ea778e70c71c1912bfe87aacf69ba9fca1297688ef"
+    },
+    "apps/web/src/access-types.ts": {
+      "bytes": 6346,
+      "sha256": "548319bf3596f0c9b0c96be6306444e7b6dbff6bf95e822c1a63f9cdc8425a9f"
+    },
+    "apps/web/src/access/CompanyContextAccess.ideas.test.tsx": {
+      "bytes": 4788,
+      "sha256": "300f2e4d1a37e34b8112bc51d0cce2fb85cdebf1dae29ef69c71c2352ec5bbc2"
+    },
+    "apps/web/src/access/CompanyContextAccess.tsx": {
+      "bytes": 32701,
+      "sha256": "dd3b9b259a85be03b6338c52e8de703e3c591cc19d61d53b6ea88fa035f7eb77"
+    },
+    "apps/web/src/access/company-access-administration-response.ts": {
+      "bytes": 5061,
+      "sha256": "810ee76aed0e7879f55d0125577bb4dd88c7148a8c2050c739f8132fde6fb9fd"
+    },
+    "apps/web/src/ideas/IdeasWorkspace.tsx": {
+      "bytes": 25403,
+      "sha256": "7ad9463bd6d29f193ea3de94a180b8caa72fe7a92518e7896a480f44ac05b1b3"
+    },
+    "apps/web/src/ideas/ideas-activity-response.test.ts": {
+      "bytes": 1629,
+      "sha256": "187b5e7962124729fc658646895ecdb566d4532432979be252143f2f8bc6cd0b"
+    },
+    "apps/web/src/ideas/ideas-contract.ts": {
+      "bytes": 8116,
+      "sha256": "a73b0a609bd6c697056fa17b65d4e430a2588ef973f34bf62a9f51deee8fc6d3"
+    },
+    "apps/web/src/ideas/ideas-workspace.css": {
+      "bytes": 3680,
+      "sha256": "87428ddd0026b598127f498638c1acf2f74ebbf7529de8fc5cf7f1c9f28fea11"
+    },
+    "apps/web/src/ideas/ideas.copy.ts": {
+      "bytes": 12228,
+      "sha256": "d5dfba9ae412eaa0293076678ae35f64e9b6f3f3e45215b62f1f6bb50bd782dd"
+    },
+    "apps/web/src/localization/first-journey-coverage.ts": {
+      "bytes": 8378,
+      "sha256": "619b65e1e67f7af62cf66f3a78f185da9c16da129d5e9ff6bd79459023d3bfd3"
+    },
+    "apps/web/src/production-shell/ActivityLog.localization.test.tsx": {
+      "bytes": 16636,
+      "sha256": "1cec51e77886010ca1910550decc0e602aa2af4c3c3096db0000c5ee618dc9d0"
+    },
+    "apps/web/src/production-shell/ApplicationShell.tsx": {
+      "bytes": 11448,
+      "sha256": "428899c47d8eb2d0b748e793fd1069e00b6661a6e39abcfa9ca11eb50ef9e5f1"
+    },
+    "apps/web/src/production-shell/activity-log-display.ts": {
+      "bytes": 19510,
+      "sha256": "9c6620ebe6fabf951265b820d537d47bdeec79421606ee74a9d7b9198125ebff"
+    },
+    "apps/web/src/production-shell/activity-log-response.ts": {
+      "bytes": 30839,
+      "sha256": "580ea9df7ef12572375651a11c5c3b32968b40c5e143b00ff8fd6faac3b1931b"
+    },
+    "apps/web/src/production-shell/company-context-transitions.ts": {
+      "bytes": 31833,
+      "sha256": "65bf1b70bef8ed59dbc08cd3d926988a6dc076f3c18bdde2672893448725a38a"
+    },
+    "apps/web/src/production-shell/prisme/PrismeOverview.tsx": {
+      "bytes": 3702,
+      "sha256": "0d71bdb34970adfe8f099e52716b7980a07c09f80a2809bea5afeeee87e320a6"
+    },
+    "apps/web/src/test/activity-localization-fixture.ts": {
+      "bytes": 40912,
+      "sha256": "efae48d1023441c162400fa176b3021e96644e4db18010ab318a152c7f324c05"
+    }
+  },
+  "all49GitBlobsMatchFrozenTestedSources": true,
+  "completeIntegrationQualified": false
+}

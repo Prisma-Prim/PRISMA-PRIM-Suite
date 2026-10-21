@@ -1,0 +1,149 @@
+{
+  "result": "18 current originals inspected. No additional blocking visual defect observed: four locales/history, validation, Select and Reader-only at desktop1440/narrow390; native full-page focus/scroll positions retained.",
+  "images": [
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png",
+      "bytes": 141657,
+      "sha256": "929dd2439d8a6509caa8582f1544a99e9bb73a882011129cb9ed1b2d3d2175a0",
+      "width": 1440,
+      "height": 2206,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png",
+      "bytes": 129267,
+      "sha256": "4a901c6a9ea2de6b18e7878d21aea227083cc4d150ca932c66faf1a4e0aea7f2",
+      "width": 1440,
+      "height": 1989,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png",
+      "bytes": 151401,
+      "sha256": "bc07f3e0065adf67671f4d0ac48aef86761c2c8163d6bb4eb0c722e59423b083",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png",
+      "bytes": 151436,
+      "sha256": "a79eb24c9ac6e5c7df7cb638133f7b605b3706795ed964172eed85a0a98ac64c",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png",
+      "bytes": 146650,
+      "sha256": "1023d40a2b6dc28a37b4600cd811978cc334d8ecd7e3ba137bc7ac7fd31ba48f",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png",
+      "bytes": 162346,
+      "sha256": "62a7d7dbdef57ec09bcbc7c765fd17aafa6012ed058d5f1cc2e396095e7e50f6",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png",
+      "bytes": 118662,
+      "sha256": "7c10c9d17d13f04538acc497c83aa8730b900054287777654df95fad17489d24",
+      "width": 1440,
+      "height": 1330,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "bytes": 72425,
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "width": 1440,
+      "height": 1008,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png",
+      "bytes": 3245,
+      "sha256": "62614002d652039368858a83c17f7361c04d00d6feb597dabce3101fd9d128b2",
+      "width": 1046,
+      "height": 45,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png",
+      "bytes": 106977,
+      "sha256": "308f15fb99290bbf86abb51bf22b24d4a0aca0161ae7fcc430f10b092a55c821",
+      "width": 390,
+      "height": 2592,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png",
+      "bytes": 96260,
+      "sha256": "0073d0e03dde910c6ca10d236f64a564e0ae7836fa51a247394f2b51f9cb0d3e",
+      "width": 390,
+      "height": 2321,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png",
+      "bytes": 113021,
+      "sha256": "d3a62b29e6e967f10c55216d94003937940f3b289de7b0b4ce10fd5cd96679ab",
+      "width": 390,
+      "height": 2701,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png",
+      "bytes": 112524,
+      "sha256": "d116f27930dfd99fc184509d261cec65d44bbaea1bd46e7843e717836e35ec21",
+      "width": 390,
+      "height": 2725,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png",
+      "bytes": 109195,
+      "sha256": "0025f85b0210b251528364c6ab8cf3d9baef51842a9102faf3a762fb635e87c1",
+      "width": 390,
+      "height": 2701,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png",
+      "bytes": 122081,
+      "sha256": "a3faacb9d5f756399640ac7fa02fb9b5e59602b193a2fec8c259d02a3e003e90",
+      "width": 390,
+      "height": 2743,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png",
+      "bytes": 87971,
+      "sha256": "79a07b6a404e8369e5f232b4eb78b34357f72a084add8cf2ec369926cd8b8185",
+      "width": 390,
+      "height": 1728,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "bytes": 40313,
+      "sha256": "a14d174b6fad2d86423fc2a773935ed5b87c95a3c8c6e9701e8aa00999cf7ea6",
+      "width": 390,
+      "height": 1173,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    },
+    {
+      "path": "/workspace/worktrees/ideas-runtime733/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png",
+      "bytes": 1841,
+      "sha256": "b6ac10e36afde313c26941e126cd5a7092b2eda6223410ef3a20e89c9651cc73",
+      "width": 286,
+      "height": 49,
+      "inspection": "Original inspected with view_image detail original; no image editing."
+    }
+  ]
+}

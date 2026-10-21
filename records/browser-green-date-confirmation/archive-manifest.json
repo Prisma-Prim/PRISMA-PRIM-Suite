@@ -1,0 +1,130 @@
+{
+  ".ideas-acceptance-css-fixed-preview.config.ts": {
+    "bytes": 573,
+    "sha256": "8987340709a7d2efc235356cecc1e60f222d5a8e02395dd735ad77dc02ccfca8"
+  },
+  ".ideas-acceptance-preview.config.ts": {
+    "bytes": 562,
+    "sha256": "e6b1ac23c861a0d988c0dd0a56f6946e90dbec878413ee1a35bace18bef1eb19"
+  },
+  ".ideas-acceptance-startup.config.ts": {
+    "bytes": 1854,
+    "sha256": "bbe6cebd153d070185d264530d0330932c1030472cf56c4d76f4a7ec0e92356d"
+  },
+  "acceptance/.last-run.json": {
+    "bytes": 45,
+    "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png": {
+    "bytes": 141657,
+    "sha256": "929dd2439d8a6509caa8582f1544a99e9bb73a882011129cb9ed1b2d3d2175a0"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png": {
+    "bytes": 129267,
+    "sha256": "4a901c6a9ea2de6b18e7878d21aea227083cc4d150ca932c66faf1a4e0aea7f2"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png": {
+    "bytes": 151401,
+    "sha256": "bc07f3e0065adf67671f4d0ac48aef86761c2c8163d6bb4eb0c722e59423b083"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png": {
+    "bytes": 151436,
+    "sha256": "a79eb24c9ac6e5c7df7cb638133f7b605b3706795ed964172eed85a0a98ac64c"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png": {
+    "bytes": 146650,
+    "sha256": "1023d40a2b6dc28a37b4600cd811978cc334d8ecd7e3ba137bc7ac7fd31ba48f"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png": {
+    "bytes": 162346,
+    "sha256": "62a7d7dbdef57ec09bcbc7c765fd17aafa6012ed058d5f1cc2e396095e7e50f6"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png": {
+    "bytes": 118662,
+    "sha256": "7c10c9d17d13f04538acc497c83aa8730b900054287777654df95fad17489d24"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png": {
+    "bytes": 72425,
+    "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png": {
+    "bytes": 3245,
+    "sha256": "62614002d652039368858a83c17f7361c04d00d6feb597dabce3101fd9d128b2"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png": {
+    "bytes": 106977,
+    "sha256": "308f15fb99290bbf86abb51bf22b24d4a0aca0161ae7fcc430f10b092a55c821"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png": {
+    "bytes": 96260,
+    "sha256": "0073d0e03dde910c6ca10d236f64a564e0ae7836fa51a247394f2b51f9cb0d3e"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png": {
+    "bytes": 113021,
+    "sha256": "d3a62b29e6e967f10c55216d94003937940f3b289de7b0b4ce10fd5cd96679ab"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png": {
+    "bytes": 112524,
+    "sha256": "d116f27930dfd99fc184509d261cec65d44bbaea1bd46e7843e717836e35ec21"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png": {
+    "bytes": 109195,
+    "sha256": "0025f85b0210b251528364c6ab8cf3d9baef51842a9102faf3a762fb635e87c1"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png": {
+    "bytes": 122081,
+    "sha256": "a3faacb9d5f756399640ac7fa02fb9b5e59602b193a2fec8c259d02a3e003e90"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png": {
+    "bytes": 87971,
+    "sha256": "79a07b6a404e8369e5f232b4eb78b34357f72a084add8cf2ec369926cd8b8185"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png": {
+    "bytes": 40313,
+    "sha256": "a14d174b6fad2d86423fc2a773935ed5b87c95a3c8c6e9701e8aa00999cf7ea6"
+  },
+  "acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png": {
+    "bytes": 1841,
+    "sha256": "b6ac10e36afde313c26941e126cd5a7092b2eda6223410ef3a20e89c9651cc73"
+  },
+  "browser-date-confirmation-command.log": {
+    "bytes": 216,
+    "sha256": "e12ae4b0d7cd2d461ad4a57335e5e344319071030eca649cfbc0a3d2cf4a3715"
+  },
+  "browser-date-confirmation-guard.log": {
+    "bytes": 165,
+    "sha256": "a7df06db471d88ed148b46a644965b4bc143333feeddaa6f6e71e56d67688bc9"
+  },
+  "browser-date-confirmation-manifest-after.sha256": {
+    "bytes": 138,
+    "sha256": "fdada6aba5c286dc44575a2d6aa980c47fe418d905af36852585aa4cefdbd940"
+  },
+  "browser-date-confirmation-manifest-before.sha256": {
+    "bytes": 138,
+    "sha256": "fdada6aba5c286dc44575a2d6aa980c47fe418d905af36852585aa4cefdbd940"
+  },
+  "browser-date-confirmation.exit": {
+    "bytes": 2,
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "browser-date-confirmation.log": {
+    "bytes": 1705,
+    "sha256": "1cbb8cf45e02370fdeeb8a41139e555311f2f37c98cc9083b69e53e1ef9b9076"
+  },
+  "browser-date-fixed-reuse-manifest.json": {
+    "bytes": 1811269,
+    "sha256": "e930b6f66c7a9a416ee95e05163d4574def0694fc0d89d965766fc6e090f9921"
+  },
+  "browser-date-pg-readiness.log": {
+    "bytes": 147,
+    "sha256": "eac4cdb912a6d348a73064683316c51a65e9ac37347c9b61a61e7c9a49e01ba0"
+  },
+  "browser-date-review-summary.json": {
+    "bytes": 1120,
+    "sha256": "f549124974b2461e14e677b96b42fe05ec4a32eed17e625bb1057f2fe9a9ac09"
+  },
+  "verify-browser-date-fixed-builds.py": {
+    "bytes": 7132,
+    "sha256": "47e9a152796d641a8342572fd4b4f0fcb5db3718bc419150d7cc982af41bf8b6"
+  }
+}

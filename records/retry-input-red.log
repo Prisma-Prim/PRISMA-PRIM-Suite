@@ -1,0 +1,34 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/worktrees/ideas-runtime733/apps/api
+
+ ❯ src/ideas/ideas.rest.test.ts (5 tests | 1 failed) 7067ms
+     × rejects a reconsideration-date field on rejection without changing the saved aggregate 589ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/ideas/ideas.rest.test.ts > Company Ideas public REST boundary > rejects a reconsideration-date field on rejection without changing the saved aggregate
+AssertionError: expected 201 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 201
+
+ ❯ src/ideas/ideas.rest.test.ts:306:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  05:34:48
+   Duration  18.38s (transform 5.92s, setup 0ms, import 10.98s, tests 7.07s, environment 0ms)
+
+undefined
+/workspace/worktrees/ideas-runtime733/apps/api:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run '--maxWorkers=1' --no-file-parallelism src/ideas/ideas.rest.test.ts
