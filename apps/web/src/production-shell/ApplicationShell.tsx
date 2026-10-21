@@ -23,6 +23,7 @@ import './prisme/prisme-frame.css';
 
 export interface ApplicationSection {
   id:
+    | 'ideas'
     | 'complaints'
     | 'documents'
     | 'requests'
@@ -46,6 +47,7 @@ export interface ApplicationSection {
  */
 const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
   new Set([
+    'ideas',
     'complaints',
     'clients',
     'documents',

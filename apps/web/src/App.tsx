@@ -1,3 +1,6 @@
+import { IdeasWorkspace } from './ideas/IdeasWorkspace';
+import { ideasAuthority, ideasContextKey } from './ideas/ideas-contract';
+import { useIdeasCopy } from './ideas/ideas.copy';
 import { ActivityLog } from './production-shell/ActivityLog';
 import {
   ComplaintWorkspace,
@@ -42,6 +45,7 @@ import { useProductionShellContext } from './production-shell/useProductionShell
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
+  const ideasCopy = useIdeasCopy();
   const complaintCopy = useComplaintCopy();
   const prismeCopy = usePrismeCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
@@ -337,6 +341,22 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     ) : null;
 
   const sections: ApplicationSection[] = [];
+  if (ideasAuthority(access.actor).read)
+    sections.push({
+      id: 'ideas',
+      label: ideasCopy('label'),
+      description: ideasCopy('introduction'),
+      content: (
+        <IdeasWorkspace
+          key={`ideas:${access.sessionGeneration}:${ideasContextKey(access.actor)}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
   if (canReadComplaints(access.actor))
     sections.push({
       id: 'complaints',

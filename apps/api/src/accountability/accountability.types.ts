@@ -1,3 +1,8 @@
+import {
+  COMPANY_IDEAS_READER_BUNDLE_LABEL,
+  COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
+  COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL,
+} from '../access/company-permissions.js';
 import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
 import type { ProjectStageChangedActivityEvent } from '../project-template/project-stage.types.js';
 import type { TaskEvent } from '../task/task.types.js';
@@ -202,6 +207,12 @@ export type CanonicalActivityEvent =
         | 'company_commercial_activity_reader_assignment.revoked'
         | 'company_opportunity_manager_assignment.granted'
         | 'company_opportunity_manager_assignment.revoked'
+        | 'company_ideas_reader_assignment.granted'
+        | 'company_ideas_reader_assignment.revoked'
+        | 'company_ideas_recorder_assignment.granted'
+        | 'company_ideas_recorder_assignment.revoked'
+        | 'company_ideas_reviewer_assignment.granted'
+        | 'company_ideas_reviewer_assignment.revoked'
         | 'company_profitability_contributor_assignment.granted'
         | 'company_profitability_contributor_assignment.revoked'
         | 'company_profitability_director_assignment.granted'
@@ -247,6 +258,9 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
+          | typeof COMPANY_IDEAS_READER_BUNDLE_LABEL
+          | typeof COMPANY_IDEAS_RECORDER_BUNDLE_LABEL
+          | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
@@ -369,6 +383,12 @@ export interface OrdinaryActivityLogEvent {
     | 'company_commercial_activity_reader_assignment.revoked'
     | 'company_opportunity_manager_assignment.granted'
     | 'company_opportunity_manager_assignment.revoked'
+    | 'company_ideas_reader_assignment.granted'
+    | 'company_ideas_reader_assignment.revoked'
+    | 'company_ideas_recorder_assignment.granted'
+    | 'company_ideas_recorder_assignment.revoked'
+    | 'company_ideas_reviewer_assignment.granted'
+    | 'company_ideas_reviewer_assignment.revoked'
     | 'company_profitability_contributor_assignment.granted'
     | 'company_profitability_contributor_assignment.revoked'
     | 'company_profitability_director_assignment.granted'
@@ -461,6 +481,9 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
           | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
           | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
+          | typeof COMPANY_IDEAS_READER_BUNDLE_LABEL
+          | typeof COMPANY_IDEAS_RECORDER_BUNDLE_LABEL
+          | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL

@@ -1,3 +1,4 @@
+import { ideaEvents } from '../database/schema/ideas.js';
 import type { ProjectTemplateVersion } from '../project-template/project-template.definition.js';
 import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
 import type { ProjectStageChangedActivityEvent } from '../project-template/project-stage.types.js';
@@ -1118,6 +1119,37 @@ export class AccountabilityService {
           currency: input.currency,
         },
       });
+  }
+
+  async recordIdeaEvent(
+    input: {
+      actor: ActorContext;
+      companyId: string;
+      ideaId: string;
+      revision: number;
+      occurredAt: Date;
+    } & (
+      | { action: 'idea.recorded' }
+      | {
+          action: 'idea.disposition.recorded';
+          disposition: 'deferred' | 'rejected';
+        }
+    ),
+  ): Promise<void> {
+    await this.databaseContext.connection.insert(ideaEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      ideaId: input.ideaId,
+      revision: input.revision,
+      action: input.action,
+      actorMembershipId: input.actor.workspaceMembershipId,
+      actorInternalUserId: input.actor.internalUserId,
+      occurredAt: input.occurredAt,
+      metadata:
+        input.action === 'idea.recorded'
+          ? { revision: input.revision }
+          : { revision: input.revision, disposition: input.disposition },
+    });
   }
 
   async recordComplaintEvent(
@@ -3129,6 +3161,12 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_commercial_activity_reader_assignment.revoked':
     case 'company_opportunity_manager_assignment.granted':
     case 'company_opportunity_manager_assignment.revoked':
+    case 'company_ideas_reader_assignment.granted':
+    case 'company_ideas_reader_assignment.revoked':
+    case 'company_ideas_recorder_assignment.granted':
+    case 'company_ideas_recorder_assignment.revoked':
+    case 'company_ideas_reviewer_assignment.granted':
+    case 'company_ideas_reviewer_assignment.revoked':
     case 'company_profitability_contributor_assignment.granted':
     case 'company_profitability_contributor_assignment.revoked':
     case 'company_profitability_director_assignment.granted':

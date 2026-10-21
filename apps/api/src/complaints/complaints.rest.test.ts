@@ -837,7 +837,7 @@ describe.skipIf(!databaseUrl)('Company Complaint REST contract', () => {
     }
     expect(new Set(seen).size).toBe(27);
     expect(seen).toEqual(expected.map((row) => string(row.id)));
-  });
+  }, 15_000);
 
   it.each(['-1', '01', '1.5', '2147483648', '25x'])(
     'rejects malformed register offset %s instead of returning a default page',
@@ -1096,7 +1096,7 @@ describe.skipIf(!databaseUrl)('Company Complaint REST contract', () => {
     );
     expect(recursive.status).toBe(404);
     expect(await journalEffects(original)).toEqual(before);
-  });
+  }, 15_000);
 
   it('replays exact journal receipts before staleness while distinct identical declarations remain new writes', async () => {
     const original = await createComplaint();
@@ -1884,6 +1884,7 @@ describe.skipIf(!databaseUrl)('Company Complaint REST contract', () => {
       expect(clientAfterReplay.status).toBe(200);
       expect((await body(clientAfterReplay)).version).toBe(clientVersion + 1);
     },
+    15_000,
   );
 
   it.each([

@@ -1,3 +1,4 @@
+import { useIdeasCopy } from '../ideas/ideas.copy';
 import { useComplaintCopy } from '../complaints/complaints.copy';
 import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
 import { useProjectStageCopy } from '../project/project-stage.copy';
@@ -61,11 +62,17 @@ type AssignmentBundle =
   | 'project-stage-advancer'
   | 'project'
   | 'project-approver'
+  | 'ideas-reader'
+  | 'ideas-recorder'
+  | 'ideas-reviewer'
   | 'profitability-contributor'
   | 'profitability-director';
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'ideas-reader': '/company-ideas-reader-assignments',
+  'ideas-recorder': '/company-ideas-recorder-assignments',
+  'ideas-reviewer': '/company-ideas-reviewer-assignments',
   'complaints-reader': '/company-complaints-reader-assignments',
   'complaints-recorder': '/company-complaints-recorder-assignments',
   'profitability-contributor': '/company-profitability-contributor-assignments',
@@ -129,6 +136,7 @@ export function CompanyContextAccess({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const copy = useCompanyAssignmentCopy();
+  const ideasCopy = useIdeasCopy();
   const complaintCopy = useComplaintCopy();
   const profitabilityCopy = useProfitabilityCopy();
   const decisionCopy = useContractDecisionCopy();
@@ -509,6 +517,9 @@ export function CompanyContextAccess({
             value={bundle}
             disabled={busy}
             options={[
+              { value: 'ideas-reader', label: ideasCopy('reader') },
+              { value: 'ideas-recorder', label: ideasCopy('recorder') },
+              { value: 'ideas-reviewer', label: ideasCopy('reviewer') },
               { value: 'company-context', label: copy('companyContextBundle') },
               {
                 value: 'complaints-reader',
@@ -602,6 +613,9 @@ export function CompanyContextAccess({
             onValueChange={(value) => {
               resetCommand();
               if (
+                value === 'ideas-reader' ||
+                value === 'ideas-recorder' ||
+                value === 'ideas-reviewer' ||
                 value === 'complaints-reader' ||
                 value === 'complaints-recorder' ||
                 value === 'profitability-contributor' ||
@@ -783,6 +797,9 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
+    'ideas-reader': 'Company Ideas Reader',
+    'ideas-recorder': 'Company Ideas Recorder',
+    'ideas-reviewer': 'Company Ideas Reviewer',
     'complaints-reader': 'Company Complaints Reader',
     'complaints-recorder': 'Company Complaints Recorder',
     'profitability-contributor': 'Company Profitability Contributor',

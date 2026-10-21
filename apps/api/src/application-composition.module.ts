@@ -1,3 +1,8 @@
+import { CompanyIdeasReaderAssignmentController } from './access/company-ideas-reader-assignment.controller.js';
+import { CompanyIdeasRecorderAssignmentController } from './access/company-ideas-recorder-assignment.controller.js';
+import { CompanyIdeasReviewerAssignmentController } from './access/company-ideas-reviewer-assignment.controller.js';
+import { IdeasController } from './ideas/ideas.controller.js';
+import { IdeasModule } from './ideas/ideas.module.js';
 import { CompanyProjectTemplateConfigurationAssignmentController } from './access/company-project-template-configuration-assignment.controller.js';
 import { CompanyProjectStageAdvancerAssignmentController } from './access/company-project-stage-advancer-assignment.controller.js';
 import { DocumentContentController } from './documents/document-content.controller.js';
@@ -104,6 +109,7 @@ import { ComplaintsController } from './complaints/complaints.controller.js';
 
 @Module({
   imports: [
+    IdeasModule,
     ProjectTemplateModule,
     TaskModule,
     DocumentsModule,
@@ -125,6 +131,11 @@ import { ComplaintsController } from './complaints/complaints.controller.js';
     ComplaintsModule,
   ],
   controllers: [
+    CompanyIdeasReaderAssignmentController,
+    CompanyIdeasRecorderAssignmentController,
+    CompanyIdeasReviewerAssignmentController,
+
+    IdeasController,
     ProjectTemplateController,
     CompanyProjectTemplateUserAssignmentController,
     CompanyProjectTemplateConfigurationAssignmentController,

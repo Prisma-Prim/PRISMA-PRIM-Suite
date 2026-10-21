@@ -1,3 +1,4 @@
+import { useIdeasCopy } from '../ideas/ideas.copy';
 import { useWorkspaceInvitationsCopy } from '../access/workspace-invitations.copy';
 import { useOpportunityOutcomeCopy } from '../commercial-intake/opportunity-outcome.copy';
 import {
@@ -30,6 +31,7 @@ const stageOperationKeys = {
 
 export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
+  const ideas = useIdeasCopy();
   const invitationActions = useWorkspaceInvitationsCopy().activityActionLabels;
   const pdfActions = useDocumentPdfCopy().activityActionLabels;
   const stage = useSalesStageCopy();
@@ -53,6 +55,13 @@ export function useActivityLogDisplay() {
     string
   >;
   const actionLabels = {
+    'company_ideas_reader_assignment.granted': ideas('readerGranted'),
+    'company_ideas_reader_assignment.revoked': ideas('readerRevoked'),
+    'company_ideas_recorder_assignment.granted': ideas('recorderGranted'),
+    'company_ideas_recorder_assignment.revoked': ideas('recorderRevoked'),
+    'company_ideas_reviewer_assignment.granted': ideas('reviewerGranted'),
+    'company_ideas_reviewer_assignment.revoked': ideas('reviewerRevoked'),
+
     'internal_user.provisioned': message('internal_user.provisioned'),
     'workspace_membership.suspended': message('workspace_membership.suspended'),
     'workspace_sessions.revoked': message('workspace_sessions.revoked'),

@@ -16,6 +16,10 @@ import {
 // The captured permission sets every Company role bundle resolves today. A
 // new version is added here deliberately, never by editing an existing one.
 const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
+  company_ideas_reader: { v1: ['idea.read'] },
+  company_ideas_recorder: { v1: ['idea.record'] },
+  company_ideas_reviewer: { v1: ['idea.disposition.record'] },
+
   company_complaints_reader: { v1: ['complaint.read'] },
   company_complaints_recorder: { v1: ['complaint.record'] },
   company_project_stage_advancer: { v1: ['project.stage.advance'] },
@@ -174,6 +178,9 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
 };
 
 const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
+  company_ideas_reader: 'Company Ideas Reader',
+  company_ideas_recorder: 'Company Ideas Recorder',
+  company_ideas_reviewer: 'Company Ideas Reviewer',
   company_complaints_reader: 'Company Complaints Reader',
   company_complaints_recorder: 'Company Complaints Recorder',
   company_project_template_user: 'Company Project Template User',
@@ -313,9 +320,9 @@ describe('Company role permission set version CHECK', () => {
   const bundle = '"company_role_assignments"."bundle"::text';
   const version = '"company_role_assignments"."permission_set_version"';
   const singleVersionBundles =
-    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_complaints_reader', 'company_complaints_recorder'";
+    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_complaints_reader', 'company_complaints_recorder'";
   const versionedBundles =
-    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_complaints_reader', 'company_complaints_recorder'";
+    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_complaints_reader', 'company_complaints_recorder'";
   const EXPECTED_CHECK = [
     '(',
     `        (${bundle} = 'company_director_client_access'`,

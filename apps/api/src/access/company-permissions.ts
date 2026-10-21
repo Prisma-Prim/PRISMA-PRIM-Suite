@@ -281,6 +281,18 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Project Template Configuration',
     versions: { v1: ['project.template.version.create'] },
   },
+  company_ideas_reader: {
+    label: 'Company Ideas Reader',
+    versions: { v1: ['idea.read'] },
+  },
+  company_ideas_recorder: {
+    label: 'Company Ideas Recorder',
+    versions: { v1: ['idea.record'] },
+  },
+  company_ideas_reviewer: {
+    label: 'Company Ideas Reviewer',
+    versions: { v1: ['idea.disposition.record'] },
+  },
   company_complaints_reader: {
     label: 'Company Complaints Reader',
     versions: { v1: ['complaint.read'] },
@@ -822,6 +834,18 @@ export function projectTemplateConfigurationPermissionsFor(
   );
 }
 
+export const COMPANY_IDEAS_READER_BUNDLE =
+  'company_ideas_reader' satisfies CompanyRoleBundle;
+export const COMPANY_IDEAS_READER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_ideas_reader.label;
+export const COMPANY_IDEAS_RECORDER_BUNDLE =
+  'company_ideas_recorder' satisfies CompanyRoleBundle;
+export const COMPANY_IDEAS_RECORDER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_ideas_recorder.label;
+export const COMPANY_IDEAS_REVIEWER_BUNDLE =
+  'company_ideas_reviewer' satisfies CompanyRoleBundle;
+export const COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_ideas_reviewer.label;
 export const COMPANY_COMPLAINTS_READER_BUNDLE =
   'company_complaints_reader' satisfies CompanyRoleBundle;
 export const COMPANY_COMPLAINTS_READER_BUNDLE_LABEL =

@@ -1,3 +1,5 @@
+import { complaintMessages } from '../complaints/complaints.copy';
+import { ideasMessages } from '../ideas/ideas.copy';
 import { companyAssignmentMessages } from '../access/company-assignment-localization.copy';
 import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
 import { contractDecisionMessages } from '../contract/contract-decision.copy';
@@ -32,6 +34,7 @@ import { clientDossierMessages } from '../client/client-dossier.copy';
 import { clientDuplicateReviewMessages } from '../client/client-duplicate-review.copy';
 import { clientCorrectionHistoryMessages } from '../client/client-correction-history.copy';
 import { clientUnionHistoryMessages } from '../client/client-union-history.copy';
+import { clientUnionConfirmationMessages } from '../client/client-union-confirmation.copy';
 import { appMessages } from '../app.copy';
 import { activityLogMessages } from '../production-shell/activity-log.copy';
 import { companyContextMessages } from '../company/company-context.copy';
@@ -55,6 +58,8 @@ import { interfaceLocaleMessages } from './interface-locale.copy';
 import { assertMessageCoverage } from './messages';
 
 export function assertFirstJourneyTranslationCoverage(): void {
+  assertMessageCoverage('complaints', complaintMessages);
+  assertMessageCoverage('ideas', ideasMessages);
   assertMessageCoverage('companyAssignment', companyAssignmentMessages);
   assertMessageCoverage('commercialRequest', commercialRequestMessages);
   assertMessageCoverage('opportunityOutcome', opportunityOutcomeMessages);
@@ -96,6 +101,10 @@ export function assertFirstJourneyTranslationCoverage(): void {
   assertMessageCoverage('clientDirectory', clientDirectoryMessages);
   assertMessageCoverage('clientDossier', clientDossierMessages);
   assertMessageCoverage('clientUnionHistory', clientUnionHistoryMessages);
+  assertMessageCoverage(
+    'clientUnionConfirmation',
+    clientUnionConfirmationMessages,
+  );
   assertMessageCoverage('clientDuplicateReview', clientDuplicateReviewMessages);
   assertMessageCoverage(
     'clientCorrectionHistory',
