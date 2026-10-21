@@ -3437,4 +3437,363 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     ]);
     expect(await commandCount()).toBe(receipts);
   });
+
+  describe('Company unassigned Tasks', () => {
+    const queue = async (
+      offset = 0,
+      options: Parameters<typeof request>[1] = {},
+    ) => read(`/unassigned-tasks?offset=${offset}`, options);
+    const queueIds = async (options: Parameters<typeof request>[1] = {}) =>
+      objects((await queue(0, options)).tasks).map((task) => task.id);
+    async function readEffects() {
+      const tables = [
+        'activity_log_events',
+        'task_events',
+        'task_commands',
+        'tasks',
+        'client_accounts',
+        'client_company_relationships',
+      ];
+      return Promise.all(
+        tables.map(
+          async (table) =>
+            (
+              await harness.pool.query(
+                `SELECT coalesce(jsonb_agg(to_jsonb(entry) ORDER BY to_jsonb(entry)::text),'[]'::jsonb) AS data FROM ${table} entry`,
+              )
+            ).rows,
+        ),
+      );
+    }
+
+    it('pages exactly 27 readable null-assignee open Tasks across Projects with deterministic ties and no side effects', async () => {
+      await grant('task');
+      const first = await create({
+        title: 'Undated in progress',
+        assigneeMembershipId: null,
+      });
+      expect((await move(string(first.id), 'in_progress', 1)).status).toBe(201);
+      const secondProject = await command('/projects', {
+        title: 'Second preparation',
+        clientAccountId: clientId,
+      });
+      const last = await command(
+        `/projects/${string(secondProject.id)}/tasks`,
+        {
+          title: 'Undated blocked',
+          assigneeMembershipId: null,
+          priority: 'critical',
+        },
+      );
+      expect(
+        (
+          await move(
+            string(last.id),
+            'blocked',
+            1,
+            'Waiting for the questionnaire',
+          )
+        ).status,
+      ).toBe(201);
+      const ids: string[] = [];
+      // Bounded volume fixture copies valid public ownership/attribution. Two
+      // sub-millisecond creation groups reverse UUID prefixes; exact ties use ID.
+      for (let index = 0; index < 25; index++) {
+        const id = `${index < 13 ? 'ffffffff-ffff-4fff-8fff' : '00000000-0000-4000-8000'}-${String(index).padStart(12, '0')}`;
+        ids.push(id);
+        await harness.pool.query(
+          `INSERT INTO tasks
+          (id,workspace_id,company_id,project_id,client_account_id,title,
+           due_date,priority,created_by_internal_user_id,created_by_membership_id,
+           created_by_display_name,created_at,updated_at)
+          SELECT $1,workspace_id,company_id,project_id,client_account_id,$2,
+           DATE '2099-01-01',priority,created_by_internal_user_id,created_by_membership_id,
+           created_by_display_name,date_trunc('milliseconds',created_at) + ($3::integer * interval '1 microsecond'),
+           date_trunc('milliseconds',created_at) + ($3::integer * interval '1 microsecond') FROM tasks WHERE id=$4`,
+          [
+            id,
+            `Future preparation ${String(index).padStart(2, '0')}`,
+            index < 13 ? 1 : 2,
+            string(first.id),
+          ],
+        );
+      }
+      const expected = [...ids.slice(0, 13).sort(), ...ids.slice(13).sort()];
+      const effects = await readEffects();
+      const measured = await harness.measureApplicationQueries(() => queue());
+      expect(objects(measured.value.tasks).map((task) => task.id)).toEqual(
+        expected,
+      );
+      expect(measured.value).toMatchObject({
+        companyId,
+        offset: 0,
+        pageSize: 25,
+        hasNextPage: true,
+      });
+      expect(measured.value).not.toHaveProperty('total');
+      expect(measured.queries.join('\n')).toContain('repeatable read');
+      const second = await queue(25);
+      expect(second).toMatchObject({
+        offset: 25,
+        pageSize: 25,
+        hasNextPage: false,
+      });
+      expect(objects(second.tasks).map((task) => task.id)).toEqual([
+        first.id,
+        last.id,
+      ]);
+      expect(objects(second.tasks).map((task) => task.status)).toEqual([
+        'in_progress',
+        'blocked',
+      ]);
+      expect(
+        objects(second.tasks).map((task) => object(task.project).title),
+      ).toEqual(['ISO preparation', 'Second preparation']);
+      expect(await queue(50)).toEqual({
+        companyId,
+        offset: 50,
+        pageSize: 25,
+        hasNextPage: false,
+        tasks: [],
+      });
+      expect((await read('/unassigned-tasks')).tasks).toEqual(
+        measured.value.tasks,
+      );
+      expect(await readEffects()).toEqual(effects);
+      expect((await transition(string(first.id), 'complete', 2)).status).toBe(
+        201,
+      );
+      expect(await queue()).toMatchObject({ hasNextPage: true });
+      expect((await transition(string(last.id), 'complete', 2)).status).toBe(
+        201,
+      );
+      const exactPage = await queue();
+      expect(objects(exactPage.tasks)).toHaveLength(25);
+      expect(exactPage.hasNextPage).toBe(false);
+      expect((await queue(25)).tasks).toEqual([]);
+    }, 30_000);
+
+    it('excludes assigned and closed Tasks and follows only explicit existing assignment and state commands', async () => {
+      await grant('task');
+      const colleague = string(
+        (await member('task-member', true)).workspaceMembershipId,
+      );
+      const unassigned = await create({
+        title: 'Open undated',
+        assigneeMembershipId: null,
+      });
+      const id = string(unassigned.id);
+      const assignedTask = await create({
+        title: 'Later ineligible member',
+        assigneeMembershipId: colleague,
+      });
+      const assignedHistory = await history(string(assignedTask.id));
+      await revoke('task', colleague);
+      expect(await queueIds()).toEqual([id]);
+      await assertUnchanged(
+        string(assignedTask.id),
+        assignedTask,
+        assignedHistory,
+      );
+      await edit(id, {
+        expectedVersion: 1,
+        assigneeMembershipId: membershipId,
+      });
+      expect(await queueIds()).toEqual([]);
+      await edit(id, { expectedVersion: 2, assigneeMembershipId: null });
+      expect(await queueIds()).toEqual([id]);
+      expect((await transition(id, 'complete', 3)).status).toBe(201);
+      expect(await queueIds()).toEqual([]);
+      expect((await transition(id, 'reopen', 4)).status).toBe(201);
+      expect(await queueIds()).toEqual([id]);
+      expect((await cancel(id, 5, 'Preparation withdrawn')).status).toBe(201);
+      expect(await queueIds()).toEqual([]);
+    });
+
+    it('keeps readable open Tasks in closed Projects discoverable without relaxing writes', async () => {
+      await grant('task');
+      const created = await create({
+        title: 'Preserved exceptional open Task',
+      });
+      // Historical persisted edge only: normal Project closure must still refuse
+      // open Tasks. The existing lifecycle suite proves that guarded command.
+      await harness.pool.query(
+        "UPDATE projects SET status='completed', lifecycle_revision=1 WHERE id=$1",
+        [projectId],
+      );
+      expect(await queueIds()).toEqual([created.id]);
+      expect(await read(`/tasks/${string(created.id)}`)).toMatchObject({
+        mutable: false,
+        task: created,
+      });
+      const effects = await readEffects();
+      expect(
+        (
+          await request(`/tasks/${string(created.id)}`, {
+            method: 'PATCH',
+            value: { expectedVersion: 1, assigneeMembershipId: membershipId },
+          })
+        ).status,
+      ).toBe(409);
+      expect(await readEffects()).toEqual(effects);
+    });
+
+    it('retains superseded-original labels and read-only detail with mutation-free queue reads', async () => {
+      await grant('task');
+      const created = await create({
+        title: 'Historical unassigned preparation',
+      });
+      await (await unionSetup(true, true)).confirm();
+      const effects = await readEffects();
+      const page = await queue();
+      expect(objects(page.tasks)).toEqual([
+        {
+          ...created,
+          project: {
+            id: projectId,
+            title: 'ISO preparation',
+            clientDisplayName: 'Synthetic Client',
+          },
+        },
+      ]);
+      expect(await read(`/tasks/${string(created.id)}`)).toMatchObject({
+        mutable: false,
+      });
+      expect(
+        (
+          await request(`/tasks/${string(created.id)}`, {
+            method: 'PATCH',
+            value: { expectedVersion: 1, assigneeMembershipId: membershipId },
+          })
+        ).status,
+      ).toBe(404);
+      expect(await readEffects()).toEqual(effects);
+    });
+
+    it('filters unreadable originals and other Companies before selecting a page', async () => {
+      await grant('task');
+      const visible = await create({ title: 'Visible queue Task' });
+      const hiddenClient = await command('/clients', {
+        displayName: 'Hidden original',
+      });
+      const hiddenProject = await command('/projects', {
+        title: 'Hidden Project',
+        clientAccountId: hiddenClient.id,
+      });
+      await command(`/projects/${string(hiddenProject.id)}/tasks`, {
+        title: 'Hidden queue Task',
+      });
+      await harness.pool.query(
+        "UPDATE client_company_relationships SET status='archived' WHERE client_account_id=$1 AND company_id=$2",
+        [hiddenClient.id, companyId],
+      );
+      const other = string(
+        (await command('/companies', { displayName: 'Other Company' })).id,
+      );
+      await grant('project', membershipId, other);
+      await grant('task', membershipId, other);
+      const foreignClient = await command(
+        '/clients',
+        { displayName: 'Foreign Client' },
+        { company: other },
+      );
+      const foreignProject = await command(
+        '/projects',
+        { title: 'Foreign Project', clientAccountId: foreignClient.id },
+        { company: other },
+      );
+      const foreign = await command(
+        `/projects/${string(foreignProject.id)}/tasks`,
+        { title: 'Foreign Task' },
+        { company: other },
+      );
+      expect(await queueIds()).toEqual([visible.id]);
+      expect(await queueIds({ company: other })).toEqual([foreign.id]);
+      const text = JSON.stringify(await queue());
+      for (const hidden of [
+        'Hidden queue Task',
+        'Hidden original',
+        'Foreign Task',
+        'Foreign Client',
+      ])
+        expect(text).not.toContain(hidden);
+    });
+
+    it('rejects unsupported offsets and foreign scope without events, receipts or fences', async () => {
+      expect((await request('/unassigned-tasks')).status).toBe(403);
+      const assignment = await grant('task');
+      await create({ title: 'Protected queue Task' });
+      await member('task-ineligible');
+      const effects = await readEffects();
+      for (const query of [
+        'offset=-1',
+        'offset=1.5',
+        'offset=9007199254740992',
+        'offset=1&offset=2',
+        'offset[]=0',
+        'offset=',
+        'scope=all',
+        'assignee=x',
+        'status=done',
+        'pageSize=100',
+      ]) {
+        const response = await request(`/unassigned-tasks?${query}`);
+        expect(response.status).toBe(400);
+        expect(await response.text()).not.toContain('Protected queue Task');
+      }
+      expect((await queue(Number.MAX_SAFE_INTEGER)).tasks).toEqual([]);
+      expect(
+        (await fetch(`${harness.origin}/api/unassigned-tasks`)).status,
+      ).toBe(401);
+      for (const options of [
+        { company: '' },
+        { company: randomUUID() },
+        { workspace: randomUUID() },
+        { subject: 'task-ineligible' },
+      ])
+        expect((await request('/unassigned-tasks', options)).status).toBe(403);
+      await withUnsupportedPermissionVersion(assignment, 'v999', async () => {
+        expect((await request('/unassigned-tasks')).status).toBe(403);
+      });
+      expect(await readEffects()).toEqual(effects);
+    });
+
+    it.each(['task', 'project', 'client', 'context', 'suspension'] as const)(
+      'rechecks live reader authority after %s loss without leaking the queue',
+      async (change) => {
+        await grant('task');
+        await create({ title: 'Protected current queue' });
+        const target = string(
+          (await member('task-member', true)).workspaceMembershipId,
+        );
+        expect(await queueIds({ subject: 'task-member' })).toHaveLength(1);
+        if (change === 'suspension')
+          await command('/workspace-membership-suspensions', {
+            workspaceMembershipId: target,
+          });
+        else {
+          await revoke(change, target);
+          if (change === 'context') {
+            // Context Access is additive: the existing Client and Project
+            // assignments still supply effective Company context independently.
+            expect(await queueIds({ subject: 'task-member' })).toHaveLength(1);
+            await revoke('client', target);
+            await revoke('project', target);
+            expect(
+              (
+                await request('/access/current-actor', {
+                  subject: 'task-member',
+                })
+              ).status,
+            ).toBe(403);
+          }
+        }
+        const response = await request('/unassigned-tasks', {
+          subject: 'task-member',
+        });
+        expect(response.status).toBe(403);
+        expect(await response.text()).not.toContain('Protected current queue');
+      },
+    );
+  });
 });

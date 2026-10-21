@@ -29,6 +29,7 @@ export interface ApplicationSection {
     | 'pricing'
     | 'projects'
     | 'my-tasks'
+    | 'unassigned-tasks'
     | 'clients'
     | 'access'
     | 'companies'
@@ -37,6 +38,8 @@ export interface ApplicationSection {
   label: string;
   description: string;
   content: ReactNode;
+  /** A fresh read-only view retires requests and rows on section navigation. */
+  mountWhenSelected?: true;
 }
 
 /**
@@ -50,6 +53,7 @@ const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
     'projects',
     'requests',
     'my-tasks',
+    'unassigned-tasks',
     'activity',
   ]);
 
@@ -301,7 +305,8 @@ export function ApplicationShell({
                 (section) =>
                   isPrisme ||
                   section.id === 'clients' ||
-                  section.id === 'projects',
+                  section.id === 'projects' ||
+                  section.id === 'unassigned-tasks',
               )
               .map((section) => (
                 <li key={section.id}>
@@ -363,9 +368,14 @@ export function ApplicationShell({
                   tabIndex={
                     sectionsOwningFocusTarget.has(section.id) ? undefined : -1
                   }
-                  hidden={isPrisme && selected?.id !== section.id}
+                  hidden={
+                    (isPrisme || section.mountWhenSelected) &&
+                    selected?.id !== section.id
+                  }
                 >
-                  {section.content}
+                  {!section.mountWhenSelected || selected?.id === section.id
+                    ? section.content
+                    : null}
                 </div>
               ))}
             </div>

@@ -45,6 +45,13 @@ On 2026-09-26, Dan confirmed Prisme as the current application design and remove
 - role-based action queues for approvals, exceptions, overdue work and failed integrations;
 - progressive disclosure for advanced detail.
 
+The bounded Company **Unassigned Tasks** view in the
+[Project/Task PRD §25](release-1-project-task-prd.md#25-approved-company-unassigned-preparation-task-discovery)
+is a separate Task-read entry for the active Company. It opens exact Tasks through
+the existing Project navigation and preserves current context, target authority
+and read-only mutation restrictions. It does not change My Tasks, add another
+assignment form, imply a new grant or introduce an all-Companies/team dashboard.
+
 ## 5. Required UI states
 
 Every delivered journey specifies:

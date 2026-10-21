@@ -173,6 +173,10 @@ export function dueSoonTasksQuery(value: unknown): { offset: number } {
     );
   return { offset: Number(row.offset) };
 }
+/** Both fixed-size Task projections admit exactly the same offset syntax. */
+export function unassignedTasksQuery(value: unknown): { offset: number } {
+  return dueSoonTasksQuery(value);
+}
 /** The Company overdue-Task list takes no query parameter either. */
 export function overdueTasksQuery(value: unknown): void {
   keys(object(value), []);

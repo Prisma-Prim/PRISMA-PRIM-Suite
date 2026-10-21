@@ -37,6 +37,7 @@ export function SectionIcon({
     overview: LayoutGrid,
     projects: FolderKanban,
     'my-tasks': ListTodo,
+    'unassigned-tasks': ClipboardList,
     clients: Users,
     access: ShieldCheck,
     companies: Building2,
