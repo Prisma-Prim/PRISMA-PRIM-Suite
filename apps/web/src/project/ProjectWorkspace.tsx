@@ -73,6 +73,17 @@ type LoadState =
 type ProjectFilter =
   | { kind: 'text'; query: string }
   | { kind: 'client'; clientDossierId: string; displayName: string };
+
+function projectFilterText(value: string) {
+  // Fold Romanian spelling only; removing every combining mark would conflate й/и.
+  return value
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[ăâ]/gu, 'a')
+    .replace(/î/gu, 'i')
+    .replace(/[șş]/gu, 's')
+    .replace(/[țţ]/gu, 't');
+}
 /**
  * The opened Project, the Client identity revision it was read under and, when
  * a requested open targeted one of its Tasks, that Task.
@@ -735,7 +746,7 @@ export function ProjectWorkspace({
     rowsAwaitRead && load.refreshFailedUnder === clientIdentityRevision;
   const restrictionAwaitsRead = rowsAwaitRead && filter.kind === 'client';
   const normalizedQuery =
-    filter.kind === 'text' ? filter.query.trim().toLowerCase() : '';
+    filter.kind === 'text' ? projectFilterText(filter.query.trim()) : '';
   const projectsInStatusView =
     load.kind === 'ready'
       ? load.projects.filter(
@@ -748,8 +759,10 @@ export function ProjectWorkspace({
           filter.kind === 'client'
             ? project.clientDossierId === filter.clientDossierId
             : normalizedQuery.length === 0 ||
-              project.title.toLowerCase().includes(normalizedQuery) ||
-              project.clientDisplayName.toLowerCase().includes(normalizedQuery),
+              projectFilterText(project.title).includes(normalizedQuery) ||
+              projectFilterText(project.clientDisplayName).includes(
+                normalizedQuery,
+              ),
         )
       : [];
   const dossierTarget =

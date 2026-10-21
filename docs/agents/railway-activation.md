@@ -166,6 +166,23 @@ The existing API health route proves process liveness, not database readiness or
 Clerk availability. Railway's healthcheck gates traffic switch only; it does not
 continuously monitor an active service. Configure operator alerts/monitoring.
 
+The [bounded liveness monitor](../product/platform-security-reliability-operations-prd.md#19-bounded-webapi-liveness-monitor)
+can observe explicitly configured web/API origins locally or under a later chosen
+supervisor. Its structured alert/recovery output is diagnostic evidence, not
+notification delivery, database/Clerk readiness or an incident owner's response.
+Choose the hosted recipient/channel, supervision and protected output access and
+retention before claiming operational coverage. Diagnose an alert using authorized
+health/deployment logs without copying secrets or Client content; follow the
+schema-compatible rollback/forward-fix limits below. The monitor takes no response
+action and grants no operational authority.
+
+After explicitly setting the two reviewed origins, run
+`node scripts/monitor-liveness.mjs --web-origin "$MONITOR_WEB_ORIGIN" --api-origin "$MONITOR_API_ORIGIN"`.
+Pass origin roots, not the API's `/api` path; HTTPS is required except literal
+loopback HTTP for local exercises. SIGINT/SIGTERM stop the monitor. Exit 0 with
+`STOPPED` means the monitor stopped, never that the services are healthy; invalid
+configuration exits 2 with sanitized `INVALID_CONFIGURATION` output.
+
 Before accepting real data, configure PostgreSQL volume backup schedules and
 retention appropriate to the owner's recovery objectives; take an initial backup
 and rehearse restoration into a separate disposable environment. Retain an

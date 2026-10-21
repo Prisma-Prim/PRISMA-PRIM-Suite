@@ -150,6 +150,18 @@ Dan authorized this bounded MVP slice on 2026-09-19 from existing evidence and D
 - Original Company and Client references survive union/reversal. Reads retain the original Client identity (including a superseded identity) and its original Company relationship, without revealing canonical union detail or other-Company activity. New registration uses an active Client, locks its identity before relationship checks and increments its version in the same transaction, so new post-union activity invalidates the existing reversal fence.
 - Real PostgreSQL REST tests own isolation, idempotency, atomic history and union/reversal races. Component and desktop/narrow browser journeys own create/reload/reopen, empty and denied states. No new test harness is required.
 
+The existing authorized directory's local title/Client-label filter also accepts
+Romanian spelling with or without diacritics under [#735](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/735).
+It preserves trimmed case-insensitive substring matching, canonical Unicode
+equivalence and the Romanian pairs `ă/â/a`, `î/i`, `ș/ş/s`, `ț/ţ/t` on both sides.
+Other language distinctions, including Russian `й/и`, remain distinct. This is
+comparison only: original text, authorization, server order, open/closed status,
+exact dossier restrictions and detail navigation remain unchanged. Typing or
+changing interface locale makes no request and changes no identity or business
+record; the literal filter survives a locale change and existing authority changes
+still retire scoped state. This bounded local convenience is not global, content
+or historical search and adds no permission, event or backend behavior.
+
 ## 16. Remaining readiness
 
 The preparatory registration slice and manual preparation Tasks in section 18 are independently bounded approvals. The separate [Document Registry association contract](release-1-document-registry-prd.md#18-approved-working-project-associations-245) permits attaching and removing working references in an open Project (section 23) without changing its identity or lifecycle. Broader ticket decomposition remains blocked on real Project categories, stage meanings, required Tasks and acceptance examples. The current coverage audit narrows the evidence boundary; those broader workflows remain unapproved. This capability follows Company/RBAC and Shared Client.
