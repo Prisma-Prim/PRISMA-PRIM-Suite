@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/usr/local/bin/docker-init",
+    "-s",
+    "--",
+    "bash",
+    "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-red-01/supervisor.sh"
+  ],
+  "cwd": "/workspace/worktrees/synthetic-recovery736",
+  "startedUtc": "2026-10-21T05:36:35.806550+00:00",
+  "scope": "One unchanged original recovery case with full managed PostgreSQL lifecycle, doctor first"
+}

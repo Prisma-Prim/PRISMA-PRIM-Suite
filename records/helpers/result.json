@@ -1,0 +1,46 @@
+{
+  "startedAt": "2026-10-21T06:09:51.527527+00:00",
+  "sources": {
+    "apps/api/src/recovery/synthetic-recovery.rest.test.ts": "f472936910f24da2577e8d5f3bfaffc41fd350fc49f74e43b4256f816ddff007",
+    "apps/api/test-support/recovery-test-container.ts": "c36f10f2776342e1dda5a49b6a9fbca72e664602632070c40b27a83bb93897c9",
+    "apps/api/src/recovery/recovery-test-container.test.ts": "b9a336005f83a139eceb7ca9ef33e63921dc48cee5f75d7577d81b2b6cb67a76"
+  },
+  "steps": [
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "eslint",
+        "apps/api/src/recovery/synthetic-recovery.rest.test.ts",
+        "apps/api/test-support/recovery-test-container.ts",
+        "apps/api/src/recovery/recovery-test-container.test.ts"
+      ],
+      "startedAt": "2026-10-21T06:09:51.527542+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T06:10:01.032877+00:00"
+    },
+    {
+      "argv": [
+        "/usr/local/bin/docker-init",
+        "-s",
+        "--",
+        "pnpm",
+        "--filter",
+        "@prisma-prim/api",
+        "exec",
+        "vitest",
+        "run",
+        "src/recovery/recovery-test-container.test.ts",
+        "--no-file-parallelism",
+        "--maxWorkers=1"
+      ],
+      "startedAt": "2026-10-21T06:10:01.032975+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T06:10:05.832433+00:00"
+    }
+  ],
+  "scope": "scoped lint and pure selection boundaries; no PostgreSQL or complete gate",
+  "finishedAt": "2026-10-21T06:10:05.832747+00:00",
+  "exitCode": 0,
+  "sourceUnchanged": true
+}

@@ -1,0 +1,85 @@
+{
+  "status": "TRUE_RED_INTEGRATION_PREREQUISITE: wrong Docker tool container selected",
+  "head": "885cd4e465147bfab2fb136dddab0b02143d4794",
+  "startUtc": "2026-10-21T05:36:35.806550+00:00",
+  "finishUtc": "2026-10-21T05:37:43.262811+00:00",
+  "doctor": {
+    "profile": "web-postgres",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "actualPostgresVersion": "170011"
+  },
+  "actualVitestCommand": [
+    "pnpm",
+    "--filter",
+    "@prisma-prim/api",
+    "exec",
+    "vitest",
+    "run",
+    "src/recovery/synthetic-recovery.rest.test.ts",
+    "--no-file-parallelism",
+    "--maxWorkers=1",
+    "--testNamePattern",
+    "binds Workspace admission and complete dumping to one held snapshot during a concurrent change"
+  ],
+  "context": {
+    "CI": "true",
+    "RECOVERY_TEST_CONTAINER": "absent",
+    "PostgreSQL": "one canonical managed-postgres lifecycle with cached postgres:17-alpine"
+  },
+  "observed": {
+    "suiteFailed": true,
+    "caseAssertionsReached": false,
+    "reportedSkipped": 27,
+    "reportedFailedCases": 0,
+    "testDurationSeconds": 21.62,
+    "specificFailure": "beforeAll executes docker --host=unix:///var/run/docker.sock exec ci-postgres pg_dump --version; Docker reports No such container: ci-postgres"
+  },
+  "exits": {
+    "doctor": 0,
+    "vitest": 1,
+    "managedPostgres": 1,
+    "tini": 1,
+    "outerLauncher": 1
+  },
+  "cleanup": {
+    "managedResourcesBeforeAfterIdentical": true,
+    "headAndSixSourcesUnchanged": true,
+    "observedOwnedIdentities": 28,
+    "remainingOwnedIdentities": {},
+    "signalsSent": []
+  },
+  "noSourceDeadlineAssertionOrCompilerChanges": true,
+  "noRetryOrGreenClaim": true,
+  "heavyLaneReturnedToRoot": true,
+  "artifacts": {
+    "doctor.exit-code.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "networks-after.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tini.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "finished-utc.txt": "890a4f30efa2b3294015e9a42d553b403956646deb7518faf02c58ea0a6c2765",
+    "networks-before.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "launcher-result.json": "a08a677db7a5a705b7c3f213e78748f6b10a354aae1d7890e8667e352682615c",
+    "managed.exit-code.txt": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "child.sh": "ab7f42dfd85984ca0b413dafb763560951827577c2ca97b8ad3c037f43eae4b4",
+    "started-utc.txt": "fc4f5b3ff3037eccf8898dacdd97db2c4f82a9b4db4010de5f689fe9ab4fec53",
+    "guard-after.json": "9ee1b435ab564eca03e3ca8f6bf75b538da95195e6e3c8c63afb2f73b8d41042",
+    "selection.json": "87f67250f40072ee8cec7342eabbb19f648bec847f53143f32ca3ca79a278b99",
+    "doctor.log": "90434249220ca1644a1518d12ee9a74552d5d8a7a603e5212d2df4f6c857840d",
+    "containers-before.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "test.exit-code.txt": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "doctor-finished-utc.txt": "2ca423952c0ad39fec9ca99ff574cfbd6bce545c21e80850925b7a3f83197122",
+    "volumes-before.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "invocation.json": "280785f620bc28d04bb2bdea3752a5d172063591bc62bf5508302786579f0417",
+    "supervisor.sh": "55888598a3f7fbf5f364aee5771e863f113b9e0bbb374dc6bc5b8fa94805d853",
+    "test-finished-utc.txt": "ecadcb712556141d7090586a577bf7b621e1ad6639c8935d331bf159fa6525c0",
+    "doctor-started-utc.txt": "62788872d331a74d75cf07e14cfbba4b0d3fbe7ec842dea0f04d3a694095ace5",
+    "source-before.json": "d07fefa6b62ec6f7845d4e06bf28df918721b894040dad3a35aa67a274e650de",
+    "containers-after.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "test.log": "ad4d5c45d858f852a3f489139dc4472663fa7bd143f37218905650e720ec25cc",
+    "managed.log": "6475151c5dba04023d2067207c4f9f918007c44a5544568049abab63d2b59bf8",
+    "volumes-after.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "test-started-utc.txt": "2ca423952c0ad39fec9ca99ff574cfbd6bce545c21e80850925b7a3f83197122"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schema": "targeted-source-content-binding/v1",
+  "publishedCommit": "9130d359c7d781d98ce5ac860a8c948417d1e281",
+  "publishedParent": [
+    "42aba93d50c1b0d05349b40d6d32979f9d6499ef"
+  ],
+  "currentMainBaseAtPublication": "4fa112c6e47c3af5942269adaeb03d96a850c05d",
+  "whole27ActualHeadAtExecution": "42aba93d50c1b0d05349b40d6d32979f9d6499ef",
+  "whole27WorkingTreeWasDirty": true,
+  "whole27RecordedWorkingStatus": " M apps/api/src/recovery/synthetic-recovery.rest.test.ts\n?? apps/api/node_modules\n?? apps/api/src/recovery/recovery-test-container.test.ts\n?? apps/api/test-support/recovery-test-container.ts\n?? apps/web/node_modules\n?? node_modules\n",
+  "trackedInputsRecordedBeforeAndAfter": 1315,
+  "additionalFrozenWipPaths": [
+    "apps/api/src/recovery/recovery-test-container.test.ts",
+    "apps/api/test-support/recovery-test-container.ts"
+  ],
+  "contentEntryCount": 1317,
+  "allRecordedInputContentsMatchPublishedCommit": true,
+  "trackedExecutableModesMatchPublishedCommit": true,
+  "newWipExecutableModeLimit": "The two then-untracked TypeScript inputs have recorded content hashes but no separate mode snapshot; they were imported as TypeScript, not executed as programs. Their later committed modes are100644.",
+  "helpersActualHeadAtExecution": null,
+  "helpersHeadLimit": "Not recorded in the helper result. Do not infer HEAD from its timestamp or the later commit. Its three exact source hashes, argv, UTC and exits are retained.",
+  "recoverySourceBindings": {
+    "apps/api/src/recovery/synthetic-recovery-application.ts": {
+      "sha256": "c0354bb7d4b4be9e28202bc0f99bacbbe94175b43b338a388f9824d8b0b92f30",
+      "mode": "100644",
+      "gitBlob": "6de4283c028f6c43286d8417c04a092d360031ba"
+    },
+    "apps/api/src/recovery/synthetic-recovery.command.ts": {
+      "sha256": "669374ea9dc46f7535ec93e8d55d348bf0619468ce51d0c281dc04cd0499b180",
+      "mode": "100644",
+      "gitBlob": "5f34d65a46fc38dc96492f5d62838c39db0c86fc"
+    },
+    "apps/api/src/recovery/synthetic-recovery.main.ts": {
+      "sha256": "9f934d799bd2e2f05252480c18957da6fa28aff0782662ff687931ae9d55bda3",
+      "mode": "100644",
+      "gitBlob": "0ccab33616421d501a1f0d5e11cb41e8db892620"
+    },
+    "apps/api/src/recovery/synthetic-recovery.rest.test.ts": {
+      "sha256": "f472936910f24da2577e8d5f3bfaffc41fd350fc49f74e43b4256f816ddff007",
+      "mode": "100644",
+      "gitBlob": "cbd9e405d867a547eae69149ccb92d51df72db7b"
+    },
+    "apps/api/test-support/recovery-public-evidence.ts": {
+      "sha256": "f42cdba982227786c9c17b7868e4ae2993d95312a1e549e4243c68c1cbddea25",
+      "mode": "100644",
+      "gitBlob": "551be09acc6460b0e7deb8b52e57265c4019a23a"
+    },
+    "docs/operations/synthetic-recovery.md": {
+      "sha256": "c3c4a53335c06338a7f8b7e38bf775111feeaae20386906d9757e03c29080d46",
+      "mode": "100644",
+      "gitBlob": "058cccf05cdf7a52f2f7d54e661511b2ca4e7b0b"
+    },
+    "apps/api/test-support/recovery-test-container.ts": {
+      "sha256": "c36f10f2776342e1dda5a49b6a9fbca72e664602632070c40b27a83bb93897c9",
+      "mode": "100644",
+      "gitBlob": "7bfb31f6d2184669b68652ea2ba437440b6303fd"
+    },
+    "apps/api/src/recovery/recovery-test-container.test.ts": {
+      "sha256": "b9a336005f83a139eceb7ca9ef33e63921dc48cee5f75d7577d81b2b6cb67a76",
+      "mode": "100644",
+      "gitBlob": "19af0a5c5b4b31011543efd650675b929161224d"
+    }
+  },
+  "configurationAndOwnerBindings": {
+    "apps/api/tsconfig.json": "7abd5098ba2d6f3e45c8cac12eb4bbec91318e400cc05dea1fa781aeaf9515b4",
+    "apps/api/tsconfig.build.json": "87be828fe3bd263e81759af61b6ae1765bef10ffa9d3708865a0e446a18e8c9d",
+    "apps/api/package.json": "c624a7140210771d3ffdd020ab9178f09a6e18534d2c01a64c5bbe1339771921",
+    "package.json": "508a238f7a06a2d57d5faa14ea5e08b1ec7ee6785938dae34e196e6aec30b690",
+    "pnpm-lock.yaml": "c1f000d8c9bf93204844e4807d5dd012d34955913772e489c36193cae56fa347",
+    "scripts/managed-postgres.mjs": "d88ad73abc905bfb59dc85fa2085fac036a547fb4bd12b75fbf8de837e297042",
+    "scripts/agent-doctor.mjs": "93d26471f329f6fb8d586bd8605523fc03c34914d31c699392f14b95c04c1854",
+    "scripts/agent-doctor-system-adapter.mjs": "bafb0a22813b155f823817418c707819d1c0836b3208c8e5cea9c8e408236075",
+    "scripts/process-group.mjs": "ff4702d9b1600a38530193f4b60f9663e536a433651e15b5a33d50b1f9950e58"
+  },
+  "meaning": "This is a later byte-content binding of recorded WIP input evidence to published9130d359. It is NOT a claim that9130d359 was HEAD during execution, nor that a complete integration gate ran on that head."
+}

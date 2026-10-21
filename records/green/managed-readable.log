@@ -1,0 +1,6 @@
+$ pnpm --filter @prisma-prim/api db:migrate
+$ drizzle-kit migrate
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/workspace/worktrees/synthetic-recovery736/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[⣯] applying migrations...[⣟] applying migrations...[⡿] applying migrations...[⢿] applying migrations...[⣻] applying migrations...[⣽] applying migrations...[⣷] applying migrations...[⣯] applying migrations...[⣟] applying migrations...[⡿] applying migrations...[⢿] applying migrations...[⣻] applying migrations...[⣽] applying migrations...[⣷] applying migrations...[⣯] applying migrations...[⣟] applying migrations...[⡿] applying migrations...[⢿] applying migrations...[✓] migrations applied successfully!

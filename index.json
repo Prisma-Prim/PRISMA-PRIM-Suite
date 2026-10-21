@@ -1,0 +1,421 @@
+{
+  "schema": "selected-text-artifact-index/v1",
+  "indexDoesNotHashItself": true,
+  "artifacts": [
+    {
+      "path": "README.md",
+      "bytes": 3496,
+      "sha256": "53d11234c29d6a3628c66d4d11eb601f13c21bd15610e6baac1d8c42d03ac3d4",
+      "origin": "Generated source/proof-only explanation for this packet",
+      "transformation": "Generated concise explanation from retained records and read-only Git content comparison"
+    },
+    {
+      "path": "execution-summary.json",
+      "bytes": 5973,
+      "sha256": "6895158079ad3b22ca0e7dafac4538d0440cce70159cea530131d6bc94c0195b",
+      "origin": "Generated source/proof-only explanation for this packet",
+      "transformation": "Generated from the named retained records; no new runtime execution"
+    },
+    {
+      "path": "packet.json",
+      "bytes": 1034,
+      "sha256": "e1696f773902ed95d2c3e5db1eafd79e956853abb5ee27c0b164ffea883df16b",
+      "origin": "Generated source/proof-only explanation for this packet",
+      "transformation": "Generated from the named retained records; no new runtime execution"
+    },
+    {
+      "path": "records/green/cached-image.exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/cached-image.exit-code.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 2,
+      "originSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "records/green/cached-image.txt",
+      "bytes": 72,
+      "sha256": "559ce0f4a0780147ff9e12269dc974afd5436c7722421882e90c17131d1825c7",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/cached-image.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 72,
+      "originSha256": "559ce0f4a0780147ff9e12269dc974afd5436c7722421882e90c17131d1825c7"
+    },
+    {
+      "path": "records/green/child.sh",
+      "bytes": 992,
+      "sha256": "0dc928d990c604f14e71cc176d65bcf76aa704180704a820b0f01d65f0f00734",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/child.sh",
+      "transformation": "exact byte copy",
+      "originBytes": 992,
+      "originSha256": "0dc928d990c604f14e71cc176d65bcf76aa704180704a820b0f01d65f0f00734"
+    },
+    {
+      "path": "records/green/containers-after.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/containers-after.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 0,
+      "originSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "records/green/containers-before.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/containers-before.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 0,
+      "originSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "records/green/doctor-finished-utc.txt",
+      "bytes": 21,
+      "sha256": "815b1f792214236dc482626d308836e9b59eae0ed6635ce50d8c516c10bbd9d5",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/doctor-finished-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "815b1f792214236dc482626d308836e9b59eae0ed6635ce50d8c516c10bbd9d5"
+    },
+    {
+      "path": "records/green/doctor-started-utc.txt",
+      "bytes": 21,
+      "sha256": "14ebc60ebf01403a95f16a50fc08dad51748471827db8ca989e816b531a2e494",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/doctor-started-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "14ebc60ebf01403a95f16a50fc08dad51748471827db8ca989e816b531a2e494"
+    },
+    {
+      "path": "records/green/doctor.exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/doctor.exit-code.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 2,
+      "originSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "records/green/doctor.log",
+      "bytes": 721,
+      "sha256": "90434249220ca1644a1518d12ee9a74552d5d8a7a603e5212d2df4f6c857840d",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/doctor.log",
+      "transformation": "exact byte copy",
+      "originBytes": 721,
+      "originSha256": "90434249220ca1644a1518d12ee9a74552d5d8a7a603e5212d2df4f6c857840d"
+    },
+    {
+      "path": "records/green/finished-utc.txt",
+      "bytes": 21,
+      "sha256": "c1af4d3477057217ffc737eeda989639a902e93a2686cdcfe0d476f57d885888",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/finished-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "c1af4d3477057217ffc737eeda989639a902e93a2686cdcfe0d476f57d885888"
+    },
+    {
+      "path": "records/green/frozen-source.json",
+      "bytes": 2328,
+      "sha256": "7eb020baa81fdcdb6ebd425f243adcf7318eac28e6bb43b494a2626eca11de19",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/frozen-source.json",
+      "transformation": "exact byte copy",
+      "originBytes": 2328,
+      "originSha256": "7eb020baa81fdcdb6ebd425f243adcf7318eac28e6bb43b494a2626eca11de19"
+    },
+    {
+      "path": "records/green/guard-after.json",
+      "bytes": 152,
+      "sha256": "f96b1cc4d955bcd1552015bd49bc078d6e5f562f6ae152efa9f2d5fdf19583e2",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/guard-after.json",
+      "transformation": "exact byte copy",
+      "originBytes": 152,
+      "originSha256": "f96b1cc4d955bcd1552015bd49bc078d6e5f562f6ae152efa9f2d5fdf19583e2"
+    },
+    {
+      "path": "records/green/guard-before.json",
+      "bytes": 104,
+      "sha256": "d488d4fd3c065a2d4979ca087b69dcf7d62c3305788ecf348c1735990505d678",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/guard-before.json",
+      "transformation": "exact byte copy",
+      "originBytes": 104,
+      "originSha256": "d488d4fd3c065a2d4979ca087b69dcf7d62c3305788ecf348c1735990505d678"
+    },
+    {
+      "path": "records/green/launcher/invocation.json",
+      "bytes": 619,
+      "sha256": "843c747679a0410bd5f443f8b96278e596b5dbcd1315c0de15eace5ccaa9d6c1",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/launcher/invocation.json",
+      "transformation": "exact byte copy",
+      "originBytes": 619,
+      "originSha256": "843c747679a0410bd5f443f8b96278e596b5dbcd1315c0de15eace5ccaa9d6c1"
+    },
+    {
+      "path": "records/green/launcher/result.json",
+      "bytes": 4158,
+      "sha256": "ab68ababb9436f0a6a98d0b29bece4fbc916240de03de26f66e2fa5437cfb2ac",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/launcher/result.json",
+      "transformation": "exact byte copy",
+      "originBytes": 4158,
+      "originSha256": "ab68ababb9436f0a6a98d0b29bece4fbc916240de03de26f66e2fa5437cfb2ac"
+    },
+    {
+      "path": "records/green/launcher/run.py",
+      "bytes": 4314,
+      "sha256": "912678fd466f1999774d26344d5d9954d7682e170ea35c6bb1427b876d2ceee5",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/launcher/run.py",
+      "transformation": "exact byte copy",
+      "originBytes": 4314,
+      "originSha256": "912678fd466f1999774d26344d5d9954d7682e170ea35c6bb1427b876d2ceee5"
+    },
+    {
+      "path": "records/green/launcher/source-after.json",
+      "bytes": 231468,
+      "sha256": "8a11bc10beffeba15f06cba7accd805fd7f7b82a5cc912e707b0ef156043f162",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/launcher/source-after.json",
+      "transformation": "exact byte copy",
+      "originBytes": 231468,
+      "originSha256": "8a11bc10beffeba15f06cba7accd805fd7f7b82a5cc912e707b0ef156043f162"
+    },
+    {
+      "path": "records/green/launcher/source-before.json",
+      "bytes": 231468,
+      "sha256": "8a11bc10beffeba15f06cba7accd805fd7f7b82a5cc912e707b0ef156043f162",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/launcher/source-before.json",
+      "transformation": "exact byte copy",
+      "originBytes": 231468,
+      "originSha256": "8a11bc10beffeba15f06cba7accd805fd7f7b82a5cc912e707b0ef156043f162"
+    },
+    {
+      "path": "records/green/managed-readable.log",
+      "bytes": 827,
+      "sha256": "e16616a9858274c46c2a54286dc1f16a275b2f01edb032f5a6bc0caa86bb9c56",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/managed.log",
+      "transformation": "ANSI CSI sequences removed; carriage returns rendered as newlines; no substantive log line redacted",
+      "originBytes": 979,
+      "originSha256": "299ae26f05aa2196c96c30d1f604eef956b93d502d8198990d72c958855b87c7"
+    },
+    {
+      "path": "records/green/managed.exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/managed.exit-code.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 2,
+      "originSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "records/green/networks-after.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/networks-after.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 0,
+      "originSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "records/green/networks-before.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/networks-before.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 0,
+      "originSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "records/green/started-utc.txt",
+      "bytes": 21,
+      "sha256": "c8725a5b8125eed44e8c48617c74b13e2303f0020a44db087c1bed615213912e",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/started-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "c8725a5b8125eed44e8c48617c74b13e2303f0020a44db087c1bed615213912e"
+    },
+    {
+      "path": "records/green/supervisor.sh",
+      "bytes": 3870,
+      "sha256": "d065105a3b4a1e2325bfd517f480ed4c719e1bd7a43dcfb4506d93c33e59a3d4",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/supervisor.sh",
+      "transformation": "exact byte copy",
+      "originBytes": 3870,
+      "originSha256": "d065105a3b4a1e2325bfd517f480ed4c719e1bd7a43dcfb4506d93c33e59a3d4"
+    },
+    {
+      "path": "records/green/test-finished-utc.txt",
+      "bytes": 21,
+      "sha256": "a9a8f91b0f7b22aaab4087f723dafe892bfb8ed6f31fe7164e25b6585ce00ef1",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/test-finished-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "a9a8f91b0f7b22aaab4087f723dafe892bfb8ed6f31fe7164e25b6585ce00ef1"
+    },
+    {
+      "path": "records/green/test-started-utc.txt",
+      "bytes": 21,
+      "sha256": "815b1f792214236dc482626d308836e9b59eae0ed6635ce50d8c516c10bbd9d5",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/test-started-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "815b1f792214236dc482626d308836e9b59eae0ed6635ce50d8c516c10bbd9d5"
+    },
+    {
+      "path": "records/green/test.exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/test.exit-code.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 2,
+      "originSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "records/green/test.log",
+      "bytes": 617,
+      "sha256": "cda45ae9a3d4ffe8b65e4f6f0a5dedd4d9284d5734a883cd5e33e76d3e0bf9dc",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/test.log",
+      "transformation": "exact byte copy",
+      "originBytes": 617,
+      "originSha256": "cda45ae9a3d4ffe8b65e4f6f0a5dedd4d9284d5734a883cd5e33e76d3e0bf9dc"
+    },
+    {
+      "path": "records/green/types-finished-utc.txt",
+      "bytes": 21,
+      "sha256": "3de781b6c54f03d7fb0b31712652139fd8fc7933292284b8dac964903878f906",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/types-finished-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "3de781b6c54f03d7fb0b31712652139fd8fc7933292284b8dac964903878f906"
+    },
+    {
+      "path": "records/green/types-started-utc.txt",
+      "bytes": 21,
+      "sha256": "c8725a5b8125eed44e8c48617c74b13e2303f0020a44db087c1bed615213912e",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/types-started-utc.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 21,
+      "originSha256": "c8725a5b8125eed44e8c48617c74b13e2303f0020a44db087c1bed615213912e"
+    },
+    {
+      "path": "records/green/types.exit-code.txt",
+      "bytes": 2,
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/types.exit-code.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 2,
+      "originSha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "records/green/types.log",
+      "bytes": 15,
+      "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/types.log",
+      "transformation": "exact byte copy",
+      "originBytes": 15,
+      "originSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92"
+    },
+    {
+      "path": "records/green/volumes-after.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/volumes-after.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 0,
+      "originSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "records/green/volumes-before.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/volumes-before.txt",
+      "transformation": "exact byte copy",
+      "originBytes": 0,
+      "originSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "records/helpers/00.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/selection-qualification-01/00.log",
+      "transformation": "exact byte copy",
+      "originBytes": 0,
+      "originSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "records/helpers/01.log",
+      "bytes": 612,
+      "sha256": "af1cec8a0590d3616e0288af65d5021a2b602e57efb294437a5de18325c9bfa7",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/selection-qualification-01/01.log",
+      "transformation": "exact byte copy",
+      "originBytes": 612,
+      "originSha256": "af1cec8a0590d3616e0288af65d5021a2b602e57efb294437a5de18325c9bfa7"
+    },
+    {
+      "path": "records/helpers/result.json",
+      "bytes": 1525,
+      "sha256": "ed7e279c4847f6ed642bb33aa4328d15eb49437eff5d002a765b2e373574d3f3",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/selection-qualification-01/result.json",
+      "transformation": "exact byte copy",
+      "originBytes": 1525,
+      "originSha256": "ed7e279c4847f6ed642bb33aa4328d15eb49437eff5d002a765b2e373574d3f3"
+    },
+    {
+      "path": "records/red/doctor.log",
+      "bytes": 721,
+      "sha256": "90434249220ca1644a1518d12ee9a74552d5d8a7a603e5212d2df4f6c857840d",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-red-01/doctor.log",
+      "transformation": "exact byte copy",
+      "originBytes": 721,
+      "originSha256": "90434249220ca1644a1518d12ee9a74552d5d8a7a603e5212d2df4f6c857840d"
+    },
+    {
+      "path": "records/red/guard-after.json",
+      "bytes": 107,
+      "sha256": "9ee1b435ab564eca03e3ca8f6bf75b538da95195e6e3c8c63afb2f73b8d41042",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-red-01/guard-after.json",
+      "transformation": "exact byte copy",
+      "originBytes": 107,
+      "originSha256": "9ee1b435ab564eca03e3ca8f6bf75b538da95195e6e3c8c63afb2f73b8d41042"
+    },
+    {
+      "path": "records/red/invocation.json",
+      "bytes": 395,
+      "sha256": "280785f620bc28d04bb2bdea3752a5d172063591bc62bf5508302786579f0417",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-red-01/invocation.json",
+      "transformation": "exact byte copy",
+      "originBytes": 395,
+      "originSha256": "280785f620bc28d04bb2bdea3752a5d172063591bc62bf5508302786579f0417"
+    },
+    {
+      "path": "records/red/launcher-result.json",
+      "bytes": 904,
+      "sha256": "a08a677db7a5a705b7c3f213e78748f6b10a354aae1d7890e8667e352682615c",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-red-01/launcher-result.json",
+      "transformation": "exact byte copy",
+      "originBytes": 904,
+      "originSha256": "a08a677db7a5a705b7c3f213e78748f6b10a354aae1d7890e8667e352682615c"
+    },
+    {
+      "path": "records/red/result.json",
+      "bytes": 4132,
+      "sha256": "69a5351360a823650e06d35cd87b7fda6520f581d1b54b361f2cffacedd43c60",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-red-01/result.json",
+      "transformation": "exact byte copy",
+      "originBytes": 4132,
+      "originSha256": "69a5351360a823650e06d35cd87b7fda6520f581d1b54b361f2cffacedd43c60"
+    },
+    {
+      "path": "records/red/test.log",
+      "bytes": 1449,
+      "sha256": "ad4d5c45d858f852a3f489139dc4472663fa7bd143f37218905650e720ec25cc",
+      "origin": "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-red-01/test.log",
+      "transformation": "exact byte copy",
+      "originBytes": 1449,
+      "originSha256": "ad4d5c45d858f852a3f489139dc4472663fa7bd143f37218905650e720ec25cc"
+    },
+    {
+      "path": "source-binding.json",
+      "bytes": 4524,
+      "sha256": "6cd0c346ae1ed19a0af91afdd157b87af911e7702a71742c9801a3c0d12e3f76",
+      "origin": "Generated source/proof-only explanation for this packet",
+      "transformation": "Generated from the named retained records; no new runtime execution"
+    }
+  ]
+}

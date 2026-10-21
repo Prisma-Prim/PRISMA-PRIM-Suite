@@ -1,0 +1,25 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/worktrees/synthetic-recovery736/apps/api
+
+ ❯ src/recovery/synthetic-recovery.rest.test.ts (27 tests | 27 skipped) 15908ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/recovery/synthetic-recovery.rest.test.ts > retained synthetic recovery through the compiled CLI
+Error: Command failed: docker --host=unix:///var/run/docker.sock exec ci-postgres pg_dump --version
+Error response from daemon: No such container: ci-postgres
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  27 skipped (27)
+   Start at  05:37:20
+   Duration  21.62s (transform 3.17s, setup 0ms, import 5.50s, tests 15.91s, environment 0ms)
+
+undefined
+/workspace/worktrees/synthetic-recovery736/apps/api:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/recovery/synthetic-recovery.rest.test.ts --no-file-parallelism '--maxWorkers=1' --testNamePattern 'binds Workspace admission and complete dumping to one held snapshot during a concurrent change'

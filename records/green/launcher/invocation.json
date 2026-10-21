@@ -1,0 +1,17 @@
+{
+  "schema": "managed-recovery-whole27-correction/v1",
+  "startedAt": "2026-10-21T06:31:04.175469+00:00",
+  "cwd": "/workspace/worktrees/synthetic-recovery736",
+  "argv": [
+    "/usr/local/bin/docker-init",
+    "-s",
+    "--",
+    "bash",
+    "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/supervisor.sh"
+  ],
+  "expectedQualification": "Strict API types then unchanged complete27 recovery tests",
+  "tiniSha256": "8cc70470bb4b21c25ddca7108c5820fa14d5019b5f1ec7e94bfca65de2479990",
+  "sourceFreeze": "source-before.json",
+  "full16Qualified": false,
+  "tiniPid": 184102
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "bounded-targeted-local-evidence-packet/v1",
+  "preparedAt": "2026-10-21T08:42:22.463789+00:00",
+  "pr": 752,
+  "publishedHead": "9130d359c7d781d98ce5ac860a8c948417d1e281",
+  "plannedUniqueParentlessRef": "local-evidence/pr-752/9130d359-targeted-20261021",
+  "published": false,
+  "retrieved": false,
+  "fullIntegrationGateQualified": false,
+  "limits": {
+    "maximumRunBytes": 20971520,
+    "maximumBlobBytes": 5242880
+  },
+  "safetyReview": {
+    "selectedLogsAndScriptsRead": true,
+    "highConfidenceCredentialMarkerScan": "No matches",
+    "utf8TextOnly": true,
+    "noDatabaseArchiveKeyCiphertextPdfOrRealDataIncluded": true,
+    "selectionIsNotExhaustivePIIScanning": true
+  },
+  "provenanceLimits": [
+    "Helper-run HEAD not recorded",
+    "Whole27 ran on42aba+WIP, not HEAD913",
+    "Two untracked TypeScript input modes not separately retained",
+    "Exact random private compiler output-directory name not retained",
+    "This targeted packet does not establish full integration or merge eligibility"
+  ]
+}

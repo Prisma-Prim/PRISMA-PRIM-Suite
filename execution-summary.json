@@ -1,0 +1,158 @@
+{
+  "schema": "targeted-execution-summary/v1",
+  "scope": "Recovery tool-container selection correction only",
+  "isCompleteMergeGate": false,
+  "selfReportedLocalEvidence": true,
+  "independentGitHubRunnerAttestation": false,
+  "whole27": {
+    "headAtExecution": "42aba93d50c1b0d05349b40d6d32979f9d6499ef",
+    "sourceState": "Recorded tracked tree plus three WIP test changes, later committed as9130d359",
+    "startedUtc": "2026-10-21T06:31:04.175469+00:00",
+    "finishedUtc": "2026-10-21T06:34:47.006541+00:00",
+    "durationSeconds": 222.8291448580003,
+    "tiniArgv": [
+      "/usr/local/bin/docker-init",
+      "-s",
+      "--",
+      "bash",
+      "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/supervisor.sh"
+    ],
+    "cwd": "/workspace/worktrees/synthetic-recovery736",
+    "publicTestArgv": [
+      "pnpm",
+      "--filter",
+      "@prisma-prim/api",
+      "exec",
+      "vitest",
+      "run",
+      "src/recovery/synthetic-recovery.rest.test.ts",
+      "--no-file-parallelism",
+      "--maxWorkers=1"
+    ],
+    "strictTypesArgv": [
+      "pnpm",
+      "--filter",
+      "@prisma-prim/api",
+      "typecheck"
+    ],
+    "resolvedTypesCommand": [
+      "tsc",
+      "--noEmit"
+    ],
+    "postgresLifecycleArgv": [
+      "node",
+      "scripts/managed-postgres.mjs",
+      "--",
+      "bash",
+      "/workspace/work/synthetic-recovery736/delivery-resume-20261021/managed-green-preparation-01/child.sh"
+    ],
+    "doctorArgv": [
+      "node",
+      "scripts/agent-doctor.mjs",
+      "--profile",
+      "web-postgres"
+    ],
+    "publicEnvironment": {
+      "CI": "true",
+      "RECOVERY_TEST_CONTAINER": "absent",
+      "pnpm_config_verify_deps_before_run": "false",
+      "runtime": "Existing /workspace/work/environment/runtime.sh sourced from checkout root; no environment dump captured"
+    },
+    "caseAndAssertionBudgets": "Unchanged; existing beforeAll120000ms, private compiler90000ms and original per-case/CLI/assertion limits retained",
+    "privateFixtureCompiler": "Existing source-defined node tsc -p tsconfig.build.json --incremental false --declaration false --sourceMap false --noCheck --outDir <invocation-owned compiled root>; JS emission only, separate strict types passed. Exact random temporary output-directory spelling was not retained.",
+    "result": {
+      "testFilesPassed": 1,
+      "testsPassed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "vitestSeconds": 191.5,
+      "typesExit": 0,
+      "doctorExit": 0,
+      "testExit": 0,
+      "managedLifecycleExit": 0,
+      "tiniExit": 0,
+      "launcherDisposition": "passed"
+    },
+    "observedTools": {
+      "node": "v24.19.0",
+      "pnpm": "11.20.0",
+      "vitest": "4.1.10",
+      "postgresServerVersionNum": "170011",
+      "tiniSha256": "8cc70470bb4b21c25ddca7108c5820fa14d5019b5f1ec7e94bfca65de2479990",
+      "cachedPostgresImageId": "sha256:79bd7c99e923138f136f8009d6bffa66e21e9d4fda5c0c561b00fc9c90cfe537"
+    },
+    "cleanup": {
+      "trackedInputsUnchanged": true,
+      "eightFrozenSourcesAndNineConfigsOwnersUnchanged": true,
+      "managedResourceInventoriesBeforeAfterIdentical": true,
+      "observedOwnedPidStartIdentities": 119,
+      "remaining": {},
+      "includingZombies": true,
+      "signalsSent": false,
+      "PID1OrUnrelatedProcessesTouched": false
+    }
+  },
+  "helpers": {
+    "headAtExecution": "not recorded",
+    "sourceHashes": {
+      "apps/api/src/recovery/synthetic-recovery.rest.test.ts": "f472936910f24da2577e8d5f3bfaffc41fd350fc49f74e43b4256f816ddff007",
+      "apps/api/test-support/recovery-test-container.ts": "c36f10f2776342e1dda5a49b6a9fbca72e664602632070c40b27a83bb93897c9",
+      "apps/api/src/recovery/recovery-test-container.test.ts": "b9a336005f83a139eceb7ca9ef33e63921dc48cee5f75d7577d81b2b6cb67a76"
+    },
+    "steps": [
+      {
+        "argv": [
+          "pnpm",
+          "exec",
+          "eslint",
+          "apps/api/src/recovery/synthetic-recovery.rest.test.ts",
+          "apps/api/test-support/recovery-test-container.ts",
+          "apps/api/src/recovery/recovery-test-container.test.ts"
+        ],
+        "startedAt": "2026-10-21T06:09:51.527542+00:00",
+        "exitCode": 0,
+        "finishedAt": "2026-10-21T06:10:01.032877+00:00"
+      },
+      {
+        "argv": [
+          "/usr/local/bin/docker-init",
+          "-s",
+          "--",
+          "pnpm",
+          "--filter",
+          "@prisma-prim/api",
+          "exec",
+          "vitest",
+          "run",
+          "src/recovery/recovery-test-container.test.ts",
+          "--no-file-parallelism",
+          "--maxWorkers=1"
+        ],
+        "startedAt": "2026-10-21T06:10:01.032975+00:00",
+        "exitCode": 0,
+        "finishedAt": "2026-10-21T06:10:05.832433+00:00"
+      }
+    ],
+    "testsPassed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "eslintThreeFilesExit": 0,
+    "sourceUnchanged": true,
+    "scope": "Pure test-boundary selection contracts; no PostgreSQL or full gate"
+  },
+  "red": {
+    "head": "885cd4e465147bfab2fb136dddab0b02143d4794",
+    "cause": "beforeAll addressed ci-postgres rather than the managed disposable target; Docker returned No such container: ci-postgres",
+    "doctor": "9/9 PASS",
+    "suiteFailed": true,
+    "selectedCaseAssertionsReached": false,
+    "vitestReportedSkipped": 27,
+    "note": "Only the first snapshot case was selected. Suite setup failed before its assertions, so no27-case behavioral failure is claimed."
+  },
+  "remainingBeforeMerge": [
+    "Complete current integration verification, including packaging",
+    "Required final automated review/disposition on the final head",
+    "Publication and successful retrieval of this exact evidence packet do not substitute for missing integration families"
+  ],
+  "earlierHistory": "Earlier27PASS442.85s and separate wrapper1 anomaly remain disclosed in PR752 and retained locally; this packet presents the new original coherent managed-target run, not a rewrite or rerun of the old log."
+}
