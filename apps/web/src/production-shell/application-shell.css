@@ -638,6 +638,118 @@
   margin: 0;
 }
 
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  label {
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  label
+  span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  input[type='checkbox'] {
+  appearance: none;
+  display: grid;
+  place-content: center;
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--shell-muted);
+  border-radius: 4px;
+  color: #fff;
+  background: var(--shell-surface);
+  cursor: pointer;
+}
+
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  input[type='checkbox']::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.35rem;
+  border: solid currentColor;
+  border-width: 0 0 2px 2px;
+  transform: translateY(-0.1rem) rotate(-45deg) scale(0);
+}
+
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  input[type='checkbox']:checked {
+  border-color: var(--shell-blue);
+  background: var(--shell-blue);
+}
+
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  input[type='checkbox']:checked::before {
+  transform: translateY(-0.1rem) rotate(-45deg) scale(1);
+}
+
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--shell-focus);
+  outline-offset: 3px;
+}
+
+.prisme-shell
+  :is(.client-registration, .client-correction)
+  .client-contact-decision-roles
+  input[type='checkbox']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (forced-colors: active) {
+  .prisme-shell
+    :is(.client-registration, .client-correction)
+    .client-contact-decision-roles
+    input[type='checkbox'],
+  .prisme-shell
+    :is(.client-registration, .client-correction)
+    .client-contact-decision-roles
+    input[type='checkbox']:checked {
+    appearance: auto;
+    border: revert;
+    color: revert;
+    background: revert;
+  }
+
+  .prisme-shell
+    :is(.client-registration, .client-correction)
+    .client-contact-decision-roles
+    input[type='checkbox']::before {
+    content: none;
+  }
+
+  .prisme-shell
+    :is(.client-registration, .client-correction)
+    .client-contact-decision-roles
+    input[type='checkbox']:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
 .company-registration-denied {
   border-color: #cad7df;
   background: #edf3f6;
