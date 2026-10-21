@@ -63,6 +63,16 @@ Authorized users can create, find, view and update one shared Client dossier, ma
 
 Issue #141 fixes the first slice's complete shared interface to the server-assigned Client Account id and one required display name. Registration atomically establishes the server-validated active Company's relationship. Workspace search returns only that identity and whether it is already related to the active Company; a deliberate attach action reuses the same Client Account in another Company. Names never trigger an automatic merge.
 
+The existing explicit name search compares NFC-equivalent Romanian spelling
+with or without `ă/â`, `î`, `ș/ş` and `ț/ţ` (#758), preserving its case-insensitive
+literal substring semantics, original trimmed-input validation, display-name/ID
+ordering and twenty-result bound. It returns only the existing authorized minimal
+identities: Workspace lookup remains distinct from Company-reader scope. Original
+names and identifiers are never rewritten, and other letters, including Russian
+`й/и` and French `é/e`, remain distinct. This convenience changes no permission,
+registration, duplicate predicate, union, attachment or stored identity, and does
+not introduce global or historical search.
+
 The delivered #146 / PR #147 enriched slice approved and implemented these shared general fields:
 
 - Client name;

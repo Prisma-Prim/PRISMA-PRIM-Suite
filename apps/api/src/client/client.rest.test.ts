@@ -72,20 +72,20 @@ describeWithPostgres('Client REST API', () => {
         'content-type': 'application/json',
         'idempotency-key': 'register-exemplu-client',
       },
-      body: JSON.stringify({ displayName: 'Exemplu Client SRL' }),
+      body: JSON.stringify({ displayName: 'Știință Exemplu Client SRL' }),
     });
     const created = await createResponse.json();
 
     expect(createResponse.status).toBe(201);
     expect(created).toEqual({
       id: expect.any(String),
-      displayName: 'Exemplu Client SRL',
+      displayName: 'Știință Exemplu Client SRL',
       relatedToActiveCompany: true,
     });
     await expect(listClients(companyA.id)).resolves.toEqual([created]);
 
     const searchBefore = await fetch(
-      `${origin}/api/clients/search?query=exemplu`,
+      `${origin}/api/clients/search?query=stiinta`,
       { headers: ownerHeaders(companyB.id) },
     );
     expect(searchBefore.status).toBe(200);
@@ -177,14 +177,182 @@ describeWithPostgres('Client REST API', () => {
     ]);
   });
 
+  it('finds an existing Client by plain Romanian spelling without rewriting its identity', async () => {
+    const company: unknown = await registerCompany(
+      'Romanian Search Company',
+      'romanian-search-company',
+    );
+    if (!isRecord(company) || typeof company.id !== 'string')
+      throw new Error('Expected the registered search Company identity.');
+    const created: unknown = await createClient(
+      company.id,
+      'Știință Țară',
+      'romanian-search-client',
+    );
+    expect(created).toEqual({
+      id: expect.any(String),
+      displayName: 'Știință Țară',
+      relatedToActiveCompany: true,
+    });
+    const response = await fetch(
+      `${origin}/api/clients/search?query=stiinta%20tara`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(response.status).toBe(200);
+    const found: unknown = await response.json();
+    expect(found).toEqual([created]);
+    await expect(listClients(company.id)).resolves.toEqual([created]);
+  });
+
+  it.each([
+    {
+      spelling: 'upper-case Romanian letters',
+      displayName: 'ĂÂÎȘŞȚŢ Client',
+      query: 'aaisstt client',
+    },
+    {
+      spelling: 'lower-case Romanian letters',
+      displayName: 'ăâîșşțţ Client',
+      query: 'AAISSTT CLIENT',
+    },
+    {
+      spelling: 'Romanian query against plain spelling',
+      displayName: 'AAISSTT Client',
+      query: 'ăâîșşțţ client',
+    },
+    {
+      spelling: 'comma and cedilla variants',
+      displayName: 'Ştiinţă Client',
+      query: 'știință client',
+    },
+    {
+      spelling: 'decomposed stored spelling',
+      displayName: 'ĂÂÎȘŞȚŢ Client'.normalize('NFD'),
+      query: 'ăâîșşțţ client',
+    },
+    {
+      spelling: 'decomposed query',
+      displayName: 'ĂÂÎȘŞȚŢ Client',
+      query: 'ăâîșşțţ client'.normalize('NFD'),
+    },
+  ])(
+    'finds the same literal identity with $spelling',
+    async ({ displayName, query }) => {
+      const companyId = await registerSearchCompany();
+      const created: unknown = await createClient(
+        companyId,
+        displayName,
+        'romanian-variant-client',
+      );
+      expect(created).toEqual({
+        id: expect.any(String),
+        displayName,
+        relatedToActiveCompany: true,
+      });
+      const response = await fetch(
+        `${origin}/api/clients/search?query=${encodeURIComponent(query)}`,
+        { headers: ownerHeaders(companyId) },
+      );
+      expect(response.status).toBe(200);
+      const found: unknown = await response.json();
+      expect(found).toEqual([created]);
+    },
+  );
+
+  it.each([
+    { displayName: 'й', query: 'и' },
+    { displayName: 'é', query: 'e' },
+  ])(
+    'keeps $displayName distinct from $query in name search',
+    async ({ displayName, query }) => {
+      const companyId = await registerSearchCompany();
+      await createClient(companyId, displayName, 'distinct-letter-client');
+      const response = await fetch(
+        `${origin}/api/clients/search?query=${encodeURIComponent(query)}`,
+        { headers: ownerHeaders(companyId) },
+      );
+      expect(response.status).toBe(200);
+      const found: unknown = await response.json();
+      expect(found).toEqual([]);
+    },
+  );
+
+  it.each([
+    { literal: '%', alternative: 'Other' },
+    { literal: '_', alternative: 'X' },
+    { literal: '\\', alternative: '' },
+  ])(
+    'keeps $literal literal while matching Romanian names',
+    async ({ literal, alternative }) => {
+      const companyId = await registerSearchCompany();
+      const displayName = `Țară ${literal} Exact`;
+      const created: unknown = await createClient(
+        companyId,
+        displayName,
+        'literal-search-client',
+      );
+      await createClient(
+        companyId,
+        `Țară ${alternative} Exact`,
+        'literal-search-decoy',
+      );
+      const response = await fetch(
+        `${origin}/api/clients/search?query=${encodeURIComponent(`tara ${literal}`)}`,
+        { headers: ownerHeaders(companyId) },
+      );
+      expect(response.status).toBe(200);
+      const found: unknown = await response.json();
+      expect(found).toEqual([created]);
+    },
+  );
+
+  it.each([
+    { boundary: 'empty input', query: '', status: 400 },
+    { boundary: 'blank input', query: '   ', status: 400 },
+    { boundary: '201 characters', query: 'a'.repeat(201), status: 400 },
+    {
+      boundary: '202 decomposed characters before normalization',
+      query: 'ă'.normalize('NFD').repeat(101),
+      status: 400,
+    },
+    {
+      boundary: '200 decomposed characters',
+      query: 'ă'.normalize('NFD').repeat(100),
+      status: 200,
+    },
+    {
+      boundary: '200 trimmed characters with surrounding whitespace',
+      query: `  ${'ă'.repeat(200)}  `,
+      status: 200,
+    },
+  ])('preserves search validation for $boundary', async ({ query, status }) => {
+    const companyId = await registerSearchCompany();
+    const response = await fetch(
+      `${origin}/api/clients/search?query=${encodeURIComponent(query)}`,
+      { headers: ownerHeaders(companyId) },
+    );
+    expect(response.status).toBe(status);
+    const found: unknown = await response.json();
+    if (status === 200) expect(found).toEqual([]);
+    else
+      expect(found).toEqual({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: query.trim()
+          ? 'Client search query is too long.'
+          : 'Client search query is required.',
+      });
+  });
+
   it('orders active-Company Clients deterministically and bounds Workspace search', async () => {
     const company = await registerCompany('PRISMA-PRIM', 'ordered-company');
     const displayNames = [
       ...Array.from(
         { length: 21 },
-        (_, index) => `Bounded Client ${String(index).padStart(2, '0')}`,
+        (_, index) =>
+          `Știință Bounded Client ${String(index).padStart(2, '0')}`,
       ),
-      'Bounded Client 05',
+      'Știință Bounded Client 05',
     ];
     const created = await Promise.all(
       displayNames.map((displayName, index) =>
@@ -206,6 +374,13 @@ describeWithPostgres('Client REST API', () => {
     );
     expect(searchResponse.status).toBe(200);
     await expect(searchResponse.json()).resolves.toEqual(ordered.slice(0, 20));
+    const romanianSearch = await fetch(
+      `${origin}/api/clients/search?query=sTiInTa`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(romanianSearch.status).toBe(200);
+    const found: unknown = await romanianSearch.json();
+    expect(found).toEqual(ordered.slice(0, 20));
   });
 
   it('replays registration safely and rejects an idempotency key with changed intent', async () => {
@@ -496,7 +671,7 @@ describeWithPostgres('Client REST API', () => {
     const company = await registerCompany('PRISMA-PRIM', 'denial-company');
     const created = await createClient(
       company.id,
-      'Owner Client',
+      'Știință Owner Client',
       'owner-client',
     );
     const member = await fetch(`${origin}/api/access/current-actor`, {
@@ -516,7 +691,7 @@ describeWithPostgres('Client REST API', () => {
 
     const responses = await Promise.all([
       fetch(`${origin}/api/clients`, { headers: deniedHeaders }),
-      fetch(`${origin}/api/clients/search?query=Owner`, {
+      fetch(`${origin}/api/clients/search?query=stiinta`, {
         headers: deniedHeaders,
       }),
       fetch(`${origin}/api/clients`, {
@@ -567,6 +742,11 @@ describeWithPostgres('Client REST API', () => {
       headers: ownerHeaders(company.id),
     });
     expect(inactiveCompany.status).toBe(403);
+    const inactiveSearch = await fetch(
+      `${origin}/api/clients/search?query=tara`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(inactiveSearch.status).toBe(403);
     await pool.query(`UPDATE companies SET status = 'active' WHERE id = $1`, [
       company.id,
     ]);
@@ -594,10 +774,18 @@ describeWithPostgres('Client REST API', () => {
         id, workspace_id, display_name, created_by_internal_user_id,
         created_by_workspace_membership_id
       )
-      SELECT '${foreignClientId}', foreign_membership.workspace_id, 'Hidden Client',
+      SELECT '${foreignClientId}', foreign_membership.workspace_id, 'Țară Hidden Client',
         foreign_membership.internal_user_id, foreign_membership.id
       FROM foreign_membership
     `);
+
+    const foreignSearch = await fetch(
+      `${origin}/api/clients/search?query=tara`,
+      { headers: ownerHeaders(company.id) },
+    );
+    expect(foreignSearch.status).toBe(200);
+    const foreignResults: unknown = await foreignSearch.json();
+    expect(foreignResults).toEqual([]);
 
     const response = await fetch(
       `${origin}/api/clients/${foreignClientId}/active-company-relationship`,
@@ -606,57 +794,60 @@ describeWithPostgres('Client REST API', () => {
     expect(response.status).toBe(404);
     const body = await response.text();
     expect(body).not.toContain(foreignClientId);
-    expect(body).not.toContain('Hidden Client');
+    expect(body).not.toContain('Țară Hidden Client');
   });
 
-  it('keeps archived Client fixtures and relationships non-visible and non-attachable', async () => {
-    const companyA = await registerCompany('PRISMA-PRIM', 'archived-a');
-    const companyB = await registerCompany('BIC', 'archived-b');
-    const client = await createClient(
-      companyA.id,
-      'Archived Fixture Client',
-      'archived-client',
-    );
-    await pool.query(
-      `UPDATE client_company_relationships
+  it.each(['archived', 'superseded'])(
+    'keeps %s Client fixtures and archived relationships non-visible and non-attachable',
+    async (status) => {
+      const companyA = await registerCompany('PRISMA-PRIM', 'archived-a');
+      const companyB = await registerCompany('BIC', 'archived-b');
+      const client = await createClient(
+        companyA.id,
+        'Știință Archived Fixture Client',
+        'archived-client',
+      );
+      await pool.query(
+        `UPDATE client_company_relationships
        SET status = 'archived'
        WHERE client_account_id = $1 AND company_id = $2`,
-      [client.id, companyA.id],
-    );
+        [client.id, companyA.id],
+      );
 
-    await expect(listClients(companyA.id)).resolves.toEqual([]);
-    const archivedRelationshipSearch = await fetch(
-      `${origin}/api/clients/search?query=Archived`,
-      { headers: ownerHeaders(companyA.id) },
-    );
-    await expect(archivedRelationshipSearch.json()).resolves.toEqual([
-      { ...client, relatedToActiveCompany: false },
-    ]);
-    const archivedRelationshipAttach = await fetch(
-      `${origin}/api/clients/${client.id}/active-company-relationship`,
-      { method: 'PUT', headers: ownerHeaders(companyA.id) },
-    );
-    expect(archivedRelationshipAttach.status).toBe(404);
-    expect(await archivedRelationshipAttach.text()).not.toContain(client.id);
+      await expect(listClients(companyA.id)).resolves.toEqual([]);
+      const archivedRelationshipSearch = await fetch(
+        `${origin}/api/clients/search?query=stiinta`,
+        { headers: ownerHeaders(companyA.id) },
+      );
+      await expect(archivedRelationshipSearch.json()).resolves.toEqual([
+        { ...client, relatedToActiveCompany: false },
+      ]);
+      const archivedRelationshipAttach = await fetch(
+        `${origin}/api/clients/${client.id}/active-company-relationship`,
+        { method: 'PUT', headers: ownerHeaders(companyA.id) },
+      );
+      expect(archivedRelationshipAttach.status).toBe(404);
+      expect(await archivedRelationshipAttach.text()).not.toContain(client.id);
 
-    await pool.query(
-      `UPDATE client_accounts SET status = 'archived' WHERE id = $1`,
-      [client.id],
-    );
-    const archivedClientSearch = await fetch(
-      `${origin}/api/clients/search?query=Archived`,
-      { headers: ownerHeaders(companyB.id) },
-    );
-    await expect(archivedClientSearch.json()).resolves.toEqual([]);
-    const archivedClientAttach = await fetch(
-      `${origin}/api/clients/${client.id}/active-company-relationship`,
-      { method: 'PUT', headers: ownerHeaders(companyB.id) },
-    );
-    expect(archivedClientAttach.status).toBe(404);
-    const body = await archivedClientAttach.text();
-    expect(body).not.toContain(client.id);
-    expect(body).not.toContain(client.displayName);
-  });
+      await pool.query(`UPDATE client_accounts SET status = $2 WHERE id = $1`, [
+        client.id,
+        status,
+      ]);
+      const archivedClientSearch = await fetch(
+        `${origin}/api/clients/search?query=stiinta`,
+        { headers: ownerHeaders(companyB.id) },
+      );
+      await expect(archivedClientSearch.json()).resolves.toEqual([]);
+      const archivedClientAttach = await fetch(
+        `${origin}/api/clients/${client.id}/active-company-relationship`,
+        { method: 'PUT', headers: ownerHeaders(companyB.id) },
+      );
+      expect(archivedClientAttach.status).toBe(404);
+      const body = await archivedClientAttach.text();
+      expect(body).not.toContain(client.id);
+      expect(body).not.toContain(client.displayName);
+    },
+  );
 
   it('rejects cross-Workspace Client relationships and Activity Log targets at the database boundary', async () => {
     const company = await registerCompany('PRISMA-PRIM', 'constraint-company');
@@ -913,7 +1104,7 @@ describeWithPostgres('Client REST API', () => {
         'idempotency-key': 'director-enriched-create',
       },
       body: JSON.stringify({
-        displayName: 'Director Client SRL',
+        displayName: 'Știință Director Client SRL',
         taxId: '1003600123456',
         address: 'Str. Independenței 10, Chișinău',
         telephone: '+373 22 000 000',
@@ -967,15 +1158,16 @@ describeWithPostgres('Client REST API', () => {
     const otherCompany = await registerCompany('BIC', 'director-other-company');
     const foreignClient = await createClient(
       otherCompany.id,
-      'Confidential BIC Client',
+      'Știință Confidential BIC Client',
       'confidential-bic-client',
     );
-    const hiddenSearch = await fetch(
-      `${origin}/api/clients/search?query=Confidential`,
+    const scopedSearch = await fetch(
+      `${origin}/api/clients/search?query=stiinta`,
       { headers: directorHeaders(company.id) },
     );
-    expect(hiddenSearch.status).toBe(200);
-    await expect(hiddenSearch.json()).resolves.toEqual([]);
+    expect(scopedSearch.status).toBe(200);
+    const scopedResults: unknown = await scopedSearch.json();
+    expect(scopedResults).toEqual([created]);
     const hiddenRead = await fetch(
       `${origin}/api/clients/${foreignClient.id}`,
       {
@@ -1032,6 +1224,14 @@ describeWithPostgres('Client REST API', () => {
     });
     expect(denied.status).toBe(403);
     expect(await denied.text()).not.toContain(created.id);
+    const revokedSearch = await fetch(
+      `${origin}/api/clients/search?query=stiinta`,
+      { headers: directorHeaders(company.id) },
+    );
+    expect(revokedSearch.status).toBe(403);
+    const revokedBody = await revokedSearch.text();
+    expect(revokedBody).not.toContain(created.id);
+    expect(revokedBody).not.toContain(created.displayName);
     expect(await listClients(company.id)).toEqual([created]);
   });
 
@@ -2462,6 +2662,16 @@ describeWithPostgres('Client REST API', () => {
     });
     expect(response.status).toBe(201);
     return response.json();
+  }
+
+  async function registerSearchCompany(): Promise<string> {
+    const company: unknown = await registerCompany(
+      'Romanian Variant Company',
+      'romanian-variant-company',
+    );
+    if (!isRecord(company) || typeof company.id !== 'string')
+      throw new Error('Expected the registered search Company identity.');
+    return company.id;
   }
 
   async function grantOwnerDirectorClientAccess(companyId: string) {

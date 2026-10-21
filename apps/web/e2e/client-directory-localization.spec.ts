@@ -62,7 +62,7 @@ const client = {
   displayName: 'Știință {клиент} & Co',
   relatedToActiveCompany: false,
 };
-const query = '  Știință {клиент} & Co  ';
+const query = '  Stiinta {клиент} & Co  ';
 
 async function installRoutes(page: Page) {
   let linked = false;
@@ -240,8 +240,8 @@ for (const locale of locales) {
       workspace.getByText(locale.available, { exact: true }),
     ).toBeVisible();
     expect(observed.searches).toEqual([
-      { query: 'Știință {клиент} & Co', company: company.id },
-      { query: 'Știință {клиент} & Co', company: company.id },
+      { query: 'Stiinta {клиент} & Co', company: company.id },
+      { query: 'Stiinta {клиент} & Co', company: company.id },
     ]);
     expect(observed.commands).toEqual([
       {
