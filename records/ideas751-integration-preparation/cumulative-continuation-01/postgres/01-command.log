@@ -1,0 +1,16 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/worktrees/complaints737-on-ideas751/apps/api
+
+[Nest] 290949  - 10/20/2026, 8:11:18 PM   ERROR [SyntheticComplaintDiagnostics] Synthetic capture control737
+[Nest] 290949  - 10/20/2026, 8:11:20 PM   ERROR [SyntheticComplaintDiagnostics] Synthetic capture control737
+[Nest] 290949  - 10/20/2026, 8:11:21 PM   ERROR [SyntheticComplaintDiagnostics] Synthetic capture control737
+[Nest] 290949  - 10/20/2026, 8:11:23 PM   ERROR [SyntheticComplaintDiagnostics] Synthetic capture control737
+
+ Test Files  1 passed (1)
+      Tests  51 passed (51)
+   Start at  20:09:01
+   Duration  155.96s (transform 7.11s, setup 0ms, import 13.84s, tests 141.20s, environment 2ms)
+

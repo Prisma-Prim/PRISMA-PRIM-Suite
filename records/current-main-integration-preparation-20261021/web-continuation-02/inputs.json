@@ -1,0 +1,140 @@
+{
+  "status": "PREPARED ONLY; prior run01 preserved failed; root newlane lease required",
+  "inputs": {
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/run.py": "a48f6a9c8a16a7efa46aa711c01ef5809d3d23edb8dea16ba65acffad048c05b",
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/child.py": "353e51a3ded353ce9518bc2ce24c5e795aafb00d607493972b76dc38272d3f84",
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/launch.sh": "a08855d5ae78f96c23a0e397ec41dc01de09c83199a566266b5c4c5dfc0ecdf7",
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/commands.json": "7f0aa56c6e5885af6ebab3269881b38c8bf33bd5f53402dc65a4c75a119f0afe",
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/selection.json": "ed0301933b263ac4113bc665e28cfefcb5e57b7fbf6ace8ae3046267d052abf4",
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/expected-source.json": "9cbccdafb17d43d21adb3af090abd056338d97e15375d1286a258771b4e68ce1",
+    "/workspace/work/environment/runtime.sh": "7a4c3618c983ff4010e9c36635325ac2fb74092047960dc81f5652b7b34fc069",
+    "/usr/local/bin/docker-init": "8cc70470bb4b21c25ddca7108c5820fa14d5019b5f1ec7e94bfca65de2479990"
+  },
+  "dependencyLinks": {
+    "apps/web/node_modules": "/workspace/worktrees/ci-proof-runtime/apps/web/node_modules",
+    "node_modules": "/workspace/worktrees/ci-proof-runtime/node_modules",
+    "apps/api/node_modules": "/workspace/worktrees/ci-proof-runtime/apps/api/node_modules"
+  },
+  "entrypoint": [
+    "bash",
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/launch.sh"
+  ],
+  "commands": [
+    [
+      "e2e-strict",
+      [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/web",
+        "exec",
+        "tsc",
+        "--noEmit",
+        "--strict",
+        "--jsx",
+        "react-jsx",
+        "--skipLibCheck",
+        "--target",
+        "ES2022",
+        "--module",
+        "ESNext",
+        "--moduleResolution",
+        "Bundler",
+        "--lib",
+        "ES2022,DOM",
+        "--types",
+        "node",
+        "e2e/ideas.acceptance.spec.ts",
+        "e2e/complaints.acceptance.spec.ts",
+        "e2e/client-union-confirmation-localization.spec.ts",
+        "playwright.acceptance.config.ts"
+      ]
+    ],
+    [
+      "affected-web-owners",
+      [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/web",
+        "exec",
+        "vitest",
+        "run",
+        "src/localization/messages.test.ts",
+        "src/App.client-union-confirmation-localization.test.tsx",
+        "src/App.ideas.test.tsx",
+        "src/access/CompanyContextAccess.ideas.test.tsx",
+        "src/ideas/ideas-activity-response.test.ts",
+        "src/App.complaints.test.tsx",
+        "src/App.complaints.recovery.test.tsx",
+        "src/App.complaints-activity.test.tsx",
+        "src/access/CompanyContextAccess.complaints.test.tsx",
+        "--maxWorkers=1",
+        "--no-file-parallelism",
+        "--bail=1",
+        "--reporter=default",
+        "--reporter=json",
+        "--outputFile=/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/affected-web-owners.json"
+      ]
+    ]
+  ],
+  "trackedSourceCount": 1331,
+  "sourceCount": 1359,
+  "untrackedSources": [
+    "apps/api/drizzle/0071_company_ideas.sql",
+    "apps/api/drizzle/meta/0071_snapshot.json",
+    "apps/api/src/access/company-ideas-assignment.rest.test.ts",
+    "apps/api/src/access/company-ideas-reader-assignment.controller.ts",
+    "apps/api/src/access/company-ideas-recorder-assignment.controller.ts",
+    "apps/api/src/access/company-ideas-reviewer-assignment.controller.ts",
+    "apps/api/src/database/schema/ideas.ts",
+    "apps/api/src/ideas/ideas.controller.ts",
+    "apps/api/src/ideas/ideas.migration.test.ts",
+    "apps/api/src/ideas/ideas.module.ts",
+    "apps/api/src/ideas/ideas.response.ts",
+    "apps/api/src/ideas/ideas.rest.test.ts",
+    "apps/api/src/ideas/ideas.service.ts",
+    "apps/api/src/ideas/ideas.types.ts",
+    "apps/api/src/ideas/ideas.validation.ts",
+    "apps/web/e2e/client-union-confirmation-localization.fixture.ts",
+    "apps/web/e2e/client-union-confirmation-localization.spec.ts",
+    "apps/web/e2e/ideas.acceptance.spec.ts",
+    "apps/web/src/App.client-union-confirmation-localization.test.tsx",
+    "apps/web/src/App.ideas.test.tsx",
+    "apps/web/src/access/CompanyContextAccess.ideas.test.tsx",
+    "apps/web/src/client/client-union-confirmation.copy.ts",
+    "apps/web/src/ideas/IdeasWorkspace.tsx",
+    "apps/web/src/ideas/ideas-activity-response.test.ts",
+    "apps/web/src/ideas/ideas-contract.ts",
+    "apps/web/src/ideas/ideas-workspace.css",
+    "apps/web/src/ideas/ideas.copy.ts",
+    "apps/web/src/test/client-union-confirmation-localization.fixture.ts"
+  ],
+  "scope": "Exact applied753source freeze;8upstreamweb scopes inclcomposedregistry;9wholewebowners;API/migrations remain78/79historicalsourceequivalent;full16 and actualfinalhead gate pending",
+  "historicalSourceApplication": "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/source-application-01/application-validation.json",
+  "allFailuresPreserved": true,
+  "automaticRetries": false,
+  "sourceChangesDuringChecks": false,
+  "runtimeExecuted": false,
+  "continuationReason": "Original E2E CLI omitted JSX mode while ClientUnion imports TSX. Add only canonical apps/web/tsconfig.app.json jsx=react-jsx; preserve all source/budgets/assertions. No E2E or webtest success claimed yet.",
+  "unchangedSourcePriorActualPasses": {
+    "doctor-web": {
+      "result": "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-qualification-01/phases.json",
+      "seconds": 10.165073110001686,
+      "exit": 0,
+      "sixPassThreeProfilePGSkip": true
+    },
+    "changed-eight-format": {
+      "exit": 0,
+      "seconds": 4.477
+    },
+    "changed-eight-eslint": {
+      "exit": 0,
+      "seconds": 4.661
+    },
+    "web-strict": {
+      "exit": 0,
+      "seconds": 50.964
+    },
+    "sourceFreezeIdenticalToFailedRun01": true,
+    "originalAggregateResultRemainsFailed": "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-qualification-01/result.json"
+  }
+}

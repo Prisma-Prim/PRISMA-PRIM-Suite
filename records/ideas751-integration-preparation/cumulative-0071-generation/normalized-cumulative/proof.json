@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-20T19:42:34.014543+00:00",
+  "scope": "Move exactly two existing unique-index statements after all5CREATE TABLEs and before firstFK; no statement bytes or other order changed.",
+  "raw_sha256": "fef50274ac32329b1862c3c6b5b8c16435e111ba2013b2e8185217b0606f0f02",
+  "derived_sha256": "b69d3d91f8e4d9bba8030a8d56e788f712722286f849060c84d1308afa538a7f",
+  "statement_chunks": 34,
+  "multiset_byte_identical": true,
+  "other_statement_order_unchanged": true,
+  "last_create_table_position_zero_based": 10,
+  "index_chunk_positions_zero_based": {
+    "complaints_scope_id_unique": 11,
+    "complaint_journal_entries_scope_kind_unique": 12
+  },
+  "first_fk_chunk_position_zero_based": 14,
+  "raw_artifacts_unchanged_sha256": {
+    "generated/0072_company_complaints.sql": "fef50274ac32329b1862c3c6b5b8c16435e111ba2013b2e8185217b0606f0f02",
+    "generated/meta/0072_snapshot.json": "6783302fd6cb9638278abc8c01d277a447b9424e5837c97c74b1b2bc6583b335",
+    "generated/meta/_journal.json": "d3e9d25163f0f8344a72db48f96b1e4b73005a102549d41314300b82e7a4fca8"
+  },
+  "no_metadata_journal_or_worktree_mutation": true,
+  "database_executions": 0
+}

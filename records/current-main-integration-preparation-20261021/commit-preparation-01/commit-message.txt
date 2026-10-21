@@ -1,0 +1,5 @@
+fix(complaints): compose Ideas and cumulative migration history
+
+Integrate the reviewed Ideas slice and current Client union translations while preserving both registers and their independent access boundaries. Keep canonical Ideas migration 0071 and the generated cumulative Complaints 0072 snapshot chain. Register all three translation families and preserve the acceptance assertions.
+
+Co-Authored-By: Codex <noreply@openai.com>

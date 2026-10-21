@@ -1,0 +1,28 @@
+{
+  "schema": "bounded-targeted-local-evidence-packet/v1",
+  "preparedAt": "2026-10-21T22:02:10.714912+00:00",
+  "pr": 753,
+  "publishedHead": "61761608869281291ab2964b35f75faba43e2762",
+  "plannedUniqueParentlessRef": "local-evidence/pr-753/61761608-targeted-20261021",
+  "published": false,
+  "retrieved": false,
+  "fullIntegrationGateQualified": false,
+  "limits": {
+    "maximumRunBytes": 20971520,
+    "maximumBlobBytes": 5242880
+  },
+  "publicationMechanism": "Approved #750 fallback already exercised by751/752: root creates reviewed blobs, tree, parentless commit and unique temporary evidence ref; root must actually GET/retrieve/verify hashes before availability claims. No product-history artifacts or denied-destination bypass.",
+  "retention": "Keep while required by open review. Aftermerge retain finalcompactproof/evidence14days, then delete only owned temporary evidence ref; deletion does not guarantee physical object erasure. No deletion scheduled by this preparation.",
+  "safetyReview": {
+    "all34OriginalPNGsIndividuallyViewed": true,
+    "selectedTextAndCredentialReviewComplete": true,
+    "credentialOrPrivateContentObserved": false,
+    "limitation": "Bounded text/marker/image review; not exhaustive secret or PII detection. Root finalreview required.",
+    "allSelectedTextDecodedUTF8": true,
+    "allSelectedJSONDecoded": true,
+    "allSelectedLogsRead": true,
+    "boundedCredentialMarkerMatches": [],
+    "noArchivesDatabasesPrivateKeysOrRealDocumentsSelected": true
+  },
+  "historicalClaimsRemainHistorical": true
+}

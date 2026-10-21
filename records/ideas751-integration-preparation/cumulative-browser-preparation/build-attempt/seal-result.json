@@ -1,0 +1,9 @@
+{
+  "manifest": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-current-build-manifest.json",
+  "digest": {
+    "bytes": 1559341,
+    "sha256": "fa0debd1f5846b42a30df0e7c3cd24a2f2609d9d275a2b475f29024291ee4462"
+  },
+  "status": "SEALED FOR ROOT REVIEW; NO BROWSER STARTED",
+  "time_utc": "2026-10-20T20:17:19.167830+00:00"
+}

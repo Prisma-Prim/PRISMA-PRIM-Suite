@@ -1,0 +1,21 @@
+{
+  "schema": "753-current-main-web-qualification-01/v1",
+  "startedAt": "2026-10-21T21:46:55.537809+00:00",
+  "cwd": "/workspace/worktrees/complaints-runtime737",
+  "argv": [
+    "/usr/local/bin/docker-init",
+    "-s",
+    "--",
+    "python3",
+    "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-qualification-01/child.py"
+  ],
+  "commands": "commands.json",
+  "runnerSha256": "900ba6f946d2363a0ff30a1ed6ce5275954073aae5e802b84b51d6d59aeb2b82",
+  "childSha256": "353e51a3ded353ce9518bc2ce24c5e795aafb00d607493972b76dc38272d3f84",
+  "selectionSha256": "ee8ff8aa9990efc44bc2d44178a573a3d0d99ffcad813a2f258f1ef85b396bc5",
+  "tiniSha256": "8cc70470bb4b21c25ddca7108c5820fa14d5019b5f1ec7e94bfca65de2479990",
+  "sourceFreeze": "source-before.json",
+  "full16Qualified": false,
+  "profile": "Matching web doctor; exact8web paths format/lint; web+registered Ideas/Complaints and canonical Client-union E2E strict;9 whole affected message/Client-union/Ideas/Complaints public web owners/canonical15000ms/worker1/bail1/no-skip; no PostgreSQL/browser/build/full16; API unchanged-source historical evidence remains separate",
+  "tiniPid": 953296
+}

@@ -1,0 +1,29 @@
+{
+  "started_utc": "2026-10-20T20:23:18.454141+00:00",
+  "argv": [
+    "/usr/local/bin/docker-init",
+    "-s",
+    "--",
+    "bash",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-once.sh",
+    "--lane-transferred",
+    "--seal-reviewed"
+  ],
+  "cwd": "/workspace/worktrees/complaints737-on-ideas751",
+  "command_prefix": [
+    "/usr/local/bin/docker-init",
+    "-s",
+    "--"
+  ],
+  "binary_sha256": "8cc70470bb4b21c25ddca7108c5820fa14d5019b5f1ec7e94bfca65de2479990",
+  "supervisor_scope": "Entire existing Python browser supervisor under Tini subreaper; no PID1/other-task action.",
+  "tini_started": true,
+  "tini_pid": 291912,
+  "tini_exit_code": 0,
+  "python_supervisor_recorded_exit_code": 0,
+  "playwright_exit_code": 0,
+  "browser_started": true,
+  "browser_result_sha256": "67f95543a65ea50386d6fc7e2d074ea1448b7da13e672ef2efc8a9064551a27d",
+  "finished_utc": "2026-10-20T20:26:53.679658+00:00",
+  "outer_exit_code": 0
+}

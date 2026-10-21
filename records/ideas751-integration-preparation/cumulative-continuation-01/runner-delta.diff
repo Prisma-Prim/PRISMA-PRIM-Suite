@@ -1,0 +1,31 @@
+--- original-cumulative/run-phase.py
++++ continuation/run-phase.py
+@@ -67,8 +67,19 @@
+         return code
+ 
+     try:
++        prior_path = Path(plan['prior_global_statics']['result'])
++        assert sha(prior_path) == plan['prior_global_statics']['sha256']
++        prior = json.loads(prior_path.read_text())
++        assert prior['status'] == 'PASS' and prior['exit_code'] == 0
++        changed_test = plan['only_changed_source_since_real_global_statics']
++        assert all(h == prior['final_source_sha256'][p] for p,h in plan['source_sha256'].items() if p != changed_test), 'Other globally qualified source drift'
++        meta['prior_actual_global_statics'] = plan['prior_global_statics']
+         expected = plan['source_sha256']
+         expected_count = plan['source_count']
++        if phase == 'frontend':
++            composite = json.loads((ROOT/'postgres-qualification.json').read_text())
++            assert composite['status'] == 'COMPOSITE_PASS' and composite['source_sha256'] == plan['source_sha256']
++            meta['postgres_composite_qualification'] = {'path':str(ROOT/'postgres-qualification.json'),'sha256':sha(ROOT/'postgres-qualification.json')}
+         if phase != 'statics':
+             qualification = json.loads((ROOT/'statics-qualification.json').read_text())
+             statics_path = Path(qualification['result'])
+@@ -190,7 +201,7 @@
+             meta['status'] = 'FAIL: OWNED PROCESS CLEANUP; ACTUAL COMMAND RESULTS RETAINED'
+             exit_code = 2
+         if phase == 'statics' and meta['status'] == 'PASS':
+-            save(run/'post-check-source-freeze.json', {'at':now(),'source_count':79,'source_sha256':hashes(expected),'claim':'Real current complete union statics PASS; behavioral proof pending.'})
++            save(run/'post-check-source-freeze.json', {'at':now(),'source_count':79,'source_sha256':hashes(expected),'claim':'Current test-only format/lint/APIstrict PASS plus explicitly reused unchanged global statics; behavioral confirmation pending.'})
+             save(ROOT/'statics-qualification.json', {'result':str(run/'result.json'),'freeze':str(run/'post-check-source-freeze.json')})
+         meta.update(finished_utc=now(),exit_code=exit_code)
+         save(run/'result.json',meta)

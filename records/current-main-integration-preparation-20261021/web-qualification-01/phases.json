@@ -1,0 +1,101 @@
+[
+  {
+    "phase": "doctor-web",
+    "argv": [
+      "node",
+      "scripts/agent-doctor.mjs",
+      "--profile",
+      "web"
+    ],
+    "startedAt": "2026-10-21T21:46:55.714338+00:00",
+    "finishedAt": "2026-10-21T21:47:05.877926+00:00",
+    "durationSeconds": 10.165073110001686,
+    "exitCode": 0
+  },
+  {
+    "phase": "changed-eight-format",
+    "argv": [
+      "pnpm",
+      "exec",
+      "prettier",
+      "--check",
+      "apps/web/e2e/client-union-confirmation-localization.fixture.ts",
+      "apps/web/e2e/client-union-confirmation-localization.spec.ts",
+      "apps/web/src/App.client-union-confirmation-localization.test.tsx",
+      "apps/web/src/client/ClientUnionComparison.tsx",
+      "apps/web/src/client/ClientWorkspace.tsx",
+      "apps/web/src/client/client-union-confirmation.copy.ts",
+      "apps/web/src/localization/first-journey-coverage.ts",
+      "apps/web/src/test/client-union-confirmation-localization.fixture.ts"
+    ],
+    "startedAt": "2026-10-21T21:47:05.879836+00:00",
+    "finishedAt": "2026-10-21T21:47:10.357093+00:00",
+    "durationSeconds": 4.477270482995664,
+    "exitCode": 0
+  },
+  {
+    "phase": "changed-eight-eslint",
+    "argv": [
+      "pnpm",
+      "exec",
+      "eslint",
+      "apps/web/e2e/client-union-confirmation-localization.fixture.ts",
+      "apps/web/e2e/client-union-confirmation-localization.spec.ts",
+      "apps/web/src/App.client-union-confirmation-localization.test.tsx",
+      "apps/web/src/client/ClientUnionComparison.tsx",
+      "apps/web/src/client/ClientWorkspace.tsx",
+      "apps/web/src/client/client-union-confirmation.copy.ts",
+      "apps/web/src/localization/first-journey-coverage.ts",
+      "apps/web/src/test/client-union-confirmation-localization.fixture.ts",
+      "--max-warnings=0"
+    ],
+    "startedAt": "2026-10-21T21:47:10.358057+00:00",
+    "finishedAt": "2026-10-21T21:47:15.018736+00:00",
+    "durationSeconds": 4.660691264994966,
+    "exitCode": 0
+  },
+  {
+    "phase": "web-strict",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@prisma-prim/web",
+      "typecheck"
+    ],
+    "startedAt": "2026-10-21T21:47:15.019824+00:00",
+    "finishedAt": "2026-10-21T21:48:05.983896+00:00",
+    "durationSeconds": 50.96439255899895,
+    "exitCode": 0
+  },
+  {
+    "phase": "e2e-strict",
+    "argv": [
+      "pnpm",
+      "--filter",
+      "@prisma-prim/web",
+      "exec",
+      "tsc",
+      "--noEmit",
+      "--strict",
+      "--skipLibCheck",
+      "--target",
+      "ES2022",
+      "--module",
+      "ESNext",
+      "--moduleResolution",
+      "Bundler",
+      "--lib",
+      "ES2022,DOM",
+      "--types",
+      "node",
+      "e2e/ideas.acceptance.spec.ts",
+      "e2e/complaints.acceptance.spec.ts",
+      "e2e/client-union-confirmation-localization.spec.ts",
+      "playwright.acceptance.config.ts"
+    ],
+    "startedAt": "2026-10-21T21:48:05.984749+00:00",
+    "finishedAt": "2026-10-21T21:48:10.732640+00:00",
+    "durationSeconds": 4.747903313000279,
+    "exitCode": 1
+  }
+]

@@ -1,0 +1,42 @@
+
+ RUN  v4.1.10 /workspace/worktrees/complaints-runtime737/apps/web
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ ✓ src/App.ideas.test.tsx (19 tests) 4052ms
+     ✓ shows literal saved text and original attribution to a Reader without offering mutation controls  756ms
+     ✓ retains the exact uncertain recording intent and keeps confirmed save visible after refresh fails  327ms
+     ✓ requires a fresh reload after stale review before submitting a new attributed disposition  357ms
+     ✓ preserves an uncertain intent across all four locale changes and section navigation  314ms
+ ✓ src/App.complaints.recovery.test.tsx (16 tests) 5610ms
+   ✓ records an attributed factual action without a sending or closure action  1043ms
+   ✓ keeps exact uncertain correction intent across navigation and connects every paged correction to its immutable original  1088ms
+   ✓ discards a late committed journal reply and private draft after an actual Company selection change  450ms
+   ✓ handles optional Project403 independently and retires the draft only when a replacement Reader assignment is actually revalidated (Reader replaced: false)  350ms
+ ✓ src/App.client-union-confirmation-localization.test.tsx (5 tests) 11960ms
+     ✓ keeps second-canonical mixed-source intent through locale changes, pending uncertainty and exact retry with truthful localized completion  2909ms
+   ✓ localizes saved comparison values, attempted validation, late feedback and canonical completion in ro  1766ms
+   ✓ localizes saved comparison values, attempted validation, late feedback and canonical completion in ru  3318ms
+   ✓ localizes saved comparison values, attempted validation, late feedback and canonical completion in fr  1803ms
+   ✓ localizes saved comparison values, attempted validation, late feedback and canonical completion in en  2160ms
+ ✓ src/access/CompanyContextAccess.complaints.test.tsx (9 tests) 1811ms
+   ✓ grants and revokes captured-v1 Complaint rights independently in a mixed existing administration page  1163ms
+ ✓ src/App.complaints.test.tsx (8 tests) 3357ms
+   ✓ offers explicit self-responsible intake through the real App in ro  871ms
+   ✓ offers explicit self-responsible intake through the real App in ru  380ms
+   ✓ offers explicit self-responsible intake through the real App in fr  353ms
+   ✓ retains the literal command and exact retry key after an uncertain intake and confirms the saved record  588ms
+   ✓ keeps Reader-only access separate from recording and never fetches complaints for Recorder-only access  391ms
+   ✓ preserves an unsaved factual draft and explicit responsibility through locale and section navigation  469ms
+ ✓ src/App.complaints-activity.test.tsx (4 tests) 1037ms
+   ✓ renders a mixed HTTP Activity page including all four safe Complaint grant events in 'en'  638ms
+ ✓ src/access/CompanyContextAccess.ideas.test.tsx (2 tests) 934ms
+     ✓ grants and revokes Reader, Recorder and Reviewer independently through existing administration  930ms
+ ✓ src/localization/messages.test.ts (6 tests) 14ms
+ ✓ src/ideas/ideas-activity-response.test.ts (5 tests) 23ms
+
+ Test Files  9 passed (9)
+      Tests  74 passed (74)
+   Start at  21:50:06
+   Duration  62.77s (transform 6.14s, setup 4.06s, import 11.82s, tests 28.80s, environment 14.99s)
+
+JSON report written to /workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/affected-web-owners.json

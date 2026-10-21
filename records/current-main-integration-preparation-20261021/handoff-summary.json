@@ -1,0 +1,31 @@
+{
+  "status": "SCRATCH ONLY; not applied, executed, committed, pushed or merge-qualified",
+  "existingPRHead": "003ea31b5a7388bceabfb11c9e536ba0b7e8c527",
+  "historicalCumulativeHEAD": "c30db029a9d2327d42eab5f41f9a675b9f6477ff",
+  "currentIdeasHead": "0f7f1fc21711db24a4776dd9be9941df77cb0131",
+  "currentMain": "4fa112c6e47c3af5942269adaeb03d96a850c05d",
+  "minimalCumulativeCorrectionPaths": 8,
+  "publishedBranchCorrectionPaths": 59,
+  "complaintsDeltaOnCurrentIdeasPaths": 56,
+  "historicalQualifiedOwnersByteIdentical": 78,
+  "onlyChangedQualifiedOwner": "apps/web/src/localization/first-journey-coverage.ts",
+  "allExistingAssertionsPreserved": true,
+  "cumulativeMigration71to72Exact": true,
+  "patches": {
+    "cumulative-to-current-main.patch": {
+      "bytes": 87560,
+      "sha256": "6def6b5ba7f65cf0062ba2d3247e11c9acf87b55262ad7a73a4719a60391b93b"
+    },
+    "published-753-to-candidate.patch": {
+      "bytes": 1132321,
+      "sha256": "8bd88e1a5c082daa7c73bcdb39bdaf701d79ae2e9686ce7c895cba01c39b8fe7"
+    },
+    "complaints-on-current-751.patch": {
+      "bytes": 1135331,
+      "sha256": "6be08596c52fc24b61e27a9e141276c8b18a866292357c4843e3c539e062c7cf"
+    }
+  },
+  "manifestSHA256": "7574e72ed92b1adaa48c1587822d36b04b395c8ac14aaad4af75da6c04796f01",
+  "preparationChecks": "read-only apply-check minimal8=0; both full patch parses=0; final79sourcehashes unchanged",
+  "nextAction": "Root inspect; no application/runtime/publication without root handoff"
+}

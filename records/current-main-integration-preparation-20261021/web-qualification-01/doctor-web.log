@@ -1,0 +1,9 @@
+PASS node: Node v24.19.0 is checked against >=24.0.0 <25.0.0; CI pins 24.
+PASS pnpm: pnpm 11.20.0; repository expects 11.20.0.
+PASS workspace: pnpm-workspace.yaml is present.
+PASS lockfile: pnpm-lock.yaml is present.
+PASS dependencies: The root node_modules directory is present.
+PASS chromium: Playwright Chromium is installed and executable.
+SKIP database-variables: Database variables are not required by the selected profile.
+SKIP database-safety: Database target safety is not required by the selected profile.
+SKIP postgres: PostgreSQL connectivity is not required by the selected profile.

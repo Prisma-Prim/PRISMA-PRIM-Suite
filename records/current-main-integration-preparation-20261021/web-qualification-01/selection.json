@@ -1,0 +1,18 @@
+{
+  "groups": {
+    "affected-web-owners": [
+      "src/localization/messages.test.ts",
+      "src/App.client-union-confirmation-localization.test.tsx",
+      "src/App.ideas.test.tsx",
+      "src/access/CompanyContextAccess.ideas.test.tsx",
+      "src/ideas/ideas-activity-response.test.ts",
+      "src/App.complaints.test.tsx",
+      "src/App.complaints.recovery.test.tsx",
+      "src/App.complaints-activity.test.tsx",
+      "src/access/CompanyContextAccess.complaints.test.tsx"
+    ]
+  },
+  "noSkips": true,
+  "canonicalWebTimeout": 15000,
+  "wholeOwnerCount": 9
+}

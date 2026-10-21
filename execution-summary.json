@@ -1,0 +1,207 @@
+{
+  "schema": "targeted-complaints-execution-summary/v1",
+  "status": "Prepared selected local evidence only; not published, retrieved or merge-qualified.",
+  "pr": 753,
+  "issue": 737,
+  "head": "61761608869281291ab2964b35f75faba43e2762",
+  "fresh01": {
+    "aggregate": "FAIL at strict E2E CLI missing JSX mode; nine web owners were not started.",
+    "phases": [
+      {
+        "phase": "doctor-web",
+        "argv": [
+          "node",
+          "scripts/agent-doctor.mjs",
+          "--profile",
+          "web"
+        ],
+        "startedAt": "2026-10-21T21:46:55.714338+00:00",
+        "finishedAt": "2026-10-21T21:47:05.877926+00:00",
+        "durationSeconds": 10.165073110001686,
+        "exitCode": 0
+      },
+      {
+        "phase": "changed-eight-format",
+        "argv": [
+          "pnpm",
+          "exec",
+          "prettier",
+          "--check",
+          "apps/web/e2e/client-union-confirmation-localization.fixture.ts",
+          "apps/web/e2e/client-union-confirmation-localization.spec.ts",
+          "apps/web/src/App.client-union-confirmation-localization.test.tsx",
+          "apps/web/src/client/ClientUnionComparison.tsx",
+          "apps/web/src/client/ClientWorkspace.tsx",
+          "apps/web/src/client/client-union-confirmation.copy.ts",
+          "apps/web/src/localization/first-journey-coverage.ts",
+          "apps/web/src/test/client-union-confirmation-localization.fixture.ts"
+        ],
+        "startedAt": "2026-10-21T21:47:05.879836+00:00",
+        "finishedAt": "2026-10-21T21:47:10.357093+00:00",
+        "durationSeconds": 4.477270482995664,
+        "exitCode": 0
+      },
+      {
+        "phase": "changed-eight-eslint",
+        "argv": [
+          "pnpm",
+          "exec",
+          "eslint",
+          "apps/web/e2e/client-union-confirmation-localization.fixture.ts",
+          "apps/web/e2e/client-union-confirmation-localization.spec.ts",
+          "apps/web/src/App.client-union-confirmation-localization.test.tsx",
+          "apps/web/src/client/ClientUnionComparison.tsx",
+          "apps/web/src/client/ClientWorkspace.tsx",
+          "apps/web/src/client/client-union-confirmation.copy.ts",
+          "apps/web/src/localization/first-journey-coverage.ts",
+          "apps/web/src/test/client-union-confirmation-localization.fixture.ts",
+          "--max-warnings=0"
+        ],
+        "startedAt": "2026-10-21T21:47:10.358057+00:00",
+        "finishedAt": "2026-10-21T21:47:15.018736+00:00",
+        "durationSeconds": 4.660691264994966,
+        "exitCode": 0
+      },
+      {
+        "phase": "web-strict",
+        "argv": [
+          "pnpm",
+          "--filter",
+          "@prisma-prim/web",
+          "typecheck"
+        ],
+        "startedAt": "2026-10-21T21:47:15.019824+00:00",
+        "finishedAt": "2026-10-21T21:48:05.983896+00:00",
+        "durationSeconds": 50.96439255899895,
+        "exitCode": 0
+      },
+      {
+        "phase": "e2e-strict",
+        "argv": [
+          "pnpm",
+          "--filter",
+          "@prisma-prim/web",
+          "exec",
+          "tsc",
+          "--noEmit",
+          "--strict",
+          "--skipLibCheck",
+          "--target",
+          "ES2022",
+          "--module",
+          "ESNext",
+          "--moduleResolution",
+          "Bundler",
+          "--lib",
+          "ES2022,DOM",
+          "--types",
+          "node",
+          "e2e/ideas.acceptance.spec.ts",
+          "e2e/complaints.acceptance.spec.ts",
+          "e2e/client-union-confirmation-localization.spec.ts",
+          "playwright.acceptance.config.ts"
+        ],
+        "startedAt": "2026-10-21T21:48:05.984749+00:00",
+        "finishedAt": "2026-10-21T21:48:10.732640+00:00",
+        "durationSeconds": 4.747903313000279,
+        "exitCode": 1
+      }
+    ],
+    "doctor": "6PASS including Chromium executable;3PG checks correctly skipped by web profile, not9PASS.",
+    "causeDisposition": "Only --jsx react-jsx was added, matching canonical web tsconfig. The corrected actual command passed, resolving the reported TS6142 and dependent TS2538 without product/source changes."
+  },
+  "fresh02": {
+    "aggregate": "PASS; strict E2E then74/74PASS across exact9 whole message/ClientUnion/Ideas/Complaints owners,0skip/pending/todo.",
+    "phases": [
+      {
+        "phase": "e2e-strict",
+        "argv": [
+          "pnpm",
+          "--filter",
+          "@prisma-prim/web",
+          "exec",
+          "tsc",
+          "--noEmit",
+          "--strict",
+          "--jsx",
+          "react-jsx",
+          "--skipLibCheck",
+          "--target",
+          "ES2022",
+          "--module",
+          "ESNext",
+          "--moduleResolution",
+          "Bundler",
+          "--lib",
+          "ES2022,DOM",
+          "--types",
+          "node",
+          "e2e/ideas.acceptance.spec.ts",
+          "e2e/complaints.acceptance.spec.ts",
+          "e2e/client-union-confirmation-localization.spec.ts",
+          "playwright.acceptance.config.ts"
+        ],
+        "startedAt": "2026-10-21T21:49:56.614594+00:00",
+        "finishedAt": "2026-10-21T21:50:03.214390+00:00",
+        "durationSeconds": 6.59988990900456,
+        "exitCode": 0
+      },
+      {
+        "phase": "affected-web-owners",
+        "argv": [
+          "pnpm",
+          "--filter",
+          "@prisma-prim/web",
+          "exec",
+          "vitest",
+          "run",
+          "src/localization/messages.test.ts",
+          "src/App.client-union-confirmation-localization.test.tsx",
+          "src/App.ideas.test.tsx",
+          "src/access/CompanyContextAccess.ideas.test.tsx",
+          "src/ideas/ideas-activity-response.test.ts",
+          "src/App.complaints.test.tsx",
+          "src/App.complaints.recovery.test.tsx",
+          "src/App.complaints-activity.test.tsx",
+          "src/access/CompanyContextAccess.complaints.test.tsx",
+          "--maxWorkers=1",
+          "--no-file-parallelism",
+          "--bail=1",
+          "--reporter=default",
+          "--reporter=json",
+          "--outputFile=/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/affected-web-owners.json"
+        ],
+        "startedAt": "2026-10-21T21:50:03.215091+00:00",
+        "finishedAt": "2026-10-21T21:51:09.447609+00:00",
+        "durationSeconds": 66.2327651950036,
+        "exitCode": 0
+      }
+    ],
+    "cleanup": "All15 observed owned processes gone, including zombies;1359source hashes/raw modes fixed; managed container/network/volume/tmp inventories empty.",
+    "noCombinedInvocationClaim": "The prior doctor/8pathformat/8pathlint/webstrict remain actual separate PASS records inside failed01;02 did not rerun them."
+  },
+  "historicalCumulative": {
+    "postgres": "154 unchanged cases in10 green owners from original202PASS/3timeout FAIL plus51 complete Complaint cases in a separate fresh confirmation =205 distinct covered cases across TWO invocations. Never one205-green run.",
+    "frontend": "286/286 in19 whole owners in one separate complete cumulative invocation. Do not add74 to286 as distinct tests.",
+    "builds": "Actual fresh API0 and web local-demo0; sealfa0debd1f5846b42a30df0e7c3cd24a2f2609d9d275a2b475f29024291ee4462 binds1158inputs/909outputs/4025modulefiles/79sources.",
+    "browser": "4/4 registered real App/PostgreSQL cases, Ideas and Complaints at1440/390, four locales; Playwright invocation2026-10-20T20:23:29.280183Z→20:26:19.015715Z. Tini/outer/Playwright0; both build guards0; allowned cleanup passes.",
+    "review": "Historical integration Standards and Spec0blockers bind79sources. Current7upstreamfiles are exactmain/751; root inspected currentregistrycomposition. No new review round was requested."
+  },
+  "browserPolicy": {
+    "trace": "retain-on-failure",
+    "successfulTraceExpected": false,
+    "actualDetailedPlaywrightJSONRetained": false,
+    "actualRecords": "Original stdout/result/UTC/exits/seal guards and34PNG originals. No fabricated detailed reporter or passing trace.",
+    "temporaryConfig": "Imports registered canonical config; only verified-prebuilt preview command and180000ms startup allowance differ; scenario assertions/projects/worker/globalsetup unchanged."
+  },
+  "earlierIndependentBrowser": "Original003 slice2/2 scenarios passed but wrapper exited2 for dead adopted descendants; selected original result/log retain this failure. It does not qualify cleanup. Later cumulative4-case run has its own successful cleanup.",
+  "privacyAndVisualLimits": "All34 original PNG files were individually viewed for publication safety; only synthetic fixtures observed. View tool may resize tall displays; files are unmodified. Existing #762 global language-picker/open-control and skip-link overlays remain limitations; no new whole-UI approval.",
+  "remaining": [
+    "Merge749 and751, then normally merge actualmain into753; prerequisite copiedcontent does not establish ancestry.",
+    "Run all16 required families on actual resulting publishedhead/base; ECR748 stillblocks packaging.",
+    "Root review/publish this bounded packet and actually GET/retrieve/hashverify; exact finalhead review and guardedmerge remainpending.",
+    "No wholeComplaints/Sarcina/MVP point, deployment or release is claimed."
+  ],
+  "localEvidenceTrust": "Self-reported local execution, not GitHub runner attestation.",
+  "runtimeExecutedByPacketPreparation": false
+}

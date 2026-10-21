@@ -1,0 +1,24 @@
+--- raw-generated-cumulative72
++++ derived-two-index-order-only72
+@@ -95,6 +95,8 @@
+ 	CONSTRAINT "complaints_revision_check" CHECK ("complaints"."revision" >= 1 AND "complaints"."latest_intake_revision" >= 1 AND "complaints"."latest_intake_revision" <= "complaints"."revision")
+ );
+ --> statement-breakpoint
++CREATE UNIQUE INDEX "complaints_scope_id_unique" ON "complaints" USING btree ("workspace_id","company_id","id");--> statement-breakpoint
++CREATE UNIQUE INDEX "complaint_journal_entries_scope_kind_unique" ON "complaint_journal_entries" USING btree ("workspace_id","company_id","complaint_id","id","kind");--> statement-breakpoint
+ ALTER TABLE "company_role_assignments" DROP CONSTRAINT "company_role_assignments_permission_set_version_check";--> statement-breakpoint
+ ALTER TABLE "complaint_events" ADD CONSTRAINT "complaint_events_complaint_fk" FOREIGN KEY ("workspace_id","company_id","complaint_id") REFERENCES "public"."complaints"("workspace_id","company_id","id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ ALTER TABLE "complaint_events" ADD CONSTRAINT "complaint_events_actor_fk" FOREIGN KEY ("workspace_id","actor_membership_id","actor_internal_user_id") REFERENCES "public"."workspace_memberships"("workspace_id","id","internal_user_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+@@ -111,12 +113,10 @@
+ ALTER TABLE "complaints" ADD CONSTRAINT "complaints_responsible_actor_fk" FOREIGN KEY ("workspace_id","responsible_membership_id","created_by_internal_user_id") REFERENCES "public"."workspace_memberships"("workspace_id","id","internal_user_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ CREATE UNIQUE INDEX "complaint_events_revision_unique" ON "complaint_events" USING btree ("workspace_id","company_id","complaint_id","revision");--> statement-breakpoint
+ CREATE UNIQUE INDEX "complaint_intake_versions_revision_unique" ON "complaint_intake_versions" USING btree ("workspace_id","company_id","complaint_id","revision");--> statement-breakpoint
+-CREATE UNIQUE INDEX "complaint_journal_entries_scope_kind_unique" ON "complaint_journal_entries" USING btree ("workspace_id","company_id","complaint_id","id","kind");--> statement-breakpoint
+ CREATE UNIQUE INDEX "complaint_journal_entries_revision_unique" ON "complaint_journal_entries" USING btree ("workspace_id","company_id","complaint_id","revision");--> statement-breakpoint
+ CREATE INDEX "complaint_journal_entries_history_idx" ON "complaint_journal_entries" USING btree ("workspace_id","company_id","complaint_id","occurred_at","id");--> statement-breakpoint
+ CREATE INDEX "complaint_journal_entries_original_idx" ON "complaint_journal_entries" USING btree ("workspace_id","company_id","complaint_id","original_entry_id");--> statement-breakpoint
+ CREATE UNIQUE INDEX "complaint_receipts_actor_key_unique" ON "complaint_receipts" USING btree ("workspace_id","company_id","actor_membership_id","idempotency_key");--> statement-breakpoint
+-CREATE UNIQUE INDEX "complaints_scope_id_unique" ON "complaints" USING btree ("workspace_id","company_id","id");--> statement-breakpoint
+ ALTER TABLE "company_role_assignments" ADD CONSTRAINT "company_role_assignments_permission_set_version_check" CHECK ((
+         ("company_role_assignments"."bundle"::text = 'company_director_client_access'
+           AND "company_role_assignments"."permission_set_version" IS NOT NULL

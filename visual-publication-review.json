@@ -1,0 +1,361 @@
+{
+  "schema": "bounded-synthetic-image-publication-review/v1",
+  "reviewedAt": "2026-10-21T22:05:10.540699+00:00",
+  "images": [
+    {
+      "index": 0,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-en-history.png",
+      "sha256": "71aa8b91bf24dc74d7f3d2cbc9481916d4490cb7be4929b346cf21903533065d",
+      "width": 1440,
+      "height": 2896,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 1,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-explicit-intake.png",
+      "sha256": "0b4d3961c71b603600d765b1a97f70250a736168103249805ce57947c55c7fb9",
+      "width": 1440,
+      "height": 1213,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 2,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-fr-history.png",
+      "sha256": "ff2bb1d5bec4f8bf6cac2aa31d683b9b86d66c07502305f06dceec6fbdd211be",
+      "width": 1440,
+      "height": 2896,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 3,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-only.png",
+      "sha256": "ca9511ef5f85cd537a4d0e1614844111aa04d35ed6ca4317ec879e19bae5cd50",
+      "width": 1440,
+      "height": 2722,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 4,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-revoked.png",
+      "sha256": "dfea0917079f0a29d8027948d00ca04139b1cae286e21d6a915872b95bf62336",
+      "width": 1440,
+      "height": 1852,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 5,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ro-history.png",
+      "sha256": "864af4d86cfd7d5aaf3b5ca0883401302b145dbc3e9ad41a03cd25fc9f5f974c",
+      "width": 1440,
+      "height": 2896,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 6,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ru-history.png",
+      "sha256": "3c3eb939dcc70611ba4debe28767aa57b9f67795728b28475281469ccda5e876",
+      "width": 1440,
+      "height": 2896,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 7,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/select-appearance-complaint-client.png",
+      "sha256": "0ec139b0e72b2c0d97e4343ba68a7ee5b4092d63f80b089e3a6b59b18475db64",
+      "width": 542,
+      "height": 45,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 8,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-en-history.png",
+      "sha256": "1887fef99ed113ccf081e6920edcc6ae2bcd873b718a5ded5aca560d35104492",
+      "width": 390,
+      "height": 4050,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 9,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-explicit-intake.png",
+      "sha256": "2b54f74bc49dbc6f410fa02937668ef11a7edc16d27c18ec6718acbe0e462556",
+      "width": 390,
+      "height": 1759,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 10,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-fr-history.png",
+      "sha256": "6382407720bf5761da7fa34c8708ca51932bf7209115215fd0a9f0fef299e5f7",
+      "width": 390,
+      "height": 4122,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 11,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-only.png",
+      "sha256": "7cbf4c923df2ecb8d1b50a5a15e4718536a8237c3390b91a4da4ce4400a4f5a7",
+      "width": 390,
+      "height": 3768,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 12,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-revoked.png",
+      "sha256": "8994fac68afbf946752951b557c4c117e1b4d1725b89849163abb8498e459127",
+      "width": 390,
+      "height": 2525,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 13,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ro-history.png",
+      "sha256": "ff75f6d878085f5064606232f5eadaf3cfd45a4bb0c57f1ef244cb02bd48b2a8",
+      "width": 390,
+      "height": 4122,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 14,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ru-history.png",
+      "sha256": "b59e549212315d8f6c72b84071c8203cecd71aaa1bc0d75fac03c84e371094be",
+      "width": 390,
+      "height": 4122,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 15,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/select-appearance-complaint-client.png",
+      "sha256": "093adbc28cdb4a582161e31e9654e15dac5a143961aa39f06417f31578fb5e7b",
+      "width": 320,
+      "height": 49,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 16,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png",
+      "sha256": "3d2adcd23cc26afdabdcbc1ff08eb33de8c388ba1d16c55d164a36dc322c9407",
+      "width": 1440,
+      "height": 2206,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 17,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png",
+      "sha256": "e3c7ce6c53c5f66ab195c180c2ff036e8e9044b689e5fc2bdcc5ddb8ac3a324c",
+      "width": 1440,
+      "height": 1989,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 18,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png",
+      "sha256": "053620ac0991b81fcdd9f0940375f6ddbdd3ab1ce73ee12bdd8ae722106a677e",
+      "width": 1440,
+      "height": 2297,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 19,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png",
+      "sha256": "818083c935afde1bae22dbc25c297d4afcddf59bddd2f7def201e36cb3fbb7da",
+      "width": 1440,
+      "height": 2297,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 20,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png",
+      "sha256": "2783ff29ad48f37345cd629e847092e50093cf818e108cbf42a3e891ec071cc0",
+      "width": 1440,
+      "height": 2297,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 21,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png",
+      "sha256": "f34bcab984973537c8c653a15cc307ce416d6bdc02d2e0ff83388539b245f8de",
+      "width": 1440,
+      "height": 2297,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 22,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png",
+      "sha256": "4bb7e6bdda6c0a188e09636f240ef5854317e911e294f192c6b19778c48a0605",
+      "width": 1440,
+      "height": 1330,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 23,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "width": 1440,
+      "height": 1008,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 24,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png",
+      "sha256": "62614002d652039368858a83c17f7361c04d00d6feb597dabce3101fd9d128b2",
+      "width": 1046,
+      "height": 45,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 25,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png",
+      "sha256": "c59b3687b4f4ef90ef640c2a070a0aefff6e6200022c575954f0602744525208",
+      "width": 390,
+      "height": 2592,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 26,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png",
+      "sha256": "9c71b57dfbefd0d88f6ffd3c1d7546058e7e270ea3c2dd50cfed460237fff626",
+      "width": 390,
+      "height": 2321,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 27,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png",
+      "sha256": "0812734915feb2fcccc164b4491646cdb4ac6ccf7518c46268a0ebe6f8d47d2c",
+      "width": 390,
+      "height": 2701,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 28,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png",
+      "sha256": "14d5e0eac0bf3268ee4499157acd8f7afffc48e1f20eae9611a25aac18e5f830",
+      "width": 390,
+      "height": 2725,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 29,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png",
+      "sha256": "7e2f9df58b61da0112d1147368030446cfc5364523a13ab034386c6c0f0319fb",
+      "width": 390,
+      "height": 2701,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 30,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png",
+      "sha256": "74939aa1c9217826270066137b1278c1444a811f339e6537fd4d6a3f414af0ac",
+      "width": 390,
+      "height": 2743,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 31,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png",
+      "sha256": "bb248199f0f2d1f4c457cefb04938e4fc712a3b4215d13148dc07f6e6bc56865",
+      "width": 390,
+      "height": 1728,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 32,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "sha256": "a14d174b6fad2d86423fc2a773935ed5b87c95a3c8c6e9701e8aa00999cf7ea6",
+      "width": 390,
+      "height": 1173,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    },
+    {
+      "index": 33,
+      "origin": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png",
+      "sha256": "b6ac10e36afde313c26941e126cd5a7092b2eda6223410ef3a20e89c9651cc73",
+      "width": 286,
+      "height": 49,
+      "individuallyViewedOriginalFile": true,
+      "publicationSafety": "Synthetic acceptance fixtures only; no real Client document/private content observed.",
+      "fileEditedOrRecompressed": false
+    }
+  ],
+  "all34OriginalFilesIndividuallyViewed": true,
+  "viewingLimit": "The image tool may resize tall displays. These are unmodified original PNG files, not edited derivatives; no claim that every tall display was rendered at original pixel size.",
+  "syntheticIdentities": [
+    "Ada Ionescu / ada@example.test",
+    "Ion Popa fixture",
+    "Other Company Member fixture",
+    "Synthetic Complaint/Ideas acceptance Clients and Companies"
+  ],
+  "knownVisualReservations": [
+    "Existing #762 global skip-to-content link overlaps some narrow labels/headers and appears in full-page captures.",
+    "Existing #762 desktop language picker overlaps text or portions of open custom Select controls.",
+    "Repeated shell/feature headings remain the recorded minor follow-up."
+  ],
+  "scope": "Publication safety review only; not a fresh browser run, new acceptance approval or new code-review round.",
+  "noPrivateContentObserved": true
+}

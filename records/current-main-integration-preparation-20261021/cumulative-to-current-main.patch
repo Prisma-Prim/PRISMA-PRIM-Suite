@@ -1,0 +1,2167 @@
+diff --git a/apps/web/e2e/client-union-confirmation-localization.fixture.ts b/apps/web/e2e/client-union-confirmation-localization.fixture.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/e2e/client-union-confirmation-localization.fixture.ts
+@@ -0,0 +1,166 @@
++import type { Page, Route } from '@playwright/test';
++import type { ActorContext } from '../src/access-types';
++import type { UnionComparison } from '../src/client/client-union-contract';
++import {
++  confirmationActor,
++  confirmationCompanies,
++  confirmationFirst,
++  confirmationCanonical,
++  confirmationDossier,
++  confirmationPair,
++  confirmationSecond,
++} from '../src/test/client-union-confirmation-localization.fixture';
++import { operationalHomeFixture } from './actor-context.fixture';
++
++type RouteReply = (route: Route) => Promise<void> | void;
++type ConfirmationCommand = Readonly<{
++  path: string;
++  method: string;
++  body: string | null;
++  company: string | undefined;
++  key: string | undefined;
++}>;
++
++export async function installConfirmationLocalizationFixture({
++  page,
++}: {
++  page: Page;
++}) {
++  const state: {
++    actor: ActorContext;
++    comparison: UnionComparison;
++    united: boolean;
++    refreshFails: boolean;
++    apiRequests: string[];
++    unexpectedRequests: string[];
++    clientReads: number;
++    activityReads: number;
++    reviewReads: number;
++    dossierReads: string[];
++    commands: ConfirmationCommand[];
++    reviewReply: RouteReply | undefined;
++    confirmReply: RouteReply | undefined;
++  } = {
++    actor: { ...confirmationActor },
++    comparison: confirmationPair,
++    united: false,
++    refreshFails: false,
++    apiRequests: [],
++    unexpectedRequests: [],
++    clientReads: 0,
++    activityReads: 0,
++    reviewReads: 0,
++    dossierReads: [],
++    commands: [],
++    reviewReply: undefined,
++    confirmReply: undefined,
++  };
++  await page.route('**/api/**', async (route) => {
++    const request = route.request();
++    const url = new URL(request.url());
++    const path = url.pathname;
++    const company = request.headers()['x-company-context-id'];
++    state.apiRequests.push(`${request.method()} ${path}${url.search}`);
++    if (path === '/api/access/current-actor') {
++      const selected = confirmationCompanies.find(({ id }) => id === company);
++      return route.fulfill({
++        json:
++          selected && state.actor.activeCompany
++            ? {
++                ...state.actor,
++                activeCompany: { ...state.actor.activeCompany, ...selected },
++              }
++            : state.actor,
++      });
++    }
++    if (path === '/api/companies')
++      return route.fulfill({ json: confirmationCompanies });
++    if (path === '/api/operational-home')
++      return route.fulfill({
++        json: operationalHomeFixture(company ?? confirmationCompanies[0].id, {
++          active_clients: state.united ? 1 : 2,
++        }),
++      });
++    if (path === '/api/activity-log') {
++      state.activityReads += 1;
++      return state.united && state.refreshFails
++        ? route.fulfill({ status: 503 })
++        : route.fulfill({ json: { events: [] } });
++    }
++    if (path === '/api/client-duplicate-reviews')
++      return route.fulfill({ json: { items: [], next_cursor: null } });
++    if (path === '/api/clients') {
++      state.clientReads += 1;
++      return state.united && state.refreshFails
++        ? route.fulfill({ status: 503 })
++        : route.fulfill({
++            json: (state.united
++              ? [confirmationCanonical]
++              : [confirmationFirst, confirmationSecond]
++            ).map((client) => ({ ...client, relatedToActiveCompany: true })),
++          });
++    }
++    if (
++      path === `/api/clients/${confirmationFirst.id}/union-reviews` ||
++      path === `/api/clients/${confirmationSecond.id}/union-reviews`
++    ) {
++      state.reviewReads += 1;
++      return state.reviewReply
++        ? state.reviewReply(route)
++        : route.fulfill({ status: 201, json: state.comparison });
++    }
++    if (
++      path ===
++      `/api/client-union-reviews/${encodeURIComponent(state.comparison.reviewReference)}/confirm`
++    ) {
++      state.commands.push({
++        path,
++        method: request.method(),
++        body: request.postData(),
++        company,
++        key: request.headers()['idempotency-key'],
++      });
++      if (state.confirmReply) return state.confirmReply(route);
++      state.united = true;
++      return route.fulfill({
++        status: 201,
++        json: {
++          outcome: 'united',
++          canonicalClientId: confirmationSecond.id,
++          projectionReference: 'projection-716',
++        },
++      });
++    }
++    const clientId = [confirmationFirst.id, confirmationSecond.id].find(
++      (id) => path === `/api/clients/${id}`,
++    );
++    const client = clientId
++      ? confirmationDossier({ clientId, united: state.united })
++      : undefined;
++    if (client) {
++      state.dossierReads.push(client.id);
++      return route.fulfill({
++        json: {
++          ...client,
++          relatedToActiveCompany: true,
++          involvedCompanyDisplayNames: confirmationCompanies.map(
++            ({ displayName }) => displayName,
++          ),
++        },
++      });
++    }
++    const legalClientId = [confirmationFirst.id, confirmationSecond.id].find(
++      (id) => path === `/api/clients/${id}/legal-entities`,
++    );
++    const legalDossier = legalClientId
++      ? confirmationDossier({ clientId: legalClientId, united: state.united })
++      : undefined;
++    if (legalDossier)
++      return route.fulfill({
++        json: { clientVersion: legalDossier.version, legalEntities: [] },
++      });
++    state.unexpectedRequests.push(`${request.method()} ${path}${url.search}`);
++    return route.fulfill({ status: 404 });
++  });
++  return state;
++}
+diff --git a/apps/web/e2e/client-union-confirmation-localization.spec.ts b/apps/web/e2e/client-union-confirmation-localization.spec.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/e2e/client-union-confirmation-localization.spec.ts
+@@ -0,0 +1,738 @@
++import {
++  expect,
++  test,
++  type Locator,
++  type Page,
++  type TestInfo,
++} from '@playwright/test';
++import type { InterfaceLocale } from '../src/localization/interface-locale';
++import {
++  confirmationActor,
++  confirmationCanonical,
++  confirmationCompanies,
++  confirmationFirst,
++  confirmationLocaleCases,
++  confirmationPair,
++  confirmationReason,
++  confirmationReference,
++  confirmationSecond,
++  type ConfirmationLocaleCase,
++} from '../src/test/client-union-confirmation-localization.fixture';
++import { enterClassicCompatibility } from './classic-compatibility';
++import { installConfirmationLocalizationFixture } from './client-union-confirmation-localization.fixture';
++import { selectOption } from './select-option';
++
++function panel(page: Page, copy: ConfirmationLocaleCase) {
++  return page.getByRole('region', { name: copy.title, exact: true });
++}
++function form(page: Page, copy: ConfirmationLocaleCase) {
++  return panel(page, copy).getByRole('form', {
++    name: copy.confirm,
++    exact: true,
++  });
++}
++async function chooseLocale({
++  page,
++  code,
++}: {
++  page: Page;
++  code: InterfaceLocale;
++}) {
++  const control = page.locator('#interface-locale');
++  await control.focus();
++  await page.keyboard.press('Space');
++  await page.keyboard.press('Home');
++  const index = ['ro', 'ru', 'fr', 'en'].indexOf(code);
++  for (let position = 0; position < index; position += 1)
++    await page.keyboard.press('ArrowDown');
++  await page.keyboard.press('Enter');
++  await expect(control).toHaveAttribute('data-value', code);
++  await expect(control).toBeFocused();
++  await expect(page.locator('html')).toHaveAttribute('lang', code);
++}
++async function chooseSource({
++  page,
++  control,
++  second,
++}: {
++  page: Page;
++  control: Locator;
++  second: boolean;
++}) {
++  await control.focus();
++  await page.keyboard.press('Space');
++  await page.keyboard.press(second ? 'End' : 'Home');
++  if (!second) await page.keyboard.press('ArrowDown');
++  await page.keyboard.press('Enter');
++  await expect(control).toHaveAttribute(
++    'data-value',
++    second ? confirmationSecond.id : confirmationFirst.id,
++  );
++  await expect(control).toBeFocused();
++}
++async function openComparison({
++  page,
++  copy,
++}: {
++  page: Page;
++  copy: ConfirmationLocaleCase;
++}) {
++  const open = page
++    .getByRole('button', { name: copy.openDossier, exact: true })
++    .first();
++  await open.focus();
++  await page.keyboard.press('Enter');
++  await expect(page.getByText(copy.legalEmpty, { exact: true })).toBeVisible();
++  const review = panel(page, copy).getByRole('button', {
++    name: copy.review,
++    exact: true,
++  });
++  await review.focus();
++  await page.keyboard.press('Enter');
++  const heading = panel(page, copy).getByRole('heading', {
++    name: copy.compare,
++    exact: true,
++  });
++  await expect(heading).toBeFocused();
++  return form(page, copy);
++}
++async function chooseMixed({
++  page,
++  copy,
++}: {
++  page: Page;
++  copy: ConfirmationLocaleCase;
++}) {
++  const currentForm = form(page, copy);
++  await chooseSource({
++    page,
++    control: currentForm.getByRole('combobox', {
++      name: copy.canonical,
++      exact: true,
++    }),
++    second: true,
++  });
++  for (const [index, label] of copy.fields.entries())
++    await chooseSource({
++      page,
++      control: currentForm.getByRole('combobox', { name: label, exact: true }),
++      second: index % 2 !== 0,
++    });
++  await currentForm
++    .getByRole('textbox', { name: copy.reason, exact: true })
++    .fill(confirmationReason);
++  for (const checkbox of await currentForm.getByRole('checkbox').all()) {
++    await checkbox.focus();
++    await page.keyboard.press('Space');
++    await expect(checkbox).toBeChecked();
++  }
++}
++async function navigate({
++  page,
++  copy,
++  section,
++}: {
++  page: Page;
++  copy: ConfirmationLocaleCase;
++  section: 'activity' | 'clients';
++}) {
++  const menu = page.getByRole('button', { name: copy.openMenu, exact: true });
++  if (await menu.isVisible()) await menu.click();
++  const link = page
++    .getByRole('navigation', { name: copy.navigation })
++    .getByRole('link', { name: copy[section], exact: true });
++  await link.focus();
++  await page.keyboard.press('Enter');
++  await expect(page.locator(`#${section}`)).toBeVisible();
++}
++async function chooseCompany({
++  page,
++  copy,
++  companyId,
++}: {
++  page: Page;
++  copy: ConfirmationLocaleCase;
++  companyId: string;
++}) {
++  const menu = page.getByRole('button', { name: copy.openMenu, exact: true });
++  const narrow = await menu.isVisible();
++  if (narrow) await menu.click();
++  await selectOption(page.locator('#active-company-context'), companyId);
++  await expect(page.locator('#active-company-context')).toHaveAttribute(
++    'data-value',
++    companyId,
++  );
++  if (narrow) {
++    await page.locator('#active-company-context').focus();
++    await page.keyboard.press('Escape');
++    await expect(page.locator('#primary-navigation')).toHaveAttribute(
++      'data-open',
++      'false',
++    );
++  }
++}
++async function capture({
++  page,
++  info,
++  name,
++  focus,
++  fullPage = false,
++}: {
++  page: Page;
++  info: TestInfo;
++  name: string;
++  focus: Locator;
++  fullPage?: boolean;
++}) {
++  await focus.scrollIntoViewIfNeeded();
++  expect(
++    await page.evaluate(
++      () => document.documentElement.scrollWidth <= window.innerWidth,
++    ),
++  ).toBe(true);
++  expect(
++    await page.evaluate(() =>
++      Array.from(
++        document.querySelectorAll(
++          '.client-union button, .client-union input, .client-union textarea',
++        ),
++      )
++        .filter(
++          (node) =>
++            node.getClientRects().length > 0 && !node.closest('[hidden]'),
++        )
++        .map((node) => node.getBoundingClientRect())
++        .every((rect) => rect.left >= 0 && rect.right <= window.innerWidth),
++    ),
++  ).toBe(true);
++  await page.screenshot({ path: info.outputPath(`${name}-viewport.png`) });
++  if (fullPage) {
++    // Reset immediately before full capture so a fixed skip link cannot retain a scrolled artifact.
++    await page.evaluate(() => window.scrollTo(0, 0));
++    await page.screenshot({
++      path: info.outputPath(`${name}-full.png`),
++      fullPage: true,
++    });
++  }
++}
++async function expectSavedComparison({
++  page,
++  copy,
++}: {
++  page: Page;
++  copy: ConfirmationLocaleCase;
++}) {
++  const comparison = panel(page, copy).getByRole('region', {
++    name: copy.compare,
++    exact: true,
++  });
++  const articles = comparison.getByRole('article');
++  await expect(articles).toHaveCount(2);
++  await expect(articles.nth(0)).toHaveAccessibleName(
++    `${copy.source} 1 · ${confirmationFirst.displayName}`,
++  );
++  await expect(articles.nth(1)).toHaveAccessibleName(
++    `${copy.source} 2 · ${confirmationSecond.displayName}`,
++  );
++  await expect(articles.nth(0)).toContainText(copy.version);
++  expect(
++    await articles.nth(0).locator('.client-union-values dd').allTextContents(),
++  ).toEqual([
++    confirmationFirst.displayName,
++    '  UNION-716 / ИД  ',
++    copy.absent,
++    '+373 (22) 071-600',
++    copy.absent,
++    'Consultanță / консалтинг',
++  ]);
++  expect(await articles.nth(0).locator('li strong').allTextContents()).toEqual([
++    'Ana / Анна',
++  ]);
++  expect(await articles.nth(1).locator('li strong').allTextContents()).toEqual([
++    'Ana / Анна',
++    'Boris / Борис',
++  ]);
++  expect(await articles.nth(0).locator('li dd').allTextContents()).toEqual([
++    '+373 (60) 071-601',
++    'ana+first@example.test',
++    '  Director / директор  ',
++    copy.roles,
++    '  Email întâi / сначала email\nDupă 14:00.  ',
++  ]);
++  for (const caption of copy.contacts)
++    await expect(
++      articles.nth(0).getByText(caption, { exact: true }),
++    ).toBeVisible();
++  await expect(
++    comparison.getByText(copy.contactSource, { exact: true }),
++  ).toBeVisible();
++  await expect(comparison.getByText(copy.count, { exact: true })).toBeVisible();
++  expect(
++    await comparison
++      .getByRole('region', { name: copy.companies })
++      .getByRole('listitem')
++      .allTextContents(),
++  ).toEqual(confirmationCompanies.map(({ displayName }) => displayName));
++  await expect(comparison.locator('time')).toHaveCount(0);
++  await expect(comparison).not.toContainText(confirmationFirst.id);
++  await expect(comparison).not.toContainText(confirmationReference);
++}
++
++for (const copy of Object.values(confirmationLocaleCases)) {
++  test(`preserves mixed second-canonical intent and late exact retry with localized completion in ${copy.code}`, async ({
++    page,
++  }, info) => {
++    const state = await installConfirmationLocalizationFixture({ page });
++    await page.goto('/?frame=prisme#clients');
++    const english = confirmationLocaleCases.en;
++    let currentForm = await openComparison({ page, copy: english });
++    for (const control of await currentForm.getByRole('combobox').all())
++      await expect(control).toHaveAttribute('data-value', '');
++    await chooseMixed({ page, copy: english });
++    const formNode = await currentForm.elementHandle();
++    const reasonNode = await currentForm.getByRole('textbox').elementHandle();
++    const canonicalNode = await currentForm
++      .getByRole('combobox', { name: english.canonical, exact: true })
++      .elementHandle();
++    if (!formNode || !reasonNode || !canonicalNode)
++      throw new Error('Expected mounted comparison controls');
++    const requests = state.apiRequests.slice();
++    await chooseLocale({ page, code: copy.code });
++    expect(state.apiRequests).toEqual(requests);
++    currentForm = form(page, copy);
++    expect(
++      await currentForm.evaluate(
++        (node, original) => node === original,
++        formNode,
++      ),
++    ).toBe(true);
++    expect(
++      await currentForm
++        .getByRole('textbox')
++        .evaluate((node, original) => node === original, reasonNode),
++    ).toBe(true);
++    expect(
++      await currentForm
++        .getByRole('combobox', { name: copy.canonical, exact: true })
++        .evaluate((node, original) => node === original, canonicalNode),
++    ).toBe(true);
++    await expectSavedComparison({ page, copy });
++    await expect(
++      currentForm.getByText(copy.retained, { exact: true }),
++    ).toHaveCount(3);
++    await expect(currentForm.getByRole('textbox')).toHaveValue(
++      confirmationReason,
++    );
++    for (const checkbox of await currentForm.getByRole('checkbox').all())
++      await expect(checkbox).toBeChecked();
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-mixed-sources`,
++      focus: panel(page, copy).getByRole('heading', { name: copy.compare }),
++      fullPage: true,
++    });
++
++    let releaseUncertain: (() => Promise<void>) | undefined;
++    state.confirmReply = (route) => {
++      releaseUncertain = () => route.fulfill({ status: 503, json: {} });
++    };
++    await currentForm
++      .getByRole('button', { name: copy.confirm, exact: true })
++      .click();
++    await expect.poll(() => state.commands.length).toBe(1);
++    await expect(
++      currentForm.getByRole('button', { name: copy.pending }),
++    ).toBeDisabled();
++    const alternate =
++      copy.code === 'ro'
++        ? confirmationLocaleCases.fr
++        : confirmationLocaleCases.ro;
++    const pendingRequests = state.apiRequests.slice();
++    await chooseLocale({ page, code: alternate.code });
++    expect(state.apiRequests).toEqual(pendingRequests);
++    await expect(
++      form(page, alternate).getByRole('button', { name: alternate.pending }),
++    ).toBeDisabled();
++    if (!releaseUncertain)
++      throw new Error('Expected a received pending confirmation');
++    await releaseUncertain();
++    await expect(form(page, alternate).getByRole('alert')).toContainText(
++      alternate.uncertain,
++    );
++    await chooseLocale({ page, code: copy.code });
++    expect(state.apiRequests).toEqual(pendingRequests);
++    currentForm = form(page, copy);
++    await expect(currentForm.getByRole('alert')).toContainText(copy.error);
++    await expect(currentForm.getByRole('alert')).toContainText(copy.uncertain);
++    await navigate({ page, copy, section: 'activity' });
++    await expect(panel(page, copy)).toBeHidden();
++    await navigate({ page, copy, section: 'clients' });
++    await enterClassicCompatibility(page, copy.optIn);
++    const frameRequests = [...pendingRequests, 'GET /api/operational-home'];
++    await expect.poll(() => state.apiRequests).toEqual(frameRequests);
++    await page.getByRole('button', { name: copy.optIn, exact: true }).click();
++    await expect(page.locator('.prisme-shell')).toBeVisible();
++    expect(state.apiRequests).toEqual(frameRequests);
++    expect(
++      await currentForm.evaluate(
++        (node, original) => node === original,
++        formNode,
++      ),
++    ).toBe(true);
++    await expect(currentForm.getByRole('textbox')).toHaveValue(
++      confirmationReason,
++    );
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-uncertain`,
++      focus: currentForm.getByRole('alert'),
++    });
++
++    let releaseSuccess: (() => Promise<void>) | undefined;
++    state.confirmReply = (route) => {
++      releaseSuccess = () =>
++        route.fulfill({
++          status: 201,
++          json: {
++            outcome: 'united',
++            canonicalClientId: confirmationSecond.id,
++            projectionReference: 'projection-716',
++          },
++        });
++    };
++    await currentForm
++      .getByRole('button', { name: copy.confirm, exact: true })
++      .click();
++    await expect.poll(() => state.commands.length).toBe(2);
++    expect(state.commands[1]).toEqual(state.commands[0]);
++    const command = state.commands[0];
++    if (!command || !command.body)
++      throw new Error('Expected an explicit serialized command');
++    expect(command.path).toBe('/api/client-union-reviews/review-716/confirm');
++    expect(command.method).toBe('POST');
++    expect(command.company).toBe(confirmationCompanies[0].id);
++    expect(command.key).toBeTruthy();
++    expect(JSON.parse(command.body)).toEqual({
++      canonicalClientId: confirmationSecond.id,
++      fields: {
++        displayName: confirmationFirst.id,
++        taxId: confirmationSecond.id,
++        address: confirmationFirst.id,
++        telephone: confirmationSecond.id,
++        generalEmail: confirmationFirst.id,
++        businessActivity: confirmationSecond.id,
++      },
++      reason: confirmationReason,
++      reviewedDifferences: true,
++      companyIds: ['company-a-716', 'company-b-716'],
++    });
++    const retryRequests = state.apiRequests.slice();
++    await chooseLocale({ page, code: alternate.code });
++    expect(state.apiRequests).toEqual(retryRequests);
++    state.united = true;
++    if (!releaseSuccess) throw new Error('Expected received explicit retry');
++    await releaseSuccess();
++    await expect(
++      page.getByText(alternate.saved, { exact: true }),
++    ).toBeVisible();
++    await expect(
++      page
++        .getByRole('region', {
++          name: confirmationCanonical.displayName,
++          exact: true,
++        })
++        .getByRole('heading', {
++          name: confirmationCanonical.displayName,
++          exact: true,
++        }),
++    ).toBeVisible();
++    await expect
++      .poll(() => state.dossierReads.at(-1))
++      .toBe(confirmationSecond.id);
++    await expect(form(page, alternate)).toHaveCount(0);
++    await expect(
++      page
++        .getByRole('region', { name: alternate.legalTitle, exact: true })
++        .getByText(alternate.legalEmpty, { exact: true }),
++    ).toBeVisible();
++    const completedRequests = state.apiRequests.slice();
++    await chooseLocale({ page, code: copy.code });
++    expect(state.apiRequests).toEqual(completedRequests);
++    await expect(page.getByText(copy.saved, { exact: true })).toBeVisible();
++    expect(state.clientReads).toBeGreaterThan(1);
++    expect(state.activityReads).toBeGreaterThan(1);
++    expect(state.unexpectedRequests).toEqual([]);
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-canonical-completion`,
++      focus: page.getByText(copy.saved, { exact: true }),
++      fullPage: true,
++    });
++  });
++
++  test(`retains localized validation, preserves all 51 Contacts and safely refuses stale reviews in ${copy.code}`, async ({
++    page,
++  }, info) => {
++    const state = await installConfirmationLocalizationFixture({ page });
++    await page.addInitScript(
++      (code) => localStorage.setItem('prisma-prim.interface-locale', code),
++      copy.code,
++    );
++    await page.goto('/?frame=prisme#clients');
++    let currentForm = await openComparison({ page, copy });
++    await currentForm
++      .getByRole('button', { name: copy.confirm, exact: true })
++      .click();
++    await expect(currentForm.getByRole('alert')).toHaveText(copy.incomplete);
++    await expect(currentForm.getByRole('textbox')).toHaveAccessibleDescription(
++      copy.incomplete,
++    );
++    const reason = currentForm.getByRole('textbox');
++    await expect(reason).toHaveAttribute('maxlength', '2000');
++    for (const control of await currentForm.getByRole('combobox').all()) {
++      await expect(control).toHaveAttribute('data-value', '');
++      await expect(control).toHaveAttribute('aria-invalid', 'true');
++    }
++    const attemptedNode = await reason.elementHandle();
++    if (!attemptedNode) throw new Error('Expected attempted reason field');
++    const requests = state.apiRequests.slice();
++    await chooseLocale({ page, code: copy.code === 'ro' ? 'en' : 'ro' });
++    await chooseLocale({ page, code: copy.code });
++    expect(state.apiRequests).toEqual(requests);
++    expect(
++      await reason.evaluate(
++        (node, original) => node === original,
++        attemptedNode,
++      ),
++    ).toBe(true);
++    await expect(reason).toHaveAttribute('aria-invalid', 'true');
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-required-validation`,
++      focus: reason,
++    });
++    await panel(page, copy).getByRole('button', { name: copy.close }).click();
++    state.comparison = {
++      ...confirmationPair,
++      clients: [
++        {
++          ...confirmationFirst,
++          contacts: Array.from({ length: 51 }, (_, index) => ({
++            name: `Literal Contact ${index + 1}`,
++          })),
++        },
++        { ...confirmationSecond, contacts: [] },
++      ],
++    };
++    await panel(page, copy).getByRole('button', { name: copy.review }).click();
++    currentForm = form(page, copy);
++    await expect(panel(page, copy).getByRole('alert')).toHaveText(
++      copy.capacity,
++    );
++    await expect(
++      currentForm.getByRole('button', { name: copy.confirm }),
++    ).toBeDisabled();
++    await expect(
++      panel(page, copy)
++        .getByRole('listitem')
++        .filter({ has: page.locator('strong') }),
++    ).toHaveCount(51);
++    for (const control of await currentForm.getByRole('combobox').all())
++      await expect(control).toBeDisabled();
++    expect(state.commands).toHaveLength(0);
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-capacity-51`,
++      focus: panel(page, copy).getByRole('alert'),
++    });
++    await panel(page, copy).getByRole('button', { name: copy.close }).click();
++    state.comparison = confirmationPair;
++    for (const status of [409, 404, 403]) {
++      state.reviewReply = (route) =>
++        route.fulfill({
++          status,
++          json: { message: 'PRIVATE hidden candidate' },
++        });
++      await panel(page, copy)
++        .getByRole('button', { name: copy.review })
++        .click();
++      await expect(panel(page, copy).getByRole('alert')).toHaveText(
++        copy.unavailable,
++      );
++      await expect(form(page, copy)).toHaveCount(0);
++      await expect(panel(page, copy)).not.toContainText('PRIVATE');
++      await expect(panel(page, copy)).not.toContainText(
++        confirmationSecond.displayName,
++      );
++    }
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-safe-refusal`,
++      focus: panel(page, copy).getByRole('alert'),
++    });
++    expect(state.commands).toHaveLength(0);
++    expect(state.unexpectedRequests).toEqual([]);
++  });
++
++  test(`suppresses hidden focus and late work after actual authority retirement in ${copy.code}`, async ({
++    page,
++  }, info) => {
++    const state = await installConfirmationLocalizationFixture({ page });
++    await page.addInitScript(
++      (code) => localStorage.setItem('prisma-prim.interface-locale', code),
++      copy.code,
++    );
++    await page.goto('/?frame=prisme#clients');
++    await page
++      .getByRole('button', { name: copy.openDossier, exact: true })
++      .first()
++      .click();
++    await expect(
++      page.getByText(copy.legalEmpty, { exact: true }),
++    ).toBeVisible();
++    let releaseReview: (() => Promise<void>) | undefined;
++    state.reviewReply = (route) => {
++      releaseReview = () =>
++        route.fulfill({ status: 201, json: confirmationPair });
++    };
++    const review = panel(page, copy).getByRole('button', { name: copy.review });
++    await review.focus();
++    await page.keyboard.press('Enter');
++    await expect.poll(() => state.reviewReads).toBe(1);
++    await navigate({ page, copy, section: 'activity' });
++    const activeControl = page.locator('#interface-locale');
++    await activeControl.focus();
++    await expect(activeControl).toBeFocused();
++    const hiddenRequests = state.apiRequests.slice();
++    if (!releaseReview) throw new Error('Expected pending background review');
++    await releaseReview();
++    await expect(
++      page.getByRole('form', {
++        name: copy.confirm,
++        exact: true,
++        includeHidden: true,
++      }),
++    ).toHaveCount(1);
++    await expect(panel(page, copy)).toBeHidden();
++    await expect(activeControl).toBeFocused();
++    expect(state.apiRequests).toEqual(hiddenRequests);
++    await navigate({ page, copy, section: 'clients' });
++    await expect(form(page, copy)).toBeVisible();
++    await expect(
++      panel(page, copy).getByRole('heading', { name: copy.compare }),
++    ).not.toBeFocused();
++    await panel(page, copy).getByRole('button', { name: copy.close }).click();
++    state.reviewReply = undefined;
++    await panel(page, copy).getByRole('button', { name: copy.review }).click();
++    await chooseMixed({ page, copy });
++
++    // The server revokes the submitted captured-v2 authority before this command.
++    const legacyActor = {
++      ...confirmationActor,
++      activeCompany: {
++        ...confirmationCompanies[0],
++        clientPermissions: ['client.read'],
++        clientPermissionAssignmentId: 'replacement-v1-716',
++        clientPermissionSetVersion: 'v1',
++      },
++    } satisfies typeof confirmationActor;
++    state.actor = legacyActor;
++    state.confirmReply = (route) =>
++      route.fulfill({ status: 403, json: { message: 'PRIVATE' } });
++    await form(page, copy).getByRole('button', { name: copy.confirm }).click();
++    await expect(form(page, copy)).toHaveCount(0);
++    await expect(
++      panel(page, copy).getByRole('button', { name: copy.review }),
++    ).toHaveCount(0);
++    await expect(page.getByText(copy.saved, { exact: true })).toHaveCount(0);
++    await expect(panel(page, copy)).not.toContainText('PRIVATE');
++    expect(state.commands).toHaveLength(1);
++    expect(state.united).toBe(false);
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-captured-version-retirement`,
++      focus: panel(page, copy),
++    });
++
++    // Company B independently returns current captured-v2 resolver authority.
++    const resolverCompany = confirmationActor.activeCompany;
++    if (!resolverCompany)
++      throw new Error('Expected the configured resolver Company');
++    state.actor = {
++      ...confirmationActor,
++      activeCompany: {
++        ...resolverCompany,
++        ...confirmationCompanies[1],
++        clientPermissionAssignmentId: 'fresh-v2-company-b-716',
++        clientPermissionSetVersion: 'v2',
++      },
++    };
++    state.comparison = {
++      ...confirmationPair,
++      reviewReference: 'fresh-company-b-716',
++    };
++    await chooseCompany({ page, copy, companyId: confirmationCompanies[1].id });
++    await page
++      .getByRole('button', { name: copy.openDossier, exact: true })
++      .first()
++      .click();
++    await expect(
++      page.getByText(copy.legalEmpty, { exact: true }),
++    ).toBeVisible();
++    await panel(page, copy).getByRole('button', { name: copy.review }).click();
++    for (const control of await form(page, copy).getByRole('combobox').all())
++      await expect(control).toHaveAttribute('data-value', '');
++    await expect(form(page, copy).getByRole('textbox')).toHaveValue('');
++    await chooseMixed({ page, copy });
++    let releaseCommand: (() => Promise<void>) | undefined;
++    state.confirmReply = (route) => {
++      releaseCommand = () =>
++        route.fulfill({
++          status: 201,
++          json: {
++            outcome: 'united',
++            canonicalClientId: confirmationSecond.id,
++            projectionReference: 'projection-716',
++          },
++        });
++    };
++    await form(page, copy).getByRole('button', { name: copy.confirm }).click();
++    await expect.poll(() => state.commands.length).toBe(2);
++    expect(state.commands[0]?.company).toBe(confirmationCompanies[0].id);
++    expect(state.commands[1]?.company).toBe(confirmationCompanies[1].id);
++    expect(state.commands[1]?.path).toBe(
++      '/api/client-union-reviews/fresh-company-b-716/confirm',
++    );
++    expect(state.commands[1]?.key).not.toBe(state.commands[0]?.key);
++    expect(state.commands[1]?.body).toBe(state.commands[0]?.body);
++    state.actor = legacyActor;
++    await chooseCompany({ page, copy, companyId: confirmationCompanies[0].id });
++    await expect(
++      page.getByRole('button', { name: copy.openDossier, exact: true }).first(),
++    ).toBeVisible();
++    await expect(form(page, copy)).toHaveCount(0);
++    await expect(page.locator('#client-dossier-title')).toHaveCount(0);
++    if (!releaseCommand)
++      throw new Error('Expected pending old-Company confirmation');
++    const retiredRequests = state.apiRequests.slice();
++    state.united = true;
++    await releaseCommand();
++    await expect(page.getByText(copy.saved, { exact: true })).toHaveCount(0);
++    await expect(page.locator('#client-dossier-title')).toHaveCount(0);
++    expect(state.apiRequests).toEqual(retiredRequests);
++    expect(state.unexpectedRequests).toEqual([]);
++    await capture({
++      page,
++      info,
++      name: `${copy.code}-company-retirement`,
++      focus: panel(page, copy),
++    });
++  });
++}
+diff --git a/apps/web/src/App.client-union-confirmation-localization.test.tsx b/apps/web/src/App.client-union-confirmation-localization.test.tsx
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/App.client-union-confirmation-localization.test.tsx
+@@ -0,0 +1,474 @@
++import {
++  act,
++  fireEvent,
++  render,
++  screen,
++  waitFor,
++  within,
++} from '@testing-library/react';
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++import { App } from './App';
++import { deterministicBrowserIdentity } from './access-composition';
++import type { ActorContext } from './access-types';
++import {
++  InterfaceLocaleProvider,
++  interfaceLocaleStorageKey,
++} from './localization/interface-locale';
++import { changeValue } from './test/select-option';
++import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
++import {
++  confirmationActor,
++  confirmationCompanies,
++  confirmationFirst,
++  confirmationCanonical,
++  confirmationDossier,
++  confirmationSecond,
++  confirmationPair,
++  confirmationReason,
++  confirmationLocaleCases,
++} from './test/client-union-confirmation-localization.fixture';
++
++const [companyA, companyB] = confirmationCompanies;
++const first = confirmationFirst;
++const second = confirmationSecond;
++function resolverActor(): ActorContext {
++  return { ...confirmationActor };
++}
++function respond(value: unknown, status = 200) {
++  return new Response(JSON.stringify(value), { status });
++}
++function installTransport() {
++  const state: {
++    actor: ActorContext;
++    united: boolean;
++    activityReads: number;
++    clientReads: number;
++    requests: string[];
++    confirmations: {
++      path: string;
++      company: string | null;
++      body: string;
++      key: string | null;
++    }[];
++    confirm: ((init?: RequestInit) => Promise<Response>) | undefined;
++    review: ((init?: RequestInit) => Promise<Response>) | undefined;
++  } = {
++    actor: resolverActor(),
++    united: false,
++    activityReads: 0,
++    clientReads: 0,
++    requests: [],
++    confirmations: [],
++    confirm: undefined,
++    review: undefined,
++  };
++  vi.stubGlobal(
++    'fetch',
++    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
++      const path = input.toString();
++      state.requests.push(path);
++      if (path.endsWith('/access/current-actor')) {
++        if (
++          new Headers(init?.headers).get('x-company-context-id') === companyB.id
++        )
++          state.actor = {
++            ...state.actor,
++            activeCompany: { ...state.actor.activeCompany, ...companyB },
++          };
++        return respond(state.actor);
++      }
++      if (path.endsWith('/companies')) return respond([companyA, companyB]);
++      if (path.endsWith('/activity-log')) {
++        state.activityReads++;
++        return respond({ events: [] });
++      }
++      if (path.includes('/client-duplicate-reviews?'))
++        return respond({ items: [], next_cursor: null });
++      if (path.endsWith('/clients/search?query=Check%20authority'))
++        return respond({}, 403);
++      if (path.endsWith('/clients')) {
++        state.clientReads++;
++        return respond(
++          (state.united ? [confirmationCanonical] : [first, second]).map(
++            (client) => ({
++              ...client,
++              relatedToActiveCompany: true,
++            }),
++          ),
++        );
++      }
++      if (path.endsWith('/union-reviews'))
++        return state.review
++          ? state.review(init)
++          : respond(confirmationPair, 201);
++      if (path.endsWith('/confirm')) {
++        if (typeof init?.body !== 'string')
++          throw new Error('Expected existing serialized command');
++        state.confirmations.push({
++          path,
++          company: new Headers(init.headers).get('x-company-context-id'),
++          body: init.body,
++          key: new Headers(init.headers).get('idempotency-key'),
++        });
++        if (state.confirm) return state.confirm(init);
++        if (state.confirmations.length === 1) return respond({}, 503);
++        state.united = true;
++        return respond(
++          {
++            outcome: 'united',
++            canonicalClientId: second.id,
++            projectionReference: 'projection-716',
++          },
++          201,
++        );
++      }
++      const clientId = [first.id, second.id].find((id) =>
++        path.endsWith('/clients/' + id),
++      );
++      const client = clientId
++        ? confirmationDossier({ clientId, united: state.united })
++        : undefined;
++      if (client)
++        return respond({
++          ...client,
++          relatedToActiveCompany: true,
++          involvedCompanyDisplayNames: confirmationCompanies.map(
++            ({ displayName }) => displayName,
++          ),
++        });
++      const legalClientId = [first.id, second.id].find((id) =>
++        path.endsWith('/clients/' + id + '/legal-entities'),
++      );
++      const legalDossier = legalClientId
++        ? confirmationDossier({ clientId: legalClientId, united: state.united })
++        : undefined;
++      if (legalDossier)
++        return respond({
++          clientVersion: legalDossier.version,
++          legalEntities: [],
++        });
++      throw new Error('Unexpected API request: ' + path);
++    }),
++  );
++  return state;
++}
++
++function deferredResponse() {
++  let complete: (value: Response) => void = () => {
++    throw new Error('Deferred response not initialized');
++  };
++  const promise = new Promise<Response>((resolve) => {
++    complete = resolve;
++  });
++  return { promise, complete };
++}
++
++const literalReason = confirmationReason;
++
++describe('Client union confirmation interface localization through App', () => {
++  beforeEach(() => {
++    localStorage.clear();
++    sessionStorage.clear();
++    localStorage.setItem(interfaceLocaleStorageKey, 'en');
++    window.history.replaceState(null, '', '/?frame=prisme#clients');
++  });
++  afterEach(() => {
++    vi.restoreAllMocks();
++    vi.unstubAllGlobals();
++    window.history.replaceState(null, '', '/');
++  });
++
++  it('keeps second-canonical mixed-source intent through locale changes, pending uncertainty and exact retry with truthful localized completion', async () => {
++    const state = installTransport();
++    const firstReply = deferredResponse();
++    const retryReply = deferredResponse();
++    state.confirm = () =>
++      state.confirmations.length === 1
++        ? firstReply.promise
++        : retryReply.promise;
++    render(
++      <InterfaceLocaleProvider>
++        <InterfaceLocaleSelect />
++        <App identity={deterministicBrowserIdentity()} />
++      </InterfaceLocaleProvider>,
++    );
++    const [open] = await screen.findAllByRole('button', {
++      name: 'Open dossier',
++    });
++    if (!open) throw new Error('Expected readable first Client');
++    fireEvent.click(open);
++    await screen.findByText(confirmationLocaleCases.en.legalEmpty);
++    fireEvent.click(
++      await screen.findByRole('button', { name: 'Review existing duplicates' }),
++    );
++    const form = await screen.findByRole('form', { name: 'Confirm union' });
++    const heading = screen.getByRole('heading', {
++      name: 'Compare the two existing Clients',
++    });
++    const selectors = within(form).getAllByRole('combobox');
++    expect(selectors).toHaveLength(7);
++    for (const selector of selectors)
++      expect(selector).toHaveTextContent('Choose a source');
++    const canonical = within(form).getByLabelText('Canonical Client dossier');
++    changeValue(canonical, second.id);
++    const sources = [
++      ['Client display name', first.id],
++      ['IDNO / tax code', second.id],
++      ['Address', first.id],
++      ['Telephone', second.id],
++      ['General email', first.id],
++      ['Business activity', second.id],
++    ];
++    for (const [label, source] of sources) {
++      if (!label || !source) throw new Error('Expected explicit source choice');
++      changeValue(within(form).getByLabelText(label, { exact: true }), source);
++    }
++    const reason = within(form).getByRole('textbox', {
++      name: 'Reason for this union',
++    });
++    changeValue(reason, literalReason);
++    const acknowledgements = within(form).getAllByRole('checkbox');
++    expect(acknowledgements).toHaveLength(2);
++    for (const checkbox of acknowledgements) fireEvent.click(checkbox);
++    expect(within(form).getAllByText('Not provided').length).toBeGreaterThan(0);
++    const language = screen.getByRole('combobox', {
++      name: 'Interface language',
++    });
++    language.focus();
++    const requestsBeforeLocale = [...state.requests];
++    changeValue(language, 'ro');
++    expect(document.documentElement.lang).toBe('ro');
++    expect(state.requests).toEqual(requestsBeforeLocale);
++    expect(state.confirmations).toHaveLength(0);
++    expect(screen.getByRole('combobox', { name: 'Limba interfeței' })).toBe(
++      language,
++    );
++    expect(language).toHaveFocus();
++    expect(form).toBeInTheDocument();
++    expect(heading).toBeInTheDocument();
++    expect(within(form).getAllByRole('combobox')).toEqual(selectors);
++    expect(reason).toHaveValue(literalReason);
++    for (const checkbox of acknowledgements) expect(checkbox).toBeChecked();
++    // Independent translation oracles: existing English-only owner must fail here.
++    expect.soft(heading).toHaveTextContent('Compară cei doi Clienți existenți');
++    expect.soft(form).toHaveAccessibleName('Confirmă unirea');
++    expect
++      .soft(canonical)
++      .toHaveAccessibleName('Dosarul canonic al Clientului');
++    expect.soft(reason).toHaveAccessibleName('Motivul acestei uniri');
++    expect.soft(form).toHaveTextContent('Valoarea de păstrat din Sursa 1');
++    expect.soft(form).toHaveTextContent('Nefurnizat');
++
++    fireEvent.submit(form);
++    await waitFor(() => expect(state.confirmations).toHaveLength(1));
++    const originalCommand = state.confirmations[0];
++    if (!originalCommand)
++      throw new Error('Expected captured explicit union command');
++    expect(originalCommand.path).toContain(
++      '/client-union-reviews/review-716/confirm',
++    );
++    expect(originalCommand.company).toBe(companyA.id);
++    expect(originalCommand.key).toBeTruthy();
++    expect(JSON.parse(originalCommand.body)).toEqual({
++      canonicalClientId: second.id,
++      fields: {
++        displayName: first.id,
++        taxId: second.id,
++        address: first.id,
++        telephone: second.id,
++        generalEmail: first.id,
++        businessActivity: second.id,
++      },
++      reason: literalReason,
++      reviewedDifferences: true,
++      companyIds: [companyA.id, companyB.id],
++    });
++    const pendingRequests = [...state.requests];
++    changeValue(language, 'en');
++    expect(state.requests).toEqual(pendingRequests);
++    expect(form).toBeInTheDocument();
++    expect(reason).toHaveValue(literalReason);
++    expect(
++      within(form).getByRole('button', { name: 'Saving…' }),
++    ).toBeDisabled();
++    await act(async () => firstReply.complete(respond({}, 503)));
++    await screen.findByText(
++      'The request could not be completed. You can retry safely.',
++    );
++    changeValue(language, 'ro');
++    expect(state.requests).toEqual(pendingRequests);
++    expect(state.confirmations).toHaveLength(1);
++    expect
++      .soft(form)
++      .toHaveTextContent(
++        'Nu s-a primit nicio confirmare. Alegerile și motivul sunt păstrate.',
++      );
++    expect(reason).toHaveValue(literalReason);
++    for (const checkbox of acknowledgements) expect(checkbox).toBeChecked();
++    fireEvent.submit(form);
++    await waitFor(() => expect(state.confirmations).toHaveLength(2));
++    expect(state.confirmations[1]).toEqual(originalCommand);
++    state.united = true;
++    await act(async () =>
++      retryReply.complete(
++        respond(
++          {
++            outcome: 'united',
++            canonicalClientId: second.id,
++            projectionReference: 'projection-716',
++          },
++          201,
++        ),
++      ),
++    );
++    const dossier = await screen.findByRole('region', {
++      name: confirmationCanonical.displayName,
++    });
++    expect(
++      within(dossier).getByRole('heading', {
++        name: confirmationCanonical.displayName,
++      }),
++    ).toBeInTheDocument();
++    await within(dossier).findByText(confirmationLocaleCases.ro.legalEmpty);
++    expect(form).not.toBeInTheDocument();
++    expect
++      .soft(
++        screen.queryByText(
++          'Unirea a fost confirmată. Dosarul canonic este acum disponibil în Companiile implicate.',
++        ),
++      )
++      .toBeInTheDocument();
++    expect(state.clientReads).toBeGreaterThan(1);
++    expect(state.activityReads).toBeGreaterThan(1);
++    const completedRequests = [...state.requests];
++    changeValue(language, 'en');
++    expect(state.requests).toEqual(completedRequests);
++    expect(
++      screen.getByText(
++        'Union confirmed. The canonical dossier is now available in the affected Companies.',
++      ),
++    ).toBeInTheDocument();
++  });
++});
++
++for (const copy of Object.values(confirmationLocaleCases)) {
++  it(`localizes saved comparison values, attempted validation, late feedback and canonical completion in ${copy.code}`, async () => {
++    localStorage.clear();
++    sessionStorage.clear();
++    localStorage.setItem(interfaceLocaleStorageKey, 'en');
++    window.history.replaceState(null, '', '/?frame=prisme#clients');
++    try {
++      const state = installTransport();
++      const reply = deferredResponse();
++      state.confirm = () => reply.promise;
++      render(
++        <InterfaceLocaleProvider>
++          <InterfaceLocaleSelect />
++          <App identity={deterministicBrowserIdentity()} />
++        </InterfaceLocaleProvider>,
++      );
++      const [open] = await screen.findAllByRole('button', {
++        name: 'Open dossier',
++      });
++      if (!open) throw new Error('Expected first readable dossier');
++      fireEvent.click(open);
++      await screen.findByText(confirmationLocaleCases.en.legalEmpty);
++      fireEvent.click(
++        await screen.findByRole('button', {
++          name: 'Review existing duplicates',
++        }),
++      );
++      const form = await screen.findByRole('form', { name: 'Confirm union' });
++      fireEvent.submit(form);
++      const controls = within(form).getAllByRole('combobox');
++      const reason = within(form).getByRole('textbox');
++      const language = screen.getByRole('combobox', {
++        name: 'Interface language',
++      });
++      const requests = [...state.requests];
++      changeValue(language, copy.code);
++      expect(state.requests).toEqual(requests);
++      expect(form).toHaveAccessibleName(copy.confirm);
++      expect(within(form).getByRole('alert')).toHaveTextContent(
++        copy.incomplete,
++      );
++      expect(reason).toHaveAttribute('aria-invalid', 'true');
++      expect(reason).toHaveAccessibleName(copy.reason);
++      expect(within(form).getAllByRole('combobox')).toEqual(controls);
++      const comparison = screen.getByRole('region', { name: copy.compare });
++      const articles = within(comparison).getAllByRole('article');
++      expect(articles).toHaveLength(2);
++      expect(articles[0]).toHaveAccessibleName(
++        `${copy.source} 1 · ${first.displayName}`,
++      );
++      expect(articles[1]).toHaveAccessibleName(
++        `${copy.source} 2 · ${second.displayName}`,
++      );
++      expect(comparison).toHaveTextContent(copy.version, {
++        normalizeWhitespace: false,
++      });
++      expect(comparison).toHaveTextContent(copy.count);
++      expect(comparison).toHaveTextContent(copy.roles);
++      expect(comparison).toHaveTextContent(copy.contactSource);
++      for (const caption of copy.contacts)
++        expect(comparison).toHaveTextContent(caption);
++      for (const label of copy.fields)
++        expect(
++          within(form).getByLabelText(label, { exact: true }),
++        ).toHaveAttribute('aria-invalid', 'true');
++      expect(
++        within(comparison).getByRole('region', { name: copy.companies }),
++      ).toHaveTextContent(companyB.displayName);
++      const canonical = within(form).getByLabelText(copy.canonical);
++      changeValue(canonical, second.id);
++      for (const [index, label] of copy.fields.entries())
++        changeValue(
++          within(form).getByLabelText(label, { exact: true }),
++          index % 2 === 0 ? first.id : second.id,
++        );
++      changeValue(reason, literalReason);
++      for (const checkbox of within(form).getAllByRole('checkbox'))
++        fireEvent.click(checkbox);
++      expect(form).toHaveTextContent(copy.retained);
++      expect(form).toHaveTextContent(copy.absent);
++      fireEvent.submit(form);
++      await waitFor(() => expect(state.confirmations).toHaveLength(1));
++      const pendingRequests = [...state.requests];
++      const alternate =
++        copy.code === 'ro'
++          ? confirmationLocaleCases.fr
++          : confirmationLocaleCases.ro;
++      changeValue(language, alternate.code);
++      expect(state.requests).toEqual(pendingRequests);
++      expect(
++        within(form).getByRole('button', { name: alternate.pending }),
++      ).toBeDisabled();
++      await act(async () => reply.complete(respond({}, 503)));
++      await screen.findByText(alternate.error);
++      expect(form).toHaveTextContent(alternate.uncertain);
++      changeValue(language, copy.code);
++      expect(state.requests).toEqual(pendingRequests);
++      expect(form).toHaveTextContent(copy.uncertain);
++      expect(reason).toHaveValue(literalReason);
++      state.confirm = undefined;
++      fireEvent.submit(form);
++      await waitFor(() => expect(state.confirmations).toHaveLength(2));
++      expect(state.confirmations[1]).toEqual(state.confirmations[0]);
++      const dossier = await screen.findByRole('region', {
++        name: confirmationCanonical.displayName,
++      });
++      expect(
++        within(dossier).getByRole('heading', {
++          name: confirmationCanonical.displayName,
++        }),
++      ).toBeInTheDocument();
++      await within(dossier).findByText(copy.legalEmpty);
++      expect(screen.getByText(copy.saved)).toBeInTheDocument();
++      expect(form).not.toBeInTheDocument();
++    } finally {
++      vi.restoreAllMocks();
++      vi.unstubAllGlobals();
++      window.history.replaceState(null, '', '/');
++    }
++  });
++}
+diff --git a/apps/web/src/client/ClientUnionComparison.tsx b/apps/web/src/client/ClientUnionComparison.tsx
+--- a/apps/web/src/client/ClientUnionComparison.tsx
++++ b/apps/web/src/client/ClientUnionComparison.tsx
+@@ -5,17 +5,10 @@
+   type UnionComparison,
+   type UnionField,
+ } from './client-union-contract';
+-import { clientUnionCopy as copy } from './client-union.copy';
+-import { clientWorkspaceCopy as clientCopy } from './client-workspace.copy';
+-
+-const labels: Record<UnionField, string> = {
+-  displayName: clientCopy.displayNameLabel,
+-  taxId: clientCopy.taxIdLabel,
+-  address: clientCopy.addressLabel,
+-  telephone: clientCopy.telephoneLabel,
+-  generalEmail: clientCopy.generalEmailLabel,
+-  businessActivity: clientCopy.businessActivityLabel,
+-};
++import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
++import { useClientDossierCopy } from './client-dossier.copy';
++import { useClientContactEditorCopy } from './client-contact-editor.copy';
++import { useClientUnionHistoryCopy } from './client-union-history.copy';
+ 
+ export function ClientUnionComparison({
+   comparison,
+@@ -30,6 +23,18 @@
+   onConfirm: (value: unknown) => Promise<void>;
+   onHeadingReady: Ref<HTMLHeadingElement>;
+ }) {
++  const copy = useClientUnionConfirmationCopy();
++  const clientCopy = useClientDossierCopy();
++  const contactCopy = useClientContactEditorCopy();
++  const historyCopy = useClientUnionHistoryCopy();
++  const labels = {
++    displayName: clientCopy.displayNameLabel,
++    taxId: clientCopy.taxIdLabel,
++    address: clientCopy.addressLabel,
++    telephone: clientCopy.telephoneLabel,
++    generalEmail: clientCopy.generalEmailLabel,
++    businessActivity: clientCopy.businessActivityLabel,
++  } satisfies Record<UnionField, string>;
+   const id = useId();
+   const [canonicalClientId, setCanonical] = useState('');
+   const [fields, setFields] = useState<Record<UnionField, string>>({
+@@ -82,14 +87,14 @@
+         {comparison.clients.map((client, sourceIndex) => (
+           <article
+             key={client.id}
+-            aria-label={copy.source({
++            aria-label={historyCopy.source({
+               number: sourceIndex + 1,
+               name: client.displayName,
+             })}
+           >
+             <header>
+               <h5>
+-                {copy.source({
++                {historyCopy.source({
+                   number: sourceIndex + 1,
+                   name: client.displayName,
+                 })}
+@@ -100,18 +105,18 @@
+               {unionFields.map((field) => (
+                 <div key={field}>
+                   <dt>{labels[field]}</dt>
+-                  <dd>{client[field] ?? copy.notProvided}</dd>
++                  <dd>{client[field] ?? clientCopy.notProvided}</dd>
+                 </div>
+               ))}
+             </dl>
+             <div className="client-union-contacts">
+               <h5>{clientCopy.contactsLabel}</h5>
+-              {client.contacts.length === 0 && <p>{copy.noContacts}</p>}
++              {client.contacts.length === 0 && <p>{historyCopy.noContacts}</p>}
+               <ol>
+                 {client.contacts.map((contact, contactIndex) => (
+                   <li key={contactIndex}>
+                     <p className="client-union-source-label">
+-                      {copy.contactSource({
++                      {historyCopy.contactSource({
+                         source: sourceIndex + 1,
+                         contact: contactIndex + 1,
+                       })}
+@@ -119,36 +124,37 @@
+                     <strong>{contact.name}</strong>
+                     <dl>
+                       <div>
+-                        <dt>{clientCopy.contactTelephoneLabel}</dt>
+-                        <dd>{contact.telephone ?? copy.notProvided}</dd>
+-                      </div>
+-                      <div>
+-                        <dt>{clientCopy.contactEmailLabel}</dt>
+-                        <dd>{contact.email ?? copy.notProvided}</dd>
+-                      </div>
+-                      <div>
+-                        <dt>{clientCopy.contactPositionLabel}</dt>
+-                        <dd>{contact.position ?? copy.notProvided}</dd>
+-                      </div>
+-                      <div>
+-                        <dt>{clientCopy.contactDecisionRolesLabel}</dt>
++                        <dt>{contactCopy.contactTelephoneLabel}</dt>
++                        <dd>{contact.telephone ?? clientCopy.notProvided}</dd>
++                      </div>
++                      <div>
++                        <dt>{contactCopy.contactEmailLabel}</dt>
++                        <dd>{contact.email ?? clientCopy.notProvided}</dd>
++                      </div>
++                      <div>
++                        <dt>{contactCopy.contactPositionLabel}</dt>
++                        <dd>{contact.position ?? clientCopy.notProvided}</dd>
++                      </div>
++                      <div>
++                        <dt>{contactCopy.contactDecisionRolesLabel}</dt>
+                         <dd>
+                           {contact.decisionRoles?.length
+                             ? contact.decisionRoles
+                                 .map(
+                                   (role) =>
+-                                    clientCopy.contactDecisionRoleLabels[role],
++                                    contactCopy.contactDecisionRoleLabels[role],
+                                 )
+                                 .join(', ')
+-                            : copy.notProvided}
++                            : clientCopy.notProvided}
+                         </dd>
+                       </div>
+                       <div>
+                         <dt>
+-                          {clientCopy.contactCommunicationPreferencesLabel}
++                          {contactCopy.contactCommunicationPreferencesLabel}
+                         </dt>
+                         <dd>
+-                          {contact.communicationPreferences ?? copy.notProvided}
++                          {contact.communicationPreferences ??
++                            clientCopy.notProvided}
+                         </dd>
+                       </div>
+                     </dl>
+@@ -196,7 +202,7 @@
+               describedBy={errorId}
+               options={comparison.clients.map((client, index) => ({
+                 value: client.id,
+-                label: copy.source({
++                label: historyCopy.source({
+                   number: index + 1,
+                   name: client.displayName,
+                 }),
+@@ -224,7 +230,7 @@
+                       placeholder={copy.choose}
+                       options={comparison.clients.map((client, index) => ({
+                         value: client.id,
+-                        label: copy.source({
++                        label: historyCopy.source({
+                           number: index + 1,
+                           name: client.displayName,
+                         }),
+@@ -242,7 +248,7 @@
+                   {source && (
+                     <p id={valueId} className="client-union-retained-value">
+                       <span>{copy.retainedSource(sourceIndex + 1)}</span>{' '}
+-                      <strong>{source[field] ?? copy.notProvided}</strong>
++                      <strong>{source[field] ?? clientCopy.notProvided}</strong>
+                     </p>
+                   )}
+                 </div>
+diff --git a/apps/web/src/client/ClientWorkspace.tsx b/apps/web/src/client/ClientWorkspace.tsx
+--- a/apps/web/src/client/ClientWorkspace.tsx
++++ b/apps/web/src/client/ClientWorkspace.tsx
+@@ -15,7 +15,7 @@
+ } from '../api/latest-authenticated-request';
+ import { ClientDossierPanel } from './ClientDossierPanel';
+ import { ClientUnionPanel } from './ClientUnionPanel';
+-import { clientUnionCopy } from './client-union.copy';
++import { useClientUnionConfirmationCopy } from './client-union-confirmation.copy';
+ import { ClientDuplicateReviewPanel } from './ClientDuplicateReviewPanel';
+ import {
+   optionalProperty,
+@@ -89,6 +89,7 @@
+ }) {
+   const directoryCopy = useClientDirectoryCopy();
+   const copy = useClientRegistrationCopy();
++  const unionConfirmationCopy = useClientUnionConfirmationCopy();
+   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
+   const [registrationOpen, setRegistrationOpen] = useState(false);
+   const registrationTrigger = useRef<HTMLButtonElement>(null);
+@@ -849,7 +850,7 @@
+         confirmedUnionClientId !== undefined &&
+         confirmedUnionClientId === selectedClientId && (
+           <ClientDirectoryFeedback role="status" tone="success">
+-            {clientUnionCopy.saved}
++            {unionConfirmationCopy.saved}
+           </ClientDirectoryFeedback>
+         )}
+       {canReadClientDossiers && (
+diff --git a/apps/web/src/client/client-union-confirmation.copy.ts b/apps/web/src/client/client-union-confirmation.copy.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/client/client-union-confirmation.copy.ts
+@@ -0,0 +1,190 @@
++import { useInterfaceLocale } from '../localization/interface-locale';
++import {
++  defineMessages,
++  formatMessage,
++  useMessages,
++} from '../localization/messages';
++
++const keys = [
++  'compare',
++  'comparisonEyebrow',
++  'affectedCompanies',
++  'contactCount',
++  'retainedSource',
++  'decisions',
++  'chooseFields',
++  'reasonLimit',
++  'incomplete',
++  'uncertain',
++  'canonical',
++  'choose',
++  'reason',
++  'reviewed',
++  'confirmedCompanies',
++  'confirm',
++  'saving',
++  'error',
++  'preserved',
++  'capacity',
++  'saved',
++] as const;
++
++export const clientUnionConfirmationMessages = defineMessages(keys, {
++  ro: {
++    compare: 'Compară cei doi Clienți existenți',
++    comparisonEyebrow: 'Dosare de Client salvate',
++    affectedCompanies: 'Setul complet al Companiilor implicate',
++    contactCount: 'Contacte din ambele surse: {count}. Maximum: {maximum}.',
++    retainedSource: 'Valoarea de păstrat din Sursa {source}',
++    decisions: 'Alege dosarul și valorile de păstrat',
++    chooseFields:
++      'Pentru fiecare câmp, alege sursa salvată a cărei valoare curentă va fi păstrată. Valorile nu pot fi editate aici.',
++    reasonLimit: 'Obligatoriu. Maximum 2.000 de caractere.',
++    incomplete:
++      'Alege un Client canonic și o sursă pentru fiecare câmp, introdu un motiv și confirmă ambele declarații.',
++    uncertain:
++      'Nu s-a primit nicio confirmare. Alegerile și motivul sunt păstrate. Confirmă din nou pentru a reîncerca aceeași intenție sau închide revizuirea pentru a elimina alegerile locale. Închiderea nu anulează o comandă deja primită de server.',
++    canonical: 'Dosarul canonic al Clientului',
++    choose: 'Alege o sursă',
++    reason: 'Motivul acestei uniri',
++    reviewed:
++      'Am revizuit baza identității și fiecare diferență semnificativă.',
++    confirmedCompanies: 'Confirm setul complet al Companiilor implicate:',
++    confirm: 'Confirmă unirea',
++    saving: 'Se salvează…',
++    error: 'Cererea nu a putut fi finalizată. Poți reîncerca în siguranță.',
++    preserved:
++      'Ambele dosare originale, Contactele și relațiile cu sursele sunt păstrate. Contactele identice rămân înregistrări separate.',
++    capacity:
++      'Dosarul combinat depășește 50 de Contacte. Această unire nu poate fi confirmată.',
++    saved:
++      'Unirea a fost confirmată. Dosarul canonic este acum disponibil în Companiile implicate.',
++  },
++  ru: {
++    compare: 'Сравнить двух существующих Клиентов',
++    comparisonEyebrow: 'Сохранённые досье Клиентов',
++    affectedCompanies: 'Полный набор затронутых Компаний',
++    contactCount: 'Контакты из обоих источников: {count}. Максимум: {maximum}.',
++    retainedSource: 'Сохраняемое значение из Источника {source}',
++    decisions: 'Выберите сохраняемое досье и значения',
++    chooseFields:
++      'Для каждого поля выберите сохранённый источник, текущее значение которого будет сохранено. Здесь нельзя редактировать значения.',
++    reasonLimit: 'Обязательно. Не более 2 000 символов.',
++    incomplete:
++      'Выберите канонического Клиента и источник каждого поля, укажите причину и подтвердите оба заявления.',
++    uncertain:
++      'Подтверждение не получено. Ваш выбор и причина сохранены. Подтвердите снова, чтобы повторить то же намерение, или закройте проверку, чтобы сбросить локальный выбор. Закрытие не отменяет команду, уже полученную сервером.',
++    canonical: 'Каноническое досье Клиента',
++    choose: 'Выберите источник',
++    reason: 'Причина этого объединения',
++    reviewed:
++      'Я проверил основание идентичности и каждое существенное различие.',
++    confirmedCompanies: 'Подтверждаю полный набор затронутых Компаний:',
++    confirm: 'Подтвердить объединение',
++    saving: 'Сохранение…',
++    error: 'Не удалось выполнить запрос. Можно безопасно повторить попытку.',
++    preserved:
++      'Оба исходных досье, Контакты и исходные связи сохраняются. Одинаковые Контакты остаются отдельными записями.',
++    capacity:
++      'В объединённом досье более 50 Контактов. Это объединение нельзя подтвердить.',
++    saved:
++      'Объединение подтверждено. Каноническое досье теперь доступно в затронутых Компаниях.',
++  },
++  fr: {
++    compare: 'Comparer les deux Clients existants',
++    comparisonEyebrow: 'Dossiers de Clients enregistrés',
++    affectedCompanies: 'Ensemble complet des Entreprises concernées',
++    contactCount: 'Contacts des deux sources : {count}. Maximum : {maximum}.',
++    retainedSource: 'Valeur à conserver de la Source {source}',
++    decisions: 'Choisissez le dossier et les valeurs à conserver',
++    chooseFields:
++      'Pour chaque champ, choisissez la source enregistrée dont la valeur actuelle sera conservée. Les valeurs ne peuvent pas être modifiées ici.',
++    reasonLimit: 'Obligatoire. Maximum 2 000 caractères.',
++    incomplete:
++      'Choisissez un Client canonique et une source pour chaque champ, indiquez un motif et confirmez les deux déclarations.',
++    uncertain:
++      'Aucune confirmation n’a été reçue. Vos choix et votre motif sont conservés. Confirmez à nouveau pour réessayer cette intention, ou fermez l’examen pour abandonner les choix locaux. La fermeture n’annule pas une commande déjà reçue par le serveur.',
++    canonical: 'Dossier canonique du Client',
++    choose: 'Choisissez une source',
++    reason: 'Motif de cette union',
++    reviewed:
++      'J’ai examiné le fondement de l’identité et chaque différence significative.',
++    confirmedCompanies:
++      'Je confirme l’ensemble complet des Entreprises concernées :',
++    confirm: 'Confirmer l’union',
++    saving: 'Enregistrement…',
++    error:
++      'La requête n’a pas pu aboutir. Vous pouvez réessayer en toute sécurité.',
++    preserved:
++      'Les deux dossiers d’origine, les Contacts et les relations sources sont conservés. Les Contacts identiques restent des entrées distinctes.',
++    capacity:
++      'Le dossier combiné dépasse 50 Contacts. Cette union ne peut pas être confirmée.',
++    saved:
++      'Union confirmée. Le dossier canonique est maintenant disponible dans les Entreprises concernées.',
++  },
++  en: {
++    compare: 'Compare the two existing Clients',
++    comparisonEyebrow: 'Saved Client dossiers',
++    affectedCompanies: 'Complete affected Company set',
++    contactCount:
++      'Contact entries from both sources: {count}. Maximum: {maximum}.',
++    retainedSource: 'Value to retain from Source {source}',
++    decisions: 'Choose the retained dossier and values',
++    chooseFields:
++      'For each field, choose the saved source whose current value will be retained. Values cannot be edited here.',
++    reasonLimit: 'Required. Maximum 2,000 characters.',
++    incomplete:
++      'Choose a canonical Client and a source for every field, give a reason and confirm both acknowledgements.',
++    uncertain:
++      'No confirmation has been received. Your choices and reason are retained. Confirm again to retry this intention, or close the review to discard the local choices. Closing does not cancel a command already received by the server.',
++    canonical: 'Canonical Client dossier',
++    choose: 'Choose a source',
++    reason: 'Reason for this union',
++    reviewed: 'I reviewed the identity basis and every material difference.',
++    confirmedCompanies: 'I confirm the complete affected Company set:',
++    confirm: 'Confirm union',
++    saving: 'Saving…',
++    error: 'The request could not be completed. You can retry safely.',
++    preserved:
++      'Both original dossiers, Contact entries and source relationships are preserved. Identical Contacts remain separate entries.',
++    capacity:
++      'The combined dossier exceeds 50 Contacts. This union cannot be confirmed.',
++    saved:
++      'Union confirmed. The canonical dossier is now available in the affected Companies.',
++  },
++});
++
++export function useClientUnionConfirmationCopy() {
++  const message = useMessages(clientUnionConfirmationMessages);
++  const { formatNumber } = useInterfaceLocale();
++  return {
++    compare: message('compare'),
++    comparisonEyebrow: message('comparisonEyebrow'),
++    affectedCompanies: message('affectedCompanies'),
++    contactCount: (count: number) =>
++      formatMessage(message('contactCount'), {
++        count: formatNumber(count),
++        maximum: formatNumber(50),
++      }),
++    retainedSource: (source: number) =>
++      formatMessage(message('retainedSource'), {
++        source: formatNumber(source),
++      }),
++    decisions: message('decisions'),
++    chooseFields: message('chooseFields'),
++    reasonLimit: message('reasonLimit'),
++    incomplete: message('incomplete'),
++    uncertain: message('uncertain'),
++    canonical: message('canonical'),
++    choose: message('choose'),
++    reason: message('reason'),
++    reviewed: message('reviewed'),
++    confirmedCompanies: message('confirmedCompanies'),
++    confirm: message('confirm'),
++    saving: message('saving'),
++    error: message('error'),
++    preserved: message('preserved'),
++    capacity: message('capacity'),
++    saved: message('saved'),
++  };
++}
+diff --git a/apps/web/src/localization/first-journey-coverage.ts b/apps/web/src/localization/first-journey-coverage.ts
+--- a/apps/web/src/localization/first-journey-coverage.ts
++++ b/apps/web/src/localization/first-journey-coverage.ts
+@@ -1,3 +1,4 @@
++import { complaintMessages } from '../complaints/complaints.copy';
+ import { ideasMessages } from '../ideas/ideas.copy';
+ import { companyAssignmentMessages } from '../access/company-assignment-localization.copy';
+ import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
+@@ -33,6 +34,7 @@
+ import { clientDuplicateReviewMessages } from '../client/client-duplicate-review.copy';
+ import { clientCorrectionHistoryMessages } from '../client/client-correction-history.copy';
+ import { clientUnionHistoryMessages } from '../client/client-union-history.copy';
++import { clientUnionConfirmationMessages } from '../client/client-union-confirmation.copy';
+ import { appMessages } from '../app.copy';
+ import { activityLogMessages } from '../production-shell/activity-log.copy';
+ import { companyContextMessages } from '../company/company-context.copy';
+@@ -56,6 +58,7 @@
+ import { assertMessageCoverage } from './messages';
+ 
+ export function assertFirstJourneyTranslationCoverage(): void {
++  assertMessageCoverage('complaints', complaintMessages);
+   assertMessageCoverage('ideas', ideasMessages);
+   assertMessageCoverage('companyAssignment', companyAssignmentMessages);
+   assertMessageCoverage('commercialRequest', commercialRequestMessages);
+@@ -98,6 +101,10 @@
+   assertMessageCoverage('clientDirectory', clientDirectoryMessages);
+   assertMessageCoverage('clientDossier', clientDossierMessages);
+   assertMessageCoverage('clientUnionHistory', clientUnionHistoryMessages);
++  assertMessageCoverage(
++    'clientUnionConfirmation',
++    clientUnionConfirmationMessages,
++  );
+   assertMessageCoverage('clientDuplicateReview', clientDuplicateReviewMessages);
+   assertMessageCoverage(
+     'clientCorrectionHistory',
+diff --git a/apps/web/src/test/client-union-confirmation-localization.fixture.ts b/apps/web/src/test/client-union-confirmation-localization.fixture.ts
+new file mode 100644
+--- /dev/null
++++ b/apps/web/src/test/client-union-confirmation-localization.fixture.ts
+@@ -0,0 +1,345 @@
++import type { ActorContext } from '../access-types';
++import type { UnionComparison } from '../client/client-union-contract';
++import type { InterfaceLocale } from '../localization/interface-locale';
++
++export const confirmationCompanies = [
++  { id: 'company-a-716', displayName: 'PRISMA-PRIM — Companie A' },
++  {
++    id: 'company-b-716',
++    displayName: 'BIC — Business Inspection / Компания B',
++  },
++] as const;
++export const confirmationFirst = {
++  id: 'client-first-716',
++  version: 1234,
++  displayName: 'First saved Client — Cercetare / Исследования / Certification',
++  taxId: '  UNION-716 / ИД  ',
++  address: null,
++  telephone: '+373 (22) 071-600',
++  generalEmail: null,
++  businessActivity: 'Consultanță / консалтинг',
++  contacts: [
++    {
++      name: 'Ana / Анна',
++      telephone: '+373 (60) 071-601',
++      email: 'ana+first@example.test',
++      position: '  Director / директор  ',
++      decisionRoles: [
++        'final_decision_maker',
++        'influencer',
++        'user',
++        'financial',
++        'technical',
++        'blocker',
++      ],
++      communicationPreferences: '  Email întâi / сначала email\nDupă 14:00.  ',
++    },
++  ],
++} satisfies UnionComparison['clients'][number];
++export const confirmationSecond = {
++  ...confirmationFirst,
++  id: 'client-second-716',
++  version: 2345,
++  displayName: 'Second saved Client — Consulting and Certification Services',
++  address: '14 Example Avenue, Building B, Chișinău — Кишинёв',
++  generalEmail: 'literal+second@example.test',
++  businessActivity:
++    'Research / Cercetare / Исследования — long saved business activity',
++  contacts: [
++    { name: 'Ana / Анна', email: 'ana+second@example.test' },
++    { name: 'Boris / Борис', telephone: '+373 (60) 071-603' },
++  ],
++} satisfies UnionComparison['clients'][number];
++export const confirmationCanonical = {
++  ...confirmationSecond,
++  version: confirmationSecond.version + 1,
++  displayName: confirmationFirst.displayName,
++  address: null,
++  generalEmail: null,
++  contacts: [...confirmationFirst.contacts, ...confirmationSecond.contacts],
++};
++export function confirmationDossier({
++  clientId,
++  united,
++}: {
++  clientId: string;
++  united: boolean;
++}) {
++  const source = [confirmationFirst, confirmationSecond].find(
++    ({ id }) => id === clientId,
++  );
++  return source && united && source.id === confirmationSecond.id
++    ? confirmationCanonical
++    : source;
++}
++export const confirmationReference = 'review-716';
++export const confirmationPair = {
++  outcome: 'comparison',
++  reviewReference: confirmationReference,
++  clients: [confirmationFirst, confirmationSecond],
++  companies: [...confirmationCompanies],
++} satisfies UnionComparison;
++export const confirmationReason =
++  '  Verified original IDNO — păstrăm Алекс / données exactes.  ';
++export const confirmationActor: ActorContext = {
++  internalUserId: 'resolver-716',
++  workspaceMembershipId: 'membership-716',
++  workspaceId: 'workspace-716',
++  workspaceName: 'Workspace',
++  displayName: 'Resolver',
++  email: 'resolver@example.test',
++  active: true,
++  workspacePermissions: ['client.manage'],
++  activeCompany: {
++    ...confirmationCompanies[0],
++    clientPermissions: [
++      'client.read',
++      'client.create',
++      'client.update',
++      'client.duplicate.resolve',
++    ],
++    clientPermissionAssignmentId: 'assignment-716',
++    clientPermissionSetVersion: 'v2',
++  },
++};
++
++// Independent public/browser expectations. No production message catalog imports.
++export const confirmationLocaleCases = {
++  ro: {
++    code: 'ro',
++    legalTitle: 'Entități juridice și sucursale',
++    legalEmpty:
++      'Nu sunt înregistrate entități juridice sau sucursale suplimentare. Identitatea din dosarul de mai sus este organizația principală.',
++    compare: 'Compară cei doi Clienți existenți',
++    confirm: 'Confirmă unirea',
++    canonical: 'Dosarul canonic al Clientului',
++    reason: 'Motivul acestei uniri',
++    choose: 'Alege o sursă',
++    retained: 'Valoarea de păstrat din Sursa 1',
++    incomplete:
++      'Alege un Client canonic și o sursă pentru fiecare câmp, introdu un motiv și confirmă ambele declarații.',
++    capacity:
++      'Dosarul combinat depășește 50 de Contacte. Această unire nu poate fi confirmată.',
++    uncertain:
++      'Nu s-a primit nicio confirmare. Alegerile și motivul sunt păstrate.',
++    saved:
++      'Unirea a fost confirmată. Dosarul canonic este acum disponibil în Companiile implicate.',
++    pending: 'Se salvează…',
++    error: 'Cererea nu a putut fi finalizată. Poți reîncerca în siguranță.',
++    source: 'Sursa',
++    absent: 'Nefurnizat',
++    version: 'Versiunea 1.234',
++    contactSource: 'Sursa 2 · Contact 2',
++    count: 'Contacte din ambele surse: 3. Maximum: 50.',
++    fields: [
++      'Numele afișat al Clientului',
++      'IDNO / cod fiscal',
++      'Adresă',
++      'Telefon',
++      'Email general',
++      'Activitate economică',
++    ],
++    contacts: [
++      'Telefonul Contactului',
++      'Emailul Contactului',
++      'Funcția Contactului',
++      'Roluri în luarea deciziilor',
++      'Preferințele de comunicare ale Contactului',
++    ],
++    roles:
++      'Decident final, Persoană de influență, Utilizator, Financiar, Tehnic, Opozant',
++    companies: 'Setul complet al Companiilor implicate',
++    title: 'Unirea controlată a Clienților',
++    review: 'Revizuiește duplicatele existente',
++    close: 'Închide revizuirea',
++    unavailable:
++      'Această operațiune nu este disponibilă. Este posibil ca datele, domeniul Companiilor sau autoritatea să se fi schimbat. Reîncarcă vizualizarea înainte de a continua.',
++    refresh:
++      'Comanda a fost confirmată, dar o reîmprospătare ulterioară a eșuat. Reîncarcă lista sau Jurnalul de activitate pentru a vedea datele curente.',
++    openDossier: 'Deschide dosarul',
++    openMenu: 'Deschideți navigarea',
++    navigation: 'Navigare principală',
++    clients: 'Clienți',
++    activity: 'Jurnal de activitate',
++    optIn: 'Încercați Prisme',
++  },
++  ru: {
++    code: 'ru',
++    legalTitle: 'Юридические лица и филиалы',
++    legalEmpty:
++      'Дополнительные юридические лица или филиалы не зарегистрированы. Данные досье выше относятся к основной организации.',
++    compare: 'Сравнить двух существующих Клиентов',
++    confirm: 'Подтвердить объединение',
++    canonical: 'Каноническое досье Клиента',
++    reason: 'Причина этого объединения',
++    choose: 'Выберите источник',
++    retained: 'Сохраняемое значение из Источника 1',
++    incomplete:
++      'Выберите канонического Клиента и источник каждого поля, укажите причину и подтвердите оба заявления.',
++    capacity:
++      'В объединённом досье более 50 Контактов. Это объединение нельзя подтвердить.',
++    uncertain: 'Подтверждение не получено. Ваш выбор и причина сохранены.',
++    saved:
++      'Объединение подтверждено. Каноническое досье теперь доступно в затронутых Компаниях.',
++    pending: 'Сохранение…',
++    error: 'Не удалось выполнить запрос. Можно безопасно повторить попытку.',
++    source: 'Источник',
++    absent: 'Не указано',
++    version: 'Версия 1 234',
++    contactSource: 'Источник 2 · Контакт 2',
++    count: 'Контакты из обоих источников: 3. Максимум: 50.',
++    fields: [
++      'Отображаемое название Клиента',
++      'IDNO / налоговый код',
++      'Адрес',
++      'Телефон',
++      'Общий email',
++      'Хозяйственная деятельность',
++    ],
++    contacts: [
++      'Телефон Контакта',
++      'Email Контакта',
++      'Должность Контакта',
++      'Роли в принятии решений',
++      'Предпочтения Контакта по общению',
++    ],
++    roles:
++      'Окончательный ЛПР, Влиятельное лицо, Пользователь, Финансовая роль, Техническая роль, Противник',
++    companies: 'Полный набор затронутых Компаний',
++    title: 'Управляемое объединение Клиентов',
++    review: 'Проверить существующие дубликаты',
++    close: 'Закрыть проверку',
++    unavailable:
++      'Эта операция недоступна. Данные, охват Компаний или полномочия могли измениться. Перед продолжением перезагрузите представление.',
++    refresh:
++      'Команда подтверждена, но последующее обновление не удалось. Перезагрузите список или Журнал действий, чтобы увидеть актуальные данные.',
++    openDossier: 'Открыть досье',
++    openMenu: 'Открыть навигацию',
++    navigation: 'Основная навигация',
++    clients: 'Клиенты',
++    activity: 'Журнал активности',
++    optIn: 'Попробовать Prisme',
++  },
++  fr: {
++    code: 'fr',
++    legalTitle: 'Entités juridiques et succursales',
++    legalEmpty:
++      'Aucune entité juridique ou succursale supplémentaire enregistrée. L’identité du dossier ci-dessus est l’organisation principale.',
++    compare: 'Comparer les deux Clients existants',
++    confirm: 'Confirmer l’union',
++    canonical: 'Dossier canonique du Client',
++    reason: 'Motif de cette union',
++    choose: 'Choisissez une source',
++    retained: 'Valeur à conserver de la Source 1',
++    incomplete:
++      'Choisissez un Client canonique et une source pour chaque champ, indiquez un motif et confirmez les deux déclarations.',
++    capacity:
++      'Le dossier combiné dépasse 50 Contacts. Cette union ne peut pas être confirmée.',
++    uncertain:
++      'Aucune confirmation n’a été reçue. Vos choix et votre motif sont conservés.',
++    saved:
++      'Union confirmée. Le dossier canonique est maintenant disponible dans les Entreprises concernées.',
++    pending: 'Enregistrement…',
++    error:
++      'La requête n’a pas pu aboutir. Vous pouvez réessayer en toute sécurité.',
++    source: 'Source',
++    absent: 'Non renseigné',
++    version: 'Version 1\u202f234',
++    contactSource: 'Source 2 · Contact 2',
++    count: 'Contacts des deux sources : 3. Maximum : 50.',
++    fields: [
++      'Nom affiché du Client',
++      'IDNO / code fiscal',
++      'Adresse',
++      'Téléphone',
++      'Email général',
++      'Activité économique',
++    ],
++    contacts: [
++      'Téléphone du Contact',
++      'Email du Contact',
++      'Fonction du Contact',
++      'Rôles dans la décision',
++      'Préférences de communication du Contact',
++    ],
++    roles:
++      'Décideur final, Personne influente, Utilisateur, Financier, Technique, Opposant',
++    companies: 'Ensemble complet des Entreprises concernées',
++    title: 'Union encadrée de Clients',
++    review: 'Examiner les doublons existants',
++    close: 'Fermer l’examen',
++    unavailable:
++      'Cette opération est indisponible. Les données, le périmètre des Entreprises ou les droits peuvent avoir changé. Rechargez la vue avant de continuer.',
++    refresh:
++      'La commande a été confirmée, mais une actualisation ultérieure a échoué. Rechargez la liste ou le Journal d’activité pour voir les données à jour.',
++    openDossier: 'Ouvrir le dossier',
++    openMenu: 'Ouvrir la navigation',
++    navigation: 'Navigation principale',
++    clients: 'Clients',
++    activity: 'Journal d’activité',
++    optIn: 'Essayer Prisme',
++  },
++  en: {
++    code: 'en',
++    legalTitle: 'Legal entities and branches',
++    legalEmpty:
++      'No additional legal entities or branches recorded. The dossier identity above is the main organization.',
++    compare: 'Compare the two existing Clients',
++    confirm: 'Confirm union',
++    canonical: 'Canonical Client dossier',
++    reason: 'Reason for this union',
++    choose: 'Choose a source',
++    retained: 'Value to retain from Source 1',
++    incomplete:
++      'Choose a canonical Client and a source for every field, give a reason and confirm both acknowledgements.',
++    capacity:
++      'The combined dossier exceeds 50 Contacts. This union cannot be confirmed.',
++    uncertain:
++      'No confirmation has been received. Your choices and reason are retained.',
++    saved:
++      'Union confirmed. The canonical dossier is now available in the affected Companies.',
++    pending: 'Saving…',
++    error: 'The request could not be completed. You can retry safely.',
++    source: 'Source',
++    absent: 'Not provided',
++    version: 'Version 1,234',
++    contactSource: 'Source 2 · Contact 2',
++    count: 'Contact entries from both sources: 3. Maximum: 50.',
++    fields: [
++      'Client display name',
++      'IDNO / tax code',
++      'Address',
++      'Telephone',
++      'General email',
++      'Business activity',
++    ],
++    contacts: [
++      'Contact telephone',
++      'Contact email',
++      'Contact position',
++      'Decision roles',
++      'Contact communication preferences',
++    ],
++    roles:
++      'Final decision-maker, Influencer, User, Financial, Technical, Blocker',
++    companies: 'Complete affected Company set',
++    title: 'Governed Client union',
++    review: 'Review existing duplicates',
++    close: 'Close review',
++    unavailable:
++      'This operation is unavailable. Its data, Company scope or authority may have changed. Reload the review before continuing.',
++    refresh:
++      'The command was confirmed, but a subsequent refresh failed. Reload the list or Activity Log to see the latest data.',
++    openDossier: 'Open dossier',
++    openMenu: 'Open navigation',
++    navigation: 'Primary navigation',
++    clients: 'Clients',
++    activity: 'Activity Log',
++    optIn: 'Try Prisme',
++  },
++} as const satisfies Record<
++  InterfaceLocale,
++  { code: InterfaceLocale } & Record<string, unknown>
++>;
++export type ConfirmationLocaleCase =
++  (typeof confirmationLocaleCases)[InterfaceLocale];

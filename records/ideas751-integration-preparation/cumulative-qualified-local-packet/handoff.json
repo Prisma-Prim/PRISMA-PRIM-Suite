@@ -1,0 +1,447 @@
+{
+  "created_utc": "2026-10-20T20:29:31.417001+00:00",
+  "scope": "Local provisional integration #737 on unmerged Ideas#751 c30db029; not published PR753 head qualification, not a merge qualification.",
+  "source_count": 79,
+  "source_sha256": {
+    "CONTEXT.md": "cf5f6c2209fcc6f4acf85ef4cedbf253cfb87a63295d52ebbc0f9bb097c4f9a6",
+    "apps/api/drizzle/0071_company_ideas.sql": "106fca494c161bbdca63c22b3e94439958c5fe6e858ef887267c117d25bc5296",
+    "apps/api/drizzle/0072_company_complaints.sql": "b69d3d91f8e4d9bba8030a8d56e788f712722286f849060c84d1308afa538a7f",
+    "apps/api/drizzle/meta/0071_snapshot.json": "cb42d8202556d95b5c7e4b9c31f241d11e6731fb134a5a1e8342f0d83bf6cce3",
+    "apps/api/drizzle/meta/0072_snapshot.json": "6783302fd6cb9638278abc8c01d277a447b9424e5837c97c74b1b2bc6583b335",
+    "apps/api/drizzle/meta/_journal.json": "d3e9d25163f0f8344a72db48f96b1e4b73005a102549d41314300b82e7a4fca8",
+    "apps/api/src/access/access.types.ts": "7c1b47811eacc086a476e544a26e8129f51ef1f36f1eeb16a0551b31bc5c4ed0",
+    "apps/api/src/access/company-complaints-reader-assignment.controller.ts": "a1c554c1873b8172559ef2916cbb57b45add21faad72be865c36ace96db2b433",
+    "apps/api/src/access/company-complaints-recorder-assignment.controller.ts": "168b23a9f75c845a4b84af882bfc699221a35394621b3baa41038515065f1044",
+    "apps/api/src/access/company-context-assignment.service.ts": "19a4ba3f6203c00474daaa2c997433629a917e8dfbc0b8706ad5ada64ab4d3be",
+    "apps/api/src/access/company-context-assignment.types.ts": "b6868755500d04be49d8c50112e1109ff11241a10992003c6d09e5e9242fd22b",
+    "apps/api/src/access/company-context-authorization.ts": "3581bc2f1cfdccdba01ba1442f6f14bb95c2b31eaa5137dbf4fa9cc5d2987532",
+    "apps/api/src/access/company-ideas-assignment.rest.test.ts": "ced5e41f06b1a5b331fb2921257f609d6f4252f1abf52cb0b62fba503f594b16",
+    "apps/api/src/access/company-ideas-reader-assignment.controller.ts": "e4cbb693f9de7bdd4d416ee62cc06cbd93efb8246221d0fbffc71fd722b8a1bd",
+    "apps/api/src/access/company-ideas-recorder-assignment.controller.ts": "e8d3238a0af56a211f3f695958238e1dee6b66c1f7e15d865c8de917e264415d",
+    "apps/api/src/access/company-ideas-reviewer-assignment.controller.ts": "c38e4e808d791598705f4324b35086d9388dbcf9c5762dff62c48c0f82a589e8",
+    "apps/api/src/access/company-permissions.ts": "0de0918f2a3f1b5f99f467305c13ca82be1457f2224a9609559c2f4f147579a8",
+    "apps/api/src/access/company-role-bundle-registry.test.ts": "e711c84b1d2db2ab256ff786776e8f4bde84dd8ea9a69cb6f0a44380d0452f96",
+    "apps/api/src/accountability/accountability.service.ts": "e3a44313b55616116664e6e2868aa172651d10cee1ecbcd93c8a2c38f1e1f954",
+    "apps/api/src/accountability/accountability.types.ts": "1553d98674fdd0ed517fd7280f2b9df8b19b6f7660fdce39210b601623ade62d",
+    "apps/api/src/application-composition.module.ts": "17d62461601f6c09b2c07448d64c5ece0f00b57f777acbb1ea19c64c979b3ee9",
+    "apps/api/src/client/client-operational-reference.service.ts": "90b5953e60001683b7c174193dff928e345bb79a65621ee88b59ffe2029a6ca7",
+    "apps/api/src/complaints/complaints-history.read.ts": "f6bd2a777309433cb6bfc26d62d31eb00db89ca2d95c00dd1a58600857a3ad24",
+    "apps/api/src/complaints/complaints-journal.command.ts": "219c399094df669655dcf947a8ccd9a60c66e2f1f86ec9a36591df5fe59667b3",
+    "apps/api/src/complaints/complaints.controller.ts": "f71abdce6358391efa5cfd06d93f7c6dde7b2972167750c232d21623fe8dc0dd",
+    "apps/api/src/complaints/complaints.failure.ts": "635aaac7f855555c7adaf1c0cc3700c8841877d00247be907f5ab26501a52b3a",
+    "apps/api/src/complaints/complaints.module.ts": "20c483d998ed3a5b9c12ab9c6cf79c08110338b20b597ef6ab4411e602570f2e",
+    "apps/api/src/complaints/complaints.rest.test.ts": "6267ba20c7b6a7b02574993e0968c8ab97fb1bb5ada2e41de7ac7f03018000fe",
+    "apps/api/src/complaints/complaints.service.ts": "c44115d910a84ecdd5b3208a9baaf3f37a34adbb870acc39c5fbc83ec2c5aedb",
+    "apps/api/src/complaints/complaints.validation.ts": "a3559c1fa00bc76af66b1ff09b74b04010949e949579eeef25827f3b7b971bb3",
+    "apps/api/src/database/schema/complaints.ts": "8dcbc14361284ef7026394ec291d31009b2b0ffc3eb94bd7219cc0c11ea438b8",
+    "apps/api/src/database/schema/core.ts": "704d97b40884d3529aa78cd0b0440399a37992c9e0368bf51ca0f8b847f914e6",
+    "apps/api/src/database/schema/ideas.ts": "c39fc95823c48456b35313071090b1d8e88bb8e2386c285e1074517025014268",
+    "apps/api/src/database/schema/index.ts": "da66189f416d7273a0a24255566e02c021268c0ea466ee9c50b16cc516b06951",
+    "apps/api/src/ideas/ideas.controller.ts": "e51775872fe972474d0dc6e9e1ab405da69a907a391ed37752c5132b81838911",
+    "apps/api/src/ideas/ideas.migration.test.ts": "a8ea98783ebb727c4f4687c3b11f2f333e36d48bd81f8b6d60aac4a8b7c34054",
+    "apps/api/src/ideas/ideas.module.ts": "a7b9d52e0d39c4d1fc479d8a94d276809d34dcfc2070e147d171ced14eb49673",
+    "apps/api/src/ideas/ideas.response.ts": "a5ab052f421da1c28454966f879f5f65900b6afff0a56ef058341fb8e05a1dc5",
+    "apps/api/src/ideas/ideas.rest.test.ts": "5737a6061b9b4e4ddc7e9a5a0b748ddcb53694c1de93192ad9ceecbf886ba066",
+    "apps/api/src/ideas/ideas.service.ts": "97d9772cc75c72cf6ec80c38eaf745d10bbed0a19f75eae2ace038afc1c76a43",
+    "apps/api/src/ideas/ideas.types.ts": "0ad01271aad051fb28b12b3a9e91bf8431a192109adb56706fb91131f5eaeec1",
+    "apps/api/src/ideas/ideas.validation.ts": "e8937e35ef8a5b67d9f6bce82a15bb2e43c7c9e349abbfe8000a994c22b47683",
+    "apps/api/src/project/project.service.ts": "e3401f52d67bf611dd0af5e033d40d5ab6d0fc2c897226987dbb82fb10eee5db",
+    "apps/web/e2e/complaints.acceptance.spec.ts": "612cc6b1d02e619ddf369eb0a2769c3f60ea70dc95aca0ba1397ee83b82181ed",
+    "apps/web/e2e/ideas.acceptance.spec.ts": "4ee369c9577acf6360b3bf830ff3c2274dad617469890a613da0b7143f068a2a",
+    "apps/web/playwright.acceptance.config.ts": "3b97d41b1a5dccc7db3e21e2e8a62cff5b2e0d2e0fa5316ad8ca0a0e5dd05d2c",
+    "apps/web/src/App.complaints-activity.test.tsx": "01f82f344f1a7f634fb5620242ef93e4582e22bd30dacdfe526bf80466586252",
+    "apps/web/src/App.complaints.recovery.test.tsx": "d09c751a8fc0adcfbbe25bfb7f999a252734ceb0c28eab166047105187c13f02",
+    "apps/web/src/App.complaints.test.tsx": "471913a205306d09a3b9d91b3b4bddf509844d25beb26943a7415ee88f4b3abc",
+    "apps/web/src/App.ideas.test.tsx": "b865973d42303fd46e346a175bdbafa4148919e7a45eaa4a512766645215ea9b",
+    "apps/web/src/App.tsx": "66f0b783b8125197ee53eeb7f77ab565640e4b72291b74f0fadcfa503a9b9282",
+    "apps/web/src/access-types.ts": "e5fce6d881c679e16064a293980f1e2b9d185874c6ee0e4dcd466caea19a306a",
+    "apps/web/src/access/CompanyContextAccess.complaints.test.tsx": "54202d9e9258cd0d5ba3d69a1bea66c13fc75303e15b1c94b5197d2228324bf8",
+    "apps/web/src/access/CompanyContextAccess.ideas.test.tsx": "300f2e4d1a37e34b8112bc51d0cce2fb85cdebf1dae29ef69c71c2352ec5bbc2",
+    "apps/web/src/access/CompanyContextAccess.tsx": "9cdc26381b2bac8c424709036f52e34537adfc072eac8c8ca418a95652a6f163",
+    "apps/web/src/access/company-access-administration-response.ts": "23f9e051f3fea37b3d33d52f0b05928fa06c67eee5b30dfa4dcc886fdba7080b",
+    "apps/web/src/complaints/ComplaintHistoryPanel.tsx": "0f7ccf7e112058bb883c90f9134f2f3226ff1d9d826aea422b6414420524895e",
+    "apps/web/src/complaints/ComplaintIntakeViews.tsx": "69d15c41c6e62fa3f534e81a3c859866f93d8ebf9c7481aa3b0c00fb6f0fe126",
+    "apps/web/src/complaints/ComplaintJournalForm.tsx": "3d9456c4acbadf63c3ec76b2ac63fb115d6d30468608f4e5d1f57838028c12ee",
+    "apps/web/src/complaints/ComplaintRegisterList.tsx": "b5846f8de54e33d4c7bfd42e66f648f6e37e4737624e6c4ddf301d0982e26e0b",
+    "apps/web/src/complaints/ComplaintRegistry.tsx": "dc63e6956f08541f106573cbcbc0d6902c2bb5ca7ded3a1bd6bb2a256f0b031b",
+    "apps/web/src/complaints/ComplaintWorkspace.tsx": "5518f6ce9ecb7030c790e9ed03ad003d070b286e1608504c26a7b3737673c6ae",
+    "apps/web/src/complaints/complaints-response.ts": "3a7070d1527686ab386b92111c219af04ecd8fec8a5b452b32a95314842c504a",
+    "apps/web/src/complaints/complaints.copy.ts": "ecdd7a68d253932d14dca96a71cc84707e227661a742003a696892db5013c4bb",
+    "apps/web/src/complaints/complaints.css": "3f1918a48e36d39adfb6474b3412aa10b4b9de80b041b291c1ad50e0c509b2d7",
+    "apps/web/src/ideas/IdeasWorkspace.tsx": "7ad9463bd6d29f193ea3de94a180b8caa72fe7a92518e7896a480f44ac05b1b3",
+    "apps/web/src/ideas/ideas-activity-response.test.ts": "187b5e7962124729fc658646895ecdb566d4532432979be252143f2f8bc6cd0b",
+    "apps/web/src/ideas/ideas-contract.ts": "a73b0a609bd6c697056fa17b65d4e430a2588ef973f34bf62a9f51deee8fc6d3",
+    "apps/web/src/ideas/ideas-workspace.css": "87428ddd0026b598127f498638c1acf2f74ebbf7529de8fc5cf7f1c9f28fea11",
+    "apps/web/src/ideas/ideas.copy.ts": "d5dfba9ae412eaa0293076678ae35f64e9b6f3f3e45215b62f1f6bb50bd782dd",
+    "apps/web/src/localization/first-journey-coverage.ts": "619b65e1e67f7af62cf66f3a78f185da9c16da129d5e9ff6bd79459023d3bfd3",
+    "apps/web/src/production-shell/ActivityLog.localization.test.tsx": "f216e514bc80847ce7c00eebfb858b8c3f7aff29510eaccfd3eee044c7a7f532",
+    "apps/web/src/production-shell/ApplicationShell.tsx": "dcd8502e38bfc6ed9c1aa73cb9f0a7b13069d8f09f107cab158e5c600d49cb20",
+    "apps/web/src/production-shell/activity-log-display.ts": "2fdb2ae4aa721458b0eadbbcb8a4c5570e59b7104f653c3d5f64e356f84b378f",
+    "apps/web/src/production-shell/activity-log-response.ts": "50fccf799b8d5450e13eb41e6a187a020af1d68cbfaaf4bf2ab32cb15084ddf0",
+    "apps/web/src/production-shell/activity-log.copy.ts": "a6738b1bc2de5b48618b4390f4a8d4098e54de424cf1a4e0bdfe4b84102b0465",
+    "apps/web/src/production-shell/company-context-transitions.ts": "9784d2c73b1ccbc0d020422e14e08a1c5d524cdd739e135516d4cb743f05d9c7",
+    "apps/web/src/production-shell/prisme/PrismeOverview.tsx": "e6c2860a78368ca24b6c41da290a6b9e009524a5aa5df206e88c2297d8869193",
+    "apps/web/src/test/activity-localization-fixture.ts": "d3384eecc097eb8228caac87d9190a114e897dc0481968b483885911afdedd59"
+  },
+  "artifact_references": {
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-phase-checks/statics/result.json": "b1973072b625a276f37989fab4dec6c7409bc781778f6f12fdc3af9380efb81c",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-phase-checks/statics-qualification.json": "5c11ada6c6291136bab8150b07b78bcf5efc2bc2021dd991f11e9cf825e58994",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-phase-checks/postgres/result.json": "066fc2d24d0b1cf7f1dd7149bcf251bd0e0e9da653410ceee3c44a318d2da828",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-continuation-01/statics/result.json": "91d2ca6f86a0ac5518ba98f51df59f0163903c20f7919602d8615887bb9957c2",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-continuation-01/statics-qualification.json": "959564b7ecb478e92edae621a125f25a492a1080817966961855dd242d08cf39",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-continuation-01/postgres/result.json": "142de3035d6ba74d37f4794bd1a7296b531b5f697804c640be9ff8c328394c81",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-continuation-01/postgres-qualification.json": "ee23e16d1039c2e583da0c98b62929044dcb778badb8b7a6721a4aa38581ebd2",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-continuation-01/frontend/result.json": "7302b77704f95a887e9ca97203a214df646c7c01b8386343448690675e340022",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/build-attempt/build-result.json": "19ea310422a9a09b411a0fd4db1e22d97cc226b2c2f9a75a22eb3bf75ba14413",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-current-build-manifest.json": "fa0debd1f5846b42a30df0e7c3cd24a2f2609d9d275a2b475f29024291ee4462",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-attempt/result.json": "67f95543a65ea50386d6fc7e2d074ea1448b7da13e672ef2efc8a9064551a27d",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/tini-browser-invocation/result.json": "649cf64f6daa8f4d7ba6fb66d5d77e82e5a80842f55bc04b5424b8ed7bb706bf"
+  },
+  "postgres_evidence": "Original205 run remains FAIL:202PASS/3timeouts. Composite qualification =154 unchanged cases in10 earlier green files +51 fresh complete Complaint cases, two invocations. Only three local15s callback allowances changed; assertions/data/product unchanged. No infrastructure cause established.",
+  "frontend_evidence": "286PASS in19files, one complete cumulative invocation.",
+  "build_evidence": "One real API build0 and one web local-demo build0, sealed fa0debd1f5846b42a30df0e7c3cd24a2f2609d9d275a2b475f29024291ee4462;1158inputs,909outputs,4025modulefiles,79sources.",
+  "browser_evidence": "Four registered real browser cases PASS: Ideas and Complaints, desktop1440 and narrow390, each en/fr/ro/ru. One invocation2.7min. Tini/Python/Playwright/outer0; both seal guards0.",
+  "tini_prefix": [
+    "/usr/local/bin/docker-init",
+    "-s",
+    "--",
+    "bash",
+    "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-once.sh",
+    "--lane-transferred",
+    "--seal-reviewed"
+  ],
+  "tini_binary_sha256": "8cc70470bb4b21c25ddca7108c5820fa14d5019b5f1ec7e94bfca65de2479990",
+  "cleanup": {
+    "process_cleanup": {
+      "observed_owned": {
+        "292131": "5864176",
+        "292148": "5864341",
+        "292166": "5864708",
+        "292167": "5864708",
+        "292168": "5864958",
+        "292185": "5865250",
+        "292186": "5865251",
+        "292218": "5866974",
+        "292231": "5867243",
+        "292233": "5867248",
+        "292234": "5867249",
+        "292250": "5867260",
+        "292253": "5867264",
+        "292284": "5867292",
+        "292316": "5876306",
+        "292357": "5877862",
+        "292376": "5878080",
+        "292378": "5878085",
+        "292379": "5878085",
+        "292396": "5878090",
+        "292403": "5878092",
+        "292428": "5878117",
+        "292445": "5879849",
+        "292452": "5879859"
+      },
+      "rescue_signalled": [],
+      "remaining": {}
+    },
+    "ports_before": {
+      "4173": true,
+      "4174": true
+    },
+    "ports_after": {
+      "4173": true,
+      "4174": true
+    },
+    "acceptance_databases_before": [],
+    "acceptance_databases_after": [],
+    "new_isolated_database_leaks": [],
+    "container_cleanup": {
+      "stop_exit_code": 0,
+      "running": false,
+      "status": "exited"
+    }
+  },
+  "visual_observations": [
+    "All34 original PNGs inspected at original resolution; purple/yellow controls, customSelect trigger/options and styled buttons remain coherent. Histories show literal facts/originals/revisions/reasons/attribution in four locales; Reader-only and revoked states consistent. No visible narrow horizontal overflow.",
+    "Repeated shell/feature title remains a minor UI follow-up.",
+    "Existing global skip-to-content link appears mid full-page screenshots, overlapping the narrow intake label/header and some Idea captures. No saved DOM focus/scroll observation proves a cause; capture/scroll effect remains possible, not established. No global source or image changed.",
+    "Desktop floating language control locally overlays full-page text or a portion of an open/select control. This is a visual reservation; passing interactions alone do not prove absence of overlap."
+  ],
+  "remaining": [
+    "Ideas751 canonical merge and root-owned integration/publication of current79 sources into PR753, retaining actual cumulative71→72 metadata.",
+    "Exact published-head final reviews/full sensitive verification/packaging ECR#748/durable evidence#750 remain unqualified by this packet.",
+    "No MVP credit and no release/deployment claim."
+  ],
+  "images": [
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-en-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-en-history.png",
+      "sha256": "71aa8b91bf24dc74d7f3d2cbc9481916d4490cb7be4929b346cf21903533065d",
+      "width": 1440,
+      "height": 2896,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-explicit-intake.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-explicit-intake.png",
+      "sha256": "0b4d3961c71b603600d765b1a97f70250a736168103249805ce57947c55c7fb9",
+      "width": 1440,
+      "height": 1213,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-fr-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-fr-history.png",
+      "sha256": "ff2bb1d5bec4f8bf6cac2aa31d683b9b86d66c07502305f06dceec6fbdd211be",
+      "width": 1440,
+      "height": 2896,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-only.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-only.png",
+      "sha256": "ca9511ef5f85cd537a4d0e1614844111aa04d35ed6ca4317ec879e19bae5cd50",
+      "width": 1440,
+      "height": 2722,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-revoked.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-revoked.png",
+      "sha256": "dfea0917079f0a29d8027948d00ca04139b1cae286e21d6a915872b95bf62336",
+      "width": 1440,
+      "height": 1852,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ro-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ro-history.png",
+      "sha256": "864af4d86cfd7d5aaf3b5ca0883401302b145dbc3e9ad41a03cd25fc9f5f974c",
+      "width": 1440,
+      "height": 2896,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ru-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ru-history.png",
+      "sha256": "3c3eb939dcc70611ba4debe28767aa57b9f67795728b28475281469ccda5e876",
+      "width": 1440,
+      "height": 2896,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/select-appearance-complaint-client.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/select-appearance-complaint-client.png",
+      "sha256": "0ec139b0e72b2c0d97e4343ba68a7ee5b4092d63f80b089e3a6b59b18475db64",
+      "width": 542,
+      "height": 45,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-en-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-en-history.png",
+      "sha256": "1887fef99ed113ccf081e6920edcc6ae2bcd873b718a5ded5aca560d35104492",
+      "width": 390,
+      "height": 4050,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-explicit-intake.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-explicit-intake.png",
+      "sha256": "2b54f74bc49dbc6f410fa02937668ef11a7edc16d27c18ec6718acbe0e462556",
+      "width": 390,
+      "height": 1759,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-fr-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-fr-history.png",
+      "sha256": "6382407720bf5761da7fa34c8708ca51932bf7209115215fd0a9f0fef299e5f7",
+      "width": 390,
+      "height": 4122,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-only.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-only.png",
+      "sha256": "7cbf4c923df2ecb8d1b50a5a15e4718536a8237c3390b91a4da4ce4400a4f5a7",
+      "width": 390,
+      "height": 3768,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-revoked.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-revoked.png",
+      "sha256": "8994fac68afbf946752951b557c4c117e1b4d1725b89849163abb8498e459127",
+      "width": 390,
+      "height": 2525,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ro-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ro-history.png",
+      "sha256": "ff75f6d878085f5064606232f5eadaf3cfd45a4bb0c57f1ef244cb02bd48b2a8",
+      "width": 390,
+      "height": 4122,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ru-history.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ru-history.png",
+      "sha256": "b59e549212315d8f6c72b84071c8203cecd71aaa1bc0d75fac03c84e371094be",
+      "width": 390,
+      "height": 4122,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/select-appearance-complaint-client.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/select-appearance-complaint-client.png",
+      "sha256": "093adbc28cdb4a582161e31e9654e15dac5a143961aa39f06417f31578fb5e7b",
+      "width": 320,
+      "height": 49,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png",
+      "sha256": "3d2adcd23cc26afdabdcbc1ff08eb33de8c388ba1d16c55d164a36dc322c9407",
+      "width": 1440,
+      "height": 2206,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png",
+      "sha256": "e3c7ce6c53c5f66ab195c180c2ff036e8e9044b689e5fc2bdcc5ddb8ac3a324c",
+      "width": 1440,
+      "height": 1989,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png",
+      "sha256": "053620ac0991b81fcdd9f0940375f6ddbdd3ab1ce73ee12bdd8ae722106a677e",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png",
+      "sha256": "818083c935afde1bae22dbc25c297d4afcddf59bddd2f7def201e36cb3fbb7da",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png",
+      "sha256": "2783ff29ad48f37345cd629e847092e50093cf818e108cbf42a3e891ec071cc0",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png",
+      "sha256": "f34bcab984973537c8c653a15cc307ce416d6bdc02d2e0ff83388539b245f8de",
+      "width": 1440,
+      "height": 2297,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png",
+      "sha256": "4bb7e6bdda6c0a188e09636f240ef5854317e911e294f192c6b19778c48a0605",
+      "width": 1440,
+      "height": 1330,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png",
+      "sha256": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+      "width": 1440,
+      "height": 1008,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png",
+      "sha256": "62614002d652039368858a83c17f7361c04d00d6feb597dabce3101fd9d128b2",
+      "width": 1046,
+      "height": 45,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png",
+      "sha256": "c59b3687b4f4ef90ef640c2a070a0aefff6e6200022c575954f0602744525208",
+      "width": 390,
+      "height": 2592,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png",
+      "sha256": "9c71b57dfbefd0d88f6ffd3c1d7546058e7e270ea3c2dd50cfed460237fff626",
+      "width": 390,
+      "height": 2321,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png",
+      "sha256": "0812734915feb2fcccc164b4491646cdb4ac6ccf7518c46268a0ebe6f8d47d2c",
+      "width": 390,
+      "height": 2701,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png",
+      "sha256": "14d5e0eac0bf3268ee4499157acd8f7afffc48e1f20eae9611a25aac18e5f830",
+      "width": 390,
+      "height": 2725,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png",
+      "sha256": "7e2f9df58b61da0112d1147368030446cfc5364523a13ab034386c6c0f0319fb",
+      "width": 390,
+      "height": 2701,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png",
+      "sha256": "74939aa1c9217826270066137b1278c1444a811f339e6537fd4d6a3f414af0ac",
+      "width": 390,
+      "height": 2743,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png",
+      "sha256": "bb248199f0f2d1f4c457cefb04938e4fc712a3b4215d13148dc07f6e6bc56865",
+      "width": 390,
+      "height": 1728,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png",
+      "sha256": "a14d174b6fad2d86423fc2a773935ed5b87c95a3c8c6e9701e8aa00999cf7ea6",
+      "width": 390,
+      "height": 1173,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    },
+    {
+      "source": "/workspace/worktrees/complaints737-on-ideas751/apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png",
+      "archive": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-qualified-local-packet/original-screenshots/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png",
+      "sha256": "b6ac10e36afde313c26941e126cd5a7092b2eda6223410ef3a20e89c9651cc73",
+      "width": 286,
+      "height": 49,
+      "inspection": "Original resolution image viewed directly; no edited derivative used."
+    }
+  ]
+}

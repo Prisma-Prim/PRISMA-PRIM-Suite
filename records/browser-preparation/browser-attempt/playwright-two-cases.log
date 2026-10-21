@@ -1,0 +1,20 @@
+[2m[WebServer] [22m(node:235768) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m[2m$ vite preview --host 127.0.0.1 --port 4173[22m
+[2m[WebServer] [22m(node:235786) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:235827) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:235827) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [operational-acceptance-desktop] › e2e/complaints.acceptance.spec.ts:55:1 › records, corrects and reopens a factual Complaint journey in four languages with independent live grants (17.6s)
+(node:235929) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:235929) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [operational-acceptance-narrow] › e2e/complaints.acceptance.spec.ts:55:1 › records, corrects and reopens a factual Complaint journey in four languages with independent live grants (15.5s)
+
+  2 passed (51.8s)

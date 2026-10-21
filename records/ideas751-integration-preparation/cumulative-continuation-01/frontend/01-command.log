@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 /workspace/worktrees/complaints737-on-ideas751/apps/web
+
+
+ Test Files  19 passed (19)
+      Tests  286 passed (286)
+   Start at  20:12:06
+   Duration  173.72s (transform 7.72s, setup 10.52s, import 16.85s, tests 91.03s, environment 44.49s)
+

@@ -1,0 +1,16 @@
+{
+  "status": "SOURCE ONLY; composite builder prepared, no builds/browser invoked",
+  "source_artifacts": {
+    "verify-browser-builds.py": "929ac16201c27a6d0747cd1bf01a8a08211596b88afa269cbe22d3af57c2be19",
+    "build-once.py": "66452b4935c4aa11523a3fcf743decadbbe700a85cbf2b5b32626480623d0a53",
+    "browser-once.py": "4d711569ae168f39f56bad0489dcf71bb7ff34b1b1f5ed1769d231bb7bb7bb4b",
+    "build-once.sh": "aa63f92fee1cd71401c3cf4543a25b16229b061a6a6128198aad9bbed95bf44d",
+    "browser-once.sh": "bd06d61760404b611a2d25e94d1b9912c069406f78640e6e63b4e83a099654e5",
+    "complaints-acceptance-preview.config.ts": "c669d8b3ec799ae2f7eeed8e38a04825f456693a4c5cf33f6cc3b697b610747f",
+    "plan.json": "ccfc3aca00618219a9fcca95bd13c4cab957be347ce6b678774e27e0652fb4e0",
+    "adaptation-only.diff": "1e0d238d40ee991ae30cff342a205fae4f4776370f842b15641dd41bd1375088"
+  },
+  "mechanism_reused": "/workspace/work/complaints-runtime737/browser-preparation",
+  "root_review": "Only adaptation diff needs new comparison; original mature mechanisms retained.",
+  "composite_provenance_only_diff_sha256": "b38e8ee318c3bd2c7135f69717632b4420534403e30bc5b0ef987eb8434450f5"
+}

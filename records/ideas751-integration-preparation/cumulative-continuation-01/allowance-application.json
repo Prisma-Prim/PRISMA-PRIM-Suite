@@ -1,0 +1,13 @@
+{
+  "recorded_utc": "2026-10-20T20:03:35.915061+00:00",
+  "status": "Applied only three local timeout options, no Node/test invoked",
+  "target": "/workspace/worktrees/complaints737-on-ideas751",
+  "changed_paths": [
+    "apps/api/src/complaints/complaints.rest.test.ts"
+  ],
+  "before_sha256": "1d3f27d5d843fd316b5864773b5d16c990249f22659fbf22a1994d7462433ef4",
+  "after_sha256": "6267ba20c7b6a7b02574993e0968c8ab97fb1bb5ada2e41de7ac7f03018000fe",
+  "all_other78source_hashes_unchanged": true,
+  "affected_cases": 6,
+  "assertions_bodies_names_fixtures_unchanged": true
+}

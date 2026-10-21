@@ -1,0 +1,12 @@
+# Standards — local Ideas #751 + Complaints #737 integration
+
+**Source result: no blocking finding.** Reviewed the 23 shared TypeScript/TSX resolutions against Ideas parent `c30db029a9d2327d42eab5f41f9a675b9f6477ff`, Complaints author `003ea31b5a7388bceabfb11c9e536ba0b7e8c527` and common base `4f693ccb3b09cb173cae578640005dd3ae0b48a6`. All 23 reviewed files remain unchanged at the promoted 79-file freeze. `standards-binding.json` binds all 79 actual source hashes. These are reviewed hashes, not runtime-tested hashes.
+
+- The five dedicated captured bundles stay separate and version `v1`; no existing bundle gains permissions. Both actor projections/current-live-assignment checks, both authors’ complete assignment methods and restricted event writers remain present. No cross-register command or automatic grant appears.
+- Closed authorization/admin/Activity unions preserve both features. Administration routes retain all five bundles; ordinary Activity parsing, narration and localization fixtures admit the exact 110-action union while confidential Idea/Complaint facts retain separate event owners.
+- Both App sections, authority keys, navigation icons/focus owners, module/schema exports and registered acceptance names remain present. No material new unchecked assertion, `any`, dependency or provider expansion was found.
+- Read all promoted72 SQL and its two-index ordering delta. Independent source inspection confirms all34 statement chunks are byte-identical to real generated output, only the two prerequisite unique indexes move before their FKs, and all other statement order remains intact. Snapshot72 points to the actual71 snapshot, adds only five Complaint tables, changes only the existing role-assignment CHECK and two enums, and appends Complaint role values after the unchanged Ideas enum prefix. The journal preserves all71 prior entries and adds only72. No destructive Ideas DDL or new grant statement is present.
+
+**Material nonblocking standards findings:** none. Existing repetitive assignment/registry structure does not require an integration refactor.
+
+**Remaining qualification:** no cumulative migration execution, TypeScript, tests, builds or browsers was run by this reviewer. Earlier independent-slice evidence does not prove combined runtime behavior. Full integration/evidence/final-head review gates remain outstanding; this source report does not authorize publication/readiness/merge.

@@ -1,0 +1,32 @@
+{
+  "valid": true,
+  "actualFiles": [
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.client-union-confirmation-localization.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.complaints-activity.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.complaints.recovery.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.complaints.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.ideas.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/access/CompanyContextAccess.complaints.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/access/CompanyContextAccess.ideas.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/ideas/ideas-activity-response.test.ts",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/localization/messages.test.ts"
+  ],
+  "expectedFiles": [
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.client-union-confirmation-localization.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.complaints-activity.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.complaints.recovery.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.complaints.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/App.ideas.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/access/CompanyContextAccess.complaints.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/access/CompanyContextAccess.ideas.test.tsx",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/ideas/ideas-activity-response.test.ts",
+    "/workspace/worktrees/complaints-runtime737/apps/web/src/localization/messages.test.ts"
+  ],
+  "counts": {
+    "numTotalTests": 74,
+    "numPassedTests": 74,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTodoTests": 0
+  }
+}

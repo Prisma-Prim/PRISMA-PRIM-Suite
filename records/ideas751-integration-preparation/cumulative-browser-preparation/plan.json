@@ -1,0 +1,60 @@
+{
+  "status": "SOURCE ONLY; no build/browser invoked; currentPG thenfrontend and root read/lease required",
+  "own_worktree": "/workspace/worktrees/complaints737-on-ideas751",
+  "expected_source_count": 79,
+  "pinned_public_env": {
+    "VITE_ACCESS_IDENTITY_MODE": "local-demo",
+    "VITE_DEMO_EXTERNAL_PROVIDER": "local-demo",
+    "VITE_DEMO_EXTERNAL_SUBJECT": "local-demonstration-user",
+    "VITE_DEMO_DISPLAY_NAME": "Ada Ionescu",
+    "VITE_DEMO_EMAIL": "ada@example.test",
+    "ACCEPTANCE_API_URL": "http://127.0.0.1:4174"
+  },
+  "build_commands_once": [
+    [
+      "pnpm",
+      "--filter",
+      "@prisma-prim/api",
+      "build"
+    ],
+    [
+      "pnpm",
+      "build",
+      "--mode",
+      "local-demo"
+    ]
+  ],
+  "actual_current_phase_preconditions": [
+    "Current cumulative statics79 freeze",
+    "Current cumulative publicPG11 result PASS/exit0/cleanup0",
+    "Current cumulative frontend19 result PASS/exit0/cleanup0"
+  ],
+  "browser_after_new_seal_root_read": {
+    "cases": 4,
+    "specs": [
+      "e2e/ideas.acceptance.spec.ts",
+      "e2e/complaints.acceptance.spec.ts"
+    ],
+    "widths": [
+      1440,
+      390
+    ],
+    "locales": [
+      "en",
+      "fr",
+      "ro",
+      "ru"
+    ]
+  },
+  "unchanged": [
+    "All canonical test assertions/budgets/projects/workers/globalsetup",
+    "Temp config only previewguard/command plus180startup; installed before both input captures",
+    "OwnPG17 currentprobe, isolatedDB leak detection, sameidentitydescendantcleanup, strictwrapperfailure forZ",
+    "Tracked+untracked input scan, modules/tools/links/outputs/environment/log seal; no otherbranchoutput reuse"
+  ],
+  "notes": [
+    "Only copied scripts/config changed in scratch; no runtime source or temporary worktreeconfig installed.",
+    "Build andbrowser wrappers require explicit futurelane; browser additionally requires newsealreview.",
+    "Any actual format/behavior/static/cleanup failure remains firstfailure evidence; no automatic rerun."
+  ]
+}

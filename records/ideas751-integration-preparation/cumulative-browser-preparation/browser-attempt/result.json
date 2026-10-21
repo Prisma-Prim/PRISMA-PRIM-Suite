@@ -1,0 +1,192 @@
+{
+  "started_utc": "2026-10-20T20:23:22.903604+00:00",
+  "status": "PASS",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/verify-browser-builds.py"
+      ],
+      "cwd": "/workspace/worktrees/complaints737-on-ideas751/apps/web",
+      "started_utc": "2026-10-20T20:23:22.910689+00:00",
+      "log": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-attempt/sealed-build-guard-before.log",
+      "pid": 291944,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T20:23:27.241936+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "start",
+        "complaints737-postgres"
+      ],
+      "cwd": "/workspace/worktrees/complaints737-on-ideas751/apps/web",
+      "started_utc": "2026-10-20T20:23:27.377192+00:00",
+      "log": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-attempt/container-start.log",
+      "pid": 291954,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T20:23:28.297715+00:00"
+    },
+    {
+      "argv": [
+        "node",
+        "--input-type=module",
+        "--eval",
+        "import pg from 'pg';\nimport { probePostgresTargets } from '../../scripts/agent-doctor-system-adapter.mjs';\nimport { databaseTargetsAreSafe } from './test-support/postgres-database-target.mjs';\nif (!databaseTargetsAreSafe(process.env.DATABASE_URL,process.env.TEST_DATABASE_URL)) throw new Error('Unsafe synthetic PostgreSQL targets.');\nconst targets=await probePostgresTargets({databaseUrl:process.env.DATABASE_URL,testDatabaseUrl:process.env.TEST_DATABASE_URL,Client:pg.Client});\nconsole.log(JSON.stringify({at:new Date().toISOString(),node:process.version,targets}));\nif (Object.values(targets).some(t=>t.state!=='available'||t.serverVersionNumber<170000||t.serverVersionNumber>=180000||!t.canCreateDatabase)) process.exitCode=1;\n"
+      ],
+      "cwd": "/workspace/worktrees/complaints737-on-ideas751/apps/api",
+      "started_utc": "2026-10-20T20:23:28.731366+00:00",
+      "log": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-attempt/pg-current-probe.log",
+      "pid": 292091,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T20:23:28.975115+00:00"
+    },
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "playwright",
+        "test",
+        "--config",
+        ".complaints-acceptance-preview.config.ts",
+        "e2e/ideas.acceptance.spec.ts",
+        "e2e/complaints.acceptance.spec.ts"
+      ],
+      "cwd": "/workspace/worktrees/complaints737-on-ideas751/apps/web",
+      "started_utc": "2026-10-20T20:23:29.280183+00:00",
+      "log": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-attempt/playwright-four-cases.log",
+      "pid": 292131,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T20:26:19.015715+00:00"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/verify-browser-builds.py"
+      ],
+      "cwd": "/workspace/worktrees/complaints737-on-ideas751/apps/web",
+      "started_utc": "2026-10-20T20:26:19.017503+00:00",
+      "log": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-attempt/sealed-build-guard-after.log",
+      "pid": 292469,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T20:26:51.979204+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "stop",
+        "complaints737-postgres"
+      ],
+      "cwd": "/workspace/worktrees/complaints737-on-ideas751/apps/web",
+      "started_utc": "2026-10-20T20:26:53.267725+00:00",
+      "log": "/workspace/work/complaints-runtime737/ideas751-integration-preparation/cumulative-browser-preparation/browser-attempt/container-stop.log",
+      "pid": 292500,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T20:26:53.581728+00:00"
+    }
+  ],
+  "browser_started": true,
+  "owned_container_started": true,
+  "builds_started": false,
+  "runner_sha256": "4d711569ae168f39f56bad0489dcf71bb7ff34b1b1f5ed1769d231bb7bb7bb4b",
+  "seal_sha256": "fa0debd1f5846b42a30df0e7c3cd24a2f2609d9d275a2b475f29024291ee4462",
+  "ports_before": {
+    "4173": true,
+    "4174": true
+  },
+  "target": {
+    "host": "127.0.0.1",
+    "port": 32815,
+    "development": "prisma_complaints737",
+    "test": "prisma_complaints737_test"
+  },
+  "readiness_exit_codes": [
+    0
+  ],
+  "acceptance_databases_before": [],
+  "playwright_exit_code": 0,
+  "process_cleanup": {
+    "observed_owned": {
+      "292131": "5864176",
+      "292148": "5864341",
+      "292166": "5864708",
+      "292167": "5864708",
+      "292168": "5864958",
+      "292185": "5865250",
+      "292186": "5865251",
+      "292218": "5866974",
+      "292231": "5867243",
+      "292233": "5867248",
+      "292234": "5867249",
+      "292250": "5867260",
+      "292253": "5867264",
+      "292284": "5867292",
+      "292316": "5876306",
+      "292357": "5877862",
+      "292376": "5878080",
+      "292378": "5878085",
+      "292379": "5878085",
+      "292396": "5878090",
+      "292403": "5878092",
+      "292428": "5878117",
+      "292445": "5879849",
+      "292452": "5879859"
+    },
+    "rescue_signalled": [],
+    "remaining": {}
+  },
+  "ports_after": {
+    "4173": true,
+    "4174": true
+  },
+  "acceptance_databases_after": [],
+  "new_isolated_database_leaks": [],
+  "container_cleanup": {
+    "stop_exit_code": 0,
+    "running": false,
+    "status": "exited"
+  },
+  "artifacts_sha256": {
+    "apps/web/test-results/acceptance/.last-run.json": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-en-history.png": "71aa8b91bf24dc74d7f3d2cbc9481916d4490cb7be4929b346cf21903533065d",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-explicit-intake.png": "0b4d3961c71b603600d765b1a97f70250a736168103249805ce57947c55c7fb9",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-fr-history.png": "ff2bb1d5bec4f8bf6cac2aa31d683b9b86d66c07502305f06dceec6fbdd211be",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-only.png": "ca9511ef5f85cd537a4d0e1614844111aa04d35ed6ca4317ec879e19bae5cd50",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-revoked.png": "dfea0917079f0a29d8027948d00ca04139b1cae286e21d6a915872b95bf62336",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ro-history.png": "864af4d86cfd7d5aaf3b5ca0883401302b145dbc3e9ad41a03cd25fc9f5f974c",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ru-history.png": "3c3eb939dcc70611ba4debe28767aa57b9f67795728b28475281469ccda5e876",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/select-appearance-complaint-client.png": "0ec139b0e72b2c0d97e4343ba68a7ee5b4092d63f80b089e3a6b59b18475db64",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-en-history.png": "1887fef99ed113ccf081e6920edcc6ae2bcd873b718a5ded5aca560d35104492",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-explicit-intake.png": "2b54f74bc49dbc6f410fa02937668ef11a7edc16d27c18ec6718acbe0e462556",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-fr-history.png": "6382407720bf5761da7fa34c8708ca51932bf7209115215fd0a9f0fef299e5f7",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-only.png": "7cbf4c923df2ecb8d1b50a5a15e4718536a8237c3390b91a4da4ce4400a4f5a7",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-revoked.png": "8994fac68afbf946752951b557c4c117e1b4d1725b89849163abb8498e459127",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ro-history.png": "ff75f6d878085f5064606232f5eadaf3cfd45a4bb0c57f1ef244cb02bd48b2a8",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ru-history.png": "b59e549212315d8f6c72b84071c8203cecd71aaa1bc0d75fac03c84e371094be",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/select-appearance-complaint-client.png": "093adbc28cdb4a582161e31e9654e15dac5a143961aa39f06417f31578fb5e7b",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-deferred-desktop.png": "3d2adcd23cc26afdabdcbc1ff08eb33de8c388ba1d16c55d164a36dc322c9407",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-disposition-select-open-desktop.png": "e3c7ce6c53c5f66ab195c180c2ff036e8e9044b689e5fc2bdcc5ddb8ac3a324c",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-en-desktop.png": "053620ac0991b81fcdd9f0940375f6ddbdd3ab1ce73ee12bdd8ae722106a677e",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-fr-desktop.png": "818083c935afde1bae22dbc25c297d4afcddf59bddd2f7def201e36cb3fbb7da",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ro-desktop.png": "2783ff29ad48f37345cd629e847092e50093cf818e108cbf42a3e891ec071cc0",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-history-ru-desktop.png": "f34bcab984973537c8c653a15cc307ce416d6bdc02d2e0ff83388539b245f8de",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-reader-only-desktop.png": "4bb7e6bdda6c0a188e09636f240ef5854317e911e294f192c6b19778c48a0605",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/ideas-validation-desktop.png": "dfb599e6f647512c8589e29e34b457cf6d412c8c77d79f57468eab2b3f2f794b",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-desktop/select-appearance-idea-disposition.png": "62614002d652039368858a83c17f7361c04d00d6feb597dabce3101fd9d128b2",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-deferred-narrow.png": "c59b3687b4f4ef90ef640c2a070a0aefff6e6200022c575954f0602744525208",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-disposition-select-open-narrow.png": "9c71b57dfbefd0d88f6ffd3c1d7546058e7e270ea3c2dd50cfed460237fff626",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-en-narrow.png": "0812734915feb2fcccc164b4491646cdb4ac6ccf7518c46268a0ebe6f8d47d2c",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-fr-narrow.png": "14d5e0eac0bf3268ee4499157acd8f7afffc48e1f20eae9611a25aac18e5f830",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ro-narrow.png": "7e2f9df58b61da0112d1147368030446cfc5364523a13ab034386c6c0f0319fb",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-history-ru-narrow.png": "74939aa1c9217826270066137b1278c1444a811f339e6537fd4d6a3f414af0ac",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-reader-only-narrow.png": "bb248199f0f2d1f4c457cefb04938e4fc712a3b4215d13148dc07f6e6bc56865",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/ideas-validation-narrow.png": "a14d174b6fad2d86423fc2a773935ed5b87c95a3c8c6e9701e8aa00999cf7ea6",
+    "apps/web/test-results/acceptance/ideas.acceptance-records-a-4faca-ugh-real-App-and-PostgreSQL-operational-acceptance-narrow/select-appearance-idea-disposition.png": "b6ac10e36afde313c26941e126cd5a7092b2eda6223410ef3a20e89c9651cc73"
+  },
+  "finished_utc": "2026-10-20T20:26:53.647446+00:00",
+  "exit_code": 0
+}

@@ -1,0 +1,207 @@
+{
+  "started_utc": "2026-10-20T18:50:18.356661+00:00",
+  "status": "FAIL: BROWSER OWNED PROCESS CLEANUP REQUIRED OR INCOMPLETE",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "/workspace/work/complaints-runtime737/browser-preparation/verify-browser-builds.py"
+      ],
+      "cwd": "/workspace/worktrees/complaints-runtime737/apps/web",
+      "started_utc": "2026-10-20T18:50:18.360135+00:00",
+      "log": "/workspace/work/complaints-runtime737/browser-preparation/browser-attempt/sealed-build-guard-before.log",
+      "pid": 235534,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T18:50:21.199298+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "start",
+        "complaints737-postgres"
+      ],
+      "cwd": "/workspace/worktrees/complaints-runtime737/apps/web",
+      "started_utc": "2026-10-20T18:50:21.270078+00:00",
+      "log": "/workspace/work/complaints-runtime737/browser-preparation/browser-attempt/container-start.log",
+      "pid": 235555,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T18:50:21.707797+00:00"
+    },
+    {
+      "argv": [
+        "node",
+        "--input-type=module",
+        "--eval",
+        "import pg from 'pg';\nimport { probePostgresTargets } from '../../scripts/agent-doctor-system-adapter.mjs';\nimport { databaseTargetsAreSafe } from './test-support/postgres-database-target.mjs';\nif (!databaseTargetsAreSafe(process.env.DATABASE_URL,process.env.TEST_DATABASE_URL)) throw new Error('Unsafe synthetic PostgreSQL targets.');\nconst targets=await probePostgresTargets({databaseUrl:process.env.DATABASE_URL,testDatabaseUrl:process.env.TEST_DATABASE_URL,Client:pg.Client});\nconsole.log(JSON.stringify({at:new Date().toISOString(),node:process.version,targets}));\nif (Object.values(targets).some(t=>t.state!=='available'||t.serverVersionNumber<170000||t.serverVersionNumber>=180000||!t.canCreateDatabase)) process.exitCode=1;\n"
+      ],
+      "cwd": "/workspace/worktrees/complaints-runtime737/apps/api",
+      "started_utc": "2026-10-20T18:50:21.947389+00:00",
+      "log": "/workspace/work/complaints-runtime737/browser-preparation/browser-attempt/pg-current-probe.log",
+      "pid": 235692,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T18:50:22.279445+00:00"
+    },
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "playwright",
+        "test",
+        "--config",
+        ".complaints-acceptance-preview.config.ts",
+        "e2e/complaints.acceptance.spec.ts"
+      ],
+      "cwd": "/workspace/worktrees/complaints-runtime737/apps/web",
+      "started_utc": "2026-10-20T18:50:22.434351+00:00",
+      "log": "/workspace/work/complaints-runtime737/browser-preparation/browser-attempt/playwright-two-cases.log",
+      "pid": 235731,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T18:51:17.975260+00:00"
+    },
+    {
+      "argv": [
+        "python3",
+        "/workspace/work/complaints-runtime737/browser-preparation/verify-browser-builds.py"
+      ],
+      "cwd": "/workspace/worktrees/complaints-runtime737/apps/web",
+      "started_utc": "2026-10-20T18:51:17.976681+00:00",
+      "log": "/workspace/work/complaints-runtime737/browser-preparation/browser-attempt/sealed-build-guard-after.log",
+      "pid": 236020,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T18:51:20.857420+00:00"
+    },
+    {
+      "argv": [
+        "docker",
+        "--host",
+        "unix:///var/run/docker.sock",
+        "stop",
+        "complaints737-postgres"
+      ],
+      "cwd": "/workspace/worktrees/complaints-runtime737/apps/web",
+      "started_utc": "2026-10-20T18:51:25.370649+00:00",
+      "log": "/workspace/work/complaints-runtime737/browser-preparation/browser-attempt/container-stop.log",
+      "pid": 236051,
+      "exit_code": 0,
+      "finished_utc": "2026-10-20T18:51:25.670602+00:00"
+    }
+  ],
+  "browser_started": true,
+  "owned_container_started": true,
+  "builds_started": false,
+  "runner_sha256": "3d06c0efe9477190723289d9c336a78155c6bdff6c4a16d0416d8762747c5f2e",
+  "seal_sha256": "df43be792118773eed6bb4f58fcafdf18130210d03397f0c778be8469bb595b4",
+  "ports_before": {
+    "4173": true,
+    "4174": true
+  },
+  "target": {
+    "host": "127.0.0.1",
+    "port": 32808,
+    "development": "prisma_complaints737",
+    "test": "prisma_complaints737_test"
+  },
+  "readiness_exit_codes": [
+    0
+  ],
+  "acceptance_databases_before": [],
+  "playwright_exit_code": 0,
+  "process_cleanup": {
+    "observed_owned": {
+      "235731": "5305491",
+      "235748": "5305612",
+      "235766": "5305849",
+      "235767": "5305850",
+      "235768": "5306028",
+      "235785": "5306127",
+      "235786": "5306128",
+      "235827": "5307275",
+      "235840": "5307422",
+      "235842": "5307430",
+      "235843": "5307431",
+      "235860": "5307439",
+      "235862": "5307441",
+      "235893": "5307460",
+      "235929": "5309219",
+      "235942": "5309427",
+      "235944": "5309431",
+      "235945": "5309431",
+      "235960": "5309439",
+      "235962": "5309440",
+      "235984": "5309449",
+      "235996": "5309480"
+    },
+    "rescue_signalled": [],
+    "remaining": {
+      "235768": {
+        "parent": 1,
+        "start_ticks": "5306028",
+        "state": "Z"
+      },
+      "235785": {
+        "parent": 1,
+        "start_ticks": "5306127",
+        "state": "Z"
+      },
+      "235786": {
+        "parent": 1,
+        "start_ticks": "5306128",
+        "state": "Z"
+      },
+      "235842": {
+        "parent": 1,
+        "start_ticks": "5307430",
+        "state": "Z"
+      },
+      "235843": {
+        "parent": 1,
+        "start_ticks": "5307431",
+        "state": "Z"
+      },
+      "235944": {
+        "parent": 1,
+        "start_ticks": "5309431",
+        "state": "Z"
+      },
+      "235945": {
+        "parent": 1,
+        "start_ticks": "5309431",
+        "state": "Z"
+      }
+    }
+  },
+  "ports_after": {
+    "4173": true,
+    "4174": true
+  },
+  "acceptance_databases_after": [],
+  "new_isolated_database_leaks": [],
+  "container_cleanup": {
+    "stop_exit_code": 0,
+    "running": false,
+    "status": "exited"
+  },
+  "artifacts_sha256": {
+    "apps/web/test-results/acceptance/.last-run.json": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-en-history.png": "4c3f3ed428abecd8f2ca1523a17a7a0236bc7afcf3e6d9abe793b95abd8f0116",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-explicit-intake.png": "0b4d3961c71b603600d765b1a97f70250a736168103249805ce57947c55c7fb9",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-fr-history.png": "03b0985035430657f57f492bf09c32ae4cd443b57a2bce02908109870485ccbc",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-only.png": "9e4b8e5e522de803149dfb0e24b17d1694d91d79b4e3aa9d504d37ec989f3270",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-reader-revoked.png": "8bc1c805328b00e81c89b4b220f865a8823bf3a40bb6a3cd7f3bba61786f6c84",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ro-history.png": "79e8a91a04854d5901e9c41c1e2814d82e9d77ef8326921f094d5898fdd125ae",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/complaints-desktop-ru-history.png": "4d452d47c4c42e8d4a574b091311844c6682cf09ab8e34def71c1947244b70ad",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-desktop/select-appearance-complaint-client.png": "0ec139b0e72b2c0d97e4343ba68a7ee5b4092d63f80b089e3a6b59b18475db64",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-en-history.png": "f3afa506dedfd4af1c168097e8796fe6fb9fb0e44fd5fbf23bc1b4e640dfb083",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-explicit-intake.png": "2b54f74bc49dbc6f410fa02937668ef11a7edc16d27c18ec6718acbe0e462556",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-fr-history.png": "6866dcd74f515e85bf27836a09465790bf2c5a4d75af973d73316f8e725b3d0d",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-only.png": "2111dfd20cb3b74571dbd6c26cd8ddec4fad9f8531b252d8ea4f18b6296dc578",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-reader-revoked.png": "0b9a49511afdb307110f1faa91774212cecb9e39a9663ca1f4a71f88f9549018",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ro-history.png": "ceac096626d5efccebf9d09334bf002fd37ab583aaefd15848730f2877b352f9",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/complaints-narrow-ru-history.png": "9bbb0f31cccdfeba09fd3325adcf19fe3fd256776a248308d99ae05378e76eba",
+    "apps/web/test-results/acceptance/complaints.acceptance-reco-282a0-ith-independent-live-grants-operational-acceptance-narrow/select-appearance-complaint-client.png": "093adbc28cdb4a582161e31e9654e15dac5a143961aa39f06417f31578fb5e7b"
+  },
+  "finished_utc": "2026-10-20T18:51:25.708732+00:00",
+  "exit_code": 2
+}

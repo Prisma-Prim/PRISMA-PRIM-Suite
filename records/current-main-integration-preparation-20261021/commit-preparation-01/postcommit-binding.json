@@ -1,0 +1,39 @@
+{
+  "status": "normal local correction commit; not pushed, full-gate qualified or merged",
+  "at": "2026-10-21T21:53:21.461556+00:00",
+  "head": "61761608869281291ab2964b35f75faba43e2762",
+  "tree": "8e3720b1a54bfb9cf632eb3a0ce529dd0cfc042e",
+  "parent": "003ea31b5a7388bceabfb11c9e536ba0b7e8c527",
+  "branch": "feat/737-company-complaint-intake",
+  "changedPaths": 59,
+  "committedFiles": 1359,
+  "all1359CommittedBlobSHA256AndGitModesMatchCandidate": true,
+  "all1359WorkingSHA256AndRawModesMatchTestedFreeze": true,
+  "indexEmpty": true,
+  "trackedWorkingTreeClean": true,
+  "onlyUntrackedKnownThreeDependencyLinks": true,
+  "historicalWorktreeAll79StillUnchanged": true,
+  "historicalFeatureOwnerByteIdentity": 78,
+  "onlyChangedHistoricalOwner": "apps/web/src/localization/first-journey-coverage.ts",
+  "runtimeAttribution": {
+    "executionHEAD": "003ea31b5a7388bceabfb11c9e536ba0b7e8c527 + frozen WIP",
+    "committedContentBinding": "61761608869281291ab2964b35f75faba43e2762",
+    "original01Aggregate": "FAIL at E2E CLI missingjsx; doctor+8format/lint+wholewebstrict PASS carried separately unchangedsource",
+    "continuation02": "Corrected strictE2E PASS;74/74actualPASS exact9wholewebowners,0skip/pending/todo;all15ownedgone/resourcesempty",
+    "full16Qualified": false,
+    "publishedHeadRuntimeClaimed": false
+  },
+  "ancestorClaims": {
+    "currentIdeas751": false,
+    "currentMain": false
+  },
+  "requiredNextMainIntegration": "Normal merge of actual canonical main after749\u2192751 mandatory before finalfull16 and published-head review; currentPRdiff not yet proven Complaint-only",
+  "remotePushPerformed": false,
+  "githubWrites": false,
+  "evidence": {
+    "failed01": "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-qualification-01/result.json",
+    "green02": "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/result.json",
+    "actual74Validation": "/workspace/work/complaints-runtime737/current-main-integration-preparation-20261021/web-continuation-02/affected-web-owners-validation.json",
+    "testedSourceFreezeSHA256": "9cbccdafb17d43d21adb3af090abd056338d97e15375d1286a258771b4e68ce1"
+  }
+}
