@@ -24,8 +24,8 @@ const firstDocument = {
   id: 'document-filter-first',
   companyId: firstCompany.id,
   clientId: 'document-filter-client-first',
-  clientDisplayName: 'Synthetic Client',
-  title: 'Initial assessment questionnaire',
+  clientDisplayName: 'Țară Advisory',
+  title: 'Ședință inițială',
   purpose: 'Prepare the assessment',
   type: 'questionnaire',
   confidentiality: 'company-confidential',
@@ -216,6 +216,123 @@ test('filters loaded Working Documents locally and resets at the Company boundar
   await expect(page.getByLabel('Title', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Unsaved title')).toHaveCount(0);
   expect(listReads).toEqual([firstCompany.id, secondCompany.id]);
+  expect(mutationRequests).toEqual([]);
+});
+
+test('matches Romanian Document spelling through all interface languages without I/O', async ({
+  page,
+}, testInfo) => {
+  const listReads: string[] = [];
+  const mutationRequests: string[] = [];
+  await interceptApplication(page, listReads, mutationRequests);
+  await page.goto('/?frame=prisme#documents');
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    firstCompany.id,
+  );
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  const firstWorkspace = page.getByRole('region', {
+    name: 'Working Documents',
+  });
+  const initialFilter = firstWorkspace.getByRole('searchbox', {
+    name: 'Filter working Documents',
+  });
+  await expect(firstWorkspace.locator('ul').getByRole('button')).toHaveCount(3);
+  await initialFilter.fill('t\u0327ara');
+  await expect(firstWorkspace.locator('ul').getByRole('button')).toHaveText([
+    firstDocument.title,
+  ]);
+  await initialFilter.fill(' SEDINTA ');
+  await initialFilter.press('Tab');
+  await expect(
+    firstWorkspace.getByRole('button', {
+      name: firstDocument.title,
+      exact: true,
+    }),
+  ).toBeFocused();
+  let previousLanguageLabel = 'Interface language';
+  for (const locale of [
+    {
+      code: 'ro',
+      index: 0,
+      language: 'Limba interfeței',
+      region: 'Documente de lucru',
+      filter: 'Filtrează Documentele de lucru',
+    },
+    {
+      code: 'ru',
+      index: 1,
+      language: 'Язык интерфейса',
+      region: 'Рабочие Документы',
+      filter: 'Фильтр рабочих Документов',
+    },
+    {
+      code: 'fr',
+      index: 2,
+      language: 'Langue de l’interface',
+      region: 'Documents de travail',
+      filter: 'Filtrer les Documents de travail',
+    },
+    {
+      code: 'en',
+      index: 3,
+      language: 'Interface language',
+      region: 'Working Documents',
+      filter: 'Filter working Documents',
+    },
+  ]) {
+    const languageControl = page.getByRole('combobox', {
+      name: previousLanguageLabel,
+      exact: true,
+    });
+    await languageControl.focus();
+    await languageControl.press('Enter');
+    await languageControl.press('Home');
+    for (let index = 0; index < locale.index; index += 1)
+      await languageControl.press('ArrowDown');
+    await languageControl.press('Enter');
+    await expect(
+      page.getByRole('combobox', { name: locale.language, exact: true }),
+    ).toBeFocused();
+    const workspace = page.getByRole('region', { name: locale.region });
+    const filter = workspace.getByRole('searchbox', { name: locale.filter });
+    await expectValue(filter, ' SEDINTA ');
+    await expect(workspace.locator('ul').getByRole('button')).toHaveText([
+      firstDocument.title,
+    ]);
+    await filter.focus();
+    await expect(filter).toBeFocused();
+    expect(
+      await filter.evaluate(
+        (element) => getComputedStyle(element).outlineStyle,
+      ),
+    ).toBe('solid');
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await filter.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `working-document-romanian-${locale.code}-${testInfo.project.name}.png`,
+      ),
+      fullPage: false,
+    });
+    expect(listReads).toEqual([firstCompany.id]);
+    expect(mutationRequests).toEqual([]);
+    previousLanguageLabel = locale.language;
+  }
+  await initialFilter.fill('');
+  await expect(firstWorkspace.locator('ul').getByRole('button')).toHaveText([
+    firstDocument.title,
+    'Supplier evidence checklist',
+    'Annual review notes',
+  ]);
+  expect(listReads).toEqual([firstCompany.id]);
   expect(mutationRequests).toEqual([]);
 });
 

@@ -192,6 +192,15 @@ states and reload/reopen support. Tests own proof through real PostgreSQL REST,
 the metadata-only Documents read seam, component interactions and desktop/narrow
 browser journeys. No schema backfill grants additional permissions.
 
+The existing local filter over already loaded readable Document titles and visible
+Client labels uses NFC canonical equivalence, case-insensitive substring matching
+and Romanian `ă/â/a`, `î/i`, `ș/ş/s`, `ț/ţ/t` equivalence (#757). It preserves the
+literal input and stored/displayed spelling, server row order, exact dossier
+identity restrictions and current read/refresh authority. Other letters, including
+Russian `й/и` and French `é/e`, remain distinct. Typing or switching interface
+locale adds no request or mutation; purpose, content, URLs and identifiers are not
+searched. This does not introduce global search or expand any Document access.
+
 Official promotion, signatures, numbering, replacement, archival/retention,
 uploads, Google integration, byte preservation, evidence reuse,
 generation/OCR/AI and the wider role taxonomy remain deferred. Section 21
