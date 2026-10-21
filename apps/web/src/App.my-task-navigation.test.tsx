@@ -192,6 +192,8 @@ function installServer() {
       return Response.json(
         inB ? [otherCompanyProject] : [atelierProject, betaProject],
       );
+    if (route === 'GET /api/projects?view=mine_open')
+      return Response.json(inB ? [] : [atelierProject]);
     if (inB) return new Response(null, { status: 404 });
     if (route.startsWith('GET ') && isLifecycleRead(route.slice(4)))
       return Response.json(preparatoryLifecycle);
@@ -221,7 +223,7 @@ function installServer() {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(input.toString(), window.location.origin);
       const request: ServerRequest = {
-        route: `${init?.method ?? 'GET'} ${url.pathname}`,
+        route: `${init?.method ?? 'GET'} ${url.pathname}${url.pathname === '/api/projects' ? url.search : ''}`,
         companyId: new Headers(init?.headers).get('x-company-context-id'),
         signal: init?.signal ?? undefined,
       };
@@ -363,6 +365,60 @@ describe('Opening an assigned Task from My Tasks through App', () => {
     vi.unstubAllGlobals();
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
+  });
+
+  it('preserves Mine through the real App exact outside-Project Task intent', async () => {
+    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    const server = installServer();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await projectRow(atelierRow);
+    const view = within(projectsRegion()).getByRole('combobox', {
+      name: 'Project view',
+    });
+    const closed = within(projectsRegion()).getByRole('checkbox', {
+      name: 'Include closed Projects',
+    });
+    fireEvent.click(closed);
+    expect(closed).toBeChecked();
+    changeValue(view, 'mine_open');
+    await waitFor(() => {
+      const list = within(projectsRegion()).getByRole('list', {
+        name: 'Projects',
+      });
+      expect(within(list).getAllByRole('button')).toHaveLength(1);
+      expect(
+        within(list).getByRole('button', { name: atelierRow }),
+      ).toBeVisible();
+      expect(
+        within(list).queryByRole('button', {
+          name: `${sharedTitle} Client: ${beta.displayName}`,
+        }),
+      ).toBeNull();
+    });
+    const allReads = server.count('GET /api/projects');
+    navigateTo(taskCopy.myTasks.title);
+    fireEvent.click(await openAction(betaTask));
+    await openedProject(beta);
+    await openedTask(betaTask);
+    expect(view).toHaveTextContent('My open Projects');
+    expect(server.count('GET /api/projects')).toBe(allReads);
+    const list = within(projectsRegion()).getByRole('list', {
+      name: 'Projects',
+    });
+    expect(within(list).getAllByRole('button')).toHaveLength(1);
+    expect(
+      within(list).getByRole('button', { name: atelierRow }),
+    ).toBeVisible();
+    expect(server.count(betaProjectRead)).toBe(1);
+    expect(server.count(taskRead(betaTask))).toBe(1);
+    expect(server.commands()).toEqual([]);
+    changeValue(view, 'all');
+    await waitFor(() => expect(view).toHaveTextContent('All Projects'));
+    expect(
+      within(projectsRegion()).getByRole('checkbox', {
+        name: 'Include closed Projects',
+      }),
+    ).toBeChecked();
   });
 
   it('opens the exact Project and Task of a same-titled row by their own reads and keeps another Project’s Task draft', async () => {
