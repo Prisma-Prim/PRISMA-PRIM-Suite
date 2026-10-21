@@ -390,6 +390,7 @@ describe('Opening an assigned Task from My Tasks through App', () => {
     expect(projectsRegion()).toBeVisible();
     await openedProject(beta);
     const tasks = await openedTask(betaTask);
+    await frames();
     expect(document.activeElement).toBe(projectsRegion());
     expect(taskTitleField()).toHaveValue(taskTitle);
     expect(

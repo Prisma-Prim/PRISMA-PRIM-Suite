@@ -5,7 +5,11 @@ import {
 } from './project/ProjectTemplateConfiguration';
 import { useAppCopy } from './app.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
-import { ProjectWorkspace } from './project/ProjectWorkspace';
+import {
+  ProjectWorkspace,
+  type ProjectOpenTarget,
+  type RequestedProject,
+} from './project/ProjectWorkspace';
 import {
   ApplicationContentSurface,
   ApplicationShell,
@@ -72,12 +76,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   >();
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
-  const [requestedProject, setRequestedProject] = useState<{
-    context: string;
-    projectId: string;
-    taskId?: string;
-    requestId: number;
-  }>();
+  const [requestedProject, setRequestedProject] = useState<
+    RequestedProject & { context: string }
+  >();
   const [projectOpenRequestId, setProjectOpenRequestId] = useState(0);
   const navigateToSection = useCallback(
     (
@@ -277,12 +278,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // The Projects owner reads the requested Project itself, then its optional
   // Task; no Project or Task identity reaches the URL or history state.
   const openProject = canAccessProjects
-    ? (target: { projectId: string; taskId?: string }) => {
+    ? (target: ProjectOpenTarget) => {
         setProjectOpenRequestId((value) => value + 1);
         setRequestedProject((current) => ({
+          ...target,
           context: projectRequestContext,
-          projectId: target.projectId,
-          taskId: target.taskId,
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('projects');
@@ -319,6 +319,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         }}
         onOpenMyTasks={() => navigateToSection('my-tasks')}
         onOpenTask={openProject}
+        onOpenOverdueTask={
+          openProject
+            ? (target) => openProject({ ...target, focus: 'task' })
+            : undefined
+        }
         activity={{
           state: access.activityLog,
           activeCompanyId: activeCompany.id,

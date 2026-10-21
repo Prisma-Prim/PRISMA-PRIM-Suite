@@ -158,8 +158,8 @@ export function cancelInput(value: unknown) {
 export function assignedTasksQuery(value: unknown): void {
   keys(object(value), []);
 }
-/** Fixed-size due-soon pages accept only one nonnegative safe-integer offset. */
-export function dueSoonTasksQuery(value: unknown): { offset: number } {
+/** Both fixed-size Task page reads accept only this offset-only query. */
+function taskPageQuery(value: unknown): { offset: number } {
   const row = object(value);
   keys(row, ['offset']);
   if (row.offset === undefined) return { offset: 0 };
@@ -173,9 +173,13 @@ export function dueSoonTasksQuery(value: unknown): { offset: number } {
     );
   return { offset: Number(row.offset) };
 }
-/** The Company overdue-Task list takes no query parameter either. */
-export function overdueTasksQuery(value: unknown): void {
-  keys(object(value), []);
+/** Current personal due-soon Tasks, using the fixed-size Task page grammar. */
+export function dueSoonTasksQuery(value: unknown): { offset: number } {
+  return taskPageQuery(value);
+}
+/** Current Company overdue Tasks, using the same bounded offset-only grammar. */
+export function overdueTasksQuery(value: unknown): { offset: number } {
+  return taskPageQuery(value);
 }
 function string(value: unknown): string {
   if (typeof value !== 'string') throw new Error('Invalid stored Task text.');

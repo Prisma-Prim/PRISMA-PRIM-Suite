@@ -753,7 +753,9 @@ for (const frame of ['classic', 'prisme'] as const) {
           json: {
             companyId: company.id,
             today: '2026-09-27',
-            total: tasks.length,
+            total: 2,
+            offset: 0,
+            pageSize: 25,
             tasks: [
               { ...collect, project: labels, daysOverdue: 7 },
               { ...manual, project: labels, daysOverdue: 1 },

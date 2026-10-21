@@ -29,7 +29,12 @@ const keys = [
   'overdueError',
   'overdueDenied',
   'overdueEmpty',
-  'overdueTruncated',
+  'overduePage',
+  'overduePrevious',
+  'overdueNext',
+  'overdueRefresh',
+  'overdueRestart',
+  'overdueOutOfRange',
   'overdueListLabel',
   'overdueByOne',
   'overdueByMany',
@@ -88,8 +93,13 @@ export const operationalHomeMessages = defineMessages(keys, {
     overdueDenied: 'Sarcinile restante nu sunt disponibile cu accesul actual.',
     overdueEmpty:
       'Nu există Sarcini restante în Proiectele pe care le puteți deschide în {company}.',
-    overdueTruncated:
-      'Se afișează cele mai vechi {shown} din {total} Sarcini restante.',
+    overduePage: 'Sarcinile restante {first}–{last} din {total}.',
+    overduePrevious: 'Pagina anterioară',
+    overdueNext: 'Pagina următoare',
+    overdueRefresh: 'Actualizați de la început',
+    overdueRestart: 'Reveniți la început',
+    overdueOutOfRange:
+      'Această pagină nu mai conține Sarcini. Există acum {total} Sarcini restante; reveniți la început.',
     overdueListLabel: 'Sarcini restante, în ordinea celor mai vechi termene',
     overdueByOne: 'Restantă de {count} zi',
     overdueByMany: 'Restantă de {count} zile',
@@ -146,8 +156,13 @@ export const operationalHomeMessages = defineMessages(keys, {
     overdueDenied: 'Просроченные Задачи недоступны с текущим доступом.',
     overdueEmpty:
       'Нет просроченных Задач в доступных вам Проектах в {company}.',
-    overdueTruncated:
-      'Показано {shown} самых старых из {total} просроченных Задач.',
+    overduePage: 'Просроченные Задачи {first}–{last} из {total}.',
+    overduePrevious: 'Предыдущая страница',
+    overdueNext: 'Следующая страница',
+    overdueRefresh: 'Обновить с начала',
+    overdueRestart: 'Вернуться в начало',
+    overdueOutOfRange:
+      'На этой странице больше нет Задач. Сейчас просрочено {total} Задач; вернитесь в начало.',
     overdueListLabel: 'Просроченные Задачи, сначала самый ранний срок',
     overdueByOne: 'Просрочено на {count} день',
     overdueByMany: 'Просрочено на {count} дн.',
@@ -207,8 +222,13 @@ export const operationalHomeMessages = defineMessages(keys, {
       'Les Tâches en retard ne sont pas disponibles avec votre accès actuel.',
     overdueEmpty:
       'Aucune Tâche en retard dans les Projets que vous pouvez ouvrir dans {company}.',
-    overdueTruncated:
-      'Affichage des {shown} plus anciennes sur {total} Tâches en retard.',
+    overduePage: 'Tâches en retard {first}–{last} sur {total}.',
+    overduePrevious: 'Page précédente',
+    overdueNext: 'Page suivante',
+    overdueRefresh: 'Actualiser depuis le début',
+    overdueRestart: 'Revenir au début',
+    overdueOutOfRange:
+      'Cette page ne contient plus de Tâches. Il reste {total} Tâches en retard ; revenez au début.',
     overdueListLabel: 'Tâches en retard, échéance la plus ancienne en premier',
     overdueByOne: 'En retard de {count} jour',
     overdueByMany: 'En retard de {count} jours',
@@ -266,7 +286,13 @@ export const operationalHomeMessages = defineMessages(keys, {
     overdueDenied:
       'The overdue Tasks are not available with your current access.',
     overdueEmpty: 'No overdue Tasks in the Projects you can open in {company}.',
-    overdueTruncated: 'Showing the {shown} oldest of {total} overdue Tasks.',
+    overduePage: 'Overdue Tasks {first}–{last} of {total}.',
+    overduePrevious: 'Previous page',
+    overdueNext: 'Next page',
+    overdueRefresh: 'Refresh from the start',
+    overdueRestart: 'Return to the start',
+    overdueOutOfRange:
+      'This page no longer contains Tasks. There are now {total} overdue Tasks; return to the start.',
     overdueListLabel: 'Overdue Tasks, oldest due date first',
     overdueByOne: 'Overdue by {count} day',
     overdueByMany: 'Overdue by {count} days',
@@ -374,8 +400,21 @@ export function useOperationalHomeCopy() {
       denied: m('overdueDenied'),
       empty: ({ company }: { company: string }) =>
         format('overdueEmpty', { company }),
-      truncated: ({ shown, total }: { shown: string; total: string }) =>
-        format('overdueTruncated', { shown, total }),
+      page: ({
+        first,
+        last,
+        total,
+      }: {
+        first: string;
+        last: string;
+        total: string;
+      }) => format('overduePage', { first, last, total }),
+      previous: m('overduePrevious'),
+      next: m('overdueNext'),
+      refresh: m('overdueRefresh'),
+      restart: m('overdueRestart'),
+      outOfRange: ({ total }: { total: string }) =>
+        format('overdueOutOfRange', { total }),
       listLabel: m('overdueListLabel'),
       overdueBy: ({ days, count }: { days: number; count: string }) =>
         format(days === 1 ? 'overdueByOne' : 'overdueByMany', { count }),

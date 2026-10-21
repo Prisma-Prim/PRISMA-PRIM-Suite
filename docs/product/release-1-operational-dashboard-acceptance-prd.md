@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
 **Status:** Operational home approved by #398 (section 17), latest dated Activity preview approved by #720 (section 18); remaining capability Draft — other role journeys and metrics pending  
-**Version:** 0.5  
+**Version:** 0.6  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -187,7 +187,7 @@ Each summary is a whole count:
 
 A label never broadens its definition. In particular, "Open Projects" is not "active Projects" until a Project lifecycle distinguishes them.
 
-The **Company overdue-Task list** shows the counted Tasks in the My Tasks row shape (Project/Task PRD §19), each with its responsible member or Unassigned and its whole days overdue. It is ordered by due date (oldest first), then creation time, then identifier. It shows at most 100 rows with the total, and each row opens the Task in its Project.
+The **Company overdue-Task list** shows the counted Tasks in the My Tasks row shape (Project/Task PRD §19), each with its responsible member or Unassigned and its whole days overdue. It is ordered by due date (oldest first), then creation time, then identifier. It returns fixed pages of at most 25 rows with the whole authorized total, the requested offset and page size; each row opens that exact Task in its Project. The optional nonnegative safe-integer offset is the only query input. The UI moves by 25, offers Previous/Next and explicit refresh from the beginning, and can reach the complete set without a total cap (#745). Each page's count and rows share the current repeatable-read snapshot and one server-sampled operational date; separate page reads may reflect changed Tasks or access. A now-empty later page with a positive total offers an explicit return to the beginning, while a zero total retains the genuine empty state. A failed page clears old rows/counts and Retry preserves its requested offset under current authority.
 
 ### 17.3 My attention
 
