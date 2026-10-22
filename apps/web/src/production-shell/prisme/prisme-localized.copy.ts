@@ -28,6 +28,8 @@ const keys = [
   'capabilitiesDescription',
   'contextTitle',
   'contextDescription',
+  'risksLabel',
+  'risksDescription',
   'clientsLabel',
   'clientsDescription',
   'documentsLabel',
@@ -55,6 +57,9 @@ type Key = (typeof keys)[number];
 
 export const prismeMessages = defineMessages(keys, {
   ro: {
+    risksLabel: 'Riscuri operaționale',
+    risksDescription:
+      'Consultați riscurile și păstrați un istoric manual confidențial.',
     optIn: 'Încercați Prisme',
     presentation: 'Prisme & lumière',
     home: 'Acasă',
@@ -111,6 +116,9 @@ export const prismeMessages = defineMessages(keys, {
     invitationsDescription: 'Gestionați invitațiile în spațiul de lucru.',
   },
   ru: {
+    risksLabel: 'Операционные риски',
+    risksDescription:
+      'Просмотр рисков и конфиденциальная история ручных записей.',
     optIn: 'Попробовать Prisme',
     presentation: 'Prisme & lumière',
     home: 'Главная',
@@ -167,6 +175,9 @@ export const prismeMessages = defineMessages(keys, {
     invitationsDescription: 'Управляйте приглашениями в рабочее пространство.',
   },
   fr: {
+    risksLabel: 'Risques opérationnels',
+    risksDescription:
+      'Consultez les risques et conservez leur suivi manuel confidentiel.',
     optIn: 'Essayer Prisme',
     presentation: 'Prisme & lumière',
     home: 'Accueil',
@@ -226,6 +237,9 @@ export const prismeMessages = defineMessages(keys, {
     invitationsDescription: 'Gérez les invitations à votre espace de travail.',
   },
   en: {
+    risksLabel: 'Operational risks',
+    risksDescription:
+      'Read risks and preserve their confidential manual follow-up.',
     optIn: 'Try Prisme',
     presentation: 'Prisme & lumière',
     home: 'Home',
@@ -318,6 +332,7 @@ export function usePrismeCopy() {
     contextTitle: message('contextTitle'),
     contextDescription: message('contextDescription'),
     sections: {
+      risks: section({ label: 'risksLabel', description: 'risksDescription' }),
       clients: section({
         label: 'clientsLabel',
         description: 'clientsDescription',

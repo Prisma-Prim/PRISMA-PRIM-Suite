@@ -392,6 +392,44 @@ one-event-per-actual-change convention. Failed, denied, no-op and exact-replayed
 administration commands emit none. Existing administration visibility stays as is;
 it never reveals Complaint content/history or adds complaint read implicitly.
 
+For [Company operational-risk intake and manual follow-up](company-operational-risk-intake-prd.md),
+Dan's explicit 2026-10-21 access choice separates consultation from recording and
+follow-up by Company, without automatic expansion; actual people are chosen later.
+The bounded contract uses two independent opt-in captured bundles:
+
+| Bundle                               | Exact captured v1 permissions |
+| ------------------------------------ | ----------------------------- |
+| Company Operational Risk Reader v1   | `risk.read`                   |
+| Company Operational Risk Recorder v1 | `risk.record`                 |
+
+An administrator with current `company.assignment.manage` explicitly grants or
+revokes each assignment for an active same-Workspace membership and active Company
+through existing Company assignment administration. No existing bundle/version,
+assignment, author/responsible identity, job title, Workspace ownership or migration
+backfill confers either. Null/unknown captured versions fail closed. Neither
+bundle grants Company context, another business capability, staff-directory,
+Activity, approval, financial or cross-Company authority.
+
+Every Risk list/detail/history read requires current Reader v1, active Company
+context and live membership/Internal User/Company. Recording intake, appending an
+observation/reassessment or correcting intake additionally requires current
+Recorder v1. Recorder never includes Reader or context. There is no risk approval,
+responsibility assignment, score, closure or effectiveness permission in this slice.
+
+Commands and exact committed replay recheck every required live authority under
+transaction locks coordinated by Access; they serialize against successful grant
+revocation and membership/Internal User/Company deactivation. A matching receipt
+is returned only after current authorization and before new-intent revision checks.
+Captured assignment IDs/versions enter the existing current-actor boundary for
+coherent UI retirement, never as a substitute for server revalidation.
+
+Actual state changes emit `company_operational_risk_reader_assignment.granted` /
+`.revoked` and `company_operational_risk_recorder_assignment.granted` / `.revoked`.
+They follow this section's existing Company assignment target, administrator
+membership/server time and bundle-label-only metadata convention. No-op, denied,
+failed and exact-replayed administration commands emit none. Their existing
+administration visibility reveals no Risk content and confers no Risk read.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.
