@@ -33,42 +33,13 @@ import { ApplicationPresentation } from '../production-shell/application-present
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { useProjectTaskCopy } from './task.copy';
-import {
-  isClosedProjectStatus,
-  isProjectStatus,
-  type ProjectStatus,
-} from './project-lifecycle-response';
+import { isClosedProjectStatus } from './project-lifecycle-response';
 import type { ResponsibleMember } from './project-responsible-response';
+import { isProject, type ProjectView } from './project-directory';
+import { useProjectDirectory } from './use-project-directory';
 import './project.css';
 
-type ProjectView = {
-  id: string;
-  companyId: string;
-  clientAccountId: string;
-  clientDossierId?: string;
-  clientDisplayName: string;
-  title: string;
-  status: ProjectStatus;
-  createdAt: string;
-};
-type ClientChoice = { id: string; displayName: string };
 type DetailPanel = 'tasks' | 'documents';
-type LoadState =
-  | { kind: 'loading' }
-  | { kind: 'error' | 'denied' }
-  | {
-      kind: 'ready';
-      projects: ProjectView[];
-      clients: ClientChoice[];
-      /**
-       * The Client identity revision the rows' derived dossier identities were
-       * read under. Only rows read under the current revision are compared
-       * with a dossier restriction.
-       */
-      identityRevision: number;
-      /** The refresh started under this revision failed; the rows were kept. */
-      refreshFailedUnder?: number;
-    };
 /** Either the free-text search or one exact dossier identity is active. */
 type ProjectFilter =
   | { kind: 'text'; query: string }
@@ -138,6 +109,7 @@ export function ProjectWorkspace({
   onOpenContract,
   requestedProject,
   projectOpenRequestId = 0,
+  projectDirectoryRequestId = 0,
   catalogueRevision = 0,
 }: {
   actor: ActorContext;
@@ -157,6 +129,8 @@ export function ProjectWorkspace({
   requestedProject?: RequestedProject;
   /** Increases whenever another section asks to open Projects. */
   projectOpenRequestId?: number;
+  /** Home/Client request the directory; an exact Project/Task open does not. */
+  projectDirectoryRequestId?: number;
   catalogueRevision?: number;
 }) {
   const copy = useProjectCopy();
@@ -172,7 +146,6 @@ export function ProjectWorkspace({
     useState<TemplateSelection | null>(null);
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [detailPanel, setDetailPanel] = useState<DetailPanel>('tasks');
-  const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
   const [generation, setGeneration] = useState(0);
   const [selected, setSelected] = useState<SelectedProject | null>(null);
   const [includeClosed, setIncludeClosed] = useState(false);
@@ -189,8 +162,14 @@ export function ProjectWorkspace({
     projectId: string;
     responsible: ResponsibleMember | null;
   } | null>(null);
+  const lastResponsibleRead = useRef<{
+    projectId: string;
+    membershipId: string | null;
+  } | null>(null);
   /** The detail re-read after a confirmed lifecycle change; never a write. */
   const detailRefresh = useRef<AbortController | null>(null);
+  /** A detail replacement does not retire the Company/session that owns it. */
+  const scope = useRef({ retired: false });
   /** The detail read or registration in flight; never a list read. */
   const request = useRef<AbortController | null>(null);
   /**
@@ -205,173 +184,51 @@ export function ProjectWorkspace({
   const consumedProjectRequest = useRef<number | undefined>(undefined);
   const latestProjectRequest = useRef(requestedProject);
   latestProjectRequest.current = requestedProject;
-  const listRequest = useRef<AbortController | null>(null);
   const identityRevision = useRef(clientIdentityRevision);
   identityRevision.current = clientIdentityRevision;
-  const loadKind = useRef(load.kind);
-  loadKind.current = load.kind;
-  /** The Client identity revision of the latest list read started. */
-  const listReadRevision = useRef<number | undefined>(undefined);
-  const startedListReads = useRef(0);
-  /**
-   * Confirmed registrations missing from a list read that started before they
-   * were confirmed. A list read started afterwards is authoritative for them.
-   */
-  const confirmedRegistrations = useRef(
-    new Map<
-      string,
-      { project: ProjectView; listReadsAtConfirmation: number }
-    >(),
-  );
   const retry = useRef<Registration | null>(null);
   const companyId = actor.activeCompany?.id;
   const authorized =
     actor.activeCompany?.projectPermissions?.includes('project.read') &&
     (actor.workspacePermissions.includes('client.manage') ||
       actor.activeCompany.clientPermissions?.includes('client.read'));
+  const directory = useProjectDirectory({
+    identity,
+    companyId,
+    authorized: Boolean(authorized),
+    clientIdentityRevision,
+    onDenied: () => {
+      scope.current.retired = true;
+      request.current?.abort();
+      detailRefresh.current?.abort();
+      setPending(false);
+      setSelected(null);
+    },
+  });
+  const load = directory.load;
+  useEffect(() => {
+    if (load.view === 'all') setIncludeClosed(false);
+  }, [projectOpenRequestId]);
   useEffect(() => {
     setIncludeClosed(false);
-  }, [projectOpenRequestId]);
-  /**
-   * Access denial retires the loaded rows and the opened Project, whose
-   * current detail read stops with it. A list read, detail read or
-   * registration still in flight is cancelled so it cannot repopulate them,
-   * and the pending state settles so the member can reload. The registration
-   * draft and its request key stay until that reload retires them.
-   */
+    directory.changeView('all');
+  }, [projectDirectoryRequestId]);
   function deny() {
-    listRequest.current?.abort();
-    request.current?.abort();
-    setPending(false);
-    setLoad({ kind: 'denied' });
-    setSelected(null);
+    directory.deny();
   }
-  function withConfirmedRegistrations(
-    projects: ProjectView[],
-    listRead: number,
-  ): ProjectView[] {
-    const loaded = new Set(projects.map((project) => project.id));
-    const missing: ProjectView[] = [];
-    for (const [id, confirmation] of confirmedRegistrations.current) {
-      if (listRead > confirmation.listReadsAtConfirmation)
-        confirmedRegistrations.current.delete(id);
-      else if (!loaded.has(id)) missing.push(confirmation.project);
-    }
-    return missing.length === 0 ? projects : [...projects, ...missing];
-  }
-  /**
-   * Reads the rows and Client choices under the current Client identity
-   * revision, superseding any list read still in flight. A failed refresh
-   * keeps the loaded rows; only a failed first read reports the load error.
-   * Template denial recovery first withholds rows, then revalidates only the
-   * Project read; its earlier Client choices remain creation-selection hints.
-   */
-  function readList(recovery?: { clientChoices: ClientChoice[] }) {
-    listRequest.current?.abort();
-    const controller = new AbortController();
-    listRequest.current = controller;
-    const startedUnder = clientIdentityRevision;
-    listReadRevision.current = startedUnder;
-    startedListReads.current += 1;
-    const listRead = startedListReads.current;
-    if (!authorized || !companyId) {
-      setLoad({ kind: 'denied' });
-      return;
-    }
-    void (async () => {
-      try {
-        const api = await createAuthenticatedApiClient(identity);
-        if (controller.signal.aborted) return;
-        const [projects, clients] = await Promise.all([
-          api.request<unknown>('/projects', {
-            companyContextId: companyId,
-            signal: controller.signal,
-          }),
-          recovery
-            ? undefined
-            : api.request<unknown>('/clients', {
-                companyContextId: companyId,
-                signal: controller.signal,
-              }),
-        ]);
-        if (controller.signal.aborted) return;
-        if (
-          projects.status === 'unauthorized' ||
-          clients?.status === 'unauthorized'
-        ) {
-          await identity.rejectSession();
-          return;
-        }
-        if (
-          projects.status === 'forbidden' ||
-          clients?.status === 'forbidden'
-        ) {
-          deny();
-          return;
-        }
-        const clientChoices = recovery
-          ? recovery.clientChoices
-          : clients?.status === 'ok' &&
-              Array.isArray(clients.value) &&
-              clients.value.every(isClient)
-            ? clients.value
-            : undefined;
-        if (
-          projects.status !== 'ok' ||
-          !Array.isArray(projects.value) ||
-          !projects.value.every(isProject) ||
-          clientChoices === undefined
-        )
-          throw new Error('Load failed');
-        const rows = withConfirmedRegistrations(projects.value, listRead);
-        setLoad({
-          kind: 'ready',
-          projects: rows,
-          clients: clientChoices,
-          identityRevision: startedUnder,
-        });
-      } catch {
-        if (controller.signal.aborted) return;
-        setLoad((current) =>
-          current.kind === 'ready'
-            ? { ...current, refreshFailedUnder: startedUnder }
-            : { kind: 'error' },
-        );
-      }
-    })();
-  }
-  /**
-   * A detail read replaces its loaded row only when no Client identity change
-   * happened since it started; an older read cannot vouch for the row's
-   * derived dossier identity.
-   */
   function refreshRow(project: ProjectView, startedUnder: number) {
-    if (identityRevision.current !== startedUnder) return;
-    const confirmation = confirmedRegistrations.current.get(project.id);
-    if (confirmation)
-      confirmedRegistrations.current.set(project.id, {
-        ...confirmation,
-        project,
-      });
-    setLoad((current) =>
-      current.kind === 'ready'
-        ? {
-            ...current,
-            projects: current.projects.map((row) =>
-              row.id === project.id ? project : row,
-            ),
-          }
-        : current,
-    );
+    directory.refreshRow({ project, startedUnder });
   }
   // A different Company, member, authority or reload retires everything this
   // module presents, including the drafts, commands and requested opens
   // started under it.
   useEffect(() => {
+    scope.current = { retired: false };
     request.current?.abort();
     detailRefresh.current?.abort();
     setSelected(null);
     setResponsibleRead(null);
+    lastResponsibleRead.current = null;
     setFilter({ kind: 'text', query: '' });
     setFeedback(null);
     setPending(false);
@@ -380,17 +237,17 @@ export function ProjectWorkspace({
     setTemplateSelection(null);
     setDeniedTemplateAuthority(null);
     retry.current = null;
-    confirmedRegistrations.current.clear();
     consumedProjectRequest.current = latestProjectRequest.current?.requestId;
-    setLoad({ kind: 'loading' });
-    readList();
+    directory.reset();
     return () => {
+      scope.current.retired = true;
       request.current?.abort();
-      listRequest.current?.abort();
+      directory.cancel();
       detailRefresh.current?.abort();
     };
   }, [
     actor.workspaceId,
+    actor.internalUserId,
     actor.workspaceMembershipId,
     companyId,
     authorized,
@@ -411,17 +268,6 @@ export function ProjectWorkspace({
     setPending(false);
     setFeedback(null);
   }, [templateAuthority]);
-  // A confirmed Client union or reversal moves the derived dossier identity
-  // of the loaded rows. They are re-read once, by their single owner, and a
-  // list read still in flight under the previous identity is superseded
-  // rather than raced. The opened Project, drafts and retryable commands are
-  // untouched. A denied or failed list waits for the member's reload, which
-  // reads under the current identity.
-  useEffect(() => {
-    if (listReadRevision.current === clientIdentityRevision) return;
-    if (loadKind.current === 'denied' || loadKind.current === 'error') return;
-    readList();
-  }, [clientIdentityRevision]);
   // The opened Project owes one detail read under the current Client identity
   // revision. Until it lands its dossier target is withheld; a failed read
   // leaves it withheld rather than retried.
@@ -515,12 +361,18 @@ export function ProjectWorkspace({
    * explicit reload, so its header status and list row follow the section.
    * The opened Project and every draft below it stay in place.
    */
-  async function reloadDetail(projectId: string) {
+  async function reloadDetail(input: {
+    projectId: string;
+    refreshMine?: boolean;
+  }) {
+    const { projectId } = input;
     detailRefresh.current?.abort();
     const controller = new AbortController();
     detailRefresh.current = controller;
     const startedUnder = identityRevision.current;
     if (!companyId) return;
+    const startedIn = scope.current;
+    let authorityRejected = false;
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
@@ -530,10 +382,13 @@ export function ProjectWorkspace({
       );
       if (controller.signal.aborted) return;
       if (result.status === 'unauthorized') {
+        authorityRejected = true;
+        startedIn.retired = true;
         await identity.rejectSession();
         return;
       }
       if (result.status === 'forbidden') {
+        authorityRejected = true;
         deny();
         return;
       }
@@ -553,6 +408,12 @@ export function ProjectWorkspace({
       refreshRow(project, startedUnder);
     } catch {
       if (!controller.signal.aborted) setFeedback('error');
+    } finally {
+      // A confirmed command still changes current Mine membership if a newer
+      // detail read supersedes this one or this read is unavailable. Only the
+      // owning scope's retirement or denial suppresses that continuation.
+      if (input.refreshMine && !startedIn.retired && !authorityRejected)
+        directory.refreshMineAfterChange();
     }
   }
   async function run(
@@ -610,10 +471,7 @@ export function ProjectWorkspace({
           // A Template refusal does not establish loss of independent Project
           // access. Revalidate that server-owned read before restoring rows.
           // Prior Client choices are only hints; creation still checks them.
-          setLoad({ kind: 'loading' });
-          readList({
-            clientChoices: load.kind === 'ready' ? load.clients : [],
-          });
+          directory.revalidateProjectRead();
         } else deny();
         return;
       }
@@ -654,21 +512,7 @@ export function ProjectWorkspace({
           ? result.value
           : { ...result.value, clientDossierId: undefined };
       setSelected({ project, identityRevision: startedUnder });
-      confirmedRegistrations.current.set(project.id, {
-        project,
-        listReadsAtConfirmation: startedListReads.current,
-      });
-      setLoad((current) =>
-        current.kind === 'ready'
-          ? {
-              ...current,
-              projects: [
-                ...current.projects.filter((row) => row.id !== project.id),
-                project,
-              ],
-            }
-          : current,
-      );
+      directory.confirmRegistration(project);
       retry.current = null;
       setTitle('');
       setClientAccountId('');
@@ -752,31 +596,33 @@ export function ProjectWorkspace({
   // Derived dossier identities are compared only in rows read under the
   // current Client identity revision. Until such a read lands, a dossier
   // restriction matches none of the kept rows.
+  const readyRows =
+    load.kind === 'ready' && load.rows.kind === 'ready' ? load.rows : undefined;
+  const directoryProjects = readyRows?.projects ?? [];
   const rowsAwaitRead =
-    load.kind === 'ready' && load.identityRevision !== clientIdentityRevision;
+    readyRows !== undefined &&
+    readyRows.identityRevision !== clientIdentityRevision;
   const refreshFailed =
-    rowsAwaitRead && load.refreshFailedUnder === clientIdentityRevision;
+    rowsAwaitRead && readyRows?.refreshFailedUnder === clientIdentityRevision;
   const restrictionAwaitsRead = rowsAwaitRead && filter.kind === 'client';
   const normalizedQuery =
     filter.kind === 'text' ? projectFilterText(filter.query.trim()) : '';
-  const projectsInStatusView =
-    load.kind === 'ready'
-      ? load.projects.filter(
-          (project) => includeClosed || !isClosedProjectStatus(project.status),
-        )
-      : [];
-  const filteredProjects =
-    load.kind === 'ready' && !restrictionAwaitsRead
-      ? projectsInStatusView.filter((project) =>
-          filter.kind === 'client'
-            ? project.clientDossierId === filter.clientDossierId
-            : normalizedQuery.length === 0 ||
-              projectFilterText(project.title).includes(normalizedQuery) ||
-              projectFilterText(project.clientDisplayName).includes(
-                normalizedQuery,
-              ),
-        )
-      : [];
+  const projectsInStatusView = directoryProjects.filter(
+    (project) =>
+      (load.view === 'all' && includeClosed) ||
+      !isClosedProjectStatus(project.status),
+  );
+  const filteredProjects = !restrictionAwaitsRead
+    ? projectsInStatusView.filter((project) =>
+        filter.kind === 'client'
+          ? project.clientDossierId === filter.clientDossierId
+          : normalizedQuery.length === 0 ||
+            projectFilterText(project.title).includes(normalizedQuery) ||
+            projectFilterText(project.clientDisplayName).includes(
+              normalizedQuery,
+            ),
+      )
+    : [];
   const dossierTarget =
     selected?.identityRevision === clientIdentityRevision
       ? selected.project.clientDossierId
@@ -810,24 +656,57 @@ export function ProjectWorkspace({
       <button
         type="button"
         disabled={pending}
-        onClick={() => setGeneration((value) => value + 1)}
+        onClick={() => {
+          if (load.view === 'mine_open') {
+            // Recovery owns a fresh lifetime; callbacks captured before denial
+            // keep their retired scope even after the same-view read succeeds.
+            if (load.kind === 'denied') scope.current = { retired: false };
+            directory.refresh();
+          } else setGeneration((value) => value + 1);
+        }}
       >
-        {copy.retry}
+        {load.view === 'mine_open' ? copy.retryView : copy.retry}
       </button>
+      {authorized && (
+        <div className="project-view-control">
+          <label htmlFor="project-directory-view">{copy.viewLabel}</label>
+          <Select
+            id="project-directory-view"
+            value={load.view}
+            disabled={load.kind === 'denied'}
+            options={[
+              { value: 'all', label: copy.allProjects },
+              { value: 'mine_open', label: copy.myOpenProjects },
+            ]}
+            onValueChange={(value) => {
+              if (value === 'all' || value === 'mine_open')
+                directory.changeView(value);
+            }}
+          />
+        </div>
+      )}
       {load.kind === 'ready' && (
         <>
-          {load.projects.length === 0 && <p>{copy.empty}</p>}
-          {load.projects.length > 0 && (
+          {load.rows.kind === 'loading' && <p role="status">{copy.loading}</p>}
+          {load.rows.kind === 'error' && (
+            <p role="alert">{copy.viewUnavailable}</p>
+          )}
+          {readyRows && directoryProjects.length === 0 && (
+            <p>{load.view === 'mine_open' ? copy.mineEmpty : copy.empty}</p>
+          )}
+          {directoryProjects.length > 0 && (
             <>
-              <label className="project-closed-filter">
-                <input
-                  type="checkbox"
-                  checked={includeClosed}
-                  disabled={pending}
-                  onChange={(event) => setIncludeClosed(event.target.checked)}
-                />
-                {copy.includeClosed}
-              </label>
+              {load.view === 'all' && (
+                <label className="project-closed-filter">
+                  <input
+                    type="checkbox"
+                    checked={includeClosed}
+                    disabled={pending}
+                    onChange={(event) => setIncludeClosed(event.target.checked)}
+                  />
+                  {copy.includeClosed}
+                </label>
+              )}
               <label className="project-search">
                 {copy.searchLabel}
                 <input
@@ -844,8 +723,9 @@ export function ProjectWorkspace({
               </label>
             </>
           )}
-          {!includeClosed &&
-            load.projects.length > 0 &&
+          {load.view === 'all' &&
+            !includeClosed &&
+            directoryProjects.length > 0 &&
             projectsInStatusView.length === 0 && <p>{copy.noOpen}</p>}
           {refreshFailed ? (
             <p role="alert">{copy.error}</p>
@@ -1029,7 +909,12 @@ export function ProjectWorkspace({
                 ? responsibleRead.responsible
                 : undefined
             }
-            onProjectChanged={() => reloadDetail(selected.project.id)}
+            onProjectChanged={() =>
+              reloadDetail({
+                projectId: selected.project.id,
+                refreshMine: true,
+              })
+            }
             onShowTasks={() => {
               setDetailPanel('tasks');
               window.requestAnimationFrame(() =>
@@ -1049,13 +934,29 @@ export function ProjectWorkspace({
             identity={identity}
             projectId={selected.project.id}
             projectStatus={selected.project.status}
-            onProjectChanged={() => reloadDetail(selected.project.id)}
+            onProjectChanged={() =>
+              reloadDetail({
+                projectId: selected.project.id,
+                refreshMine: true,
+              })
+            }
             onActivityRecorded={onActivityRecorded}
-            onResponsibleRead={(projectId, responsible) =>
+            onResponsibleRead={(projectId, responsible) => {
               setResponsibleRead(
                 responsible === undefined ? null : { projectId, responsible },
+              );
+              if (responsible === undefined) return;
+              const previous = lastResponsibleRead.current;
+              const membershipId = responsible?.workspaceMembershipId ?? null;
+              lastResponsibleRead.current = { projectId, membershipId };
+              // The authoritative read follows the child's confirmed command or
+              // explicit reload. A changed membership can change the Mine subset.
+              if (
+                previous?.projectId === projectId &&
+                previous.membershipId !== membershipId
               )
-            }
+                directory.refreshMineAfterChange();
+            }}
           />
           {isPrisme && (
             <div className="project-detail-tabs" role="tablist">
@@ -1115,7 +1016,9 @@ export function ProjectWorkspace({
               identity={identity}
               projectId={selected.project.id}
               projectStatus={selected.project.status}
-              onProjectChanged={() => reloadDetail(selected.project.id)}
+              onProjectChanged={() =>
+                reloadDetail({ projectId: selected.project.id })
+              }
               onActivityRecorded={onActivityRecorded}
               onOpenDocument={onOpenDocument}
             />
@@ -1136,7 +1039,9 @@ export function ProjectWorkspace({
           projectId={selected?.project.id ?? null}
           projectStatus={selected?.project.status ?? null}
           onProjectChanged={
-            selected ? () => reloadDetail(selected.project.id) : undefined
+            selected
+              ? () => reloadDetail({ projectId: selected.project.id })
+              : undefined
           }
           onActivityRecorded={onActivityRecorded}
           requestedTask={selected?.requestedTask}
@@ -1167,35 +1072,6 @@ function ClientDossierButton({
     <button type="button" onClick={() => onOpen(clientDossierId)}>
       {copy.openDossier}
     </button>
-  );
-}
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-function isClient(value: unknown): value is ClientChoice {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    typeof value.displayName === 'string'
-  );
-}
-function isTimestamp(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
-  const timestamp = new Date(value);
-  return (
-    Number.isFinite(timestamp.valueOf()) && timestamp.toISOString() === value
-  );
-}
-function isProject(value: unknown): value is ProjectView {
-  return (
-    isRecord(value) &&
-    ['id', 'companyId', 'clientAccountId', 'clientDisplayName', 'title'].every(
-      (key) => typeof value[key] === 'string',
-    ) &&
-    isTimestamp(value.createdAt) &&
-    isProjectStatus(value.status) &&
-    (value.clientDossierId === undefined ||
-      typeof value.clientDossierId === 'string')
   );
 }
 function messageFor(result: ApiResult<unknown>): Exclude<Feedback, null> {

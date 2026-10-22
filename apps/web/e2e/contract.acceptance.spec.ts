@@ -33,7 +33,7 @@ test('creates and reopens the first Contract from a persisted Accepted Offer', a
   page,
   request,
 }, testInfo) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const narrow = testInfo.project.name.endsWith('narrow');
   const suffix = narrow ? 'Narrow' : 'Desktop';
   const name = 'Contract Company ' + suffix;

@@ -16,6 +16,7 @@ import {
 import { deterministicBrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
 import { taskCopy } from './project/task.copy';
+import { operationalHomeCopy as homeCopy } from './operational-home/operational-home.copy';
 
 const companyA = { id: 'company-a', displayName: 'Company A' };
 const companyB = { id: 'company-b', displayName: 'Company B' };
@@ -123,7 +124,9 @@ type ServerRequest = {
  * from its own list, so a Task can change after the list was read. A held
  * route waits for an explicit release.
  */
-function installServer() {
+function installServer({
+  showOverdue = false,
+}: { showOverdue?: boolean } = {}) {
   const tasks = new Map<string, TaskState>([
     [atelierTask.id, atelierTask],
     [betaTask.id, betaTask],
@@ -162,6 +165,41 @@ function installServer() {
     if (route === 'GET /api/companies')
       return Response.json([companyA, companyB]);
     if (route === 'GET /api/activity-log') return Response.json({ events: [] });
+    if (showOverdue && route === 'GET /api/operational-home')
+      return Response.json({
+        companyId: inB ? companyB.id : companyA.id,
+        today: '2026-10-06',
+        summaries: [
+          { kind: 'active_clients', count: inB ? 0 : 2 },
+          { kind: 'open_projects', count: inB ? 1 : 2 },
+          { kind: 'overdue_tasks', count: inB ? 0 : 2 },
+        ],
+      });
+    if (showOverdue && route === 'GET /api/overdue-tasks?offset=0')
+      return Response.json({
+        companyId: inB ? companyB.id : companyA.id,
+        today: '2026-10-06',
+        total: inB ? 0 : 2,
+        offset: 0,
+        pageSize: 25,
+        tasks: inB
+          ? []
+          : [atelierTask, betaTask].map((task) => {
+              const owner =
+                task.projectId === atelierProject.id
+                  ? atelierProject
+                  : betaProject;
+              return {
+                ...task,
+                project: {
+                  id: owner.id,
+                  title: owner.title,
+                  clientDisplayName: owner.clientDisplayName,
+                },
+                daysOverdue: task.id === atelierTask.id ? 6 : 1,
+              };
+            }),
+      });
     if (route === 'GET /api/assigned-tasks')
       return Response.json({
         tasks: inB
@@ -192,6 +230,8 @@ function installServer() {
       return Response.json(
         inB ? [otherCompanyProject] : [atelierProject, betaProject],
       );
+    if (route === 'GET /api/projects?view=mine_open')
+      return Response.json(inB ? [] : [atelierProject]);
     if (inB) return new Response(null, { status: 404 });
     if (route.startsWith('GET ') && isLifecycleRead(route.slice(4)))
       return Response.json(preparatoryLifecycle);
@@ -221,7 +261,7 @@ function installServer() {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(input.toString(), window.location.origin);
       const request: ServerRequest = {
-        route: `${init?.method ?? 'GET'} ${url.pathname}`,
+        route: `${init?.method ?? 'GET'} ${url.pathname}${url.pathname === '/api/projects' || url.pathname === '/api/overdue-tasks' ? url.search : ''}`,
         companyId: new Headers(init?.headers).get('x-company-context-id'),
         signal: init?.signal ?? undefined,
       };
@@ -363,6 +403,151 @@ describe('Opening an assigned Task from My Tasks through App', () => {
     vi.unstubAllGlobals();
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
+  });
+
+  it('preserves Mine through the real App exact outside-Project Task intent', async () => {
+    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    const server = installServer();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await projectRow(atelierRow);
+    const view = within(projectsRegion()).getByRole('combobox', {
+      name: 'Project view',
+    });
+    const closed = within(projectsRegion()).getByRole('checkbox', {
+      name: 'Include closed Projects',
+    });
+    fireEvent.click(closed);
+    expect(closed).toBeChecked();
+    changeValue(view, 'mine_open');
+    await waitFor(() => {
+      const list = within(projectsRegion()).getByRole('list', {
+        name: 'Projects',
+      });
+      expect(within(list).getAllByRole('button')).toHaveLength(1);
+      expect(
+        within(list).getByRole('button', { name: atelierRow }),
+      ).toBeVisible();
+      expect(
+        within(list).queryByRole('button', {
+          name: `${sharedTitle} Client: ${beta.displayName}`,
+        }),
+      ).toBeNull();
+    });
+    const allReads = server.count('GET /api/projects');
+    navigateTo(taskCopy.myTasks.title);
+    fireEvent.click(await openAction(betaTask));
+    await openedProject(beta);
+    await openedTask(betaTask);
+    expect(view).toHaveTextContent('My open Projects');
+    expect(server.count('GET /api/projects')).toBe(allReads);
+    const list = within(projectsRegion()).getByRole('list', {
+      name: 'Projects',
+    });
+    expect(within(list).getAllByRole('button')).toHaveLength(1);
+    expect(
+      within(list).getByRole('button', { name: atelierRow }),
+    ).toBeVisible();
+    expect(server.count(betaProjectRead)).toBe(1);
+    expect(server.count(taskRead(betaTask))).toBe(1);
+    expect(server.commands()).toEqual([]);
+    changeValue(view, 'all');
+    await waitFor(() => expect(view).toHaveTextContent('All Projects'));
+    expect(
+      within(projectsRegion()).getByRole('checkbox', {
+        name: 'Include closed Projects',
+      }),
+    ).toBeChecked();
+  });
+
+  it('preserves Mine and focuses the exact overdue Task outside its directory through App', async () => {
+    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    const server = installServer({ showOverdue: true });
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(
+        (query: string) =>
+          ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(() => false),
+          }) satisfies MediaQueryList,
+      ),
+    );
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await projectRow(atelierRow);
+    const view = within(projectsRegion()).getByRole('combobox', {
+      name: 'Project view',
+    });
+    changeValue(view, 'mine_open');
+    await waitFor(() => {
+      const list = within(projectsRegion()).getByRole('list', {
+        name: 'Projects',
+      });
+      expect(within(list).getAllByRole('button')).toHaveLength(1);
+      expect(
+        within(list).getByRole('button', { name: atelierRow }),
+      ).toBeVisible();
+      expect(
+        within(list).queryByRole('button', {
+          name: `${sharedTitle} Client: ${beta.displayName}`,
+        }),
+      ).toBeNull();
+    });
+    const allReads = server.count('GET /api/projects');
+    const mineReads = server.count('GET /api/projects?view=mine_open');
+    navigateTo('Overview');
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: homeCopy.cardName({
+          ...homeCopy.summaries.overdue_tasks,
+          count: '2',
+        }),
+      }),
+    );
+    const overdue = await screen.findByRole('region', {
+      name: homeCopy.overdue.title({ company: companyA.displayName }),
+    });
+    fireEvent.click(
+      await within(overdue).findByRole('button', {
+        name: homeCopy.overdue.openTask({
+          task: taskTitle,
+          project: sharedTitle,
+          client: beta.displayName,
+        }),
+      }),
+    );
+    await openedProject(beta);
+    const tasks = await openedTask(betaTask);
+    await frames();
+    expect(projectsRegion()).toBeVisible();
+    expect(document.activeElement).toBe(
+      within(tasks).getByRole('heading', { name: taskTitle }),
+    );
+    expect(view).toHaveTextContent('My open Projects');
+    const list = within(projectsRegion()).getByRole('list', {
+      name: 'Projects',
+    });
+    expect(within(list).getAllByRole('button')).toHaveLength(1);
+    expect(
+      within(list).getByRole('button', { name: atelierRow }),
+    ).toBeVisible();
+    expect(
+      within(list).queryByRole('button', {
+        name: `${sharedTitle} Client: ${beta.displayName}`,
+      }),
+    ).toBeNull();
+    expect(server.count('GET /api/projects')).toBe(allReads);
+    expect(server.count('GET /api/projects?view=mine_open')).toBe(mineReads);
+    expect(server.count('GET /api/overdue-tasks?offset=0')).toBe(1);
+    expect(server.count(betaProjectRead)).toBe(1);
+    expect(server.count(taskRead(betaTask))).toBe(1);
+    expect(server.count(taskRead(atelierTask))).toBe(0);
+    expect(server.commands()).toEqual([]);
   });
 
   it('opens the exact Project and Task of a same-titled row by their own reads and keeps another Project’s Task draft', async () => {
