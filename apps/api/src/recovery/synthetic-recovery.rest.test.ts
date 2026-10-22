@@ -1343,6 +1343,324 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
     }
   }, 30_000);
 
+  it.each([
+    {
+      name: 'public-collation',
+      create: 'CREATE COLLATION public.destination_only FROM pg_catalog."C"',
+      inspect:
+        "SELECT to_jsonb(c) AS object FROM pg_collation c WHERE collname='destination_only'",
+    },
+    {
+      name: 'catalog-collation',
+      create:
+        'CREATE COLLATION pg_catalog.destination_only FROM pg_catalog."C"',
+      inspect:
+        "SELECT to_jsonb(c) AS object FROM pg_collation c WHERE collname='destination_only'",
+    },
+    {
+      name: 'text-search-configuration',
+      create:
+        'CREATE TEXT SEARCH CONFIGURATION public.destination_only (COPY=pg_catalog.simple)',
+      inspect:
+        "SELECT to_jsonb(c) AS object FROM pg_ts_config c WHERE cfgname='destination_only'",
+    },
+    {
+      name: 'foreign-data-wrapper',
+      create: 'CREATE FOREIGN DATA WRAPPER destination_only',
+      inspect:
+        "SELECT to_jsonb(c) AS object FROM pg_foreign_data_wrapper c WHERE fdwname='destination_only'",
+    },
+    {
+      name: 'access-method',
+      create:
+        'CREATE ACCESS METHOD destination_only TYPE TABLE HANDLER pg_catalog.heap_tableam_handler',
+      inspect:
+        "SELECT to_jsonb(c) AS object FROM pg_am c WHERE amname='destination_only'",
+    },
+  ])(
+    'refuses destination-only standalone $name without changing source or retained inputs',
+    async (fixture) => {
+      if (!databaseUrl || !container)
+        throw new Error('Expected supplied tools.');
+      const original: unknown = JSON.parse(
+        await readFile(backupConfig, 'utf8'),
+      );
+      if (
+        typeof original !== 'object' ||
+        original === null ||
+        Array.isArray(original) ||
+        !('keyPath' in original) ||
+        typeof original.keyPath !== 'string' ||
+        !('verificationEvidencePath' in original) ||
+        typeof original.verificationEvidencePath !== 'string'
+      )
+        throw new Error('Expected independently retained inputs.');
+      const target = await createIsolatedPostgresTestDatabase({
+        baseDatabaseUrl: databaseUrl,
+        namePrefix: 'recovery736_standalone',
+      });
+      const setup = new Client({ connectionString: target.targetUrl });
+      let expectedObject: unknown;
+      const inspectObject = fixture.inspect;
+      try {
+        await setup.connect();
+        await setup.query(fixture.create);
+        expectedObject = (await setup.query(inspectObject)).rows;
+        expect(expectedObject).toHaveLength(1);
+      } finally {
+        await setup.end();
+      }
+      const retainedPaths = [
+        archivePath,
+        completionEvidencePath,
+        original.keyPath,
+        original.verificationEvidencePath,
+      ];
+      const retainedBefore = await fingerprintRetainedFiles(retainedPaths);
+      const sourceBefore = (
+        await source.targetPool.query(
+          'SELECT to_jsonb(c) AS record FROM client_accounts c ORDER BY id',
+        )
+      ).rows;
+      try {
+        const configPath = join(
+          temporaryRoot,
+          `standalone-${fixture.name}-restore.json`,
+        );
+        await writeFile(
+          configPath,
+          JSON.stringify({
+            ...original,
+            database: { url: target.targetUrl, container },
+            measurement: {
+              referenceInstant: await readRetainedReference({
+                completionEvidencePath,
+              }),
+              maximumRecencyMilliseconds: 300_000,
+              maximumRecoveryMilliseconds: 30_000,
+            },
+          }),
+          { mode: 0o600, flag: 'wx' },
+        );
+        const result = await invokeOperator({
+          entry,
+          operation: 'restore',
+          configPath,
+          environment: ordinaryEnvironment(target.targetUrl),
+        });
+        // This valid invocation must refuse before any application restoration.
+        expect(result, result.stdout).toMatchObject({
+          exitCode: 2,
+          stderr: '',
+        });
+        expect(result.stdout).toContain('nonempty-or-incompatible-destination');
+        expect(result.stdout).not.toContain('"outcome":"recovered"');
+        expect(
+          (
+            await target.targetPool.query(
+              "SELECT to_regclass('public.workspaces')::text AS application",
+            )
+          ).rows,
+        ).toEqual([{ application: null }]);
+        expect((await target.targetPool.query(inspectObject)).rows).toEqual(
+          expectedObject,
+        );
+        expect(
+          (
+            await source.targetPool.query(
+              'SELECT to_jsonb(c) AS record FROM client_accounts c ORDER BY id',
+            )
+          ).rows,
+        ).toEqual(sourceBefore);
+        expect(await fingerprintRetainedFiles(retainedPaths)).toEqual(
+          retainedBefore,
+        );
+      } finally {
+        await target.close();
+      }
+    },
+    30_000,
+  );
+
+  it.each([
+    { operation: 'backup', input: 'config' },
+    { operation: 'backup', input: 'keyPath' },
+    { operation: 'backup', input: 'verificationEvidencePath' },
+    { operation: 'restore', input: 'config' },
+    { operation: 'restore', input: 'archivePath' },
+    { operation: 'restore', input: 'keyPath' },
+    { operation: 'restore', input: 'verificationEvidencePath' },
+    { operation: 'restore', input: 'completionEvidencePath' },
+  ] satisfies readonly (
+    | {
+        readonly operation: 'backup';
+        readonly input: 'config' | 'keyPath' | 'verificationEvidencePath';
+      }
+    | {
+        readonly operation: 'restore';
+        readonly input:
+          | 'config'
+          | 'archivePath'
+          | 'keyPath'
+          | 'verificationEvidencePath'
+          | 'completionEvidencePath';
+      }
+  )[])(
+    'refuses protected FIFO $operation $input promptly without a writer',
+    async (fixture) => {
+      if (!databaseUrl || !container)
+        throw new Error('Expected supplied tools.');
+      const original: unknown = JSON.parse(
+        await readFile(backupConfig, 'utf8'),
+      );
+      if (
+        typeof original !== 'object' ||
+        original === null ||
+        Array.isArray(original) ||
+        !('keyPath' in original) ||
+        typeof original.keyPath !== 'string' ||
+        !('verificationEvidencePath' in original) ||
+        typeof original.verificationEvidencePath !== 'string'
+      )
+        throw new Error('Expected independently retained inputs.');
+      const target =
+        fixture.operation === 'restore'
+          ? await createIsolatedPostgresTestDatabase({
+              baseDatabaseUrl: databaseUrl,
+              namePrefix: 'recovery736_fifo',
+            })
+          : undefined;
+      try {
+        const targetUrl = target?.targetUrl ?? source.targetUrl;
+        const fifo = join(
+          temporaryRoot,
+          `${fixture.operation}-${fixture.input}.fifo`,
+        );
+        await execute('mkfifo', ['-m', '600', fifo], { timeout: 5_000 });
+        const details = await stat(fifo);
+        expect(details.isFIFO()).toBe(true);
+        expect(details.mode & 0o077).toBe(0);
+        const configPath =
+          fixture.input === 'config'
+            ? fifo
+            : join(
+                temporaryRoot,
+                `fifo-${fixture.operation}-${fixture.input}.json`,
+              );
+        if (fixture.input !== 'config') {
+          await writeFile(
+            configPath,
+            JSON.stringify({
+              ...original,
+              database: { url: targetUrl, container },
+              ...(fixture.operation === 'restore'
+                ? {
+                    measurement: {
+                      referenceInstant: await readRetainedReference({
+                        completionEvidencePath,
+                      }),
+                      maximumRecencyMilliseconds: 300_000,
+                      maximumRecoveryMilliseconds: 30_000,
+                    },
+                  }
+                : {}),
+              [fixture.input]: fifo,
+            }),
+            { mode: 0o600, flag: 'wx' },
+          );
+        }
+        const sourceBefore = (
+          await source.targetPool.query(
+            'SELECT to_jsonb(c) AS record FROM client_accounts c ORDER BY id',
+          )
+        ).rows;
+        const retainedPaths = [
+          archivePath,
+          completionEvidencePath,
+          original.keyPath,
+          original.verificationEvidencePath,
+        ];
+        const retainedBefore = await fingerprintRetainedFiles(retainedPaths);
+        const filesBefore = (await readdir(temporaryRoot)).sort();
+        const child = spawn(
+          process.execPath,
+          [entry, fixture.operation, '--config', configPath],
+          {
+            env: ordinaryEnvironment(targetUrl),
+            stdio: ['ignore', 'pipe', 'pipe'],
+          },
+        );
+        let stdout = '';
+        let stderr = '';
+        let result:
+          { code: number | null; signal: NodeJS.Signals | null } | undefined;
+        let spawnFailure: Error | undefined;
+        child.stdout.on('data', (bytes: Buffer) => {
+          stdout += bytes.toString('utf8');
+        });
+        child.stderr.on('data', (bytes: Buffer) => {
+          stderr += bytes.toString('utf8');
+        });
+        child.once('error', (error) => {
+          spawnFailure = error;
+        });
+        const closed = new Promise<void>((done) =>
+          child.once('close', (code, signal) => {
+            result = { code, signal };
+            done();
+          }),
+        );
+        try {
+          // No writer is opened, including while cancellation/cleanup is handled.
+          await vi.waitFor(
+            () => {
+              if (spawnFailure) throw spawnFailure;
+              expect(result).toEqual({ code: 2, signal: null });
+            },
+            { timeout: 5_000, interval: 10 },
+          );
+          await closed;
+          expect(stdout).toContain('"outcome":"refused"');
+          expect(stdout).toContain('unprotected-or-oversized-input');
+          expect(stdout).not.toContain(fifo);
+          expect(stdout).not.toContain(targetUrl);
+          expect(stdout).not.toContain(source.targetUrl);
+          expect(stderr).toBe('');
+          expect((await stat(fifo)).isFIFO()).toBe(true);
+          expect((await readdir(temporaryRoot)).sort()).toEqual(filesBefore);
+          expect(await fingerprintRetainedFiles(retainedPaths)).toEqual(
+            retainedBefore,
+          );
+          expect(
+            (
+              await source.targetPool.query(
+                'SELECT to_jsonb(c) AS record FROM client_accounts c ORDER BY id',
+              )
+            ).rows,
+          ).toEqual(sourceBefore);
+          if (target)
+            expect(
+              (
+                await target.targetPool.query(
+                  "SELECT to_regclass('public.workspaces')::text AS application",
+                )
+              ).rows,
+            ).toEqual([{ application: null }]);
+        } finally {
+          if (!result) {
+            child.kill('SIGTERM');
+            await new Promise((done) => setTimeout(done, 500));
+            if (!result) child.kill('SIGKILL');
+          }
+          await closed;
+        }
+      } finally {
+        await target?.close();
+      }
+    },
+    15_000,
+  );
+
   it('refuses an otherwise empty destination with another connected workload', async () => {
     if (!databaseUrl || !container) throw new Error('Expected supplied tools.');
     const target = await createIsolatedPostgresTestDatabase({
@@ -2285,4 +2603,17 @@ async function invokeOperator(input: {
       throw error;
     return { exitCode: error.code, stdout: error.stdout, stderr: error.stderr };
   }
+}
+
+/** Compare retained bytes without printing keys if a preservation assertion fails. */
+async function fingerprintRetainedFiles(
+  paths: readonly string[],
+): Promise<string[]> {
+  return Promise.all(
+    paths.map(async (path) =>
+      createHash('sha256')
+        .update(await readFile(path))
+        .digest('hex'),
+    ),
+  );
 }

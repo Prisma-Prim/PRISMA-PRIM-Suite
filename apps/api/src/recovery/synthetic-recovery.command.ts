@@ -31,6 +31,8 @@ import {
 const execute = promisify(execFile);
 const MAXIMUM_DUMP_BYTES = 128 * 1024 * 1024;
 const MAXIMUM_CONFIG_BYTES = 256 * 1024;
+// PostgreSQL17 FirstNormalObjectId: initdb reserves every lower object OID.
+const FIRST_NORMAL_POSTGRES_OBJECT_ID = 16_384;
 const MAGIC = Buffer.from('PPRREC01', 'ascii');
 const SUPPORTED_DUMP_VERSION = /^pg_dump \(PostgreSQL\) 17\.\d+$/u;
 
@@ -709,6 +711,10 @@ async function restoreTarget(
     await client.query(
       'BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',
     );
+    // Dependencies on pinned builtins are omitted by PostgreSQL. Inventory all
+    // standalone PG17 object catalogs too, including objects in pg_catalog;
+    // dependent defaults, indexes, constraints, policies and rules are covered
+    // by their parent objects and pg_depend. Cluster roles remain external.
     const state = await client.query<Record<string, unknown>>(`SELECT
       current_setting('server_version_num') AS version,
       EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND pid <> pg_backend_pid()) AS shared,
@@ -716,6 +722,42 @@ async function restoreTarget(
       EXISTS(SELECT 1 FROM pg_class AS c JOIN pg_namespace AS n ON n.oid=c.relnamespace WHERE n.nspname='public') OR
       EXISTS(SELECT 1 FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid=p.pronamespace WHERE n.nspname='public') OR
       EXISTS(SELECT 1 FROM pg_type AS t JOIN pg_namespace AS n ON n.oid=t.typnamespace WHERE n.nspname='public') OR
+      EXISTS(SELECT 1 FROM (
+        SELECT oid FROM pg_catalog.pg_namespace UNION ALL
+        SELECT oid FROM pg_catalog.pg_class UNION ALL
+        SELECT oid FROM pg_catalog.pg_proc UNION ALL
+        SELECT oid FROM pg_catalog.pg_type UNION ALL
+        SELECT oid FROM pg_catalog.pg_attrdef UNION ALL
+        SELECT oid FROM pg_catalog.pg_constraint UNION ALL
+        SELECT oid FROM pg_catalog.pg_rewrite UNION ALL
+        SELECT oid FROM pg_catalog.pg_trigger UNION ALL
+        SELECT oid FROM pg_catalog.pg_policy UNION ALL
+        SELECT oid FROM pg_catalog.pg_statistic_ext UNION ALL
+        SELECT oid FROM pg_catalog.pg_operator UNION ALL
+        SELECT oid FROM pg_catalog.pg_am UNION ALL
+        SELECT oid FROM pg_catalog.pg_opclass UNION ALL
+        SELECT oid FROM pg_catalog.pg_opfamily UNION ALL
+        SELECT oid FROM pg_catalog.pg_collation UNION ALL
+        SELECT oid FROM pg_catalog.pg_conversion UNION ALL
+        SELECT oid FROM pg_catalog.pg_language UNION ALL
+        SELECT oid FROM pg_catalog.pg_cast UNION ALL
+        SELECT oid FROM pg_catalog.pg_ts_parser UNION ALL
+        SELECT oid FROM pg_catalog.pg_ts_dict UNION ALL
+        SELECT oid FROM pg_catalog.pg_ts_template UNION ALL
+        SELECT oid FROM pg_catalog.pg_ts_config UNION ALL
+        SELECT oid FROM pg_catalog.pg_foreign_data_wrapper UNION ALL
+        SELECT oid FROM pg_catalog.pg_foreign_server UNION ALL
+        SELECT oid FROM pg_catalog.pg_user_mapping UNION ALL
+        SELECT oid FROM pg_catalog.pg_transform UNION ALL
+        SELECT oid FROM pg_catalog.pg_event_trigger UNION ALL
+        SELECT oid FROM pg_catalog.pg_publication UNION ALL
+        SELECT oid FROM pg_catalog.pg_subscription WHERE subdbid=(
+          SELECT oid FROM pg_catalog.pg_database WHERE datname=current_database()
+        )
+      ) AS objects WHERE oid >= ${FIRST_NORMAL_POSTGRES_OBJECT_ID}) OR
+      EXISTS(SELECT 1 FROM pg_catalog.pg_depend
+        WHERE objid >= ${FIRST_NORMAL_POSTGRES_OBJECT_ID}
+        OR refobjid >= ${FIRST_NORMAL_POSTGRES_OBJECT_ID}) OR
       EXISTS(SELECT 1 FROM pg_extension WHERE extname <> 'plpgsql') OR
       EXISTS(SELECT 1 FROM pg_default_acl) OR
       EXISTS(SELECT 1 FROM pg_largeobject_metadata) AS nonempty`);
@@ -881,7 +923,10 @@ async function protectedFile(
   path: string,
   maximumBytes: number,
 ): Promise<Buffer> {
-  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+  const handle = await open(
+    path,
+    constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
+  );
   try {
     const details = await handle.stat();
     if (
