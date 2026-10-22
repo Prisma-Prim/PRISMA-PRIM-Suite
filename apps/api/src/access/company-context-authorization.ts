@@ -90,6 +90,10 @@ import {
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
   profitabilityContributorPermissionsFor,
   profitabilityDirectorPermissionsFor,
+  COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
+  operationalRiskReaderPermissionsFor,
+  operationalRiskRecorderPermissionsFor,
 } from './company-permissions.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -1387,6 +1391,8 @@ export class CompanyContextAuthorization {
         COMPANY_IDEAS_REVIEWER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+        COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+        COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
@@ -1565,6 +1571,28 @@ export class CompanyContextAuthorization {
         ];
         company.profitabilityDirectorPermissionAssignmentId = row.assignmentId;
         company.profitabilityDirectorPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_OPERATIONAL_RISK_READER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.operationalRiskPermissions = [
+          ...(company.operationalRiskPermissions ?? []),
+          ...operationalRiskReaderPermissionsFor(row.permissionSetVersion),
+        ];
+        company.operationalRiskReaderAssignmentId = row.assignmentId;
+        company.operationalRiskReaderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.operationalRiskPermissions = [
+          ...(company.operationalRiskPermissions ?? []),
+          ...operationalRiskRecorderPermissionsFor(row.permissionSetVersion),
+        ];
+        company.operationalRiskRecorderAssignmentId = row.assignmentId;
+        company.operationalRiskRecorderPermissionSetVersion = 'v1';
       }
       // The reader bundle carries Activity read only. It never contributes
       // Company context, so it is resolved but not authorizing.

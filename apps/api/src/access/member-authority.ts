@@ -20,6 +20,10 @@ import {
   isDocumentPermissionSetVersion,
   projectPermissionsFor,
   taskPermissionsFor,
+  COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
+  operationalRiskReaderPermissionsFor,
+  operationalRiskRecorderPermissionsFor,
 } from './company-permissions.js';
 
 export interface MemberAuthority {
@@ -31,6 +35,8 @@ export interface MemberAuthority {
   commercialIntakeReader: boolean;
   taskRead: boolean;
   taskManage: boolean;
+  operationalRiskReader: boolean;
+  operationalRiskRecorder: boolean;
 }
 
 /**
@@ -112,7 +118,9 @@ export async function readMemberAuthority(
   let project = false,
     intakeRead = false,
     taskRead = false,
-    taskManage = false;
+    taskManage = false,
+    riskRead = false,
+    riskRecord = false;
   for (const assignment of assignments) {
     switch (assignment.bundle) {
       case COMPANY_CONTEXT_ACCESS_BUNDLE:
@@ -154,6 +162,16 @@ export async function readMemberAuthority(
         taskManage = permissions.includes('task.manage');
         break;
       }
+      case COMPANY_OPERATIONAL_RISK_READER_BUNDLE:
+        riskRead = operationalRiskReaderPermissionsFor(
+          assignment.version,
+        ).includes('risk.read');
+        break;
+      case COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE:
+        riskRecord = operationalRiskRecorderPermissionsFor(
+          assignment.version,
+        ).includes('risk.record');
+        break;
       case 'company_document_project_organizer':
         break;
     }
@@ -165,6 +183,8 @@ export async function readMemberAuthority(
     commercialIntakeReader: context && intakeRead,
     taskRead,
     taskManage,
+    operationalRiskReader: context && riskRead,
+    operationalRiskRecorder: context && riskRead && riskRecord,
   };
 }
 
