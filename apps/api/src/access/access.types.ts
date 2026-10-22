@@ -23,6 +23,7 @@ import type {
   CompanyProjectTemplateConfigurationPermission,
   CompanyProjectStagePermission,
 } from './company-permissions.js';
+import type { IdeasActorProjection } from './ideas-captured-grants.js';
 
 export interface ExternalPrincipal {
   provider: string;
@@ -37,18 +38,9 @@ export type WorkspacePermission =
   | 'client.manage'
   | 'member.invite';
 
-export interface ActiveCompanyContext {
+export interface ActiveCompanyContext extends IdeasActorProjection {
   id: string;
   displayName: string;
-  ideasReaderPermissions?: Array<'idea.read'>;
-  ideasReaderPermissionAssignmentId?: string;
-  ideasReaderPermissionSetVersion?: 'v1';
-  ideasRecorderPermissions?: Array<'idea.record'>;
-  ideasRecorderPermissionAssignmentId?: string;
-  ideasRecorderPermissionSetVersion?: 'v1';
-  ideasReviewerPermissions?: Array<'idea.disposition.record'>;
-  ideasReviewerPermissionAssignmentId?: string;
-  ideasReviewerPermissionSetVersion?: 'v1';
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
   documentPermissionSetVersion?: DocumentPermissionSetVersion;
