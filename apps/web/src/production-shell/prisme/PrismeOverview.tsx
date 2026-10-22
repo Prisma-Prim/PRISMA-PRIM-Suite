@@ -12,6 +12,7 @@ import {
   ListTodo,
   Mail,
   ShieldCheck,
+  ShieldAlert,
   SlidersHorizontal,
   Users,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ export function SectionIcon({
   const icons = {
     overview: LayoutGrid,
     ideas: Lightbulb,
+    'operational-risks': ShieldAlert,
     projects: FolderKanban,
     'my-tasks': ListTodo,
     clients: Users,

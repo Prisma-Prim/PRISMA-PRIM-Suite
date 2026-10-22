@@ -1,6 +1,10 @@
 import { IdeasWorkspace } from './ideas/IdeasWorkspace';
 import { ideasAuthority, ideasContextKey } from './ideas/ideas-contract';
 import { useIdeasCopy } from './ideas/ideas.copy';
+import {
+  OperationalRiskWorkspace,
+  canReadOperationalRisks,
+} from './operational-risk/OperationalRiskWorkspace';
 import { ActivityLog } from './production-shell/ActivityLog';
 import {
   ProjectTemplateConfiguration,
@@ -342,6 +346,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <IdeasWorkspace
           key={`ideas:${access.sessionGeneration}:${ideasContextKey(access.actor)}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
+  if (canReadOperationalRisks(access.actor) && access.actor.activeCompany)
+    sections.push({
+      id: 'operational-risks',
+      ...prismeCopy.sections.risks,
+      content: (
+        <OperationalRiskWorkspace
+          key={`operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.operationalRiskReaderAssignmentId ?? 'none'}:${access.actor.activeCompany.operationalRiskReaderPermissionSetVersion ?? 'none'}:${access.actor.activeCompany.operationalRiskRecorderAssignmentId ?? 'none'}:${access.actor.activeCompany.operationalRiskRecorderPermissionSetVersion ?? 'none'}:${access.actor.activeCompany.operationalRiskPermissions?.join(',') ?? 'none'}`}
           actor={access.actor}
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}

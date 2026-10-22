@@ -294,6 +294,31 @@ Assignment administration events retain authorization section8's existing safe
 visibility and bundle-label-only semantics. Recording a response proves no sending,
 receipt, closure, effectiveness or assurance judgment.
 
+For [Company operational-risk intake and manual follow-up](company-operational-risk-intake-prd.md),
+one committed intake records `operational_risk.recorded`, one motivated intake
+successor records `operational_risk.intake.corrected`, and one committed immutable
+observation/reassessment records `operational_risk.journal.recorded`. Each carries
+exact Risk identity, responsible Workspace/Company, server actor membership/time
+and resulting aggregate revision. Journal metadata additionally identifies only
+kind (`observation` or `reassessment`); no process, cause, effect, measure, source,
+narrative, date or correction reason enters event metadata or diagnostics.
+
+Risk facts/history, aggregate revision, durable receipt, required event and valid
+response commit atomically through Accountability's public recording boundary.
+Invalid, denied, stale, failed, unchanged-fact corrections and exact replay create
+no success event. Response-construction failure rolls back the unit. Original
+facts, successors and journal entries remain attributable; no event/history rewrite
+or journal edit/delete exists in this first journey.
+
+This is a separate restricted recording family, following confidential
+profitability's delivered precedent. Introducing a generic visible target is not
+permitted: generic Activity/Home/search/count/filter/export/target-link surfaces
+return none, including to Company/Workspace administrators and Activity readers.
+Risk-owned history requires current Reader and Company context; neither Risk
+bundle grants Activity read. Authorization section 8 owns separate grant/revoke
+administration events with their existing minimal visibility. Recording a measure
+or reassessment proves no score, effectiveness, spending, task or closure decision.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.
