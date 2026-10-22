@@ -49,6 +49,7 @@ The pinned matrix preserves the duplicate matching/union-design blocker as it st
 | [Historical Migration, Search and Export](historical-migration-search-export-prd.md)             | Draft           | Import provenance, findability, export and reconciliation                 |
 | [AI and Knowledge Governance](ai-knowledge-governance-prd.md)                                    | Draft           | AI authority, citations, privacy and human approval                       |
 | [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft           | Security controls, recovery, observability and service posture            |
+| [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft           | Equivalent-work qualification, processing resource bounds and evidence    |
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
 ## 5. Release 1 capability PRDs
