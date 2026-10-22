@@ -107,6 +107,15 @@ export interface TaskAttention {
   matchingCount: number;
   tasks: AttentionTaskView[];
 }
+/** One current page of the complete attention set, with no whole-set cap. */
+export interface AttentionTasksPage {
+  companyId: string;
+  today: string;
+  total: number;
+  offset: number;
+  pageSize: 25;
+  tasks: AttentionTaskView[];
+}
 /**
  * An open Task of the reader's Project list due before the read's today, with
  * the Project list's own labels and its whole calendar days overdue.

@@ -1,6 +1,7 @@
 import type { MouseEventHandler, ReactNode } from 'react';
 import { FiberMotion } from '../fiber/FiberMotion';
 import {
+  Lightbulb,
   FolderKanban,
   Activity,
   ArrowRight,
@@ -35,6 +36,7 @@ export function SectionIcon({
 }) {
   const icons = {
     overview: LayoutGrid,
+    ideas: Lightbulb,
     projects: FolderKanban,
     'my-tasks': ListTodo,
     'unassigned-tasks': ClipboardList,

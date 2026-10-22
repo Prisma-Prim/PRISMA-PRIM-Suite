@@ -1,4 +1,10 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import {
+  expect,
+  test,
+  type Page,
+  type Route,
+  type TestInfo,
+} from '@playwright/test';
 import {
   actorContextFixture,
   operationalHomeFixture,
@@ -227,6 +233,83 @@ async function keyboardLocale(
   ).toBeFocused();
 }
 
+async function inspectFocusedSkip({
+  page,
+  testInfo,
+  locale,
+}: {
+  page: Page;
+  testInfo: TestInfo;
+  locale: LocaleFixture;
+}) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const skip = page.locator('.prisme-skip-link');
+  const label = page.locator('label[for="interface-locale"]');
+  await skip.focus();
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport({ ratio: 1 });
+  await expect(label).toBeInViewport({ ratio: 1 });
+  const geometry = await skip.evaluate((link) => {
+    const label = document.querySelector('label[for="interface-locale"]');
+    const picker = document.querySelector('.interface-locale-control');
+    const header = document.querySelector('header');
+    if (!label || !picker || !header)
+      throw new Error('Expected the real language label, picker and header.');
+    function rectangle(element: Element) {
+      const bounds = element.getBoundingClientRect();
+      return {
+        top: bounds.top,
+        right: bounds.right,
+        bottom: bounds.bottom,
+        left: bounds.left,
+        width: bounds.width,
+        height: bounds.height,
+      };
+    }
+    const skip = rectangle(link);
+    const languageLabel = rectangle(label);
+    return {
+      skip,
+      languageLabel,
+      picker: rectangle(picker),
+      header: rectangle(header),
+      overlap: {
+        width: Math.max(
+          0,
+          Math.min(skip.right, languageLabel.right) -
+            Math.max(skip.left, languageLabel.left),
+        ),
+        height: Math.max(
+          0,
+          Math.min(skip.bottom, languageLabel.bottom) -
+            Math.max(skip.top, languageLabel.top),
+        ),
+      },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      scroll: { x: window.scrollX, y: window.scrollY },
+      skipFocused: document.activeElement === link,
+      label: label.textContent,
+      skipText: link.textContent,
+    };
+  });
+  await testInfo.attach(`language-skip-${locale.code}-geometry.json`, {
+    body: JSON.stringify(geometry, null, 2),
+    contentType: 'application/json',
+  });
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `client-registration-${locale.code}-language-skip-viewport.png`,
+    ),
+  });
+  expect(geometry.picker.bottom).toBeLessThanOrEqual(geometry.header.top);
+  expect(
+    geometry.overlap.width * geometry.overlap.height,
+    'The focused skip link must not cover the interface language label',
+  ).toBe(0);
+  await skip.press('Enter');
+  await expect(page.locator('#prisme-page-title')).toBeFocused();
+}
+
 async function installRoutes(page: Page) {
   let created = false;
   let reads = 0;
@@ -340,6 +423,7 @@ for (const locale of locales) {
     const directoryReads = observed.reads();
     await keyboardLocale(page, 'Interface language', locale);
     expect(observed.requests).toHaveLength(requestCount);
+    await inspectFocusedSkip({ page, testInfo, locale });
     const trigger = workspace.getByRole('button', {
       name: locale.launch,
       exact: true,
@@ -403,6 +487,22 @@ for (const locale of locales) {
     });
     await technical.focus();
     await technical.press('Space');
+    await technical.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `client-contact-roles-${locale.code}-focus.png`,
+      ),
+    });
+    await page.emulateMedia({ forcedColors: 'active' });
+    try {
+      await page.screenshot({
+        path: testInfo.outputPath(
+          `client-contact-roles-${locale.code}-forced-colors.png`,
+        ),
+      });
+    } finally {
+      await page.emulateMedia({ forcedColors: 'none' });
+    }
     await workspace
       .getByRole('checkbox', { name: locale.roleLabels[0], exact: true })
       .check();
@@ -424,6 +524,27 @@ for (const locale of locales) {
     await page.screenshot({
       path: testInfo.outputPath(`client-registration-${locale.code}-draft.png`),
       fullPage: true,
+    });
+    const preferences = workspace.getByLabel(locale.preferences, {
+      exact: true,
+    });
+    await preferences.focus();
+    await expect(preferences).toBeInViewport({ ratio: 1 });
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `client-registration-${locale.code}-contact-viewport.png`,
+      ),
+    });
+    const submit = workspace.getByRole('button', {
+      name: locale.submit,
+      exact: true,
+    });
+    await submit.focus();
+    await expect(submit).toBeInViewport({ ratio: 1 });
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `client-registration-${locale.code}-action-viewport.png`,
+      ),
     });
     const alternate = locale.code === 'en' ? locales[0] : locales[3];
     await keyboardLocale(

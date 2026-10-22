@@ -40,6 +40,15 @@ export type WorkspacePermission =
 export interface ActiveCompanyContext {
   id: string;
   displayName: string;
+  ideasReaderPermissions?: Array<'idea.read'>;
+  ideasReaderPermissionAssignmentId?: string;
+  ideasReaderPermissionSetVersion?: 'v1';
+  ideasRecorderPermissions?: Array<'idea.record'>;
+  ideasRecorderPermissionAssignmentId?: string;
+  ideasRecorderPermissionSetVersion?: 'v1';
+  ideasReviewerPermissions?: Array<'idea.disposition.record'>;
+  ideasReviewerPermissionAssignmentId?: string;
+  ideasReviewerPermissionSetVersion?: 'v1';
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
   documentPermissionSetVersion?: DocumentPermissionSetVersion;

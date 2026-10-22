@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { constants as osConstants, tmpdir } from 'node:os';
+import { performance } from 'node:perf_hooks';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -1016,6 +1017,7 @@ export class Client{
 export default{Client};`;
   try {
     await writeFile(modulePath, failure);
+    const startedAt = performance.now();
     const result = spawnSync(
       process.execPath,
       [
@@ -1028,7 +1030,9 @@ export default{Client};`;
       ],
       {
         encoding: 'utf8',
-        timeout: 2_000,
+        // This fixture includes cold Node startup under local suite load.
+        // Its finite allowance does not change the public probe deadlines.
+        timeout: 10_000,
         env: {
           ...process.env,
           DATABASE_URL: 'development',
@@ -1039,13 +1043,41 @@ export default{Client};`;
         },
       },
     );
+    const elapsedMilliseconds = Math.round(performance.now() - startedAt);
+    const errorCode = result.error?.code;
+    const signal = result.signal;
     let calls = '';
     try {
       calls = await readFile(log, 'utf8');
     } catch {
       // Bootstrap and constructor failures can occur before the log is created.
     }
-    return { ...result, calls };
+    return {
+      ...result,
+      calls,
+      processDiagnostic: {
+        errorCode: [
+          'ETIMEDOUT',
+          'ENOENT',
+          'EACCES',
+          'EPERM',
+          'ENOBUFS',
+          'ENOMEM',
+          'EAGAIN',
+        ].includes(errorCode)
+          ? errorCode
+          : errorCode === undefined
+            ? null
+            : 'unclassified',
+        signal:
+          signal === null ||
+          (typeof signal === 'string' &&
+            Object.hasOwn(osConstants.signals, signal))
+            ? signal
+            : 'unclassified',
+        elapsedMilliseconds,
+      },
+    };
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -1053,8 +1085,8 @@ export default{Client};`;
 
 test(
   'sanitizes hostile generated-child failures at every phase',
-  { timeout: 60_000 },
-  async () => {
+  { timeout: 180_000 },
+  async (t) => {
     for (const phase of [
       'bootstrap',
       'constructor',
@@ -1064,6 +1096,9 @@ test(
     ]) {
       for (const [label, codeSource, forbidden] of hostileCodeCases) {
         const result = await executeHostileChild({ phase, codeSource });
+        t.diagnostic(
+          JSON.stringify({ phase, case: label, ...result.processDiagnostic }),
+        );
         assert.equal(result.status, 1, `${phase}/${label} exit status`);
         assert.equal(result.signal, null, `${phase}/${label} signal`);
         assert.equal(result.stderr, '', `${phase}/${label} stderr`);
@@ -1106,14 +1141,17 @@ test(
 
 test(
   'classifies generated-child failures from the test target',
-  { timeout: 10_000 },
-  async () => {
+  { timeout: 60_000 },
+  async (t) => {
     for (const phase of ['constructor', 'connect', 'query', 'cleanup']) {
       const result = await executeHostileChild({
         phase,
         codeSource: "'TOKEN'",
         target: 'test',
       });
+      t.diagnostic(
+        JSON.stringify({ target: 'test', phase, ...result.processDiagnostic }),
+      );
       assert.equal(result.status, 1, `${phase} exit status`);
       assert.equal(result.signal, null, `${phase} signal`);
       assert.equal(result.stderr, '', `${phase} stderr`);

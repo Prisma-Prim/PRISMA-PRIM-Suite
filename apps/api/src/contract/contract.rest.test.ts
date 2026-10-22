@@ -965,6 +965,439 @@ withPostgres('First illustrative Contract REST', () => {
       status: 'WARNING',
     });
   });
+  it('replays a committed Direct Contract after Client union wins its pending reference lock', async () => {
+    const fixture = await preparedOffer('-replay768');
+    await grantContract(fixture, 'reference-replay768-contract-grant');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const path = base + '/direct';
+    const key = 'reference-replay768-direct';
+    const payload = {
+      recipient: { kind: 'PRIMARY' },
+      pricingSnapshotId: fixture.snapshotId,
+      directReason: 'Synthetic retained direct evidence768',
+      scopeNote: 'Exact copied scope768',
+    };
+    const replay = () =>
+      request({
+        path,
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify(payload),
+        },
+      });
+    const first = await replay();
+    expect(first.status).toBe(201);
+    const created = record(await json(first));
+    const second = entity(
+      await command({
+        path: '/clients',
+        companyId: fixture.companyId,
+        key: 'reference-replay768-second-client',
+        body: { displayName: 'Synthetic canonical Client768' },
+      }),
+    );
+    // Only the legacy duplicate fixture bypasses current duplicate admission.
+    // The union and the retained Contract retry below remain public commands.
+    await pool.query(
+      'UPDATE client_accounts SET tax_id=(SELECT tax_id FROM client_accounts WHERE id=$1) WHERE id=$2',
+      [fixture.clientId, second.id],
+    );
+    const unionHeaders = memberHeaders('contract-reader');
+    const invited = await request({
+      path: '/access/current-actor',
+      init: { headers: unionHeaders },
+    });
+    expect(invited.status).toBe(200);
+    const membershipId = stringField(
+      record(await json(invited)),
+      'workspaceMembershipId',
+    );
+    for (const assignment of [
+      '/company-context-assignments',
+      '/company-director-client-assignments',
+    ])
+      await command({
+        path: assignment,
+        key: 'reference-replay768-grant-' + assignment,
+        body: {
+          workspaceMembershipId: membershipId,
+          companyId: fixture.companyId,
+        },
+      });
+    // A distinct resolver reaches the Client identity fence rather than waiting
+    // on the Contract actor's synchronized Internal User profile.
+    const reviewResponse = await request({
+      path: '/clients/' + fixture.clientId + '/union-reviews',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          ...unionHeaders,
+          'content-type': 'application/json',
+          'idempotency-key': 'reference-replay768-review',
+        },
+        body: JSON.stringify({}),
+      },
+    });
+    expect(reviewResponse.status).toBe(201);
+    const review = record(await json(reviewResponse));
+    expect(review.outcome).toBe('comparison');
+    const beforeCounts = await agreementCounts();
+    const beforeReceipts = await pool.query<Record<string, unknown>>(
+      'SELECT to_jsonb(receipt) AS value FROM contract_commands receipt ORDER BY idempotency_key',
+    );
+    const beforeVersions = await pool.query<{ id: string; version: number }>(
+      'SELECT id,version FROM client_accounts WHERE id=ANY($1::uuid[]) ORDER BY id',
+      [[fixture.clientId, second.id]],
+    );
+    const blocker = await pool.connect();
+    let united: Promise<Response> | undefined;
+    let pending: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const backend = await blocker.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      const blockerPid = backend.rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error('The synthetic Client blocker is unavailable.');
+      await blocker.query(
+        'SELECT id FROM client_accounts WHERE id=$1 FOR UPDATE',
+        [fixture.clientId],
+      );
+      united = request({
+        path:
+          '/client-union-reviews/' +
+          stringField(review, 'reviewReference') +
+          '/confirm',
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            ...unionHeaders,
+            'content-type': 'application/json',
+            'idempotency-key': 'reference-replay768-union',
+          },
+          body: JSON.stringify({
+            canonicalClientId: second.id,
+            fields: {
+              displayName: second.id,
+              taxId: second.id,
+              address: second.id,
+              telephone: second.id,
+              generalEmail: second.id,
+              businessActivity: second.id,
+            },
+            companyIds: [fixture.companyId],
+            reviewedDifferences: true,
+            reason: 'Synthetic original preserved while its retry waits768.',
+          }),
+        },
+      });
+      const unionPid = await waitForBlocker(blockerPid);
+      pending = replay();
+      const retryPid = await waitForBlocker(blockerPid, unionPid);
+      expect(retryPid).not.toBe(unionPid);
+      expect(
+        (
+          await pool.query<{ query: string }>(
+            'SELECT query FROM pg_stat_activity WHERE pid=$1',
+            [retryPid],
+          )
+        ).rows,
+      ).toMatchObject([
+        { query: expect.stringContaining('"client_accounts"') },
+      ]);
+      await blocker.query('COMMIT');
+      const [unionResponse, waitingReplay] = await Promise.all([
+        united,
+        pending,
+      ]);
+      expect(unionResponse.status).toBe(201);
+      const currentResponse = await request({
+        path: base,
+        companyId: fixture.companyId,
+      });
+      expect(currentResponse.status).toBe(200);
+      const current = record(record(await json(currentResponse)).contract);
+      expect(current).toMatchObject({
+        id: created.id,
+        originalClientAccountId: fixture.clientId,
+        clientReference: {
+          originalClientId: fixture.clientId,
+          currentClientId: second.id,
+        },
+      });
+      const unchangedRetry = await replay();
+      expect(unchangedRetry.status).toBe(201);
+      const settledReplay = record(await json(unchangedRetry));
+      expect(settledReplay).toEqual({
+        ...created,
+        clientReference: current.clientReference,
+      });
+      expect(settledReplay.version).toEqual(created.version);
+      expect(await agreementCounts()).toEqual(beforeCounts);
+      expect(
+        (
+          await pool.query<Record<string, unknown>>(
+            'SELECT to_jsonb(receipt) AS value FROM contract_commands receipt ORDER BY idempotency_key',
+          )
+        ).rows,
+      ).toEqual(beforeReceipts.rows);
+      expect(
+        (
+          await pool.query<{ id: string; version: number }>(
+            'SELECT id,version FROM client_accounts WHERE id=ANY($1::uuid[]) ORDER BY id',
+            [[fixture.clientId, second.id]],
+          )
+        ).rows,
+      ).toEqual(
+        beforeVersions.rows.map(({ id, version }) => ({
+          id,
+          version: version + 1,
+        })),
+      );
+      // A false first denial is not excused by the successful unchanged retry.
+      // Keep this after the diagnostics so RED proves retained live readability.
+      expect(waitingReplay.status).toBe(201);
+      expect(await json(waitingReplay)).toEqual(settledReplay);
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await Promise.allSettled([
+        ...(united ? [united] : []),
+        ...(pending ? [pending] : []),
+      ]);
+    }
+  }, 30000);
+
+  it('replays a committed Direct Contract before Client union waiting on its held identity', async () => {
+    const fixture = await preparedOffer('-before768');
+    await grantContract(fixture, 'reference-before768-contract-grant');
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const path = base + '/direct';
+    const key = 'reference-before768-direct';
+    const payload = {
+      recipient: { kind: 'PRIMARY' },
+      pricingSnapshotId: fixture.snapshotId,
+      directReason: 'Synthetic retained direct evidence768',
+      scopeNote: 'Exact copied scope768',
+    };
+    const replay = () =>
+      request({
+        path,
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify(payload),
+        },
+      });
+    const first = await replay();
+    expect(first.status).toBe(201);
+    const created = record(await json(first));
+    const second = entity(
+      await command({
+        path: '/clients',
+        companyId: fixture.companyId,
+        key: 'reference-before768-second-client',
+        body: { displayName: 'Synthetic canonical Client768' },
+      }),
+    );
+    // Only the legacy duplicate fixture bypasses current duplicate admission.
+    // The union and the retained Contract retry below remain public commands.
+    await pool.query(
+      'UPDATE client_accounts SET tax_id=(SELECT tax_id FROM client_accounts WHERE id=$1) WHERE id=$2',
+      [fixture.clientId, second.id],
+    );
+    const unionHeaders = memberHeaders('contract-reader');
+    const invited = await request({
+      path: '/access/current-actor',
+      init: { headers: unionHeaders },
+    });
+    expect(invited.status).toBe(200);
+    const membershipId = stringField(
+      record(await json(invited)),
+      'workspaceMembershipId',
+    );
+    for (const assignment of [
+      '/company-context-assignments',
+      '/company-director-client-assignments',
+    ])
+      await command({
+        path: assignment,
+        key: 'reference-before768-grant-' + assignment,
+        body: {
+          workspaceMembershipId: membershipId,
+          companyId: fixture.companyId,
+        },
+      });
+    // A distinct resolver reaches the Client identity fence rather than waiting
+    // on the Contract actor's synchronized Internal User profile.
+    const reviewResponse = await request({
+      path: '/clients/' + fixture.clientId + '/union-reviews',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          ...unionHeaders,
+          'content-type': 'application/json',
+          'idempotency-key': 'reference-before768-review',
+        },
+        body: JSON.stringify({}),
+      },
+    });
+    expect(reviewResponse.status).toBe(201);
+    const review = record(await json(reviewResponse));
+    expect(review.outcome).toBe('comparison');
+    const beforeCounts = await agreementCounts();
+    const beforeReceipts = await pool.query<Record<string, unknown>>(
+      'SELECT to_jsonb(receipt) AS value FROM contract_commands receipt ORDER BY idempotency_key',
+    );
+    const beforeVersions = await pool.query<{ id: string; version: number }>(
+      'SELECT id,version FROM client_accounts WHERE id=ANY($1::uuid[]) ORDER BY id',
+      [[fixture.clientId, second.id]],
+    );
+    const blocker = await pool.connect();
+    let united: Promise<Response> | undefined;
+    let pending: Promise<Response> | undefined;
+    try {
+      await blocker.query('BEGIN');
+      const backend = await blocker.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      const blockerPid = backend.rows[0]?.pid;
+      if (blockerPid === undefined)
+        throw new Error('The synthetic Client blocker is unavailable.');
+      await blocker.query(
+        'SELECT id FROM client_company_relationships WHERE client_account_id=$1 AND company_id=$2 FOR UPDATE',
+        [fixture.clientId, fixture.companyId],
+      );
+      // The replay owns its original Client identity before it waits here.
+      // Union must queue behind that identity, never overtake the replay.
+      pending = replay();
+      const retryPid = await waitForBlocker(blockerPid);
+      expect(
+        (
+          await pool.query<{ query: string }>(
+            'SELECT query FROM pg_stat_activity WHERE pid=$1',
+            [retryPid],
+          )
+        ).rows,
+      ).toMatchObject([
+        { query: expect.stringContaining('"client_company_relationships"') },
+      ]);
+      united = request({
+        path:
+          '/client-union-reviews/' +
+          stringField(review, 'reviewReference') +
+          '/confirm',
+        companyId: fixture.companyId,
+        init: {
+          method: 'POST',
+          headers: {
+            ...unionHeaders,
+            'content-type': 'application/json',
+            'idempotency-key': 'reference-before768-union',
+          },
+          body: JSON.stringify({
+            canonicalClientId: second.id,
+            fields: {
+              displayName: second.id,
+              taxId: second.id,
+              address: second.id,
+              telephone: second.id,
+              generalEmail: second.id,
+              businessActivity: second.id,
+            },
+            companyIds: [fixture.companyId],
+            reviewedDifferences: true,
+            reason: 'Synthetic original preserved while its retry waits768.',
+          }),
+        },
+      });
+      const unionPid = await waitForBlocker(retryPid);
+      expect(unionPid).not.toBe(retryPid);
+      expect(
+        (
+          await pool.query<{ query: string }>(
+            'SELECT query FROM pg_stat_activity WHERE pid=$1',
+            [unionPid],
+          )
+        ).rows,
+      ).toMatchObject([
+        { query: expect.stringContaining('"client_accounts"') },
+      ]);
+      await blocker.query('COMMIT');
+      const [unionResponse, waitingReplay] = await Promise.all([
+        united,
+        pending,
+      ]);
+      expect(waitingReplay.status).toBe(201);
+      expect(await json(waitingReplay)).toEqual(created);
+      // The union's reviewed Client versions stay valid: replay adds no fence.
+      expect(unionResponse.status).toBe(201);
+      const currentResponse = await request({
+        path: base,
+        companyId: fixture.companyId,
+      });
+      expect(currentResponse.status).toBe(200);
+      const current = record(record(await json(currentResponse)).contract);
+      expect(current).toMatchObject({
+        id: created.id,
+        originalClientAccountId: fixture.clientId,
+        clientReference: {
+          originalClientId: fixture.clientId,
+          currentClientId: second.id,
+        },
+      });
+      const unchangedRetry = await replay();
+      expect(unchangedRetry.status).toBe(201);
+      const settledReplay = record(await json(unchangedRetry));
+      expect(settledReplay).toEqual({
+        ...created,
+        clientReference: current.clientReference,
+      });
+      expect(settledReplay.version).toEqual(created.version);
+      expect(await agreementCounts()).toEqual(beforeCounts);
+      expect(
+        (
+          await pool.query<Record<string, unknown>>(
+            'SELECT to_jsonb(receipt) AS value FROM contract_commands receipt ORDER BY idempotency_key',
+          )
+        ).rows,
+      ).toEqual(beforeReceipts.rows);
+      expect(
+        (
+          await pool.query<{ id: string; version: number }>(
+            'SELECT id,version FROM client_accounts WHERE id=ANY($1::uuid[]) ORDER BY id',
+            [[fixture.clientId, second.id]],
+          )
+        ).rows,
+      ).toEqual(
+        beforeVersions.rows.map(({ id, version }) => ({
+          id,
+          version: version + 1,
+        })),
+      );
+    } finally {
+      await blocker.query('ROLLBACK');
+      blocker.release();
+      await Promise.allSettled([
+        ...(united ? [united] : []),
+        ...(pending ? [pending] : []),
+      ]);
+    }
+  }, 30000);
+
   it('C9 creates and reloads DIRECT without Offer read and requires direct review at approval', async () => {
     const fixture = await preparedOffer();
     await grantContract(fixture, 'c9-prepare');
@@ -4264,96 +4697,93 @@ withPostgres('First illustrative Contract REST', () => {
       }
     },
   );
-  it.each(['new', 'approve', 'reject', 'signature'] as const)(
-    'C6 controls new-version versus %s in both winning orders',
-    async (other) => {
-      for (const revisionFirst of [true, false]) {
-        // Each ordering has an independent persisted Contract and Client fence.
-        if (!revisionFirst)
-          await pool.query(
-            'TRUNCATE activity_log_events, workspace_memberships, internal_users, workspaces CASCADE',
-          );
-        const target =
-          other === 'signature'
-            ? await approvedSignatureFixture()
-            : await qualityFixture();
-        const { fixture, versionId } = target;
-        await grantApprover(fixture);
-        const revision = other === 'signature' ? 2 : 1;
-        const revise = () =>
-          reviseRequest(
-            target,
-            {
-              expectedContractRevision: revision,
-              specialConditions: 'Race revision',
-            },
-            'c6-race-new-' + revisionFirst,
-          );
-        const competitor = () =>
-          other === 'new'
-            ? reviseRequest(
-                target,
-                {
-                  expectedContractRevision: revision,
-                  specialConditions: 'Competing revision',
-                },
-                'c6-race-other-' + revisionFirst,
-              )
-            : decisionRequest(
-                fixture,
-                versionId,
-                other,
-                other === 'approve'
+  it.each(
+    (['new', 'approve', 'reject', 'signature'] as const).flatMap((other) => [
+      { other, revisionFirst: true, firstCommand: 'new-version' },
+      { other, revisionFirst: false, firstCommand: 'other' },
+    ]),
+  )(
+    'C6 controls new-version versus $other with $firstCommand committing first',
+    async ({ other, revisionFirst }) => {
+      // Each ordering has an independent persisted Contract and Client fence.
+      const target =
+        other === 'signature'
+          ? await approvedSignatureFixture()
+          : await qualityFixture();
+      const { fixture, versionId } = target;
+      await grantApprover(fixture);
+      const revision = other === 'signature' ? 2 : 1;
+      const revise = () =>
+        reviseRequest(
+          target,
+          {
+            expectedContractRevision: revision,
+            specialConditions: 'Race revision',
+          },
+          'c6-race-new-' + revisionFirst,
+        );
+      const competitor = () =>
+        other === 'new'
+          ? reviseRequest(
+              target,
+              {
+                expectedContractRevision: revision,
+                specialConditions: 'Competing revision',
+              },
+              'c6-race-other-' + revisionFirst,
+            )
+          : decisionRequest(
+              fixture,
+              versionId,
+              other,
+              other === 'approve'
+                ? {
+                    expectedContractRevision: revision,
+                    acknowledgedWarningCodes: [],
+                  }
+                : other === 'reject'
                   ? {
                       expectedContractRevision: revision,
-                      acknowledgedWarningCodes: [],
+                      reason: 'Race rejection',
                     }
-                  : other === 'reject'
-                    ? {
-                        expectedContractRevision: revision,
-                        reason: 'Race rejection',
-                      }
-                    : {
-                        ...signaturePayload(),
-                        expectedContractRevision: revision,
-                      },
-                'c6-race-other-' + revisionFirst,
-              );
-        const blocker = await pool.connect();
-        let first: Promise<Response> | undefined,
-          second: Promise<Response> | undefined;
-        try {
-          await blocker.query('BEGIN');
-          const pid = (
-            await blocker.query<{ pid: number }>(
-              'SELECT pg_backend_pid() AS pid',
-            )
-          ).rows[0]?.pid;
-          if (pid === undefined) throw new Error('No blocker');
-          await blocker.query(
-            'SELECT id FROM contracts WHERE opportunity_id=$1 FOR UPDATE',
-            [fixture.opportunityId],
-          );
-          first = (revisionFirst ? revise : competitor)();
-          const firstPid = await waitForBlocker(pid);
-          second = (revisionFirst ? competitor : revise)();
-          await waitForBlocker(firstPid, pid);
-          await blocker.query('COMMIT');
-          expect((await first).status).toBe(201);
-          expect((await second).status).toBe(409);
-          expect(await json(await second)).toMatchObject({
-            code:
-              revisionFirst && other !== 'new'
-                ? 'CONTRACT_VERSION_SUPERSEDED'
-                : 'STALE_CONTRACT_REVISION',
-          });
-        } finally {
-          await blocker.query('ROLLBACK');
-          blocker.release();
-          await Promise.allSettled(
-            [first, second].filter((item) => item !== undefined),
-          );
-        }
+                  : {
+                      ...signaturePayload(),
+                      expectedContractRevision: revision,
+                    },
+              'c6-race-other-' + revisionFirst,
+            );
+      const blocker = await pool.connect();
+      let first: Promise<Response> | undefined,
+        second: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('No blocker');
+        await blocker.query(
+          'SELECT id FROM contracts WHERE opportunity_id=$1 FOR UPDATE',
+          [fixture.opportunityId],
+        );
+        first = (revisionFirst ? revise : competitor)();
+        const firstPid = await waitForBlocker(pid);
+        second = (revisionFirst ? competitor : revise)();
+        await waitForBlocker(firstPid, pid);
+        await blocker.query('COMMIT');
+        expect((await first).status).toBe(201);
+        expect((await second).status).toBe(409);
+        expect(await json(await second)).toMatchObject({
+          code:
+            revisionFirst && other !== 'new'
+              ? 'CONTRACT_VERSION_SUPERSEDED'
+              : 'STALE_CONTRACT_REVISION',
+        });
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await Promise.allSettled(
+          [first, second].filter((item) => item !== undefined),
+        );
       }
     },
   );

@@ -177,3 +177,24 @@ live Clerk, backend or external-provider smoke tests.
 [Issue #398](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/398) adds the server-counted **Company summary** of [Operational Dashboard PRD §17.2](../../../../../docs/product/release-1-operational-dashboard-acceptance-prd.md#172-company-summaries): Active Clients, Open Projects and Overdue Tasks, each shown only when the reader holds the read that owns its records. In Prisme the labelled region sits between the overview hero and the capability grid and adapts the `/ui-baseline` Dashboard metric card (icon, label, value, one-line definition) to the overview's fine borders; Classic shows the same region as plain cards below the home welcome text. There is no chart, trend, target, action banner or synthesized value. `OperationalHome` owns its one `GET /operational-home` read, Refresh/Retry, fail-closed parsing and late-reply suppression; its `OverdueTasksPanel` child owns the on-demand `GET /overdue-tasks` read. App only mounts the region behind its existing Client, Project and Task predicates, keys it by session, Client authority generation and actor authority, and passes the existing Clients, Projects (clearing the App-held Client filter) and #377 Task-open intents. Returning to the Prisme overview re-reads the summary; Classic keeps the home mounted, so **Refresh Company summary** is its only re-read. `OperationalHome.test.tsx` and `App.operational-home.test.tsx` prove the states, copy, drill-downs, focus and Company-switch suppression; `e2e/client-project-navigation.spec.ts` proves the home journey in both frames at 1440px and 390px with intercepted contracts and writes `-operational-home*.png` captures through `testInfo.outputPath`. The server counts are proven by `apps/api/src/operational-home/operational-home.rest.test.ts` on PostgreSQL.
 
 [Issue #416](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/416) adds **My attention** above those cards from the same `GET /operational-home` read. It shows at most ten of the reader's own open, readable Tasks that are overdue, critical, blocked or due within seven days, with the full match count and the exact governed order. `MyAttention` displays every matching rule and the existing Task, Project and Client facts, opens a row through the #377 Task-in-Project intent and opens the existing My Tasks section. An absent Task read omits the block; the shared home loading, refusal, error, refresh and authority key still own every response. The response parser validates the row bound, total, rules and calendar-day consistency before rendering. `operational-home-attention.rest.test.ts`, `MyAttention.test.tsx`, `App.operational-home.test.tsx` and `e2e/client-project-navigation.spec.ts` prove the server, component, App and two-frame boundaries respectively.
+
+## Complete My attention drill-down — issue #764
+
+The ten-row preview keeps its governed rules and order. **See all attention Tasks**
+opens a Home-local panel whose separate Task-owned `GET /attention-tasks` read
+returns the full total and fixed 25-row pages. A separately labelled **Open ordinary
+My Tasks** action retains the existing unfiltered destination. The panel shares
+literal Task facts and every rule label with the preview, uses the existing exact
+Task-in-Project intent, and offers Previous, Next, Refresh and Close with focus
+return. Its current-authority lifetime remains App's existing key; close, newer
+reads and retirement suppress late replies even when transport ignores abort.
+Locale changes preserve page, literal nodes, focus and pending reads.
+
+`App.attention-tasks.test.tsx` owns the original ready-preview navigation tracer;
+`App.attention-lifecycle.test.tsx` owns public HTTP refusal, retirement, date/page
+and four-locale continuity. The existing attention REST owner proves the complete
+set, snapshot, count/prefix agreement and current authority on disposable PostgreSQL.
+The registered `personal-attention.acceptance.spec.ts` exercises the actual pages,
+exact Task completion/reload, four locales and styled controls at 1440px and 390px.
+Original viewport screenshots use `testInfo.outputPath` at the Home entry, page
+header/controls and exact Task; generated evidence remains outside Git.

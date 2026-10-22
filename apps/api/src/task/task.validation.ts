@@ -160,6 +160,13 @@ export function assignedTasksQuery(value: unknown): void {
 }
 /** Fixed-size due-soon pages accept only one nonnegative safe-integer offset. */
 export function dueSoonTasksQuery(value: unknown): { offset: number } {
+  return taskPageOffset(value);
+}
+/** Attention pages retain the same strict offset-only public input contract. */
+export function attentionTasksQuery(value: unknown): { offset: number } {
+  return taskPageOffset(value);
+}
+function taskPageOffset(value: unknown): { offset: number } {
   const row = object(value);
   keys(row, ['offset']);
   if (row.offset === undefined) return { offset: 0 };

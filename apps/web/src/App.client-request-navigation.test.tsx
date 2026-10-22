@@ -146,7 +146,9 @@ function respond(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status });
 }
 
-function installTransport(options: { united?: boolean } = {}): Transport {
+function installTransport(
+  options: { united?: boolean; personalEmpty?: boolean } = {},
+): Transport {
   const state: Transport = {
     united: options.united ?? false,
     companyClientRead: true,
@@ -180,6 +182,13 @@ function installTransport(options: { united?: boolean } = {}): Transport {
         return respond({ items: [], next_cursor: null });
       if (path.includes('/commercial-intake/requests?')) {
         state.requestListReads += 1;
+        // A fresh read after reassignment may omit an already opened detail.
+        if (
+          options.personalEmpty &&
+          new URL(path, 'http://localhost').searchParams.get('view') ===
+            'mine_open'
+        )
+          return respond({ items: [] });
         return respond({
           items:
             companyContextId === companyB.id
@@ -402,6 +411,39 @@ describe('Client dossier and Client Request navigation through App', () => {
     vi.unstubAllGlobals();
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
+  });
+
+  it('keeps the exact readable v1 Request mounted when a fresh personal list no longer contains it', async () => {
+    const transport = installTransport({ personalEmpty: true });
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await openLoadedRequests();
+    await openRequest('First Client Request');
+    const region = within(requestsRegion());
+    expect(
+      await region.findByText('Original source of First Client Request'),
+    ).toBeVisible();
+    changeValue(
+      region.getByRole('combobox', { name: 'Request view' }),
+      'mine_open',
+    );
+    await waitFor(() => expect(transport.requestListReads).toBe(2));
+    expect(
+      region.getByText('Original source of First Client Request'),
+    ).toBeVisible();
+    expect(
+      region.queryByRole('button', { name: 'Edit next action' }),
+    ).not.toBeInTheDocument();
+    expect(transport.mutations).toEqual([]);
+    fireEvent.click(region.getByRole('button', { name: 'Back to Requests' }));
+    expect(
+      await region.findByText(
+        'No open cases are assigned to you in Company A.',
+      ),
+    ).toBeVisible();
+    changeValue(region.getByRole('combobox', { name: 'Request view' }), 'all');
+    await waitFor(() => expect(listedRequests()).toHaveLength(3));
+    expect(transport.requestListReads).toBe(3);
+    expect(transport.mutations).toEqual([]);
   });
 
   it('opens one dossier its loaded Requests by identity and returns to that dossier', async () => {

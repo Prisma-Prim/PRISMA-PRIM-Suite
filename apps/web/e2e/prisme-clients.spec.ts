@@ -425,6 +425,117 @@ test('keeps Director fields and ordered Contacts through validation and an opaqu
   const second = page.getByRole('group', { name: 'Contact 2', exact: true });
   await second.getByLabel('Contact name').fill('Ion');
   await second.getByLabel('Contact email').fill('ion@example.test');
+  if (testInfo.project.name === 'desktop') {
+    await test.step('keeps the language picker clear of the focused Contact', async () => {
+      const language = page.getByRole('combobox', {
+        name: 'Interface language',
+        exact: true,
+      });
+      const contactName = first.getByLabel('Contact name');
+      await expectValue(contactName, 'Ana');
+      await expectValue(second.getByLabel('Contact email'), 'ion@example.test');
+      await language.focus();
+      await language.press('Space');
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await language.press('Escape');
+      await expect(language).toBeFocused();
+      await contactName.evaluate((field) => {
+        if (!(
+          field instanceof HTMLInputElement ||
+          field instanceof HTMLTextAreaElement
+        ))
+          throw new Error('Expected an editable Contact name field.');
+        const documentTop = field.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo(
+          0,
+          Math.max(0, documentTop - (window.innerHeight - 64)),
+        );
+        field.focus({ preventScroll: true });
+      });
+      await expect(contactName).toBeFocused();
+      await expect(contactName).toBeInViewport({ ratio: 1 });
+      await expectValue(contactName, 'Ana');
+      await expect(language).toHaveAttribute('aria-expanded', 'false');
+      const geometry = await contactName.evaluate((field) => {
+        const picker = document.querySelector('.interface-locale-control');
+        if (!picker) throw new Error('Expected the visible language picker.');
+        function rectangle(element: Element) {
+          const bounds = element.getBoundingClientRect();
+          const visibleWidth = Math.max(
+            0,
+            Math.min(bounds.right, window.innerWidth) -
+              Math.max(bounds.left, 0),
+          );
+          const visibleHeight = Math.max(
+            0,
+            Math.min(bounds.bottom, window.innerHeight) -
+              Math.max(bounds.top, 0),
+          );
+          return {
+            top: bounds.top,
+            right: bounds.right,
+            bottom: bounds.bottom,
+            left: bounds.left,
+            width: bounds.width,
+            height: bounds.height,
+            visibleWidth,
+            visibleHeight,
+            visibleArea: visibleWidth * visibleHeight,
+          };
+        }
+        const fieldBounds = rectangle(field);
+        const pickerBounds = rectangle(picker);
+        return {
+          field: fieldBounds,
+          picker: pickerBounds,
+          overlap: {
+            width: Math.max(
+              0,
+              Math.min(fieldBounds.right, pickerBounds.right) -
+                Math.max(fieldBounds.left, pickerBounds.left),
+            ),
+            height: Math.max(
+              0,
+              Math.min(fieldBounds.bottom, pickerBounds.bottom) -
+                Math.max(fieldBounds.top, pickerBounds.top),
+            ),
+          },
+          viewport: { width: window.innerWidth, height: window.innerHeight },
+          scroll: {
+            x: window.scrollX,
+            y: window.scrollY,
+            width: document.documentElement.scrollWidth,
+            height: document.documentElement.scrollHeight,
+          },
+          fieldFocused: document.activeElement === field,
+          pickerExpanded: document
+            .getElementById('interface-locale')
+            ?.getAttribute('aria-expanded'),
+        };
+      });
+      await testInfo.attach('language-picker-contact-name-geometry.json', {
+        body: JSON.stringify(geometry, null, 2),
+        contentType: 'application/json',
+      });
+      await page.screenshot({
+        path: testInfo.outputPath('language-picker-contact-name-viewport.png'),
+      });
+      expect(geometry.field.visibleArea).toBeGreaterThan(0);
+      expect(geometry.fieldFocused).toBe(true);
+      expect(
+        geometry.overlap.width * geometry.overlap.height,
+        'The closed interface language picker must not cover the focused Contact name',
+      ).toBe(0);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await expect(language).toBeInViewport({ ratio: 1 });
+      await language.focus();
+      await language.press('Space');
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await language.press('Escape');
+      await expect(language).toBeFocused();
+      expect(submissions).toBe(0);
+    });
+  }
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: testInfo.outputPath('clients-enriched-registration.png'),
