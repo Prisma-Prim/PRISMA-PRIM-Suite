@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634; remaining capability Draft\
-**Version:** 0.9\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review; remaining capability Draft\
+**Version:** 0.10\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -700,3 +700,80 @@ Task assignment/completion/reopening, historical original Clients and migration
 preservation. Real App desktop 1440px and narrow 390px journeys prove selection,
 creation, reload, independent Task outcome, unchanged retry, authority loss,
 locale continuity and horizontal fit with screenshots from `testInfo.outputPath`.
+
+## 25. Bounded My open Projects read
+
+**Status: Approved bounded read convenience; runtime not delivered.**
+The coordinating agent approved this normalization on 2026-10-21 after ordered
+Standards and Spec agent reviews under Dan's delegated synthesis and maximum-
+progress direction. It adds no first-tenant evidence, assignment, lifecycle rule
+or historical MVP capability credit.
+
+An authorized Project reader may choose **My open Projects** in the existing
+directory. It selects Projects whose current stored responsible Workspace
+Membership (§21) equals the server actor's current Membership, and whose current
+lifecycle is `preparatory`, `active` or `on_hold` (§23). Creator, Task assignment,
+display name and historical responsibility do not establish this selection.
+Unassigned, other-responsible, completed and cancelled Projects are excluded.
+
+This is a subset of the same currently readable active-Company directory, with
+the same captured Project Access v1/v2, independent Company context and original
+Client/read relationship requirements. Responsibility grants no access. Preserve
+active or superseded original Client behavior, Company/Workspace isolation, row
+shape and creation-time then identifier order. No eligibility lookup, directory
+of people, new permission, grant, schema, count, Activity event, command receipt,
+version, Client fence, automatic action or background polling is introduced.
+
+The default remains **All Projects**, retaining its current API and callers.
+Only the new optional `view=mine_open` selector changes the list predicate. Its
+namespace accepts exactly one scalar `mine_open`; repeated, array/object and
+unknown view values, or additional query keys accompanying that selector, are
+invalid. Omitted `view` retains the existing legacy ignored-query behavior.
+Workspace, Company and Membership authority are never supplied through a query.
+The Project owner filters stored rows; the browser does not issue one
+responsibility request per row or reinterpret cached detail as list authority.
+
+The view intersects the existing text-or-exact-Client-dossier restriction rather
+than replacing it. All retains its Include closed choice; Mine is always open-only
+and does not offer a conflicting closed inclusion. A local view switch preserves
+All's choice for return. Explicit **Home Open Projects** navigation selects All,
+open-only and no Client restriction, preserving the count's existing destination.
+An explicit Client-to-Projects directory navigation selects All, open-only and
+that exact dossier; the user may then choose Mine within it. Existing external
+navigation's handling of All's closed inclusion remains unchanged. A separately
+requested readable Project or Task may open outside the current list subset,
+without changing Mine or treating its absence from that subset as access denial.
+The existing pending-registration and exact-target navigation safeguards remain.
+
+A view read replaces only directory state. It cannot reset selected detail,
+manual or Template registration drafts, Task/Document work, or an uncertain
+command's exact payload and key. Do not use the existing destructive full reload
+to change the view. Newer list reads retire older list replies; Company, session,
+Membership, assignment and permission changes retain the existing broader
+retirement. Client union/reversal re-reads the selected view under the current
+identity revision before applying an exact dossier restriction.
+
+Confirmed registrations keep their normal detail/command feedback. Their current
+unassigned creation result does not prove membership in Mine and must not be
+stitched into it. A current server Mine response determines directory membership.
+A later read reflects assignment or lifecycle changes; changing responsibility
+or closing an opened Project refreshes the Mine list without discarding its
+still-authorized detail or drafts. Unrelated concurrent changes become visible
+on explicit refresh; no continuous synchronization is promised.
+
+New view changes withhold the previous view's rows until the selected read
+settles. Loading, genuine empty, denied and unavailable with explicit same-view
+Retry remain distinct. A failed Mine read presents no previous-view rows or false
+zero. Existing All refresh behavior is preserved. The styled accessible view
+control remains available when Mine is empty or unavailable. Locale changes
+preserve view, literal search, exact dossier, detail, drafts and pending intent,
+without I/O; copy and controls use ro/ru/fr/en and the violet/yellow visual system.
+
+Public PostgreSQL REST proves the exact subset, current authority, strict new
+selector, legacy compatibility, reassignment/closure and absence of writes.
+Public App/HTTP tests prove view and navigation races, preserved drafts/command
+identity, Client identity refresh and independent detail opening. Registered real
+App/API/disposable-PostgreSQL desktop 1440px and narrow 390px journeys prove the
+normal selection, exact opening, four locales, keyboard focus and horizontal fit
+with inspected original screenshots. No new deadline, priority, assignment,
+workflow, export, provider or all-Companies behavior belongs to this approved slice.

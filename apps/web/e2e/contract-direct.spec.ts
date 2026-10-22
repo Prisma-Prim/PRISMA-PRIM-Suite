@@ -1,3 +1,5 @@
+import { contractRecordedLocales } from '../src/test/contract-recorded-values-fixture';
+import { chooseContractLocale } from './contract-recorded-values';
 import { contractMessages } from '../src/contract/contract.copy';
 import { contractDecisionMessages } from '../src/contract/contract-decision.copy';
 import { expect, test } from '@playwright/test';
@@ -96,8 +98,17 @@ for (const locale of interfaceLocales)
         key: (typeof contractDecisionMessages.keys)[number],
       ) => resolveMessage(contractDecisionMessages, locale, key);
       let head = 0;
-      const attempts: Array<{ body: string | null; key: string | undefined }> =
-          [],
+      const expected = contractRecordedLocales.find(
+        (item) => item.locale === locale,
+      );
+      if (!expected) throw new Error('Missing locale expectations');
+      const alternate = locale === 'fr' ? 'ru' : 'fr';
+      const attempts: Array<{
+          path: string;
+          company: string | undefined;
+          body: string | null;
+          key: string | undefined;
+        }> = [],
         calls: string[] = [];
       const run = () => ({
         id: 'direct-run-' + head,
@@ -113,6 +124,7 @@ for (const locale of interfaceLocales)
           'PARTY_TAX_ID_RECORDED',
           'PRICING_SNAPSHOT_COHERENT',
           'DIRECT_ORIGIN_REVIEWED',
+          'TERM_END_NOT_PASSED',
           'PROVISIONAL_MARKER_PRESENT',
         ].map((code) => ({
           code,
@@ -120,6 +132,11 @@ for (const locale of interfaceLocales)
         })),
       });
       const approvals: unknown[] = [];
+      const revisions: Array<{
+        body: string | null;
+        path: string;
+        company: string | undefined;
+      }> = [];
       const contract = (number = head) => ({
         id: 'contract-one',
         companyId: company.id,
@@ -155,6 +172,23 @@ for (const locale of interfaceLocales)
                     before: ' Exact direct scope ',
                     after: 'Revised direct scope',
                   },
+                  { field: 'termStartsOn', before: null, after: '2028-02-29' },
+                  { field: 'termEndsOn', before: null, after: '2028-03-01' },
+                  {
+                    field: 'pricingSnapshotId',
+                    before: 'snapshot-one',
+                    after: 'snapshot-small',
+                    beforeSnapshot: {
+                      id: 'snapshot-one',
+                      currency: 'EUR',
+                      total: '9007199254740993.01',
+                    },
+                    afterSnapshot: {
+                      id: 'snapshot-small',
+                      currency: 'MDL',
+                      total: '1234.50',
+                    },
+                  },
                 ]
               : [],
           recipient: {
@@ -169,17 +203,17 @@ for (const locale of interfaceLocales)
           scopeNote:
             number === 2 ? 'Revised direct scope' : ' Exact direct scope ',
           commercialConditions: null,
-          termStartsOn: null,
-          termEndsOn: null,
+          termStartsOn: number === 2 ? '2028-02-29' : null,
+          termEndsOn: number === 2 ? '2028-03-01' : null,
           specialConditions: null,
           changeSummary: null,
-          pricingSnapshotId: 'snapshot-one',
+          pricingSnapshotId: number === 2 ? 'snapshot-small' : 'snapshot-one',
           pricingSnapshot: {
-            id: 'snapshot-one',
-            currency: 'EUR',
-            subtotal: '300.00',
-            taxTotal: '45.00',
-            total: '345.00',
+            id: number === 2 ? 'snapshot-small' : 'snapshot-one',
+            currency: number === 2 ? 'MDL' : 'EUR',
+            subtotal: number === 2 ? '1234.50' : '9007199254740993.01',
+            taxTotal: '0.00',
+            total: number === 2 ? '1234.50' : '9007199254740993.01',
             lines: [],
           },
           decisionState: 'PENDING',
@@ -210,9 +244,15 @@ for (const locale of interfaceLocales)
             json: {
               items: [
                 {
+                  id: 'snapshot-small',
+                  currency: 'MDL',
+                  total: '1234.50',
+                  committedAt: '2026-10-08T09:00:00.000Z',
+                },
+                {
                   id: 'snapshot-one',
                   currency: 'EUR',
-                  total: '345.00',
+                  total: '9007199254740993.01',
                   committedAt: '2026-10-07T09:00:00.000Z',
                 },
               ],
@@ -225,6 +265,8 @@ for (const locale of interfaceLocales)
           });
         if (path.endsWith('/direct')) {
           attempts.push({
+            path,
+            company: sent.headers()['x-company-context-id'],
             body: sent.postData(),
             key: sent.headers()['idempotency-key'],
           });
@@ -263,6 +305,11 @@ for (const locale of interfaceLocales)
           });
         }
         if (path.endsWith('/versions') && sent.method() === 'POST') {
+          revisions.push({
+            path,
+            company: sent.headers()['x-company-context-id'],
+            body: sent.postData(),
+          });
           head = 2;
           return route.fulfill({
             status: 201,
@@ -328,6 +375,68 @@ for (const locale of interfaceLocales)
       await panel
         .getByRole('textbox', { name: copy('scope'), exact: true })
         .fill(' Exact direct scope ');
+      const snapshot = panel.getByRole('combobox', {
+        name: copy('snapshot'),
+        exact: true,
+      });
+      await snapshot.focus();
+      await snapshot.press('Enter');
+      await expect(
+        page.getByRole('option', {
+          name: 'MDL · ' + expected.trailingZero + ' · snapshot-small',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('option', {
+          name: 'EUR · ' + expected.amount + ' · snapshot-one',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath(
+          'c9-snapshot-options-' +
+            locale +
+            '-' +
+            testInfo.project.name +
+            '.png',
+        ),
+      });
+      expect(
+        await page
+          .getByRole('listbox')
+          .evaluate((element) => element.scrollWidth <= element.clientWidth),
+      ).toBe(true);
+      await snapshot.press('End');
+      await snapshot.press('Enter');
+      await expect(snapshot).toHaveAttribute('data-value', 'snapshot-one');
+      await expect(snapshot).toBeFocused();
+      await panel.screenshot({
+        path: testInfo.outputPath(
+          'c9-selected-' + locale + '-' + testInfo.project.name + '.png',
+        ),
+      });
+      const alternatePanel = page.getByRole('region', {
+        name: resolveMessage(contractMessages, alternate, 'title'),
+        exact: true,
+      });
+      const draftReads = calls.length;
+      await chooseContractLocale(page, locale, alternate);
+      await expect(
+        alternatePanel.getByRole('textbox', {
+          name: resolveMessage(contractDirectMessages, alternate, 'scope'),
+          exact: true,
+        }),
+      ).toHaveValue(' Exact direct scope ');
+      await expect(
+        alternatePanel.getByRole('combobox', {
+          name: resolveMessage(contractDirectMessages, alternate, 'snapshot'),
+          exact: true,
+        }),
+      ).toHaveAttribute('data-value', 'snapshot-one');
+      expect(calls).toHaveLength(draftReads);
+      await chooseContractLocale(page, alternate, locale);
+      expect(calls).toHaveLength(draftReads);
       await panel
         .getByRole('button', { name: copy('create'), exact: true })
         .focus();
@@ -338,6 +447,17 @@ for (const locale of interfaceLocales)
       await expect(
         panel.getByRole('textbox', { name: copy('reason'), exact: true }),
       ).toBeDisabled();
+      const uncertainReads = calls.length;
+      await chooseContractLocale(page, locale, alternate);
+      await expect(
+        alternatePanel.getByText(
+          resolveMessage(contractDirectMessages, alternate, 'uncertain'),
+          { exact: true },
+        ),
+      ).toBeVisible();
+      expect(calls).toHaveLength(uncertainReads);
+      await chooseContractLocale(page, alternate, locale);
+      expect(calls).toHaveLength(uncertainReads);
       await panel
         .getByRole('button', { name: copy('retry'), exact: true })
         .focus();
@@ -346,9 +466,24 @@ for (const locale of interfaceLocales)
         panel.getByText(copy('origin'), { exact: true }),
       ).toBeVisible();
       expect(attempts[1]).toEqual(attempts[0]);
+      expect(attempts[0]?.company).toBe(company.id);
+      expect(attempts[0]?.path).toContain(
+        '/contracts/opportunities/opportunity-one/direct',
+      );
+      expect(JSON.parse(attempts[0]?.body ?? 'null')).toMatchObject({
+        pricingSnapshotId: 'snapshot-one',
+      });
       await panel
         .getByRole('textbox', { name: copy('scope'), exact: true })
         .fill('Revised direct scope');
+      await panel.getByLabel(copy('start'), { exact: true }).fill('2028-02-29');
+      await panel.getByLabel(copy('end'), { exact: true }).fill('2028-03-01');
+      await snapshot.focus();
+      await snapshot.press('Enter');
+      await snapshot.press('Home');
+      await snapshot.press('Enter');
+      await expect(snapshot).toHaveAttribute('data-value', 'snapshot-small');
+
       await panel
         .getByRole('button', { name: copy('revise'), exact: true })
         .focus();
@@ -358,11 +493,81 @@ for (const locale of interfaceLocales)
           .getByRole('definition')
           .filter({ hasText: /^Revised direct scope$/ }),
       ).toBeVisible();
+      expect(revisions).toHaveLength(1);
+      expect(revisions[0]?.company).toBe(company.id);
+      expect(JSON.parse(revisions[0]?.body ?? 'null')).toMatchObject({
+        expectedContractRevision: 1,
+        scopeNote: 'Revised direct scope',
+        pricingSnapshotId: 'snapshot-small',
+        termStartsOn: '2028-02-29',
+        termEndsOn: '2028-03-01',
+      });
       await expect(
         panel
           .getByRole('region', { name: versionCopy('history'), exact: true })
           .getByRole('button'),
       ).toHaveCount(2);
+      const history = panel.getByRole('region', {
+        name: versionCopy('history'),
+        exact: true,
+      });
+
+      await expect(
+        history.getByText(
+          versionCopy('before') + ': snapshot-one · EUR · ' + expected.amount,
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        history.getByText(
+          versionCopy('after') +
+            ': snapshot-small · MDL · ' +
+            expected.trailingZero,
+          { exact: true },
+        ),
+      ).toBeVisible();
+      await expect(
+        history.getByText(versionCopy('after') + ': ' + expected.start, {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        history.getByText(versionCopy('after') + ': ' + expected.end, {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await history
+        .getByRole('button', {
+          name: versionCopy('version') + ' 1',
+          exact: true,
+        })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(
+        history.getByRole('button', {
+          name: versionCopy('version') + ' 1',
+          exact: true,
+        }),
+      ).toBeDisabled();
+      await expect(
+        panel
+          .getByRole('definition')
+          .filter({ hasText: /^ Exact direct scope $/u }),
+      ).toBeVisible();
+      expect(calls.some((path) => path.endsWith('/versions/version-1'))).toBe(
+        true,
+      );
+      await history
+        .getByRole('button', {
+          name: versionCopy('version') + ' 2',
+          exact: true,
+        })
+        .click();
+      await expect(
+        panel
+          .getByRole('definition')
+          .filter({ hasText: /^Revised direct scope$/u }),
+      ).toBeVisible();
       await panel
         .getByRole('button', { name: decisionCopy('approve'), exact: true })
         .click();
