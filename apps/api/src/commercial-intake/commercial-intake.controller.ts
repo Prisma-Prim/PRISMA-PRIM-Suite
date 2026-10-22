@@ -41,8 +41,9 @@ export class CommercialIntakeController {
     @Req() request: ActorContextRequest,
     @Query('limit') limit: unknown,
     @Query('cursor') cursor: unknown,
+    @Query() viewQuery: unknown,
   ) {
-    return this.intake.list(actorFrom(request), limit, cursor);
+    return this.intake.list(actorFrom(request), { limit, cursor, viewQuery });
   }
 
   @Get(':requestId')
