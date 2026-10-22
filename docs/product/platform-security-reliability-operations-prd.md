@@ -57,6 +57,12 @@ Schema and deployment changes use reviewed migrations, compatible rollout plans 
 
 ## 7. Observability
 
+The [Processing Efficiency PRD](processing-efficiency-prd.md) owns the proposed
+equivalent-work qualification and resource-bounded processing contract, with
+[replayable local evidence](../agents/processing-efficiency-evidence.md). Its Draft
+status and synthetic measurements do not establish a production SLA, deployment,
+new upload limit or approval of a worker/storage implementation.
+
 Metrics, logs and traces are tenant-safe, structured and actionable. They expose system health, latency, queue/provider failures, security-relevant anomalies and recovery progress without duplicating sensitive business content.
 
 Business Activity Log remains the authority for user-visible critical actions.
