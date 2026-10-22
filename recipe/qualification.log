@@ -1,0 +1,41 @@
+PASS node: Node v24.19.0 is checked against >=24.0.0 <25.0.0; CI pins 24.
+PASS pnpm: pnpm 11.20.0; repository expects 11.20.0.
+PASS workspace: pnpm-workspace.yaml is present.
+PASS lockfile: pnpm-lock.yaml is present.
+PASS dependencies: The root node_modules directory is present.
+PASS chromium: Playwright Chromium is installed and executable.
+SKIP database-variables: Database variables are not required by the selected profile.
+SKIP database-safety: Database target safety is not required by the selected profile.
+SKIP postgres: PostgreSQL connectivity is not required by the selected profile.
+matching Playwright executable exists
+Scope: all 3 workspace projects
+✓ Lockfile passes supply-chain policies (verified 8m ago)
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +562
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /workspace/prisma-cloud-tools/cache/pnpm-store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 562, reused 562, downloaded 0, added 562, done
+
+devDependencies:
++ @eslint/js 10.0.1
++ eslint 10.8.0
++ globals 17.9.0
++ mdast-util-from-markdown 2.0.3
++ prettier 3.9.6
++ typescript 5.9.3
++ typescript-eslint 8.66.0
+
+Done in 2.3s using pnpm v11.20.0
+PASS node: Node v24.19.0 is checked against >=24.0.0 <25.0.0; CI pins 24.
+PASS pnpm: pnpm 11.20.0; repository expects 11.20.0.
+PASS workspace: pnpm-workspace.yaml is present.
+PASS lockfile: pnpm-lock.yaml is present.
+PASS dependencies: The root node_modules directory is present.
+PASS chromium: Playwright Chromium is installed and executable.
+SKIP database-variables: Database variables are not required by the selected profile.
+SKIP database-safety: Database target safety is not required by the selected profile.
+SKIP postgres: PostgreSQL connectivity is not required by the selected profile.
+PASS: reuse and isolated installation preserve primary module metadata, dependency links and executable shims.

@@ -1,0 +1,3 @@
+$ prettier --check .
+sh: 1: prettier: not found
+[ELIFECYCLE] Command failed.
