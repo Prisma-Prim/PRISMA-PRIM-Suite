@@ -143,6 +143,39 @@ export const assignmentLocaleCases = [
 
 export const assignmentBundleCases = [
   {
+    value: 'ideas-reader',
+    canonical: 'Company Ideas Reader',
+    version: 'v1',
+    labels: {
+      ro: 'Cititor de idei',
+      ru: 'Читатель идей',
+      fr: 'Lecteur des idées',
+      en: 'Ideas Reader',
+    },
+  },
+  {
+    value: 'ideas-recorder',
+    canonical: 'Company Ideas Recorder',
+    version: 'v1',
+    labels: {
+      ro: 'Înregistrator de idei',
+      ru: 'Регистратор идей',
+      fr: 'Rédacteur des idées',
+      en: 'Ideas Recorder',
+    },
+  },
+  {
+    value: 'ideas-reviewer',
+    canonical: 'Company Ideas Reviewer',
+    version: 'v1',
+    labels: {
+      ro: 'Evaluator de idei',
+      ru: 'Рецензент идей',
+      fr: 'Évaluateur des idées',
+      en: 'Ideas Reviewer',
+    },
+  },
+  {
     value: 'company-context',
     canonical: 'Company Context Access',
     version: null,
