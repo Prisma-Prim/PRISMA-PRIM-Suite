@@ -3589,3 +3589,16 @@ Standards and Spec axes, the [coordinator approved this bounded contract](https:
 This records agent product review under delegated authority, not personal review
 by Dan, runtime delivery or broader business approval.
 The separate ordinary-complaint contract still requires its own normalization.
+
+### 34.9 Complete existing My attention drill-down — 2026-10-21
+
+Under Dan's standing instruction to complete safely derivable Sarcina journeys
+and delegated agent product review, the coordinator approves the bounded complete
+read behind the existing My attention preview. Dashboard PRD §20 owns the exact
+behavior and inherits §17.3's four rules, ordering, own-readable-Task set and
+§17.1's server-date basis. Fixed25-row pages reuse the delivered upcoming-view
+interaction precedent; no permission, urgency policy, automation, schema or
+external integration is inferred. This is a reversible navigation/read choice,
+not newly collected Iurie evidence or a new numbered DEC. Same-issue canonical
+normalization/local work is allowed after ordered agent review; publication
+priority, full local verification and delivery-credit boundaries remain intact.

@@ -11,7 +11,8 @@ import {
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { constants as osConstants, tmpdir } from 'node:os';
+import { performance } from 'node:perf_hooks';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -78,8 +79,9 @@ if (args[0] === 'load' && (!fs.existsSync(args[2]) || fs.readFileSync(args[2], '
   );
   chmodSync(binary, 0o755);
   const directory = join(root, 'cache');
-  const invoke = (mode) =>
-    spawnSync(
+  const invoke = (mode) => {
+    const startedAt = performance.now();
+    const result = spawnSync(
       process.execPath,
       [join(root, 'scripts/ci-packaging-images.mjs'), mode],
       {
@@ -95,6 +97,35 @@ if (args[0] === 'load' && (!fs.existsSync(args[2]) || fs.readFileSync(args[2], '
         timeout: 15_000,
       },
     );
+    const elapsedMilliseconds = Math.round(performance.now() - startedAt);
+    const errorCode = result.error?.code;
+    const signal = result.signal;
+    return {
+      ...result,
+      processDiagnostic: {
+        errorCode: [
+          'ETIMEDOUT',
+          'ENOENT',
+          'EACCES',
+          'EPERM',
+          'ENOBUFS',
+          'ENOMEM',
+          'EAGAIN',
+        ].includes(errorCode)
+          ? errorCode
+          : errorCode === undefined
+            ? null
+            : 'unclassified',
+        signal:
+          signal === null ||
+          (typeof signal === 'string' &&
+            Object.hasOwn(osConstants.signals, signal))
+            ? signal
+            : 'unclassified',
+        elapsedMilliseconds,
+      },
+    };
+  };
   return {
     root,
     directory,
@@ -106,13 +137,17 @@ if (args[0] === 'load' && (!fs.existsSync(args[2]) || fs.readFileSync(args[2], '
   };
 }
 
-test('cold acquire verifies pinned bytes and warm load works without any registry operation', () => {
+test('cold acquire verifies pinned bytes and warm load works without any registry operation', (t) => {
   const setup = fixture();
   try {
     const cold = setup.invoke('acquire');
+    t.diagnostic(
+      JSON.stringify({ mode: 'acquire', ...cold.processDiagnostic }),
+    );
     assert.equal(cold.status, 0, cold.stdout + cold.stderr);
     writeFileSync(setup.log, '');
     const warm = setup.invoke('load');
+    t.diagnostic(JSON.stringify({ mode: 'load', ...warm.processDiagnostic }));
     assert.equal(warm.status, 0, warm.stdout + warm.stderr);
     const calls = readFileSync(setup.log, 'utf8')
       .trim()

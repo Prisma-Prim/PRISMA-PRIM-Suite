@@ -988,6 +988,565 @@ withPostgres('Company commercial intake REST', () => {
     });
   });
 
+  it('selects only the current responsible membership open cases through the explicit list view', async () => {
+    const setup = await prepared();
+    const homonymHeaders = {
+      'x-test-external-subject': 'commercial-only-member',
+      'x-test-display-name': setup.actor.displayName,
+      'x-test-email': 'commercial-homonym@example.test',
+    };
+    const homonymResponse = await request('/access/current-actor', undefined, {
+      headers: homonymHeaders,
+    });
+    expect(homonymResponse.status).toBe(200);
+    const homonym = actorRecord(await homonymResponse.json());
+    expect(homonym.displayName).toBe(setup.actor.displayName);
+    expect(homonym.workspaceMembershipId).not.toBe(
+      setup.actor.workspaceMembershipId,
+    );
+    for (const path of [
+      '/company-context-assignments',
+      '/company-commercial-intake-assignments',
+    ])
+      await command(
+        path,
+        {
+          companyId: setup.company.id,
+          workspaceMembershipId: homonym.workspaceMembershipId,
+        },
+        `mine-open-homonym-${path}`,
+      );
+    expect(
+      await command(
+        '/company-opportunity-manager-assignments',
+        {
+          companyId: setup.company.id,
+          workspaceMembershipId: setup.actor.workspaceMembershipId,
+        },
+        'mine-open-manager',
+      ),
+    ).toMatchObject({ permissionSetVersion: 'v2', active: true });
+
+    const own: Array<ReturnType<typeof detail>> = [];
+    for (const subject of ['Own open case', 'Own held case', 'Own won case']) {
+      const created = detail(
+        await command(
+          '/commercial-intake/requests',
+          { ...representativeBody(), subject },
+          `mine-open-${subject}`,
+          setup.company.id,
+        ),
+      );
+      expect(created.initialOpportunity).toMatchObject({
+        status: 'OPEN',
+        version: 1,
+        responsibleWorkspaceMembershipId: setup.actor.workspaceMembershipId,
+      });
+      own.push(created);
+    }
+    const [open, held, won] = own;
+    if (!open || !held || !won) throw new Error('Expected three own cases.');
+    const otherResponse = await postIntakeAs(
+      setup.company.id,
+      { ...representativeBody(), subject: 'Homonymous other actor open case' },
+      'mine-open-homonym-capture',
+      homonymHeaders,
+    );
+    expect(otherResponse.status).toBe(201);
+    const other = detail(await otherResponse.json());
+    expect(other.initialOpportunity).toMatchObject({
+      status: 'OPEN',
+      responsibleWorkspaceMembershipId: homonym.workspaceMembershipId,
+    });
+
+    for (const [target, change] of [
+      [held, { status: 'ON_HOLD', reason: 'Client requested a pause' }],
+      [won, { status: 'WON' }],
+    ] satisfies Array<
+      [ReturnType<typeof detail>, { status: string; reason?: string }]
+    >) {
+      const response = await request(
+        `/commercial-intake/opportunities/${target.initialOpportunity.id}/outcome`,
+        setup.company.id,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': `mine-open-outcome-${target.id}`,
+          },
+          body: JSON.stringify({ expectedVersion: 1, ...change }),
+        },
+      );
+      expect(response.status).toBe(200);
+      const reloadedResponse = await request(
+        `/commercial-intake/requests/${target.id}`,
+        setup.company.id,
+      );
+      expect(reloadedResponse.status).toBe(200);
+      expect(
+        detail(await reloadedResponse.json()).initialOpportunity,
+      ).toMatchObject({
+        status: change.status,
+        version: 2,
+        responsibleWorkspaceMembershipId: setup.actor.workspaceMembershipId,
+      });
+    }
+
+    const allResponse = await request(
+      '/commercial-intake/requests',
+      setup.company.id,
+    );
+    expect(allResponse.status).toBe(200);
+    const all = listPage(await allResponse.json());
+    expect(all.items.map((item) => item.id).sort()).toEqual(
+      [open.id, held.id, won.id, other.id].sort(),
+    );
+    expect(listedResponsibleActor(all, other.id)).toEqual({
+      workspaceMembershipId: homonym.workspaceMembershipId,
+      displayName: setup.actor.displayName,
+    });
+    const response = await request(
+      '/commercial-intake/requests?view=mine_open',
+      setup.company.id,
+    );
+    expect(response.status).toBe(200);
+    const mine = listPage(await response.json());
+    expect(mine.items.map((item) => item.id).sort()).toEqual(
+      [open.id, held.id].sort(),
+    );
+    expect(mine).not.toHaveProperty('nextCursor');
+  });
+
+  it('validates only the new view namespace and preserves legacy query behavior', async () => {
+    const setup = await prepared();
+    for (const query of [
+      'view=',
+      'view=all',
+      'view=invalid',
+      'view=mine_open&view=mine_open',
+      'view=mine_open&view=invalid',
+      'view[]=mine_open',
+      'view[0]=mine_open',
+      'view[x]=mine_open',
+      'view%5Bx%5D=mine_open',
+      'view=mine_open&view[]=mine_open',
+      'view[x]=mine_open&view=mine_open',
+    ]) {
+      const response = await request(
+        `/commercial-intake/requests?${query}`,
+        setup.company.id,
+      );
+      expect(response.status, query).toBe(400);
+      expect(await response.json()).toMatchObject({ code: 'INVALID_PAGE' });
+    }
+    for (const query of [
+      '',
+      'view=mine_open',
+      'unrelatedUnknown=x',
+      'view=mine_open&unrelatedUnknown=x',
+      'status=WON&responsibleWorkspaceMembershipId=caller-selected',
+      'limit[x]=2',
+      'cursor[x]=invalid',
+    ]) {
+      const response = await request(
+        `/commercial-intake/requests${query ? `?${query}` : ''}`,
+        setup.company.id,
+      );
+      expect(response.status, query).toBe(200);
+      expect(await response.json()).toEqual({ items: [] });
+    }
+    for (const query of [
+      'view=mine_open&limit=51',
+      'view=mine_open&limit=0',
+      'view=mine_open&limit=2&limit=2',
+      'view=mine_open&cursor=invalid',
+      'view=mine_open&cursor=invalid&cursor=invalid',
+    ])
+      expect(
+        (
+          await request(
+            `/commercial-intake/requests?${query}`,
+            setup.company.id,
+          )
+        ).status,
+        query,
+      ).toBe(400);
+
+    const unassigned = entity(
+      await command('/companies', { displayName: 'Restricted' }, 'mine-denied'),
+    );
+    for (const query of ['view=', 'view[x]=mine_open', 'view=mine_open']) {
+      const response = await request(
+        `/commercial-intake/requests?${query}`,
+        unassigned.id,
+      );
+      expect(response.status).toBe(403);
+      expect(await response.text()).not.toContain('INVALID_PAGE');
+    }
+  });
+
+  it('pages the complete personal open set before positional bounds despite newer nonmatching Requests', async () => {
+    const setup = await preparedRestrictedMember();
+    const mine: string[] = [];
+    const others: string[] = [];
+    for (let index = 0; index < 26; index += 1) {
+      const created = detail(
+        await command(
+          '/commercial-intake/requests',
+          { ...representativeBody(), subject: `My page case ${index}` },
+          `mine-pagination-${index}`,
+          setup.company.id,
+        ),
+      );
+      mine.push(created.id);
+    }
+    for (let index = 0; index < 26; index += 1) {
+      const response = await postIntakeAs(
+        setup.company.id,
+        { ...representativeBody(), subject: `Newer colleague case ${index}` },
+        `other-pagination-${index}`,
+        setup.memberHeaders,
+      );
+      expect(response.status).toBe(201);
+      others.push(detail(await response.json()).id);
+    }
+    // Controlled microsecond order across the page boundary. Expectations use
+    // the independent fixture identities, never a copy of the product query.
+    await pool.query(
+      `UPDATE client_requests AS request
+          SET captured_at = TIMESTAMPTZ '2026-10-21 12:00:00+00'
+            + fixture.ordinality * INTERVAL '1 microsecond'
+         FROM unnest($1::uuid[]) WITH ORDINALITY AS fixture(id, ordinality)
+        WHERE request.id = fixture.id`,
+      [[...mine, ...others]],
+    );
+    const allResponse = await request(
+      '/commercial-intake/requests',
+      setup.company.id,
+    );
+    expect(allResponse.status).toBe(200);
+    expect(
+      listPage(await allResponse.json()).items.map((item) => item.id),
+    ).toEqual(others.slice(1).reverse());
+    const firstResponse = await request(
+      '/commercial-intake/requests?view=mine_open',
+      setup.company.id,
+    );
+    expect(firstResponse.status).toBe(200);
+    const first = listPage(await firstResponse.json());
+    expect(first.items.map((item) => item.id)).toEqual(mine.slice(1).reverse());
+    expect(first).not.toHaveProperty('total');
+    const cursor = first.nextCursor;
+    if (cursor === undefined)
+      throw new Error('Expected the older matching page.');
+    const decodedCursor: unknown = JSON.parse(
+      Buffer.from(cursor, 'base64url').toString('utf8'),
+    );
+    expect(decodedCursor).toEqual({
+      capturedAt: '2026-10-21T12:00:00.000002Z',
+      id: mine[1],
+    });
+    for (const query of [
+      `view=mine_open&cursor=${encodeURIComponent(cursor)}`,
+      `cursor=${encodeURIComponent(cursor)}`,
+    ]) {
+      const response = await request(
+        `/commercial-intake/requests?${query}`,
+        setup.company.id,
+      );
+      expect(response.status).toBe(200);
+      const page = listPage(await response.json());
+      expect(page.items.map((item) => item.id)).toEqual([mine[0]]);
+      expect(page).not.toHaveProperty('nextCursor');
+    }
+    const larger = await request(
+      '/commercial-intake/requests?view=mine_open&limit=50',
+      setup.company.id,
+    );
+    expect(larger.status).toBe(200);
+    const complete = listPage(await larger.json());
+    expect(complete.items.map((item) => item.id)).toEqual(
+      mine.slice().reverse(),
+    );
+    expect(complete).not.toHaveProperty('nextCursor');
+  });
+
+  it('reflects current reassignment and outcome while preserving detail and command authority outside the view', async () => {
+    const setup = await preparedRestrictedMember();
+    await command(
+      '/company-opportunity-manager-assignments',
+      {
+        companyId: setup.company.id,
+        workspaceMembershipId: setup.actor.workspaceMembershipId,
+      },
+      'mine-current-manager',
+    );
+    const original = detail(
+      await command(
+        '/commercial-intake/requests',
+        representativeBody(),
+        'mine-original',
+        setup.company.id,
+      ),
+    );
+    const colleagueResponse = await postIntakeAs(
+      setup.company.id,
+      representativeBody(),
+      'mine-colleague-original',
+      setup.memberHeaders,
+    );
+    expect(colleagueResponse.status).toBe(201);
+    const colleague = detail(await colleagueResponse.json());
+    async function mutate(input: {
+      opportunityId: string;
+      command: string;
+      body: unknown;
+    }): Promise<void> {
+      const response = await request(
+        `/commercial-intake/opportunities/${input.opportunityId}/${input.command}`,
+        setup.company.id,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': crypto.randomUUID(),
+          },
+          body: JSON.stringify(input.body),
+        },
+      );
+      expect(response.status).toBe(200);
+    }
+    async function personalIds(): Promise<string[]> {
+      const response = await request(
+        '/commercial-intake/requests?view=mine_open',
+        setup.company.id,
+      );
+      expect(response.status).toBe(200);
+      return listPage(await response.json()).items.map((item) => item.id);
+    }
+    expect(await personalIds()).toEqual([original.id]);
+    await mutate({
+      opportunityId: original.initialOpportunity.id,
+      command: 'responsible',
+      body: {
+        expectedVersion: 1,
+        workspaceMembershipId: setup.member.workspaceMembershipId,
+      },
+    });
+    expect(await personalIds()).toEqual([]);
+    const outside = await request(
+      `/commercial-intake/requests/${original.id}`,
+      setup.company.id,
+    );
+    expect(outside.status).toBe(200);
+    expect(detail(await outside.json())).toMatchObject({
+      capturedByWorkspaceMembershipId: setup.actor.workspaceMembershipId,
+      initialOpportunity: {
+        responsibleWorkspaceMembershipId: setup.member.workspaceMembershipId,
+      },
+    });
+    await mutate({
+      opportunityId: original.initialOpportunity.id,
+      command: 'next-action',
+      body: {
+        expectedVersion: 2,
+        nextAction: 'Still authorized for another responsible actor',
+      },
+    });
+    await mutate({
+      opportunityId: colleague.initialOpportunity.id,
+      command: 'responsible',
+      body: {
+        expectedVersion: 1,
+        workspaceMembershipId: setup.actor.workspaceMembershipId,
+      },
+    });
+    expect(await personalIds()).toEqual([colleague.id]);
+    const reassigned = await request(
+      `/commercial-intake/requests/${colleague.id}`,
+      setup.company.id,
+    );
+    expect(reassigned.status).toBe(200);
+    expect(detail(await reassigned.json())).toMatchObject({
+      capturedByWorkspaceMembershipId: setup.member.workspaceMembershipId,
+      initialOpportunity: {
+        responsibleWorkspaceMembershipId: setup.actor.workspaceMembershipId,
+      },
+    });
+    await mutate({
+      opportunityId: colleague.initialOpportunity.id,
+      command: 'outcome',
+      body: {
+        expectedVersion: 2,
+        status: 'ON_HOLD',
+        reason: 'Waiting for the Client',
+      },
+    });
+    expect(await personalIds()).toEqual([colleague.id]);
+    await mutate({
+      opportunityId: colleague.initialOpportunity.id,
+      command: 'outcome',
+      body: { expectedVersion: 3, status: 'WON' },
+    });
+    expect(await personalIds()).toEqual([]);
+    await mutate({
+      opportunityId: colleague.initialOpportunity.id,
+      command: 'next-action',
+      body: {
+        expectedVersion: 4,
+        nextAction: 'Still authorized after closure',
+      },
+    });
+  });
+
+  it('keeps the optional Client projection independent and reads without changing versions, receipts, events or the Client fence', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Personal projection Client' },
+        'mine-projection-client',
+        setup.company.id,
+      ),
+    );
+    const captured = await postIntakeAs(
+      setup.company.id,
+      { ...representativeBody(), clientAccountId: client.id },
+      'mine-projection-request',
+      setup.memberHeaders,
+    );
+    expect(captured.status).toBe(201);
+    const created = detail(await captured.json());
+    async function persistedState(): Promise<unknown> {
+      const result = await pool.query<{ state: unknown }>(
+        `SELECT jsonb_build_object(
+          'request', (SELECT to_jsonb(r) FROM client_requests r WHERE id = $1),
+          'opportunity', (SELECT to_jsonb(o) FROM opportunities o WHERE id = $2),
+          'clientFence', (SELECT to_jsonb(c) FROM client_accounts c WHERE id = $3),
+          'activity', (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM activity_log_events e),
+          'events', (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM commercial_intake_events e),
+          'captureReceipts', (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM commercial_intake_commands c),
+          'nextActionReceipts', (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM commercial_intake_next_action_commands c),
+          'responsibleReceipts', (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM commercial_intake_responsible_commands c),
+          'outcomeReceipts', (SELECT jsonb_agg(to_jsonb(c) ORDER BY id) FROM commercial_intake_outcome_commands c)
+        ) AS state`,
+        [created.id, created.initialOpportunity.id, client.id],
+      );
+      return result.rows[0]?.state;
+    }
+    const beforeVisible = await persistedState();
+    const visible = await request(
+      '/commercial-intake/requests?view=mine_open',
+      setup.company.id,
+      { headers: setup.memberHeaders },
+    );
+    expect(visible.status).toBe(200);
+    expect(listPage(await visible.json()).items).toMatchObject([
+      {
+        id: created.id,
+        clientDisplayName: 'Personal projection Client',
+        clientDossierId: client.id,
+      },
+    ]);
+    expect(await persistedState()).toEqual(beforeVisible);
+    const revokedClient = await request(
+      `/company-director-client-assignments/${setup.member.workspaceMembershipId}/${setup.company.id}`,
+      undefined,
+      {
+        method: 'DELETE',
+        headers: { 'idempotency-key': 'mine-revoke-client' },
+      },
+    );
+    expect(revokedClient.status).toBe(200);
+    const beforeHidden = await persistedState();
+    const hidden = await request(
+      '/commercial-intake/requests?view=mine_open',
+      setup.company.id,
+      { headers: setup.memberHeaders },
+    );
+    expect(hidden.status).toBe(200);
+    const hiddenPage = listPage(await hidden.json());
+    expect(hiddenPage.items.map((item) => item.id)).toEqual([created.id]);
+    expect(hiddenPage.items[0]).not.toHaveProperty('clientDisplayName');
+    expect(hiddenPage.items[0]).not.toHaveProperty('clientDossierId');
+    expect(await persistedState()).toEqual(beforeHidden);
+    const revokedIntake = await request(
+      `/company-commercial-intake-assignments/${setup.member.workspaceMembershipId}/${setup.company.id}`,
+      undefined,
+      { method: 'DELETE', headers: { 'idempotency-key': 'mine-revoke-read' } },
+    );
+    expect(revokedIntake.status).toBe(200);
+    expect(
+      (
+        await request(
+          '/commercial-intake/requests?view=mine_open',
+          setup.company.id,
+          { headers: setup.memberHeaders },
+        )
+      ).status,
+    ).toBe(403);
+  });
+
+  it.each(['v1', 'v2', 'v3', 'v4'])(
+    'keeps captured Intake %s read and next-action authority unchanged in the personal view',
+    async (capturedVersion) => {
+      const setup = await prepared();
+      const created = detail(
+        await command(
+          '/commercial-intake/requests',
+          representativeBody(),
+          `mine-version-capture-${capturedVersion}`,
+          setup.company.id,
+        ),
+      );
+      // Synthetic historical captured grant, using the existing legacy fixture
+      // pattern. The current production grant endpoint still captures v4.
+      const capturedGrant = await pool.query(
+        `UPDATE company_role_assignments SET permission_set_version = $1
+          WHERE workspace_membership_id = $2 AND company_id = $3
+            AND bundle = 'company_commercial_intake' AND revoked_at IS NULL`,
+        [capturedVersion, setup.actor.workspaceMembershipId, setup.company.id],
+      );
+      expect(capturedGrant.rowCount).toBe(1);
+      const response = await request(
+        '/commercial-intake/requests?view=mine_open',
+        setup.company.id,
+      );
+      expect(response.status).toBe(200);
+      expect(
+        listPage(await response.json()).items.map((item) => item.id),
+      ).toEqual([created.id]);
+      const saved = await request(
+        `/commercial-intake/opportunities/${created.initialOpportunity.id}/next-action`,
+        setup.company.id,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': `mine-version-save-${capturedVersion}`,
+          },
+          body: JSON.stringify({
+            expectedVersion: 1,
+            nextAction: '  Call {Client}  ',
+          }),
+        },
+      );
+      expect(saved.status).toBe(capturedVersion === 'v1' ? 403 : 200);
+      const reloaded = await request(
+        `/commercial-intake/requests/${created.id}`,
+        setup.company.id,
+      );
+      expect(reloaded.status).toBe(200);
+      expect(detail(await reloaded.json()).initialOpportunity).toMatchObject({
+        nextAction:
+          capturedVersion === 'v1'
+            ? representativeBody().opportunity.nextAction
+            : '  Call {Client}  ',
+        version: capturedVersion === 'v1' ? 1 : 2,
+      });
+    },
+  );
+
   it('paginates newest Requests with a stable bounded cursor and no count or Client metadata', async () => {
     const setup = await prepared();
     for (let index = 0; index < 27; index += 1)
@@ -1302,6 +1861,12 @@ withPostgres('Company commercial intake REST', () => {
     expect(
       await (await request('/commercial-intake/requests', other.id)).json(),
     ).toEqual({ items: [] });
+    const otherPersonal = await request(
+      '/commercial-intake/requests?view=mine_open',
+      other.id,
+    );
+    expect(otherPersonal.status).toBe(200);
+    expect(await otherPersonal.json()).toEqual({ items: [] });
     const hidden = await request(
       `/commercial-intake/requests/${created.id}`,
       other.id,
@@ -1324,6 +1889,17 @@ withPostgres('Company commercial intake REST', () => {
     );
     expect(foreignWorkspace.status).toBe(403);
     expect(await foreignWorkspace.text()).not.toContain(created.id);
+    const foreignPersonal = await request(
+      '/commercial-intake/requests?view=mine_open',
+      setup.company.id,
+      {
+        headers: {
+          'x-workspace-context-id': '00000000-0000-4000-8000-000000000996',
+        },
+      },
+    );
+    expect(foreignPersonal.status).toBe(403);
+    expect(await foreignPersonal.text()).not.toContain(created.id);
   });
 
   it('keeps a pre-union Client reference through union and reversal, then fences a new reference', async () => {
