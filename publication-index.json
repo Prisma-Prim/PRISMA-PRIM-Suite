@@ -1,0 +1,37 @@
+{
+  "status": "reviewed selected evidence, self-reported local execution",
+  "source": "3e4551e94b83bb85c4a4e66cffbf83ca0bd054f3",
+  "base": "0fae74e9e82be868bdca04a517834b4d42723170",
+  "integrationCheckout": "0349c4c5d9fe9393ddc0baa716fa7b7cce8fe26e",
+  "integrationTree": "adbafbd9c259e7e03fc54b4646bc8a5a57ba2e3b",
+  "issue": 788,
+  "pr": 796,
+  "runFinishedAt": "2026-10-22T19:45:21.290Z",
+  "reasonForOrphanRef": "GitHub release-upload host is outside this environment HTTP destination policy; approved small Git evidence-ref fallback used.",
+  "contents": "Complete final documentation gate report, manifest and logs; complete selected seven-recipe replay on the clean exact integration checkout, ordered self-review, lifecycle fault-check script/results and verified child-database cleanup. Historical performance prototypes and full application regressions are not re-attested.",
+  "replayProvenance": "Replay sourceCommit identifies integrationCheckout, the clean merge of source and base; it is not the pre-integration PR source head.",
+  "reviewDisposition": "One blocking automatic finding reproduced and fixed in source correction 3e4551e. Four extracted-parent lifecycle scenarios pass; no additional review requested.",
+  "retention": "Retain final compact manifest/report and linked evidence for 14 days after merge; operator removes bulky evidence after retention. No scheduled automation created.",
+  "files": [
+    {
+      "path": "manifest.json",
+      "bytes": 255461,
+      "sha256": "7f781439ac2f41f054a4e40ac4cf5845ee34a4f956ef18cc83eec21f895eef7d"
+    },
+    {
+      "path": "replay.jsonl",
+      "bytes": 53025,
+      "sha256": "29eea7e35c30d92861e390f953bc6cd3b4cfb594bf14e3b75323b21c7b807f02"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3669,
+      "sha256": "a0093fa0fa3f8d0df4d43e25b7256ee631eb1d964e1aa6c0aa9ce4d93d8f0106"
+    },
+    {
+      "path": "reviewed-evidence.tar.gz",
+      "bytes": 92754,
+      "sha256": "35f251efacb39bbbb28fb906a19fb54847f962ade190107508c6d97766f68e51"
+    }
+  ]
+}
