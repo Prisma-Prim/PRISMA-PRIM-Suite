@@ -109,6 +109,7 @@ export const operationalHomeCopy = {
       project: string;
       client: string;
     }) => `Open ${task} in ${project} (${client})`,
-    seeAll: 'See all in My Tasks',
+    seeAll: 'See all attention Tasks',
+    openMyTasks: 'Open ordinary My Tasks',
   },
 };
