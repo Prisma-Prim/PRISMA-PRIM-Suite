@@ -51,7 +51,12 @@ export async function startRecoveryApplication(input: {
       };
     },
   };
-  const pool = new Pool({ connectionString: input.databaseUrl });
+  const pool = new Pool({
+    connectionString: input.databaseUrl,
+    connectionTimeoutMillis: 10_000,
+    statement_timeout: 5_000,
+    query_timeout: 5_000,
+  });
   let application: INestApplication | undefined;
   let closed = false;
   const close = async () => {

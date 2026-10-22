@@ -95,11 +95,17 @@ is 128 MiB and each public response is bounded to 8 MiB; these are implementatio
 limits, not production capacity or policy promises.
 
 Wrong keys, corrupt/incompatible artifacts, shared/nonempty destinations,
-ordinary large objects and populated source aliases are refused. Restore uses
+preexisting default privileges, ordinary large objects and populated source aliases are refused. Restore uses
 one transaction with exit-on-error; public verification can still fail after a
 successful database restore. Either failure prohibits overall exercise success.
 A retry needs another fresh empty exclusive destination; the command never drops
 or overwrites it, the source or retained material to make retry possible.
+
+Direct SQL queries and queries in the command's private public-verification
+application have a five-second technical safety cap, separate from caller-supplied
+recovery bounds. Handled cancellation closes the command's uniquely named direct
+database sessions; its private application drains bounded queries before closing
+its pool. Neither path terminates the external workload.
 
 A failed backup can leave a complete encrypted artifact if later completion
 publication fails. Preserve it and inspect the incomplete outcome rather than

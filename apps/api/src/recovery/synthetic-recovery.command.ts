@@ -145,6 +145,45 @@ async function completeOwnedCleanup(
   }
 }
 
+function recoveryDatabaseClient(input: {
+  readonly databaseUrl: string;
+  readonly signal?: AbortSignal;
+}) {
+  input.signal?.throwIfAborted();
+  const applicationName = `prisma-recovery-${randomBytes(12).toString('hex')}`;
+  const client = new Client({
+    connectionString: input.databaseUrl,
+    connectionTimeoutMillis: 10_000,
+    statement_timeout: 5_000,
+    query_timeout: 5_000,
+    application_name: applicationName,
+  });
+  let closing: Promise<void> | undefined;
+  const abort = () => {
+    // Cleanup below awaits this same promise and preserves a close failure.
+    void close().catch(() => undefined);
+  };
+  function close(): Promise<void> {
+    input.signal?.removeEventListener('abort', abort);
+    closing ??= (async () => {
+      try {
+        await client.end();
+      } finally {
+        // Disconnecting a socket need not wake a server blocked on a lock.
+        // This separate bounded connection can close only our named session.
+        if (input.signal?.aborted)
+          await terminateOwnedDatabaseSessions({
+            databaseUrl: input.databaseUrl,
+            applicationName,
+          });
+      }
+    })();
+    return closing;
+  }
+  input.signal?.addEventListener('abort', abort, { once: true });
+  return { client, close };
+}
+
 function localDatabaseName(connection: URL): string {
   const name = decodeURIComponent(connection.pathname.slice(1));
   // libpq treats '=' and URI-shaped values as connection information rather
@@ -565,12 +604,7 @@ async function assertPersistedRecoveryPrincipals(input: {
   readonly principals: readonly RecoveryPrincipal[];
   readonly signal?: AbortSignal;
 }): Promise<void> {
-  const client = new Client({
-    connectionString: input.databaseUrl,
-    connectionTimeoutMillis: 10_000,
-    statement_timeout: 5_000,
-    query_timeout: 5_000,
-  });
+  const { client, close } = recoveryDatabaseClient(input);
   try {
     input.signal?.throwIfAborted();
     await client.connect();
@@ -591,7 +625,7 @@ async function assertPersistedRecoveryPrincipals(input: {
     input.signal?.throwIfAborted();
   } finally {
     await completeOwnedCleanup([
-      { name: 'principal verification client', cleanup: () => client.end() },
+      { name: 'principal verification client', cleanup: close },
     ]);
   }
 }
@@ -666,9 +700,9 @@ async function restoreTarget(
   });
   if (version.stdout.trim() !== dumpVersion.replace('pg_dump', 'pg_restore'))
     throw new RecoveryRefusal('incompatible-postgresql-restore-tool');
-  const client = new Client({
-    connectionString: config.database.url,
-    connectionTimeoutMillis: 10_000,
+  const { client, close } = recoveryDatabaseClient({
+    databaseUrl: config.database.url,
+    signal,
   });
   try {
     await client.connect();
@@ -683,6 +717,7 @@ async function restoreTarget(
       EXISTS(SELECT 1 FROM pg_proc AS p JOIN pg_namespace AS n ON n.oid=p.pronamespace WHERE n.nspname='public') OR
       EXISTS(SELECT 1 FROM pg_type AS t JOIN pg_namespace AS n ON n.oid=t.typnamespace WHERE n.nspname='public') OR
       EXISTS(SELECT 1 FROM pg_extension WHERE extname <> 'plpgsql') OR
+      EXISTS(SELECT 1 FROM pg_default_acl) OR
       EXISTS(SELECT 1 FROM pg_largeobject_metadata) AS nonempty`);
     if (
       state.rows[0]?.version !== serverVersion ||
@@ -694,7 +729,7 @@ async function restoreTarget(
     await client.query('COMMIT');
   } finally {
     await completeOwnedCleanup([
-      { name: 'destination admission client', cleanup: () => client.end() },
+      { name: 'destination admission client', cleanup: close },
     ]);
   }
   return {
@@ -753,13 +788,13 @@ async function transactionalRestore(
       await completeOwnedCleanup([
         {
           name: 'owned restore tool sessions',
-          cleanup: () => terminateOwnedToolSessions(target),
+          cleanup: () => terminateOwnedDatabaseSessions(target),
         },
       ]);
   }
 }
 
-async function terminateOwnedToolSessions(input: {
+async function terminateOwnedDatabaseSessions(input: {
   readonly databaseUrl: string;
   readonly applicationName: string;
 }): Promise<void> {
@@ -767,13 +802,19 @@ async function terminateOwnedToolSessions(input: {
     connectionString: input.databaseUrl,
     connectionTimeoutMillis: 5_000,
     statement_timeout: 5_000,
+    query_timeout: 5_000,
   });
   try {
     await client.connect();
     await client.query(
-      'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=current_database() AND application_name=$1 AND pid<>pg_backend_pid()',
+      'SELECT pg_terminate_backend(pid, 5000) FROM pg_stat_activity WHERE datname=current_database() AND application_name=$1 AND pid<>pg_backend_pid()',
       [input.applicationName],
     );
+    const state = await client.query<Record<string, unknown>>(
+      'SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND application_name=$1 AND pid<>pg_backend_pid()) AS remaining',
+      [input.applicationName],
+    );
+    if (state.rows[0]?.remaining !== false) throw new RecoveryCleanupFailure();
   } finally {
     await client.end();
   }
@@ -952,9 +993,9 @@ async function createRetainedBackup(
     hash: migration.hash,
     when: String(migration.folderMillis),
   }));
-  const client = new Client({
-    connectionString: config.database.url,
-    connectionTimeoutMillis: 10_000,
+  const { client, close } = recoveryDatabaseClient({
+    databaseUrl: config.database.url,
+    signal,
   });
   let dumped: Buffer | undefined;
   let ciphertext: Buffer | undefined;
@@ -1095,7 +1136,7 @@ async function createRetainedBackup(
         ),
       );
     } catch (error) {
-      await client.query('ROLLBACK');
+      if (!signal?.aborted) await client.query('ROLLBACK');
       throw error;
     }
   } finally {
@@ -1113,13 +1154,13 @@ async function createRetainedBackup(
         name: 'owned dump tool sessions',
         cleanup: async () => {
           if (dumpState === 'running' || signal?.aborted)
-            await terminateOwnedToolSessions({
+            await terminateOwnedDatabaseSessions({
               databaseUrl: config.database.url,
               applicationName,
             });
         },
       },
-      { name: 'source snapshot client', cleanup: () => client.end() },
+      { name: 'source snapshot client', cleanup: close },
     ]);
   }
 }

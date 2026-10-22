@@ -1253,6 +1253,96 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
     }
   }, 30_000);
 
+  it('refuses destination-only default privileges without changing grants, source or retained evidence', async () => {
+    if (!databaseUrl || !container) throw new Error('Expected supplied tools.');
+    const original: unknown = JSON.parse(await readFile(backupConfig, 'utf8'));
+    if (
+      typeof original !== 'object' ||
+      original === null ||
+      Array.isArray(original)
+    )
+      throw new Error('Expected retained configuration.');
+    const target = await createIsolatedPostgresTestDatabase({
+      baseDatabaseUrl: databaseUrl,
+      namePrefix: 'recovery736_default_acl',
+    });
+    const setup = new Client({ connectionString: target.targetUrl });
+    let expectedPrivileges: unknown;
+    try {
+      await setup.connect();
+      await setup.query(
+        'ALTER DEFAULT PRIVILEGES GRANT SELECT ON TABLES TO PUBLIC',
+      );
+      expectedPrivileges = (
+        await setup.query(
+          'SELECT defaclrole, defaclnamespace, defaclobjtype, defaclacl::text AS privileges FROM pg_default_acl ORDER BY oid',
+        )
+      ).rows;
+      expect(expectedPrivileges).toHaveLength(1);
+    } finally {
+      await setup.end();
+    }
+    const retainedArchive = await readFile(archivePath);
+    const retainedCompletion = await readFile(completionEvidencePath);
+    const sourceBefore = await source.targetPool.query<{ count: number }>(
+      'SELECT count(*)::integer AS count FROM client_accounts',
+    );
+    try {
+      const configPath = join(temporaryRoot, 'default-privileges-restore.json');
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          ...original,
+          database: { url: target.targetUrl, container },
+          measurement: {
+            referenceInstant: await readRetainedReference({
+              completionEvidencePath,
+            }),
+            maximumRecencyMilliseconds: 300_000,
+            maximumRecoveryMilliseconds: 30_000,
+          },
+        }),
+        { mode: 0o600, flag: 'wx' },
+      );
+      const result = await invokeOperator({
+        entry,
+        operation: 'restore',
+        configPath,
+        environment: ordinaryEnvironment(target.targetUrl),
+      });
+      expect(result).toMatchObject({ exitCode: 2, stderr: '' });
+      expect(result.stdout).toContain('nonempty-or-incompatible-destination');
+      expect(result.stdout).not.toContain('"outcome":"recovered"');
+      expect(
+        (
+          await target.targetPool.query<{ application: string | null }>(
+            "SELECT to_regclass('public.workspaces')::text AS application",
+          )
+        ).rows,
+      ).toEqual([{ application: null }]);
+      expect(
+        (
+          await target.targetPool.query(
+            'SELECT defaclrole, defaclnamespace, defaclobjtype, defaclacl::text AS privileges FROM pg_default_acl ORDER BY oid',
+          )
+        ).rows,
+      ).toEqual(expectedPrivileges);
+      expect(
+        (
+          await source.targetPool.query(
+            'SELECT count(*)::integer AS count FROM client_accounts',
+          )
+        ).rows,
+      ).toEqual(sourceBefore.rows);
+      expect(await readFile(archivePath)).toEqual(retainedArchive);
+      expect(await readFile(completionEvidencePath)).toEqual(
+        retainedCompletion,
+      );
+    } finally {
+      await target.close();
+    }
+  }, 30_000);
+
   it('refuses an otherwise empty destination with another connected workload', async () => {
     if (!databaseUrl || !container) throw new Error('Expected supplied tools.');
     const target = await createIsolatedPostgresTestDatabase({
@@ -1378,6 +1468,160 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
     60_000,
   );
 
+  it.each([true, false])(
+    'settles a blocked source query and cleans owned sessions while the external lock stays held (cancel: %s)',
+    async (cancel) => {
+      const original: unknown = JSON.parse(
+        await readFile(backupConfig, 'utf8'),
+      );
+      if (
+        typeof original !== 'object' ||
+        original === null ||
+        Array.isArray(original)
+      )
+        throw new Error('Expected retained configuration.');
+      const retainedArchive = await readFile(archivePath);
+      const retainedCompletion = await readFile(completionEvidencePath);
+      const blockedArchive = join(
+        temporaryRoot,
+        `blocked-${cancel}-backup.enc`,
+      );
+      const blockedCompletion = join(
+        temporaryRoot,
+        `blocked-${cancel}-completion.json`,
+      );
+      const configPath = join(temporaryRoot, `blocked-${cancel}-backup.json`);
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          ...original,
+          archivePath: blockedArchive,
+          completionEvidencePath: blockedCompletion,
+        }),
+        { mode: 0o600, flag: 'wx' },
+      );
+      const sourceBefore = await source.targetPool.query<{ count: number }>(
+        'SELECT count(*)::integer AS count FROM client_accounts',
+      );
+      const filesBefore = (await readdir(temporaryRoot)).sort();
+      const locker = new Client({ connectionString: source.targetUrl });
+      await locker.connect();
+      await locker.query('BEGIN');
+      await locker.query('LOCK public.workspaces IN ACCESS EXCLUSIVE MODE');
+      const locked = await locker.query<{ pid: number }>(
+        'SELECT pg_backend_pid() AS pid',
+      );
+      const lockerPid = locked.rows[0]?.pid;
+      if (lockerPid === undefined)
+        throw new Error('Expected external lock owner.');
+      const child = spawn(
+        process.execPath,
+        [entry, 'backup', '--config', configPath],
+        {
+          env: { ...process.env, NODE_ENV: 'test' },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+      let stdout = '';
+      let stderr = '';
+      let outcome:
+        { code: number | null; signal: NodeJS.Signals | null } | undefined;
+      let spawnFailure: Error | undefined;
+      child.stdout.on('data', (bytes: Buffer) => {
+        stdout += bytes.toString('utf8');
+      });
+      child.stderr.on('data', (bytes: Buffer) => {
+        stderr += bytes.toString('utf8');
+      });
+      child.once('error', (error) => {
+        spawnFailure = error;
+      });
+      child.once('exit', (code, signal) => {
+        outcome = { code, signal };
+      });
+      const closed = new Promise<void>((done) =>
+        child.once('close', () => done()),
+      );
+      let blockedPid: number | undefined;
+      try {
+        await vi.waitFor(
+          async () => {
+            if (spawnFailure) throw spawnFailure;
+            const blocked = await source.targetPool.query<{ pid: number }>(
+              `SELECT a.pid FROM pg_stat_activity a JOIN pg_locks l ON l.pid=a.pid
+             WHERE a.datname=$1 AND l.relation='public.workspaces'::regclass
+             AND l.mode='AccessShareLock' AND NOT l.granted`,
+              [source.databaseName],
+            );
+            expect(blocked.rows).toHaveLength(1);
+            blockedPid = blocked.rows[0]?.pid;
+          },
+          { timeout: 10_000, interval: 10 },
+        );
+        if (blockedPid === undefined)
+          throw new Error('Expected blocked operator session.');
+        if (cancel) child.kill('SIGTERM');
+        await vi.waitFor(
+          () => {
+            if (spawnFailure) throw spawnFailure;
+            expect(outcome).toEqual({ code: cancel ? 2 : 1, signal: null });
+          },
+          { timeout: cancel ? 2_000 : 8_000, interval: 10 },
+        );
+        await closed;
+        expect(stdout).toContain(
+          cancel ? '"outcome":"cancelled"' : '"outcome":"failed"',
+        );
+        expect(stdout).toContain(
+          cancel ? 'backup-cancelled' : 'backup-incomplete',
+        );
+        expect(stdout).not.toContain(source.targetUrl);
+        expect(stderr).toBe('');
+        expect(
+          (
+            await source.targetPool.query(
+              'SELECT pid FROM pg_stat_activity WHERE pid=$1',
+              [blockedPid],
+            )
+          ).rows,
+        ).toEqual([]);
+        expect(
+          (
+            await source.targetPool.query(
+              `SELECT pid FROM pg_locks WHERE pid=$1 AND relation='public.workspaces'::regclass
+           AND mode='AccessExclusiveLock' AND granted`,
+              [lockerPid],
+            )
+          ).rows,
+        ).toEqual([{ pid: lockerPid }]);
+        expect(
+          (
+            await source.targetPool.query(
+              'SELECT count(*)::integer AS count FROM client_accounts',
+            )
+          ).rows,
+        ).toEqual(sourceBefore.rows);
+        expect(
+          await readFile(blockedArchive).catch(() => undefined),
+        ).toBeUndefined();
+        expect(
+          await readFile(blockedCompletion).catch(() => undefined),
+        ).toBeUndefined();
+        expect((await readdir(temporaryRoot)).sort()).toEqual(filesBefore);
+        expect(await readFile(archivePath)).toEqual(retainedArchive);
+        expect(await readFile(completionEvidencePath)).toEqual(
+          retainedCompletion,
+        );
+      } finally {
+        child.kill('SIGKILL');
+        await closed;
+        await locker.query('ROLLBACK');
+        await locker.end();
+      }
+    },
+    30_000,
+  );
+
   it('handles cancellation during dumping and cleans only its owned child and staging', async () => {
     const original: unknown = JSON.parse(await readFile(backupConfig, 'utf8'));
     if (
@@ -1484,6 +1728,213 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
         }
       }
       await closed;
+    }
+  }, 30_000);
+
+  it('settles cancellation during blocked public verification without releasing the external lock', async () => {
+    if (!databaseUrl || !container) throw new Error('Expected supplied tools.');
+    const original: unknown = JSON.parse(await readFile(backupConfig, 'utf8'));
+    if (
+      typeof original !== 'object' ||
+      original === null ||
+      Array.isArray(original)
+    )
+      throw new Error('Expected retained configuration.');
+    const retainedArchive = await readFile(archivePath);
+    const retainedCompletion = await readFile(completionEvidencePath);
+    const sourceBefore = await source.targetPool.query<{ count: number }>(
+      'SELECT count(*)::integer AS count FROM client_accounts',
+    );
+    const target = await createIsolatedPostgresTestDatabase({
+      baseDatabaseUrl: databaseUrl,
+      namePrefix: 'recovery736_public_lock',
+    });
+    try {
+      const tools = join(temporaryRoot, 'public-verification-tools');
+      await mkdir(tools, { mode: 0o700 });
+      const barrier = join(tools, 'restore-complete.json');
+      const release = join(tools, 'continue');
+      const realDocker = (await execute('which', ['docker'])).stdout.trim();
+      // Wait only after the real single-transaction restore has committed.
+      // Admission therefore sees the original empty, unshared destination.
+      await writeFile(
+        join(tools, 'docker'),
+        `#!${process.execPath}\nconst fs = require('node:fs');\nconst cp = require('node:child_process');\nconst args = process.argv.slice(2);\nconst result = cp.spawnSync(${JSON.stringify(realDocker)}, args, { stdio: 'inherit' });\nif (result.status !== 0) process.exit(result.status ?? 96);\nif (args.includes('--single-transaction')) {\n  fs.writeFileSync(${JSON.stringify(barrier)}, JSON.stringify({ pid: process.pid }), { mode: 0o600, flag: 'wx' });\n  const poll = setInterval(() => {\n    if (fs.existsSync(${JSON.stringify(release)})) { clearInterval(poll); process.exit(0); }\n  }, 10);\n  setTimeout(() => process.exit(95), 20000);\n} else process.exit(0);\n`,
+        { mode: 0o700, flag: 'wx' },
+      );
+      const configPath = join(
+        temporaryRoot,
+        'public-verification-restore.json',
+      );
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          ...original,
+          database: { url: target.targetUrl, container },
+          measurement: {
+            referenceInstant: await readRetainedReference({
+              completionEvidencePath,
+            }),
+            maximumRecencyMilliseconds: 300_000,
+            maximumRecoveryMilliseconds: 30_000,
+          },
+        }),
+        { mode: 0o600, flag: 'wx' },
+      );
+      const filesBefore = (await readdir(temporaryRoot)).sort();
+      const child = spawn(
+        process.execPath,
+        [entry, 'restore', '--config', configPath],
+        {
+          env: {
+            ...ordinaryEnvironment(target.targetUrl),
+            PATH: `${tools}:${process.env.PATH ?? ''}`,
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+      let stdout = '';
+      let stderr = '';
+      let outcome:
+        { code: number | null; signal: NodeJS.Signals | null } | undefined;
+      let spawnFailure: Error | undefined;
+      child.stdout.on('data', (bytes: Buffer) => {
+        stdout += bytes.toString('utf8');
+      });
+      child.stderr.on('data', (bytes: Buffer) => {
+        stderr += bytes.toString('utf8');
+      });
+      child.once('error', (error) => {
+        spawnFailure = error;
+      });
+      child.once('exit', (code, signal) => {
+        outcome = { code, signal };
+      });
+      const closed = new Promise<void>((done) =>
+        child.once('close', () => done()),
+      );
+      let toolPid: number | undefined;
+      let locker: Client | undefined;
+      try {
+        await vi.waitFor(
+          async () => {
+            if (spawnFailure) throw spawnFailure;
+            const value: unknown = JSON.parse(await readFile(barrier, 'utf8'));
+            if (
+              typeof value !== 'object' ||
+              value === null ||
+              !('pid' in value) ||
+              typeof value.pid !== 'number' ||
+              !Number.isInteger(value.pid) ||
+              value.pid <= 0
+            )
+              throw new Error('Expected committed restore tool barrier.');
+            toolPid = value.pid;
+          },
+          { timeout: 10_000, interval: 10 },
+        );
+        locker = new Client({ connectionString: target.targetUrl });
+        await locker.connect();
+        await locker.query('BEGIN');
+        // Principal verification reads internal_users, not companies. Only the
+        // restored ordinary App's subsequent public verification is blocked.
+        await locker.query('LOCK public.companies IN ACCESS EXCLUSIVE MODE');
+        const locked = await locker.query<{ pid: number }>(
+          'SELECT pg_backend_pid() AS pid',
+        );
+        const lockerPid = locked.rows[0]?.pid;
+        if (lockerPid === undefined)
+          throw new Error('Expected external lock owner.');
+        await writeFile(release, '', { mode: 0o600, flag: 'wx' });
+        const held = locker;
+        await vi.waitFor(
+          async () => {
+            if (spawnFailure) throw spawnFailure;
+            await held.query('SELECT pg_stat_clear_snapshot()');
+            const blocked = await held.query<{ pid: number }>(
+              `SELECT a.pid FROM pg_stat_activity a JOIN pg_locks l ON l.pid=a.pid
+               WHERE a.datname=current_database() AND l.relation='public.companies'::regclass
+               AND l.mode='AccessShareLock' AND NOT l.granted`,
+            );
+            expect(blocked.rows).toHaveLength(1);
+          },
+          { timeout: 10_000, interval: 10 },
+        );
+        child.kill('SIGTERM');
+        await vi.waitFor(
+          () => {
+            if (spawnFailure) throw spawnFailure;
+            expect(outcome).toEqual({ code: 2, signal: null });
+          },
+          { timeout: 8_000, interval: 10 },
+        );
+        await closed;
+        expect(stdout).toContain('"outcome":"cancelled"');
+        expect(stdout).not.toContain('"outcome":"recovered"');
+        expect(stdout).not.toContain(target.targetUrl);
+        expect(stderr).toBe('');
+        await vi.waitFor(
+          async () => {
+            await held.query('SELECT pg_stat_clear_snapshot()');
+            expect(
+              (
+                await held.query(
+                  'SELECT pid FROM pg_stat_activity WHERE datname=current_database() AND pid<>pg_backend_pid()',
+                )
+              ).rows,
+            ).toEqual([]);
+          },
+          { timeout: 2_000, interval: 10 },
+        );
+        expect(
+          (
+            await held.query(
+              `SELECT pid FROM pg_locks WHERE pid=$1 AND relation='public.companies'::regclass
+               AND mode='AccessExclusiveLock' AND granted`,
+              [lockerPid],
+            )
+          ).rows,
+        ).toEqual([{ pid: lockerPid }]);
+        expect(
+          (
+            await source.targetPool.query(
+              'SELECT count(*)::integer AS count FROM client_accounts',
+            )
+          ).rows,
+        ).toEqual(sourceBefore.rows);
+        expect((await readdir(temporaryRoot)).sort()).toEqual(filesBefore);
+        expect((await readdir(tools)).sort()).toEqual([
+          'continue',
+          'docker',
+          'restore-complete.json',
+        ]);
+        expect(await readFile(archivePath)).toEqual(retainedArchive);
+        expect(await readFile(completionEvidencePath)).toEqual(
+          retainedCompletion,
+        );
+        if (!toolPid) throw new Error('Expected committed restore tool.');
+        const ownedTool = toolPid;
+        expect(() => process.kill(ownedTool, 0)).toThrow();
+      } finally {
+        child.kill('SIGKILL');
+        if (toolPid) {
+          try {
+            process.kill(toolPid, 'SIGKILL');
+          } catch {
+            /* Already cleaned. */
+          }
+        }
+        await closed;
+        if (locker) {
+          try {
+            await locker.query('ROLLBACK');
+          } finally {
+            await locker.end();
+          }
+        }
+      }
+    } finally {
+      await target.close();
     }
   }, 30_000);
 
