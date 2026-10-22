@@ -100,6 +100,7 @@ describe.skipIf(!databaseUrl)('Company Complaint REST contract', () => {
       company?: string;
       subject?: string;
       key?: string;
+      workspace?: string;
     } = {},
   ): Promise<Response> {
     const {
@@ -108,6 +109,7 @@ describe.skipIf(!databaseUrl)('Company Complaint REST contract', () => {
       company = companyId,
       subject = 'complaint-owner',
       key = randomUUID(),
+      workspace,
     } = options;
     return fetch(`${harness.origin}/api${path}`, {
       method,
@@ -117,6 +119,7 @@ describe.skipIf(!databaseUrl)('Company Complaint REST contract', () => {
         'x-test-display-name': 'Synthetic complaint recorder',
         'x-test-email': `${subject}@example.test`,
         ...(company ? { 'x-company-context-id': company } : {}),
+        ...(workspace ? { 'x-workspace-context-id': workspace } : {}),
         'idempotency-key': key,
         'content-type': 'application/json',
       },
@@ -2033,6 +2036,768 @@ describe.skipIf(!databaseUrl)('Company Complaint REST contract', () => {
         }
         if (update) await update.catch(() => undefined);
         await pending;
+      }
+    },
+  );
+
+  // Explicit PRD19 acceptance evidence: all operations under test use the real
+  // public HTTP boundary. SQL below creates labeled synthetic legacy/lifecycle
+  // fixtures, observes atomic effects, and holds real PostgreSQL barriers only.
+  async function grantRoles(
+    membershipId: string,
+    roles: string[],
+    company = companyId,
+  ) {
+    for (const role of roles) {
+      const grant = await request(`/company-${role}-assignments`, {
+        method: 'POST',
+        company,
+        value: { workspaceMembershipId: membershipId, companyId: company },
+      });
+      expect(grant.status).toBe(201);
+    }
+  }
+
+  async function complaintEffects() {
+    const result = await harness.pool.query<{
+      complaints: number;
+      intakes: number;
+      journal: number;
+      receipts: number;
+      events: number;
+    }>(`SELECT
+      (SELECT count(*)::integer FROM complaints) AS complaints,
+      (SELECT count(*)::integer FROM complaint_intake_versions) AS intakes,
+      (SELECT count(*)::integer FROM complaint_journal_entries) AS journal,
+      (SELECT count(*)::integer FROM complaint_receipts) AS receipts,
+      (SELECT count(*)::integer FROM complaint_events) AS events`);
+    const row = result.rows[0];
+    if (!row)
+      throw new Error('Synthetic Complaint atomic effects are unavailable.');
+    return row;
+  }
+
+  async function clientVersion(clientId: string) {
+    const result = await harness.pool.query<{ version: number }>(
+      'SELECT version FROM client_accounts WHERE id = $1',
+      [clientId],
+    );
+    const version = result.rows[0]?.version;
+    if (version === undefined)
+      throw new Error('Synthetic Client fence is unavailable.');
+    return version;
+  }
+
+  async function linkedProject(
+    base: Awaited<ReturnType<typeof createComplaint>>,
+    company = companyId,
+    clientId = base.clientAccountId,
+  ) {
+    await grantRoles(base.membershipId, ['project'], company);
+    const response = await request('/projects', {
+      method: 'POST',
+      company,
+      value: {
+        title: 'Synthetic Complaint Project737',
+        clientAccountId: clientId,
+      },
+    });
+    expect(response.status).toBe(201);
+    return body(response);
+  }
+
+  async function memberCommand(replay: boolean) {
+    const original = await createComplaint();
+    const actor = await request('/access/current-actor', {
+      subject: 'complaint-member',
+      company: '',
+    });
+    expect(actor.status).toBe(200);
+    const membershipId = string((await body(actor)).workspaceMembershipId);
+    await grantRoles(membershipId, [
+      'context',
+      'director-client',
+      'complaints-reader',
+      'complaints-recorder',
+    ]);
+    const key = randomUUID();
+    const input = {
+      ...original.input,
+      responsibleMembershipId: membershipId,
+      subject: 'Synthetic ordered member Complaint737',
+    };
+    const command = () =>
+      request('/complaints', {
+        method: 'POST',
+        subject: 'complaint-member',
+        key,
+        value: input,
+      });
+    let receipt: Record<string, unknown> | null = null;
+    if (replay) {
+      const response = await command();
+      expect(response.status).toBe(201);
+      receipt = await body(response);
+    }
+    return { original, membershipId, key, input, command, receipt };
+  }
+
+  function holdComplaintKey(membershipId: string, key: string) {
+    return hold(async (connection) => {
+      await connection.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [
+          JSON.stringify([
+            'complaint-command',
+            workspaceId,
+            companyId,
+            membershipId,
+            key,
+          ]),
+        ],
+      );
+    });
+  }
+
+  it('links a currently readable completed Project without changing or reopening its lifecycle', async () => {
+    const base = await createComplaint();
+    const project = await linkedProject(base);
+    const projectId = string(project.id);
+    // This explicit schema-valid completed Project fixture isolates association
+    // compatibility; it does not claim to execute the Project lifecycle journey.
+    await harness.pool.query(
+      "UPDATE projects SET status = 'completed', lifecycle_revision = 1 WHERE id = $1",
+      [projectId],
+    );
+    const before = await request(`/projects/${projectId}`);
+    expect(before.status).toBe(200);
+    const projectBefore = await body(before);
+    expect(projectBefore.status).toBe('completed');
+    const created = await request('/complaints', {
+      method: 'POST',
+      value: { ...base.input, projectId },
+    });
+    expect(created.status).toBe(201);
+    const saved = await body(created);
+    expect(saved).toMatchObject({
+      projectId,
+      project: { id: projectId },
+      revision: 1,
+    });
+    const reopened = await request(`/complaints/${string(saved.id)}`);
+    expect(reopened.status).toBe(200);
+    expect(await body(reopened)).toEqual(saved);
+    const after = await request(`/projects/${projectId}`);
+    expect(after.status).toBe(200);
+    expect(await body(after)).toEqual(projectBefore);
+  });
+
+  it.each(['wrong-client', 'wrong-company', 'unknown'] as const)(
+    'rejects the %s optional Project before any Complaint or Client fence effect',
+    async (invalid) => {
+      const base = await createComplaint();
+      let projectId: string = randomUUID();
+      if (invalid !== 'unknown') {
+        let projectCompany = companyId;
+        if (invalid === 'wrong-company') {
+          const other = await request('/companies', {
+            method: 'POST',
+            value: { displayName: 'Other Project Company737' },
+          });
+          expect(other.status).toBe(201);
+          projectCompany = string((await body(other)).id);
+          await grantRoles(
+            base.membershipId,
+            ['director-client'],
+            projectCompany,
+          );
+        }
+        const otherClient = await request('/clients', {
+          method: 'POST',
+          company: projectCompany,
+          value: { displayName: 'Other Project Client737' },
+        });
+        expect(otherClient.status).toBe(201);
+        projectId = string(
+          (
+            await linkedProject(
+              base,
+              projectCompany,
+              string((await body(otherClient)).id),
+            )
+          ).id,
+        );
+      }
+      await grantRoles(base.membershipId, ['project']);
+      const before = await complaintEffects();
+      const fence = await clientVersion(base.clientAccountId);
+      const refused = await request('/complaints', {
+        method: 'POST',
+        value: { ...base.input, projectId },
+      });
+      expect(refused.status).toBe(404);
+      expect(JSON.stringify(await body(refused))).not.toContain(
+        'Synthetic Complaint Project737',
+      );
+      expect(await complaintEffects()).toEqual(before);
+      expect(await clientVersion(base.clientAccountId)).toBe(fence);
+    },
+  );
+
+  it('filters an unreadable linked Project before Complaint rows and count and denies detail history and receipt replay', async () => {
+    const base = await createComplaint();
+    const projectId = string((await linkedProject(base)).id);
+    const key = randomUUID();
+    const input = {
+      ...base.input,
+      projectId,
+      subject: 'Private linked Complaint737',
+    };
+    const created = await request('/complaints', {
+      method: 'POST',
+      key,
+      value: input,
+    });
+    expect(created.status).toBe(201);
+    const saved = await body(created);
+    const id = string(saved.id);
+    const before = await complaintEffects();
+    const fence = await clientVersion(base.clientAccountId);
+    const revoked = await request(
+      `/company-project-assignments/${base.membershipId}/${companyId}`,
+      { method: 'DELETE' },
+    );
+    expect(revoked.status).toBe(200);
+    const list = await request('/complaints');
+    expect(list.status).toBe(200);
+    const page = await body(list);
+    expect(page.total).toBe(1);
+    expect(rows(page.complaints).map((row) => row.id)).toEqual([base.id]);
+    expect(JSON.stringify(page)).not.toContain(input.subject);
+    for (const path of [`/complaints/${id}`, `/complaints/${id}/history`]) {
+      const refused = await request(path);
+      expect(refused.status).toBe(403);
+      expect(JSON.stringify(await body(refused))).not.toContain(input.subject);
+    }
+    const replay = await request('/complaints', {
+      method: 'POST',
+      key,
+      value: input,
+    });
+    expect(replay.status).toBe(403);
+    expect(JSON.stringify(await body(replay))).not.toContain(input.subject);
+    expect(await complaintEffects()).toEqual(before);
+    expect(await clientVersion(base.clientAccountId)).toBe(fence);
+  });
+
+  it.each(['project-only', 'recorder-only'] as const)(
+    'does not turn %s authority into Complaint reads or writes',
+    async (authority) => {
+      const base = await createComplaint();
+      const actor = await request('/access/current-actor', {
+        subject: 'complaint-member',
+        company: '',
+      });
+      expect(actor.status).toBe(200);
+      const membershipId = string((await body(actor)).workspaceMembershipId);
+      await grantRoles(membershipId, [
+        'context',
+        'director-client',
+        authority === 'project-only' ? 'project' : 'complaints-recorder',
+      ]);
+      if (authority === 'project-only')
+        expect(
+          (await request('/projects', { subject: 'complaint-member' })).status,
+        ).toBe(200);
+      const before = await complaintEffects();
+      const fence = await clientVersion(base.clientAccountId);
+      for (const path of [
+        '/complaints',
+        `/complaints/${base.id}`,
+        `/complaints/${base.id}/history`,
+      ]) {
+        const denied = await request(path, { subject: 'complaint-member' });
+        expect(denied.status).toBe(403);
+        expect(JSON.stringify(await body(denied))).not.toContain(
+          base.intake.subject,
+        );
+      }
+      for (const command of [
+        {
+          path: '/complaints',
+          value: { ...base.input, responsibleMembershipId: membershipId },
+        },
+        {
+          path: `/complaints/${base.id}/journal`,
+          value: {
+            kind: 'action',
+            text: 'Forbidden independent write737',
+            declaredDate: null,
+            expectedRevision: 1,
+          },
+        },
+      ]) {
+        const denied = await request(command.path, {
+          method: 'POST',
+          subject: 'complaint-member',
+          value: command.value,
+        });
+        expect(denied.status).toBe(403);
+        expect(JSON.stringify(await body(denied))).not.toContain(
+          base.intake.subject,
+        );
+      }
+      expect(await complaintEffects()).toEqual(before);
+      expect(await clientVersion(base.clientAccountId)).toBe(fence);
+    },
+  );
+
+  it('keeps same-Workspace other-Company and a second Workspace isolated even with explicit Complaint grants', async () => {
+    const base = await createComplaint();
+    const owner = await body(await request('/access/current-actor'));
+    for (const secondWorkspace of [false, true]) {
+      let workspace: string | undefined;
+      let membershipId = base.membershipId;
+      if (secondWorkspace) {
+        workspace = randomUUID();
+        membershipId = randomUUID();
+        // Explicit second-Workspace owner fixture, never a new access rule.
+        await harness.pool.query(
+          'INSERT INTO workspaces (id, name) VALUES ($1, $2)',
+          [workspace, 'Synthetic second Complaint Workspace737'],
+        );
+        await harness.pool.query(
+          'INSERT INTO workspace_memberships (id, workspace_id, internal_user_id) VALUES ($1, $2, $3)',
+          [membershipId, workspace, owner.internalUserId],
+        );
+        for (const permission of [
+          'company.manage',
+          'company.assignment.manage',
+          'client.manage',
+        ])
+          await harness.pool.query(
+            'INSERT INTO workspace_permission_grants (workspace_id, workspace_membership_id, permission) VALUES ($1, $2, $3)',
+            [workspace, membershipId, permission],
+          );
+      }
+      const created = await request('/companies', {
+        method: 'POST',
+        company: '',
+        workspace,
+        value: { displayName: 'Synthetic isolated Complaint Company737' },
+      });
+      expect(created.status).toBe(201);
+      const company = string((await body(created)).id);
+      for (const role of [
+        'context',
+        'director-client',
+        'complaints-reader',
+        'complaints-recorder',
+      ]) {
+        const granted = await request(`/company-${role}-assignments`, {
+          method: 'POST',
+          company,
+          workspace,
+          value: { companyId: company, workspaceMembershipId: membershipId },
+        });
+        expect(granted.status).toBe(201);
+      }
+      const list = await request('/complaints', { company, workspace });
+      expect(list.status).toBe(200);
+      expect(await body(list)).toMatchObject({ total: 0, complaints: [] });
+      for (const path of [
+        `/complaints/${base.id}`,
+        `/complaints/${base.id}/history`,
+      ]) {
+        const denied = await request(path, { company, workspace });
+        expect(denied.status).toBe(404);
+        expect(JSON.stringify(await body(denied))).not.toContain(
+          base.intake.subject,
+        );
+      }
+      const before = await complaintEffects();
+      const fence = await clientVersion(base.clientAccountId);
+      const denied = await request('/complaints', {
+        method: 'POST',
+        company,
+        workspace,
+        value: { ...base.input, responsibleMembershipId: membershipId },
+      });
+      expect(denied.status).toBe(404);
+      expect(await complaintEffects()).toEqual(before);
+      expect(await clientVersion(base.clientAccountId)).toBe(fence);
+    }
+  });
+
+  it('collapses two actually pending same-key creation requests into one committed intake receipt event and Client fence', async () => {
+    const fixture = await memberCommand(false);
+    const before = await complaintEffects();
+    const fence = await clientVersion(fixture.original.clientAccountId);
+    const barrier = await holdComplaintKey(fixture.membershipId, fixture.key);
+    const first = fixture.command();
+    let second: Promise<Response> | undefined;
+    try {
+      const firstPid = await blockedBy(barrier.pid, 'pg_advisory_xact_lock');
+      second = fixture.command();
+      await blockedBy(firstPid, '');
+      await barrier.release();
+      const responses = await Promise.all([first, second]);
+      expect(responses.map((response) => response.status)).toEqual([201, 201]);
+      expect(await body(responses[0])).toEqual(await body(responses[1]));
+      expect(await complaintEffects()).toEqual({
+        ...before,
+        complaints: before.complaints + 1,
+        intakes: before.intakes + 1,
+        receipts: before.receipts + 1,
+        events: before.events + 1,
+      });
+      expect(await clientVersion(fixture.original.clientAccountId)).toBe(
+        fence + 1,
+      );
+    } finally {
+      await barrier.release();
+      await first;
+      if (second) await second;
+    }
+  });
+
+  it('serializes competing public journal writes of one expected revision with one successor and one stale response', async () => {
+    const fixture = await memberCommand(false);
+    const base = fixture.original;
+    const before = await complaintEffects();
+    const fence = await clientVersion(base.clientAccountId);
+    const key = randomUUID();
+    const barrier = await holdComplaintKey(base.membershipId, key);
+    const value = {
+      kind: 'action',
+      text: 'First competing factual action737',
+      declaredDate: null,
+      expectedRevision: 1,
+    };
+    const first = request(`/complaints/${base.id}/journal`, {
+      method: 'POST',
+      key,
+      value,
+    });
+    let second: Promise<Response> | undefined;
+    try {
+      const firstPid = await blockedBy(barrier.pid, 'pg_advisory_xact_lock');
+      second = request(`/complaints/${base.id}/journal`, {
+        method: 'POST',
+        subject: 'complaint-member',
+        value: { ...value, text: 'Other competing factual action737' },
+      });
+      await blockedBy(firstPid, '');
+      await barrier.release();
+      const responses = await Promise.all([first, second]);
+      expect(responses.map((response) => response.status).sort()).toEqual([
+        201, 409,
+      ]);
+      const stale = responses.find((response) => response.status === 409);
+      if (!stale)
+        throw new Error('The competing stale response is unavailable.');
+      expect(await body(stale)).toMatchObject({ code: 'STALE_VERSION' });
+      const current = await request(`/complaints/${base.id}/history`);
+      expect(current.status).toBe(200);
+      expect(await body(current)).toMatchObject({
+        revision: 2,
+        total: 2,
+        entries: [
+          { kind: 'intake', revision: 1 },
+          { kind: 'action', revision: 2, text: value.text },
+        ],
+      });
+      expect(await complaintEffects()).toEqual({
+        ...before,
+        journal: before.journal + 1,
+        receipts: before.receipts + 1,
+        events: before.events + 1,
+      });
+      expect(await clientVersion(base.clientAccountId)).toBe(fence + 1);
+    } finally {
+      await barrier.release();
+      await first;
+      if (second) await second;
+    }
+  });
+
+  const authorityOrderCases = (
+    ['reader', 'recorder', 'membership'] as const
+  ).flatMap((loss) =>
+    (['authority-first', 'command-first'] as const).flatMap((order) =>
+      [false, true].map((replay) => ({ loss, order, replay })),
+    ),
+  );
+  it.each(authorityOrderCases)(
+    'orders a real $loss loss $order against Complaint creation (replay:$replay)',
+    async ({ loss, order, replay }) => {
+      const fixture = await memberCommand(replay);
+      const before = await complaintEffects();
+      const fence = await clientVersion(fixture.original.clientAccountId);
+      const lose = () =>
+        loss === 'membership'
+          ? request('/workspace-membership-suspensions', {
+              method: 'POST',
+              value: { workspaceMembershipId: fixture.membershipId },
+            })
+          : request(
+              `/company-complaints-${loss}-assignments/${fixture.membershipId}/${companyId}`,
+              { method: 'DELETE' },
+            );
+      const barrier =
+        order === 'command-first'
+          ? await holdComplaintKey(fixture.membershipId, fixture.key)
+          : await hold(async (connection) => {
+              if (loss === 'membership')
+                await connection.query(
+                  'SELECT id FROM workspace_memberships WHERE id = $1 FOR UPDATE',
+                  [fixture.membershipId],
+                );
+              else
+                await connection.query(
+                  'SELECT id FROM company_role_assignments WHERE company_id = $1 AND workspace_membership_id = $2 AND bundle::text = $3 AND revoked_at IS NULL FOR UPDATE',
+                  [
+                    companyId,
+                    fixture.membershipId,
+                    `company_complaints_${loss}`,
+                  ],
+                );
+            });
+      let command: Promise<Response> | undefined;
+      let lost: Promise<Response> | undefined;
+      try {
+        if (order === 'authority-first') {
+          lost = lose();
+          const losingPid = await blockedBy(barrier.pid, '');
+          command = fixture.command();
+          await blockedBy(losingPid, '');
+        } else {
+          command = fixture.command();
+          const commandPid = await blockedBy(
+            barrier.pid,
+            'pg_advisory_xact_lock',
+          );
+          lost = lose();
+          await blockedBy(commandPid, '');
+        }
+        await barrier.release();
+        const [result, revoked] = await Promise.all([command, lost]);
+        expect(revoked.status).toBe(loss === 'membership' ? 201 : 200);
+        expect(result.status).toBe(order === 'authority-first' ? 403 : 201);
+        if (order === 'authority-first')
+          expect(JSON.stringify(await body(result))).not.toContain(
+            fixture.input.subject,
+          );
+        else if (fixture.receipt)
+          expect(await body(result)).toEqual(fixture.receipt);
+        expect((await fixture.command()).status).toBe(403);
+        const delta = order === 'command-first' && !replay ? 1 : 0;
+        expect(await complaintEffects()).toEqual({
+          ...before,
+          complaints: before.complaints + delta,
+          intakes: before.intakes + delta,
+          receipts: before.receipts + delta,
+          events: before.events + delta,
+        });
+        expect(await clientVersion(fixture.original.clientAccountId)).toBe(
+          fence + delta,
+        );
+      } finally {
+        await barrier.release();
+        if (command) await command;
+        if (lost) await lost;
+      }
+    },
+  );
+
+  async function clientChangeFixture(
+    change: 'union' | 'reversal',
+    replay: boolean,
+  ) {
+    const member = await memberCommand(false);
+    const original = member.original;
+    const created = await request('/clients', {
+      method: 'POST',
+      value: {
+        displayName: 'Synthetic canonical ordering Client737',
+        taxId: 'ordering-canonical737',
+      },
+    });
+    expect(created.status).toBe(201);
+    const canonicalId = string((await body(created)).id);
+    // The Client owner also seeds legacy duplicate identities through SQL.
+    await harness.pool.query(
+      'UPDATE client_accounts SET tax_id = $1 WHERE id = ANY($2::uuid[])',
+      ['ordering-shared737', [original.clientAccountId, canonicalId]],
+    );
+    const clientId =
+      change === 'union' ? original.clientAccountId : canonicalId;
+    const key = randomUUID();
+    const input = {
+      ...original.input,
+      clientAccountId: clientId,
+      responsibleMembershipId: member.membershipId,
+      subject: 'Synthetic Client-ordering Complaint737',
+    };
+    const command = () =>
+      request('/complaints', {
+        method: 'POST',
+        subject: 'complaint-member',
+        key,
+        value: input,
+      });
+    let receipt: Record<string, unknown> | null = null;
+    if (replay) {
+      const result = await command();
+      expect(result.status).toBe(201);
+      receipt = await body(result);
+    }
+    const reviewed = await request(
+      `/clients/${original.clientAccountId}/union-reviews`,
+      { method: 'POST' },
+    );
+    expect(reviewed.status).toBe(201);
+    const comparison = await body(reviewed);
+    expect(comparison.outcome).toBe('comparison');
+    const unite = () =>
+      request(
+        `/client-union-reviews/${string(comparison.reviewReference)}/confirm`,
+        {
+          method: 'POST',
+          value: {
+            canonicalClientId: canonicalId,
+            fields: {
+              displayName: canonicalId,
+              taxId: canonicalId,
+              address: canonicalId,
+              telephone: canonicalId,
+              generalEmail: canonicalId,
+              businessActivity: canonicalId,
+            },
+            companyIds: [companyId],
+            reviewedDifferences: true,
+            reason: 'Synthetic Client identity ordering737',
+          },
+        },
+      );
+    let changeCommand = unite;
+    if (change === 'reversal') {
+      const united = await unite();
+      expect(united.status).toBe(201);
+      const reference = string((await body(united)).projectionReference);
+      changeCommand = () =>
+        request(`/client-union-operations/${reference}/reversal`, {
+          method: 'POST',
+          value: {
+            companyIds: [companyId],
+            reason: 'Synthetic reversal ordering737',
+          },
+        });
+    }
+    return {
+      original,
+      commandMembershipId: member.membershipId,
+      clientId,
+      key,
+      input,
+      command,
+      receipt,
+      changeCommand,
+    };
+  }
+
+  const clientOrderCases = (['union', 'reversal'] as const).flatMap((change) =>
+    (['client-first', 'command-first'] as const).flatMap((order) =>
+      [false, true].map((replay) => ({ change, order, replay })),
+    ),
+  );
+  it.each(clientOrderCases)(
+    'orders actual Client $change $order against Complaint creation (replay:$replay)',
+    async ({ change, order, replay }) => {
+      const fixture = await clientChangeFixture(change, replay);
+      const before = await complaintEffects();
+      const barrier =
+        order === 'command-first'
+          ? await holdComplaintKey(fixture.commandMembershipId, fixture.key)
+          : await hold(async (connection) => {
+              await connection.query(
+                'SELECT id FROM client_accounts WHERE id = $1 FOR UPDATE',
+                [fixture.clientId],
+              );
+            });
+      let command: Promise<Response> | undefined;
+      let changed: Promise<Response> | undefined;
+      try {
+        if (order === 'client-first') {
+          changed = fixture.changeCommand();
+          const changePid = await blockedBy(barrier.pid, '');
+          command = fixture.command();
+          await blockedBy(changePid, '');
+        } else {
+          command = fixture.command();
+          const commandPid = await blockedBy(
+            barrier.pid,
+            'pg_advisory_xact_lock',
+          );
+          changed = fixture.changeCommand();
+          await blockedBy(commandPid, '');
+        }
+        await barrier.release();
+        const [result, clientResult] = await Promise.all([command, changed]);
+        const deniedNew =
+          change === 'union' && order === 'client-first' && !replay;
+        if (
+          change === 'union' &&
+          order === 'client-first' &&
+          replay &&
+          result.status === 404
+        ) {
+          // Diagnose a refused in-flight replay without weakening its required
+          // result: the original remains readable and the unchanged retry must
+          // still find its committed receipt after the union has completed.
+          if (!fixture.receipt)
+            throw new Error('The committed receipt is unavailable.');
+          const readable = await request(
+            `/complaints/${string(fixture.receipt.id)}`,
+            { subject: 'complaint-member' },
+          );
+          expect(readable.status).toBe(200);
+          const subsequent = await fixture.command();
+          expect(subsequent.status).toBe(201);
+          expect(await body(subsequent)).toEqual(fixture.receipt);
+          expect(await complaintEffects()).toEqual(before);
+        }
+        expect(result.status).toBe(deniedNew ? 404 : 201);
+        const staleChange = order === 'command-first' && !replay;
+        // The Client owner intentionally hides a stale union-review snapshot
+        // with404; a stale committed-union reversal uses409 instead.
+        expect(clientResult.status).toBe(
+          staleChange ? (change === 'union' ? 404 : 409) : 201,
+        );
+        if (deniedNew)
+          expect(JSON.stringify(await body(result))).not.toContain(
+            fixture.input.subject,
+          );
+        else if (fixture.receipt)
+          expect(await body(result)).toEqual(fixture.receipt);
+        const delta = !replay && !deniedNew ? 1 : 0;
+        expect(await complaintEffects()).toEqual({
+          ...before,
+          complaints: before.complaints + delta,
+          intakes: before.intakes + delta,
+          receipts: before.receipts + delta,
+          events: before.events + delta,
+        });
+        if (replay) {
+          const exact = await fixture.command();
+          expect(exact.status).toBe(201);
+          expect(await body(exact)).toEqual(fixture.receipt);
+          expect(await complaintEffects()).toEqual(before);
+        }
+      } finally {
+        await barrier.release();
+        if (command) await command;
+        if (changed) await changed;
       }
     },
   );

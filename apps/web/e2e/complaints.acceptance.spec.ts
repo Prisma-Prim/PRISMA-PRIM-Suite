@@ -65,7 +65,9 @@ const locales = [
 ];
 
 // Registered production App, actual Nest routes and disposable PostgreSQL from
-// the existing acceptance setup. No feature owner, HTTP reply or clock is mocked.
+// the existing acceptance setup. No feature owner or clock is mocked. One
+// explicitly injected failed detail GET proves read-only recovery after the real
+// creation is confirmed; every write and the recovered detail/history are real.
 // Company/Client creation and administrator grants are synthetic fixture setup.
 test('records, corrects and reopens a factual Complaint journey in four languages with independent live grants', async ({
   page,
@@ -202,6 +204,25 @@ test('records, corrects and reopens a factual Complaint journey in four language
   await expect(save).toBeEnabled();
   await customAndFit(page, section);
   await capture(page, testInfo, `complaints-${suffix}-explicit-intake.png`);
+  let browserWrites = 0;
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      new URL(request.url()).pathname.startsWith('/api/complaints')
+    )
+      browserWrites += 1;
+  });
+  await page.route(
+    /\/api\/complaints\/[^/?]+(?:\?.*)?$/u,
+    async (route) => {
+      expect(route.request().method()).toBe('GET');
+      await route.fulfill({
+        status: 500,
+        json: { message: 'Synthetic confirmed-write detail read failure' },
+      });
+    },
+    { times: 1 },
+  );
   const creation = page.waitForResponse(mutation('/api/complaints'));
   await save.click();
   const created = await creation;
@@ -243,6 +264,52 @@ test('records, corrects and reopens a factual Complaint journey in four language
     body: creationBody,
     revision: 1,
   });
+
+  await expect(
+    section.getByText(
+      'The save is confirmed. Updated history could not be loaded.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    section.getByText('Records could not be loaded. Try again.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(section.getByRole('article')).toHaveCount(0);
+  const reloadRecords = section.getByRole('button', {
+    name: 'Reload records',
+    exact: true,
+  });
+  await expect(reloadRecords).toHaveClass('complaint-button');
+  await customAndFit(page, section);
+  await capture(page, testInfo, `complaints-${suffix}-injected-read-error.png`);
+  const recoveryRead = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === path,
+  );
+  await reloadRecords.focus();
+  await reloadRecords.press('Enter');
+  expect((await recoveryRead).status()).toBe(200);
+  await expect(
+    section.getByText('Record saved.', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    section.getByRole('article').getByRole('heading', {
+      name: originalSubject,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    section
+      .getByRole('region', {
+        name: 'Factual history',
+        exact: true,
+      })
+      .getByRole('listitem'),
+  ).toHaveCount(1);
+  expect(browserWrites).toBe(1);
 
   await page.reload();
   const persisted = section.getByRole('listitem').filter({

@@ -187,6 +187,28 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'complaints-reader',
+    canonical: 'Company Complaints Reader',
+    version: 'v1',
+    labels: {
+      ro: 'Citirea reclamațiilor Companiei',
+      ru: 'Чтение жалоб Компании',
+      fr: 'Lecture des réclamations de la Compagnie',
+      en: 'Company Complaints Reader',
+    },
+  },
+  {
+    value: 'complaints-recorder',
+    canonical: 'Company Complaints Recorder',
+    version: 'v1',
+    labels: {
+      ro: 'Înregistrarea reclamațiilor Companiei',
+      ru: 'Регистрация жалоб Компании',
+      fr: 'Enregistrement des réclamations de la Compagnie',
+      en: 'Company Complaints Recorder',
+    },
+  },
+  {
     value: 'commercial-intake',
     canonical: 'Company Commercial Intake',
     version: 'v4',

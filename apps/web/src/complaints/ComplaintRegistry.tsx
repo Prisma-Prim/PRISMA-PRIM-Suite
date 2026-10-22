@@ -43,8 +43,8 @@ export interface ComplaintWorkspaceProps {
 type Remote<T> =
   { status: 'loading' | 'error' | 'denied' } | { status: 'ready'; value: T };
 type Screen =
-  | { kind: 'register' | 'new' | 'unavailable' }
-  | { kind: 'opening'; id: string }
+  | { kind: 'register' | 'new' }
+  | { kind: 'opening' | 'read-error'; id: string }
   | { kind: 'detail'; complaint: Complaint; history: Remote<ComplaintHistory> };
 type Intent = {
   kind: 'record' | 'intake-correction' | 'journal' | 'journal-correction';
@@ -76,6 +76,12 @@ type RequestContext = {
   slot: Slot;
   controller: AbortController;
   epoch: number;
+};
+type ComplaintReadOptions = {
+  id: string;
+  trigger?: HTMLElement;
+  replaceDraft?: boolean;
+  afterWriteRefusal?: boolean;
 };
 const emptyDraft: Draft = {
   complaintDate: '',
@@ -332,18 +338,16 @@ export function ComplaintRegistry(props: ComplaintWorkspaceProps) {
       finish(context);
     }
   }
-  async function openComplaint({
+  async function openComplaint(options: ComplaintReadOptions) {
+    if (intentLocked && !options.afterWriteRefusal) return false;
+    return readComplaint(options);
+  }
+  async function readComplaint({
     id,
     trigger,
     replaceDraft = false,
     afterWriteRefusal = false,
-  }: {
-    id: string;
-    trigger?: HTMLElement;
-    replaceDraft?: boolean;
-    afterWriteRefusal?: boolean;
-  }) {
-    if (intentLocked && !afterWriteRefusal) return;
+  }: ComplaintReadOptions): Promise<boolean> {
     const context = start('detail');
     pending.current.history?.abort();
     if (trigger) openingTrigger.current = trigger;
@@ -353,10 +357,10 @@ export function ComplaintRegistry(props: ComplaintWorkspaceProps) {
         path: `/complaints/${encodeURIComponent(id)}`,
         context,
       });
-      if (!current(context)) return;
+      if (!current(context)) return false;
       if (result.status !== 'ok') {
-        setScreen({ kind: 'unavailable' });
-        return;
+        setScreen({ kind: 'read-error', id });
+        return false;
       }
       const complaint = parseComplaint({
         value: result.value,
@@ -376,12 +380,30 @@ export function ComplaintRegistry(props: ComplaintWorkspaceProps) {
         setEditor({ kind: 'none' });
         setSave({ status: 'idle' });
       }
-      await loadHistory({ complaint });
+      const historyLoaded = await loadHistory({ complaint });
+      return current(context) && historyLoaded;
     } catch {
-      if (current(context)) setScreen({ kind: 'unavailable' });
+      if (current(context)) setScreen({ kind: 'read-error', id });
+      return false;
     } finally {
       finish(context);
     }
+  }
+  async function reloadComplaint(id: string) {
+    if (intentLocked || pending.current.mutation) return;
+    const confirmed =
+      save.status === 'saved' || save.status === 'savedRefreshFailed';
+    if (!confirmed) {
+      await openComplaint({ id, replaceDraft: true });
+      return;
+    }
+    const refreshed = await Promise.all([loadList(), readComplaint({ id })]);
+    if (refreshed.every((success) => success))
+      setSave((state) =>
+        state.status === 'saved' || state.status === 'savedRefreshFailed'
+          ? { status: 'saved' }
+          : state,
+      );
   }
   async function findClients(event: FormEvent) {
     event.preventDefault();
@@ -450,12 +472,9 @@ export function ComplaintRegistry(props: ComplaintWorkspaceProps) {
           companyId,
           workspaceId: actor.workspaceId,
         };
-        const complaint = parseComplaint(scope);
-        setScreen({
-          kind: 'detail',
-          complaint,
-          history: { status: 'loading' },
-        });
+        const receipt = parseComplaint(scope);
+        // Exact retries return the historical receipt; only its identity locates
+        // today's detail and the history belonging to that current revision.
         setSave({ status: 'saved' });
         setEditor({ kind: 'none' });
         setDraft(emptyDraft);
@@ -465,7 +484,7 @@ export function ComplaintRegistry(props: ComplaintWorkspaceProps) {
         setJournalDate('');
         const refreshed = await Promise.all([
           loadList(),
-          loadHistory({ complaint }),
+          readComplaint({ id: receipt.id }),
         ]);
         if (current(context) && refreshed.some((success) => !success))
           setSave({ status: 'savedRefreshFailed' });
@@ -760,16 +779,26 @@ export function ComplaintRegistry(props: ComplaintWorkspaceProps) {
       {screen.kind === 'opening' ? (
         <p role="status">{copy('loading')}</p>
       ) : null}
-      {screen.kind === 'unavailable' ? (
+      {screen.kind === 'read-error' ? (
         <div role="alert">
-          <p>{copy('noRelatedAccess')}</p>
-          <button
-            type="button"
-            className="complaint-button complaint-button--secondary"
-            onClick={returnToRegister}
-          >
-            {copy('back')}
-          </button>
+          <p>{copy('error')}</p>
+          <div className="complaint-actions">
+            <button
+              type="button"
+              className="complaint-button"
+              disabled={intentLocked}
+              onClick={() => void reloadComplaint(screen.id)}
+            >
+              {copy('reload')}
+            </button>
+            <button
+              type="button"
+              className="complaint-button complaint-button--secondary"
+              onClick={returnToRegister}
+            >
+              {copy('back')}
+            </button>
+          </div>
         </div>
       ) : null}
       {screen.kind === 'detail' ? (
@@ -922,12 +951,7 @@ export function ComplaintRegistry(props: ComplaintWorkspaceProps) {
             history={screen.history}
             canCorrect={detailWriteAllowed}
             disabled={intentLocked}
-            onReload={() =>
-              void openComplaint({
-                id: screen.complaint.id,
-                replaceDraft: true,
-              })
-            }
+            onReload={() => void reloadComplaint(screen.complaint.id)}
             onPageChange={(offset) =>
               void loadHistory({ complaint: screen.complaint, offset })
             }

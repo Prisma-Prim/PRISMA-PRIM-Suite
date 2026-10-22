@@ -1,6 +1,6 @@
 # PRD — Ordinary Company complaint intake and factual history
 
-**Status:** Approved — bounded first journey; runtime not delivered  
+**Status:** Approved — bounded first journey  
 **Version:** 0.2  
 **Normalization date:** 2026-10-20  
 **Product owner:** Dan Popescu  

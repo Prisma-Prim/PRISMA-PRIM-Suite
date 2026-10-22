@@ -419,154 +419,188 @@ it.each(['action', 'response'])(
   },
 );
 
-it('keeps exact uncertain correction intent across navigation and connects every paged correction to its immutable original', async () => {
-  const prior = {
-    id: 'prior-correction737',
-    kind: 'correction',
-    revision: 28,
-    text: 'Prior corrected factual action737',
-    declaredDate: null,
-    reason: 'Prior explicit reason737',
-    originalEntryId: originalEntry.id,
-    originalKind: 'action',
-    original: originalEntry,
-    actor: actorLabel,
-    recordedAt: '2026-10-20T10:00:00.000Z',
-  };
-  const correctedText =
-    '  Additional factual correction <script>literal only</script>737  ';
-  const latest = {
-    ...prior,
-    id: 'latest-correction737',
-    revision: 29,
-    text: correctedText,
-    reason: 'Additional explicit reason737',
-    recordedAt: '2026-10-20T10:01:00.000Z',
-  };
-  const intervening = Array.from({ length: 25 }, (_, index) => ({
-    ...originalEntry,
-    id: `intermediate-action-${index}`,
-    revision: index + 3,
-    text: `Intermediate factual action ${index}`,
-    corrected: false,
-    recordedAt: `2026-10-20T09:${String(index + 32).padStart(2, '0')}:00.000Z`,
-  }));
-  const initialEntries = [
-    intakeEntry(),
-    { ...originalEntry, corrected: true },
-    ...intervening,
-    prior,
-  ];
-  let committed = false;
-  const api = serve({
-    currentComplaint: () => complaint({ revision: committed ? 29 : 28 }),
-    currentHistory: (offset) =>
-      history({
-        revision: committed ? 29 : 28,
-        entries: committed ? [...initialEntries, latest] : initialEntries,
-        offset,
-      }),
-    reply: ({ url, method }) => {
-      if (
-        url.pathname !==
-          `${complaintPath}/journal/${originalEntry.id}/corrections` ||
-        method !== 'POST'
-      )
-        return undefined;
-      if (!committed) {
-        committed = true;
-        return Response.json(
-          { message: 'Synthetic lost acknowledgement' },
-          { status: 503 },
-        );
-      }
-      return Response.json(complaint({ revision: 29 }), { status: 201 });
-    },
-  });
-  mount();
-  let region = await openComplaint();
-  let journal = within(region).getByRole('region', { name: 'Factual history' });
-  const originalText = await within(journal).findByText(originalEntry.text, {
-    exact: true,
-  });
-  const originalRow = originalText.closest('li');
-  if (!originalRow)
-    throw new Error('The public original history row is unavailable.');
-  expect(
-    within(originalRow).getByText('Corrected; original retained'),
-  ).toBeVisible();
-  fireEvent.click(
-    within(originalRow).getByRole('button', { name: 'Record correction' }),
-  );
-  changeValue(within(region).getByLabelText('Factual text'), correctedText);
-  changeValue(
-    within(region).getByLabelText('Correction reason'),
-    latest.reason,
-  );
-  const correctionForm = within(region)
-    .getByLabelText('Correction reason')
-    .closest('form');
-  if (!correctionForm)
-    throw new Error('The public correction form is unavailable.');
-  fireEvent.click(
-    within(correctionForm).getByRole('button', { name: 'Record correction' }),
-  );
-  await within(region).findByText(
-    'The save outcome is uncertain. Retry the same save before changing the facts.',
-  );
-  expect(api.commands).toHaveLength(1);
-  expect(api.commands[0]?.key).toBeTruthy();
-  expect(api.commands[0]?.contentType).toBe('application/json');
-  const localeControl = screen.getByLabelText('Interface language');
-  changeValue(localeControl, 'fr');
-  await screen.findByRole('region', { name: 'Réclamations' });
-  for (const hash of ['#overview', '#complaints'])
-    act(() => {
-      window.history.pushState({}, '', `/?frame=prisme${hash}`);
-      window.dispatchEvent(new PopStateEvent('popstate'));
+it.each([false, true])(
+  'keeps exact uncertain correction intent across navigation and connects every paged correction to its immutable original (later revision before replay: %s)',
+  async (advanceBeforeReplay) => {
+    const prior = {
+      id: 'prior-correction737',
+      kind: 'correction',
+      revision: 28,
+      text: 'Prior corrected factual action737',
+      declaredDate: null,
+      reason: 'Prior explicit reason737',
+      originalEntryId: originalEntry.id,
+      originalKind: 'action',
+      original: originalEntry,
+      actor: actorLabel,
+      recordedAt: '2026-10-20T10:00:00.000Z',
+    };
+    const correctedText =
+      '  Additional factual correction <script>literal only</script>737  ';
+    const latest = {
+      ...prior,
+      id: 'latest-correction737',
+      revision: 29,
+      text: correctedText,
+      reason: 'Additional explicit reason737',
+      recordedAt: '2026-10-20T10:01:00.000Z',
+    };
+    const intervening = Array.from({ length: 25 }, (_, index) => ({
+      ...originalEntry,
+      id: `intermediate-action-${index}`,
+      revision: index + 3,
+      text: `Intermediate factual action ${index}`,
+      corrected: false,
+      recordedAt: `2026-10-20T09:${String(index + 32).padStart(2, '0')}:00.000Z`,
+    }));
+    const initialEntries = [
+      intakeEntry(),
+      { ...originalEntry, corrected: true },
+      ...intervening,
+      prior,
+    ];
+    let committed = false;
+    let advanced = false;
+    const laterAction = {
+      ...originalEntry,
+      id: 'another-recorder-action737',
+      revision: 30,
+      text: 'Independent action recorded after the correction737',
+      corrected: false,
+      actor: {
+        workspaceMembershipId: 'other-recorder737',
+        displayLabel: 'Another recorder',
+      },
+      recordedAt: '2026-10-20T10:02:00.000Z',
+    };
+    const api = serve({
+      currentComplaint: () =>
+        complaint({ revision: advanced ? 30 : committed ? 29 : 28 }),
+      currentHistory: (offset) =>
+        history({
+          revision: advanced ? 30 : committed ? 29 : 28,
+          entries: advanced
+            ? [...initialEntries, latest, laterAction]
+            : committed
+              ? [...initialEntries, latest]
+              : initialEntries,
+          offset,
+        }),
+      reply: ({ url, method }) => {
+        if (
+          url.pathname !==
+            `${complaintPath}/journal/${originalEntry.id}/corrections` ||
+          method !== 'POST'
+        )
+          return undefined;
+        if (!committed) {
+          committed = true;
+          return Response.json(
+            { message: 'Synthetic lost acknowledgement' },
+            { status: 503 },
+          );
+        }
+        return Response.json(complaint({ revision: 29 }), { status: 201 });
+      },
     });
-  changeValue(localeControl, 'en');
-  region = await screen.findByRole('region', {
-    name: 'Complaints',
-  });
-  expect(within(region).getByLabelText('Factual text')).toHaveValue(
-    correctedText,
-  );
-  fireEvent.click(
-    within(region).getByRole('button', { name: 'Retry the same save' }),
-  );
-  await within(region).findByText('Record saved.');
-  expect(api.commands).toHaveLength(2);
-  expect(api.commands[1]).toEqual(api.commands[0]);
-  expect(commandBody(api.commands[0])).toEqual({
-    text: correctedText,
-    declaredDate: null,
-    expectedRevision: 28,
-    reason: latest.reason,
-  });
-  journal = within(region).getByRole('region', { name: 'Factual history' });
-  await within(journal).findByText(originalEntry.text, { exact: true });
-  fireEvent.click(within(journal).getByRole('button', { name: 'Next page' }));
-  await within(journal).findByText(latest.reason, { exact: false });
-  expect(
-    within(journal).getByText(prior.reason, { exact: false }),
-  ).toBeVisible();
-  expect(
-    within(journal).getAllByText(originalEntry.text, { exact: true }),
-  ).toHaveLength(2);
-  const latestText = within(journal).getByText(correctedText, {
-    exact: true,
-    normalizer: (value) => value,
-  });
-  const latestRow = latestText.closest('li');
-  if (!latestRow)
-    throw new Error('The public latest correction row is unavailable.');
-  expect(
-    within(latestRow).queryByRole('button', { name: 'Record correction' }),
-  ).toBeNull();
-  expect(api.reads).toContain(`${complaintPath}/history?offset=25`);
-  expect(journal.querySelector('script')).toBeNull();
-});
+    mount();
+    let region = await openComplaint();
+    let journal = within(region).getByRole('region', {
+      name: 'Factual history',
+    });
+    const originalText = await within(journal).findByText(originalEntry.text, {
+      exact: true,
+    });
+    const originalRow = originalText.closest('li');
+    if (!originalRow)
+      throw new Error('The public original history row is unavailable.');
+    expect(
+      within(originalRow).getByText('Corrected; original retained'),
+    ).toBeVisible();
+    fireEvent.click(
+      within(originalRow).getByRole('button', { name: 'Record correction' }),
+    );
+    changeValue(within(region).getByLabelText('Factual text'), correctedText);
+    changeValue(
+      within(region).getByLabelText('Correction reason'),
+      latest.reason,
+    );
+    const correctionForm = within(region)
+      .getByLabelText('Correction reason')
+      .closest('form');
+    if (!correctionForm)
+      throw new Error('The public correction form is unavailable.');
+    fireEvent.click(
+      within(correctionForm).getByRole('button', { name: 'Record correction' }),
+    );
+    await within(region).findByText(
+      'The save outcome is uncertain. Retry the same save before changing the facts.',
+    );
+    expect(api.commands).toHaveLength(1);
+    expect(api.commands[0]?.key).toBeTruthy();
+    expect(api.commands[0]?.contentType).toBe('application/json');
+    const localeControl = screen.getByLabelText('Interface language');
+    changeValue(localeControl, 'fr');
+    await screen.findByRole('region', { name: 'Réclamations' });
+    for (const hash of ['#overview', '#complaints'])
+      act(() => {
+        window.history.pushState({}, '', `/?frame=prisme${hash}`);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+    changeValue(localeControl, 'en');
+    region = await screen.findByRole('region', {
+      name: 'Complaints',
+    });
+    expect(within(region).getByLabelText('Factual text')).toHaveValue(
+      correctedText,
+    );
+    advanced = advanceBeforeReplay;
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Retry the same save' }),
+    );
+    await within(region).findByText('Record saved.');
+    expect(api.commands).toHaveLength(2);
+    expect(api.commands[1]).toEqual(api.commands[0]);
+    expect(commandBody(api.commands[0])).toEqual({
+      text: correctedText,
+      declaredDate: null,
+      expectedRevision: 28,
+      reason: latest.reason,
+    });
+    journal = within(region).getByRole('region', { name: 'Factual history' });
+    await within(journal).findByText(originalEntry.text, { exact: true });
+    fireEvent.click(within(journal).getByRole('button', { name: 'Next page' }));
+    await within(journal).findByText(latest.reason, { exact: false });
+    expect(
+      within(journal).getByText(prior.reason, { exact: false }),
+    ).toBeVisible();
+    expect(
+      within(journal).getAllByText(originalEntry.text, { exact: true }),
+    ).toHaveLength(2);
+    const latestText = within(journal).getByText(correctedText, {
+      exact: true,
+      normalizer: (value) => value,
+    });
+    const latestRow = latestText.closest('li');
+    if (!latestRow)
+      throw new Error('The public latest correction row is unavailable.');
+    expect(
+      within(latestRow).queryByRole('button', { name: 'Record correction' }),
+    ).toBeNull();
+    expect(api.reads).toContain(`${complaintPath}/history?offset=25`);
+    if (advanceBeforeReplay) {
+      const laterRow = within(journal)
+        .getByText(laterAction.text)
+        .closest('li');
+      if (!laterRow)
+        throw new Error('The later factual action is unavailable.');
+      expect(
+        within(laterRow).getByText(/^Recorded by: Another recorder ·/u),
+      ).toBeVisible();
+    }
+    expect(journal.querySelector('script')).toBeNull();
+  },
+);
 
 it.each([401, 403])(
   'retires private facts and drafts after HTTP%s before403 revalidation resolves, then rejects a late history reply',
@@ -687,6 +721,131 @@ it('discards a late committed journal reply and private draft after an actual Co
     late.resolve(Response.json(complaint({ revision: 2 }), { status: 201 }));
   }
 });
+
+it.each([false, true])(
+  'reopens current intake and history after a historical creation receipt replay (first detail read fails: %s)',
+  async (firstReadFails) => {
+    const currentIntake = {
+      ...originalIntake,
+      subject: 'Current intake corrected by another recorder737',
+    };
+    const latest = {
+      ...complaint({ revision: 2 }),
+      currentIntake,
+    };
+    const correction = {
+      id: 'other-intake-correction737',
+      kind: 'intake_correction',
+      revision: 2,
+      intake: currentIntake,
+      reason: 'Another recorder corrected the intake before the retry737',
+      actor: {
+        workspaceMembershipId: 'other-recorder737',
+        displayLabel: 'Another recorder',
+      },
+      recordedAt: '2026-10-20T09:32:00.000Z',
+    };
+    const detail = deferred<Response>();
+    let committed = false;
+    let laterRevision = false;
+    let detailReads = 0;
+    const api = serve({
+      currentComplaint: () => (laterRevision ? latest : complaint()),
+      currentHistory: (offset) =>
+        history({
+          revision: laterRevision ? 2 : 1,
+          entries: laterRevision
+            ? [intakeEntry(), correction]
+            : [intakeEntry()],
+          offset,
+        }),
+      reply: ({ url, method }) => {
+        if (url.pathname === '/api/complaints' && method === 'POST') {
+          if (!committed) {
+            committed = true;
+            return Response.json({}, { status: 503 });
+          }
+          // Exact replay confirms the original write, not today's aggregate.
+          return Response.json(complaint(), { status: 201 });
+        }
+        if (url.pathname === '/api/complaints' && method === 'GET')
+          return Response.json({
+            companyId: companyA.id,
+            complaints: committed ? [laterRevision ? latest : complaint()] : [],
+            total: committed ? 1 : 0,
+            offset: 0,
+            pageSize: 25,
+          });
+        if (url.pathname === complaintPath && method === 'GET') {
+          detailReads += 1;
+          return detailReads === 1 ? detail.promise : Response.json(latest);
+        }
+        return undefined;
+      },
+    });
+    mount();
+    const region = await openRegistration();
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Save complaint' }),
+    );
+    await within(region).findByText(
+      'The save outcome is uncertain. Retry the same save before changing the facts.',
+    );
+    laterRevision = true;
+    fireEvent.click(
+      within(region).getByRole('button', { name: 'Retry the same save' }),
+    );
+    await within(region).findByText('Record saved.');
+    expect(within(region).queryByRole('article')).not.toBeInTheDocument();
+    await act(async () =>
+      detail.resolve(
+        firstReadFails
+          ? Response.json({}, { status: 500 })
+          : Response.json(latest),
+      ),
+    );
+    if (firstReadFails) {
+      await within(region).findByText(
+        'The save is confirmed. Updated history could not be loaded.',
+      );
+      expect(
+        within(region).getByText('Records could not be loaded. Try again.'),
+      ).toBeVisible();
+      expect(within(region).queryByRole('article')).not.toBeInTheDocument();
+      const retry = within(region).getByRole('button', {
+        name: 'Reload records',
+      });
+      expect(retry).toHaveClass('complaint-button');
+      fireEvent.click(retry);
+    }
+    await within(region).findByRole('heading', { name: currentIntake.subject });
+    const journal = within(region).getByRole('region', {
+      name: 'Factual history',
+    });
+    expect(
+      await within(journal).findByText(
+        `Correction reason: ${correction.reason}`,
+      ),
+    ).toBeVisible();
+    expect(
+      within(journal).getByText(/^Recorded by: Another recorder ·/u),
+    ).toBeVisible();
+    expect(
+      within(journal).getByText(originalIntake.subject, { exact: true }),
+    ).toBeVisible();
+    expect(within(region).getByText('Record saved.')).toBeVisible();
+    expect(detailReads).toBe(firstReadFails ? 2 : 1);
+    expect(api.commands).toHaveLength(2);
+    expect(api.commands[1]).toEqual(api.commands[0]);
+    expect(api.commands[0]?.key).toBeTruthy();
+    expect(commandBody(api.commands[0])).toEqual({
+      clientAccountId: ids.client,
+      projectId: null,
+      responsibleMembershipId: ids.membership,
+      ...originalIntake,
+    });
+  },
+);
 
 it('keeps a confirmed journal write confirmed after failed reads and recovers history without repeating the write', async () => {
   const entry = { ...originalEntry, corrected: false };
