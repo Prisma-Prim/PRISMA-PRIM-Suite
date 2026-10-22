@@ -1,3 +1,5 @@
+import { contractRecordedLocales } from '../src/test/contract-recorded-values-fixture';
+import { chooseContractLocale } from './contract-recorded-values';
 import { contractQualityLocales } from '../src/test/contract-quality-localization-fixture';
 import { contractMessages } from '../src/contract/contract.copy';
 import { expect, test } from '@playwright/test';
@@ -123,6 +125,11 @@ for (const locale of interfaceLocales)
         ({ key, locale }) => window.localStorage.setItem(key, locale),
         { key: interfaceLocaleStorageKey, locale },
       );
+      const expected = contractRecordedLocales.find(
+        (item) => item.locale === locale,
+      );
+      if (!expected) throw new Error('Missing locale expectations');
+      const calls: string[] = [];
       let created = false,
         approved = false;
       const attempts: Array<{ body: string | null; key: string | undefined }> =
@@ -141,7 +148,7 @@ for (const locale of interfaceLocales)
         parentContractId: null,
         addendumOrdinal: null,
         precontract: null,
-        illustrativeReference: 1,
+        illustrativeReference: 1000,
         revision: approved ? 2 : 1,
         provisional: true,
         linkedProjects: [],
@@ -205,6 +212,7 @@ for (const locale of interfaceLocales)
       await page.route('**/api/**', async (route) => {
         const sent = route.request(),
           path = new URL(sent.url()).pathname;
+        calls.push(path);
         if (path.endsWith('/access/current-actor'))
           return route.fulfill({ json: actor });
         if (path.endsWith('/companies'))
@@ -297,7 +305,7 @@ for (const locale of interfaceLocales)
               precontract: created
                 ? {
                     id: 'precontract-one',
-                    illustrativeReference: 1,
+                    illustrativeReference: 1000,
                     versionNumber: 1,
                     decisionState: approved ? 'APPROVED' : 'PENDING',
                     executionState: 'NOT_EXECUTED',
@@ -423,5 +431,40 @@ for (const locale of interfaceLocales)
       await expect(
         panel.getByRole('region', { name: copy('create'), exact: true }),
       ).toHaveCount(0);
+      await expect(
+        listed.getByText(
+          new RegExp(
+            expected.ordinal.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&') + ' ·',
+            'u',
+          ),
+        ),
+      ).toBeVisible();
+      await listed.screenshot({
+        path: testInfo.outputPath(
+          'c7-listed-' + locale + '-' + testInfo.project.name + '.png',
+        ),
+      });
+      const listedReads = calls.length;
+      const alternate = locale === 'fr' ? 'ru' : 'fr';
+      await chooseContractLocale(page, locale, alternate);
+      await expect(
+        page.getByRole('button', {
+          name: resolveMessage(contractPrecontractMessages, alternate, 'open'),
+          exact: true,
+        }),
+      ).toBeVisible();
+      expect(calls).toHaveLength(listedReads);
+      await chooseContractLocale(page, alternate, locale);
+      expect(calls).toHaveLength(listedReads);
+      await listed
+        .getByRole('button', { name: copy('open'), exact: true })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(
+        panel.getByRole('button', { name: copy('back'), exact: true }),
+      ).toBeVisible();
+      expect(
+        calls.some((path) => path.endsWith('/agreements/precontract-one')),
+      ).toBe(true);
     },
   );
