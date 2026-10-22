@@ -85,6 +85,12 @@ for (const locale of interfaceLocales)
       if (!expected) throw new Error('Missing locale expectations');
       const alternate = locale === 'fr' ? 'ru' : 'fr';
       const calls: string[] = [];
+      let releaseSnapshotResponse: () => void = () => {
+        throw new Error('Snapshot response gate was not initialized');
+      };
+      const snapshotResponseGate = new Promise<void>((resolve) => {
+        releaseSnapshotResponse = resolve;
+      });
       const run = {
         id: 'run-one',
         contractVersionId: 'version-one',
@@ -263,7 +269,8 @@ for (const locale of interfaceLocales)
           });
         if (path.endsWith('/commercial-intake/requests/request-one'))
           return route.fulfill({ json: detail });
-        if (path.endsWith('/snapshots'))
+        if (path.endsWith('/snapshots')) {
+          await snapshotResponseGate;
           return route.fulfill({
             json: {
               items: [
@@ -277,6 +284,7 @@ for (const locale of interfaceLocales)
               nextCursor: null,
             },
           });
+        }
         if (path.endsWith('/addenda')) {
           attempts.push({
             body: sent.postData(),
@@ -404,15 +412,30 @@ for (const locale of interfaceLocales)
       await panel
         .getByRole('textbox', { name: copy('summary'), exact: true })
         .fill('Exact child 2');
-      await panel
-        .getByRole('button', { name: copy('chooseSnapshot'), exact: true })
-        .click();
+      const chooseSnapshot = panel.getByRole('button', {
+        name: copy('chooseSnapshot'),
+        exact: true,
+      });
+      const snapshotsResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname ===
+            '/api/pricing/opportunities/opportunity-one/snapshots' &&
+          response.status() === 200,
+      );
+      await chooseSnapshot.click();
+      await expect(chooseSnapshot).toBeDisabled();
+      releaseSnapshotResponse();
+      const loadedSnapshots = await snapshotsResponse;
+      expect(await loadedSnapshots.finished()).toBeNull();
+      await expect(chooseSnapshot).toBeEnabled();
       const snapshot = panel.getByRole('combobox', {
         name: copy('snapshot'),
         exact: true,
       });
       await snapshot.focus();
       await snapshot.press('Enter');
+      await expect(page.getByRole('listbox')).toBeVisible();
       await expect(
         page.getByRole('option', {
           name: 'EUR · ' + expected.amount + ' · snapshot-exact',
