@@ -8,6 +8,7 @@ import { and, asc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE } from '../access/company-permissions.js';
 import { DatabaseContext } from '../database/database-context.js';
+import { ClientReferenceStateDrift } from '../database/client-reference-state-drift.js';
 import {
   clientAccounts,
   clientCompanyRelationships,
@@ -687,11 +688,53 @@ export class ClientOperationalReferenceService {
     const current = await this.readProjectReferences(actor, originalIds);
     for (const originalId of originalIds) {
       const headId = expectedHeads.get(originalId);
+      const currentHeadId =
+        currentHeads.currentDossierByOriginal.get(originalId);
+      const before = expected.get(originalId);
+      const after = current.get(originalId);
       if (
         !headId ||
+        !currentHeadId ||
         invalidOriginalIds.has(originalId) ||
         currentHeads.invalidOriginalIds.has(originalId) ||
-        currentHeads.currentDossierByOriginal.get(originalId) !== headId ||
+        !before ||
+        !after ||
+        before.id !== after.id
+      )
+        throw new NotFoundException();
+      // A union/reversal can win the wait without removing the original's
+      // visibility. Its new head must be locked in a fresh whole transaction;
+      // acquiring it here could invert Client's identity/relationship order.
+      if (currentHeadId !== headId) {
+        // Minimal Workspace management may read the original without a
+        // canonical projection. Check head availability directly, without
+        // widening that projection or taking a new out-of-order row lock.
+        const [readableHead] = await this.databaseContext.connection
+          .select({ id: clientAccounts.id })
+          .from(clientAccounts)
+          .innerJoin(
+            clientCompanyRelationships,
+            and(
+              eq(
+                clientCompanyRelationships.workspaceId,
+                clientAccounts.workspaceId,
+              ),
+              eq(clientCompanyRelationships.clientAccountId, clientAccounts.id),
+              eq(clientCompanyRelationships.companyId, companyId),
+              eq(clientCompanyRelationships.status, 'active'),
+            ),
+          )
+          .where(
+            and(
+              eq(clientAccounts.workspaceId, actor.workspaceId),
+              eq(clientAccounts.id, currentHeadId),
+              eq(clientAccounts.status, 'active'),
+            ),
+          );
+        if (!readableHead) throw new NotFoundException();
+        throw new ClientReferenceStateDrift();
+      }
+      if (
         !lockedClients.some(
           (client) => client.id === headId && client.status === 'active',
         ) ||
@@ -702,14 +745,11 @@ export class ClientOperationalReferenceService {
         )
       )
         throw new NotFoundException();
-      const before = expected.get(originalId);
-      const after = current.get(originalId);
       if (
-        before?.id !== after?.id ||
-        before?.displayName !== after?.displayName ||
-        before?.clientDossierId !== after?.clientDossierId
+        before.displayName !== after.displayName ||
+        before.clientDossierId !== after.clientDossierId
       )
-        throw new NotFoundException();
+        throw new ClientReferenceStateDrift();
     }
     return current;
   }
