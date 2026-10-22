@@ -19,12 +19,24 @@ vi.mock('@clerk/react', () => ({
     },
   }),
   SignIn: ({ forceRedirectUrl }: { forceRedirectUrl: string }) => (
-    <a href={forceRedirectUrl}>Complete authentication</a>
+    <ProviderAuthentication forceRedirectUrl={forceRedirectUrl} />
   ),
   SignUp: ({ forceRedirectUrl }: { forceRedirectUrl: string }) => (
-    <a href={forceRedirectUrl}>Complete authentication</a>
+    <ProviderAuthentication forceRedirectUrl={forceRedirectUrl} />
   ),
 }));
+
+function ProviderAuthentication({
+  forceRedirectUrl,
+}: {
+  forceRedirectUrl: string;
+}) {
+  // Real Clerk UI 1.41.1 composes hash routes against this synthetic origin.
+  // Keep this external-boundary contract aligned with the captured #792 failure.
+  const target = new URL(forceRedirectUrl, window.location.href);
+  new URL('http://clerk-dummy' + target.hash.substring(1));
+  return <a href={forceRedirectUrl}>Complete authentication</a>;
+}
 const invitationId = 'aaaaaaaa-0000-4000-8000-000000000163';
 const key = 'bbbbbbbb-0000-4000-8000-000000000163';
 const actor = {
@@ -64,6 +76,95 @@ afterEach(() => {
   sessionStorage.clear();
   window.history.replaceState(null, '', '/');
 });
+
+it('renders embedded authentication with a hash-route-compatible exact continuation', () => {
+  vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+  const captured = { invitationId, key, attempted: true };
+  window.history.replaceState(
+    captured,
+    '',
+    '/accept-invitation?invitation=' + invitationId + '&mode=signin',
+  );
+  const fetch = vi.fn();
+  vi.stubGlobal('fetch', fetch);
+
+  render(<ApplicationRoot pathname="/accept-invitation" />);
+
+  const destination = screen
+    .getByRole('link', { name: 'Complete authentication' })
+    .getAttribute('href');
+  if (!destination) throw new Error('Missing authentication continuation');
+  const target = new URL(destination, window.location.origin);
+  expect(target.origin).toBe(window.location.origin);
+  expect(target.pathname).toBe('/accept-invitation');
+  expect(target.hash).toMatch(/^#\/\?/u);
+  const value = new URLSearchParams(target.hash.slice(3)).get(
+    'invitation-intent',
+  );
+  expect(value).toBe(JSON.stringify(captured));
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it.each(['legacy', 'hash-route'])(
+  'recovers the exact %s continuation without session storage',
+  (format) => {
+    vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+    const captured = {
+      invitationId,
+      key,
+      attempted: true,
+      ticket: 'opaque_ticket',
+    };
+    const fragment = new URLSearchParams({
+      'invitation-intent': JSON.stringify(captured),
+    }).toString();
+    window.history.replaceState(
+      null,
+      '',
+      '/accept-invitation?invitation=' +
+        invitationId +
+        '&mode=signin' +
+        (format === 'legacy' ? '#' : '#/?') +
+        fragment,
+    );
+    const originalGetItem = Storage.prototype.getItem;
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
+      this: Storage,
+      itemKey,
+    ) {
+      if (this === window.sessionStorage)
+        throw new DOMException('Unavailable', 'SecurityError');
+      return originalGetItem.call(this, itemKey);
+    });
+    const originalSetItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+      this: Storage,
+      itemKey,
+      value,
+    ) {
+      if (this === window.sessionStorage)
+        throw new DOMException('Full', 'QuotaExceededError');
+      originalSetItem.call(this, itemKey, value);
+    });
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+
+    render(<ApplicationRoot pathname="/accept-invitation" />);
+
+    const destination = screen
+      .getByRole('link', { name: 'Complete authentication' })
+      .getAttribute('href');
+    if (!destination) throw new Error('Missing authentication continuation');
+    const target = new URL(destination, window.location.origin);
+    expect(
+      new URLSearchParams(target.hash.slice(3)).get('invitation-intent'),
+    ).toBe(JSON.stringify(captured));
+    expect(target.searchParams.has('__clerk_ticket')).toBe(false);
+    expect(window.location.hash).toBe('');
+    expect(window.location.href).not.toContain('opaque_ticket');
+    expect(fetch).not.toHaveBeenCalled();
+  },
+);
 for (const entry of ['Sign in', 'Create your invited account']) {
   it(`retains the captured intent through ${entry} and the provider return without session storage`, async () => {
     vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
@@ -165,30 +266,33 @@ it.each([
   },
 );
 
-for (const continuation of [
-  '{invalid-json',
-  JSON.stringify({ invitationId, key: 'not-a-key', attempted: true }),
-  JSON.stringify({
-    invitationId: 'aaaaaaaa-0000-4000-8000-000000000999',
-    key,
-    attempted: true,
-  }),
-]) {
-  it('denies malformed or foreign authentication continuation without admission', async () => {
-    vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
-    auth.signedIn = true;
-    const fetch = vi.fn();
-    vi.stubGlobal('fetch', fetch);
-    window.history.replaceState(
-      null,
-      '',
-      '/accept-invitation?invitation=' +
-        invitationId +
-        '#' +
-        new URLSearchParams({ 'invitation-intent': continuation }).toString(),
-    );
-    render(<ApplicationRoot pathname="/accept-invitation" />);
-    expect(screen.getByRole('alert')).toHaveTextContent('cannot be accepted');
-    expect(fetch).not.toHaveBeenCalled();
-  });
+for (const format of ['legacy', 'hash-route']) {
+  for (const continuation of [
+    '{invalid-json',
+    'x'.repeat(100_001),
+    JSON.stringify({ invitationId, key: 'not-a-key', attempted: true }),
+    JSON.stringify({
+      invitationId: 'aaaaaaaa-0000-4000-8000-000000000999',
+      key,
+      attempted: true,
+    }),
+  ]) {
+    it(`denies malformed or foreign ${format} authentication continuation without admission`, async () => {
+      vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+      auth.signedIn = true;
+      const fetch = vi.fn();
+      vi.stubGlobal('fetch', fetch);
+      window.history.replaceState(
+        null,
+        '',
+        '/accept-invitation?invitation=' +
+          invitationId +
+          (format === 'legacy' ? '#' : '#/?') +
+          new URLSearchParams({ 'invitation-intent': continuation }).toString(),
+      );
+      render(<ApplicationRoot pathname="/accept-invitation" />);
+      expect(screen.getByRole('alert')).toHaveTextContent('cannot be accepted');
+      expect(fetch).not.toHaveBeenCalled();
+    });
+  }
 }
