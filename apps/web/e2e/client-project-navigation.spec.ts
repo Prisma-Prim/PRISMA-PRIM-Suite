@@ -1014,13 +1014,15 @@ for (const frame of ['classic', 'prisme'] as const) {
         exact: true,
       })
       .click();
-    await expect(projectsTarget).toBeFocused();
     const projectTasks = page
       .locator('.project-workspace')
       .getByRole('region', { name: 'Tasks', exact: true });
-    await expect(
-      projectTasks.getByRole('heading', { name: collect.title, exact: true }),
-    ).toBeVisible();
+    const openedTask = projectTasks.getByRole('heading', {
+      name: collect.title,
+      exact: true,
+    });
+    await expect(openedTask).toBeVisible();
+    await expect(openedTask).toBeFocused();
     const taskDueDate = projectTasks.locator(
       `dd time[datetime="${collect.dueDate}"]`,
     );
