@@ -1545,3 +1545,146 @@ it('still refreshes current Mine when a newer same-scope Task detail reload supe
     'My open Projects',
   );
 });
+
+it.each(['success', 'unavailable'] as const)(
+  'refreshes recovered Mine after confirmed cancellation with a %s detail read',
+  async (detailOutcome) => {
+    const transport = server();
+    render(element(deterministicBrowserIdentity(), changingActor));
+    await ready();
+    transport.hold(minePath);
+    choose('mine_open');
+    await transport.release(minePath, new Response(null, { status: 403 }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Project access and Client read access are required for this Company.',
+    );
+    transport.unhold(minePath);
+    fireEvent.click(screen.getByRole('button', { name: 'Reload this view' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: `${mine.title} Client: ${mine.clientDisplayName}`,
+      }),
+    );
+    const opened = await screen.findByRole('article', { name: mine.title });
+    const detailPath = `/api/projects/${mine.id}`;
+    transport.hold(detailPath);
+    prepareConfirmedChange({ change: 'Lifecycle', transport });
+    await submitConfirmedChange('Lifecycle');
+    await transport.pending(detailPath);
+    await transport.release(
+      detailPath,
+      detailOutcome === 'unavailable'
+        ? new Response(null, { status: 503 })
+        : undefined,
+    );
+    expect(
+      await screen.findByText(
+        'No open Projects currently list you as responsible.',
+      ),
+    ).toBeInTheDocument();
+    expect(rows().queryByRole('button')).toBeNull();
+    expect(screen.getByRole('article', { name: mine.title })).toBe(opened);
+    expect(control('project-directory-view')).toHaveTextContent(
+      'My open Projects',
+    );
+    expect(
+      transport.requests.filter((request) => request.path === minePath),
+    ).toHaveLength(3);
+  },
+);
+
+it('does not revive a retired confirmed-change reply after same-view Mine recovery', async () => {
+  const transport = server();
+  render(element(deterministicBrowserIdentity(), changingActor));
+  await openCurrentMine();
+  const detailPath = `/api/projects/${mine.id}`;
+  transport.hold(detailPath);
+  prepareConfirmedChange({ change: 'Lifecycle', transport });
+  await submitConfirmedChange('Lifecycle');
+  const retiredDetail = await transport.pending(detailPath);
+  transport.hold(minePath);
+  fireEvent.click(screen.getByRole('button', { name: 'Reload this view' }));
+  await transport.release(minePath, new Response(null, { status: 403 }));
+  await screen.findByRole('alert');
+  expect(retiredDetail.signal?.aborted).toBe(true);
+  transport.setMine([colleague]);
+  transport.unhold(minePath);
+  fireEvent.click(screen.getByRole('button', { name: 'Reload this view' }));
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: `${colleague.title} Client: ${colleague.clientDisplayName}`,
+    }),
+  );
+  const opened = await screen.findByRole('article', { name: colleague.title });
+  transport.hold(minePath);
+  await transport.release(detailPath, new Response(null, { status: 503 }));
+  expect(
+    rows().getByRole('button', {
+      name: `${colleague.title} Client: ${colleague.clientDisplayName}`,
+    }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('article', { name: colleague.title })).toBe(opened);
+  expect(
+    transport.requests.filter((request) => request.path === minePath),
+  ).toHaveLength(3);
+});
+
+it.each(['Company', 'session', 'unmount'] as const)(
+  'retires a recovered Mine lifetime on %s change',
+  async (retirement) => {
+    const transport = server();
+    const identity = deterministicBrowserIdentity();
+    const view = render(element(identity, changingActor));
+    await ready();
+    transport.hold(minePath);
+    choose('mine_open');
+    await transport.release(minePath, new Response(null, { status: 403 }));
+    await screen.findByRole('alert');
+    transport.unhold(minePath);
+    fireEvent.click(screen.getByRole('button', { name: 'Reload this view' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: `${mine.title} Client: ${mine.clientDisplayName}`,
+      }),
+    );
+    await screen.findByRole('article', { name: mine.title });
+    const detailPath = `/api/projects/${mine.id}`;
+    transport.hold(detailPath);
+    prepareConfirmedChange({ change: 'Lifecycle', transport });
+    await submitConfirmedChange('Lifecycle');
+    const retiredDetail = await transport.pending(detailPath);
+    if (retirement === 'unmount') view.unmount();
+    else {
+      view.rerender(
+        element(
+          retirement === 'session' ? deterministicBrowserIdentity() : identity,
+          retirement === 'Company'
+            ? {
+                ...changingActor,
+                activeCompany: {
+                  ...changingActor.activeCompany,
+                  id: 'other-company',
+                  displayName: 'Other Company',
+                },
+              }
+            : changingActor,
+        ),
+      );
+      await screen.findByRole('textbox', { name: 'Project title' });
+      choose('mine_open');
+      await screen.findByText(
+        'No open Projects currently list you as responsible.',
+      );
+    }
+    expect(retiredDetail.signal?.aborted).toBe(true);
+    const requestsBeforeLateReply = transport.requests.length;
+    await transport.release(detailPath, new Response(null, { status: 503 }));
+    expect(transport.requests).toHaveLength(requestsBeforeLateReply);
+    if (retirement === 'unmount')
+      expect(screen.queryByRole('list', { name: 'Projects' })).toBeNull();
+    else
+      expect(
+        screen.getByText('No open Projects currently list you as responsible.'),
+      ).toBeInTheDocument();
+  },
+);

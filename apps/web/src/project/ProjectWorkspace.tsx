@@ -217,8 +217,7 @@ export function ProjectWorkspace({
   // module presents, including the drafts, commands and requested opens
   // started under it.
   useEffect(() => {
-    const currentScope = { retired: false };
-    scope.current = currentScope;
+    scope.current = { retired: false };
     request.current?.abort();
     detailRefresh.current?.abort();
     setSelected(null);
@@ -235,7 +234,7 @@ export function ProjectWorkspace({
     consumedProjectRequest.current = latestProjectRequest.current?.requestId;
     directory.reset();
     return () => {
-      currentScope.retired = true;
+      scope.current.retired = true;
       request.current?.abort();
       directory.cancel();
       detailRefresh.current?.abort();
@@ -645,11 +644,14 @@ export function ProjectWorkspace({
       <button
         type="button"
         disabled={pending}
-        onClick={() =>
-          load.view === 'mine_open'
-            ? directory.refresh()
-            : setGeneration((value) => value + 1)
-        }
+        onClick={() => {
+          if (load.view === 'mine_open') {
+            // Recovery owns a fresh lifetime; callbacks captured before denial
+            // keep their retired scope even after the same-view read succeeds.
+            if (load.kind === 'denied') scope.current = { retired: false };
+            directory.refresh();
+          } else setGeneration((value) => value + 1);
+        }}
       >
         {load.view === 'mine_open' ? copy.retryView : copy.retry}
       </button>
