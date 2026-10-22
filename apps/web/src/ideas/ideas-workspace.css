@@ -1,0 +1,171 @@
+.ideas-workspace {
+  color: #15233b;
+  min-width: 0;
+  outline: none;
+}
+.ideas-workspace > header,
+.ideas-workspace .ideas-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.ideas-workspace h2,
+.ideas-workspace h3,
+.ideas-workspace h4 {
+  color: #15233b;
+}
+.ideas-workspace
+  button:not(:where(.shared-select__trigger, .shared-select__option)) {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.65rem 1rem;
+  border: 1px solid #d9d1ed;
+  border-radius: 10px;
+  background: #fff;
+  color: #49317f;
+  font: inherit;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-align: start;
+  cursor: pointer;
+}
+.ideas-workspace
+  button:not(:where(.shared-select__trigger, .shared-select__option)):hover:not(
+    :disabled
+  ) {
+  background: #f4f0ff;
+}
+.ideas-workspace
+  button:not(
+    :where(.shared-select__trigger, .shared-select__option)
+  ):focus-visible,
+.ideas-workspace textarea:focus-visible,
+.ideas-workspace input:focus-visible {
+  outline: 3px solid #7355da;
+  outline-offset: 3px;
+}
+.ideas-workspace
+  button:not(:where(.shared-select__trigger, .shared-select__option)):disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ideas-workspace button.ideas-primary {
+  background: #7355da;
+  color: #fff;
+  border-color: #7355da;
+}
+.ideas-workspace button.ideas-primary:hover:not(:disabled) {
+  background: #6042c4;
+}
+.ideas-workspace button.ideas-reject {
+  color: #8a2437;
+  border-color: #d9a8b2;
+}
+.ideas-workspace form,
+.ideas-workspace article,
+.ideas-workspace .ideas-register {
+  margin-block: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 16px;
+  background: #fff;
+  min-width: 0;
+}
+.ideas-workspace .ideas-fields {
+  display: grid;
+  gap: 1rem;
+}
+.ideas-workspace label {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+.ideas-workspace textarea,
+.ideas-workspace input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.75rem;
+  border: 1px solid #d9d1ed;
+  border-radius: 10px;
+  background: #fbfaff;
+  color: #15233b;
+  font: inherit;
+}
+.ideas-workspace textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+.ideas-workspace [aria-invalid='true'] {
+  border-color: #a73349;
+}
+.ideas-workspace .ideas-list,
+.ideas-workspace .ideas-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ideas-workspace .ideas-list li,
+.ideas-workspace .ideas-history li {
+  padding-block: 1rem;
+  border-bottom: 1px solid #e6eaf1;
+}
+.ideas-workspace .ideas-list li {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.ideas-workspace .ideas-list button {
+  border: 0;
+  padding: 0.5rem 0;
+}
+.ideas-workspace .ideas-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  background: #fff1c4;
+  color: #614508;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.ideas-workspace .ideas-status-rejected {
+  color: #882f43;
+  background: #fcecf0;
+}
+.ideas-workspace .ideas-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ideas-workspace [role='alert'] {
+  padding: 1rem;
+  border-left: 3px solid #a73349;
+  background: #fff5f6;
+}
+.ideas-workspace [role='status'] {
+  padding: 0.75rem 1rem;
+  border-left: 3px solid #7355da;
+  background: #f4f0ff;
+}
+@media (max-width: 600px) {
+  .ideas-workspace form,
+  .ideas-workspace article,
+  .ideas-workspace .ideas-register {
+    padding: 1rem;
+  }
+  .ideas-workspace .ideas-list li {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .ideas-workspace .ideas-status {
+    justify-self: start;
+  }
+  .ideas-workspace .ideas-actions {
+    align-items: stretch;
+  }
+  .ideas-workspace .ideas-actions button {
+    flex: 1 1 100%;
+  }
+}

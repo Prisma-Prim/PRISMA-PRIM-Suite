@@ -119,6 +119,15 @@ export interface ActorContext {
     salesStageConfigurationPermissions?: Array<'commercial.sales_stage.configure'>;
     salesStageConfigurationPermissionAssignmentId?: string;
     salesStageConfigurationPermissionSetVersion?: 'v1';
+    ideasReaderPermissions?: Array<'idea.read'>;
+    ideasReaderPermissionAssignmentId?: string;
+    ideasReaderPermissionSetVersion?: 'v1';
+    ideasRecorderPermissions?: Array<'idea.record'>;
+    ideasRecorderPermissionAssignmentId?: string;
+    ideasRecorderPermissionSetVersion?: 'v1';
+    ideasReviewerPermissions?: Array<'idea.disposition.record'>;
+    ideasReviewerPermissionAssignmentId?: string;
+    ideasReviewerPermissionSetVersion?: 'v1';
     clientPermissions?: Array<
       | 'client.read'
       | 'client.create'
