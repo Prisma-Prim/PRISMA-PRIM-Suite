@@ -45,7 +45,7 @@ function createFakeAdapter(onRun = () => undefined) {
         return { status: 0, stdout: '127.0.0.1:35432\n', stderr: '' };
       }
       if (command === 'docker' && args[0] === 'inspect') {
-        return { status: 0, stdout: 'healthy\n', stderr: '' };
+        return { status: 0, stdout: 'running healthy 0\n', stderr: '' };
       }
       if (
         command === 'docker' &&
@@ -139,6 +139,54 @@ test('runs pristine migrations and the requested verification against disposable
   assert.deepEqual(adapter.removedTemporaryDirectories, [
     '/tmp/prisma-prim-managed-postgres-test-run-42',
   ]);
+});
+
+test('allows a cold initialization beyond forty observations before migrating and verifying once', async () => {
+  let readinessChecks = 0;
+  let pollingDelay = 0;
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'inspect') {
+      readinessChecks += 1;
+      return {
+        status: 0,
+        stdout:
+          readinessChecks <= 80
+            ? 'running starting 0\n'
+            : 'running healthy 0\n',
+        stderr: '',
+      };
+    }
+    if (command === 'corepack') {
+      assert.equal(readinessChecks, 81);
+    }
+    return undefined;
+  });
+  adapter.delay = async (milliseconds) => {
+    pollingDelay += milliseconds;
+  };
+
+  const result = await createManagedPostgresRunner(adapter).run({
+    command: 'corepack',
+    args: ['pnpm', 'test:preflight:postgres-smoke'],
+    environment: { PATH: '/usr/bin' },
+  });
+
+  assert.equal(result.status, 0);
+  assert.equal(readinessChecks, 81);
+  assert.equal(pollingDelay, 20_000);
+  for (const script of ['db:migrate', 'test:preflight:postgres-smoke']) {
+    assert.equal(
+      adapter.calls.filter(
+        ({ command, args }) => command === 'corepack' && args.includes(script),
+      ).length,
+      1,
+    );
+  }
+  assert.equal(resourceRemovals(adapter).length, 3);
+  assert.deepEqual(
+    adapter.removedTemporaryDirectories,
+    adapter.temporaryDirectories,
+  );
 });
 
 test('rejects Windows before temporary or Docker resource creation', async () => {
@@ -650,7 +698,7 @@ test('fails bounded readiness checks and cleans before running migrations', asyn
   const adapter = createFakeAdapter(({ command, args }) => {
     if (command === 'docker' && args[0] === 'inspect') {
       readinessChecks += 1;
-      return { status: 0, stdout: 'starting\n', stderr: '' };
+      return { status: 0, stdout: 'running starting 0\n', stderr: '' };
     }
     return undefined;
   });
@@ -673,6 +721,190 @@ test('fails bounded readiness checks and cleans before running migrations', asyn
     'prisma-prim-postgres-test-run-42-data',
     'prisma-prim-postgres-test-run-42-network',
   ]);
+});
+
+test('exhausts the default cold-start allowance with safe state diagnostics and owned cleanup', async () => {
+  let readinessChecks = 0;
+  const delays = [];
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'inspect') {
+      readinessChecks += 1;
+      return { status: 0, stdout: 'running starting 0\n', stderr: '' };
+    }
+    return undefined;
+  });
+  adapter.delay = async (milliseconds) => delays.push(milliseconds);
+
+  await assert.rejects(
+    createManagedPostgresRunner(adapter).run({ command: 'verify' }),
+    (error) => {
+      assert.match(error.message, /after 240 state checks/);
+      assert.match(
+        error.message,
+        /container=running, health=starting, exitCode=0/,
+      );
+      assert.match(error.message, /poll interval=250ms/);
+      return true;
+    },
+  );
+  assert.equal(readinessChecks, 240);
+  assert.equal(delays.length, 239);
+  assert.equal(
+    delays.every((milliseconds) => milliseconds === 250),
+    true,
+  );
+  assert.equal(
+    adapter.calls.some(
+      ({ command }) => command === 'corepack' || command === 'verify',
+    ),
+    false,
+  );
+  assert.equal(resourceRemovals(adapter).length, 3);
+  assert.deepEqual(
+    adapter.removedTemporaryDirectories,
+    adapter.temporaryDirectories,
+  );
+});
+
+for (const state of [
+  'running unhealthy 0',
+  'exited healthy 0',
+  'exited starting 1',
+  'dead unhealthy 137',
+]) {
+  test(`rejects terminal PostgreSQL state ${state} without migration and cleans owned resources`, async () => {
+    const adapter = createFakeAdapter(({ command, args }) => {
+      if (command === 'docker' && args[0] === 'inspect') {
+        return { status: 0, stdout: `${state}\n`, stderr: '' };
+      }
+      return undefined;
+    });
+
+    await assert.rejects(
+      createManagedPostgresRunner(adapter).run({ command: 'verify' }),
+      (error) => {
+        const [container, health, exitCode] = state.split(' ');
+        assert.match(error.message, /readiness failed/);
+        assert.equal(
+          error.message.includes(
+            `container=${container}, health=${health}, exitCode=${exitCode}, observation=1/240`,
+          ),
+          true,
+        );
+        return true;
+      },
+    );
+    assert.equal(
+      adapter.calls.filter(
+        ({ command, args }) => command === 'docker' && args[0] === 'inspect',
+      ).length,
+      1,
+    );
+    assert.equal(
+      adapter.calls.some(
+        ({ command }) => command === 'corepack' || command === 'verify',
+      ),
+      false,
+    );
+    assert.equal(resourceRemovals(adapter).length, 3);
+    assert.deepEqual(
+      adapter.removedTemporaryDirectories,
+      adapter.temporaryDirectories,
+    );
+  });
+}
+
+test('rejects an unrecognized readiness response without reflecting its contents', async () => {
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'inspect') {
+      return {
+        status: 0,
+        stdout: 'running healthy 0 password=private-health-output',
+        stderr: '',
+      };
+    }
+    return undefined;
+  });
+
+  await assert.rejects(
+    createManagedPostgresRunner(adapter).run({ command: 'verify' }),
+    (error) => {
+      assert.match(error.message, /unrecognized readiness response/);
+      assert.doesNotMatch(error.message, /private-health-output|password/);
+      return true;
+    },
+  );
+  assert.equal(
+    adapter.calls.some(
+      ({ command }) => command === 'corepack' || command === 'verify',
+    ),
+    false,
+  );
+  assert.equal(resourceRemovals(adapter).length, 3);
+  assert.deepEqual(
+    adapter.removedTemporaryDirectories,
+    adapter.temporaryDirectories,
+  );
+});
+
+test('fails a Docker readiness inspection without migrating and cleans all owned resources', async () => {
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'inspect') {
+      return { status: 1, stdout: '', stderr: 'No such object' };
+    }
+    return undefined;
+  });
+
+  await assert.rejects(
+    createManagedPostgresRunner(adapter).run({ command: 'verify' }),
+    /PostgreSQL readiness inspection failed with exit status 1/,
+  );
+  assert.equal(
+    adapter.calls.some(
+      ({ command }) => command === 'corepack' || command === 'verify',
+    ),
+    false,
+  );
+  assert.equal(resourceRemovals(adapter).length, 3);
+  assert.deepEqual(
+    adapter.removedTemporaryDirectories,
+    adapter.temporaryDirectories,
+  );
+});
+
+test('cancels during cold initialization without migrating and still cleans every owned resource', async () => {
+  const controller = new AbortController();
+  const adapter = createFakeAdapter(({ command, args }) => {
+    if (command === 'docker' && args[0] === 'inspect') {
+      return { status: 0, stdout: 'running starting 0\n', stderr: '' };
+    }
+    return undefined;
+  });
+  adapter.delay = async () => {
+    const error = new Error('Cold initialization cancelled');
+    error.name = 'AbortError';
+    controller.abort(error);
+    throw error;
+  };
+
+  await assert.rejects(
+    createManagedPostgresRunner(adapter).run({
+      command: 'verify',
+      signal: controller.signal,
+    }),
+    { name: 'AbortError', message: /Cold initialization cancelled/ },
+  );
+  assert.equal(
+    adapter.calls.some(
+      ({ command }) => command === 'corepack' || command === 'verify',
+    ),
+    false,
+  );
+  assert.equal(resourceRemovals(adapter).length, 3);
+  assert.deepEqual(
+    adapter.removedTemporaryDirectories,
+    adapter.temporaryDirectories,
+  );
 });
 
 test('reports a sanitized Docker startup stderr excerpt for an unrecognized nonzero exit', async () => {
