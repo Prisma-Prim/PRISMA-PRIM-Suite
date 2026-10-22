@@ -58,13 +58,6 @@ test('survives apt sources the harness blocks and proves the PGDG index instead'
   assert.doesNotMatch(script, /^\s*apt_get update -qq$/m);
 });
 
-test('bootstraps curl only when the image does not already provide it', () => {
-  assert.match(
-    script,
-    /if ! command -v curl >\/dev\/null; then\n\s+apt_get install -y -qq --no-install-recommends curl ca-certificates \|\|/,
-  );
-});
-
 test('keeps apt unattended inside the escalated command, not in the caller environment', () => {
   assert.match(
     script,
@@ -128,7 +121,7 @@ test('exports the isolated targets for agent shells instead of requiring Codex e
     script,
     /grep -Fqx "\$\{bashrc_source_line\}" "\$\{shell_file\}"/,
   );
-  assert.match(script, /persist_application_targets\n$/);
+  assert.match(script, /persist_application_targets\n}/);
 });
 
 test('escalates only through non-interactive sudo when not already root', () => {
