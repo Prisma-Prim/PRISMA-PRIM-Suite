@@ -1249,6 +1249,384 @@ test('configures Sales Stages, then assigns, changes and clears one on an Opport
   }
 });
 
+test('finds an older personal open case, preserves its uncertain next action and reloads the real stored result', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'narrow' : 'desktop';
+  const subject = `My older open case ${suffix}`;
+  const literal = `  Confirm {Client} / Позвонить — ${suffix}  `;
+  const colleague = await colleagueMembershipId(page);
+  await grantColleagueIntake(page, colleague);
+  let releaseAll: () => void = () => undefined;
+  let allReady: () => void = () => undefined;
+  let allSettled: () => void = () => undefined;
+  const heldAll = new Promise<void>((resolve) => {
+    releaseAll = resolve;
+  });
+  const readyAll = new Promise<void>((resolve) => {
+    allReady = resolve;
+  });
+  const settledAll = new Promise<void>((resolve) => {
+    allSettled = resolve;
+  });
+  const allPattern = /\/api\/commercial-intake\/requests\?limit=25$/u;
+  const nextActionPattern =
+    /\/api\/commercial-intake\/opportunities\/[^/]+\/next-action$/u;
+  const commands: Array<{ body: string | null; key: string | undefined }> = [];
+  let capturedAll = false;
+  try {
+    const target = await seedOpenCase(page, {
+      subject,
+      headers: apiIdentityHeaders,
+    });
+    for (let index = 0; index < 26; index += 1) {
+      await seedOpenCase(page, {
+        subject: `Newer own open case ${suffix} ${index}`,
+        headers: apiIdentityHeaders,
+      });
+    }
+    for (let index = 0; index < 26; index += 1) {
+      await seedOpenCase(page, {
+        subject: `Newer colleague open case ${suffix} ${index}`,
+        headers: colleagueIdentityHeaders,
+      });
+    }
+    await page.route(allPattern, async (route) => {
+      if (capturedAll) {
+        await route.continue();
+        return;
+      }
+      capturedAll = true;
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      allReady();
+      await heldAll;
+      try {
+        // Fulfill the real API reply after the new view has loaded. Browser
+        // cancellation may reject delivery; either way old rows must stay retired.
+        await route.fulfill({ response });
+      } catch {
+        // The component tests separately resolve an abort-ignoring transport.
+      } finally {
+        allSettled();
+      }
+    });
+    await page.route(nextActionPattern, async (route) => {
+      const request = route.request();
+      commands.push({
+        body: request.postData(),
+        key: request.headers()['idempotency-key'],
+      });
+      if (commands.length === 1) {
+        const response = await route.fetch();
+        expect(response.status()).toBe(200);
+        // PostgreSQL committed the real command; lose only its browser response.
+        await route.abort('failed');
+      } else await route.continue();
+    });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const company = page.getByLabel('Active Company', { exact: true });
+    const navigation = page.getByRole('navigation', {
+      name: 'Primary navigation',
+    });
+    await selectCompany(page, company, narrow);
+    await navigate(page, navigation, 'Client Requests', narrow);
+    const intake = page.locator('.commercial-intake-workspace');
+    const view = intake.getByRole('combobox', { name: 'Request view' });
+    await readyAll;
+    await expect(view).toHaveAttribute('data-value', 'all');
+    await view.focus();
+    await view.press('ArrowDown');
+    await view.press('End');
+    await view.press('Enter');
+    await expect(view).toHaveAttribute('data-value', 'mine_open');
+    await expect(intake.locator('.commercial-intake-list > li')).toHaveCount(
+      25,
+    );
+    releaseAll();
+    await settledAll;
+    await page.unroute(allPattern);
+    const targetRow = intake.getByRole('button').filter({
+      has: page.getByText(subject, { exact: true }),
+    });
+    await expect(targetRow).toHaveCount(0);
+    await intake.getByRole('button', { name: 'Show older Requests' }).click();
+    await expect(targetRow).toBeVisible();
+    await capture(page, testInfo, `my-open-cases-list-${suffix}.png`);
+    await targetRow.click();
+    await intake.getByRole('button', { name: 'Edit next action' }).click();
+    await intake.getByLabel('Next action', { exact: true }).fill(literal);
+    let languageLabel = 'Interface language';
+    for (const locale of [
+      {
+        code: 'ro',
+        name: 'Română',
+        language: 'Limba interfeței',
+        next: 'Acțiunea următoare',
+        view: 'Vizualizarea Solicitărilor',
+        mine: 'Cazurile mele deschise',
+      },
+      {
+        code: 'ru',
+        name: 'Русский',
+        language: 'Язык интерфейса',
+        next: 'Следующее действие',
+        view: 'Вид Запросов',
+        mine: 'Мои открытые дела',
+      },
+      {
+        code: 'fr',
+        name: 'Français',
+        language: 'Langue de l’interface',
+        next: 'Prochaine action',
+        view: 'Vue des Demandes',
+        mine: 'Mes dossiers ouverts',
+      },
+      {
+        code: 'en',
+        name: 'English',
+        language: 'Interface language',
+        next: 'Next action',
+        view: 'Request view',
+        mine: 'My open cases',
+      },
+    ]) {
+      await selectOption(page.getByLabel(languageLabel, { exact: true }), {
+        label: locale.name,
+      });
+      languageLabel = locale.language;
+      await expect(intake.getByLabel(locale.next, { exact: true })).toHaveValue(
+        literal,
+      );
+      await expect(
+        intake.getByRole('combobox', { name: locale.view }),
+      ).toContainText(locale.mine);
+      await expect(
+        page.getByLabel(locale.language, { exact: true }),
+      ).toBeFocused();
+      expect(commands).toHaveLength(0);
+      await capture(
+        page,
+        testInfo,
+        `my-open-cases-${locale.code}-${suffix}.png`,
+      );
+    }
+    await intake.getByRole('button', { name: 'Save next action' }).click();
+    await expect(
+      intake.getByRole('button', { name: 'Retry update' }),
+    ).toBeVisible();
+    await selectOption(view, { label: 'All Requests' });
+    await selectOption(view, { label: 'My open cases' });
+    await expect(intake.getByLabel('Next action', { exact: true })).toHaveValue(
+      literal,
+    );
+    await expect(
+      intake.getByLabel('Next action', { exact: true }),
+    ).toBeDisabled();
+    await expect(intake.getByText('Version: 1', { exact: true })).toBeVisible();
+    await intake.getByRole('button', { name: 'Retry update' }).click();
+    await expect(intake.getByText('Version: 2', { exact: true })).toBeVisible();
+    expect(commands).toHaveLength(2);
+    expect(commands[0]).toEqual(commands[1]);
+    expect(commands[0]?.key).toBeTruthy();
+    expect(commands[0]?.body).toBe(
+      JSON.stringify({ expectedVersion: 1, nextAction: literal }),
+    );
+    await page.unroute(nextActionPattern);
+    await page.reload();
+    await selectOption(view, { label: 'My open cases' });
+    await intake.getByRole('button', { name: 'Show older Requests' }).click();
+    await targetRow.click();
+    await expect(intake.getByText('Version: 2', { exact: true })).toBeVisible();
+    const reloaded = await page.request.get(
+      `http://127.0.0.1:4174/api/commercial-intake/requests/${target.id}`,
+      {
+        headers: {
+          ...apiIdentityHeaders,
+          'x-company-context-id': requiredEnvironment(
+            'ACCEPTANCE_PRIMARY_COMPANY_ID',
+          ),
+        },
+      },
+    );
+    expect(reloaded.status()).toBe(200);
+    const stored: unknown = await reloaded.json();
+    if (!isRecord(stored) || !isRecord(stored.initialOpportunity))
+      throw new Error('Expected the exact reloaded Request.');
+    expect(stored.initialOpportunity.nextAction).toBe(literal);
+    expect(stored.initialOpportunity.version).toBe(2);
+    await capture(page, testInfo, `my-open-cases-saved-reloaded-${suffix}.png`);
+    await selectOption(view, { label: 'All Requests' });
+    await expect(intake.getByText('Version: 2', { exact: true })).toBeVisible();
+    await intake.getByRole('button', { name: 'Back to Requests' }).click();
+    await expect(view).toHaveAttribute('data-value', 'all');
+  } finally {
+    releaseAll();
+    await page.unroute(allPattern);
+    await page.unroute(nextActionPattern);
+    await revokeColleagueIntake(page, colleague);
+  }
+});
+
+test('opens a personal case with real captured Intake v1 and keeps the next action read-only', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'narrow' : 'desktop';
+  const membershipId = requiredEnvironment(
+    'ACCEPTANCE_COMMERCIAL_READER_MEMBERSHIP_ID',
+  );
+  const companyId = requiredEnvironment('ACCEPTANCE_PRIMARY_COMPANY_ID');
+  const headers = {
+    'x-test-external-provider': 'local-demo',
+    'x-test-external-subject': 'commercial-readonly-member',
+    'x-test-display-name': 'Commercial Reader',
+    'x-test-email': 'commercial-reader@example.test',
+  };
+  const context = await page.request.post(
+    'http://127.0.0.1:4174/api/company-context-assignments',
+    {
+      headers: {
+        ...apiAdministratorHeaders,
+        'idempotency-key': crypto.randomUUID(),
+      },
+      data: { companyId, workspaceMembershipId: membershipId },
+    },
+  );
+  expect(context.status()).toBe(201);
+  try {
+    const subject = `Read-only personal case ${suffix}`;
+    const target = await seedOpenCase(page, { subject, headers });
+    const actorResponse = await page.request.get(
+      'http://127.0.0.1:4174/api/access/current-actor',
+      {
+        headers: { ...headers, 'x-company-context-id': companyId },
+      },
+    );
+    expect(actorResponse.status()).toBe(200);
+    const actor: unknown = await actorResponse.json();
+    if (!isRecord(actor) || !isRecord(actor.activeCompany))
+      throw new Error('Expected the synthetic reader Company.');
+    expect(actor.activeCompany.commercialIntakePermissionSetVersion).toBe('v1');
+    await page.route('**/api/**', async (route) =>
+      route.continue({
+        headers: { ...route.request().headers(), ...headers },
+      }),
+    );
+    await page.goto('/');
+    await selectCompany(
+      page,
+      page.getByLabel('Active Company', { exact: true }),
+      narrow,
+    );
+    await navigate(
+      page,
+      page.getByRole('navigation', { name: 'Primary navigation' }),
+      'Client Requests',
+      narrow,
+    );
+    const intake = page.locator('.commercial-intake-workspace');
+    await selectOption(intake.getByRole('combobox', { name: 'Request view' }), {
+      label: 'My open cases',
+    });
+    await intake
+      .getByRole('button')
+      .filter({ has: page.getByText(subject, { exact: true }) })
+      .click();
+    await expect(
+      intake.getByRole('article', { name: subject, exact: true }),
+    ).toBeVisible();
+    await expect(
+      intake.getByRole('button', { name: 'Edit next action' }),
+    ).toHaveCount(0);
+    const denied = await page.request.post(
+      `http://127.0.0.1:4174/api/commercial-intake/opportunities/${target.opportunityId}/next-action`,
+      {
+        headers: {
+          ...headers,
+          'x-company-context-id': companyId,
+          'idempotency-key': crypto.randomUUID(),
+        },
+        data: { expectedVersion: 1, nextAction: 'Must not be saved' },
+      },
+    );
+    expect(denied.status()).toBe(403);
+    await page.reload();
+    await selectOption(intake.getByRole('combobox', { name: 'Request view' }), {
+      label: 'My open cases',
+    });
+    await intake
+      .getByRole('button')
+      .filter({ has: page.getByText(subject, { exact: true }) })
+      .click();
+    await expect(intake.getByText('Version: 1', { exact: true })).toBeVisible();
+    const reloaded = await page.request.get(
+      `http://127.0.0.1:4174/api/commercial-intake/requests/${target.id}`,
+      {
+        headers: { ...headers, 'x-company-context-id': companyId },
+      },
+    );
+    expect(reloaded.status()).toBe(200);
+    const stored: unknown = await reloaded.json();
+    if (!isRecord(stored) || !isRecord(stored.initialOpportunity))
+      throw new Error('Expected the read-only Request after reload.');
+    expect(stored.initialOpportunity.nextAction).toBe('Call the Client');
+    expect(stored.initialOpportunity.version).toBe(1);
+    await capture(page, testInfo, `my-open-cases-v1-readonly-${suffix}.png`);
+  } finally {
+    await page.unroute('**/api/**');
+    const revoked = await page.request.delete(
+      `http://127.0.0.1:4174/api/company-context-assignments/${membershipId}/${companyId}`,
+      {
+        headers: {
+          ...apiAdministratorHeaders,
+          'idempotency-key': crypto.randomUUID(),
+        },
+      },
+    );
+    expect(revoked.status()).toBe(200);
+  }
+});
+
+async function seedOpenCase(
+  page: Page,
+  input: { subject: string; headers: Readonly<Record<string, string>> },
+): Promise<{ id: string; opportunityId: string }> {
+  const response = await page.request.post(
+    'http://127.0.0.1:4174/api/commercial-intake/requests',
+    {
+      headers: {
+        ...input.headers,
+        'x-company-context-id': requiredEnvironment(
+          'ACCEPTANCE_PRIMARY_COMPANY_ID',
+        ),
+        'idempotency-key': crypto.randomUUID(),
+      },
+      data: {
+        originalText: `Synthetic source for ${input.subject}`,
+        subject: input.subject,
+        opportunity: { title: input.subject, nextAction: 'Call the Client' },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+  const value: unknown = await response.json();
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    !isRecord(value.initialOpportunity) ||
+    typeof value.initialOpportunity.id !== 'string'
+  )
+    throw new Error(
+      'Expected an identified synthetic Request and Opportunity.',
+    );
+  return { id: value.id, opportunityId: value.initialOpportunity.id };
+}
+
 async function grantSalesStageConfiguration(page: Page): Promise<void> {
   const response = await page.request.post(
     'http://127.0.0.1:4174/api/company-sales-stage-configuration-assignments',

@@ -104,6 +104,6 @@ Provisional choices for Iurie's validation:
 - reopening any closed status with a reason;
 - no effect on existing Offers or Contracts, and no restriction of next action or reassignment.
 
-Excluded: Sales Stages; automatic status changes from Offers, Contracts or Projects; user-entered effective dates; reminders for held Opportunities; configurable reason lists; list filters by status; dashboards, conversion reports and forecasting; bulk changes; deletion; transfer between Companies.
+Excluded: Sales Stages; automatic status changes from Offers, Contracts or Projects; user-entered effective dates; reminders for held Opportunities; configurable reason lists; list filters by status beyond the single fixed current-self open-case view in [section 8.4](release-3-commercial-workflow-prd.md#84-create-read-reload-and-concurrency); dashboards, conversion reports and forecasting; bulk changes; deletion; transfer between Companies.
 
 Open and not presented as business fact: whether `WON` should later require an Accepted Offer or a signed Contract; whether closing should withdraw open Offers; who besides Iurie may close or reopen an Opportunity; and which disqualification reasons Iurie uses (S04-Q07 was never asked).
