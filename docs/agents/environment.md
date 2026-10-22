@@ -39,6 +39,29 @@ node scripts/agent-doctor.mjs --profile web-postgres
 
 Use `postgres` for ordinary backend or persistent-data work. Use `web` only when browser execution is required and `web-postgres` only when the same task genuinely needs both. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its read-only connectivity probe records the PostgreSQL server version and whether the current role is superuser or has `CREATEDB`; it never migrates, creates, drops, or truncates data.
 
+### Slow readiness probes
+
+The default `standard` readiness profile gives each pnpm and Chromium subprocess
+10 seconds. After activating the installed runtime, a slow managed harness may
+explicitly select the bounded `cloud` allowance:
+
+```bash
+node scripts/agent-doctor.mjs --profile web --readiness-profile cloud
+```
+
+This gives each of those two probes at most 60 seconds; it also works with
+`base`, `postgres` and `web-postgres`. Text and JSON output identify the selected
+readiness profile. Unknown or missing readiness-profile values fail before any
+probe. Neither allowance changes the PostgreSQL subprocess or operation limits,
+database safety/version checks, browser scenarios, application assertions or
+verification gates.
+
+A timed-out probe still fails, as does a denied or unrecognized probe result.
+Only the executable check's explicit missing/non-executable result recommends
+installing Chromium; a timeout or harness denial does not prove browser absence.
+The doctor checks the configured executable's execute permission; an actual
+browser launch and journey are still required for browser evidence.
+
 ## Verification commands
 
 CI PostgreSQL services and Railway packaging use Docker Official Images from
