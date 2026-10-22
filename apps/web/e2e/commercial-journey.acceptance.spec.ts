@@ -2140,8 +2140,8 @@ test('follows one commercial case from Request to signed agreement, Project and 
         'Special conditions',
       ]);
       for (const [label, value] of [
-        ['Term start', entered.contractTermStart],
-        ['Term end', entered.precontractTermEnd],
+        ['Term start', 'Nov 2, 2026'],
+        ['Term end', 'Dec 31, 2099'],
         ['Special conditions', entered.specialConditions],
       ]) {
         const difference = differences.locator('dl > div').filter({

@@ -1,3 +1,4 @@
+import { useContractRecordedValues } from './contract-recorded-values';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -52,6 +53,7 @@ export function ContractDirectEditor({
   onCreated: (contract?: ContractView) => void;
   onProtectionChange: (value: boolean) => void;
 }) {
+  const { formatDecimal } = useContractRecordedValues();
   const copy = useContractDirectCopy(),
     id = useId();
   const version = mode.kind === 'revise' ? mode.contract.version : null;
@@ -359,7 +361,12 @@ export function ContractDirectEditor({
               value={snapshot}
               options={snapshotChoices.map((item) => ({
                 value: item.id,
-                label: item.currency + ' · ' + item.total + ' · ' + item.id,
+                label:
+                  item.currency +
+                  ' · ' +
+                  formatDecimal(item.total) +
+                  ' · ' +
+                  item.id,
               }))}
               onValueChange={setSnapshot}
               disabled={frozen}

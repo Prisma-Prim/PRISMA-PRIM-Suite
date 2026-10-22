@@ -5,8 +5,12 @@ import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import type { ContractView } from './contract-response';
+import type {
+  ContractVersionDifference,
+  ContractView,
+} from './contract-response';
 import { useContractVersionCopy } from './contract-version.copy';
+import { useContractRecordedValues } from './contract-recorded-values';
 type Item = { id: string; versionNumber: number };
 type Page = { items: Item[]; nextCursor: string | null };
 type State = { kind: 'ready'; page: Page } | { kind: 'loading' | 'error' };
@@ -31,6 +35,17 @@ export function ContractVersionHistory({
   onOpen: (versionId: string) => void;
 }) {
   const copy = useContractVersionCopy();
+  const { formatNumber, formatDecimal, formatCalendarDate } =
+    useContractRecordedValues();
+  function displayDifference(
+    field: ContractVersionDifference['field'],
+    value: string | null,
+  ): string {
+    if (value === null) return copy('missing');
+    return field === 'termStartsOn' || field === 'termEndsOn'
+      ? formatCalendarDate(value)
+      : value;
+  }
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [loading, setLoading] = useState(false);
   const pending = useRef<AbortController | undefined>(undefined);
@@ -89,7 +104,7 @@ export function ContractVersionHistory({
                   }
                   onClick={() => onOpen(item.id)}
                 >
-                  {copy('version')} {item.versionNumber}
+                  {copy('version')} {formatNumber(item.versionNumber)}
                 </button>
               </li>
             ))}
@@ -117,16 +132,18 @@ export function ContractVersionHistory({
                 <div key={difference.field}>
                   <dt>{copy(difference.field)}</dt>
                   <dd>
-                    {copy('before')}: {difference.before ?? copy('missing')}
+                    {copy('before')}:{' '}
+                    {displayDifference(difference.field, difference.before)}
                     {difference.field === 'pricingSnapshotId' &&
                       difference.beforeSnapshot &&
-                      ` · ${difference.beforeSnapshot.currency} · ${difference.beforeSnapshot.total}`}
+                      ` · ${difference.beforeSnapshot.currency} · ${formatDecimal(difference.beforeSnapshot.total)}`}
                   </dd>
                   <dd>
-                    {copy('after')}: {difference.after ?? copy('missing')}
+                    {copy('after')}:{' '}
+                    {displayDifference(difference.field, difference.after)}
                     {difference.field === 'pricingSnapshotId' &&
                       difference.afterSnapshot &&
-                      ` · ${difference.afterSnapshot.currency} · ${difference.afterSnapshot.total}`}
+                      ` · ${difference.afterSnapshot.currency} · ${formatDecimal(difference.afterSnapshot.total)}`}
                   </dd>
                 </div>
               ))}

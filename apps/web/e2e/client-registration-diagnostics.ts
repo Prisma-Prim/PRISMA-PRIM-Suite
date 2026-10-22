@@ -13,6 +13,9 @@ type RegistrationEvent =
             | 'held'
             | 'released'
             | 'handler-failed'
+            | 'request-not-held'
+            | 'receipt-not-confirmed'
+            | 'page-closed'
             | 'unroute-start'
             | 'unroute-finished';
         }
