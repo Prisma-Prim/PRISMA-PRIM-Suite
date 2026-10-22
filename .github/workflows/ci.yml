@@ -1,71 +1,62 @@
-name: Issue 213 temporary Codex universal installer smoke
-run-name: Issue 213 exact-source 5c6c58b Codex universal installer
+name: Issue 213 temporary acceptance evidence extraction
+run-name: Inspect retained acceptance failure from run 39843619279
 on:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: issue-213-universal-smoke
-  cancel-in-progress: false
+  actions: read
 jobs:
-  universal_installer:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+  extract_failure:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
-      - name: Check out the exact implementation source
-        uses: actions/checkout@v4
+      - name: Retrieve the existing synthetic failure archive
+        uses: actions/download-artifact@v4
         with:
-          ref: 5c6c58b4dc4f8a962fdde29292cf38481814698d
-          persist-credentials: false
-      - name: Make room for the actual Codex image
+          name: browser-evidence-part-acceptance-1-39843619279
+          run-id: 39843619279
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/original-evidence
+      - name: Select only the one failed case and record provenance
+        env:
+          ORIGINAL: ${{ runner.temp }}/original-evidence
+          SELECTED: ${{ runner.temp }}/selected-evidence
         run: |
-          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-          df -h /
-      - name: Acquire and identify the actual target image
-        run: |
-          mkdir -p "$RUNNER_TEMP/issue-213-evidence"
-          docker pull ghcr.io/openai/codex-universal@sha256:905e512f36460e1be4cfedb30928a8a28299edb0fcd5de7998ceaa72d27fe304
-          docker image inspect --format '{{json .RepoDigests}}' ghcr.io/openai/codex-universal@sha256:905e512f36460e1be4cfedb30928a8a28299edb0fcd5de7998ceaa72d27fe304 > "$RUNNER_TEMP/issue-213-evidence/image-digests.json"
-          git rev-parse HEAD > "$RUNNER_TEMP/issue-213-evidence/source.txt"
-          git rev-parse HEAD^{tree} > "$RUNNER_TEMP/issue-213-evidence/tree.txt"
-      - name: Run real cold setup and cached resume in the target image
-        run: |
-          set -euo pipefail
-          docker run --rm --name issue-213-universal-installer \
-            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/source,readonly" \
-            --env CI=true \
-            --workdir /workspace/issue-213 \
-            --entrypoint /bin/bash \
-            ghcr.io/openai/codex-universal@sha256:905e512f36460e1be4cfedb30928a8a28299edb0fcd5de7998ceaa72d27fe304 -lc '
-              set -euo pipefail
-              cp -r /source/. .
-              test "$(git rev-parse HEAD)" = 5c6c58b4dc4f8a962fdde29292cf38481814698d
-              date -u
-              setup_result=0
-              bash scripts/codex-cloud-setup.sh --profile postgres || setup_result=$?
-              if (( setup_result != 0 )); then
-                printf "Setup failed with exit %s; retained package diagnosis follows.\n" "$setup_result"
-                apt-cache policy postgresql-17 postgresql-client-17 libpq5
-                apt-get install --simulate -o Debug::pkgProblemResolver=yes postgresql-17 postgresql-client-17 || true
-                exit "$setup_result"
-              fi
-              bash scripts/codex-cloud-maintenance.sh --profile postgres
-              runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -d postgres -c "SELECT rolname, rolcanlogin, rolcreatedb, rolsuper, rolcreaterole, rolreplication, rolbypassrls FROM pg_roles WHERE rolname = '\''prisma_prim'\''"
-              runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -d postgres -c "SELECT datname, pg_get_userbyid(datdba) AS owner FROM pg_database WHERE datname IN ('\''prisma_prim_dev'\'', '\''prisma_prim_test'\'') ORDER BY datname"
-              git diff --exit-code
-              date -u
-            ' 2>&1 | tee "$RUNNER_TEMP/issue-213-evidence/smoke.log"
-      - name: Retain actual smoke evidence including failures
-        if: always()
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+
+          original = Path(os.environ['ORIGINAL'])
+          selected = Path(os.environ['SELECTED'])
+          selected.mkdir()
+          case = 'project-template.acceptanc-522a1-rojects-across-four-locales-operational-acceptance-desktop'
+          matches = [p for p in original.rglob('error-context.md') if p.parent.name == case]
+          if len(matches) != 1:
+              raise RuntimeError(f'Expected one exact failed case, found {len(matches)}')
+          entries = []
+          for name in ('error-context.md', 'test-failed-1.png', 'trace.zip'):
+              source = matches[0].parent / name
+              data = source.read_bytes()
+              shutil.copyfile(source, selected / name)
+              entries.append({'path': str(source.relative_to(original)), 'name': name,
+                              'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          if sum(entry['bytes'] for entry in entries) > 28 * 1024 * 1024:
+              raise RuntimeError('Selected failure evidence exceeds the bounded download budget')
+          manifest = {'source_run': 39843619279, 'source_artifact': 12454727408,
+                      'source_artifact_sha256': '73122b44e34b15bc55cadf8c2f58010165591091c93a9ad750c1d95fd30bee2c',
+                      'tested_source': '280560d1389d70d3027b1933b12d792f21e1661f',
+                      'purpose': 'Read-only diagnostic extraction; no tests rerun and no pass claim',
+                      'entries': entries}
+          (selected / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          print(json.dumps(manifest, indent=2))
+          PY
+      - name: Retain the selected unchanged failure evidence
         uses: actions/upload-artifact@v4
         with:
-          name: issue-213-universal-smoke-${{ github.run_id }}
-          path: ${{ runner.temp }}/issue-213-evidence/
-          if-no-files-found: warn
+          name: issue-213-selected-acceptance-failure-${{ github.run_id }}
+          path: ${{ runner.temp }}/selected-evidence/
+          if-no-files-found: error
           retention-days: 14
-      - name: Remove only the owned test container
-        if: always()
-        run: |
-          if docker container inspect issue-213-universal-installer >/dev/null 2>&1; then
-            docker rm -f issue-213-universal-installer
-          fi
