@@ -55,6 +55,9 @@ as_root() {
     env)
       shift 3
       if [[ "$1" == update ]]; then
+        if [[ "$TEST_REQUIRE_DISTRIBUTION_INDEX" == 1 && "$*" == *Dir::Etc::sourcelist=* && "$*" != *APT::Get::List-Cleanup=0* ]]; then
+          touch "$TEST_ROOT/distribution-index-missing"
+        fi
         if [[ "$*" == *APT::Update::Error-Mode=any* && "$TEST_REFRESH_FAIL" == 1 ]]; then
           echo 'PGDG refresh failed despite a cached candidate' >&2
           return 100
@@ -63,6 +66,10 @@ as_root() {
           return 100
         fi
       elif [[ "$*" == *postgresql-17* ]]; then
+        if [[ -f "$TEST_ROOT/distribution-index-missing" ]]; then
+          echo 'PostgreSQL dependencies are unavailable without distribution indexes' >&2
+          return 100
+        fi
         echo POSTGRES_INSTALLED
         touch "$TEST_ROOT/installed"
       fi ;;
@@ -107,6 +114,7 @@ async function runInstaller(overrides = {}) {
           TEST_PUBLISH_FAIL: '0',
           TEST_REFRESH_FAIL: '0',
           TEST_GENERAL_REFRESH_FAIL: '0',
+          TEST_REQUIRE_DISTRIBUTION_INDEX: '0',
           TEST_ROLE_EXISTS: '1',
           TEST_ROLE_COMPLIANT: 't',
           TEST_DATABASE_EXISTS: '1',
@@ -178,6 +186,16 @@ test('refuses a stale PGDG candidate when the current PGDG refresh fails', async
   assert.match(result.stderr, /PGDG.*(?:refresh|refreshed)/);
   assert.doesNotMatch(result.stdout, /POSTGRES_INSTALLED|TARGETS_PERSISTED/);
   assert.deepEqual(result.files, []);
+});
+
+test('keeps distribution dependency indexes available after a scoped PGDG refresh', async () => {
+  const result = await runInstaller({
+    TEST_MODE: '--install',
+    TEST_REQUIRE_DISTRIBUTION_INDEX: '1',
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /POSTGRES_INSTALLED|TARGETS_PERSISTED/);
+  assert.deepEqual(result.files, ['installed']);
 });
 
 test('installs CA certificates even when curl is already available', async () => {

@@ -100,9 +100,11 @@ install_packages() {
   fi
   printf 'deb [signed-by=%s] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' \
     "${keyring}" "${codename}" | as_root tee "${source_list}" >/dev/null
+  # A scoped refresh must retain distribution indexes needed by PGDG dependencies.
   apt_get update -qq \
     -o "Dir::Etc::sourcelist=${source_list}" \
     -o 'Dir::Etc::sourceparts=-' \
+    -o 'APT::Get::List-Cleanup=0' \
     -o 'APT::Update::Error-Mode=any' ||
     fail 'the PGDG index could not be refreshed from apt.postgresql.org.'
   pgdg_candidate_is_available ||
