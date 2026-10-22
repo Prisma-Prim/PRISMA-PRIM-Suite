@@ -483,6 +483,13 @@ test('reads exact historical rejected evidence through all four locales without 
   await expect(
     offer.getByText('Historical version · read only', { exact: true }),
   ).toBeVisible();
+  // Historical selection refreshes the version page before locale-only checks.
+  await expect(
+    offer.getByRole('button', { name: 'Open version 2', exact: true }),
+  ).toBeEnabled();
+  await expect(
+    offer.getByRole('button', { name: 'Open version 1', exact: true }),
+  ).toBeDisabled();
   const frame = offer.getByTitle(englishLocale.frame, { exact: true });
   const html = await frame.getAttribute('srcdoc');
   if (html === null)
