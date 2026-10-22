@@ -1,3 +1,5 @@
+import { contractRecordedLocales } from '../test/contract-recorded-values-fixture';
+import { contractDirectMessages } from './contract-direct.copy';
 import { contractQualityLocales } from '../test/contract-quality-localization-fixture';
 import { render as renderWithEnglishLocale } from '../test/render-with-interface-locale';
 import {
@@ -53,6 +55,717 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it.each(contractRecordedLocales)(
+    'localizes recorded history values without changing exact historical navigation in $locale',
+    async (expected) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, expected.locale);
+      const copy = (key: (typeof contractVersionMessages.keys)[number]) =>
+        resolveMessage(contractVersionMessages, expected.locale, key);
+      const stored = fixture();
+      const literal = '2028-02-29 · 1234.50 {amount} — Договор';
+      const recorded = {
+        ...stored,
+        origin: 'DIRECT',
+        directReason: literal,
+        sourceOfferId: null,
+        sourceOfferVersionId: null,
+        sourceOffer: null,
+        parent: null,
+        parentContractId: null,
+        addendumOrdinal: null,
+        revision: 1001,
+        version: {
+          ...stored.version,
+          id: 'version-1001',
+          versionNumber: 1001,
+          createdContractRevision: 1001,
+          predecessorVersionId: 'version-1000',
+          termStartsOn: '2028-02-29',
+          termEndsOn: '2028-03-01',
+          specialConditions: literal,
+          pricingSnapshot: {
+            ...stored.version.pricingSnapshot,
+            subtotal: '1234.50',
+            taxTotal: '0.00',
+            total: '1234.50',
+            lines: [
+              {
+                serviceName: 'Illustrative service',
+                quantity: '1',
+                lineNet: '1234.50',
+                lineTax: '0.00',
+              },
+            ],
+          },
+          differences: [
+            { field: 'termStartsOn', before: null, after: '2028-02-29' },
+            { field: 'termEndsOn', before: '2028-02-29', after: '2028-03-01' },
+            { field: 'specialConditions', before: null, after: literal },
+            {
+              field: 'pricingSnapshotId',
+              before: 'snapshot-old',
+              after: 'snapshot-one',
+              beforeSnapshot: {
+                id: 'snapshot-old',
+                currency: 'EUR',
+                total: '9007199254740993.01',
+              },
+              afterSnapshot: {
+                id: 'snapshot-one',
+                currency: 'EUR',
+                total: '1234.50',
+              },
+            },
+          ],
+        },
+      };
+      const historical = {
+        ...recorded,
+        version: {
+          ...recorded.version,
+          id: 'version-1000',
+          versionNumber: 1000,
+          createdContractRevision: 1000,
+          predecessorVersionId: 'version-999',
+          supersededByVersionId: 'version-1001',
+          termStartsOn: null,
+          termEndsOn: '2028-02-29',
+          specialConditions: null,
+          pricingSnapshotId: 'snapshot-old',
+          pricingSnapshot: {
+            ...stored.version.pricingSnapshot,
+            id: 'snapshot-old',
+            subtotal: '9007199254740993.01',
+            taxTotal: '0.00',
+            total: '9007199254740993.01',
+            lines: [
+              {
+                serviceName: 'Illustrative service',
+                quantity: '1',
+                lineNet: '9007199254740993.01',
+                lineTax: '0.00',
+              },
+            ],
+          },
+          differences: [],
+        },
+      };
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input) => {
+          const path = input.toString();
+          return path.endsWith('/versions')
+            ? response({
+                items: [
+                  { id: 'version-1001', versionNumber: 1001 },
+                  { id: 'version-1000', versionNumber: 1000 },
+                ],
+                nextCursor: null,
+              })
+            : response({
+                contract: path.endsWith('/versions/version-1000')
+                  ? historical
+                  : recorded,
+              });
+        });
+      const onCompanyContextRejected = vi.fn();
+      render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            actor={actor(false)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={onCompanyContextRejected}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const history = await screen.findByRole('region', {
+        name: copy('history'),
+      });
+      await within(history).findByText(copy('after') + ': ' + literal);
+      expect(
+        await within(history).findByRole('button', {
+          name: copy('version') + ' ' + expected.ordinal,
+        }),
+      ).toBeEnabled();
+      expect(
+        within(history).getByText(copy('after') + ': ' + expected.start),
+      ).toBeVisible();
+      expect(
+        within(history).getByText(copy('after') + ': ' + expected.end),
+      ).toBeVisible();
+      expect(
+        within(history).getAllByText(copy('before') + ': ' + copy('missing')),
+      ).toHaveLength(2);
+      expect(
+        within(history).getByText(
+          copy('before') + ': snapshot-old · EUR · ' + expected.amount,
+          { collapseWhitespace: false },
+        ),
+      ).toBeVisible();
+      expect(
+        within(history).getByText(
+          copy('after') + ': snapshot-one · EUR · ' + expected.trailingZero,
+          { collapseWhitespace: false },
+        ),
+      ).toBeVisible();
+      const historyNode = history;
+      const calls = fetch.mock.calls.length;
+      for (const target of contractRecordedLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + target.locale }),
+        );
+        const targetCopy = (
+          key: (typeof contractVersionMessages.keys)[number],
+        ) => resolveMessage(contractVersionMessages, target.locale, key);
+        expect(
+          screen.getByRole('region', { name: targetCopy('history') }),
+        ).toBe(historyNode);
+        expect(
+          within(history).getByRole('button', {
+            name: targetCopy('version') + ' ' + target.ordinal,
+          }),
+        ).toBeEnabled();
+        expect(
+          within(history).getByText(targetCopy('after') + ': ' + target.start),
+        ).toBeVisible();
+        expect(
+          within(history).getByText(targetCopy('after') + ': ' + literal),
+        ).toBeVisible();
+        expect(fetch).toHaveBeenCalledTimes(calls);
+      }
+      fireEvent.click(
+        within(history).getByRole('button', {
+          name: 'Open Contract Version 1,000',
+        }),
+      );
+      await screen.findAllByText(
+        resolveMessage(contractVersionMessages, 'en', 'superseded'),
+      );
+      await waitFor(() =>
+        expect(
+          fetch.mock.calls.some(([path]) =>
+            path.toString().endsWith('/versions/version-1000'),
+          ),
+        ).toBe(true),
+      );
+      const historicalReads = fetch.mock.calls.length;
+      fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+      expect(
+        screen.getByRole('button', {
+          name: 'Ouvrir la version du contrat 1\u202f000',
+        }),
+      ).toBeDisabled();
+      expect(fetch).toHaveBeenCalledTimes(historicalReads);
+      expect(onCompanyContextRejected).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['direct', 'addendum'] as const)(
+    'preserves the %s Snapshot selection, literal draft and exact uncertain command across locales',
+    async (mode) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'fr');
+      const base = fixture();
+      const stored =
+        mode === 'direct'
+          ? {
+              ...base,
+              origin: 'DIRECT',
+              directReason: 'Literal reason',
+              sourceOfferId: null,
+              sourceOfferVersionId: null,
+              sourceOffer: null,
+              parent: null,
+              parentContractId: null,
+              addendumOrdinal: null,
+              version: {
+                ...base.version,
+                pricingSnapshot: {
+                  ...base.version.pricingSnapshot,
+                  total: '9007199254740993.01',
+                },
+              },
+            }
+          : { ...executedUiFixture(), addenda: [] };
+      const preparer = actor(true);
+      if (!preparer.activeCompany) throw new Error('Missing Company');
+      preparer.activeCompany.offerPermissions = [];
+      preparer.activeCompany.pricingUserPermissionAssignmentId = 'pricing-one';
+      preparer.activeCompany.pricingUserPermissionSetVersion = 'v1';
+      preparer.activeCompany.pricingUserPermissions = [
+        'commercial.pricing.snapshot.read',
+      ];
+      const commands: Array<{
+        path: string;
+        body: BodyInit | null | undefined;
+        company: string | null;
+        key: string | null;
+      }> = [];
+      let finish: (value: Response) => void = () => {
+        throw new Error('No pending command');
+      };
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input, init) => {
+          const path = input.toString();
+          if (init?.method === 'POST') {
+            const headers = new Headers(init.headers);
+            commands.push({
+              path,
+              body: init.body,
+              company: headers.get('x-company-context-id'),
+              key: headers.get('idempotency-key'),
+            });
+            return commands.length === 1
+              ? new Promise<Response>((resolve) => {
+                  finish = resolve;
+                })
+              : response({}, 503);
+          }
+          if (path.includes('/snapshots'))
+            return response({
+              items: [
+                {
+                  id: 'snapshot-one',
+                  currency: 'EUR',
+                  total: '9007199254740993.01',
+                  committedAt: '2026-10-07T09:00:00.000Z',
+                },
+                {
+                  id: 'snapshot-other',
+                  currency: 'MDL',
+                  total: '1234.50',
+                  committedAt: '2026-10-06T09:00:00.000Z',
+                },
+              ],
+              nextCursor: null,
+            });
+          if (path.endsWith('/legal-entities'))
+            return response({ clientVersion: 1, legalEntities: [] });
+          if (path.endsWith('/versions'))
+            return response({ items: [stored.version], nextCursor: null });
+          return response({ contract: stored });
+        });
+      render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            actor={preparer}
+            identity={identity}
+            opportunityId="opportunity-one"
+            currentClientId="client-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const copy = (
+        locale: (typeof interfaceLocales)[number],
+        key:
+          | 'scope'
+          | 'summary'
+          | 'snapshot'
+          | 'revise'
+          | 'create'
+          | 'retry'
+          | 'uncertain'
+          | 'chooseSnapshot',
+      ) => {
+        if (mode === 'direct') {
+          if (key === 'summary' || key === 'chooseSnapshot')
+            throw new Error('Invalid Direct key');
+          return resolveMessage(contractDirectMessages, locale, key);
+        }
+        if (key === 'scope') throw new Error('Invalid Addendum key');
+        return resolveMessage(contractAddendumMessages, locale, key);
+      };
+      const field = await screen.findByLabelText(
+        copy('fr', mode === 'direct' ? 'scope' : 'summary'),
+      );
+      const literal =
+        '  2028-02-29 · 1234.50 {amount} — Договор\nDeuxième ligne  ';
+      fireEvent.change(field, { target: { value: literal } });
+      field.focus();
+      if (mode === 'addendum')
+        fireEvent.click(
+          screen.getByRole('button', { name: copy('fr', 'chooseSnapshot') }),
+        );
+      const select = await screen.findByRole('combobox', {
+        name: copy('fr', 'snapshot'),
+      });
+      fireEvent.click(select);
+      fireEvent.click(
+        await screen.findByRole('option', {
+          name: 'EUR · 9\u202f007\u202f199\u202f254\u202f740\u202f993,01 · snapshot-one',
+        }),
+      );
+      const settledReads = fetch.mock.calls.length;
+      for (const expected of contractRecordedLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + expected.locale }),
+        );
+        expect(
+          screen.getByRole('combobox', {
+            name: copy(expected.locale, 'snapshot'),
+          }),
+        ).toBe(select);
+        expect(select.textContent).toBe(
+          'EUR · ' + expected.amount + ' · snapshot-one',
+        );
+        expect(
+          screen.getByLabelText(
+            copy(expected.locale, mode === 'direct' ? 'scope' : 'summary'),
+          ),
+        ).toBe(field);
+        expect(field).toHaveValue(literal);
+        expect(fetch).toHaveBeenCalledTimes(settledReads);
+      }
+      field.focus();
+      fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+      expect(field).toHaveFocus();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: copy('fr', mode === 'direct' ? 'revise' : 'create'),
+        }),
+      );
+      await waitFor(() => expect(commands).toHaveLength(1));
+      const pendingReads = fetch.mock.calls.length;
+      for (const expected of contractRecordedLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + expected.locale }),
+        );
+        expect(field).toBeDisabled();
+        expect(select).toBeDisabled();
+        expect(fetch).toHaveBeenCalledTimes(pendingReads);
+      }
+      await act(async () => finish(response({}, 503)));
+      await screen.findByText(copy('en', 'uncertain'));
+      for (const expected of contractRecordedLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + expected.locale }),
+        );
+        expect(
+          screen.getByText(copy(expected.locale, 'uncertain')),
+        ).toBeVisible();
+        expect(field).toHaveValue(literal);
+        expect(fetch).toHaveBeenCalledTimes(pendingReads);
+      }
+      fireEvent.click(
+        screen.getByRole('button', { name: copy('en', 'retry') }),
+      );
+      await waitFor(() => expect(commands).toHaveLength(2));
+      expect(commands[1]).toEqual(commands[0]);
+      expect(commands[0]?.company).toBe('company-one');
+      expect(commands[0]?.key).toBeTruthy();
+      expect(JSON.parse(String(commands[0]?.body))).toMatchObject({
+        pricingSnapshotId: 'snapshot-one',
+        [mode === 'direct' ? 'scopeNote' : 'changeSummary']: literal,
+      });
+    },
+  );
+
+  it.each(['precontract', 'addendum'] as const)(
+    'localizes high %s continuation numbers and opens the original agreement',
+    async (kind) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'fr');
+      const base = fixture();
+      const precontract = precontractUiFixture();
+      const agreement =
+        kind === 'precontract'
+          ? {
+              ...precontract,
+              illustrativeReference: 1000,
+              revision: 1000,
+              version: {
+                ...precontract.version,
+                id: 'pre-version-1000',
+                versionNumber: 1000,
+                createdContractRevision: 1000,
+                predecessorVersionId: 'pre-version-999',
+              },
+            }
+          : {
+              ...base,
+              id: 'addendum-original',
+              kind: 'ADDENDUM',
+              origin: null,
+              sourceOfferId: null,
+              sourceOfferVersionId: null,
+              sourceOffer: null,
+              parentContractId: 'contract-one',
+              addendumOrdinal: 1000,
+              parent: {
+                id: 'contract-one',
+                kind: 'CONTRACT',
+                illustrativeReference: 1,
+                versionNumber: 1,
+                revision: 3,
+              },
+              version: {
+                ...base.version,
+                id: 'addendum-version',
+                changeSummary: 'Original recorded child',
+                scopeNote: null,
+                commercialConditions: null,
+                pricingSnapshotId: null,
+                pricingSnapshot: null,
+              },
+            };
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input) => {
+          const path = input.toString();
+          if (path.includes('/agreements/'))
+            return path.endsWith('/versions')
+              ? response({ items: [agreement.version], nextCursor: null })
+              : response({ contract: agreement });
+          if (path.endsWith('/versions'))
+            return response({ items: [base.version], nextCursor: null });
+          return kind === 'precontract'
+            ? response({
+                contract: null,
+                precontract: {
+                  id: 'precontract-one',
+                  illustrativeReference: 1000,
+                  versionNumber: 1000,
+                  decisionState: 'PENDING',
+                  executionState: 'NOT_EXECUTED',
+                },
+              })
+            : response({
+                contract: {
+                  ...executedUiFixture(),
+                  addenda: [
+                    {
+                      id: 'addendum-original',
+                      addendumOrdinal: 1000,
+                      illustrativeReference: 1,
+                      versionNumber: 1,
+                      decisionState: 'PENDING',
+                      executionState: 'NOT_EXECUTED',
+                    },
+                  ],
+                },
+              });
+        });
+      render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            actor={actor(false)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const caption =
+        kind === 'precontract'
+          ? await screen.findByRole('region', {
+              name: resolveMessage(
+                contractPrecontractMessages,
+                'fr',
+                'section',
+              ),
+            })
+          : await screen.findByRole('button', { name: /^Ouvrir l’avenant /u });
+      const reads = fetch.mock.calls.length;
+      for (const expected of contractRecordedLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + expected.locale }),
+        );
+        if (kind === 'precontract') {
+          expect(
+            within(caption).getByText(
+              (text) =>
+                text.includes(
+                  expected.ordinal +
+                    ' · ' +
+                    resolveMessage(
+                      contractVersionMessages,
+                      expected.locale,
+                      'versionLabel',
+                    ) +
+                    ' ' +
+                    expected.ordinal,
+                ),
+              { collapseWhitespace: false },
+            ),
+          ).toBeVisible();
+        } else {
+          expect(
+            screen.getByRole('button', {
+              name:
+                resolveMessage(
+                  contractAddendumMessages,
+                  expected.locale,
+                  'open',
+                ) +
+                ' ' +
+                expected.ordinal,
+            }),
+          ).toBe(caption);
+        }
+        expect(fetch).toHaveBeenCalledTimes(reads);
+      }
+      fireEvent.click(
+        screen.getByRole('button', {
+          name:
+            kind === 'precontract' ? 'Open Precontract' : 'Open Addendum 1,000',
+        }),
+      );
+      await screen.findByRole('button', {
+        name:
+          kind === 'precontract'
+            ? 'Back to the Contract area'
+            : 'Return to parent agreement',
+      });
+      expect(
+        fetch.mock.calls.some(([path]) =>
+          path
+            .toString()
+            .endsWith(
+              '/agreements/' +
+                (kind === 'precontract'
+                  ? 'precontract-one'
+                  : 'addendum-original'),
+            ),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it.each(['loading', 'error', 'pages'] as const)(
+    'preserves history %s and its revision draft while switching every locale',
+    async (state) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      const original = fixture();
+      const stored = {
+        ...original,
+        revision: 1001,
+        version: {
+          ...original.version,
+          versionNumber: 1001,
+          createdContractRevision: 1001,
+          predecessorVersionId: 'version-1000',
+          differences: [
+            {
+              field: 'termStartsOn',
+              before: '2028-02-30',
+              after: 'not-a-date',
+            },
+          ],
+        },
+      };
+      let finish: (value: Response) => void = () => {
+        throw new Error('No history request');
+      };
+      const fetch = vi
+        .spyOn(globalThis, 'fetch')
+        .mockImplementation(async (input) => {
+          const path = input.toString();
+          if (path.endsWith('/versions')) {
+            if (state === 'loading')
+              return new Promise<Response>((resolve) => {
+                finish = resolve;
+              });
+            return state === 'error'
+              ? response({}, 503)
+              : response({
+                  items: [{ id: 'version-one', versionNumber: 1001 }],
+                  nextCursor: 'opaque-next-page',
+                });
+          }
+          if (path.includes('?cursor='))
+            return response({
+              items: [{ id: 'version-1000', versionNumber: 1000 }],
+              nextCursor: null,
+            });
+          return response({ contract: stored });
+        });
+      render(
+        <InterfaceLocaleProvider>
+          <SignatureLocaleChoices />
+          <ContractPanel
+            actor={actor(true)}
+            identity={identity}
+            opportunityId="opportunity-one"
+            onCompanyContextRejected={() => undefined}
+          />
+        </InterfaceLocaleProvider>,
+      );
+      const field = await screen.findByLabelText('Revised special conditions');
+      const literal = '  Preserve {date} Договор\n2028-02-29  ';
+      fireEvent.change(field, { target: { value: literal } });
+      field.focus();
+      const history = screen.getByRole('region', {
+        name: 'Contract Version history',
+      });
+      if (state === 'pages') {
+        fireEvent.click(
+          await within(history).findByRole('button', {
+            name: 'Load older Contract Versions',
+          }),
+        );
+        await within(history).findByRole('button', {
+          name: 'Open Contract Version 1,000',
+        });
+      } else if (state === 'error') await within(history).findByRole('alert');
+      const calls = fetch.mock.calls.length;
+      for (const expected of contractRecordedLocales) {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Choose ' + expected.locale }),
+        );
+        const copy = (key: (typeof contractVersionMessages.keys)[number]) =>
+          resolveMessage(contractVersionMessages, expected.locale, key);
+        expect(screen.getByRole('region', { name: copy('history') })).toBe(
+          history,
+        );
+        expect(screen.getByLabelText(copy('conditions'))).toBe(field);
+        expect(field).toHaveValue(literal);
+        expect(field).toHaveFocus();
+        if (state === 'pages')
+          expect(
+            within(history).getByRole('button', {
+              name: copy('version') + ' ' + expected.ordinal,
+            }),
+          ).toBeEnabled();
+        else
+          expect(
+            within(history).getByRole(state === 'error' ? 'alert' : 'status'),
+          ).toHaveTextContent(copy(state));
+        expect(
+          within(history).getByText(copy('before') + ': 2028-02-30'),
+        ).toBeVisible();
+        expect(
+          within(history).getByText(copy('after') + ': not-a-date'),
+        ).toBeVisible();
+        expect(fetch).toHaveBeenCalledTimes(calls);
+      }
+      if (state === 'loading') {
+        await act(async () =>
+          finish(
+            response({
+              items: [{ id: 'version-1000', versionNumber: 1000 }],
+              nextCursor: null,
+            }),
+          ),
+        );
+        expect(
+          await within(history).findByRole('button', {
+            name: 'Open Contract Version 1,000',
+          }),
+        ).toBeEnabled();
+      }
+      if (state === 'pages')
+        expect(
+          fetch.mock.calls.filter(([path]) =>
+            path.toString().includes('?cursor=opaque-next-page'),
+          ),
+        ).toHaveLength(1);
+    },
+  );
+
   it.each(['loading', 'empty', 'error', 'denied'] as const)(
     'retranslates the base %s state through every locale without repeating its reads or callbacks',
     async (state) => {
