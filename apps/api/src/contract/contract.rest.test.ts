@@ -4264,96 +4264,93 @@ withPostgres('First illustrative Contract REST', () => {
       }
     },
   );
-  it.each(['new', 'approve', 'reject', 'signature'] as const)(
-    'C6 controls new-version versus %s in both winning orders',
-    async (other) => {
-      for (const revisionFirst of [true, false]) {
-        // Each ordering has an independent persisted Contract and Client fence.
-        if (!revisionFirst)
-          await pool.query(
-            'TRUNCATE activity_log_events, workspace_memberships, internal_users, workspaces CASCADE',
-          );
-        const target =
-          other === 'signature'
-            ? await approvedSignatureFixture()
-            : await qualityFixture();
-        const { fixture, versionId } = target;
-        await grantApprover(fixture);
-        const revision = other === 'signature' ? 2 : 1;
-        const revise = () =>
-          reviseRequest(
-            target,
-            {
-              expectedContractRevision: revision,
-              specialConditions: 'Race revision',
-            },
-            'c6-race-new-' + revisionFirst,
-          );
-        const competitor = () =>
-          other === 'new'
-            ? reviseRequest(
-                target,
-                {
-                  expectedContractRevision: revision,
-                  specialConditions: 'Competing revision',
-                },
-                'c6-race-other-' + revisionFirst,
-              )
-            : decisionRequest(
-                fixture,
-                versionId,
-                other,
-                other === 'approve'
+  it.each(
+    (['new', 'approve', 'reject', 'signature'] as const).flatMap((other) => [
+      { other, revisionFirst: true, firstCommand: 'new-version' },
+      { other, revisionFirst: false, firstCommand: 'other' },
+    ]),
+  )(
+    'C6 controls new-version versus $other with $firstCommand committing first',
+    async ({ other, revisionFirst }) => {
+      // Each ordering has an independent persisted Contract and Client fence.
+      const target =
+        other === 'signature'
+          ? await approvedSignatureFixture()
+          : await qualityFixture();
+      const { fixture, versionId } = target;
+      await grantApprover(fixture);
+      const revision = other === 'signature' ? 2 : 1;
+      const revise = () =>
+        reviseRequest(
+          target,
+          {
+            expectedContractRevision: revision,
+            specialConditions: 'Race revision',
+          },
+          'c6-race-new-' + revisionFirst,
+        );
+      const competitor = () =>
+        other === 'new'
+          ? reviseRequest(
+              target,
+              {
+                expectedContractRevision: revision,
+                specialConditions: 'Competing revision',
+              },
+              'c6-race-other-' + revisionFirst,
+            )
+          : decisionRequest(
+              fixture,
+              versionId,
+              other,
+              other === 'approve'
+                ? {
+                    expectedContractRevision: revision,
+                    acknowledgedWarningCodes: [],
+                  }
+                : other === 'reject'
                   ? {
                       expectedContractRevision: revision,
-                      acknowledgedWarningCodes: [],
+                      reason: 'Race rejection',
                     }
-                  : other === 'reject'
-                    ? {
-                        expectedContractRevision: revision,
-                        reason: 'Race rejection',
-                      }
-                    : {
-                        ...signaturePayload(),
-                        expectedContractRevision: revision,
-                      },
-                'c6-race-other-' + revisionFirst,
-              );
-        const blocker = await pool.connect();
-        let first: Promise<Response> | undefined,
-          second: Promise<Response> | undefined;
-        try {
-          await blocker.query('BEGIN');
-          const pid = (
-            await blocker.query<{ pid: number }>(
-              'SELECT pg_backend_pid() AS pid',
-            )
-          ).rows[0]?.pid;
-          if (pid === undefined) throw new Error('No blocker');
-          await blocker.query(
-            'SELECT id FROM contracts WHERE opportunity_id=$1 FOR UPDATE',
-            [fixture.opportunityId],
-          );
-          first = (revisionFirst ? revise : competitor)();
-          const firstPid = await waitForBlocker(pid);
-          second = (revisionFirst ? competitor : revise)();
-          await waitForBlocker(firstPid, pid);
-          await blocker.query('COMMIT');
-          expect((await first).status).toBe(201);
-          expect((await second).status).toBe(409);
-          expect(await json(await second)).toMatchObject({
-            code:
-              revisionFirst && other !== 'new'
-                ? 'CONTRACT_VERSION_SUPERSEDED'
-                : 'STALE_CONTRACT_REVISION',
-          });
-        } finally {
-          await blocker.query('ROLLBACK');
-          blocker.release();
-          await Promise.allSettled(
-            [first, second].filter((item) => item !== undefined),
-          );
-        }
+                  : {
+                      ...signaturePayload(),
+                      expectedContractRevision: revision,
+                    },
+              'c6-race-other-' + revisionFirst,
+            );
+      const blocker = await pool.connect();
+      let first: Promise<Response> | undefined,
+        second: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('No blocker');
+        await blocker.query(
+          'SELECT id FROM contracts WHERE opportunity_id=$1 FOR UPDATE',
+          [fixture.opportunityId],
+        );
+        first = (revisionFirst ? revise : competitor)();
+        const firstPid = await waitForBlocker(pid);
+        second = (revisionFirst ? competitor : revise)();
+        await waitForBlocker(firstPid, pid);
+        await blocker.query('COMMIT');
+        expect((await first).status).toBe(201);
+        expect((await second).status).toBe(409);
+        expect(await json(await second)).toMatchObject({
+          code:
+            revisionFirst && other !== 'new'
+              ? 'CONTRACT_VERSION_SUPERSEDED'
+              : 'STALE_CONTRACT_REVISION',
+        });
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await Promise.allSettled(
+          [first, second].filter((item) => item !== undefined),
+        );
       }
     },
   );
