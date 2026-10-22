@@ -245,6 +245,24 @@ function throwIfAborted(signal) {
   throw error;
 }
 
+function readPostgresReadiness(output) {
+  const match =
+    /^(created|running|paused|restarting|removing|exited|dead) (none|starting|healthy|unhealthy) (\d{1,3})$/.exec(
+      output.trim(),
+    );
+  if (!match || Number(match[3]) > 255) {
+    throw new Error(
+      'Disposable PostgreSQL returned an unrecognized readiness response.',
+    );
+  }
+  const [, container, health, exitCode] = match;
+  return { container, health, exitCode };
+}
+
+function readinessDiagnostic(state) {
+  return `container=${state.container}, health=${state.health}, exitCode=${state.exitCode}`;
+}
+
 async function acquireResource(resource, acquire, signal) {
   resource.state = 'uncertain';
   await acquire();
@@ -517,7 +535,7 @@ export function createManagedPostgresRunner(
     platform = process.platform,
     reconciliationAttempts = 8,
     reconciliationIntervalMilliseconds = 100,
-    readinessAttempts = 40,
+    readinessAttempts = 240,
     readinessIntervalMilliseconds = 250,
   } = {},
 ) {
@@ -695,31 +713,36 @@ export function createManagedPostgresRunner(
         );
 
         let ready = false;
+        let lastReadiness;
         for (let attempt = 0; attempt < readinessAttempts; attempt += 1) {
           const health = await requireSuccess(
             adapter,
             'PostgreSQL readiness inspection',
             'docker',
-            ['inspect', '--format', '{{.State.Health.Status}}', containerName],
+            [
+              'inspect',
+              '--format',
+              '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} {{.State.ExitCode}}',
+              containerName,
+            ],
             {
               signal,
               timeoutMilliseconds: infrastructureTimeoutMilliseconds,
             },
           );
-          const state = health.stdout.trim();
-          if (state === 'healthy') {
+          const state = readPostgresReadiness(health.stdout);
+          lastReadiness = state;
+          if (
+            state.container !== 'running' ||
+            !['starting', 'healthy'].includes(state.health)
+          ) {
+            throw new Error(
+              `Disposable PostgreSQL readiness failed (${readinessDiagnostic(state)}, observation=${attempt + 1}/${readinessAttempts}).`,
+            );
+          }
+          if (state.health === 'healthy') {
             ready = true;
             break;
-          }
-          if (state === 'unhealthy') {
-            throw new Error(
-              'Disposable PostgreSQL reported an unhealthy state.',
-            );
-          }
-          if (state !== 'starting') {
-            throw new Error(
-              `Disposable PostgreSQL reported unexpected state ${state || 'empty'}.`,
-            );
           }
           if (attempt + 1 < readinessAttempts) {
             await adapter.delay(readinessIntervalMilliseconds, signal);
@@ -727,7 +750,7 @@ export function createManagedPostgresRunner(
         }
         if (!ready) {
           throw new Error(
-            `Disposable PostgreSQL did not become ready after ${readinessAttempts} state checks.`,
+            `Disposable PostgreSQL did not become ready after ${readinessAttempts} state checks (${readinessDiagnostic(lastReadiness)}, poll interval=${readinessIntervalMilliseconds}ms).`,
           );
         }
 
