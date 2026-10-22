@@ -1,4 +1,5 @@
 import { TaskAccessService } from './task-access.service.js';
+import { OperationalRiskAccessService } from './operational-risk-access.service.js';
 import { ProjectResponsibleAccessService } from './project-responsible-access.service.js';
 import { CommercialResponsibleAccessService } from './commercial-responsible-access.service.js';
 import { Module } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
 @Module({
   imports: [DatabaseModule],
   providers: [
+    OperationalRiskAccessService,
     TaskAccessService,
     ProjectResponsibleAccessService,
     CommercialResponsibleAccessService,
@@ -44,6 +46,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
     },
   ],
   exports: [
+    OperationalRiskAccessService,
     ACCESS_ADMISSION,
     CompanyContextAuthorization,
     TaskAccessService,
