@@ -1,6 +1,9 @@
 // The captured versions the server may report for each administrable bundle.
 // An unlisted label or version fails closed; the screen never infers one.
 const CAPTURED_VERSIONS = {
+  'Company Ideas Reader': ['v1'],
+  'Company Ideas Recorder': ['v1'],
+  'Company Ideas Reviewer': ['v1'],
   'Company Context Access': [null],
   'Company Director Client Access': ['v1', 'v2'],
   'Company Document Registrar': ['v1', 'v2', 'v3'],

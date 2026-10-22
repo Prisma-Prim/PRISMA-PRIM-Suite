@@ -81,6 +81,11 @@ const keys = [
   'capture',
   'loading',
   'list',
+  'viewLabel',
+  'allRequestsView',
+  'myOpenCasesView',
+  'myOpenCasesHelp',
+  'myOpenCasesEmpty',
   'filterLabel',
   'filterHelp',
   'filterNoMatch',
@@ -122,6 +127,12 @@ export type CommercialRequestMessageKey = (typeof keys)[number];
 
 export const commercialRequestMessages = defineMessages(keys, {
   ro: {
+    viewLabel: 'Vizualizarea Solicitărilor',
+    allRequestsView: 'Toate Solicitările',
+    myOpenCasesView: 'Cazurile mele deschise',
+    myOpenCasesHelp:
+      'Cazurile mele deschise arată Oportunitățile pentru care sunteți responsabil acum, deschise sau în așteptare.',
+    myOpenCasesEmpty: 'Nu aveți cazuri deschise atribuite în {companyName}.',
     responsibleChoice: 'Noul responsabil',
     responsibleSelectMember: 'Selectați un membru',
     responsibleMembersLoading: 'Se încarcă membrii eligibili…',
@@ -267,6 +278,13 @@ export const commercialRequestMessages = defineMessages(keys, {
     statusArchived: 'Arhivată',
   },
   ru: {
+    viewLabel: 'Вид Запросов',
+    allRequestsView: 'Все Запросы',
+    myOpenCasesView: 'Мои открытые дела',
+    myOpenCasesHelp:
+      'Мои открытые дела показывают открытые или отложенные Возможности, за которые вы сейчас отвечаете.',
+    myOpenCasesEmpty:
+      'В компании {companyName} вам не назначены открытые дела.',
     responsibleChoice: 'Новый ответственный',
     responsibleSelectMember: 'Выберите участника',
     responsibleMembersLoading: 'Загружаем доступных участников…',
@@ -409,6 +427,13 @@ export const commercialRequestMessages = defineMessages(keys, {
     statusArchived: 'Архивирована',
   },
   fr: {
+    viewLabel: 'Vue des Demandes',
+    allRequestsView: 'Toutes les Demandes',
+    myOpenCasesView: 'Mes dossiers ouverts',
+    myOpenCasesHelp:
+      'Mes dossiers ouverts présente les Opportunités ouvertes ou en attente dont vous êtes actuellement responsable.',
+    myOpenCasesEmpty:
+      'Aucun dossier ouvert ne vous est attribué dans {companyName}.',
     responsibleChoice: 'Nouveau responsable',
     responsibleSelectMember: 'Sélectionner un membre',
     responsibleMembersLoading: 'Chargement des membres éligibles…',
@@ -554,6 +579,12 @@ export const commercialRequestMessages = defineMessages(keys, {
     statusArchived: 'Archivée',
   },
   en: {
+    viewLabel: 'Request view',
+    allRequestsView: 'All Requests',
+    myOpenCasesView: 'My open cases',
+    myOpenCasesHelp:
+      'My open cases shows Open or On hold Opportunities for which you are currently responsible.',
+    myOpenCasesEmpty: 'No open cases are assigned to you in {companyName}.',
     responsibleChoice: 'New responsible actor',
     responsibleSelectMember: 'Select a member',
     responsibleMembersLoading: 'Loading eligible members…',
@@ -775,6 +806,12 @@ export function useCommercialRequestCopy() {
     capture: message('capture'),
     loading: message('loading'),
     list: message('list'),
+    viewLabel: message('viewLabel'),
+    allRequestsView: message('allRequestsView'),
+    myOpenCasesView: message('myOpenCasesView'),
+    myOpenCasesHelp: message('myOpenCasesHelp'),
+    myOpenCasesEmpty: (companyName: string) =>
+      formatMessage(message('myOpenCasesEmpty'), { companyName }),
     filterLabel: message('filterLabel'),
     filterHelp: message('filterHelp'),
     filterNoMatch: message('filterNoMatch'),
