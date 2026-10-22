@@ -271,6 +271,25 @@ missing, conflict/reload, uncertain retry and historical-Client read-only states
 are explicit. Same-context navigation preserves useful drafts and command
 identity; actor, Company and permission changes invalidate old state and replies.
 
+### Local Task title filtering
+
+The existing local Task title filter delivered under [#270](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/270)
+also accepts Romanian spelling with or without diacritics under [#778](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/778).
+Preserve trimmed case-insensitive substring matching, canonical Unicode equivalence
+and the Romanian pairs `ă/â/a`, `î/i`, `ș/ş/s`, `ț/ţ/t` on both query and Task title.
+Other language distinctions, including Russian `й/и`, remain distinct. This is
+comparison only: keep stored and displayed text and the literal query unchanged.
+
+Filter only already-loaded authorized Task titles, preserving server order and
+the existing status, responsible-member and date filter choices. Typing, clearing
+or changing interface locale adds no request or business write; locale changes
+preserve the literal query. Existing authority/context retirement and stale-reply
+rules remain intact. Filtering does not close selected detail, discard drafts or
+alter an uncertain command's exact payload, expected version or key. Existing
+authoritative refreshes still determine current rows and do not redefine the open
+detail's authority. This bounded convenience adds no field, permission, event,
+backend behavior, global/content/history search or identity-matching rule.
+
 Public component tests start the observable red-to-green proof. PostgreSQL REST
 tests own permission isolation, assignment eligibility, dates, state/version
 concurrency, atomic history, retry and union/reversal boundaries. Existing browser
