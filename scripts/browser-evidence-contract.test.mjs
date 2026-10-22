@@ -87,7 +87,7 @@ test('CI uploads every evidence directory independently, including after failure
     const upload = workflow.slice(start, end);
     assert.match(
       upload,
-      /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+      /if: \$\{\{ always\(\) && \(github\.event_name == 'pull_request' \|\| github\.event_name == 'workflow_dispatch'\) \}\}/u,
     );
     assert.ok(
       upload.includes(
@@ -112,7 +112,7 @@ test('CI merges disjoint evidence under the established PR artifact name', async
   const quality = workflow.slice(workflow.indexOf('\n  quality:\n'));
   assert.match(
     quality,
-    /name: Download complete browser evidence\n {8}if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+    /name: Download complete browser evidence\n {8}if: \$\{\{ always\(\) && \(github\.event_name == 'pull_request' \|\| github\.event_name == 'workflow_dispatch'\) \}\}/u,
   );
   assert.match(quality, /uses: actions\/download-artifact@v4/u);
   assert.match(
@@ -122,11 +122,11 @@ test('CI merges disjoint evidence under the established PR artifact name', async
   assert.match(quality, /path: browser-evidence\/\n {10}merge-multiple: true/u);
   assert.match(
     quality,
-    /name: Upload complete browser evidence\n {8}if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+    /name: Upload complete browser evidence\n {8}if: \$\{\{ always\(\) && \(github\.event_name == 'pull_request' \|\| github\.event_name == 'workflow_dispatch'\) \}\}/u,
   );
   assert.match(
     quality,
-    /name: browser-evidence-pr-\$\{\{ github\.event\.pull_request\.number \}\}/u,
+    /name: browser-evidence-pr-\$\{\{ github\.event\.pull_request\.number \|\| github\.run_id \}\}/u,
   );
   assert.match(quality, /overwrite: true/u);
   assert.match(
@@ -173,7 +173,7 @@ test('each shard keeps its own Playwright run metadata in the merged evidence', 
     const body = workflow.slice(start, upload);
     assert.match(
       body,
-      /if: \$\{\{ always\(\) && github\.event_name == 'pull_request' \}\}/u,
+      /if: \$\{\{ always\(\) && \(github\.event_name == 'pull_request' \|\| github\.event_name == 'workflow_dispatch'\) \}\}/u,
     );
     assert.ok(
       body.includes(`apps/web/test-results/${family}/.last-run.json`) &&

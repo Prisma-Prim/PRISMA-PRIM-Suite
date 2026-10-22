@@ -498,6 +498,13 @@
       "when": 1792323905226,
       "tag": "0070_project_template_successors",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792473466267,
+      "tag": "0071_company_ideas",
+      "breakpoints": true
     }
   ]
 }

@@ -102,7 +102,7 @@ The independent `.railway` package pins the SDK without altering application
 dependencies. These local tests evaluate its graph without remote planning.
 
 Only after confirming the target, resources, required variables, costs and a
-recorded current `main` SHA whose complete CI workflow is green, run
+recorded current `main` SHA with validated complete local integration evidence, run
 `railway config apply` interactively and approve that exact plan. Provisioning and
 deployment are activation actions, outside credential-free preparation. Inspect
 the resulting settings against the following table, attach the chosen public
@@ -131,28 +131,15 @@ private networking. Failure or timeout stops the new API deployment. Keep one
 API replica and serialize migration-bearing deployments; migrations are not
 part of the web build and are never run through `drizzle-kit push`.
 
-## GitHub deployment after green checks
+## Deployment verification and explicit activation
 
-Enable **Wait for CI** for both GitHub-backed services and confirm the deployment
-branch is `main`. The graph requests this through `checkSuites: true`. The
-repository CI runs on pushes to `main`; packaging runs alongside the independent
-test families after the fast checks. The required `quality` aggregate succeeds
-only after checks, every test family, the host build and packaging succeed. No
-Railway token or deploy workflow is installed in GitHub.
+The repository's default merge gate is [complete local integration evidence](issue-execution.md#complete-local-integration-evidence). Passing that gate neither deploys nor qualifies Railway. The graph still requests **Wait for CI** through `checkSuites: true`; this transition changes no Railway setting, autodeploy state or provider behavior. Confirm the deployment branch is `main` and inspect the actual service settings before activation.
 
-For initial activation, confirm `main` has not advanced past the recorded green
-SHA before applying the graph or manually triggering deployment. Confirm Wait for
-CI is enabled on both created services. After verification, enable autodeploy if
-it was disabled on either service.
-Subsequent pushes to `main` wait for GitHub Actions before building; a failed
-workflow skips deployment. [Wait for CI](https://docs.railway.com/deployments/github-autodeploys)
-uses whole workflow conclusions, ignores skipped/neutral workflows, and can
-ignore a cancelled workflow if another workflow on the same SHA succeeds. Preserve
-the single required CI workflow and its packaging job; never treat a cancelled
-or incomplete required check as release approval. Manual deployments and variable
-changes require the same operator check of the source SHA and complete CI result.
-IaC edits require another reviewed `config plan`/`config apply`; a GitHub source
-deployment does not automatically apply project configuration.
+The complete GitHub workflow is now manual; pushes to `main` do not start it automatically. At deployment time, the operator must explicitly decide whether to request independent GitHub verification for the exact deployment SHA. When required for the retained Wait-for-CI setup, request the manual workflow on that SHA and confirm its actual successful conclusion, including `quality` and packaging, before deployment. If no qualifying workflow ran, keep deployment on hold; absence of an automatic run is not release approval. Any alternative provider-setting transition requires a separate explicit owner decision and reviewed plan/apply. No Railway token or deploy workflow is installed in GitHub.
+
+For initial activation, confirm `main` has not advanced past the recorded verified SHA before applying the graph or manually triggering deployment. Confirm Wait for CI remains enabled on both services as the graph specifies. Enable autodeploy only as an explicit operator activation after its prerequisites are met; do not infer readiness from the local merge policy. [Wait for CI](https://docs.railway.com/deployments/github-autodeploys) uses whole workflow conclusions, ignores skipped/neutral workflows, and can ignore a cancelled workflow if another workflow on the same SHA succeeds. Never treat a cancelled/incomplete required check or an unexecuted manual workflow as approval.
+
+Manual deployments and variable changes require the same operator verification of the exact source SHA, local evidence and any explicitly requested GitHub result. IaC edits require another reviewed `config plan`/`config apply`; a GitHub source deployment does not automatically apply project configuration.
 
 ## Verification, budget, backups and rollback
 

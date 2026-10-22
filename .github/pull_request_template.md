@@ -12,7 +12,7 @@ Closes #
 
 ## Verification
 
-<!-- Exact commands and results. Name every check that could not run locally and why; GitHub Actions remains the authoritative proof. -->
+<!-- Exact commands and results. Include validated local manifest/report and actual evidence asset URLs, source/base/integration tree and exact commands. Name every failed/unexecuted check and why. Manual GitHub verification is independent proof only when actually executed. -->
 
 - `node scripts/agent-doctor.mjs` (profile):
 - `pnpm verify`:
