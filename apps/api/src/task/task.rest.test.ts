@@ -1810,6 +1810,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     await grant('task');
     const created = await create({
       title: 'Historical notes',
+      priority: 'critical',
       assigneeMembershipId: membershipId,
       dueDate: '2026-09-30',
     });
@@ -1845,6 +1846,27 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       'clientDossierId',
     ])
       expect(JSON.stringify(page)).not.toContain(hidden);
+    const attention = await read('/attention-tasks');
+    expect(attention).toMatchObject({
+      companyId,
+      total: 1,
+      tasks: [
+        {
+          ...created,
+          project: {
+            id: projectId,
+            title: 'ISO preparation',
+            clientDisplayName: 'Synthetic Client',
+          },
+        },
+      ],
+    });
+    for (const hidden of [
+      union.second,
+      'Legacy synthetic identity',
+      'clientDossierId',
+    ])
+      expect(JSON.stringify(attention)).not.toContain(hidden);
     expect(await snapshot()).toEqual(before);
     expect(await taskEvents()).toEqual(events);
     expect((await reverse(string(confirmed.projectionReference))).status).toBe(

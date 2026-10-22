@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
-**Status:** Operational home approved by #398 (section 17), latest dated Activity preview approved by #720 (section 18); remaining capability Draft — other role journeys and metrics pending  
-**Version:** 0.5  
+**Status:** Operational home approved by #398 (section 17), latest dated Activity preview approved by #720 (section 18), personal upcoming deadlines approved by #721 (section 19), complete My attention drill-down agent-approved under delegated delivery authority (section 20); remaining capability Draft — other role journeys and metrics pending  
+**Version:** 0.6  
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -302,3 +302,78 @@ Public PostgreSQL REST and real App HTTP-boundary tests own set, date, authority
 pagination, response refusal and stale-reply proof. Desktop 1440px/narrow 390px
 browser journeys cover the four locales and both frames; the registered disposable
 PostgreSQL acceptance journey proves exact Task opening and completion/reload.
+
+## 20. Approved complete My attention drill-down — 2026-10-21
+
+This bounded read-only extension is approved by the coordinator under Dan's
+standing request to implement the safely derivable remaining Sarcina journeys
+and his delegated agent product-review authority. It supplies the complete set
+behind §17.3's preview; it is not new Iurie evidence or an urgency-policy change.
+The rest of this capability's Draft boundary remains unchanged.
+
+### 20.1 Set, explanation and authority
+
+The set, all matching-rule labels and complete deterministic ordering are
+exactly §17.3. Use the reader's own open, currently readable Tasks under the
+Project/Task PRD §19 boundary; assignment alone grants no access. Preserve
+critical or blocked Tasks with no date or with dates beyond the due-soon range,
+and the existing Project/Client visibility rules. Do not additionally filter
+closed Projects. A row shows every rule it matches, not only its first ordering rule. Ordinary My Tasks and the ten-row Home preview stay unchanged.
+
+A clearly named action opens all matching Tasks from Home. Preserve a separately
+labelled route to ordinary My Tasks; do not label that unfiltered destination
+as the complete attention set. No additional permission, Company scope, Task
+mutation, metric definition, ranking, notification or automatic action exists.
+
+### 20.2 Complete bounded read
+
+The Task owner supplies a separate complete attention read; the existing
+operational Home no-query contract and one-snapshot preview remain unchanged.
+`GET /api/attention-tasks` returns active Company, server today, complete total,
+offset, fixed page size 25 and Task rows with every matching rule code and exact
+nullable due-in-days value; the interface owns localized day wording.
+Accept only one nonnegative safe-integer offset, default zero; reject repeated,
+array, fractional, negative, unsafe and unsupported parameters. Authorization,
+count and rows share one repeatable-read snapshot. Apply the authorized matching
+set and ordering before pagination; impose no silent whole-set cap.
+
+Today uses §17.1's single server instant in Europe/Chisinau. Each page reflects
+current state; there is no frozen snapshot across requests. Refresh restarts at
+zero. A changed server date retires the previous page and restarts at zero;
+out-of-range pages offer previous/refresh without hiding the complete total.
+Queries write no Activity event, history, command receipt or Client fence change.
+
+### 20.3 Public interaction and lifecycle
+
+A Home-local accessible panel presents Company, today, total, the Task/Project/
+Client labels and every matched rule using existing styled controls. Previous,
+Next, Refresh, Close and exact Task opening use existing Project navigation
+without identifiers in URL/history. Closing restores the opening action's focus.
+Loading, true empty, out-of-range, denied and unavailable/retry states differ.
+Malformed or foreign responses reveal no rows/counts. Closing, newer reads and
+the existing Company/identity/session/Membership/authority retirement discard
+older replies, including transports that ignore abort. Recheck current authority
+on every page and on exact Task navigation. No background polling is introduced.
+
+Romanian, Russian, French and English use the existing shared copy and violet/
+yellow visual system. Locale-only changes preserve page, literal business text,
+focus and pending requests without new I/O or navigation. Keyboard controls, readable
+labels and no horizontal overflow are required at desktop 1440px and narrow390px.
+
+### 20.4 Acceptance and delivery boundary
+
+Public PostgreSQL REST and real App HTTP-boundary tests prove more than25 matching
+Tasks, multiple rules, all ordering ties, undated critical/blocked Tasks, every
+page, date change, completion/reassignment, authority loss, foreign/malformed
+responses and stale replies. Count and full pages agree for unchanged state.
+Prove exact Task opening plus completion/reload through the registered disposable
+PostgreSQL acceptance journey at both widths, with all four locales and inspected
+original screenshots. Preserve existing assertions and scenario/expect budgets.
+
+No schema, new grant, team/all-Companies view, configurable window/ranking,
+calendar, export, reminder or external provider is included. The canonical
+normalization may travel in its one implementation issue after ordered agent
+Standards/Spec approval; local work may start before publication under Dan's
+standing delivery authorization. The applicable verification/review and
+exact-source/base/tree merge gates remain in force. Approval proves neither
+implementation nor MVP/Sarcina delivery.
