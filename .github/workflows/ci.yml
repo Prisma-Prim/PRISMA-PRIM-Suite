@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Check out repository
@@ -44,7 +44,7 @@ jobs:
         run: pnpm --filter @prisma-prim/api exec vitest run src/demonstration
 
   scope:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       docs_only: ${{ steps.classify.outputs.docs_only }}
@@ -82,7 +82,7 @@ jobs:
   postgres_image:
     needs: scope
     if: ${{ needs.scope.outputs.docs_only != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Check out repository
@@ -114,7 +114,7 @@ jobs:
   api:
     needs: [checks, scope, postgres_image]
     if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_api != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       matrix:
@@ -148,7 +148,7 @@ jobs:
   web_unit:
     needs: [checks, scope]
     if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Check out repository
@@ -169,7 +169,7 @@ jobs:
   browser:
     needs: [checks, scope]
     if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       matrix:
@@ -212,7 +212,7 @@ jobs:
   acceptance:
     needs: [checks, scope, postgres_image]
     if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       # Shard 1 owns the deliberate evidence probe; a failing shard 2 must
@@ -267,7 +267,7 @@ jobs:
   build:
     needs: [checks, scope]
     if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Check out repository
@@ -285,7 +285,7 @@ jobs:
   packaging:
     needs: [checks, scope, postgres_image]
     if: ${{ needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.reuse_all != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Check out repository
@@ -353,7 +353,7 @@ jobs:
         packaging,
       ]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Check out repository

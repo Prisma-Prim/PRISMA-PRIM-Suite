@@ -49,6 +49,7 @@ The pinned matrix preserves the duplicate matching/union-design blocker as it st
 | [Historical Migration, Search and Export](historical-migration-search-export-prd.md)             | Draft           | Import provenance, findability, export and reconciliation                 |
 | [AI and Knowledge Governance](ai-knowledge-governance-prd.md)                                    | Draft           | AI authority, citations, privacy and human approval                       |
 | [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft           | Security controls, recovery, observability and service posture            |
+| [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft           | Equivalent-work qualification, processing resource bounds and evidence    |
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
 ## 5. Release 1 capability PRDs
@@ -90,6 +91,12 @@ Release 2 and Releases 4–7 remain intentionally skeletal in the Product Vision
 5. Release 7 — approved Knowledge Base, RAG and measured copilots.
 
 Do not decompose these releases into implementation issues merely to populate a backlog.
+
+The [complete My attention drill-down](release-1-operational-dashboard-acceptance-prd.md#20-approved-complete-my-attention-drill-down--2026-10-21)
+extends only the existing own-Task attention preview with complete bounded pages,
+under delegated agent product review. Its §20 owns the set, unchanged rights,
+read lifecycle, acceptance and local-work/publication boundary; approval is not
+runtime delivery.
 
 ### Bounded operational additions
 
