@@ -3,7 +3,9 @@ import {
   expect,
   test,
   type APIRequestContext,
+  type Locator,
   type Page,
+  type Route,
 } from '@playwright/test';
 import { selectOption } from './select-option';
 
@@ -89,7 +91,7 @@ test('creates and reopens a copied illustrative Project plan and completes an ex
       new URL(response.url()).pathname === '/api/clients' &&
       response.request().headers()['x-company-context-id'] === companyId,
   );
-  await projects.getByRole('button', { name: 'Reload Projects' }).click();
+  await reloadProjects({ page, projects, companyId });
   const clientChoicesResponse = await clientChoicesRead;
   expect(clientChoicesResponse.status()).toBe(200);
   const clientChoices: unknown = await clientChoicesResponse.json();
@@ -799,7 +801,7 @@ test('publishes immutable compatible successors and reopens independent exact-Ve
   ).toBeVisible();
   await navigate(page, 'Projects', narrow);
   const projects = page.locator('.project-workspace');
-  await projects.getByRole('button', { name: 'Reload Projects' }).click();
+  await reloadProjects({ page, projects, companyId });
   const selector = projects.getByRole('combobox', {
     name: 'Project template',
     exact: true,
@@ -1111,7 +1113,7 @@ test('publishes immutable compatible successors and reopens independent exact-Ve
       response.request().method() === 'GET' &&
       new URL(response.url()).pathname === '/api/projects',
   );
-  await projects.getByRole('button', { name: 'Reload Projects' }).click();
+  await reloadProjects({ page, projects, companyId });
   expect((await paginationProjectReload).status()).toBe(200);
   await projects
     .getByRole('list', { name: 'Projects', exact: true })
@@ -1258,6 +1260,51 @@ test('publishes immutable compatible successors and reopens independent exact-Ve
     fullPage: true,
   });
 });
+
+async function reloadProjects({
+  page,
+  projects,
+  companyId,
+}: {
+  page: Page;
+  projects: Locator;
+  companyId: string;
+}) {
+  const title = projects.getByRole('textbox', {
+    name: 'Project title',
+    exact: true,
+  });
+  await expect(title).toBeVisible();
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  // Keep the real reload pending until its old form has visibly retired.
+  // Otherwise an action can fill the old input before the reload clears it.
+  const pattern = '**/api/projects';
+  const holdReload = async (route: Route) => {
+    const request = route.request();
+    if (
+      request.method() === 'GET' &&
+      request.headers()['x-company-context-id'] === companyId
+    )
+      await held;
+    await route.continue();
+  };
+  await page.route(pattern, holdReload);
+  try {
+    await projects.getByRole('button', { name: 'Reload Projects' }).click();
+    await expect(
+      projects.getByRole('status').filter({ hasText: /^Loading Projects…$/ }),
+    ).toBeVisible();
+    await expect(title).toHaveCount(0);
+    release();
+    await expect(title).toBeVisible();
+  } finally {
+    release();
+    await page.unroute(pattern, holdReload);
+  }
+}
 
 async function grantTemplate(
   request: APIRequestContext,
