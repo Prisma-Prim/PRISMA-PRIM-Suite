@@ -91,6 +91,12 @@ Release 2 and Releases 4–7 remain intentionally skeletal in the Product Vision
 
 Do not decompose these releases into implementation issues merely to populate a backlog.
 
+The [complete My attention drill-down](release-1-operational-dashboard-acceptance-prd.md#20-approved-complete-my-attention-drill-down--2026-10-21)
+extends only the existing own-Task attention preview with complete bounded pages,
+under delegated agent product review. Its §20 owns the set, unchanged rights,
+read lifecycle, acceptance and local-work/publication boundary; approval is not
+runtime delivery.
+
 ### Bounded operational additions
 
 The [Company Ideas intake PRD](company-ideas-intake-prd.md) defines the separately

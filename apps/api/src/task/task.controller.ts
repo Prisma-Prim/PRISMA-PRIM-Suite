@@ -52,6 +52,12 @@ export class TaskController {
   ) {
     return this.tasks.listDueSoon(actor(request), query);
   }
+  @Get('attention-tasks') listAttention(
+    @Req() request: ActorContextRequest,
+    @Query() query: unknown,
+  ) {
+    return this.tasks.listAttention(actor(request), query);
+  }
   @Get('overdue-tasks') listOverdue(
     @Req() request: ActorContextRequest,
     @Query() query: unknown,

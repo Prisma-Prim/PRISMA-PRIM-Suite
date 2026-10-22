@@ -571,3 +571,48 @@
     margin: 20px;
   }
 }
+.operational-home-attention-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.operational-home-attention-panel {
+  margin-top: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.operational-home-attention-panel button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.operational-home-attention-panel button svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.operational-home .operational-home-attention-panel button:disabled {
+  color: var(--shell-muted);
+  background: var(--shell-canvas, #f7f9fc);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.prisme-shell .operational-home-attention-actions button,
+.prisme-shell .operational-home-attention-panel button {
+  min-height: 2.75rem;
+}
+
+.prisme-shell .operational-home-attention-actions > button:first-child {
+  color: white;
+  border-color: var(--shell-blue);
+  background: var(--shell-blue);
+}

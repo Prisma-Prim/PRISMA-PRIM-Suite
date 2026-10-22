@@ -156,6 +156,45 @@ The command requires an idempotency key. An exact retry by the same actor and Co
 
 The create response and Request detail return only the stored Request, its one initial Opportunity and the optional Client reference that remains visible. Request detail exposes Request version `1 | 2`. Version 1 is the capture contract and may have a stored original Client reference or none; a null permission-filtered Client projection never proves that the stored reference is absent. Reload after a process restart returns the same server-owned ownership, actor, timestamps and versions. A bounded active-Company list returns the newest authorized Requests first, with their initial Opportunity title, responsible actor label and next action. It uses a stable cursor, defaults to 25 items and allows at most 50; it returns no cross-Company count or hidden Client metadata.
 
+**Provisional My open cases view.** On 2026-10-21 coordinating root approved one
+bounded read extension under Dan's delegated safe-Sarcina scope. All Requests
+remains the default. The only optional view value is `view=mine_open`; omission
+retains the current all view. Invalid, empty, repeated or non-scalar view values
+fail. The server compares the initial Opportunity entity's current
+`responsibleWorkspaceMembershipId` with the current authorized actor's
+`workspaceMembershipId`, and selects only current `OPEN`/`ON_HOLD` statuses
+(section 23.1), inside the existing Workspace, active-Company and captured
+Commercial Intake read boundary. It does not use capture creator, historical
+snapshot, label, email or a caller-selected member. Reassignment (section 21)
+changes inclusion on a fresh read; responsibility grants no authority.
+
+Apply that fixed predicate before the unchanged capture-time/Request-ID order,
+positional cursor and limit. Default 25/max 50, limit+1 continuation, response
+fields, limit/cursor validation and permission-filtered Client projection remain
+unchanged. Cursors still encode the exact UTC capture timestamp with six
+fractional digits and UUID Request ID; they are positional boundaries, not
+view/Company/actor credentials. The view adds no count, metadata, ranking or
+generic status/actor query. Subsequent pages are current reads, not a frozen
+snapshot across reassignment or other mutations.
+
+Changing view retires list/older-page replies and resets loaded pages/cursors,
+while preserving the selected detail, existing create/edit drafts, one-open-editor
+rule and uncertain commands' exact payload/version/key. Existing Client-dossier
+restriction and loaded-text-filter meanings remain unchanged. A detail that
+leaves this list remains readable under its current owning authority; this view
+is never a detail or command authorization rule. Company/session/membership or
+permission invalidation retains its existing scoped-state and late-reply rules.
+
+The user opens the exact existing Request detail, deliberately saves its next
+action through section 16 when separately authorized, and reloads the stored
+result. Intake-v1 readers gain no update authority; existing v2/v3/v4 permission
+evaluation is unchanged. Reads create no event/version/receipt/Client fence.
+No date, Task, reminder, automatic transition, reassignment or wider dashboard
+is introduced. Four-locale copy/state, accessible Prisme controls and actual
+desktop/narrow proof remain required. Public REST proves the exact current-self
+open set and complete pagination; real App/PostgreSQL browser proof covers
+save/reload, read-only v1, uncertain retries and retired list replies.
+
 Client association is resolved and locked through the Client module's existing public authorization and operational-reference fence. The commercial contract adds no Client version field, lookup path, duplicate rule or union logic. Unknown, inaccessible, inactive, cross-Company, superseded or concurrently invalidated Client references all return the same safe unavailable response, create nothing and ask the user to refresh Client search before retrying. A harmless concurrent correction that leaves the authorized association valid need not block. A successful commit records the original/current Client reference through the Client owner so a later union or reversal cannot silently strand commercial use.
 
 ### 8.5 Activity and history
