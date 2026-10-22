@@ -77,6 +77,7 @@ import {
   contracts,
   contractVersions,
   profitabilityEstimateEvents,
+  operationalRiskEvents,
   type TariffCurrency,
 } from '../database/schema/index.js';
 import type { ActorContext } from '../access/access.types.js';
@@ -1149,6 +1150,48 @@ export class AccountabilityService {
           ? { revision: input.revision }
           : { revision: input.revision, disposition: input.disposition },
     });
+  }
+
+  // Internal restricted recording only: no generic Activity/Home target exists.
+  async recordOperationalRiskEvent(
+    input: {
+      actor: ActorContext;
+      companyId: string;
+      riskId: string;
+      entryId: string;
+      revision: number;
+      recordedAt: Date;
+    } & (
+      | {
+          action:
+            'operational_risk.recorded' | 'operational_risk.intake.corrected';
+        }
+      | {
+          action: 'operational_risk.journal.recorded';
+          kind: 'observation' | 'reassessment';
+        }
+    ),
+  ): Promise<void> {
+    const [recorded] = await this.databaseContext.connection
+      .insert(operationalRiskEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        riskId: input.riskId,
+        entryId: input.entryId,
+        revision: input.revision,
+        action: input.action,
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        recordedAt: input.recordedAt,
+        metadata:
+          input.action === 'operational_risk.journal.recorded'
+            ? { revision: input.revision, kind: input.kind }
+            : { revision: input.revision },
+      })
+      .returning({ id: operationalRiskEvents.id });
+    if (!recorded)
+      throw new Error('The restricted Risk event was not recorded.');
   }
 
   // Confidential profitability events have no Activity read projection.
@@ -3134,6 +3177,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_profitability_contributor_assignment.revoked':
     case 'company_profitability_director_assignment.granted':
     case 'company_profitability_director_assignment.revoked':
+    case 'company_operational_risk_reader_assignment.granted':
+    case 'company_operational_risk_reader_assignment.revoked':
+    case 'company_operational_risk_recorder_assignment.granted':
+    case 'company_operational_risk_recorder_assignment.revoked':
     case 'company_project_approver_assignment.granted':
     case 'company_project_approver_assignment.revoked':
     case 'company_sales_stage_configuration_assignment.granted':
