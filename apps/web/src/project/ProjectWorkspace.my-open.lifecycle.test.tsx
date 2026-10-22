@@ -1053,6 +1053,113 @@ it('refreshes current Mine membership after the real responsible editor clears t
   expect(taskDraft).toHaveValue('Independent Task work');
 });
 
+it.each(['clear', 'reassign'] as const)(
+  'refreshes Mine after an ordinary confirmed responsible %s despite a failed responsible reread',
+  async (change) => {
+    const transport = server();
+    const manager: ActorContext = {
+      ...changingActor,
+      activeCompany: {
+        ...changingActor.activeCompany,
+        id: 'company',
+        displayName: 'PRISMA-PRIM',
+        taskPermissions: ['task.read', 'task.manage'],
+        taskPermissionAssignmentId: 'task-grant',
+        taskPermissionSetVersion: 'v1',
+        documentPermissions: [
+          'document.read',
+          'document.reference.read',
+          'document.project.manage',
+        ],
+      },
+    };
+    render(element(deterministicBrowserIdentity(), manager));
+    await openCurrentMine();
+    const opened = screen.getByRole('article', { name: mine.title });
+    const taskTitle = await within(
+      screen.getByRole('region', { name: 'Tasks' }),
+    ).findByRole('textbox', { name: 'Task title' });
+    changeValue(taskTitle, 'Independent Task {draft}');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Attach working Document' }),
+    );
+    const documentSearch = await screen.findByRole('searchbox', {
+      name: 'Search eligible working Documents',
+    });
+    changeValue(documentSearch, 'Independent Document {filter}');
+    const responsiblePath = `/api/projects/${mine.id}/responsible`;
+    transport.hold(`GET ${responsiblePath}`);
+    transport.onWrite((request) => {
+      expect(request.method).toBe('PUT');
+      expect(request.path).toBe(responsiblePath);
+      expect(JSON.parse(request.body ?? '{}')).toEqual({
+        expectedRevision: 1,
+        workspaceMembershipId: change === 'clear' ? null : 'other-member',
+      });
+      transport.setMine([]);
+      return Response.json({
+        projectId: mine.id,
+        outcome: 'changed',
+        revision: 2,
+        responsible:
+          change === 'clear'
+            ? null
+            : {
+                workspaceMembershipId: 'other-member',
+                displayLabel: 'Colleague',
+              },
+      });
+    });
+    const eligiblePath = `/api/projects/${mine.id}/eligible-responsible-members`;
+    transport.hold(eligiblePath);
+    fireEvent.click(
+      within(
+        screen.getByRole('region', { name: 'Responsible member' }),
+      ).getByRole('button', { name: 'Change' }),
+    );
+    await transport.release(
+      eligiblePath,
+      Response.json({
+        members: [
+          { workspaceMembershipId: 'member', displayLabel: 'Owner' },
+          { workspaceMembershipId: 'other-member', displayLabel: 'Colleague' },
+        ],
+      }),
+    );
+    if (change === 'reassign')
+      changeValue(
+        screen.getByLabelText('Choose the responsible member'),
+        'other-member',
+      );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: change === 'clear' ? 'Clear responsible member' : 'Save',
+      }),
+    );
+    await screen.findByText('Responsible member saved.');
+    await transport.release(
+      responsiblePath,
+      new Response(null, { status: 503 }),
+    );
+    await screen.findByText('The responsible member could not be loaded.');
+    expect(
+      await screen.findByText(
+        'No open Projects currently list you as responsible.',
+      ),
+    ).toBeInTheDocument();
+    expect(rows().queryByRole('button')).toBeNull();
+    expect(screen.getByRole('article', { name: mine.title })).toBe(opened);
+    expect(taskTitle).toBeInTheDocument();
+    expect(taskTitle).toHaveValue('Independent Task {draft}');
+    expect(documentSearch).toBeInTheDocument();
+    expect(documentSearch).toHaveValue('Independent Document {filter}');
+    expect(screen.getByText('Responsible member saved.')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry responsible member change' }),
+    ).toBeNull();
+  },
+);
+
 it('refreshes Mine after an existing real lifecycle confirmation without discarding the readable detail', async () => {
   const transport = server();
   const identity = deterministicBrowserIdentity();
@@ -1366,24 +1473,10 @@ it.each(
       change,
       transport,
       afterCommand: () => {
-        holdTokens = held === 'token' && change === 'Lifecycle';
+        holdTokens = held === 'token';
       },
     });
     await submitConfirmedChange(change);
-    if (change === 'Responsible') {
-      // This child's parent callback belongs to its explicit Reload action;
-      // a confirmed write first publishes its own authoritative read.
-      await screen.findByText('Responsible member saved.');
-      await screen.findByText(
-        'No open Projects currently list you as responsible.',
-      );
-      holdTokens = held === 'token';
-      fireEvent.click(
-        within(
-          screen.getByRole('region', { name: 'Responsible member' }),
-        ).getByRole('button', { name: 'Reload responsible member' }),
-      );
-    }
     const pendingDetail =
       held === 'detail' ? await transport.pending(detailPath) : undefined;
     if (held === 'token')
@@ -1466,14 +1559,8 @@ it.each(['Lifecycle', 'Responsible'] as const)(
     await submitConfirmedChange(change);
     if (change === 'Responsible') {
       await screen.findByText('Responsible member saved.');
-      // Hold the child's confirming read too, then invoke its actual parent
-      // callback by Reload; only the parent can refresh Mine in this interval.
+      // The ordinary command notifies its parent while its own read is held.
       await transport.pending(`/api/projects/${mine.id}/responsible`);
-      fireEvent.click(
-        within(
-          screen.getByRole('region', { name: 'Responsible member' }),
-        ).getByRole('button', { name: 'Reload responsible member' }),
-      );
     }
     await transport.pending(detailPath);
     await transport.release(detailPath, new Response(null, { status: 503 }));
@@ -1486,11 +1573,6 @@ it.each(['Lifecycle', 'Responsible'] as const)(
     expect(control('project-directory-view')).toHaveTextContent(
       'My open Projects',
     );
-    if (change === 'Responsible')
-      await transport.release(
-        `/api/projects/${mine.id}/responsible`,
-        new Response(null, { status: 503 }),
-      );
     if (change === 'Responsible')
       await transport.release(
         `/api/projects/${mine.id}/responsible`,
