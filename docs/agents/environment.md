@@ -13,7 +13,7 @@ Last validated: 2026-09-03.
 | Dependencies | `pnpm install --frozen-lockfile`                        | `pnpm-lock.yaml`                        |
 | Browser      | on demand and in CI; excluded from standard Codex setup | `@prisma-prim/web` and CI               |
 | Database     | on demand locally; PostgreSQL 17 in CI                  | profile scripts and CI workflow         |
-| CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17            | `.github/workflows/ci.yml`              |
+| CI           | Ubuntu 24.04, Node 24, pnpm 11.20.0, PostgreSQL 17      | `.github/workflows/ci.yml`              |
 
 Run the zero-dependency diagnostic after setup:
 
@@ -38,6 +38,12 @@ node scripts/agent-doctor.mjs --profile web-postgres
 ```
 
 Use `postgres` for ordinary backend or persistent-data work. Use `web` only when browser execution is required and `web-postgres` only when the same task genuinely needs both. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its read-only connectivity probe records the PostgreSQL server version and whether the current role is superuser or has `CREATEDB`; it never migrates, creates, drops, or truncates data.
+
+Canonical CI selects the standard public `ubuntu-24.04` runner explicitly. The
+pinned Playwright release supports that OS; `ubuntu-latest` may advance to an
+unsupported OS and change the Docker toolchain. A runner change requires proving
+browser installation, production packaging and every existing verification family
+on the proposed environment, with image-integrity checks preserved.
 
 ### Slow readiness probes
 
