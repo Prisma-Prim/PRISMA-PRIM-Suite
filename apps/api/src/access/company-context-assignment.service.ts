@@ -1,4 +1,12 @@
 import {
+  COMPANY_IDEAS_READER_BUNDLE,
+  COMPANY_IDEAS_READER_BUNDLE_LABEL,
+  COMPANY_IDEAS_RECORDER_BUNDLE,
+  COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
+  COMPANY_IDEAS_REVIEWER_BUNDLE,
+  COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL,
+} from './company-permissions.js';
+import {
   BadRequestException,
   ForbiddenException,
   Inject,
@@ -128,6 +136,9 @@ type BundleDefinition = {
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
     | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
     | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
+    | typeof COMPANY_IDEAS_READER_BUNDLE_LABEL
+    | typeof COMPANY_IDEAS_RECORDER_BUNDLE_LABEL
+    | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
     | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
     | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
@@ -144,6 +155,21 @@ type BundleDefinition = {
     | null;
 };
 
+const IDEAS_READER_BUNDLE: BundleDefinition = {
+  value: COMPANY_IDEAS_READER_BUNDLE,
+  label: COMPANY_IDEAS_READER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const IDEAS_RECORDER_BUNDLE: BundleDefinition = {
+  value: COMPANY_IDEAS_RECORDER_BUNDLE,
+  label: COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const IDEAS_REVIEWER_BUNDLE: BundleDefinition = {
+  value: COMPANY_IDEAS_REVIEWER_BUNDLE,
+  label: COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const TASK_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_MANAGER_BUNDLE,
   label: COMPANY_TASK_MANAGER_BUNDLE_LABEL,
@@ -291,6 +317,9 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_IDEAS_READER_BUNDLE,
+  COMPANY_IDEAS_RECORDER_BUNDLE,
+  COMPANY_IDEAS_REVIEWER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
@@ -787,6 +816,96 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       COMMERCIAL_ACTIVITY_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantIdeasReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      IDEAS_READER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeIdeasReader(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      IDEAS_READER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantIdeasRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      IDEAS_RECORDER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeIdeasRecorder(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      IDEAS_RECORDER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantIdeasReviewer(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      IDEAS_REVIEWER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeIdeasReviewer(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      IDEAS_REVIEWER_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1568,6 +1687,18 @@ function assignmentAction(
 ): CompanyAssignmentAction {
   const granted = operation === 'grant';
   switch (bundle) {
+    case COMPANY_IDEAS_READER_BUNDLE:
+      return granted
+        ? 'company_ideas_reader_assignment.granted'
+        : 'company_ideas_reader_assignment.revoked';
+    case COMPANY_IDEAS_RECORDER_BUNDLE:
+      return granted
+        ? 'company_ideas_recorder_assignment.granted'
+        : 'company_ideas_recorder_assignment.revoked';
+    case COMPANY_IDEAS_REVIEWER_BUNDLE:
+      return granted
+        ? 'company_ideas_reviewer_assignment.granted'
+        : 'company_ideas_reviewer_assignment.revoked';
     case COMPANY_TASK_MANAGER_BUNDLE:
       return granted
         ? 'company_task_manager_assignment.granted'
@@ -1718,6 +1849,30 @@ function assignmentRecord(
     active,
   };
   switch (assignment.bundle) {
+    case COMPANY_IDEAS_READER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Ideas Reader version.');
+      return {
+        ...base,
+        bundle: COMPANY_IDEAS_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_IDEAS_RECORDER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Ideas Recorder version.');
+      return {
+        ...base,
+        bundle: COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_IDEAS_REVIEWER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Ideas Reviewer version.');
+      return {
+        ...base,
+        bundle: COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
     case COMPANY_TASK_MANAGER_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')
         throw new Error('Invalid Company Task Manager version.');
