@@ -64,7 +64,7 @@ Each pull request receives one self-review and at most one review round. `docs/a
 
 - Before publication, review the final diff once against repository Standards and once against the originating issue, and fix what you find.
 - Apply the [acceptance evidence and review preparation](docs/agents/issue-execution.md#acceptance-evidence-and-review-preparation) procedure in every session: verify the complete acceptance contract before requesting review, and investigate the same defect pattern throughout the authorized scope when addressing a finding. Keep the evidence and review disposition in the pull request so another session can resume without private conversation history.
-- After CI is green, product code may receive one automated review on the final head. For documentation and PRD pull requests, agents' applicable Standards/Spec preparation and recorded disposition suffice; neither owner review nor separate owner confirmation is required.
+- After the complete local evidence gate passes, product code may receive one automated review on the final head. For documentation and PRD pull requests, agents' applicable Standards/Spec preparation and recorded disposition suffice; neither owner review nor separate owner confirmation is required.
 - A finding blocks only when it is a defect inside the changed scope that breaks an acceptance criterion, a security or data-integrity boundary, or a regression against `main`. Every other finding is recorded as a follow-up in the pull request body and does not change the branch.
 - Apply all blocking findings in one correction commit. Do not request another review after it; a single confirmation review is allowed only when the correction touched authorization, tenancy, migration, or Activity Log code, and it cannot lead to a third.
 - If the correction would exceed a focused fix, or CI fails twice on the same pull request for non-trivial reasons, stop: close the pull request, report the diagnosis on the issue, and start a fresh session after the owner re-scopes it.
@@ -74,7 +74,7 @@ Each pull request receives one self-review and at most one review round. `docs/a
 - Escalate product decisions that would change observable business rules, prices, legal clauses, certification decisions, permissions, workflow meaning, or issue acceptance criteria when the assigned issue and its references do not decide them.
 - Take reversible technical decisions autonomously when they stay inside the issue's public boundary and comply with the durable technical decisions above. Document consequential choices in the pull request.
 - Stop for a genuine external or product blocker. Resolve ordinary implementation choices, fixable check failures, and formatting issues without handing routine work back to the user.
-- The repository owner has granted standing authorization for AI agents with merge access to squash-merge conformant PRs without asking again. Merge only after every required check is green, the review round is complete, the final scope matches the issue, and no blocking finding remains. Stop instead of merging if any precondition is failed, unresolved, or uncertain, or if this standing authorization is revoked.
+- The repository owner has granted standing authorization for AI agents with merge access to squash-merge conformant PRs without asking again. Merge only after the complete local evidence is validated on the current source head, current base and exact tested integration tree, the review round is complete, the final scope matches the issue, and no blocking finding remains. Stop instead of merging if any precondition is failed, unresolved, or uncertain, or if this standing authorization is revoked.
 
 ## Required verification
 
@@ -84,9 +84,9 @@ Run the doctor before editing:
 node scripts/agent-doctor.mjs
 ```
 
-Before publication, run the appropriate local format, lint, and type checks, focused behavioral tests, and every affected PostgreSQL or browser check. For authorization, tenancy, migrations, data integrity, Activity Log, other sensitive changes, or difficult diagnosis, use `pnpm verify` as the stronger complete local gate when the environment supports it. Use the matching doctor profile for PostgreSQL or browser work, and report every relevant check that could not run with the exact sanitized reason in the pull request.
+Before publication, run the appropriate local format, lint, and type checks, focused behavioral tests, and every affected PostgreSQL or browser check. For authorization, tenancy, migrations, data integrity, Activity Log, other sensitive changes, or difficult diagnosis, use `pnpm verify` as a broader development check when the environment supports it, before the complete integration gate below. Use the matching doctor profile for PostgreSQL or browser work, and report every relevant check that could not run with the exact sanitized reason in the pull request.
 
-The published head must pass the complete GitHub Actions workflow before merge. GitHub CI is the authoritative integration gate; targeted local checks provide fast evidence and do not waive any CI, review, scope, or merge requirement.
+Before merge, run and validate the complete local gate with `node scripts/verify-local.mjs` as documented in [AI agent issue execution](docs/agents/issue-execution.md#complete-local-integration-evidence). Its evidence must bind the published source head, current base and clean exact tested integration tree, and be published on GitHub with actual evidence links. Local reports are self-reported execution evidence, not independent GitHub runner attestations. The complete GitHub Actions workflow remains available through explicit manual dispatch for requested independent verification; never claim it passed without execution. Standards/Spec preparation and the bounded review policy remain mandatory. Do not silently change repository protection or required-check settings.
 
 ## Agent skills
 
