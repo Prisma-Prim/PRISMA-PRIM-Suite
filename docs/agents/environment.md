@@ -13,7 +13,7 @@ Last validated: 2026-09-03.
 | Dependencies | `pnpm install --frozen-lockfile`                        | `pnpm-lock.yaml`                        |
 | Browser      | on demand and in CI; excluded from standard Codex setup | `@prisma-prim/web` and CI               |
 | Database     | on demand locally; PostgreSQL 17 in CI                  | profile scripts and CI workflow         |
-| CI           | Ubuntu, Node 24, pnpm 11.20.0, PostgreSQL 17            | `.github/workflows/ci.yml`              |
+| CI           | Ubuntu 24.04, Node 24, pnpm 11.20.0, PostgreSQL 17      | `.github/workflows/ci.yml`              |
 
 Run the zero-dependency diagnostic after setup:
 
@@ -38,6 +38,12 @@ node scripts/agent-doctor.mjs --profile web-postgres
 ```
 
 Use `postgres` for ordinary backend or persistent-data work. Use `web` only when browser execution is required and `web-postgres` only when the same task genuinely needs both. The doctor rejects missing, remote, shared, query-overridden, or non-`_test` destructive database targets before opening a connection. Its read-only connectivity probe records the PostgreSQL server version and whether the current role is superuser or has `CREATEDB`; it never migrates, creates, drops, or truncates data.
+
+Canonical CI selects the standard public `ubuntu-24.04` runner explicitly. The
+pinned Playwright release supports that OS; `ubuntu-latest` may advance to an
+unsupported OS and change the Docker toolchain. A runner change requires proving
+browser installation, production packaging and every existing verification family
+on the proposed environment, with image-integrity checks preserved.
 
 ## Verification commands
 
@@ -93,6 +99,110 @@ Maintenance runs when Codex resumes a cached container. It rechecks pnpm, compar
 ### pnpm launcher
 
 The Cloud lifecycle scripts run pnpm through `bash scripts/agent-pnpm.sh`. The launcher uses the exact `packageManager` version and, when the container launcher drifts, downloads that version into the ignored private `.pnpm-home/` directory. Use the same launcher in any other harness whose `pnpm --version` differs from the root pin; it never runs `corepack enable`, activates a system-global version, or installs a global npm package.
+
+### Isolated worktrees and dependency reuse (#635)
+
+This optional POSIX profile is for agents on the **same machine** with an already
+qualified primary installation. It does not provision tools or grant network,
+filesystem, PostgreSQL or browser permissions. The ordinary isolated frozen
+installation remains the default when any reuse prerequisite is uncertain.
+
+Before linking dependencies, the coordinator and author must establish:
+
+- The primary checkout and new worktree start at the same commit, with no staged
+  or unstaged tracked changes. The primary installation was prepared by a successful
+  `pnpm install --frozen-lockfile` for those actual inputs. A directory's presence,
+  a warm store or a successful doctor alone does not prove that installation.
+- Both use the repository's exact Node/pnpm contract, verified through the normal
+  launcher and doctor. Reuse the environment's installed launcher on `PATH`;
+  never substitute another version or install globally.
+- Neither checkout has additional untracked dependency inputs or different local
+  pnpm configuration. Compare the actual workspace manifests, lockfiles,
+  `pnpm-workspace.yaml`, `.node-version`, `.npmrc`, pnpm hooks and patches, including
+  additions/deletions. Do not print configuration credentials. Unknown inputs or
+  a changed dependency graph require the isolated-install route below.
+- The primary owner freezes its installation and dependency inputs for the full
+  reuse period. No consumer may run install, add, update, remove, rebuild, lifecycle
+  preparation or other dependency-mutating commands through the shared links.
+  **Even `pnpm add --lockfile-only` can rewrite shared module metadata and shims.**
+  Stop all consumers and detach their links before the owner changes the primary
+  graph. Changes to product source alone do not require a dependency reinstall.
+
+Use absolute paths for the two existing checkouts. In this example,
+`task_primary` and `task_worktree` are operator-selected paths, not provider defaults.
+First confirm the same clean starting revision with `git -C PATH status --short`
+and `git -C PATH rev-parse HEAD` for each checkout. Resolve any unexpected entries
+before proceeding. From a fresh worktree with **all three destinations absent**:
+
+```bash
+# Set these to the existing, verified checkouts before running this block.
+test -n "${task_primary:-}" && test -n "${task_worktree:-}" || exit 1
+for task_package in . apps/api apps/web; do
+  test -d "$task_primary/$task_package/node_modules" || exit 1
+  test ! -e "$task_worktree/$task_package/node_modules" || exit 1
+  test ! -L "$task_worktree/$task_package/node_modules" || exit 1
+done
+for task_package in . apps/api apps/web; do
+  ln -s "$task_primary/$task_package/node_modules" \
+    "$task_worktree/$task_package/node_modules" || exit 1
+done
+```
+
+Do not remove or replace an existing dependency directory to make this recipe
+fit. If linking fails partway, inspect and unlink only the links this operation
+created. The separate `.railway` package needs its own frozen installation when
+the complete gate requires it; these three links do not prepare packaging.
+
+Give each author a private writable runtime directory outside tracked source for
+`PNPM_HOME`, `npm_config_cache` and `pnpm_config_cache_dir`; keep the installed
+exact pnpm launcher on `PATH`. If browser work is required, set
+`PLAYWRIGHT_BROWSERS_PATH` to the environment's already installed matching browser
+cache, then run the matching doctor. A private pnpm home/cache does **not** isolate
+module metadata behind shared links. Do not change `HOME`, credentials, inherited
+proxy settings or CA trust, and do not promise offline installation from a cache
+whose package contents have not been verified.
+
+Before **each** command using the linked graph, confirm that its dependency inputs
+still match the frozen primary. Only for that verified reuse, scope pnpm 11's
+dependency-status setting to the individual invocation, including subprocesses:
+
+```bash
+pnpm_config_verify_deps_before_run=false node scripts/agent-doctor.mjs --profile web
+pnpm_config_verify_deps_before_run=false pnpm --filter @prisma-prim/web exec vitest run
+```
+
+Use the lower-case `pnpm_config_` spelling; `npm_config_` is not equivalent here.
+Do not export this setting, persist it in configuration or use it for changed
+manifests/lockfiles. It prevents pnpm's automatic pre-command installation on the
+verified shared graph; it neither validates that graph nor waives any check.
+Use the selected harness's supported execution permissions for actual browser
+and subprocess checks. A denied probe is not evidence of a missing executable.
+
+**Dependency changes or uncertain provenance:** stop this worktree's consumers
+before any dependency-changing command. Inspect each `node_modules` link and
+verify its exact intended primary target, then `unlink` only those three owned
+links. Never run recursive removal through them or use `CI=true` to authorize
+pnpm to replace their shared target. Preserve unexpected directories for diagnosis.
+Install independent root/API/web module directories from this worktree's actual
+inputs with ordinary dependency validation enabled:
+
+```bash
+# Run at the detached worktree root, with no shared node_modules links.
+pnpm install --frozen-lockfile --store-dir "$task_store"
+node scripts/agent-doctor.mjs --profile web
+```
+
+Set `task_store` explicitly to a permitted content-addressable store; an approved
+shared package store may reuse package bytes while each checkout owns its module
+metadata, links and shims. Do not rely on a legacy cache variable to select it.
+Prepare a changed lockfile only after detaching, through the normal isolated
+dependency-change workflow, then qualify its frozen installation. Use `--offline`
+only when all required packages are actually present; a cache miss is a setup
+blocker, not a reason to alter the lockfile or another author's installation.
+If links or shims were already rewritten, stop affected consumers and let the
+primary owner restore its original frozen graph before anyone resumes. Record
+the original failure and recovery separately; required tests and the complete
+integration gate remain unchanged.
 
 ### PostgreSQL profile
 
