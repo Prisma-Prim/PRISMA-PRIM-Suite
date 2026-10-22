@@ -1,0 +1,680 @@
+$ pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:unit && pnpm build
+$ prettier --check .
+Checking formatting...
+All matched files use Prettier code style!
+$ eslint .
+$ pnpm --recursive typecheck
+Scope: 2 of 3 workspace projects
+apps/api typecheck$ tsc --noEmit
+apps/web typecheck$ tsc -b --pretty false
+apps/api typecheck: Done
+apps/web typecheck: Done
+$ pnpm test:scripts && pnpm --filter @prisma-prim/api test && pnpm --filter @prisma-prim/web exec vitest run
+$ node --test --test-concurrency=2 scripts/*.test.mjs
+✔ accepts supported integer PostgreSQL 17 server versions (3.476224ms)
+✔ fails closed when the PostgreSQL server version is not a supported integer (0.918039ms)
+✔ reads the effective pnpm version from the package-manager user agent (2.341582ms)
+✔ fails closed when the effective pnpm identity is absent (0.623436ms)
+✔ preserves missing and sandbox-denied pnpm classifications (0.147705ms)
+✔ collects the repository Node pin separately from the host runtime (7.388358ms)
+✔ executes the complete client lifecycle table (2.034301ms)
+✔ preserves primary failures when cleanup also fails (1.091964ms)
+✔ starts both targets concurrently at a logical barrier (0.355619ms)
+✔ executes exact generated source for success and cleanup failure (112.60792ms)
+✔ contains generated dynamic-import rejection without leaking diagnostics (226.90374ms)
+✔ awaits the delayed sentinel write callback (0.751175ms)
+✔ bounds never-settling connect, query, and cleanup operations (9.255339ms)
+✔ snapshots alternating pg exports and outer command fields once (1.495665ms)
+✔ preserves the complete failure-code allowlist and fallback matrix (1.255882ms)
+✔ fails closed when reading the pg default export throws (0.298486ms)
+✔ validates and canonicalizes the parent protocol (0.546003ms)
+✔ rejects malformed, extra, missing, and hostile protocol fields (0.516769ms)
+✔ preserves no-runner, ENOENT, and timeout contracts (0.709161ms)
+✔ canonicalizes hostile outer subprocess errors without disclosure (2.803295ms)
+✔ evaluates both target version directions (1.804841ms)
+✔ sanitizes hostile generated-child failures at every phase (2428.152272ms)
+ℹ {"phase":"bootstrap","case":"token","errorCode":null,"signal":null,"elapsedMilliseconds":42}
+ℹ {"phase":"bootstrap","case":"pin","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"bootstrap","case":"url","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"bootstrap","case":"long","errorCode":null,"signal":null,"elapsedMilliseconds":48}
+ℹ {"phase":"bootstrap","case":"object","errorCode":null,"signal":null,"elapsedMilliseconds":44}
+ℹ {"phase":"bootstrap","case":"bigint","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"bootstrap","case":"circular","errorCode":null,"signal":null,"elapsedMilliseconds":36}
+ℹ {"phase":"bootstrap","case":"alternating","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"bootstrap","case":"throwing","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"bootstrap","case":"null","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"bootstrap","case":"undefined","errorCode":null,"signal":null,"elapsedMilliseconds":53}
+ℹ {"phase":"constructor","case":"token","errorCode":null,"signal":null,"elapsedMilliseconds":51}
+ℹ {"phase":"constructor","case":"pin","errorCode":null,"signal":null,"elapsedMilliseconds":43}
+ℹ {"phase":"constructor","case":"url","errorCode":null,"signal":null,"elapsedMilliseconds":47}
+ℹ {"phase":"constructor","case":"long","errorCode":null,"signal":null,"elapsedMilliseconds":44}
+ℹ {"phase":"constructor","case":"object","errorCode":null,"signal":null,"elapsedMilliseconds":41}
+ℹ {"phase":"constructor","case":"bigint","errorCode":null,"signal":null,"elapsedMilliseconds":37}
+ℹ {"phase":"constructor","case":"circular","errorCode":null,"signal":null,"elapsedMilliseconds":37}
+ℹ {"phase":"constructor","case":"alternating","errorCode":null,"signal":null,"elapsedMilliseconds":46}
+ℹ {"phase":"constructor","case":"throwing","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"constructor","case":"null","errorCode":null,"signal":null,"elapsedMilliseconds":42}
+ℹ {"phase":"constructor","case":"undefined","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"connect","case":"token","errorCode":null,"signal":null,"elapsedMilliseconds":44}
+ℹ {"phase":"connect","case":"pin","errorCode":null,"signal":null,"elapsedMilliseconds":44}
+ℹ {"phase":"connect","case":"url","errorCode":null,"signal":null,"elapsedMilliseconds":49}
+ℹ {"phase":"connect","case":"long","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"connect","case":"object","errorCode":null,"signal":null,"elapsedMilliseconds":38}
+ℹ {"phase":"connect","case":"bigint","errorCode":null,"signal":null,"elapsedMilliseconds":38}
+ℹ {"phase":"connect","case":"circular","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"connect","case":"alternating","errorCode":null,"signal":null,"elapsedMilliseconds":38}
+ℹ {"phase":"connect","case":"throwing","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"connect","case":"null","errorCode":null,"signal":null,"elapsedMilliseconds":43}
+ℹ {"phase":"connect","case":"undefined","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"query","case":"token","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"query","case":"pin","errorCode":null,"signal":null,"elapsedMilliseconds":46}
+ℹ {"phase":"query","case":"url","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"query","case":"long","errorCode":null,"signal":null,"elapsedMilliseconds":43}
+ℹ {"phase":"query","case":"object","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"query","case":"bigint","errorCode":null,"signal":null,"elapsedMilliseconds":42}
+ℹ {"phase":"query","case":"circular","errorCode":null,"signal":null,"elapsedMilliseconds":47}
+ℹ {"phase":"query","case":"alternating","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"phase":"query","case":"throwing","errorCode":null,"signal":null,"elapsedMilliseconds":43}
+ℹ {"phase":"query","case":"null","errorCode":null,"signal":null,"elapsedMilliseconds":44}
+ℹ {"phase":"query","case":"undefined","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"cleanup","case":"token","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"cleanup","case":"pin","errorCode":null,"signal":null,"elapsedMilliseconds":42}
+ℹ {"phase":"cleanup","case":"url","errorCode":null,"signal":null,"elapsedMilliseconds":51}
+ℹ {"phase":"cleanup","case":"long","errorCode":null,"signal":null,"elapsedMilliseconds":41}
+ℹ {"phase":"cleanup","case":"object","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"cleanup","case":"bigint","errorCode":null,"signal":null,"elapsedMilliseconds":44}
+ℹ {"phase":"cleanup","case":"circular","errorCode":null,"signal":null,"elapsedMilliseconds":41}
+ℹ {"phase":"cleanup","case":"alternating","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"cleanup","case":"throwing","errorCode":null,"signal":null,"elapsedMilliseconds":39}
+ℹ {"phase":"cleanup","case":"null","errorCode":null,"signal":null,"elapsedMilliseconds":49}
+ℹ {"phase":"cleanup","case":"undefined","errorCode":null,"signal":null,"elapsedMilliseconds":43}
+✔ classifies generated-child failures from the test target (202.931762ms)
+ℹ {"target":"test","phase":"constructor","errorCode":null,"signal":null,"elapsedMilliseconds":50}
+ℹ {"target":"test","phase":"connect","errorCode":null,"signal":null,"elapsedMilliseconds":49}
+ℹ {"target":"test","phase":"query","errorCode":null,"signal":null,"elapsedMilliseconds":40}
+ℹ {"target":"test","phase":"cleanup","errorCode":null,"signal":null,"elapsedMilliseconds":55}
+✔ rejects the complete malformed sentinel and target-record matrix (0.63524ms)
+✔ snapshots every hostile command property exactly once (0.696591ms)
+✔ fails closed for hostile nested protocol objects (0.340489ms)
+✔ rejects hostile query response getters and value types (3.935785ms)
+✔ standalone generated child times out and exits without a live handle (3053.122754ms)
+✔ exposes only the stable evaluation and inspection operations (2.287179ms)
+✔ publishes ordered checks and PostgreSQL capabilities in one report (1.92899ms)
+✔ accepts the complete canonical environment (0.584325ms)
+✔ the web profile requires an executable Chromium (0.486427ms)
+✔ the postgres profile verifies databases without requiring Chromium (0.439199ms)
+✔ the web-postgres profile requires safe local database targets and connectivity (0.352525ms)
+✔ reports missing hosted prerequisites without any delegation hint (0.812938ms)
+✔ certifies only distinct numeric-loopback PostgreSQL targets (7.915463ms)
+✔ reports PostgreSQL connectivity independently from URL safety (0.535922ms)
+✔ distinguishes missing pnpm from a sandbox-denied pnpm subprocess (0.514518ms)
+✔ fails closed for unsupported or unclassified package-manager failures (0.400263ms)
+✔ reports probe tooling and sandbox failures without blaming PostgreSQL (0.347127ms)
+✔ marks known dependency drift as host-recoverable but not an unknown PostgreSQL bootstrap failure (0.228577ms)
+✔ distinguishes an unavailable PostgreSQL service from a connection failure (0.380596ms)
+✔ reports an unreachable PostgreSQL target separately from an absent service (0.221408ms)
+✔ reports an outdated Node runtime with a durable remediation (0.205623ms)
+✔ marks an unsupported Node engine declaration as intrinsic repository drift (0.233266ms)
+✔ marks a Node engine range that excludes the CI pin as intrinsic repository drift (0.176031ms)
+✔ marks absent, nonnumeric, and partially numeric CI Node pins as intrinsic (0.295737ms)
+✔ does not mark host drift recoverable when the CI Node pin is also incompatible (0.238183ms)
+✔ rejects a future Node major that CI does not target (0.202179ms)
+✔ reports pnpm and dependency setup drift independently in the base profile (0.187714ms)
+✔ bypasses download when the launcher is already the exact pinned pnpm (61.457459ms)
+✔ downloads and verifies the exact effective pnpm in a private local home (112.79157ms)
+✔ does not depend on GNU stat to validate the private pnpm home (110.012505ms)
+✔ fails closed when pnpm cannot activate the pinned effective version (91.050774ms)
+✔ refuses an insecure pnpm home without changing its permissions (79.161125ms)
+✔ refuses special permission bits without changing the pnpm home (76.713003ms)
+✔ refuses a symlink pnpm home without changing its target (83.75622ms)
+✔ reports a missing pnpm launcher without attempting a global install (11.423556ms)
+✔ the two browser suites write evidence into disjoint output directories (11.100945ms)
+✔ both suite directories stay under the uploaded evidence root (3.207668ms)
+✔ CI uploads every evidence directory independently, including after failures (3.479725ms)
+✔ CI merges disjoint evidence under the established PR artifact name (1.275628ms)
+✔ acceptance failures retain first-attempt evidence without a retry (1.493831ms)
+✔ each shard keeps its own Playwright run metadata in the merged evidence (1.085964ms)
+✔ pull requests allow only root AGENTS.md and Markdown under docs/ (1.112575ms)
+✔ any doubt or non-documentation file classifies the change as a full run (0.361334ms)
+✔ a failed or missing changed-file read yields no list (0.972189ms)
+✔ a real git diff with a space-prefixed root path is not docs-only (43.054193ms)
+✔ the gate accepts skipped heavy jobs only after a successful docs-only scope (1.023326ms)
+✔ the CLI proves an ordinary documentation push on main from before to head (205.642119ms)
+✔ main scope refuses incomplete metadata, forced pushes and unavailable revisions (885.095079ms)
+✔ a main push includes executable edits in earlier commits and both sides of renames (179.672797ms)
+✔ a divergent main push cannot hide removed executable changes behind its merge base (97.756668ms)
+✔ push Git failures never produce a complete changed-file list (0.516591ms)
+✔ the actual main scope output authorizes only successful documentary skips at quality (970.856475ms)
+✔ cold acquire verifies pinned bytes and warm load works without any registry operation (530.326042ms)
+ℹ {"mode":"acquire","errorCode":null,"signal":null,"elapsedMilliseconds":388}
+ℹ {"mode":"load","errorCode":null,"signal":null,"elapsedMilliseconds":140}
+✔ Docker raw output newline does not alter the verified manifest bytes (523.841577ms)
+✔ an extra unpinned FROM node:latest cannot survive into the temporary build file (39.963478ms)
+✔ an extra unpinned   from node:latest cannot survive into the temporary build file (41.868395ms)
+✔ offline restore rejects damaged or missing proof and archive, and a different loaded config (805.711187ms)
+✔ a cache miss requires explicit acquisition and unavailable registry fails without fallback or archive (127.541286ms)
+✔ main reuses a completed full run only for the exact tested tree (2.944378ms)
+✔ a PR reuses API for identical non-web inputs but still runs frontend suites (0.701518ms)
+✔ full verification when failed run (0.209663ms)
+✔ full verification when unfinished run (1.335028ms)
+✔ full verification when foreign repository (0.276399ms)
+✔ full verification when fork (0.219714ms)
+✔ full verification when different workflow (0.17411ms)
+✔ full verification when old proof (0.209237ms)
+✔ full verification when future proof (0.257939ms)
+✔ full verification when missing job (3.627518ms)
+✔ full verification when skipped API (0.214798ms)
+✔ full verification when failed browser (0.105373ms)
+✔ full verification when cancelled acceptance (0.078133ms)
+✔ full verification when unallocated job (0.060679ms)
+✔ full verification when no executed steps (0.059446ms)
+✔ full verification when unavailable logs (0.173962ms)
+✔ full verification when ambiguous logs (0.106013ms)
+✔ full verification when wrong tested head (0.093839ms)
+✔ full verification when invalid tree (0.078371ms)
+✔ main runs everything when merge integration changes the tested tree (0.106291ms)
+✔ changed apps/api prevents API reuse (0.174211ms)
+✔ changed .github prevents API reuse (0.10694ms)
+✔ changed pnpm-lock.yaml prevents API reuse (0.268777ms)
+✔ changed scripts prevents API reuse (0.22881ms)
+✔ changed packages prevents API reuse (0.147238ms)
+✔ an incomplete tree prevents API reuse (0.209341ms)
+✔ API failure defaults to complete verification (0.129251ms)
+✔ unsupported event and main sibling branches cannot reuse proof (0.198585ms)
+✔ the CLI compares real Git inputs and emits its verified decision (1530.522671ms)
+✔ main combines a PR frontend run with its directly verified full API source (1.310201ms)
+✔ composed proof rejects assigned API parent (0.252949ms)
+✔ composed proof rejects named API runner (0.155403ms)
+✔ composed proof rejects executed API parent (0.413425ms)
+✔ composed proof rejects unfinished API parent (0.309679ms)
+✔ composed proof rejects unknown API assignment (0.341897ms)
+✔ composed proof rejects failed frontend (0.30927ms)
+✔ composed proof rejects cancelled frontend (0.267712ms)
+✔ composed proof rejects unassigned frontend (0.160743ms)
+✔ composed proof rejects unexecuted frontend (0.194022ms)
+✔ composed proof rejects missing frontend (0.301341ms)
+✔ composed proof rejects duplicate frontend (0.27261ms)
+✔ composed proof rejects extra unknown job (0.273828ms)
+✔ composed proof rejects a direct API source with different backend inputs (0.394783ms)
+✔ changed or unknown observed runner/toolchain always executes the suites (0.205315ms)
+✔ start loads a cached image and pulls only when it is missing (1.049593ms)
+✔ only registry throttling is retried, at most five bounded attempts (0.242449ms)
+✔ acquire saves the image under a stable local tag that survives save and load (0.210682ms)
+✔ the server runs the local tag without pulling (0.164954ms)
+✔ all CI services and packaging images use immutable official ECR indexes (11.848812ms)
+✔ the image-source guard rejects Docker Hub reintroduced at every image reference (4.682978ms)
+✔ independent test families and packaging share only the fast prerequisite and the scope (2.730027ms)
+✔ CI is explicitly manual, preserves read-only proof access and cancels obsolete manual runs (1.231985ms)
+✔ a controlled failing dependency prevents the workflow aggregate command from succeeding (74.438858ms)
+✔ CI fails formatting first, then lint, types and the complete script suite (1.171845ms)
+✔ every test family, host build and production packaging remains unconditional (2.631625ms)
+✔ sharded families cover every shard and the complete API suite (4.167957ms)
+✔ database jobs start the cached pinned PostgreSQL and keep matching environment checks (1.587632ms)
+✔ the scope job supplies exact PR or main-push revisions and safety metadata with full history (1.058036ms)
+✔ packaging restores a digest-bound verified base-image cache and bootstraps only a miss (0.866467ms)
+✔ keeps browser and PostgreSQL execution out of the standard Codex profile (1.921395ms)
+✔ sources the installer-provided database targets before the postgres doctor (0.309791ms)
+✔ installs PostgreSQL only for the explicit setup profile (0.16477ms)
+✔ activates and persists the repository Node runtime before pnpm (0.411727ms)
+✔ activates the effective pinned pnpm without a system-global mutation (0.245655ms)
+✔ reuses dependencies when their complete manifest fingerprint is unchanged (0.155565ms)
+✔ reports the duration of each setup phase (0.223522ms)
+✔ provides browser-free repository verification for standard agents (0.145304ms)
+✔ accepts only the --start and --install modes (13.334972ms)
+✔ installs PostgreSQL 17 from the PGDG apt repository without a source build (0.291328ms)
+✔ survives apt sources the harness blocks and proves the PGDG index instead (0.321704ms)
+✔ bootstraps curl only when the image does not already provide it (0.176897ms)
+✔ keeps apt unattended inside the escalated command, not in the caller environment (0.169968ms)
+✔ installs only in --install mode and restarts the Debian cluster on resume (0.123237ms)
+✔ creates the least-privilege application role and both isolated databases idempotently (0.122051ms)
+✔ proves the application connection over loopback TCP before reporting readiness (0.096606ms)
+✔ exports the isolated targets for agent shells instead of requiring Codex environment variables (0.293302ms)
+✔ escalates only through non-interactive sudo when not already root (0.412292ms)
+✔ Activity response accepts the permission-filtered Request association event (6.258755ms)
+✔ Association projection rejects private Client data and persisted version metadata (2.343961ms)
+✔ Association projection rejects missing or malformed event and target fields (1.642ms)
+✔ stored PDF post current requires selected Company context (1.03093ms)
+✔ stored PDF get current requires selected Company context (0.171922ms)
+✔ stored PDF get /history requires selected Company context (0.160296ms)
+✔ stored PDF get /{representationId} requires selected Company context (0.082748ms)
+✔ PDF metadata exposes details only in the explicitly granted state and rejects unproved scan provenance (64.993409ms)
+✔ PDF history carries immutable identity, revision and explicit bounded continuation (8.407913ms)
+✔ content grants remain captured v1 bundles and public binary operations are registered (6.363788ms)
+✔ PDF upload Response Objects preserve complete public refusal descriptions without extraneous YAML keys (1.079788ms)
+✔ the actor contract admits explicit captured-v1 Document content grants and refuses unknown rights or versions (12.164722ms)
+✔ Activity response accepts draft additions, official appends and draft removals for every reference form (9.301782ms)
+✔ Activity rejects absent or invalid designation timing, malformed forms and private metadata (2.779496ms)
+✔ Document reference command responses accept the complete added and removed receipts (10.815359ms)
+✔ Version reads accept complete typed references and never accept a URL on denied access (29.738916ms)
+✔ Both reference routes expose valid error response descriptions (0.863019ms)
+✔ runs pristine migrations and the requested verification against disposable PostgreSQL (3.694802ms)
+✔ rejects Windows before temporary or Docker resource creation (0.876932ms)
+✔ rejects a lexical temporary root inside the repository before creating state (0.587673ms)
+✔ rejects a canonical temporary root that resolves through a link into the repository (0.508403ms)
+✔ reconciles exact resource names after bounded creation and cleanup failures (1.530192ms)
+✔ never removes an uncertain exact resource with an unexpected run label (0.79354ms)
+✔ does not treat a missing Docker context as resource absence (1.056367ms)
+✔ observes and removes a resource that appears after an initial missing state (0.586469ms)
+✔ removes the readiness abort listener when the delay timer settles (9.028366ms)
+✔ interrupts and awaits a SIGTERM-resistant verification process tree before cleanup (180.863455ms)
+✔ cleans exact resources when migration setup fails (0.856593ms)
+✔ cleans exact resources when verification is interrupted (0.572587ms)
+▶ cleans each resource when interrupted during its atomic creation
+  ✔ network (0.467562ms)
+  ✔ volume (0.215553ms)
+  ✔ container (0.166426ms)
+✔ cleans each resource when interrupted during its atomic creation (1.261574ms)
+✔ returns a failed verification status only after cleanup completes (0.355006ms)
+✔ finishes unsignalled cleanup then preserves an interruption received during cleanup (0.339707ms)
+✔ fails bounded readiness checks and cleans before running migrations (0.268661ms)
+✔ reports a sanitized Docker startup stderr excerpt for an unrecognized nonzero exit (0.502166ms)
+✔ recovers a confirmed resource after transient removal failure (0.303948ms)
+✔ confirms stable absence after the final allowed removal retry succeeds (0.408665ms)
+✔ accepts stable absence after a confirmed removal command times out (0.304162ms)
+✔ attempts every exact cleanup target and reports cleanup failures (0.578616ms)
+✔ documents the direct managed runner while preserving native PostgreSQL (0.195161ms)
+✔ the public CLI alerts and reports observed recovery for both real health services (154.107252ms)
+✔ real transport ordering keeps streaks independent, resets interruptions and emits no repeated alert (245.049217ms)
+▶ SIGINT and SIGTERM stop actual outstanding body reads within the bounded grace
+  ✔ SIGINT (102.585257ms)
+  ✔ SIGTERM (91.432703ms)
+✔ SIGINT and SIGTERM stop actual outstanding body reads within the bounded grace (194.914747ms)
+✔ valid API health JSON is decoded by meaning rather than serialization order (90.498223ms)
+▶ the public CLI rejects unsafe health responses with bounded sanitized diagnostics
+  ✔ redirect (95.890363ms)
+  ✔ oversized JSON (83.284009ms)
+  ✔ malformed JSON (80.956979ms)
+  ✔ HTML login fallback (94.509955ms)
+  ✔ stalled body (170.288616ms)
+  ✔ connection failure (88.790827ms)
+  ✔ non-success status (79.062694ms)
+✔ the public CLI rejects unsafe health responses with bounded sanitized diagnostics (695.708721ms)
+✔ the public CLI refuses a nonliteral loopback HTTP origin before any request without echoing it (77.880417ms)
+✔ out-of-bounds timing is refused before either service is contacted (75.467764ms)
+▶ configuration failures sanitize every refused origin and option before any service I/O
+  ✔ credentials (66.220955ms)
+  ✔ query (77.283976ms)
+  ✔ empty query (68.445111ms)
+  ✔ fragment (88.593405ms)
+  ✔ path (71.329901ms)
+  ✔ missing origin (80.044231ms)
+  ✔ unknown option (79.879791ms)
+  ✔ duplicate option (75.384426ms)
+  ✔ zero interval (66.639982ms)
+  ✔ fractional timeout (74.955953ms)
+  ✔ unbounded timeout (66.323847ms)
+  ✔ nonfinite threshold (64.464803ms)
+  ✔ excessive threshold (76.685413ms)
+✔ configuration failures sanitize every refused origin and option before any service I/O (960.35533ms)
+▶ the web health body is literal and an HTML or whitespace fallback never counts as healthy
+  ✔ "ok\n" (88.255971ms)
+  ✔ "<html>ok</html>" (78.323325ms)
+✔ the web health body is literal and an HTML or whitespace fallback never counts as healthy (167.732844ms)
+✔ a service first observed failing recovers only after consecutive successes without a false initial healthy event (151.626753ms)
+▶ the public CLI rejects leading UTF-8 BOM and malformed UTF-8 health bytes for either service
+  ✔ web BOM (98.824536ms)
+  ✔ API BOM (98.82348ms)
+  ✔ web malformed UTF-8 (100.367355ms)
+  ✔ API malformed UTF-8 (101.222799ms)
+✔ the public CLI rejects leading UTF-8 BOM and malformed UTF-8 health bytes for either service (400.296666ms)
+✔ an alerted web service remains unrecovered on BOM-prefixed bytes until literal valid observations return (217.691069ms)
+✔ the public CLI destroys a stalled TLS connection at the probe deadline (195.014419ms)
+✔ the public CLI exits and closes a pending TLS handshake on SIGINT (82.430132ms)
+✔ the public CLI exits and closes a pending TLS handshake on SIGTERM (80.408098ms)
+✔ repeated public TLS deadlines do not accumulate pending connections (265.615425ms)
+✔ the public CLI deadline closes HTTP connections that never send headers (167.76781ms)
+✔ covers TERM to KILL escalation without launching a detached process (2.619747ms)
+✔ reports an actionable fallback when a spawned process is not observable (6.088315ms)
+✔ bounds the capability probe when a harness omits child lifecycle events (10.535719ms)
+✔ accepts an observable detached process group with a closing child (0.611135ms)
+✔ bounds a never-completing process and awaits its terminated process group (196.478324ms)
+▶ ignores zombie-only Linux process groups but retains live members
+  ✔ absent group skips process-state inspection (34.402274ms)
+  ✔ zombie-only (32.086357ms)
+  ✔ sleeping member (35.445406ms)
+✔ ignores zombie-only Linux process groups but retains live members (102.995026ms)
+✔ reaps resistant descendants after a successful process-group leader exits (277.138296ms)
+✔ Template creation OpenAPI admits a bounded exact Version intent and complete Project receipt (52.456377ms)
+✔ Template source and copied-plan reads preserve two stages/four required Task identities (19.383819ms)
+✔ Template User grants and actor projection reject unknown captured authority (15.764227ms)
+✔ packaging recovers one PostgreSQL throttle and completes the smoke journey (1207.318434ms)
+✔ packaging acquires the same pinned image once before builds and prohibits an implicit pull (1019.568265ms)
+✔ packaging completes after three throttles within the four-attempt and delay limits (1341.907869ms)
+✔ persistent throttling stops at four attempts before any build or runtime (585.532806ms)
+✔ acquisition timeout 124 never retries even with partial throttling output (211.227396ms)
+✔ acquisition timeout 137 never retries even with partial throttling output (201.222828ms)
+✔ acquisition fails without retry for denied: access forbidden (251.028362ms)
+✔ acquisition fails without retry for manifest unknown (236.118055ms)
+✔ acquisition fails without retry for invalid checksum digest format (252.750051ms)
+✔ acquisition fails without retry for Cannot connect to the Docker daemon (259.340197ms)
+✔ acquisition fails without retry for unrelated failure with exit 125 (258.178021ms)
+✔ acquisition fails without retry for toomanyrequests: another quota error (303.878755ms)
+✔ a later build failure stops the journey without reacquisition or retry (419.886831ms)
+✔ a later migration failure stops the journey without reacquisition or retry (640.254968ms)
+✔ a later runtime failure stops the journey without reacquisition or retry (679.273235ms)
+✔ packaging loads the cached PostgreSQL archive and never pulls it (977.006462ms)
+✔ an explicitly configured but missing packaging cache fails before any build (292.973459ms)
+✔ API refuses missing production identity before starting (36.796714ms)
+✔ migration refuses missing database configuration without local fallback (34.320794ms)
+✔ web production build rejects missing public identity settings (35.812541ms)
+✔ API rejects invalid ACCESS_IDENTITY_MODE without printing configuration values (37.638966ms)
+✔ API rejects invalid ACCESS_IDENTITY_MODE without printing configuration values (41.761518ms)
+✔ API rejects invalid ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER without printing configuration values (45.468566ms)
+✔ API rejects invalid WEB_ORIGIN without printing configuration values (36.912256ms)
+✔ API rejects invalid PORT without printing configuration values (35.668055ms)
+✔ web accepts public production settings and rejects a development key (67.422626ms)
+✔ TypeScript implementation and review share one mandatory repository contract (6.467915ms)
+✔ accepts the historical snapshot and its 108-comment successor (62.400722ms)
+✔ normalizes checkout line endings before validating pinned artifacts (43.895208ms)
+✔ rejects a missing official question (42.918839ms)
+✔ rejects a duplicate official question (43.266878ms)
+✔ rejects an unknown source comment citation (37.374ms)
+✔ rejects a duplicate session number without equating it to source order (38.983813ms)
+✔ rejects a comment missing its body with an actionable diagnostic (40.033569ms)
+✔ rejects substantive drift in pinned comment content (59.253577ms)
+✔ rejects drift in the reproducible 104-comment predecessor (84.955492ms)
+✔ rejects a missing recovered atomic item while preserving the gap (49.464161ms)
+✔ rejects one recovered item claimed by two source comments (41.481114ms)
+✔ rejects fabrication of an atomic item inside a consolidated-only gap (38.795198ms)
+✔ rejects successor metadata that points to a different predecessor (39.957562ms)
+✔ rejects promotion of the pinned evidence-only snapshot metadata (39.53427ms)
+✔ rejects semantic fields added to a raw comment record (49.038908ms)
+✔ fails once when the required snapshot pair is absent (1.425957ms)
+✔ rejects drift in the matrix authority declarations (39.972304ms)
+✔ rejects contradictory authority prose in the matrix preamble (36.430158ms)
+✔ rejects contradictory authority prose outside the matrix preamble (42.436365ms)
+✔ rejects drift in the official matrix header (44.417692ms)
+✔ rejects a different prior published audit baseline (37.809757ms)
+✔ rejects a fabricated row in the official matrix (35.630228ms)
+✔ rejects a displayed summary total that differs from the rows (37.916428ms)
+✔ rejects an invalid provenance and status combination (37.003188ms)
+✔ rejects source-declared status drift in an audited row (34.742691ms)
+✔ rejects an unknown ID in a published transition list (40.705114ms)
+✔ rejects blank mapped question and answer evidence (73.274956ms)
+✔ rejects an unsupported extra published transition (36.139421ms)
+✔ rejects status swaps that preserve aggregate totals (73.986345ms)
+✔ rejects coordinated drift in the official question bank and matrix (39.187881ms)
+✔ rejects a malformed official-question candidate (40.189279ms)
+✔ rejects unrecognized content added to the official question bank (57.275225ms)
+✔ rejects a valid but unrelated citation substituted into a row (51.538592ms)
+✔ rejects drift in supplemental-ledger descriptions (40.854611ms)
+✔ rejects a malformed supplemental-ledger source order (45.79048ms)
+✔ agent-facing guidance uses the canonical repository identity (856.428655ms)
+✔ reports the source and obsolete repository reference (5.858292ms)
+✔ reports the source and missing local Markdown target (3.126571ms)
+✔ validates local reference-style Markdown targets (3.454755ms)
+✔ accepts existing local targets and ignores external URLs (4.115433ms)
+✔ rejects traversal and symlink targets outside the repository (3.489805ms)
+✔ reports cyclic symlink targets without aborting validation (3.729444ms)
+✔ does not follow directory symlinks while scanning documentation (7.357972ms)
+✔ ignores Markdown links inside fenced and inline code (6.710014ms)
+✔ accepts balanced parentheses and angle-bracketed paths with spaces (5.293983ms)
+✔ validates file components and deliberately ignores Markdown fragments (3.856922ms)
+✔ scans README and architecture decision records (2.986113ms)
+✔ requires unescaped link openers and validates image targets (2.932989ms)
+✔ validates file components beside Setext and linked headings (4.497304ms)
+✔ ignores links inside four-space and tab-indented code (3.423624ms)
+✔ does not interpret GitHub footnote definitions as link destinations (2.317004ms)
+✔ excludes leading YAML frontmatter from Markdown links (3.060012ms)
+✔ validates rendered links in nested unordered and ordered lists (3.557762ms)
+✔ validates links in nested list continuation paragraphs (3.588514ms)
+✔ validates multiline inline and reference-link destinations (7.230304ms)
+✔ ignores links inside single-line and multiline HTML comments (3.592853ms)
+✔ ignores renderer-owned fragments with core and non-core HTML entities (4.699843ms)
+✔ reports decoded NUL targets without calling the filesystem (11.422945ms)
+✔ quality succeeds only after every required verification succeeds (42.028357ms)
+✔ quality rejects checks with outcome failure (42.308295ms)
+✔ quality rejects checks with outcome cancelled (32.091464ms)
+✔ quality rejects checks with outcome skipped (36.626217ms)
+✔ quality rejects checks with outcome unknown (36.666167ms)
+✔ quality rejects checks with outcome null (34.852767ms)
+✔ quality rejects missing checks even when every other job succeeds (35.582531ms)
+✔ quality rejects checks without a result (32.198368ms)
+✔ quality rejects scope with outcome failure (36.23281ms)
+✔ quality rejects scope with outcome cancelled (44.520638ms)
+✔ quality rejects scope with outcome skipped (34.365677ms)
+✔ quality rejects scope with outcome unknown (35.277824ms)
+✔ quality rejects scope with outcome null (41.50939ms)
+✔ quality rejects missing scope even when every other job succeeds (38.817711ms)
+✔ quality rejects scope without a result (34.866507ms)
+✔ quality rejects postgres_image with outcome failure (34.311547ms)
+✔ quality rejects postgres_image with outcome cancelled (36.952321ms)
+✔ quality rejects postgres_image with outcome skipped (36.576283ms)
+✔ quality rejects postgres_image with outcome unknown (34.337444ms)
+✔ quality rejects postgres_image with outcome null (41.42059ms)
+✔ quality rejects missing postgres_image even when every other job succeeds (37.101225ms)
+✔ quality rejects postgres_image without a result (35.180525ms)
+✔ quality rejects api with outcome failure (40.102932ms)
+✔ quality rejects api with outcome cancelled (36.709639ms)
+✔ quality rejects api with outcome skipped (37.959664ms)
+✔ quality rejects api with outcome unknown (37.710426ms)
+✔ quality rejects api with outcome null (36.493299ms)
+✔ quality rejects missing api even when every other job succeeds (33.517128ms)
+✔ quality rejects api without a result (38.070993ms)
+✔ quality rejects web_unit with outcome failure (33.096869ms)
+✔ quality rejects web_unit with outcome cancelled (39.272798ms)
+✔ quality rejects web_unit with outcome skipped (33.733161ms)
+✔ quality rejects web_unit with outcome unknown (42.813486ms)
+✔ quality rejects web_unit with outcome null (34.554411ms)
+✔ quality rejects missing web_unit even when every other job succeeds (37.902311ms)
+✔ quality rejects web_unit without a result (36.822309ms)
+✔ quality rejects browser with outcome failure (41.824754ms)
+✔ quality rejects browser with outcome cancelled (35.932089ms)
+✔ quality rejects browser with outcome skipped (34.624078ms)
+✔ quality rejects browser with outcome unknown (32.062396ms)
+✔ quality rejects browser with outcome null (33.619349ms)
+✔ quality rejects missing browser even when every other job succeeds (40.010086ms)
+✔ quality rejects browser without a result (42.848836ms)
+✔ quality rejects acceptance with outcome failure (34.590529ms)
+✔ quality rejects acceptance with outcome cancelled (33.570411ms)
+✔ quality rejects acceptance with outcome skipped (32.035988ms)
+✔ quality rejects acceptance with outcome unknown (32.722129ms)
+✔ quality rejects acceptance with outcome null (38.888133ms)
+✔ quality rejects missing acceptance even when every other job succeeds (47.218985ms)
+✔ quality rejects acceptance without a result (37.183844ms)
+✔ quality rejects build with outcome failure (42.993088ms)
+✔ quality rejects build with outcome cancelled (35.728845ms)
+✔ quality rejects build with outcome skipped (47.511057ms)
+✔ quality rejects build with outcome unknown (36.323202ms)
+✔ quality rejects build with outcome null (32.725492ms)
+✔ quality rejects missing build even when every other job succeeds (31.616978ms)
+✔ quality rejects build without a result (32.054049ms)
+✔ quality rejects packaging with outcome failure (33.266314ms)
+✔ quality rejects packaging with outcome cancelled (36.281219ms)
+✔ quality rejects packaging with outcome skipped (36.962162ms)
+✔ quality rejects packaging with outcome unknown (40.479432ms)
+✔ quality rejects packaging with outcome null (43.169092ms)
+✔ quality rejects missing packaging even when every other job succeeds (32.057527ms)
+✔ quality rejects packaging without a result (34.182027ms)
+✔ quality accepts skipped heavy families only after a successful docs-only scope (71.342406ms)
+✔ quality rejects malformed results undefined (34.237572ms)
+✔ quality rejects malformed results  (41.149263ms)
+✔ quality rejects malformed results { (38.292086ms)
+✔ quality rejects malformed results null (38.296658ms)
+✔ quality rejects malformed results [] (33.749701ms)
+✔ quality rejects malformed results "success" (33.675584ms)
+✔ quality accepts explicitly proven reuse but never failed or cancelled suites (226.432213ms)
+✔ an API proof cannot waive a frontend or packaging suite (261.256324ms)
+✔ CLI derives the approved documentation-only gate from the real integration diff (808.139853ms)
+✔ CLI keeps code, config and out-of-allowlist paths on the full gate without Railway prerequisites (627.447857ms)
+✔ CLI preserves deletion and rename classification using both no-renames paths (2540.375077ms)
+✔ CLI refuses documentation evidence after the source or base advances (1672.416122ms)
+✔ CLI recomputes the real mixed scope instead of trusting a relabelled documentation report (980.437788ms)
+✔ CLI refuses arbitrary not_required reasons and demotion of a required cheap family (1641.97038ms)
+✔ CLI records finite aggregate process ceilings and refuses altered deadline metadata (850.244861ms)
+✔ an acceptance process deadline still runs the independent evidence probe (316.693707ms)
+✔ the public full plan selects two closed prebuild helpers and preserves the independent probe (1.148649ms)
+✔ closed CLI runs fresh fixed builds before full Playwright and guards both startup plans (3218.465215ms)
+✔ CLI refuses failed builds or any input/output/environment/wrapper/log drift before preview (4538.295502ms)
+✔ a real helper child failure stays failed with its fresh-build proof and private logs (1172.003678ms)
+✔ validator refuses altered prebuild argv, guard metadata and a fabricated successful old report (2426.187109ms)
+✔ interruption preserves a partial helper manifest and removes every owned build descendant (472.852173ms)
+✔ input-integrity failure during acceptance keeps a refusal and still executes the diagnostic probe (159.533205ms)
+✔ CLI rejects unknown startup families and arbitrary flags before running a child (134.516077ms)
+✔ a real failing child and unexecuted required families cannot make complete evidence (178.152748ms)
+✔ a successful minimal orchestration is explicitly synthetic and cannot qualify for merge (251.331954ms)
+✔ changed tracked source refuses success and leaves the remaining family unexecuted (115.409794ms)
+✔ untracked source and a checkout missing current base changes are refused (62.623886ms)
+✔ production mode cannot substitute a required command and logs omit secret values (146.948701ms)
+✔ new untracked source is not omitted from the input contract (35.931444ms)
+✔ interruption persists failed partial evidence and removes the child process group (256.374977ms)
+✔ changing a synthetic report label cannot replace the fixed production command plan (187.163338ms)
+✔ a failed acceptance child still produces its evidence probe before stopping (221.620014ms)
+✔ a tracked source edit restored before child exit still invalidates evidence (155.337703ms)
+✔ the public complete plan fixes local execution policy without replacing scripts or serial requirements (2.019915ms)
+✔ the separate frozen Railway dependency prerequisite cannot silently use missing dependencies (77.240176ms)
+✔ a finite process deadline terminates a real child and cannot produce successful evidence (235.749579ms)
+ℹ tests 445
+ℹ suites 0
+ℹ pass 445
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30694.851883
+$ pnpm test:parallel && pnpm test:postgres:serial
+$ vitest run --exclude src/access/access.rest.test.ts --exclude src/access/company-context-assignment.rest.test.ts --exclude src/access/workspace-membership-suspension.rest.test.ts --exclude src/access/workspace-membership.migration.test.ts --exclude src/client/client.rest.test.ts --exclude src/company/company.rest.test.ts --exclude src/company/company-idempotency.rest.test.ts --exclude src/database/previous-schema.migration.test.ts
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/work/659/validation/apps/api
+
+
+ Test Files  65 passed | 69 skipped (134)
+      Tests  1361 passed | 1131 skipped (2492)
+   Start at  19:24:16
+   Duration  55.39s (transform 5.56s, setup 0ms, import 87.19s, tests 3.24s, environment 15ms)
+
+$ vitest run --no-file-parallelism src/access/access.rest.test.ts src/access/company-context-assignment.rest.test.ts src/access/workspace-membership-suspension.rest.test.ts src/access/workspace-membership.migration.test.ts src/client/client.rest.test.ts src/company/company.rest.test.ts src/company/company-idempotency.rest.test.ts src/database/previous-schema.migration.test.ts
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.10 /workspace/work/659/validation/apps/api
+
+
+ Test Files  8 skipped (8)
+      Tests  83 skipped (83)
+   Start at  19:25:12
+   Duration  10.67s (transform 1.68s, setup 0ms, import 9.63s, tests 0ms, environment 1ms)
+
+
+ RUN  v4.1.10 /workspace/work/659/validation/apps/web
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  162 passed (162)
+      Tests  2762 passed (2762)
+   Start at  19:25:24
+   Duration  339.91s (transform 9.28s, setup 32.79s, import 44.83s, tests 429.27s, environment 138.91s)
+
+$ pnpm --recursive build
+Scope: 2 of 3 workspace projects
+apps/api build$ nest build
+apps/web build$ tsc -b && vite build
+apps/api build: Done
+apps/web build: vite v8.2.1 building client environment for production...
+apps/web build: [2K
+apps/web build: transforming...✓ 1875 modules transformed.
+apps/web build: rendering chunks...
+apps/web build: computing gzip size...
+apps/web build: dist/index.html                                    0.50 kB │ gzip:   0.31 kB
+apps/web build: dist/assets/PrismaCertUiBaseline-DM0fZBM-.css     54.19 kB │ gzip:  10.19 kB
+apps/web build: dist/assets/index-B_yJgoGd.css                   147.84 kB │ gzip:  21.84 kB
+apps/web build: dist/assets/PrismaCertUiBaseline-xON-eaDF.js     259.83 kB │ gzip: 139.88 kB
+apps/web build: dist/assets/fiber-renderer-C0o1c45X.js           484.48 kB │ gzip: 121.91 kB
+apps/web build: dist/assets/index-CI3gG6x4.js                  1,739.99 kB │ gzip: 441.47 kB
+apps/web build: ✓ built in 1.06s
+apps/web build: [plugin builtin:vite-reporter] 
+apps/web build: (!) Some chunks are larger than 500 kB after minification. Consider:
+apps/web build: - Using dynamic import() to code-split the application
+apps/web build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+apps/web build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+apps/web build: Done

@@ -1,0 +1,10 @@
+
+ RUN  v4.1.10 /workspace/work/659/validation/apps/web
+
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  6 passed (6)
+      Tests  38 passed (38)
+   Start at  19:19:44
+   Duration  13.61s (transform 1.96s, setup 904ms, import 4.16s, tests 2.83s, environment 4.29s)
+

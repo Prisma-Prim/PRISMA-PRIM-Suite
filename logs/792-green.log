@@ -1,0 +1,9 @@
+
+ RUN  v4.1.10 /workspace/work/659/validation/apps/web
+
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  19:16:29
+   Duration  3.72s (transform 1.73s, setup 177ms, import 2.04s, tests 717ms, environment 637ms)
+

@@ -1,0 +1,123 @@
+{
+  "schema": "prisma-prim-selected-evidence-publication/v1",
+  "issue": 792,
+  "pr": 797,
+  "runId": "20261022T1954-local-selected",
+  "source": "474b504095e886cd7e9cf489ffee0a1ea78489f1",
+  "base": "98a6135ee8f38aead7438e3606b1264fb441cd15",
+  "integration": "474b504095e886cd7e9cf489ffee0a1ea78489f1",
+  "integrationTree": "e4a1bd1b68cee6161a7fbf2926d22e0b70df7b39",
+  "createdAt": "2026-10-22T19:55:13.527508+00:00",
+  "retainThrough": "2026-11-05T19:55:13.527508+00:00",
+  "scope": "Selected local development logs and two inspected anonymous synthetic screenshots; complete originals retained locally. This is not a complete local16 attestation. Qualified older-source checks and current-source checks are separately attributed in receipt.json. Complete independent canonical CI39843711319 remains pending at packet preparation.",
+  "files": [
+    {
+      "path": "logs/792-affected-unit.log",
+      "bytes": 331,
+      "sha256": "7eb36a4e5bca15af4544dd655dfb981bb0f8cc24e7d64c486e617bdbc58c137c",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-codec-contracts.log",
+      "bytes": 230,
+      "sha256": "e64d5715f27e3a293d0d47363ab479297ebce80d91c0e5331ce0ec9d514a0637",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-current-main-affected-unit.log",
+      "bytes": 331,
+      "sha256": "47b70070448cbcb505db0f6078ace1bb2f3155a6d44a878dde1154dfda730d47",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-current-main-provider.log",
+      "bytes": 1019,
+      "sha256": "03836ab599d1b344acb4cf0e7c358ad671a5607a073b34c50301ef5e957ab821",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-final-provider.log",
+      "bytes": 1006,
+      "sha256": "bf055d242cc67c9ec054749cf8b0ee427b8005bf2ea282c303fc71f04fade06e",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-green.log",
+      "bytes": 230,
+      "sha256": "7dc4a87bd023611adc917e03a29e1890877fe043cb61614199ca4732fe9caace",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-red.log",
+      "bytes": 2424,
+      "sha256": "8c2a3d85f8387a84bedfd248d594a2b45ef57986b99eb350240cf54bdf95fa3d",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-registered-browser.log",
+      "bytes": 4834,
+      "sha256": "c42728ec652cbfdb62c1cc5aaf0ab86611358f9f9d2236fc0c1ac33aa63126da",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/792-verify.log",
+      "bytes": 54119,
+      "sha256": "cc45678a0c3a9d30200ff5984037d75b771b514d197b905d156534632dadc9cb",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/current-main-head-results.json",
+      "bytes": 13900,
+      "sha256": "12dffb36e1a75c8665b54cba8b36fd8a6bc8705ffd6e80f2b6547d24b4c0e513",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/current-main-head.config.mjs",
+      "bytes": 705,
+      "sha256": "0f2305b524d08e3e150b5d8e8772930c15a049b333b86482f1863b518a351980",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/current-main-head.spec.mjs",
+      "bytes": 2021,
+      "sha256": "ffe19a9e14710d117d77c2e4fea996780d4032124bf9b52c1f5abbe19e289ad2",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/final-head-results.json",
+      "bytes": 13822,
+      "sha256": "5528a7856cf177fca6258a8826daf67e39d9d0975fbeeb1e7fa92a428aecdf3c",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/final-head.config.mjs",
+      "bytes": 684,
+      "sha256": "ca1e78652f78ed7eb519d8beccb08e7ef041eb3e3658db843613d0b2ca6fbed7",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "logs/final-head.spec.mjs",
+      "bytes": 2021,
+      "sha256": "6e8325d3b26842073893389148880eaf64c593aa3ad8e0f40b048d7e21e47927",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 5593,
+      "sha256": "0a42909ea8af98f19db6da0e37a714d63f5e99a4b914d01d16526595b731c733",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "screenshots/anonymous-signin-desktop.png",
+      "bytes": 82449,
+      "sha256": "5a3032212d168df4cf755e29b7b1ef4bdc52d41e32a90c8fa85380bd6af2dae6",
+      "copy": "selected original bytes"
+    },
+    {
+      "path": "screenshots/anonymous-signin-narrow.png",
+      "bytes": 58048,
+      "sha256": "ca50552346aca8a9d297eb86fb12e30167cc241b91bd9d8e0afe848afb2207a0",
+      "copy": "selected original bytes"
+    }
+  ]
+}

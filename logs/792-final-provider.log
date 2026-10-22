@@ -1,0 +1,15 @@
+
+Running 2 tests using 1 worker
+
+(node:33013) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33013) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [desktop] › ../../../../readiness659/final-head.spec.mjs:2:1 › existing anonymous embedded Clerk form renders without submission (6.9s)
+(node:33090) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33090) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [narrow] › ../../../../readiness659/final-head.spec.mjs:2:1 › existing anonymous embedded Clerk form renders without submission (3.6s)
+
+  2 passed (14.2s)

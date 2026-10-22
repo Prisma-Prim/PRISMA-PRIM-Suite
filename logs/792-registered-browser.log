@@ -1,0 +1,44 @@
+[2m[WebServer] [22m(node:22019) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m[2m$ tsc -b && vite build --mode local-demo[22m
+[2m[WebServer] [22m(node:22054) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m[plugin builtin:vite-reporter] [33;1m
+[2m[WebServer] [22m(!) Some chunks are larger than 500 kB after minification. Consider:
+[2m[WebServer] [22m- Using dynamic import() to code-split the application
+[2m[WebServer] [22m- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+[2m[WebServer] [22m- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[0m
+[2m[WebServer] [22m(node:22086) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m[2m$ vite preview --host 127.0.0.1 --port 4173[22m
+[2m[WebServer] [22m(node:22099) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 16 tests using 1 worker
+
+(node:22140) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22140) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:15:1 › session rejection clears the prior account Workspace before another account signs in (789ms)
+  ✓  2 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:54:3 › safe denial at acceptance does not enter the shell or reveal invitation metadata (932ms)
+  ✓  3 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:54:3 › safe denial at current access does not enter the shell or reveal invitation metadata (637ms)
+  ✓  4 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:101:1 › missing invitation and signed-out state cannot invoke admission (395ms)
+  ✓  5 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:118:1 › recipient retries an uncertain acceptance and enters only the server-authorized empty shell (1.1s)
+  ✓  6 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:200:3 › storage failure after capture preserves canonical admission and the intended Workspace (1.3s)
+  ✓  7 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:200:3 › storage failure after commit preserves canonical admission and the intended Workspace (1.4s)
+  ✓  8 [desktop] › e2e/workspace-invitation-acceptance.spec.ts:200:3 › storage failure before replay preserves canonical admission and the intended Workspace (1.5s)
+(node:22332) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22332) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  9 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:15:1 › session rejection clears the prior account Workspace before another account signs in (1.3s)
+  ✓  10 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:54:3 › safe denial at acceptance does not enter the shell or reveal invitation metadata (628ms)
+  ✓  11 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:54:3 › safe denial at current access does not enter the shell or reveal invitation metadata (641ms)
+  ✓  12 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:101:1 › missing invitation and signed-out state cannot invoke admission (382ms)
+  ✓  13 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:118:1 › recipient retries an uncertain acceptance and enters only the server-authorized empty shell (1.4s)
+  ✓  14 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:200:3 › storage failure after capture preserves canonical admission and the intended Workspace (1.8s)
+  ✓  15 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:200:3 › storage failure after commit preserves canonical admission and the intended Workspace (1.2s)
+  ✓  16 [narrow] › e2e/workspace-invitation-acceptance.spec.ts:200:3 › storage failure before replay preserves canonical admission and the intended Workspace (1.6s)
+
+  16 passed (39.1s)

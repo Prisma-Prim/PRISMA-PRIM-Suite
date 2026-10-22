@@ -1,0 +1,36 @@
+
+ RUN  v4.1.10 /workspace/work/659/validation/apps/web
+
+ ❯ src/access/WorkspaceInvitationAuthentication.test.tsx (10 tests | 1 failed | 9 skipped) 56ms
+   × renders embedded authentication with a hash-route-compatible exact continuation 55ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/access/WorkspaceInvitationAuthentication.test.tsx > renders embedded authentication with a hash-route-compatible exact continuation
+TypeError: Invalid URL
+ ❯ ProviderAuthentication src/access/WorkspaceInvitationAuthentication.test.tsx:37:3
+     35|   // Keep this external-boundary contract aligned with the captured #7…
+     36|   const target = new URL(forceRedirectUrl, window.location.href);
+     37|   new URL('http://clerk-dummy' + target.hash.substring(1));
+       |   ^
+     38|   return <a href={forceRedirectUrl}>Complete authentication</a>;
+     39| }
+ ❯ Object.react_stack_bottom_frame ../../node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom/cjs/react-dom-client.development.js:25904:20
+ ❯ renderWithHooks ../../node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom/cjs/react-dom-client.development.js:7662:22
+ ❯ updateFunctionComponent ../../node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom/cjs/react-dom-client.development.js:10166:19
+ ❯ beginWork ../../node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom/cjs/react-dom-client.development.js:11778:18
+ ❯ runWithFiberInDEV ../../node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom/cjs/react-dom-client.development.js:874:13
+ ❯ performUnitOfWork ../../node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom/cjs/react-dom-client.development.js:17641:22
+ ❯ workLoopSync ../../node_modules/.pnpm/react-dom@19.2.8_react@19.2.8/node_modules/react-dom/cjs/react-dom-client.development.js:17469:41
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 skipped (10)
+   Start at  19:15:54
+   Duration  3.53s (transform 1.89s, setup 189ms, import 2.27s, tests 56ms, environment 814ms)
+
+undefined
+/workspace/work/659/validation/apps/web:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/access/WorkspaceInvitationAuthentication.test.tsx -t 'hash-route-compatible exact continuation' '--maxWorkers=1'
