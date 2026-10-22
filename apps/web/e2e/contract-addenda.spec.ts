@@ -1,3 +1,5 @@
+import { contractRecordedLocales } from '../src/test/contract-recorded-values-fixture';
+import { chooseContractLocale } from './contract-recorded-values';
 import { contractMessages } from '../src/contract/contract.copy';
 import { expect, test } from '@playwright/test';
 import { contractAddendumMessages } from '../src/contract/contract-addendum.copy';
@@ -25,6 +27,9 @@ const actor = {
   activeCompany: {
     ...company,
     clientPermissions: ['client.read'],
+    pricingUserPermissionAssignmentId: 'pricing-one',
+    pricingUserPermissionSetVersion: 'v1',
+    pricingUserPermissions: ['commercial.pricing.snapshot.read'],
     contractPermissions: [
       'commercial.contract.read',
       'commercial.contract.prepare',
@@ -74,6 +79,18 @@ for (const locale of interfaceLocales)
         ({ key, locale }) => window.localStorage.setItem(key, locale),
         { key: interfaceLocaleStorageKey, locale },
       );
+      const expected = contractRecordedLocales.find(
+        (item) => item.locale === locale,
+      );
+      if (!expected) throw new Error('Missing locale expectations');
+      const alternate = locale === 'fr' ? 'ru' : 'fr';
+      const calls: string[] = [];
+      let releaseSnapshotResponse: () => void = () => {
+        throw new Error('Snapshot response gate was not initialized');
+      };
+      const snapshotResponseGate = new Promise<void>((resolve) => {
+        releaseSnapshotResponse = resolve;
+      });
       const run = {
         id: 'run-one',
         contractVersionId: 'version-one',
@@ -188,7 +205,7 @@ for (const locale of interfaceLocales)
         sourceOfferVersionId: null,
         sourceOffer: null,
         parentContractId: parent.id,
-        addendumOrdinal: ordinal,
+        addendumOrdinal: ordinal + 999,
         parent: {
           id: parent.id,
           kind: 'CONTRACT',
@@ -210,8 +227,18 @@ for (const locale of interfaceLocales)
           signature: null,
           latestQualityRun: null,
           scopeNote: null,
-          pricingSnapshotId: null,
-          pricingSnapshot: null,
+          pricingSnapshotId: ordinal === 2 ? 'snapshot-exact' : null,
+          pricingSnapshot:
+            ordinal === 2
+              ? {
+                  id: 'snapshot-exact',
+                  currency: 'EUR',
+                  subtotal: '9007199254740993.01',
+                  taxTotal: '0.00',
+                  total: '9007199254740993.01',
+                  lines: [],
+                }
+              : null,
           changeSummary:
             number === 2 ? 'Revised exact child' : 'Exact child ' + ordinal,
           differences:
@@ -229,6 +256,7 @@ for (const locale of interfaceLocales)
       await page.route('**/api/**', async (route) => {
         const sent = route.request(),
           path = new URL(sent.url()).pathname;
+        calls.push(path);
         if (path.endsWith('/access/current-actor'))
           return route.fulfill({ json: actor });
         if (path.endsWith('/companies'))
@@ -241,6 +269,22 @@ for (const locale of interfaceLocales)
           });
         if (path.endsWith('/commercial-intake/requests/request-one'))
           return route.fulfill({ json: detail });
+        if (path.endsWith('/snapshots')) {
+          await snapshotResponseGate;
+          return route.fulfill({
+            json: {
+              items: [
+                {
+                  id: 'snapshot-exact',
+                  currency: 'EUR',
+                  total: '9007199254740993.01',
+                  committedAt: '2026-10-07T09:00:00.000Z',
+                },
+              ],
+              nextCursor: null,
+            },
+          });
+        }
         if (path.endsWith('/addenda')) {
           attempts.push({
             body: sent.postData(),
@@ -251,6 +295,7 @@ for (const locale of interfaceLocales)
             return route.abort('failed');
           }
           if (attempts.length > 2) count = 2;
+          if (attempts.length === 3) return route.abort('failed');
           return route.fulfill({ status: 201, json: child(count) });
         }
         if (path.endsWith('/versions') && sent.method() === 'POST') {
@@ -287,7 +332,7 @@ for (const locale of interfaceLocales)
                 ...parent,
                 addenda: Array.from({ length: count }, (_, index) => ({
                   id: 'child-' + (index + 1),
-                  addendumOrdinal: index + 1,
+                  addendumOrdinal: index + 1000,
                   illustrativeReference: 1,
                   versionNumber: index === 0 ? head : 1,
                   decisionState: 'PENDING',
@@ -328,9 +373,11 @@ for (const locale of interfaceLocales)
         panel.getByRole('button', { name: copy('back'), exact: true }),
       ).toBeVisible();
       expect(attempts[1]).toEqual(attempts[0]);
-      await expect(
-        panel.getByText(copy('noSnapshot'), { exact: true }),
-      ).toBeVisible();
+      const recordedNoSnapshot = panel
+        .getByRole('paragraph')
+        .filter({ hasText: copy('noSnapshot') });
+      await expect(recordedNoSnapshot).toHaveText(copy('noSnapshot'));
+      await expect(recordedNoSnapshot).toBeVisible();
       await panel
         .getByRole('textbox', { name: copy('summary'), exact: true })
         .fill('Revised exact child');
@@ -365,12 +412,106 @@ for (const locale of interfaceLocales)
       await panel
         .getByRole('textbox', { name: copy('summary'), exact: true })
         .fill('Exact child 2');
+      const chooseSnapshot = panel.getByRole('button', {
+        name: copy('chooseSnapshot'),
+        exact: true,
+      });
+      const snapshotsResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname ===
+            '/api/pricing/opportunities/opportunity-one/snapshots' &&
+          response.status() === 200,
+      );
+      await chooseSnapshot.click();
+      await expect(chooseSnapshot).toBeDisabled();
+      releaseSnapshotResponse();
+      const loadedSnapshots = await snapshotsResponse;
+      expect(await loadedSnapshots.finished()).toBeNull();
+      await expect(chooseSnapshot).toBeEnabled();
+      const snapshot = panel.getByRole('combobox', {
+        name: copy('snapshot'),
+        exact: true,
+      });
+      await snapshot.focus();
+      await snapshot.press('Enter');
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await expect(
+        page.getByRole('option', {
+          name: 'EUR · ' + expected.amount + ' · snapshot-exact',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await page.screenshot({
+        path: testInfo.outputPath(
+          'c8-snapshot-options-' +
+            locale +
+            '-' +
+            testInfo.project.name +
+            '.png',
+        ),
+      });
+      expect(
+        await page
+          .getByRole('listbox')
+          .evaluate((element) => element.scrollWidth <= element.clientWidth),
+      ).toBe(true);
+      await snapshot.press('End');
+      await snapshot.press('Enter');
+      await expect(snapshot).toHaveAttribute('data-value', 'snapshot-exact');
+      await expect(snapshot).toBeFocused();
+      await panel.screenshot({
+        path: testInfo.outputPath(
+          'c8-selected-' + locale + '-' + testInfo.project.name + '.png',
+        ),
+      });
+      const selectedReads = calls.length;
+      await chooseContractLocale(page, locale, alternate);
+      await expect(
+        page.getByRole('textbox', {
+          name: resolveMessage(contractAddendumMessages, alternate, 'summary'),
+          exact: true,
+        }),
+      ).toHaveValue('Exact child 2');
+      await expect(
+        page.getByRole('combobox', {
+          name: resolveMessage(contractAddendumMessages, alternate, 'snapshot'),
+          exact: true,
+        }),
+      ).toHaveAttribute('data-value', 'snapshot-exact');
+      expect(calls).toHaveLength(selectedReads);
+      await chooseContractLocale(page, alternate, locale);
+      expect(calls).toHaveLength(selectedReads);
+
       await panel
         .getByRole('button', { name: copy('create'), exact: true })
         .click();
       await expect(
+        panel.getByText(copy('uncertain'), { exact: true }),
+      ).toBeVisible();
+      const uncertainReads = calls.length;
+      await chooseContractLocale(page, locale, alternate);
+      await expect(
+        page.getByRole('textbox', {
+          name: resolveMessage(contractAddendumMessages, alternate, 'summary'),
+          exact: true,
+        }),
+      ).toBeDisabled();
+      expect(calls).toHaveLength(uncertainReads);
+      await chooseContractLocale(page, alternate, locale);
+      expect(calls).toHaveLength(uncertainReads);
+      await panel
+        .getByRole('button', { name: copy('retry'), exact: true })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(
         panel.getByRole('definition').filter({ hasText: 'Exact child 2' }),
       ).toBeVisible();
+      expect(attempts[3]).toEqual(attempts[2]);
+      expect(JSON.parse(attempts[2]?.body ?? 'null')).toMatchObject({
+        pricingSnapshotId: 'snapshot-exact',
+      });
+
       await panel
         .getByRole('button', { name: copy('back'), exact: true })
         .click();
@@ -379,11 +520,14 @@ for (const locale of interfaceLocales)
         exact: true,
       });
       await expect(list.getByRole('button')).toHaveText([
-        copy('open') + ' 1',
-        copy('open') + ' 2',
+        copy('open') + ' ' + expected.ordinal,
+        copy('open') + ' ' + expected.ordinal.slice(0, -1) + '1',
       ]);
       await list
-        .getByRole('button', { name: copy('open') + ' 1', exact: true })
+        .getByRole('button', {
+          name: copy('open') + ' ' + expected.ordinal,
+          exact: true,
+        })
         .click();
       await expect(
         panel
