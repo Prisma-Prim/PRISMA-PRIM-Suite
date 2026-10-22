@@ -130,6 +130,18 @@ function stepBody(job, step) {
   return job.slice(start, next === -1 ? undefined : next);
 }
 
+test('every canonical CI job uses the supported Ubuntu 24.04 standard runner', async () => {
+  const jobs = jobsIn(await readWorkflow());
+  assert.ok(Object.keys(jobs).length > 0);
+  for (const [name, job] of Object.entries(jobs)) {
+    assert.deepEqual(
+      [...job.matchAll(/^ {4}runs-on: (.+)$/gm)].map((match) => match[1]),
+      ['ubuntu-24.04'],
+      `${name} must keep the pinned Playwright and packaging toolchain on its supported OS`,
+    );
+  }
+});
+
 // The literal graph is the issue's required coverage, independent of the gate implementation.
 test('independent test families and packaging share only the fast prerequisite and the scope', async () => {
   const jobs = jobsIn(await readWorkflow());
