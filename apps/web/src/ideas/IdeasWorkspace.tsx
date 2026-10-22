@@ -258,6 +258,7 @@ function IdeasRegistry(props: Props) {
     const controller = new AbortController();
     mutationPending.current = controller;
     setSave({ status: 'saving', intent });
+    let recordedIdeaId: string | undefined;
     try {
       const result = await query('/ideas', controller.signal, intent);
       if (controller.signal.aborted) return;
@@ -266,20 +267,7 @@ function IdeasRegistry(props: Props) {
         setSave({ status: 'saved' });
         setDescription('');
         setOrigin('');
-        setSelectedId(idea.id);
-        setDetail({
-          status: 'ready',
-          value: {
-            idea,
-            history: {
-              ideaId: idea.id,
-              entries: [],
-              total: 0,
-              nextCursor: null,
-            },
-          },
-        });
-        void loadList();
+        recordedIdeaId = idea.id;
       } else if (result.status === 'validation' || result.status === 'conflict')
         setSave({ status: result.status });
       else if (
@@ -293,6 +281,10 @@ function IdeasRegistry(props: Props) {
     } finally {
       if (mutationPending.current === controller)
         mutationPending.current = undefined;
+    }
+    if (recordedIdeaId !== undefined && !controller.signal.aborted) {
+      void open(recordedIdeaId);
+      void loadList();
     }
   }
   async function executeReview(intent: ReviewIntent) {

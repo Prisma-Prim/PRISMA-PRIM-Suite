@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -174,6 +175,12 @@ describe('Ideas through the real App composition', () => {
               total: 0,
               nextCursor: null,
             });
+      if (path === `/api/ideas/${IDEA}`)
+        return Response.json({
+          ...original,
+          description: '  Literal draft\nИдея ',
+          origin: ' Internal source ',
+        });
       if (path === `/api/ideas/${IDEA}/dispositions`)
         return Response.json({
           ideaId: IDEA,
@@ -212,6 +219,142 @@ describe('Ideas through the real App composition', () => {
       }),
     );
   });
+  it.each([false, true])(
+    'reopens the current history after a creation receipt replay (first detail read fails: %s)',
+    async (firstReadFails) => {
+      const submissions: { body: RequestInit['body']; key: string | null }[] =
+        [];
+      const rejected = { ...original, revision: 2, disposition: 'rejected' };
+      const disposition = {
+        id: 'other-review',
+        ideaId: IDEA,
+        precedingRevision: 1,
+        revision: 2,
+        kind: 'rejected',
+        reason: 'Boris rejected this Idea before the creation retry.',
+        reconsiderationDate: null,
+        recordedBy: {
+          workspaceMembershipId: 'member-b',
+          internalUserId: 'person-b',
+          displayName: 'Boris',
+        },
+        recordedAt: '2026-10-20T06:00:00.000Z',
+      };
+      let committed = false;
+      let reviewed = false;
+      let detailReads = 0;
+      let finishDetail: ((response: Response) => void) | undefined;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const path = new URL(String(input), window.location.origin).pathname;
+        if (path === '/api/access/current-actor')
+          return Response.json(writingActor());
+        if (path === '/api/companies')
+          return Response.json([
+            { id: COMPANY, displayName: 'Synthetic Company' },
+          ]);
+        if (path === '/api/activity-log') return Response.json({ events: [] });
+        if (path === '/api/ideas' && init?.method === 'POST') {
+          submissions.push({
+            body: init.body,
+            key: new Headers(init.headers).get('idempotency-key'),
+          });
+          if (submissions.length === 1) {
+            committed = true;
+            throw new TypeError(
+              'Creation committed but its response was lost.',
+            );
+          }
+          // An unchanged retry returns its original receipt, not current state.
+          return Response.json(original, { status: 201 });
+        }
+        if (path === '/api/ideas')
+          return Response.json({
+            companyId: COMPANY,
+            ideas: committed ? [reviewed ? rejected : original] : [],
+            total: committed ? 1 : 0,
+            nextCursor: null,
+          });
+        if (path === `/api/ideas/${IDEA}`) {
+          detailReads += 1;
+          if (detailReads > 1) return Response.json(rejected);
+          return new Promise<Response>((resolve) => {
+            finishDetail = resolve;
+          });
+        }
+        if (path === `/api/ideas/${IDEA}/dispositions`)
+          return Response.json({
+            ideaId: IDEA,
+            entries: [disposition],
+            total: 1,
+            nextCursor: null,
+          });
+        return Response.json({}, { status: 404 });
+      });
+      render(<App identity={identity} />);
+      fireEvent.change(await screen.findByLabelText('Description'), {
+        target: { value: original.description },
+      });
+      fireEvent.change(screen.getByLabelText('Origin'), {
+        target: { value: original.origin },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Record Idea' }));
+      expect(
+        await screen.findByText(/The save could not be confirmed/u),
+      ).toBeVisible();
+      reviewed = true;
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry unchanged save' }),
+      );
+      expect(
+        await screen.findByText(/Saved. The confirmed result/u),
+      ).toBeVisible();
+      expect(
+        screen.queryByText('No dispositions recorded.'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('article', { name: 'Original submission' }),
+      ).not.toBeInTheDocument();
+      await waitFor(() => expect(finishDetail).toBeDefined());
+      await act(async () => {
+        finishDetail?.(
+          firstReadFails
+            ? Response.json({}, { status: 500 })
+            : Response.json(rejected),
+        );
+      });
+      if (firstReadFails) {
+        expect(await screen.findByText(/This read failed/u)).toBeVisible();
+        expect(screen.getByText(/Saved. The confirmed result/u)).toBeVisible();
+        expect(screen.queryByText(disposition.reason)).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Reload Idea' }));
+      }
+      expect(await screen.findByText(disposition.reason)).toBeVisible();
+      const detail = within(
+        screen.getByRole('article', { name: 'Original submission' }),
+      );
+      expect(detail.getByText(original.origin)).toBeVisible();
+      expect(detail.getByText('Submitted by: Ana')).toBeVisible();
+      expect(detail.getByText(/Revision 2/u)).toBeVisible();
+      expect(detail.getAllByText('Rejected')).toHaveLength(2);
+      expect(detail.getByText(/^Boris ·/u)).toBeVisible();
+      expect(detail.queryByText('New')).not.toBeInTheDocument();
+      expect(
+        detail.queryByText('No dispositions recorded.'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(/Saved. The confirmed result/u)).toBeVisible();
+      expect(screen.queryByText(/This read failed/u)).not.toBeInTheDocument();
+      expect(submissions).toHaveLength(2);
+      expect(submissions[1]).toEqual(submissions[0]);
+      expect(submissions[0]?.key).toBeTruthy();
+      expect(submissions[0]?.body).toBe(
+        JSON.stringify({
+          description: original.description,
+          origin: original.origin,
+        }),
+      );
+    },
+  );
+
   it.each([
     { date: '0000-01-01', valid: false },
     { date: '0001-01-01', valid: true },
