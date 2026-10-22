@@ -1,5 +1,5 @@
 name: Issue 213 temporary Codex universal installer smoke
-run-name: Issue 213 exact-source 4f235eb Codex universal installer
+run-name: Issue 213 exact-source 5c6c58b Codex universal installer
 on:
   workflow_dispatch:
 permissions:
@@ -15,7 +15,7 @@ jobs:
       - name: Check out the exact implementation source
         uses: actions/checkout@v4
         with:
-          ref: 4f235eb6e30694c15c481c50378091b87bab0954
+          ref: 5c6c58b4dc4f8a962fdde29292cf38481814698d
           persist-credentials: false
       - name: Make room for the actual Codex image
         run: |
@@ -24,8 +24,8 @@ jobs:
       - name: Acquire and identify the actual target image
         run: |
           mkdir -p "$RUNNER_TEMP/issue-213-evidence"
-          docker pull ghcr.io/openai/codex-universal:latest
-          docker image inspect --format '{{json .RepoDigests}}' ghcr.io/openai/codex-universal:latest > "$RUNNER_TEMP/issue-213-evidence/image-digests.json"
+          docker pull ghcr.io/openai/codex-universal@sha256:905e512f36460e1be4cfedb30928a8a28299edb0fcd5de7998ceaa72d27fe304
+          docker image inspect --format '{{json .RepoDigests}}' ghcr.io/openai/codex-universal@sha256:905e512f36460e1be4cfedb30928a8a28299edb0fcd5de7998ceaa72d27fe304 > "$RUNNER_TEMP/issue-213-evidence/image-digests.json"
           git rev-parse HEAD > "$RUNNER_TEMP/issue-213-evidence/source.txt"
           git rev-parse HEAD^{tree} > "$RUNNER_TEMP/issue-213-evidence/tree.txt"
       - name: Run real cold setup and cached resume in the target image
@@ -36,12 +36,19 @@ jobs:
             --env CI=true \
             --workdir /workspace/issue-213 \
             --entrypoint /bin/bash \
-            ghcr.io/openai/codex-universal:latest -lc '
+            ghcr.io/openai/codex-universal@sha256:905e512f36460e1be4cfedb30928a8a28299edb0fcd5de7998ceaa72d27fe304 -lc '
               set -euo pipefail
               cp -r /source/. .
-              test "$(git rev-parse HEAD)" = 4f235eb6e30694c15c481c50378091b87bab0954
+              test "$(git rev-parse HEAD)" = 5c6c58b4dc4f8a962fdde29292cf38481814698d
               date -u
-              bash scripts/codex-cloud-setup.sh --profile postgres
+              setup_result=0
+              bash scripts/codex-cloud-setup.sh --profile postgres || setup_result=$?
+              if (( setup_result != 0 )); then
+                printf "Setup failed with exit %s; retained package diagnosis follows.\n" "$setup_result"
+                apt-cache policy postgresql-17 postgresql-client-17 libpq5
+                apt-get install --simulate -o Debug::pkgProblemResolver=yes postgresql-17 postgresql-client-17 || true
+                exit "$setup_result"
+              fi
               bash scripts/codex-cloud-maintenance.sh --profile postgres
               runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -d postgres -c "SELECT rolname, rolcanlogin, rolcreatedb, rolsuper, rolcreaterole, rolreplication, rolbypassrls FROM pg_roles WHERE rolname = '\''prisma_prim'\''"
               runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -d postgres -c "SELECT datname, pg_get_userbyid(datdba) AS owner FROM pg_database WHERE datname IN ('\''prisma_prim_dev'\'', '\''prisma_prim_test'\'') ORDER BY datname"
