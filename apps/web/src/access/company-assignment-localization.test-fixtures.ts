@@ -242,6 +242,28 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'operational-risk-reader',
+    canonical: 'Company Operational Risk Reader',
+    version: 'v1',
+    labels: {
+      ro: 'Cititor al riscurilor operaționale ale Companiei',
+      ru: 'Читатель операционных рисков компании',
+      fr: 'Lecteur des risques opérationnels de la société',
+      en: 'Company Operational Risk Reader',
+    },
+  },
+  {
+    value: 'operational-risk-recorder',
+    canonical: 'Company Operational Risk Recorder',
+    version: 'v1',
+    labels: {
+      ro: 'Autor al înregistrărilor de risc ale Companiei',
+      ru: 'Автор записей о рисках компании',
+      fr: 'Rédacteur des risques opérationnels de la société',
+      en: 'Company Operational Risk Recorder',
+    },
+  },
+  {
     value: 'pricing-user',
     canonical: 'Company Pricing User',
     version: 'v1',

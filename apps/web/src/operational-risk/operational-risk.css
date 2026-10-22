@@ -1,0 +1,230 @@
+.risk-workspace {
+  color: #30274b;
+  min-width: 0;
+}
+.risk-heading,
+.risk-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.risk-heading h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  margin: 0.25rem 0;
+}
+.risk-eyebrow {
+  color: #6c46bd;
+  font-weight: 700;
+  margin: 0;
+}
+.risk-scope-note {
+  background: #fff6cf;
+  border: 1px solid #efd979;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  line-height: 1.6;
+}
+.risk-columns {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.8fr) minmax(0, 1.6fr);
+  gap: 1.25rem;
+  align-items: start;
+  margin-top: 1.25rem;
+}
+.risk-main {
+  min-width: 0;
+  display: grid;
+  gap: 1.25rem;
+}
+.risk-panel {
+  border: 1px solid #e4dcf5;
+  border-radius: 1.25rem;
+  background: #fff;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  box-shadow: 0 8px 24px #6346a509;
+  min-width: 0;
+}
+.risk-panel h3 {
+  margin-top: 0;
+}
+.risk-workspace button {
+  cursor: pointer;
+  background: #f7f3ff;
+  border: 1px solid #d8c7f5;
+  border-radius: 0.75rem;
+  color: #583491;
+  font: inherit;
+  font-weight: 650;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+.risk-workspace button:hover:not(:disabled) {
+  background: #ede3ff;
+  box-shadow: 0 3px 12px #6346a514;
+}
+.risk-workspace button.risk-primary {
+  color: #fff;
+  background: #7355da;
+  border-color: #7355da;
+}
+.risk-workspace button.risk-primary:hover:not(:disabled) {
+  background: #6240c7;
+}
+.risk-workspace button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.risk-workspace :is(button, input, textarea, summary):focus-visible {
+  outline: 3px solid #b49aea;
+  outline-offset: 3px;
+}
+.risk-list {
+  padding: 0;
+  margin: 0 0 1rem;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+.risk-list button {
+  width: 100%;
+  text-align: start;
+  display: grid;
+  gap: 0.4rem;
+}
+.risk-list button[aria-pressed='true'] {
+  background: #eee6ff;
+  border-color: #9575da;
+}
+.risk-list :is(strong, span),
+.risk-workspace p,
+.risk-workspace dd,
+.risk-workspace h3,
+.risk-workspace h4,
+.risk-workspace code {
+  overflow-wrap: anywhere;
+}
+.risk-list span {
+  font-size: 0.8rem;
+  color: #76678f;
+  font-weight: 400;
+}
+.risk-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+.risk-editor {
+  display: grid;
+  gap: 1rem;
+  border-top: 4px solid #ad91eb;
+}
+.risk-editor label {
+  display: grid;
+  gap: 0.45rem;
+  color: #4c3d65;
+  font-weight: 600;
+}
+.risk-required {
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: #7e6b96;
+}
+.risk-editor :is(input, textarea) {
+  border: 1px solid #d9cdeb;
+  border-radius: 0.7rem;
+  font: inherit;
+  color: #30274b;
+  background: #fdfbff;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.75rem;
+  min-height: 2.75rem;
+}
+.risk-editor textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+.risk-facts {
+  display: grid;
+  gap: 0.85rem;
+}
+.risk-facts > div {
+  border-bottom: 1px solid #eee8f7;
+  padding-bottom: 0.7rem;
+}
+.risk-facts dt {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: #76658e;
+}
+.risk-facts dd {
+  margin: 0.3rem 0 0;
+  white-space: pre-wrap;
+}
+.risk-literal {
+  white-space: pre-wrap;
+}
+.risk-revision,
+.risk-truth {
+  background: #f0eafa;
+  border-radius: 2rem;
+  padding: 0.35rem 0.7rem;
+  color: #684797;
+  font-size: 0.85rem;
+  width: fit-content;
+}
+.risk-workspace details {
+  border: 1px solid #e7ddf4;
+  border-radius: 0.8rem;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+.risk-workspace summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.risk-history {
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+.risk-history > li {
+  border-left: 3px solid #e5d9f6;
+  padding-left: 1rem;
+}
+.risk-history code {
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.risk-command-state {
+  border: 1px solid #dfcb87;
+  border-radius: 0.85rem;
+  padding: 1rem;
+  background: #fffbeb;
+}
+@media (max-width: 760px) {
+  .risk-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .risk-heading {
+    align-items: stretch;
+  }
+  .risk-heading > button {
+    width: 100%;
+  }
+  .risk-actions > button {
+    flex: 1 1 10rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .risk-workspace button {
+    transition: none;
+  }
+}
