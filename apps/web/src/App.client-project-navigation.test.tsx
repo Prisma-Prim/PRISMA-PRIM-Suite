@@ -139,6 +139,10 @@ function installTransport(options: { united?: boolean } = {}) {
         state.projectListReads += 1;
         return respond(projectsFor(companyContextId));
       }
+      if (path.endsWith('/projects?view=mine_open')) {
+        state.projectListReads += 1;
+        return respond(projectsFor(companyContextId));
+      }
       if (isLifecycleRead(path)) return respond(preparatoryLifecycle);
       if (path.endsWith('/tasks')) return respond({ mutable: true, tasks: [] });
       if (path.endsWith('/eligible-task-assignees'))
@@ -438,4 +442,46 @@ describe('Client dossier and Project navigation through App', () => {
     await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
     expect(projectSearch()).toHaveValue('');
   });
+
+  it.each(['Home', 'Client'] as const)(
+    'returns Mine to All and open-only through the actual %s directory intent',
+    async (source) => {
+      installTransport();
+      render(<App identity={deterministicBrowserIdentity()} />);
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      const dossier = await openDossier(firstClient.displayName);
+      openClientProjects(dossier);
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+      const view = within(projectsRegion()).getByRole('combobox', {
+        name: 'Project view',
+      });
+      const closed = within(projectsRegion()).getByRole('checkbox', {
+        name: 'Include closed Projects',
+      });
+      fireEvent.click(closed);
+      expect(closed).toBeChecked();
+      changeValue(view, 'mine_open');
+      await waitFor(() => expect(view).toHaveTextContent('My open Projects'));
+      if (source === 'Home')
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: 'Open Projects: 1. Open the Project list',
+          }),
+        );
+      else {
+        navigateTo('Clients');
+        openClientProjects(dossier);
+      }
+      await waitFor(() => expect(view).toHaveTextContent('All Projects'));
+      expect(
+        within(projectsRegion()).getByRole('checkbox', {
+          name: 'Include closed Projects',
+        }),
+      ).not.toBeChecked();
+      expect(projectSearch()).toHaveValue(
+        source === 'Home' ? '' : firstClient.displayName,
+      );
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+    },
+  );
 });
