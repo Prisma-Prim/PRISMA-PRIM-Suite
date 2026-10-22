@@ -1,3 +1,4 @@
+import { useContractRecordedValues } from './contract-recorded-values';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -50,6 +51,7 @@ export function ContractAddendumEditor({
   onProtectionChange: (value: boolean) => void;
   onCreated: (contractId: string) => void;
 }) {
+  const { formatDecimal } = useContractRecordedValues();
   const copy = useContractAddendumCopy();
   const revising = contract.kind === 'ADDENDUM';
   const [summary, setSummary] = useState(
@@ -282,7 +284,12 @@ export function ContractAddendumEditor({
                     : []),
                   ...snapshots.map((item) => ({
                     value: item.id,
-                    label: item.currency + ' · ' + item.total + ' · ' + item.id,
+                    label:
+                      item.currency +
+                      ' · ' +
+                      formatDecimal(item.total) +
+                      ' · ' +
+                      item.id,
                   })),
                 ]}
                 onValueChange={setSnapshot}
