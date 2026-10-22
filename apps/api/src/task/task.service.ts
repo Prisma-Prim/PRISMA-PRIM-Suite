@@ -36,6 +36,7 @@ import { isOpenProjectStatus } from '../project/project-status.js';
 import { ProjectService } from '../project/project.service.js';
 import {
   assignedTasksQuery,
+  attentionTasksQuery,
   cancelInput,
   createInput,
   editInput,
@@ -53,6 +54,7 @@ import {
   OPEN_TASK_STATES,
   type AssignedTaskView,
   type AttentionRule,
+  type AttentionTasksPage,
   type CompanyOverdueTasks,
   type CompanyOverdueTasksPage,
   type DueSoonTasksPage,
@@ -199,6 +201,50 @@ export class TaskService {
     actor: ActorContext,
     { today }: { today: string },
   ): Promise<TaskAttention> {
+    const { matchingCount, tasks } = await this.readAttentionPage(actor, {
+      today,
+      offset: 0,
+      rowLimit: ATTENTION_TASK_ROW_LIMIT,
+    });
+    return { matchingCount, tasks };
+  }
+  /** Current authority, complete count and bounded page share one read snapshot. */
+  async listAttention(
+    actor: ActorContext,
+    query: unknown,
+  ): Promise<AttentionTasksPage> {
+    const { offset } = attentionTasksQuery(query);
+    const today = operationalDate(this.clock.now());
+    const pageSize = 25 as const;
+    return this.database.transaction(
+      async () => {
+        const { companyId, matchingCount, tasks } =
+          await this.readAttentionPage(actor, {
+            today,
+            offset,
+            rowLimit: pageSize,
+          });
+        return {
+          companyId,
+          today,
+          total: matchingCount,
+          offset,
+          pageSize,
+          tasks,
+        };
+      },
+      { isolationLevel: 'repeatable read' },
+    );
+  }
+  /** Sole owner of the preview and complete view's exact set, rules and order. */
+  private async readAttentionPage(
+    actor: ActorContext,
+    {
+      today,
+      offset,
+      rowLimit,
+    }: { today: string; offset: number; rowLimit: number },
+  ): Promise<TaskAttention & { companyId: string }> {
     const companyId = await this.access.requireActor(actor);
     const projects = new Map(
       (await this.projects.list(actor)).map((project) => [
@@ -210,7 +256,7 @@ export class TaskService {
         },
       ]),
     );
-    if (projects.size === 0) return { matchingCount: 0, tasks: [] };
+    if (projects.size === 0) return { companyId, matchingCount: 0, tasks: [] };
     const dueSoonEnd = calendarDateAfter(today, 7);
     const matching = and(
       eq(tasks.workspaceId, actor.workspaceId),
@@ -230,7 +276,7 @@ export class TaskService {
       .from(tasks)
       .where(matching);
     const matchingCount = counted?.total ?? 0;
-    if (matchingCount === 0) return { matchingCount, tasks: [] };
+    if (matchingCount === 0) return { companyId, matchingCount, tasks: [] };
     const rows = await this.database.connection
       .select()
       .from(tasks)
@@ -251,8 +297,10 @@ export class TaskService {
         asc(tasks.createdAt),
         asc(tasks.id),
       )
-      .limit(ATTENTION_TASK_ROW_LIMIT);
+      .limit(rowLimit)
+      .offset(offset);
     return {
+      companyId,
       matchingCount,
       tasks: rows.map((row) => {
         const project = projects.get(row.projectId);

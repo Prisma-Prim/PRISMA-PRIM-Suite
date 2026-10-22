@@ -148,7 +148,7 @@ function readAttention(
   };
 }
 
-function readAttentionTask(
+export function readAttentionTask(
   value: unknown,
   {
     companyId,

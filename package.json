@@ -29,7 +29,7 @@
     "test:preflight:migration": "pnpm --filter @prisma-prim/api test:preflight:migration",
     "test:preflight:playwright": "pnpm --filter @prisma-prim/web test:preflight:playwright",
     "test:agent-doctor": "node --test scripts/agent-doctor.test.mjs",
-    "test:scripts": "node --test scripts/*.test.mjs",
+    "test:scripts": "node --test --test-concurrency=2 scripts/*.test.mjs",
     "typecheck": "pnpm --recursive typecheck",
     "validate:iurie-coverage": "node scripts/validate-iurie-coverage.mjs",
     "db:generate": "pnpm --filter @prisma-prim/api db:generate",

@@ -43,6 +43,8 @@ const actor: ActorContext = {
 const locales = [
   {
     name: 'Română',
+    viewLabel: 'Vizualizarea Solicitărilor',
+    mineLabel: 'Cazurile mele deschise',
     nextAction: 'Acțiunea următoare',
     save: 'Salvează acțiunea următoare',
     retry: 'Reîncearcă actualizarea',
@@ -55,6 +57,8 @@ const locales = [
   },
   {
     name: 'Русский',
+    viewLabel: 'Вид Запросов',
+    mineLabel: 'Мои открытые дела',
     nextAction: 'Следующее действие',
     save: 'Сохранить следующее действие',
     retry: 'Повторить обновление',
@@ -67,6 +71,8 @@ const locales = [
   },
   {
     name: 'Français',
+    viewLabel: 'Vue des Demandes',
+    mineLabel: 'Mes dossiers ouverts',
     nextAction: 'Prochaine action',
     save: 'Enregistrer la prochaine action',
     retry: 'Réessayer la mise à jour',
@@ -79,6 +85,8 @@ const locales = [
   },
   {
     name: 'English',
+    viewLabel: 'Request view',
+    mineLabel: 'My open cases',
     nextAction: 'Next action',
     save: 'Save next action',
     retry: 'Retry update',
@@ -216,8 +224,23 @@ describe('localized Opportunity follow-up', () => {
     fireEvent.change(screen.getByLabelText('Acțiunea următoare'), {
       target: { value: draft },
     });
+    selectOption(
+      screen.getByRole('combobox', { name: 'Vizualizarea Solicitărilor' }),
+      'mine_open',
+    );
+    const viewControl = screen.getByRole('combobox', {
+      name: 'Vizualizarea Solicitărilor',
+    });
+    viewControl.focus();
     for (const locale of locales) {
       fireEvent.click(screen.getByRole('button', { name: locale.name }));
+      const translatedView = screen.getByRole('combobox', {
+        name: locale.viewLabel,
+      });
+      expect(translatedView).toBe(viewControl);
+      expect(translatedView).toHaveFocus();
+      expect(translatedView).toHaveAttribute('data-value', 'mine_open');
+      expect(translatedView).toHaveTextContent(locale.mineLabel);
       expect(screen.getByLabelText(locale.nextAction)).toHaveValue(draft);
       expect(screen.getByRole('button', { name: locale.save })).toBeVisible();
       expect(commands).toHaveLength(0);
@@ -230,6 +253,9 @@ describe('localized Opportunity follow-up', () => {
     ).toBeVisible();
     for (const locale of locales) {
       fireEvent.click(screen.getByRole('button', { name: locale.name }));
+      const view = screen.getByRole('combobox', { name: locale.viewLabel });
+      selectOption(view, 'all');
+      selectOption(view, 'mine_open');
       expect(
         screen.getByText(locale.uncertain, {
           selector: '[role="alert"]',

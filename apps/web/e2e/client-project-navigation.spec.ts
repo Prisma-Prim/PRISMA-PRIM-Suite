@@ -916,7 +916,7 @@ for (const frame of ['classic', 'prisme'] as const) {
 
     // The queue uses App's existing My Tasks and Task-in-Project intents.
     await attention
-      .getByRole('button', { name: 'See all in My Tasks', exact: true })
+      .getByRole('button', { name: 'Open ordinary My Tasks', exact: true })
       .click();
     await expect(page.locator('#my-tasks')).toBeFocused();
     await openHome();

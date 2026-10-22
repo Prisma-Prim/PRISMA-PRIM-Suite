@@ -686,7 +686,7 @@ describe('Operational home through App', () => {
     expect(screen.queryByText(overdueTask.title)).not.toBeInTheDocument();
   });
 
-  it('opens an attention Task in its Project and See all in My Tasks through App intents', async () => {
+  it('opens an attention Task in its Project and ordinary My Tasks through App intents', async () => {
     window.history.replaceState(null, '', '/?frame=classic');
     const server = installServer();
     server.state.showAttention = true;
@@ -710,7 +710,9 @@ describe('Operational home through App', () => {
     expect(window.location.href).not.toContain(overdueTask.id);
 
     fireEvent.click(
-      within(attention).getByRole('button', { name: copy.attention.seeAll }),
+      within(attention).getByRole('button', {
+        name: copy.attention.openMyTasks,
+      }),
     );
     await waitFor(() => expect(window.location.hash).toBe('#my-tasks'));
     expect(screen.getByRole('region', { name: 'My Tasks' })).toBeVisible();
@@ -728,7 +730,9 @@ describe('Operational home through App', () => {
       });
 
       fireEvent.click(
-        within(attention).getByRole('button', { name: copy.attention.seeAll }),
+        within(attention).getByRole('button', {
+          name: copy.attention.openMyTasks,
+        }),
       );
 
       const myTasks = await screen.findByRole('region', { name: 'My Tasks' });

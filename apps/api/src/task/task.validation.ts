@@ -158,7 +158,7 @@ export function cancelInput(value: unknown) {
 export function assignedTasksQuery(value: unknown): void {
   keys(object(value), []);
 }
-/** Both fixed-size Task page reads accept only this offset-only query. */
+/** Fixed-size Task pages accept only one nonnegative safe-integer offset. */
 function taskPageQuery(value: unknown): { offset: number } {
   const row = object(value);
   keys(row, ['offset']);
@@ -175,6 +175,10 @@ function taskPageQuery(value: unknown): { offset: number } {
 }
 /** Current personal due-soon Tasks, using the fixed-size Task page grammar. */
 export function dueSoonTasksQuery(value: unknown): { offset: number } {
+  return taskPageQuery(value);
+}
+/** Current attention Tasks, using the same bounded offset-only grammar. */
+export function attentionTasksQuery(value: unknown): { offset: number } {
   return taskPageQuery(value);
 }
 /** Current Company overdue Tasks, using the same bounded offset-only grammar. */

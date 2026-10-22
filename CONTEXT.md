@@ -197,3 +197,13 @@ _Avoid_: Chat answer, generated answer
 **Activity Log**:
 The append-only record of actors, actions, affected versions, and metadata needed to trace critical operations.
 _Avoid_: Application log, debug log
+
+## Ideas and review history
+
+**Idea**:
+A Company-owned improvement suggestion whose original description, origin and submission attribution are preserved.
+_Avoid_: approved work, Task, Project, corrective action
+
+**Disposition**:
+An attributed defer or reject review of an Idea, preserving its written reason and any declared reconsideration date.
+_Avoid_: work approval, funding approval, automatic action
