@@ -34,6 +34,12 @@ const responsibleColleagueIdentity = {
   displayName: 'Ion Popa',
   email: 'ion@example.test',
 };
+const commercialReaderIdentity = {
+  provider: 'local-demo',
+  subject: 'commercial-readonly-member',
+  displayName: 'Commercial Reader',
+  email: 'commercial-reader@example.test',
+};
 
 export default async function globalSetup() {
   const baseDatabaseUrl = process.env.TEST_DATABASE_URL;
@@ -104,6 +110,11 @@ export default async function globalSetup() {
             subject: responsibleColleagueIdentity.subject,
             workspaceId,
           },
+          {
+            provider: commercialReaderIdentity.provider,
+            subject: commercialReaderIdentity.subject,
+            workspaceId,
+          },
         ]),
       },
       listenPort: apiPort,
@@ -111,7 +122,8 @@ export default async function globalSetup() {
         new URL('../../api/drizzle', import.meta.url),
       ),
     });
-    await seedAccessFixture(harness.origin);
+    const { primaryCompanyId } = await seedAccessFixture(harness.origin);
+    await seedCommercialReaderFixture(harness, primaryCompanyId);
   } catch (error) {
     await Promise.allSettled([
       Promise.resolve().then(() => harness?.close()),
@@ -251,6 +263,37 @@ async function seedAccessFixture(origin) {
   process.env.ACCEPTANCE_OTHER_COMPANY_ID = otherCompanyId;
   process.env.ACCEPTANCE_PRIMARY_COMPANY_ID = primaryCompanyId;
   process.env.ACCEPTANCE_PRIMARY_MEMBERSHIP_ID = primaryMembershipId;
+  return { primaryCompanyId };
+}
+
+async function seedCommercialReaderFixture(harness, companyId) {
+  const actor = await readActor(harness.origin, commercialReaderIdentity);
+  const membershipId = stringProperty(actor, 'workspaceMembershipId');
+  await command(
+    harness.origin,
+    administratorIdentity,
+    '/company-commercial-intake-assignments',
+    { companyId, workspaceMembershipId: membershipId },
+    'fixture-commercial-reader-intake',
+  );
+  // One synthetic historical captured grant. Production grants still capture
+  // v4. Workspace administration includes this accepted member and assignment.
+  // No Company context is granted until its own serial browser test, so this
+  // member is excluded from commercial candidates outside that test. It has
+  // neither Project/Client nor Task grants for those other candidate lists.
+  const captured = await harness.pool.query(
+    `UPDATE company_role_assignments SET permission_set_version = 'v1'
+      WHERE workspace_membership_id = $1 AND company_id = $2
+        AND bundle = 'company_commercial_intake' AND revoked_at IS NULL
+      RETURNING permission_set_version`,
+    [membershipId, companyId],
+  );
+  if (
+    captured.rowCount !== 1 ||
+    captured.rows[0]?.permission_set_version !== 'v1'
+  )
+    throw new Error('Expected one synthetic captured Intake v1 reader.');
+  process.env.ACCEPTANCE_COMMERCIAL_READER_MEMBERSHIP_ID = membershipId;
 }
 
 async function readActor(origin, identity) {

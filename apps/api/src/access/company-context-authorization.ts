@@ -1,4 +1,9 @@
 import {
+  COMPANY_IDEAS_READER_BUNDLE,
+  COMPANY_IDEAS_RECORDER_BUNDLE,
+  COMPANY_IDEAS_REVIEWER_BUNDLE,
+} from './company-permissions.js';
+import {
   COMPANY_CONTRACT_PREPARER_BUNDLE,
   contractPreparerPermissionsFor,
   contractApproverPermissionsFor,
@@ -103,6 +108,78 @@ const DOCUMENT_READ_REGISTRAR_VERSIONS = [
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async requireIdeasAccess(
+    actor: ActorContext,
+    operation: 'read' | 'record' | 'disposition',
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !company ||
+      company.ideasReaderPermissionSetVersion !== 'v1' ||
+      !company.ideasReaderPermissionAssignmentId ||
+      !company.ideasReaderPermissions?.includes('idea.read')
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(companyRoleAssignments.bundle, COMPANY_IDEAS_READER_BUNDLE),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+        eq(
+          companyRoleAssignments.id,
+          company.ideasReaderPermissionAssignmentId,
+        ),
+      ) ?? sql`false`,
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    if (operation === 'record') {
+      if (
+        company.ideasRecorderPermissionSetVersion !== 'v1' ||
+        !company.ideasRecorderPermissionAssignmentId ||
+        !company.ideasRecorderPermissions?.includes('idea.record')
+      )
+        throw new ForbiddenException();
+      await this.requireLiveCapturedAssignment(
+        actor,
+        company.id,
+        and(
+          eq(companyRoleAssignments.bundle, COMPANY_IDEAS_RECORDER_BUNDLE),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          eq(
+            companyRoleAssignments.id,
+            company.ideasRecorderPermissionAssignmentId,
+          ),
+        ) ?? sql`false`,
+        lock,
+      );
+    }
+    if (operation === 'disposition') {
+      if (
+        company.ideasReviewerPermissionSetVersion !== 'v1' ||
+        !company.ideasReviewerPermissionAssignmentId ||
+        !company.ideasReviewerPermissions?.includes('idea.disposition.record')
+      )
+        throw new ForbiddenException();
+      await this.requireLiveCapturedAssignment(
+        actor,
+        company.id,
+        and(
+          eq(companyRoleAssignments.bundle, COMPANY_IDEAS_REVIEWER_BUNDLE),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          eq(
+            companyRoleAssignments.id,
+            company.ideasReviewerPermissionAssignmentId,
+          ),
+        ) ?? sql`false`,
+        lock,
+      );
+    }
+    return company.id;
+  }
 
   async resolveAuthorizedActiveCompany(
     actor: ActorContext,
@@ -1305,6 +1382,9 @@ export class CompanyContextAuthorization {
         COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
         COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
         COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
+        COMPANY_IDEAS_READER_BUNDLE,
+        COMPANY_IDEAS_RECORDER_BUNDLE,
+        COMPANY_IDEAS_REVIEWER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
@@ -1346,6 +1426,30 @@ export class CompanyContextAuthorization {
         displayName: row.displayName,
         clientPermissions: [],
       };
+      if (
+        row.bundle === COMPANY_IDEAS_READER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.ideasReaderPermissions = ['idea.read'];
+        company.ideasReaderPermissionAssignmentId = row.assignmentId;
+        company.ideasReaderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_IDEAS_RECORDER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.ideasRecorderPermissions = ['idea.record'];
+        company.ideasRecorderPermissionAssignmentId = row.assignmentId;
+        company.ideasRecorderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_IDEAS_REVIEWER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.ideasReviewerPermissions = ['idea.disposition.record'];
+        company.ideasReviewerPermissionAssignmentId = row.assignmentId;
+        company.ideasReviewerPermissionSetVersion = 'v1';
+      }
       if (row.bundle === COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE) {
         if (
           row.permissionSetVersion !== 'v1' &&

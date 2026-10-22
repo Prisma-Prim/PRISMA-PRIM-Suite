@@ -176,6 +176,8 @@ function CompanySummary({
       {load.kind === 'ready' && load.view.attention !== undefined && (
         <MyAttention
           attention={load.view.attention}
+          identity={identity}
+          workspaceMembershipId={workspaceMembershipId}
           company={company}
           today={load.view.today}
           onOpenTask={onOpenTask}
