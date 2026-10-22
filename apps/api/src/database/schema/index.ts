@@ -28,3 +28,4 @@ export * from './project-template.js';
 export * from './project-stage.js';
 export * from './project-template-version.js';
 export * from './ideas.js';
+export * from './operational-risk.js';

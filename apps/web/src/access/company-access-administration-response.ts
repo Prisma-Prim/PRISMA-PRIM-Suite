@@ -27,6 +27,8 @@ const CAPTURED_VERSIONS = {
   'Company Project Approver': ['v1'],
   'Company Profitability Contributor': ['v1'],
   'Company Profitability Director': ['v1'],
+  'Company Operational Risk Reader': ['v1'],
+  'Company Operational Risk Recorder': ['v1'],
   'Company Sales Stage Configuration': ['v1'],
   'Company Project Template User': ['v1'],
   'Company Project Stage Advancer': ['v1'],
