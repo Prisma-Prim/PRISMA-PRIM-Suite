@@ -1,0 +1,54 @@
+{
+  "kind": "post-merge-dependency-preparation",
+  "notice": "Self-reported post-merge execution only. Not canonical verify-local evidence, not pre-merge proof, and not a GitHub runner attestation.",
+  "commit": "98a6135ee8f38aead7438e3606b1264fb441cd15",
+  "tree": "6796b9cb0fd04c6e96f37ae170cec20e579ef67e",
+  "parent": "0b87cb91da0f9384bc12f942cb65e047a73dfa42",
+  "cwd": "/workspace/work/postmerge-795",
+  "started_at_utc": "2026-10-22T19:50:47.221948Z",
+  "settings": {
+    "PNPM_HOME": "/workspace/work/merge-runtime-pnpm795",
+    "PLAYWRIGHT_BROWSERS_PATH": "/workspace/prisma-cloud-tools/browsers",
+    "CI": "true",
+    "REQUIRE_ACCESS_POSTGRES": "true",
+    "REQUIRE_COMPANY_POSTGRES": "true",
+    "REQUIRE_CLIENT_POSTGRES": "true",
+    "launcher_directory": "/workspace/prisma-cloud-tools/node_modules/.bin",
+    "pnpm_verify_deps_before_run": "normal default"
+  },
+  "inherited_environment_names": [
+    "HOME",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "NODE_EXTRA_CA_CERTS",
+    "NO_PROXY",
+    "PATH",
+    "PLAYWRIGHT_BROWSERS_PATH",
+    "PNPM_HOME",
+    "SSL_CERT_FILE",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy"
+  ],
+  "commands": [
+    {
+      "name": "install",
+      "argv": [
+        "pnpm",
+        "install",
+        "--frozen-lockfile"
+      ],
+      "started_at_utc": "2026-10-22T19:50:47.222176Z",
+      "log": "install.log",
+      "status": "passed",
+      "finished_at_utc": "2026-10-22T19:50:58.767586Z",
+      "exit_code": 0,
+      "log_sha256": "2a0bfae3e65e871a3dc2c681842016f3fc571ed734ed96733d951a705c5e44f2"
+    }
+  ],
+  "finished_at_utc": "2026-10-22T19:50:58.768045Z",
+  "final_commit": "98a6135ee8f38aead7438e3606b1264fb441cd15",
+  "final_tree": "6796b9cb0fd04c6e96f37ae170cec20e579ef67e",
+  "final_git_status": "",
+  "status": "passed"
+}

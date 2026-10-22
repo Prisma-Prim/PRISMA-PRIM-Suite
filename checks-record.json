@@ -1,0 +1,123 @@
+{
+  "kind": "post-merge-direct-documentation-validation",
+  "notice": "Self-reported post-merge execution only. Not canonical verify-local evidence, not pre-merge proof, and not a GitHub runner attestation.",
+  "commit": "98a6135ee8f38aead7438e3606b1264fb441cd15",
+  "tree": "6796b9cb0fd04c6e96f37ae170cec20e579ef67e",
+  "parent": "0b87cb91da0f9384bc12f942cb65e047a73dfa42",
+  "cwd": "/workspace/work/postmerge-795",
+  "started_at_utc": "2026-10-22T19:51:07.907002Z",
+  "settings": {
+    "PNPM_HOME": "/workspace/work/merge-runtime-pnpm795",
+    "PLAYWRIGHT_BROWSERS_PATH": "/workspace/prisma-cloud-tools/browsers",
+    "CI": "true",
+    "REQUIRE_ACCESS_POSTGRES": "true",
+    "REQUIRE_COMPANY_POSTGRES": "true",
+    "REQUIRE_CLIENT_POSTGRES": "true",
+    "launcher_directory": "/workspace/prisma-cloud-tools/node_modules/.bin",
+    "pnpm_verify_deps_before_run": "normal default"
+  },
+  "inherited_environment_names": [
+    "HOME",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "NODE_EXTRA_CA_CERTS",
+    "NO_PROXY",
+    "PATH",
+    "PLAYWRIGHT_BROWSERS_PATH",
+    "PNPM_HOME",
+    "SSL_CERT_FILE",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy"
+  ],
+  "commands": [
+    {
+      "name": "doctor",
+      "argv": [
+        "node",
+        "scripts/agent-doctor.mjs"
+      ],
+      "started_at_utc": "2026-10-22T19:51:07.907184Z",
+      "log": "doctor.log",
+      "status": "passed",
+      "finished_at_utc": "2026-10-22T19:51:08.489002Z",
+      "exit_code": 0,
+      "log_sha256": "63dca98754b88ca714989354d533167a14f9db6e2879a85d43957b509b975ea1"
+    },
+    {
+      "name": "format",
+      "argv": [
+        "pnpm",
+        "format:check"
+      ],
+      "started_at_utc": "2026-10-22T19:51:08.489659Z",
+      "log": "format.log",
+      "status": "passed",
+      "finished_at_utc": "2026-10-22T19:51:38.281601Z",
+      "exit_code": 0,
+      "log_sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+    },
+    {
+      "name": "lint",
+      "argv": [
+        "pnpm",
+        "lint"
+      ],
+      "started_at_utc": "2026-10-22T19:51:38.282075Z",
+      "log": "lint.log",
+      "status": "passed",
+      "finished_at_utc": "2026-10-22T19:52:00.905979Z",
+      "exit_code": 0,
+      "log_sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+    },
+    {
+      "name": "types",
+      "argv": [
+        "pnpm",
+        "typecheck"
+      ],
+      "started_at_utc": "2026-10-22T19:52:00.906696Z",
+      "log": "types.log",
+      "status": "passed",
+      "finished_at_utc": "2026-10-22T19:52:25.037216Z",
+      "exit_code": 0,
+      "log_sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+    },
+    {
+      "name": "scripts",
+      "argv": [
+        "pnpm",
+        "test:scripts"
+      ],
+      "started_at_utc": "2026-10-22T19:52:25.038171Z",
+      "log": "scripts.log",
+      "status": "passed",
+      "finished_at_utc": "2026-10-22T19:52:58.251479Z",
+      "exit_code": 0,
+      "log_sha256": "d269bee1b3fec45bc74729c070a7019ae116ece5aed0360f9f4489c3914d2d5b"
+    },
+    {
+      "name": "documentation",
+      "argv": [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/api",
+        "exec",
+        "vitest",
+        "run",
+        "src/demonstration"
+      ],
+      "started_at_utc": "2026-10-22T19:52:58.252420Z",
+      "log": "documentation.log",
+      "status": "passed",
+      "finished_at_utc": "2026-10-22T19:53:05.495893Z",
+      "exit_code": 0,
+      "log_sha256": "9eac7df1bed2d952eaf97ac29123687068b2b81a1f5d48c4f776fbaaac93ffa5"
+    }
+  ],
+  "finished_at_utc": "2026-10-22T19:53:05.497102Z",
+  "final_commit": "98a6135ee8f38aead7438e3606b1264fb441cd15",
+  "final_tree": "6796b9cb0fd04c6e96f37ae170cec20e579ef67e",
+  "final_git_status": "",
+  "status": "passed"
+}

@@ -1,0 +1,22 @@
+Scope: all 3 workspace projects
+? Verifying lockfile against supply-chain policies (658 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +562
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Packages are hard linked from the content-addressable store to the virtual store.
+  Content-addressable store is at: /workspace/work/merge-runtime-pnpm795/store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 562, reused 562, downloaded 0, added 562, done
+✓ Lockfile passes supply-chain policies (658 entries in 10.6s)
+
+devDependencies:
++ @eslint/js 10.0.1
++ eslint 10.8.0
++ globals 17.9.0
++ mdast-util-from-markdown 2.0.3
++ prettier 3.9.6
++ typescript 5.9.3
++ typescript-eslint 8.66.0
+
+Done in 11.4s using pnpm v11.20.0
