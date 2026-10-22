@@ -45,6 +45,17 @@ unsupported OS and change the Docker toolchain. A runner change requires proving
 browser installation, production packaging and every existing verification family
 on the proposed environment, with image-integrity checks preserved.
 
+The shared CI setup reuses that runner's Chromium system libraries without
+running APT. It caches Playwright browser downloads by Ubuntu release, runner OS,
+architecture and the resolved Playwright version. The ordinary Chromium install
+command fills a cold or incomplete cache and is a no-op when the matching browser
+is present. Playwright's host checks remain enabled; the doctor and both browser
+families still run.
+CI API and acceptance jobs mount only their disposable PostgreSQL data directory
+on a 2 GiB tmpfs. PostgreSQL durability settings remain at their defaults; the
+mount disappears with the container. Production packaging and local managed
+PostgreSQL retain their existing storage behavior.
+
 ## Verification commands
 
 CI PostgreSQL services and Railway packaging use Docker Official Images from

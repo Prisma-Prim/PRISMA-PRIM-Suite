@@ -71,6 +71,7 @@ esac
 
 docker run --pull=never --detach --name ci-postgres \
   --publish 127.0.0.1:5432:5432 \
+  --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=2g \
   --env POSTGRES_DB=prisma_prim_dev \
   --env POSTGRES_USER=prisma_prim \
   --env POSTGRES_PASSWORD=prisma_prim \

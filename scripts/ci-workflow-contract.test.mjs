@@ -6,6 +6,42 @@ import test from 'node:test';
 
 const workflowUrl = new URL('../.github/workflows/ci.yml', import.meta.url);
 
+test('browser setup reuses a versioned Chromium cache without installing system packages', async () => {
+  const setup = await readFile(
+    new URL(
+      '../.github/actions/setup-verification/action.yml',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const browserSteps = setup.slice(
+    setup.indexOf('    - name: Resolve Playwright version'),
+  );
+  assert.match(browserSteps, /id: playwright\n/);
+  assert.match(browserSteps, /playwright --version/);
+  assert.match(browserSteps, /GITHUB_OUTPUT/);
+  assert.match(browserSteps, /uses: actions\/cache@v4/);
+  assert.match(browserSteps, /path: ~\/.cache\/ms-playwright\n/);
+  assert.match(
+    browserSteps,
+    /key: chromium-ubuntu-24\.04-\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-\$\{\{ steps\.playwright\.outputs\.version \}\}/,
+  );
+  assert.doesNotMatch(browserSteps, /restore-keys:/);
+  // The idempotent install handles both a cold cache and an incomplete hit.
+  // A complete hit is a no-op; Playwright's host checks stay enabled.
+  assert.match(
+    browserSteps,
+    /run: pnpm --filter @prisma-prim\/web exec playwright install chromium\n/,
+  );
+  assert.doesNotMatch(
+    setup,
+    /--with-deps|install-deps|apt-get|SKIP_VALIDATE_HOST_REQUIREMENTS/,
+  );
+  for (const step of browserSteps.split(/\n {4}- name:/)) {
+    assert.match(step, /if: \$\{\{ inputs\.chromium == 'true' \}\}/);
+  }
+});
+
 async function readWorkflow() {
   return (await readFile(workflowUrl, 'utf8')).replaceAll('\r\n', '\n');
 }
