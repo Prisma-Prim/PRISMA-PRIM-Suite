@@ -3590,6 +3590,37 @@ This records agent product review under delegated authority, not personal review
 by Dan, runtime delivery or broader business approval.
 The separate ordinary-complaint contract still requires its own normalization.
 
+### 34.8 Bounded operational-risk intake and access separation — 2026-10-21
+
+Dan answered “Oui, choisir les personnes autorisées” to the separate question
+whether each Company chooses who consults Risks and who records or adds follow-up,
+without expanding current users' rights automatically. Actual people are chosen
+later. This new answer settles Risk consultation/recording only; the earlier
+Ideas/ordinary-complaint choice remains historically separate and supplies no
+Risk, HR or purchasing authority.
+
+[Iurie session 68 items 345–348](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5308284907)
+supports a process-based operational-risk register, cause/effect and measures,
+then broader assessment, residual evaluation and escalation needs. Sarcina
+M14-R101–102 is separately mapped by the non-canonical reconciliation. No source
+by itself establishes a numeric scale or exact confidential-access model.
+
+The bounded [operational-risk intake PRD](company-operational-risk-intake-prd.md)
+prepares one unassessed manual record/reopen/follow-up and motivated intake-
+correction journey. Recording actor and responsible person are distinct;
+responsibility remains not specified and nobody is assigned automatically.
+Authorization section 8 owns exact independent captured Reader/Recorder grants;
+Activity section 7 owns internal restricted recording with no generic projection.
+Field/page bounds, revision/receipt conventions and this first partial boundary
+are reversible agent synthesis approved by the root coordinator after ordered
+Standards then Spec review on 2026-10-21, not new Iurie answers or approval of
+scoring, journal-entry correction, responsibility assignment, periodic reevaluation,
+alerts or the full Risk module. Root authorized same-issue canonical
+normalization/local work. This
+entry records the access answer, bounded v1.0 contract and completed agent review;
+it records no personal PRD review by Dan, runtime delivery, real grant, numbered
+DEC or MVP credit.
+
 ### 34.9 Complete existing My attention drill-down — 2026-10-21
 
 Under Dan's standing instruction to complete safely derivable Sarcina journeys

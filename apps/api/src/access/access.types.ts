@@ -16,6 +16,7 @@ import type {
   CompanyOpportunityManagerPermissionSetVersion,
   CompanyProfitabilityContributorPermission,
   CompanyProfitabilityDirectorPermission,
+  CompanyOperationalRiskPermission,
   CompanyProjectPermission,
   CompanyProjectApproverPermission,
   CompanySalesStageConfigurationPermission,
@@ -102,6 +103,11 @@ export interface ActiveCompanyContext {
   profitabilityDirectorPermissions?: CompanyProfitabilityDirectorPermission[];
   profitabilityDirectorPermissionAssignmentId?: string;
   profitabilityDirectorPermissionSetVersion?: 'v1';
+  operationalRiskPermissions?: CompanyOperationalRiskPermission[];
+  operationalRiskReaderAssignmentId?: string;
+  operationalRiskReaderPermissionSetVersion?: 'v1';
+  operationalRiskRecorderAssignmentId?: string;
+  operationalRiskRecorderPermissionSetVersion?: 'v1';
   projectStagePermissions?: CompanyProjectStagePermission[];
   projectStagePermissionAssignmentId?: string;
   projectStagePermissionSetVersion?: 'v1';
