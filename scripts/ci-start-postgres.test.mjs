@@ -10,6 +10,33 @@ const script = (
   await readFile(new URL('./ci-start-postgres.sh', import.meta.url), 'utf8')
 ).replaceAll('\r\n', '\n');
 
+test('the archive key changes with the image or platform, not server startup options', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'ci-postgres-key-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const path = join(directory, 'postgres.sh');
+  async function key(source, architecture = 'X64') {
+    await writeFile(path, source);
+    const result = spawnSync('bash', [path, 'cache-key'], {
+      encoding: 'utf8',
+      env: { ...process.env, RUNNER_OS: 'Linux', RUNNER_ARCH: architecture },
+      timeout: 10_000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  }
+  const original = await key(script);
+  assert.equal(
+    original,
+    'postgres-image-Linux-X64-b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24',
+  );
+  assert.equal(await key(script.replace('size=2g', 'size=1g')), original);
+  assert.notEqual(
+    await key(script.replace('@sha256:b0f956', '@sha256:a0f956')),
+    original,
+  );
+  assert.notEqual(await key(script, 'ARM64'), original);
+});
+
 test('start gives only disposable PostgreSQL data a bounded memory filesystem', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'ci-postgres-'));
   t.after(() => rm(directory, { recursive: true, force: true }));

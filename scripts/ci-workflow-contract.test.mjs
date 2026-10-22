@@ -476,9 +476,12 @@ test('database jobs start the cached pinned PostgreSQL and keep matching environ
   );
   assert.match(setup, /uses: actions\/cache\/restore@v4/);
   assert.doesNotMatch(setup, /actions\/cache\/save/);
-  const cacheKey =
-    /key: postgres-image-\$\{\{ hashFiles\('scripts\/ci-start-postgres\.sh'\) \}\}/g;
+  const cacheKey = /^ +key: \$\{\{ steps\.postgres_image\.outputs\.key \}\}/gm;
   assert.equal([...setup.matchAll(cacheKey)].length, 1);
+  assert.match(
+    setup,
+    /key=\$\(bash scripts\/ci-start-postgres\.sh cache-key\)/,
+  );
   assert.match(setup, /run: bash scripts\/ci-start-postgres\.sh start\n/);
 
   // The postgres_image job looks the image up without downloading it and,
@@ -492,12 +495,42 @@ test('database jobs start the cached pinned PostgreSQL and keep matching environ
   assert.match(acquire, /run: bash scripts\/ci-start-postgres\.sh acquire\n/);
   const save = stepBody(image, 'Save PostgreSQL image');
   assert.match(save, /uses: actions\/cache\/save@v4/);
-  for (const step of [acquire, save])
-    assert.match(
-      step,
-      /if: \$\{\{ steps\.lookup\.outputs\.cache-hit != 'true' \}\}/,
-    );
+  assert.match(
+    acquire,
+    /if: \$\{\{ steps\.lookup\.outputs\.cache-hit != 'true' && steps\.legacy\.outputs\.cache-hit != 'true' \}\}/,
+  );
+  assert.match(
+    save,
+    /if: \$\{\{ steps\.lookup\.outputs\.cache-hit != 'true' \}\}/,
+  );
   assert.equal([...image.matchAll(cacheKey)].length, 2);
+  assert.match(
+    image,
+    /key=\$\(bash scripts\/ci-start-postgres\.sh cache-key\)/,
+  );
+  assert.match(
+    stepBody(jobs.packaging, 'Restore PostgreSQL image'),
+    /key: \$\{\{ needs\.postgres_image\.outputs\.cache_key \}\}/,
+  );
+});
+
+test('legacy PostgreSQL cache migration cannot restore a different image or platform', async () => {
+  const { postgres_image: image } = jobsIn(await readWorkflow());
+  const legacy = stepBody(
+    image,
+    'Restore compatible legacy PostgreSQL archive',
+  );
+  assert.match(legacy, /id: legacy\n/);
+  assert.match(legacy, /uses: actions\/cache\/restore@v4/);
+  assert.match(
+    legacy,
+    /if: \$\{\{ steps\.lookup\.outputs\.cache-hit != 'true' && steps\.postgres_image\.outputs\.key == 'postgres-image-Linux-X64-b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24' \}\}/,
+  );
+  assert.match(
+    legacy,
+    /key: postgres-image-0ca492758d0f2da5e6d4b627ed0caef2927a438da76d7fdcd5968d9254fefb47\n/,
+  );
+  assert.doesNotMatch(legacy, /restore-keys:|lookup-only:/);
 });
 
 test('the scope job supplies exact PR or main-push revisions and safety metadata with full history', async () => {

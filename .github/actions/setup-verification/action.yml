@@ -27,12 +27,18 @@ runs:
 
     # Database shards share the one image archive the postgres_image job
     # cached, instead of each pulling from the throttled public registry.
+    - name: Resolve PostgreSQL archive key
+      if: ${{ inputs.postgres == 'true' }}
+      id: postgres_image
+      shell: bash
+      run: echo "key=$(bash scripts/ci-start-postgres.sh cache-key)" >> "$GITHUB_OUTPUT"
+
     - name: Restore PostgreSQL image
       if: ${{ inputs.postgres == 'true' }}
       uses: actions/cache/restore@v4
       with:
         path: ${{ runner.temp }}/postgres-image/postgres.tar
-        key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
+        key: ${{ steps.postgres_image.outputs.key }}
 
     - name: Start PostgreSQL
       if: ${{ inputs.postgres == 'true' }}

@@ -56,6 +56,12 @@ on a 2 GiB tmpfs. PostgreSQL durability settings remain at their defaults; the
 mount disappears with the container. Production packaging and local managed
 PostgreSQL retain their existing storage behavior.
 
+The PostgreSQL archive cache is keyed by the immutable image digest and runner
+OS/architecture, so changing startup flags does not trigger another image pull.
+For the original Linux/X64 image only, CI can migrate the exact existing archive
+from its previous script-based key. A different image or platform cannot use that
+migration; an ordinary cold miss still acquires the pinned official image.
+
 ## Verification commands
 
 CI PostgreSQL services and Railway packaging use Docker Official Images from
