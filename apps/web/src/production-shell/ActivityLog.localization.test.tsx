@@ -111,13 +111,13 @@ const locales: InterfaceLocale[] = ['ro', 'ru', 'fr', 'en'];
 function Choices() {
   const { changeLocale } = useInterfaceLocale();
   return (
-    <>
+    <div role="group" aria-label="Test language choices">
       {locales.map((locale) => (
         <button key={locale} onClick={() => changeLocale(locale)}>
           Use {locale}
         </button>
       ))}
-    </>
+    </div>
   );
 }
 function present({
@@ -143,9 +143,9 @@ function present({
     </InterfaceLocaleProvider>,
   );
 }
-function rowFor(event: ActivityLogEvent, region: HTMLElement): HTMLElement {
+function rowFor(event: ActivityLogEvent, rows: HTMLElement[]): HTMLElement {
   const index = allActivityEvents.indexOf(event);
-  const row = within(region).getAllByRole('listitem')[index];
+  const row = rows[index];
   if (!row)
     throw new Error('The declared event must retain its list position.');
   return row;
@@ -156,12 +156,12 @@ afterEach(() => {
 });
 
 it.each(locales)(
-  'renders all 100 admitted actions and 18 target types in %s without exposing canonical codes',
+  'renders all 106 admitted actions and 18 target types in %s without exposing canonical codes',
   (locale) => {
     present({ state: { status: 'ready', events: allActivityEvents }, locale });
     const region = screen.getByRole('region', { name: words[locale].title });
     const rows = within(region).getAllByRole('listitem');
-    expect(rows).toHaveLength(100);
+    expect(rows).toHaveLength(106);
     expect(
       new Set(allActivityEvents.map((event) => event.target.type)).size,
     ).toBe(18);
@@ -189,58 +189,55 @@ it.each(locales)(
       }
     }
     expect(
-      rowFor(activityEventsByAction['client_request.created'], region),
+      rowFor(activityEventsByAction['client_request.created'], rows),
     ).toHaveTextContent(words[locale].created);
     expect(
-      rowFor(activityEventsByAction['client_request.created'], region),
+      rowFor(activityEventsByAction['client_request.created'], rows),
     ).toHaveTextContent(`${words[locale].target} ${activityLocaleIds.request}`);
     expect(
-      rowFor(activityEventsByAction['task.created'], region),
+      rowFor(activityEventsByAction['task.created'], rows),
     ).toHaveTextContent(words[locale].task);
     expect(
-      rowFor(activityEventsByAction['project.created'], region),
+      rowFor(activityEventsByAction['project.created'], rows),
     ).toHaveTextContent(words[locale].project);
     expect(
-      rowFor(activityEventsByAction['task.created'], region),
+      rowFor(activityEventsByAction['task.created'], rows),
     ).toHaveTextContent(activityLiteral);
     expect(
-      rowFor(activityEventsByAction['project.lifecycle.changed'], region),
+      rowFor(activityEventsByAction['project.lifecycle.changed'], rows),
     ).toHaveTextContent(words[locale].lifecycle);
     expect(
-      rowFor(activityEventsByAction['project.template.version.created'], region)
+      rowFor(activityEventsByAction['project.template.version.created'], rows)
         .textContent,
     ).toContain(words[locale].template);
     expect(
-      rowFor(
-        activityEventsByAction['project.template.version.created'],
-        region,
-      ),
+      rowFor(activityEventsByAction['project.template.version.created'], rows),
     ).not.toHaveTextContent('1233');
     expect(
       within(
         rowFor(
           activityEventsByAction['project.template.version.created'],
-          region,
+          rows,
         ),
       ).queryByRole('button'),
     ).toBeNull();
     expect(
       rowFor(
         activityEventsByAction['offer_version.client_response_recorded'],
-        region,
+        rows,
       ),
     ).toHaveTextContent(words[locale].response);
     expect(
-      rowFor(activityEventsByAction['opportunity.outcome.changed'], region),
+      rowFor(activityEventsByAction['opportunity.outcome.changed'], rows),
     ).toHaveTextContent(words[locale].loss);
     expect(
-      rowFor(activityEventsByAction['opportunity.responsible.changed'], region),
+      rowFor(activityEventsByAction['opportunity.responsible.changed'], rows),
     ).toHaveTextContent('(Nom {before} — Имя → Nom {after} — Имя)');
     expect(
-      rowFor(activityEventsByAction['opportunity.stage.changed'], region),
+      rowFor(activityEventsByAction['opportunity.stage.changed'], rows),
     ).toHaveTextContent('Cadrage {literal} — Этап');
     expect(
-      rowFor(activityEventsByAction['sales_stage.configured'], region),
+      rowFor(activityEventsByAction['sales_stage.configured'], rows),
     ).toHaveTextContent('Étape {literal} — Этап');
   },
 );
@@ -251,6 +248,9 @@ it('changes the complete loaded ledger in place without a callback, lost focus o
     state: { status: 'ready', events: allActivityEvents },
     onOpenRequest: open,
   });
+  const languageChoices = screen.getByRole('group', {
+    name: 'Test language choices',
+  });
   const ledger = screen.getByRole('region', { name: 'Activity Log' });
   const rows = within(ledger).getAllByRole('listitem');
   const descendants = rows.map((row) => ({
@@ -260,11 +260,13 @@ it('changes the complete loaded ledger in place without a callback, lost focus o
     button: row.querySelector('button'),
   }));
   const focused = within(
-    rowFor(activityEventsByAction['client_request.created'], ledger),
+    rowFor(activityEventsByAction['client_request.created'], rows),
   ).getByRole('button', { name: 'Open Request' });
   focused.focus();
   for (const locale of locales) {
-    fireEvent.click(screen.getByRole('button', { name: `Use ${locale}` }));
+    fireEvent.click(
+      within(languageChoices).getByRole('button', { name: `Use ${locale}` }),
+    );
     expect(screen.getByRole('region', { name: words[locale].title })).toBe(
       ledger,
     );
