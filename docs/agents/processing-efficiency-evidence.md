@@ -233,7 +233,10 @@ For an existing independently owned local instance, run the same probe commands
 directly with its privately configured `TEST_DATABASE_URL` after the matching doctor.
 Never print or commit that URL. Inspect child-database cleanup and remove only the
 resources created for the run. A harness that cannot support the lifecycle must
-record the blocker rather than report a skip as a pass.
+record the blocker rather than report a skip as a pass. Measurement rows are
+provisional until the probe exits successfully after fixture teardown. The API
+parent awaits the fixture process and fails on a nonzero exit or termination signal;
+successful HTTP samples alone do not qualify a replay with failed cleanup.
 
 The API recipe uses a separate HTTP client process, existing Nest public test
 harness and current migrations. It provisions the owner through existing commands,
@@ -797,6 +800,10 @@ async function run() {
   const child = fork(__filename, ['serve'], {
     stdio: ['ignore', 'ignore', 'inherit', 'ipc'],
   });
+  const stopped = new Promise((resolve) => {
+    child.once('exit', (code, signal) => resolve({ code, signal }));
+    child.once('error', () => resolve({ code: null, signal: null }));
+  });
   let ready = false;
   const timeout = setTimeout(() => {
     child.kill('SIGTERM');
@@ -874,9 +881,15 @@ async function run() {
       });
     }
   } finally {
-    clearTimeout(timeout);
-    if (child.connected && ready) child.send('stop');
-    else child.kill('SIGTERM');
+    try {
+      if (child.connected && ready) child.send('stop');
+      else child.kill('SIGTERM');
+      const { code, signal } = await stopped;
+      if (code !== 0 || signal !== null)
+        throw Error('Fixture server teardown failed.');
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }
 (process.argv[2] === 'serve' ? serve() : run()).catch(() => {
