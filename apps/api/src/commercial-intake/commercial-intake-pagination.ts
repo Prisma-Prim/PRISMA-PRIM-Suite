@@ -5,6 +5,17 @@ export interface CommercialIntakeCursor {
   readonly id: string;
 }
 
+export function readCommercialIntakeView(query: unknown): 'all' | 'mine_open' {
+  if (typeof query !== 'object' || query === null || Array.isArray(query))
+    invalidPage();
+  // Express's simple parser preserves bracketed keys literally. Reject only
+  // the new view namespace; existing unknown query keys remain untouched.
+  if (Object.keys(query).some((key) => key.startsWith('view['))) invalidPage();
+  if (!('view' in query) || query.view === undefined) return 'all';
+  if (query.view === 'mine_open') return query.view;
+  invalidPage();
+}
+
 export function readCommercialIntakeLimit(value: unknown): number {
   if (value === undefined) return 25;
   if (typeof value !== 'string' || !/^\d+$/.test(value)) invalidPage();

@@ -68,6 +68,9 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_project_template_user',
   'company_project_stage_advancer',
   'company_project_template_configuration',
+  'company_ideas_reader',
+  'company_ideas_recorder',
+  'company_ideas_reviewer',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -768,6 +771,12 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_opportunity_manager_assignment.revoked',
   'company_project_approver_assignment.granted',
   'company_project_approver_assignment.revoked',
+  'company_ideas_reader_assignment.granted',
+  'company_ideas_reader_assignment.revoked',
+  'company_ideas_recorder_assignment.granted',
+  'company_ideas_recorder_assignment.revoked',
+  'company_ideas_reviewer_assignment.granted',
+  'company_ideas_reviewer_assignment.revoked',
   'company_profitability_contributor_assignment.granted',
   'company_profitability_contributor_assignment.revoked',
   'company_profitability_director_assignment.granted',
@@ -846,6 +855,9 @@ export const activityLogEvents = pgTable(
               | 'Company Commercial Activity Reader'
               | 'Company Opportunity Manager'
               | 'Company Project Approver'
+              | 'Company Ideas Reader'
+              | 'Company Ideas Recorder'
+              | 'Company Ideas Reviewer'
               | 'Company Profitability Contributor'
               | 'Company Profitability Director'
               | 'Company Sales Stage Configuration'

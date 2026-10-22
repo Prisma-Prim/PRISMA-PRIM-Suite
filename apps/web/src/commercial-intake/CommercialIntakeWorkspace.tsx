@@ -128,6 +128,8 @@ type SelectedRequest = {
 /** One dossier identity restricting the loaded rows, as the shell requested. */
 type ClientRestriction = { clientDossierId: string; displayName: string };
 
+type RequestListView = 'all' | 'mine_open';
+
 /**
  * The exact version a requested Request detail opens with selected, superseded
  * or not: an Offer Version, or a Contract Version of the named agreement.
@@ -341,6 +343,8 @@ export function CommercialIntakeWorkspace({
   const stageCopy = useSalesStageCopy();
   const stageDeniedMessage = stageCopy('stageDenied');
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' });
+  const [listView, setListView] = useState<RequestListView>('all');
+  const listViewScope = useRef<RequestListView>('all');
   const [selected, setSelected] = useState<SelectedRequest>();
   // Local view state over the already loaded rows, beside the text filter; it
   // never reaches the API.
@@ -732,15 +736,17 @@ export function CommercialIntakeWorkspace({
       // An authority or identity change retires the old page, including late
       // older-page responses; only its own revalidated read publishes.
       const startedUnderRevision = clientProjection.current.revision;
+      const startedUnderView = listViewScope.current;
       const superseded = () =>
         controller.signal.aborted ||
-        clientProjection.current.revision !== startedUnderRevision;
+        clientProjection.current.revision !== startedUnderRevision ||
+        listViewScope.current !== startedUnderView;
       setLoad((current) => startedPage({ current, companyContextId, cursor }));
       try {
         const result = await request({
           path: `/commercial-intake/requests?limit=${listPageSize}${
             cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
-          }`,
+          }${startedUnderView === 'mine_open' ? '&view=mine_open' : ''}`,
           companyContextId,
           signal: controller.signal,
         });
@@ -780,6 +786,16 @@ export function CommercialIntakeWorkspace({
     [handleAccess, request],
   );
 
+  function changeListView(value: string): void {
+    if (value !== 'all' && value !== 'mine_open') return;
+    if (value === listViewScope.current) return;
+    // A view change retires only list reads/pages. Detail, drafts, commands
+    // and their exact retry identity keep their existing owners.
+    listViewScope.current = value;
+    setListView(value);
+    if (companyId) void loadRequests(companyId);
+  }
+
   useEffect(() => {
     commandRequest.current?.abort();
     clientSearchRequest.current?.abort();
@@ -805,6 +821,8 @@ export function CommercialIntakeWorkspace({
     setRequestToOpen(undefined);
     setFilter('');
     setRestriction(undefined);
+    listViewScope.current = 'all';
+    setListView('all');
     if (!companyId) {
       setLoad({ kind: 'denied' });
       return;
@@ -2042,6 +2060,20 @@ export function CommercialIntakeWorkspace({
           {copy.companyPrefix} {companyName}
         </p>
       </header>
+      <div className="commercial-intake-view">
+        <label htmlFor="commercial-intake-view">{copy.viewLabel}</label>
+        <Select
+          id="commercial-intake-view"
+          value={listView}
+          options={[
+            { value: 'all', label: copy.allRequestsView },
+            { value: 'mine_open', label: copy.myOpenCasesView },
+          ]}
+          describedBy="commercial-intake-view-help"
+          onValueChange={changeListView}
+        />
+        <small id="commercial-intake-view-help">{copy.myOpenCasesHelp}</small>
+      </div>
       <aside
         className="commercial-intake-source"
         aria-label={copy.manualSourceInformation}
@@ -2439,6 +2471,7 @@ export function CommercialIntakeWorkspace({
           </form>
           <RequestList
             load={visibleLoad}
+            view={listView}
             pending={pending}
             filter={filter}
             onFilter={setFilter}
@@ -2561,6 +2594,7 @@ function readyPage({
 
 function RequestList({
   load,
+  view,
   pending,
   filter,
   onFilter,
@@ -2573,6 +2607,7 @@ function RequestList({
   onOpenClientDossier,
 }: {
   load: LoadState;
+  view: RequestListView;
   pending: boolean;
   filter: string;
   onFilter: (filter: string) => void;
@@ -2599,7 +2634,14 @@ function RequestList({
         </button>
       </>
     );
-  if (load.items.length === 0) return <p>{copy.empty(companyName)}</p>;
+  if (load.items.length === 0)
+    return (
+      <p>
+        {view === 'mine_open'
+          ? copy.myOpenCasesEmpty(companyName)
+          : copy.empty(companyName)}
+      </p>
+    );
   const nextCursor = load.nextCursor;
   // Identity equality only: a row without a derived dossier never matches,
   // and a same-named Client is a different dossier.

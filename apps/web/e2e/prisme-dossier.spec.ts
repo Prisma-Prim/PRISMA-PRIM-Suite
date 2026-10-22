@@ -224,10 +224,22 @@ test('records Contact positions and decision roles and keeps them when another C
   await second.getByLabel('Contact position').fill(longPosition);
   await second.getByRole('checkbox', { name: 'Technical' }).check();
   await second.getByRole('checkbox', { name: 'Influencer' }).check();
+  await first
+    .getByRole('checkbox', { name: 'Final decision-maker', exact: true })
+    .focus();
+  await page.keyboard.press('Tab');
   await first.scrollIntoViewIfNeeded();
   await page.screenshot({
     path: testInfo.outputPath('dossier-contact-roles-editor-viewport.png'),
   });
+  await page.emulateMedia({ forcedColors: 'active' });
+  try {
+    await page.screenshot({
+      path: testInfo.outputPath('dossier-contact-roles-forced-colors.png'),
+    });
+  } finally {
+    await page.emulateMedia({ forcedColors: 'none' });
+  }
   await form.getByRole('button', { name: 'Save correction' }).click();
   await expect(page.getByText('Version 2', { exact: true })).toBeVisible();
   expect(state.dossier.contacts).toEqual([anaWithRoles, ionWithRoles]);
