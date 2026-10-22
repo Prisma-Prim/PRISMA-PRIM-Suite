@@ -487,6 +487,22 @@ for (const locale of locales) {
     });
     await technical.focus();
     await technical.press('Space');
+    await technical.scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: testInfo.outputPath(
+        `client-contact-roles-${locale.code}-focus.png`,
+      ),
+    });
+    await page.emulateMedia({ forcedColors: 'active' });
+    try {
+      await page.screenshot({
+        path: testInfo.outputPath(
+          `client-contact-roles-${locale.code}-forced-colors.png`,
+        ),
+      });
+    } finally {
+      await page.emulateMedia({ forcedColors: 'none' });
+    }
     await workspace
       .getByRole('checkbox', { name: locale.roleLabels[0], exact: true })
       .check();
