@@ -1,0 +1,23 @@
+{
+  "issue": 821,
+  "base": "278c57aca2686c728e46cbbef7868c9d99763fce",
+  "standards": {
+    "source": "14a870cb417202798b74341e2f966d2e04bad16b",
+    "tree": "06d3ba898f8e4b15c2a8b1e1926e6ad42ab756bf",
+    "blocking": 1,
+    "finding": "S1 same named Client Legal Entity required for source succession",
+    "disposition": "Fixed in 272119f251e939b6e7d763b1291149f5d9270ed8. Preserve fixed PRIMARY/additional identifier, refuse different party before writes, explicitly bound recovery and REST negative proof."
+  },
+  "spec": {
+    "source": "272119f251e939b6e7d763b1291149f5d9270ed8",
+    "tree": "d2ace7b212af281dded92711e8ac4d7a547af4bb",
+    "blocking": 0,
+    "nonblocking": 0
+  },
+  "root": {
+    "finalSource": "3c8d0d02580c8e652ca5a73b311c24e80c0cf70a",
+    "finalTree": "e7f1b42e889ed2ec0f753e1e051e88faa049b572",
+    "disposition": "Approved delegated product contract. Final delta from Spec-reviewed source changes disposition labels only; no behavior changed. Scoped Prettier and git diff --check PASS on final source. Runtime remains undelivered.",
+    "automatedReview": "Not required or requested for documentation under issue-execution policy."
+  }
+}

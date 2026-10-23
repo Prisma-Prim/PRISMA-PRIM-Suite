@@ -1,0 +1,9 @@
+# Standards review — #821
+
+Reviewed base `278c57aca2686c728e46cbbef7868c9d99763fce` → HEAD `14a870cb417202798b74341e2f966d2e04bad16b`, tree `06d3ba898f8e4b15c2a8b1e1926e6ad42ab756bf`, all five changed Markdown files, and the updated #821 contract.
+
+**1 blocking documented-standard finding.**
+
+- **S1 — Resolve successor eligibility when the named legal entity changes.** `docs/product/release-3-commercial-22-controlled-evidence-2026-10.md:46,50,54` permits a successor of the “same Offer/Opportunity/original Client” and copies “recipient identity ... from the exact source”. However, Offer Versions may select different legal entities within that Client (§18.2–18.3), while the retained Contract owner §19.2 fixes the named entity “for the Contract ... fixed across versions, PC7”; v3 also retains `PARTY_MATCHES_SOURCE`. A successor Offer naming entity B after initial entity A therefore satisfies the stated new-source conditions, but the contract does not decide whether to reject it, change the Contract's fixed party, or save a permanently failing Version. Specify the same-named-entity eligibility/refusal rule, or explicitly decide and normalize a different rule in the existing owner. This breaches `specification-and-ticketing-standard.md` §4 step 2 (“unresolved business choices are explicit”), step 3's context-free completeness, and §5 items 8–10 (relationships, lifecycle and invariants). It affects the required successor-recovery contract and retained party boundary, so it blocks product disposition.
+
+No other material documented-standard breach identified. Canonical cross-links, source-versus-synthesis labels, opt-in captured authority, immutable history, bounded readiness and the separate runtime-child gate are coherent. Baseline smell heuristics: none reported. No product edits, runtime checks, publication or Git mutations performed.

@@ -1,0 +1,75 @@
+{
+  "run": "final-gate-1",
+  "pr": 822,
+  "provenance": {
+    "sourceRef": "3c8d0d02580c8e652ca5a73b311c24e80c0cf70a",
+    "sourceHead": "3c8d0d02580c8e652ca5a73b311c24e80c0cf70a",
+    "baseRef": "origin/main",
+    "baseHead": "278c57aca2686c728e46cbbef7868c9d99763fce",
+    "checkoutHead": "3c8d0d02580c8e652ca5a73b311c24e80c0cf70a",
+    "integrationTree": "e7f1b42e889ed2ec0f753e1e051e88faa049b572"
+  },
+  "selection": "Unmodified compact report/manifest, all six required-family text logs, ordered reviews and root disposition. Complete originals retained locally. No runtime/browser/source documents.",
+  "files": [
+    {
+      "path": "acceptance-map.md",
+      "bytes": 1441,
+      "sha256": "cba44c61865be1b765dc619f52127d26e1c0dea9ad081c904c87b6227f9764ed"
+    },
+    {
+      "path": "logs/doctor.log",
+      "bytes": 636,
+      "sha256": "1282629be5768d15372b6be2436b948f64cf998d14b5953fcfa021bc8e527cb4"
+    },
+    {
+      "path": "logs/documentation.log",
+      "bytes": 2295,
+      "sha256": "1ed04dc4746b13532e36a83bad74e80ba9254b3da12bf2317f8d5fdfaf2fe7b7"
+    },
+    {
+      "path": "logs/format.log",
+      "bytes": 87,
+      "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+    },
+    {
+      "path": "logs/lint.log",
+      "bytes": 11,
+      "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+    },
+    {
+      "path": "logs/scripts.log",
+      "bytes": 44310,
+      "sha256": "781c90fb38199a2f379107cade2fa9ac99e0d52a8e9595edf645e2bfccdbd5e8"
+    },
+    {
+      "path": "logs/types.log",
+      "bytes": 187,
+      "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 266121,
+      "sha256": "7d0d751329469494646eb2371a40ffbdae17aeab0c06ef59fa64ffdc468d9a1d"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3695,
+      "sha256": "c9fc8cbb74aee95b6451d71f47472bea4a376172a45f592e1063cfb6d016544a"
+    },
+    {
+      "path": "review-disposition.json",
+      "bytes": 1168,
+      "sha256": "e80b70596fe90af9d3bb68617e59e0ba544bbcf4e1531dba750107f4a89f9457"
+    },
+    {
+      "path": "spec-review.md",
+      "bytes": 2006,
+      "sha256": "ae4a42b07c48abf8ef4d02cd3f74d52fd301b0e397e9994c48f2409fd161ff41"
+    },
+    {
+      "path": "standards-review.md",
+      "bytes": 1893,
+      "sha256": "ffb21b4baaf8c6f2ff471629dc0acea91af0346c4ff22f76ee434a69e0deacfa"
+    }
+  ]
+}
