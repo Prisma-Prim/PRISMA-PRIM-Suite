@@ -1,0 +1,25 @@
+# Issue #823 acceptance evidence
+
+Status: independent review complete, no unresolved findings; final complete CI40021532772 completed successfully. Root verified16successful jobs and10executed runtime test steps on source6257ccb/basead120bd/treeba077638.
+Source6257ccb2a9dbcc81774253fb09a2182d54f9a10b; basead120bda711482a532bd16fd997bc6010919bd66; proposed integration treeba077638bcb22f656068612265cb60dd22df3f85.
+
+| Criterion | Stable proof |
+| --- | --- |
+| 1. Eligible pending source and one immutable Contract | D1 PostgreSQL REST initial creation, invalid-state/foreign-source cases, existing-slot/ref counters and immutable source guards. |
+| 2. Independent captured opt-in and historical read boundary | REST ordinary versus opt-in/unknown-version/revoked grants; live Company Client read before replay; Contract read after Offer/early grants loss. Access registry plus69assignment unit cases and8browser cases verify the new capability alongside old captured versions. |
+| 3. Explicit same-party source succession | REST new Version/source, immutable original/history/receipts, different named-entity refusal and competing-key stale head. |
+| 4. Complete internal draft | REST exact-source identity at creation and successor revision after Client corrections, complete representation, literal/calendar/NUL/unknown-field checks and actual preparation footer. HTML iframe and full App captures. |
+| 5. v3 acceptance gate and execution compatibility | Pending source produces ERROR; explicit normal acceptance permits fresh v3, independent approval and simulated execution. Adjusted/unadjusted checks, old v1/v2, ordinary origins, Addenda and Project eligibility remain proved. |
+| 6. Receipts, fences and atomicity | Live authority before exact replay, eligibility afterwards; replay after rejection/expiry/supersession/Client archive or public union/Opportunity closure. Deterministic source and revocation barriers, identical/distinct keys, final event/response rollback and three injected source-scalar corruptions with no effects. |
+| 7. Existing UI and asynchronous state |178ContractPanel cases cover literal/locale/uncertain keys, authority/context/late replies, confirmed-save/failed-refresh, historical read without unused source selection, three refusal recoveries and two stale states requiring full Contract reload. Registered actual App deliberately submits a superseded source, reloads/reselects and saves with preserved terms before execution. |
+| 8. Additive migration and real App/PostgreSQL | Pristine0073/0074 migration, ten legacy-upgrade cases, explicit old nullable source column and preserved legacy fields/grants/receipts/events. Actual App run7:2/2PASS,52.1s,desktop1440/narrow390. Six synthetic captures retained and inspected. |
+
+Targeted PostgreSQL correction proof:53selected cases PASS,254filtered/skipped (including two files with no matching case),one worker/local15s test profile. Panel178/178PASS. Final assignment inventory correction:69unit and8intercepted App browser cases PASS; the latter does not claim PostgreSQL or Clerk evidence. The registered commercial journey uses actual App/PostgreSQL.
+
+Broader pnpmverify on571a3e5:format/lint/types,479scripts,2,690parallelAPI and102serialAPI PASS. One optional disposable-real-ClamAV test skipped because TEST_CLAMAV_HOST/PORT are unconfigured. Web2,931PASS and1outdated exact expected-label inventory failure. Original exit1 remains failed. Four expected-label lines were added; all21App cases, changed-file checks,webtypes and complete API/web build PASS. Only the test inventory and then shared test fixture changed after confirmation; production/configuration/migration bytes are identical. Development-result.json records the full classified failure and focused completion, without claiming a single-invocation green pnpmverify.
+
+Ordered independent Standards and Spec on61d189c found1+2blockers. One correction batch fixed source identity, source-refusal recovery and Template footer. Single migration-sensitive confirmation on571a3e5 found0remaining blockers. Root reviewed the entire later test-only delta; no new review round. The first CI40019347342 failed from the omitted bundle fixture, with all API/web/build/packaging/acceptance jobs successful; original artifacts remain retained. The identified cause was fixed and locally checked before fresh CI40021532772.
+
+No raw E01–E08 files, real case values, clauses, identities or documents enter Git. No tenant/person activated and no following #820 lot started.
+
+Final evidence: all five part-artifact metadata and provider digests, successful quality download/aggregate upload, and the aggregate artifact are verified in final-proof.json. ZIP transfer is unavailable locally (proxy403; connector exceeds32MiB executor limit), so no local byte/digest verification of those ZIPs is claimed. Published screenshots are explicitly the six synthetic LOCAL real-App/PostgreSQL acceptance-run7 captures, visually inspected at both widths; runtime and the acceptance owner remain byte-identical to current source. Current CI is independent provider evidence; local reports and validation are self-reported.

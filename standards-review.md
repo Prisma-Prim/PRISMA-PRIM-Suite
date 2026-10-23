@@ -1,0 +1,11 @@
+# Standards review — #823
+
+Reviewed base `ad120bda711482a532bd16fd997bc6010919bd66` → source `61d189ce74e21314cc5341f1480925aa5ed0b1fa`, tree `c6d0f79d5dc5fe44460c65a4e309372ccd42ef51`.
+
+**1 blocking contract-consistency finding.**
+
+- **S1 — Resolve the early Contract's recorded identity source.** Commercial §22.4, line54, requires “recipient identity copied from the exact source”, while retained §19.2 PC7, line62, specifies the Client owner's current values. `contract.service.ts:321` and `contract-version-command.ts:284` always persist the current identity returned by `Client.lockOfferRecipient`, including `OFFER_PREPARATION`. If the same entity's name, tax code or address changes after Offer publication, a new early Contract/Version therefore contains different scalar identity from its exact Offer source. The new scope/conditions and source pointer remain exact, so existing tests without identity drift do not expose this difference. This violates the repository's requirement for a coherent canonical observable contract (`AGENTS.md`, Product boundary; `repository-knowledge-system.md` §§2–3, one authoritative owner), and affects the source-copy acceptance contract. Follow the specific §22.4 source-copy rule for the early origin and prove initial creation and explicit revision after a Client identity correction through REST. Preserve ordinary-origin behavior and the Client-owned authority/availability fences.
+
+No additional material Standards defect found. Captured opt-in authority remains separate; live authority precedes early receipts and active-original/new-source checks follow them. Source eligibility, Client fences, authorization and Activity retain their public owners. All `contractSource` callers pass the exact Version. SQL function deltas preserve ordinary-origin guards; normalized snapshot comparison shows only the intended additive source/FK/check/enum and v3 changes. Historical rendering and v1/v2 bindings remain separate.
+
+Smell baseline: no blocking smell. Existing large test owners and generated snapshots are not new decomposition requirements. No dependency, process or real-data scope expansion observed. No runtime test, product edit, Git mutation or publication performed; broader verification remains root-owned.

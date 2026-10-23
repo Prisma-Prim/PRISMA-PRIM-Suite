@@ -1,0 +1,110 @@
+{
+  "pr": 824,
+  "run": 40021532772,
+  "source": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+  "base": "ad120bda711482a532bd16fd997bc6010919bd66",
+  "integrationTree": "ba077638bcb22f656068612265cb60dd22df3f85",
+  "selection": "Selected self-reported validation of independent complete GitHub Actions CI, ordered reviews and disposition, safe extracted local development summary and six reviewed synthetic local actual-App/PostgreSQL run7 captures (not CI captures). Complete original local logs, including partial and failed runs, remain local; no detailed SQL diagnostics or private business sources are republished. CI artifacts and run remain separately linked in final-proof.json. This is not a canonical local-gate attestation.",
+  "files": [
+    {
+      "path": "acceptance-map.md",
+      "bytes": 5155,
+      "sha256": "381f87ca9802a0388cb77d5787609813f6467aa7dccc6abde46803cb733ad0c3"
+    },
+    {
+      "path": "browser/early-executed-project-eligible-desktop.png",
+      "bytes": 820351,
+      "sha256": "8e6f38cf1b6089a3ab0ff759b144370bbdb9c14058988a48c87922486db43380"
+    },
+    {
+      "path": "browser/early-executed-project-eligible-narrow.png",
+      "bytes": 674142,
+      "sha256": "a7ba326b9e25adcd84491c7dad4752e4a7d691907db2bc766a141b0fbd932878"
+    },
+    {
+      "path": "browser/early-pending-complete-draft-desktop.png",
+      "bytes": 578785,
+      "sha256": "54e68ddf181091d3ce5bfb8ebe0fd971ffb490e8e0314a69dd98b4b3eabf9f19"
+    },
+    {
+      "path": "browser/early-pending-complete-draft-narrow.png",
+      "bytes": 481177,
+      "sha256": "36be87d99477fcc662873e2839c9cb620d4af2eddc5a04d23d061d6924bbe328"
+    },
+    {
+      "path": "browser/early-successor-draft-desktop.png",
+      "bytes": 573975,
+      "sha256": "7ac330c528059d9f777b842abb99e60cc99c54455722aec54c5beed3e85f0dc4"
+    },
+    {
+      "path": "browser/early-successor-draft-narrow.png",
+      "bytes": 481550,
+      "sha256": "8b04342e324e7eb23e4086bf7476a0b67819c142491fd4d81711fbd7037a3d17"
+    },
+    {
+      "path": "ci-artifacts.json",
+      "bytes": 5596,
+      "sha256": "427b5c0a1b04971d0f30fa66cfe9599d7067bf784b31c5c4fc706d8a339a25a0"
+    },
+    {
+      "path": "ci-jobs.json",
+      "bytes": 60319,
+      "sha256": "8582eb8f65d6f44e2b79b42bd11306701fc60fd85809ae001d581829f3389241"
+    },
+    {
+      "path": "ci-run.json",
+      "bytes": 15098,
+      "sha256": "8fd3e1246f360d7afbb9ee4af7ad165bf0ee18690b5463fce659ac0f878d0678"
+    },
+    {
+      "path": "confirmation-review.md",
+      "bytes": 2312,
+      "sha256": "02148393d01994b3a64aba16542d782c2dfcaee073b7b0b089e43821c5172523"
+    },
+    {
+      "path": "final-proof.json",
+      "bytes": 10597,
+      "sha256": "686b6e114ccf4cbd0592be14dae51abfe27ad38ebe1f8cf0cd74412c03998d80"
+    },
+    {
+      "path": "final-report.md",
+      "bytes": 5234,
+      "sha256": "62287633a8f6e2b8bb1c542f97151caeaf3953207c9c76096fc41d11593ba55e"
+    },
+    {
+      "path": "post-confirmation-test-only.patch",
+      "bytes": 1695,
+      "sha256": "0e00e74da97418a2482d3ff2a7903c518105a76a0cb5f77323e486c912769151"
+    },
+    {
+      "path": "previous-ci-failure.json",
+      "bytes": 4054,
+      "sha256": "df50739cb22a724c5d2ac2c86c5aa34bb4a6842b892a18efbbc97ee63c834ade"
+    },
+    {
+      "path": "review-disposition.json",
+      "bytes": 2531,
+      "sha256": "0f263c75695dfd9f09014f7a8d313098371be5d3b9e1566f04ddab9cdb512f5a"
+    },
+    {
+      "path": "self-review.md",
+      "bytes": 5539,
+      "sha256": "c191931de29ecfb9655a7fb0745b5cf2404cca54a434eb040f3cfcee478b45de"
+    },
+    {
+      "path": "spec-review.md",
+      "bytes": 2492,
+      "sha256": "277f762352bf0a48dff85d45f8416cab63b307978729555f27c9c2f0abb60ffb"
+    },
+    {
+      "path": "standards-review.md",
+      "bytes": 2285,
+      "sha256": "89c6ca6196d5772dfe2402a77bdd444f9574b4a74088d7b5ac09edd38e7d84a1"
+    },
+    {
+      "path": "verify-development-3.summary.txt",
+      "bytes": 2025,
+      "sha256": "69792e9ae3c0462e96482e4066ad27ff46f0a53cca28a120c3cbb2939ea2f616"
+    }
+  ]
+}

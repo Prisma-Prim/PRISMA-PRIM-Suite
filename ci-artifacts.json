@@ -1,0 +1,125 @@
+{
+  "total_count": 6,
+  "artifacts": [
+    {
+      "id": 12531900032,
+      "node_id": "MDg6QXJ0aWZhY3QxMjUzMTkwMDAzMg==",
+      "name": "browser-evidence-part-browser-3-40021532772",
+      "size_in_bytes": 70437171,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531900032",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531900032/zip",
+      "expired": false,
+      "digest": "sha256:622e65e49601d3fe252447bb271a36a183919538344f5a351849966f38db1b4c",
+      "created_at": "2026-10-23T20:51:10Z",
+      "updated_at": "2026-10-23T20:51:10Z",
+      "expires_at": "2026-11-06T20:51:07Z",
+      "workflow_run": {
+        "id": 40021532772,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/823-contract-early-preparation",
+        "head_sha": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b"
+      }
+    },
+    {
+      "id": 12531466059,
+      "node_id": "MDg6QXJ0aWZhY3QxMjUzMTQ2NjA1OQ==",
+      "name": "browser-evidence-part-browser-1-40021532772",
+      "size_in_bytes": 113959186,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531466059",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531466059/zip",
+      "expired": false,
+      "digest": "sha256:c90dc3d964422a2f2473856d99095687e9f52281ad5b46e2bdc9aa6b7945e928",
+      "created_at": "2026-10-23T20:51:32Z",
+      "updated_at": "2026-10-23T20:51:32Z",
+      "expires_at": "2026-11-06T20:51:28Z",
+      "workflow_run": {
+        "id": 40021532772,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/823-contract-early-preparation",
+        "head_sha": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b"
+      }
+    },
+    {
+      "id": 12531133128,
+      "node_id": "MDg6QXJ0aWZhY3QxMjUzMTEzMzEyOA==",
+      "name": "browser-evidence-pr-40021532772",
+      "size_in_bytes": 384633113,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531133128",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531133128/zip",
+      "expired": false,
+      "digest": "sha256:3a1d3857e54ea689ac68e789bf0e93e3b1645416fdb5c8473ecb34287abbd11e",
+      "created_at": "2026-10-23T20:57:06Z",
+      "updated_at": "2026-10-23T20:57:06Z",
+      "expires_at": "2026-11-06T20:56:55Z",
+      "workflow_run": {
+        "id": 40021532772,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/823-contract-early-preparation",
+        "head_sha": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b"
+      }
+    },
+    {
+      "id": 12531082443,
+      "node_id": "MDg6QXJ0aWZhY3QxMjUzMTA4MjQ0Mw==",
+      "name": "browser-evidence-part-acceptance-1-40021532772",
+      "size_in_bytes": 66384495,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531082443",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12531082443/zip",
+      "expired": false,
+      "digest": "sha256:9f28f88a69c0e8a678af41459d43024270ba1cf32ef11ac0b0a0ab86ecc3e6ff",
+      "created_at": "2026-10-23T20:56:24Z",
+      "updated_at": "2026-10-23T20:56:24Z",
+      "expires_at": "2026-11-06T20:56:21Z",
+      "workflow_run": {
+        "id": 40021532772,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/823-contract-early-preparation",
+        "head_sha": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b"
+      }
+    },
+    {
+      "id": 12530869251,
+      "node_id": "MDg6QXJ0aWZhY3QxMjUzMDg2OTI1MQ==",
+      "name": "browser-evidence-part-acceptance-2-40021532772",
+      "size_in_bytes": 56899957,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12530869251",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12530869251/zip",
+      "expired": false,
+      "digest": "sha256:53a7d889e2824720650a85501adde11f59eaece737b53725e0058ca88f21ea33",
+      "created_at": "2026-10-23T20:55:24Z",
+      "updated_at": "2026-10-23T20:55:24Z",
+      "expires_at": "2026-11-06T20:55:22Z",
+      "workflow_run": {
+        "id": 40021532772,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/823-contract-early-preparation",
+        "head_sha": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b"
+      }
+    },
+    {
+      "id": 12530279008,
+      "node_id": "MDg6QXJ0aWZhY3QxMjUzMDI3OTAwOA==",
+      "name": "browser-evidence-part-browser-2-40021532772",
+      "size_in_bytes": 76952392,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12530279008",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12530279008/zip",
+      "expired": false,
+      "digest": "sha256:25f15707154725b97165f2c23034281d316455c9818d61bb95ceb3da42aaa7e4",
+      "created_at": "2026-10-23T20:50:50Z",
+      "updated_at": "2026-10-23T20:50:50Z",
+      "expires_at": "2026-11-06T20:50:47Z",
+      "workflow_run": {
+        "id": 40021532772,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/823-contract-early-preparation",
+        "head_sha": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b"
+      }
+    }
+  ]
+}

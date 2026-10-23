@@ -1,0 +1,11 @@
+# Sensitive correction confirmation — #823
+
+Reviewed only `61d189ce74e21314cc5341f1480925aa5ed0b1fa...571a3e509211e07e9d61141923554b859ae2bf3d`, final tree `41559355a78c9fcec6f174926c7f7e4aebe9256a`, against the three recorded findings. Base remains `ad120bda711482a532bd16fd997bc6010919bd66`.
+
+**Remaining blocking findings: 0. No new blocking defect established in the correction.**
+
+- **Standards S1, exact source identity: corrected.** Early creation selects `source.recipient`; early revision selects `earlySource.recipient`. Legal name, tax code and address therefore come from the exact selected immutable Offer Version. Ordinary origins retain the Client-current copy. The existing live Client authority, active-original/relationship/party availability fences and operational-use attribution remain separate and unchanged. Migration0073 adds all three scalar comparisons only inside the early-origin guard, using NULL-safe comparison for nullable tax/address. Its existing source scope, fixed-party, lineage and receipt/event guards remain intact. New REST cases cover identity correction before creation and revision, HTML content and separate source-match/current-identity quality outcomes; injected drift cases cover rollback for each guarded scalar.
+- **Spec source-refusal recovery: corrected.** The three named source conflicts retire the candidate and produce the source-unavailable explanation. Reload alone preserves refusal; explicit selection clears only `sourceRefused`, allowing a fresh body/key while retaining literal terms. Stale Contract conflicts retain their full-reload requirement. Unit cases cover all three recoveries and both stale outcomes; the registered journey adds actual supersession/refusal/reload/reselection before acceptance/execution.
+- **Spec Template footer: corrected.** Preparation layout prints `CONTRACT_PREPARATION_ILLUSTRATIVE v1`; the unchanged legacy branch prints its prior code. REST assertions now inspect HTML as well as metadata.
+
+Static confirmation only; no tests, source/Git mutation, subagents or publication performed. Root's broader development verification and final independent integration gate remain separately required and are not attested by this review. This is the single permitted sensitive confirmation, not a new general review round.

@@ -1,0 +1,50 @@
+{
+  "issue": 823,
+  "base": "ad120bda711482a532bd16fd997bc6010919bd66",
+  "initialSource": "61d189ce74e21314cc5341f1480925aa5ed0b1fa",
+  "finalSource": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+  "finalTree": "ba077638bcb22f656068612265cb60dd22df3f85",
+  "round": 1,
+  "standards": {
+    "blocking": 1,
+    "ids": [
+      "S1"
+    ],
+    "report": "standards-review.md"
+  },
+  "spec": {
+    "blocking": 2,
+    "ids": [
+      "P1",
+      "P2"
+    ],
+    "report": "spec-review.md"
+  },
+  "correction": {
+    "commit": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+    "S1": "Exact-source scalar copying for new-origin creation/revision only; all three source identity columns fenced by custom insert guard; current Client checks retained. New REST cases and3SQL fault/rollback cases.",
+    "P1": "Distinct sourceRefused state, failed candidate retired, explicit reload/reselection starts new key preserving terms. Stale Contract states retain full-reload requirement. Three named-rejection and two stale unit cases; registered realApp actual refusal/recovery.",
+    "P2": "Preparation footer uses preparation Template code. Ordinary layouts unchanged; public REST asserts footer."
+  },
+  "confirmation": {
+    "permittedReason": "Correction changes custom migration source-integrity guard",
+    "status": "completed",
+    "report": "confirmation-review.md",
+    "blocking": 0,
+    "source": "571a3e509211e07e9d61141923554b859ae2bf3d",
+    "scope": "One sensitive confirmation only, reviewing the8-file correction delta. All3original findings fixed; no new blocker established. Static review; root owns runtime proof."
+  },
+  "followups": [],
+  "remainingBlocking": 0,
+  "postConfirmationDelta": {
+    "reviewedSource": "571a3e509211e07e9d61141923554b859ae2bf3d",
+    "finalSource": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+    "changedPaths": [
+      "apps/web/src/App.test.tsx",
+      "apps/web/src/access/company-assignment-localization.test-fixtures.ts"
+    ],
+    "change": "Only test expectations: two already implemented Activity action labels and one independently specified Early Preparation bundle entry (four labels/captured v1) in the shared test fixture. All production runtime, migration, permissions, configuration and contracts remain byte-identical to the confirmed source. Full delta reviewed by root.",
+    "patch": "post-confirmation-test-only.patch",
+    "recheck": "21App tests,69assignment tests,8keyboard/locale browser cases at both widths, changed-file format/lint, web types and full build PASS."
+  }
+}

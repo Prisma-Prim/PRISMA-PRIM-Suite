@@ -1,0 +1,253 @@
+{
+  "status": "passed",
+  "kind": "root validation of independent complete GitHub Actions CI, not a canonical local-gate attestation",
+  "pr": 824,
+  "source": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+  "base": "ad120bda711482a532bd16fd997bc6010919bd66",
+  "tree": "ba077638bcb22f656068612265cb60dd22df3f85",
+  "run": 40021532772,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772",
+  "event": "workflow_dispatch",
+  "verifiedJobs": 16,
+  "verifiedTestSteps": 10,
+  "jobs": [
+    {
+      "id": 120647028288,
+      "name": "scope",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647028288"
+    },
+    {
+      "id": 120647029478,
+      "name": "checks",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647029478"
+    },
+    {
+      "id": 120647104392,
+      "name": "postgres_image",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647104392"
+    },
+    {
+      "id": 120647971105,
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971105"
+    },
+    {
+      "id": 120647971156,
+      "name": "web_unit",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971156"
+    },
+    {
+      "id": 120647971222,
+      "name": "browser (3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971222"
+    },
+    {
+      "id": 120647971236,
+      "name": "packaging",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971236"
+    },
+    {
+      "id": 120647971266,
+      "name": "api (2/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971266"
+    },
+    {
+      "id": 120647971323,
+      "name": "browser (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971323"
+    },
+    {
+      "id": 120647971365,
+      "name": "browser (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971365"
+    },
+    {
+      "id": 120647971434,
+      "name": "acceptance (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971434"
+    },
+    {
+      "id": 120647971478,
+      "name": "acceptance (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971478"
+    },
+    {
+      "id": 120647971604,
+      "name": "api (serial)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971604"
+    },
+    {
+      "id": 120647971633,
+      "name": "api (1/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971633"
+    },
+    {
+      "id": 120647971737,
+      "name": "api (3/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120647971737"
+    },
+    {
+      "id": 120652247094,
+      "name": "quality",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/job/120652247094"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 12531900032,
+      "name": "browser-evidence-part-browser-3-40021532772",
+      "bytes": 70437171,
+      "providerDigest": "sha256:622e65e49601d3fe252447bb271a36a183919538344f5a351849966f38db1b4c",
+      "inspection": "GitHub provider metadata and successful upload/download steps; ZIP not locally transferred or byte-verified",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/artifacts/12531900032"
+    },
+    {
+      "id": 12531466059,
+      "name": "browser-evidence-part-browser-1-40021532772",
+      "bytes": 113959186,
+      "providerDigest": "sha256:c90dc3d964422a2f2473856d99095687e9f52281ad5b46e2bdc9aa6b7945e928",
+      "inspection": "GitHub provider metadata and successful upload/download steps; ZIP not locally transferred or byte-verified",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/artifacts/12531466059"
+    },
+    {
+      "id": 12531082443,
+      "name": "browser-evidence-part-acceptance-1-40021532772",
+      "bytes": 66384495,
+      "providerDigest": "sha256:9f28f88a69c0e8a678af41459d43024270ba1cf32ef11ac0b0a0ab86ecc3e6ff",
+      "inspection": "GitHub provider metadata and successful upload/download steps; ZIP not locally transferred or byte-verified",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/artifacts/12531082443"
+    },
+    {
+      "id": 12530869251,
+      "name": "browser-evidence-part-acceptance-2-40021532772",
+      "bytes": 56899957,
+      "providerDigest": "sha256:53a7d889e2824720650a85501adde11f59eaece737b53725e0058ca88f21ea33",
+      "inspection": "GitHub provider metadata and successful upload/download steps; ZIP not locally transferred or byte-verified",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/artifacts/12530869251"
+    },
+    {
+      "id": 12530279008,
+      "name": "browser-evidence-part-browser-2-40021532772",
+      "bytes": 76952392,
+      "providerDigest": "sha256:25f15707154725b97165f2c23034281d316455c9818d61bb95ceb3da42aaa7e4",
+      "inspection": "GitHub provider metadata and successful upload/download steps; ZIP not locally transferred or byte-verified",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/artifacts/12530279008"
+    }
+  ],
+  "aggregateArtifact": {
+    "id": 12531133128,
+    "name": "browser-evidence-pr-40021532772",
+    "bytes": 384633113,
+    "providerDigest": "sha256:3a1d3857e54ea689ac68e789bf0e93e3b1645416fdb5c8473ecb34287abbd11e",
+    "inspection": "GitHub provider metadata and successful upload/download steps; ZIP not locally transferred or byte-verified",
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40021532772/artifacts/12531133128"
+  },
+  "artifactTransfer": {
+    "zipBytesVerifiedLocally": false,
+    "reason": "Native GitHub and signed file transfers return proxy HTTP403; connector transfer exceeds executor32MiB limit. No network bypass used.",
+    "providerEvidence": "Five successful part uploads, successful quality download and aggregate upload; actual metadata/digests and links retained."
+  },
+  "captureProvenance": "Six visually inspected synthetic LOCAL actual-App/PostgreSQL acceptance-run7 captures, not downloaded CI captures. Runtime and acceptance owner are byte-identical between confirmed571a3e5 and final6257ccb; later changes affect only two unit/browser test-fixture files.",
+  "captures": [
+    {
+      "path": "early-executed-project-eligible-desktop.png",
+      "bytes": 820351,
+      "sha256": "8e6f38cf1b6089a3ab0ff759b144370bbdb9c14058988a48c87922486db43380"
+    },
+    {
+      "path": "early-executed-project-eligible-narrow.png",
+      "bytes": 674142,
+      "sha256": "a7ba326b9e25adcd84491c7dad4752e4a7d691907db2bc766a141b0fbd932878"
+    },
+    {
+      "path": "early-pending-complete-draft-desktop.png",
+      "bytes": 578785,
+      "sha256": "54e68ddf181091d3ce5bfb8ebe0fd971ffb490e8e0314a69dd98b4b3eabf9f19"
+    },
+    {
+      "path": "early-pending-complete-draft-narrow.png",
+      "bytes": 481177,
+      "sha256": "36be87d99477fcc662873e2839c9cb620d4af2eddc5a04d23d061d6924bbe328"
+    },
+    {
+      "path": "early-successor-draft-desktop.png",
+      "bytes": 573975,
+      "sha256": "7ac330c528059d9f777b842abb99e60cc99c54455722aec54c5beed3e85f0dc4"
+    },
+    {
+      "path": "early-successor-draft-narrow.png",
+      "bytes": 481550,
+      "sha256": "8b04342e324e7eb23e4086bf7476a0b67819c142491fd4d81711fbd7037a3d17"
+    }
+  ],
+  "ownerRoute": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "developmentCheck": {
+    "completionStatus": "completed_with_focused_recheck",
+    "remainingFailures": 0,
+    "originalInvocation": {
+      "command": "VITEST_MAX_WORKERS=1 node scripts/managed-postgres.mjs -- pnpm verify",
+      "source": "571a3e509211e07e9d61141923554b859ae2bf3d",
+      "exitCode": 1,
+      "format": "passed",
+      "lint": "passed",
+      "types": "passed",
+      "scriptsPassed": 479,
+      "apiParallel": {
+        "passed": 2690,
+        "skipped": 1,
+        "filesPassed": 137
+      },
+      "apiSerial": {
+        "passed": 102,
+        "filesPassed": 8
+      },
+      "web": {
+        "passed": 2931,
+        "failed": 1,
+        "reason": "Expected Activity Log label inventory omitted the two already implemented Early Preparation action labels."
+      },
+      "build": "not executed after the unit failure"
+    },
+    "focusedRecheck": {
+      "source": "13ae41c794803757651c92dd27c599bf386473c9",
+      "exitCode": 0,
+      "log": "development-focused-completion.log",
+      "changedFileFormatLint": "passed",
+      "webTypes": "passed",
+      "appTestsPassed": 21,
+      "apiBuild": "passed",
+      "webBuild": "passed"
+    },
+    "preservedEvidence": "Original failed/partial logs remain local, with their original outcomes. Relative to confirmed source571a3e5, current6257ccb differs only in App.test.tsx expected action labels and one shared assignment test-fixture entry. All production, migration, permission and configuration bytes are identical. Full independent CI remains separately attributed.",
+    "optionalSkip": "One disposable-real-ClamAV integration test skipped: TEST_CLAMAV_HOST and TEST_CLAMAV_PORT are not configured. Scanner code and authority are unchanged.",
+    "postCIRecheck": {
+      "source": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+      "changedPaths": [
+        "apps/web/src/App.test.tsx",
+        "apps/web/src/access/company-assignment-localization.test-fixtures.ts"
+      ],
+      "unitPassed": 69,
+      "browserPassed": 8,
+      "viewportLocaleCases": "four locales \u00d7 desktop/narrow",
+      "remainingFailures": 0,
+      "productionBytesUnchanged": true
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "completionStatus": "completed_with_focused_recheck",
+  "remainingFailures": 0,
+  "originalInvocation": {
+    "command": "VITEST_MAX_WORKERS=1 node scripts/managed-postgres.mjs -- pnpm verify",
+    "source": "571a3e509211e07e9d61141923554b859ae2bf3d",
+    "exitCode": 1,
+    "format": "passed",
+    "lint": "passed",
+    "types": "passed",
+    "scriptsPassed": 479,
+    "apiParallel": {
+      "passed": 2690,
+      "skipped": 1,
+      "filesPassed": 137
+    },
+    "apiSerial": {
+      "passed": 102,
+      "filesPassed": 8
+    },
+    "web": {
+      "passed": 2931,
+      "failed": 1,
+      "reason": "Expected Activity Log label inventory omitted the two already implemented Early Preparation action labels."
+    },
+    "build": "not executed after the unit failure"
+  },
+  "focusedRecheck": {
+    "source": "13ae41c794803757651c92dd27c599bf386473c9",
+    "exitCode": 0,
+    "log": "development-focused-completion.log",
+    "changedFileFormatLint": "passed",
+    "webTypes": "passed",
+    "appTestsPassed": 21,
+    "apiBuild": "passed",
+    "webBuild": "passed"
+  },
+  "preservedEvidence": "Original failed/partial logs remain local, with their original outcomes. Relative to confirmed source571a3e5, current6257ccb differs only in App.test.tsx expected action labels and one shared assignment test-fixture entry. All production, migration, permission and configuration bytes are identical. Full independent CI remains separately attributed.",
+  "optionalSkip": "One disposable-real-ClamAV integration test skipped: TEST_CLAMAV_HOST and TEST_CLAMAV_PORT are not configured. Scanner code and authority are unchanged.",
+  "postCIRecheck": {
+    "source": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+    "changedPaths": [
+      "apps/web/src/App.test.tsx",
+      "apps/web/src/access/company-assignment-localization.test-fixtures.ts"
+    ],
+    "unitPassed": 69,
+    "browserPassed": 8,
+    "viewportLocaleCases": "four locales \u00d7 desktop/narrow",
+    "remainingFailures": 0,
+    "productionBytesUnchanged": true
+  }
+}

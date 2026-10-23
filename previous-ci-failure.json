@@ -1,0 +1,114 @@
+{
+  "run": 40019347342,
+  "source": "13ae41c794803757651c92dd27c599bf386473c9",
+  "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40019347342",
+  "conclusion": "failure",
+  "jobs": [
+    {
+      "name": "checks",
+      "conclusion": "success"
+    },
+    {
+      "name": "scope",
+      "conclusion": "success"
+    },
+    {
+      "name": "postgres_image",
+      "conclusion": "success"
+    },
+    {
+      "name": "build",
+      "conclusion": "success"
+    },
+    {
+      "name": "browser (3)",
+      "conclusion": "success"
+    },
+    {
+      "name": "web_unit",
+      "conclusion": "success"
+    },
+    {
+      "name": "browser (2)",
+      "conclusion": "failure"
+    },
+    {
+      "name": "api (2/3)",
+      "conclusion": "success"
+    },
+    {
+      "name": "api (1/3)",
+      "conclusion": "success"
+    },
+    {
+      "name": "acceptance (1)",
+      "conclusion": "success"
+    },
+    {
+      "name": "packaging",
+      "conclusion": "success"
+    },
+    {
+      "name": "api (3/3)",
+      "conclusion": "success"
+    },
+    {
+      "name": "acceptance (2)",
+      "conclusion": "success"
+    },
+    {
+      "name": "api (serial)",
+      "conclusion": "success"
+    },
+    {
+      "name": "browser (1)",
+      "conclusion": "cancelled"
+    },
+    {
+      "name": "quality",
+      "conclusion": "failure"
+    }
+  ],
+  "cause": "Browser assignment menu has the new approved Early Preparation capability; the independent expected option fixture omitted it. All four locale cases failed at the same strict32-versus33option assertion. Browser shard2failed; shard1reported the same issue and was cancelled by the matrix; quality failed as designed. All API, web unit, packaging/build and both registered acceptance jobs passed.",
+  "correction": "One test-fixture entry added in the existing approved menu order, preserving the assertion, all labels and original timeouts. No production code changed.69unit and8desktop/narrowlocale cases pass before a fresh complete CI on the corrected source.",
+  "correctedSource": "6257ccb2a9dbcc81774253fb09a2182d54f9a10b",
+  "artifactMetadataOnly": [
+    {
+      "id": 12530447561,
+      "name": "browser-evidence-part-acceptance-1-40019347342",
+      "digest": "sha256:584cff8707935d81f18abe245c269a8c598c3c5f41c896500c1890947a65dbd9",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40019347342/artifacts/12530447561"
+    },
+    {
+      "id": 12530122157,
+      "name": "browser-evidence-part-browser-3-40019347342",
+      "digest": "sha256:01e309318f6cb1789c502c8a22b722cb8fde50c1160ab27a3992fbe5bcf2dd6e",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40019347342/artifacts/12530122157"
+    },
+    {
+      "id": 12529973301,
+      "name": "browser-evidence-part-browser-1-40019347342",
+      "digest": "sha256:8bebb3288f1971c10890cf93f711aab4fac11c976a2463b9bdec7e30aba7c4bd",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40019347342/artifacts/12529973301"
+    },
+    {
+      "id": 12529873459,
+      "name": "browser-evidence-pr-40019347342",
+      "digest": "sha256:e885b0339e228223fe114bd91e93133be6fba3fc62b26eb53ddbe8268ad0864c",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40019347342/artifacts/12529873459"
+    },
+    {
+      "id": 12529753648,
+      "name": "browser-evidence-part-browser-2-40019347342",
+      "digest": "sha256:3333923a9cdd5cc15550c3f26c88a70e65d422b7717defa702c48757dcd8f980",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40019347342/artifacts/12529753648"
+    },
+    {
+      "id": 12529663844,
+      "name": "browser-evidence-part-acceptance-2-40019347342",
+      "digest": "sha256:be6ccffe8f518bed9808e2e94027e9cad298699a397d65f4605f3387f0c30566",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40019347342/artifacts/12529663844"
+    }
+  ],
+  "retention": "Original failed run/artifacts remain in GitHub under the workflow14-day retention; not overwritten or relabeled passing."
+}
