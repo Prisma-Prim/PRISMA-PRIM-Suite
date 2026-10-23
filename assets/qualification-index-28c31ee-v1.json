@@ -1,0 +1,40 @@
+{
+  "scope": "Qualification snapshot v1; complete integration gate3 is in progress, no complete-pass or independent-GitHub-runner claim.",
+  "issue": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/828",
+  "pr": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/829",
+  "source": "28c31ee8048a210524e6a269b62616e597708eb1",
+  "base": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+  "integrationTree": "e2bf8c32a209c78369a9108f0caa811e45235008",
+  "assets": [
+    {
+      "name": "anti-slop-qualification-28c31ee.zip",
+      "bytes": 3486,
+      "sha256": "fe350a4a057f20d1c8f90e6cd7ba46adb5572f0cdc0e38a0af4a9aa0aaac5bf3"
+    },
+    {
+      "name": "client-boundary-desktop-narrow-28c31ee.zip",
+      "bytes": 208083,
+      "sha256": "021d6d8f4de4d2af75352bc748a5c578b77fddcd81d268215a3236bccd4ca7fb"
+    },
+    {
+      "name": "client-boundary-patch-28c31ee.patch",
+      "bytes": 36626,
+      "sha256": "7279fb81b7f7a6ff51a3ac606bca68625711c395aa53831a719f093bec8e6cd5"
+    },
+    {
+      "name": "contract-options-experiment-28c31ee.zip",
+      "bytes": 18499,
+      "sha256": "b8ba9df659f595774067bf154dc50097f5f92591ebe5e4f90e2a4e537fcc1f70"
+    },
+    {
+      "name": "runtime-qualification-28c31ee-preflight.zip",
+      "bytes": 8270,
+      "sha256": "7ce6e438b769404637679e041412a5cea9bd659fe3125a9b96ddedb963f015bd"
+    },
+    {
+      "name": "typescript-quality-report-28c31ee-qualification-v1.md",
+      "bytes": 18339,
+      "sha256": "91ce30c31be452d61e0f7c2036b3c71afc08a674c480439dc7c657d944c2410b"
+    }
+  ]
+}

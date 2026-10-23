@@ -1,0 +1,974 @@
+From 28c31ee8048a210524e6a269b62616e597708eb1 Mon Sep 17 00:00:00 2001
+From: Dan Popescu <popescuodan@gmail.com>
+Date: Fri, 23 Oct 2026 21:52:35 +0000
+Subject: [PATCH] fix(clients): validate directory responses and qualify
+ boundary policy
+
+---
+ apps/web/e2e/client-response-contract.spec.ts | 127 +++++
+ apps/web/src/client/ClientDirectory.tsx       |   7 +-
+ ...ClientWorkspace.response-contract.test.tsx | 539 ++++++++++++++++++
+ apps/web/src/client/ClientWorkspace.tsx       |  26 +-
+ .../web/src/client/client-account-response.ts |  29 +
+ docs/agents/typescript-discipline.md          |  71 ++-
+ .../typescript-discipline-contract.test.mjs   |  18 +-
+ 7 files changed, 775 insertions(+), 42 deletions(-)
+ create mode 100644 apps/web/e2e/client-response-contract.spec.ts
+ create mode 100644 apps/web/src/client/ClientWorkspace.response-contract.test.tsx
+ create mode 100644 apps/web/src/client/client-account-response.ts
+
+diff --git a/apps/web/e2e/client-response-contract.spec.ts b/apps/web/e2e/client-response-contract.spec.ts
+new file mode 100644
+index 0000000..d9c6083
+--- /dev/null
++++ b/apps/web/e2e/client-response-contract.spec.ts
+@@ -0,0 +1,127 @@
++import { expect, test } from '@playwright/test';
++import {
++  actorContextFixture,
++  operationalHomeFixture,
++} from './actor-context.fixture';
++
++test('rejects the whole malformed Client list and recovers on a deliberate reload', async ({
++  page,
++}, testInfo) => {
++  const company = {
++    id: 'company-response-contract',
++    displayName: 'PRISMA-PRIM',
++  };
++  const client = {
++    id: 'valid-client',
++    displayName: 'Literal Client SRL',
++    relatedToActiveCompany: true,
++  };
++  const malformedClient = {
++    id: 'malformed-client',
++    displayName: 'Malformed Client',
++    relatedToActiveCompany: 'false',
++  };
++  let recovering = false;
++
++  await page.route('**/api/**', (route) => {
++    const request = route.request();
++    const path = new URL(request.url()).pathname;
++    if (path.endsWith('/access/current-actor'))
++      return route.fulfill({
++        json: {
++          ...actorContextFixture,
++          workspacePermissions: ['client.manage'],
++          activeCompany: {
++            ...company,
++            clientPermissions: ['client.read', 'client.create'],
++            clientPermissionAssignmentId: 'client-reader-response-contract',
++            clientPermissionSetVersion: 'v1',
++          },
++        },
++      });
++    if (path.endsWith('/companies')) return route.fulfill({ json: [company] });
++    if (path.endsWith('/activity-log'))
++      return route.fulfill({ json: { events: [] } });
++    if (path.endsWith('/operational-home'))
++      return route.fulfill({
++        json: operationalHomeFixture(company.id, { active_clients: 1 }),
++      });
++    if (path === '/api/clients' && request.method() === 'GET')
++      return route.fulfill({
++        json: recovering
++          ? [{ ...client, futureMetadata: { source: 'additive-field' } }]
++          : [client, malformedClient],
++      });
++    return route.fulfill({ status: 404 });
++  });
++
++  await page.goto('/?frame=prisme#clients');
++  const clients = page.getByRole('region', { name: 'Clients', exact: true });
++  const listError = clients.getByRole('alert').filter({
++    hasText: 'We could not load Clients. Please try again.',
++  });
++  await expect(listError).toBeVisible();
++  await expect(
++    clients.getByRole('heading', { name: client.displayName, exact: true }),
++  ).toHaveCount(0);
++  await expect(
++    clients.getByRole('heading', {
++      name: malformedClient.displayName,
++      exact: true,
++    }),
++  ).toHaveCount(0);
++  await expect(
++    clients.getByRole('button', { name: 'Open dossier', exact: true }),
++  ).toHaveCount(0);
++  await page.evaluate(() => window.scrollTo(0, 0));
++  await page.screenshot({
++    path: testInfo.outputPath('client-list-malformed-response.png'),
++    fullPage: true,
++  });
++
++  // The existing list error has no Retry control; reload is the explicit retry.
++  recovering = true;
++  await page.reload();
++
++  await expect(
++    clients.getByRole('heading', { name: client.displayName, exact: true }),
++  ).toBeVisible();
++  await expect(listError).toHaveCount(0);
++  await expect(
++    clients.getByRole('heading', {
++      name: malformedClient.displayName,
++      exact: true,
++    }),
++  ).toHaveCount(0);
++  await expect(
++    clients.getByText('Available in PRISMA-PRIM', { exact: true }),
++  ).toBeVisible();
++  await expect(
++    clients.getByRole('button', { name: 'Open dossier', exact: true }),
++  ).toBeEnabled();
++  await expect(
++    clients.getByRole('button', { name: 'Search Clients', exact: true }),
++  ).toBeEnabled();
++  expect(
++    await page.evaluate(
++      () => document.documentElement.scrollWidth <= innerWidth,
++    ),
++  ).toBe(true);
++  await page.evaluate(() => window.scrollTo(0, 0));
++  await page.screenshot({
++    path: testInfo.outputPath('client-list-valid-additive-response.png'),
++    fullPage: true,
++  });
++
++  await clients
++    .getByRole('button', { name: 'New Client', exact: true })
++    .click();
++  await expect(clients.getByLabel('Client display name')).toBeFocused();
++  await expect(
++    clients.getByRole('button', { name: 'Create Client', exact: true }),
++  ).toBeEnabled();
++  await clients.getByRole('button', { name: 'Close registration' }).click();
++  await expect(
++    clients.getByRole('button', { name: 'New Client', exact: true }),
++  ).toBeFocused();
++});
+diff --git a/apps/web/src/client/ClientDirectory.tsx b/apps/web/src/client/ClientDirectory.tsx
+index 07e7bc8..4d6ada7 100644
+--- a/apps/web/src/client/ClientDirectory.tsx
++++ b/apps/web/src/client/ClientDirectory.tsx
+@@ -1,11 +1,6 @@
+ import { ArrowRight } from 'lucide-react';
+ import { useClientDirectoryCopy } from './client-directory.copy';
+-
+-export interface ClientAccountView {
+-  id: string;
+-  displayName: string;
+-  relatedToActiveCompany: boolean;
+-}
++import type { ClientAccountView } from './client-account-response';
+ 
+ export function ClientDirectory({
+   clients,
+diff --git a/apps/web/src/client/ClientWorkspace.response-contract.test.tsx b/apps/web/src/client/ClientWorkspace.response-contract.test.tsx
+new file mode 100644
+index 0000000..8db1da4
+--- /dev/null
++++ b/apps/web/src/client/ClientWorkspace.response-contract.test.tsx
+@@ -0,0 +1,539 @@
++import { afterEach, describe, expect, it, vi } from 'vitest';
++import { deterministicBrowserIdentity } from '../access-composition';
++import type { ActorContext } from '../access-types';
++import {
++  fireEvent,
++  render,
++  screen,
++  waitFor,
++} from '../test/render-with-interface-locale';
++import { ClientWorkspace } from './ClientWorkspace';
++
++const actor: ActorContext = {
++  internalUserId: 'owner-1',
++  workspaceMembershipId: 'membership-1',
++  workspaceId: 'workspace-1',
++  workspaceName: 'PRISMA Workspace',
++  displayName: 'Iurie',
++  email: 'iurie@example.test',
++  active: true,
++  workspacePermissions: [
++    'company.manage',
++    'company.assignment.manage',
++    'client.manage',
++  ],
++  activeCompany: {
++    id: 'company-a',
++    displayName: 'PRISMA-PRIM',
++    clientPermissions: ['client.read', 'client.create', 'client.update'],
++  },
++};
++
++const validListedClient = {
++  id: 'valid-client',
++  displayName: 'Valid Client',
++  relatedToActiveCompany: true,
++};
++
++describe('ClientWorkspace response contract', () => {
++  afterEach(() => {
++    vi.restoreAllMocks();
++    vi.unstubAllGlobals();
++  });
++
++  it('rejects a malformed successful Client list without showing a partial list', async () => {
++    vi.stubGlobal(
++      'fetch',
++      vi.fn().mockResolvedValueOnce(
++        new Response(
++          JSON.stringify([
++            {
++              id: 'valid-client',
++              displayName: 'Valid Client',
++              relatedToActiveCompany: true,
++            },
++            {
++              id: 'malformed-client',
++              displayName: 'Malformed Client',
++              relatedToActiveCompany: 'false',
++            },
++          ]),
++          { status: 200 },
++        ),
++      ),
++    );
++
++    render(
++      <ClientWorkspace
++        actor={actor}
++        identity={deterministicBrowserIdentity()}
++        onCompanyContextRejected={vi.fn()}
++        onActivityRecorded={vi.fn(async () => undefined)}
++      />,
++    );
++
++    expect(await screen.findByRole('alert')).toHaveTextContent(
++      'We could not load Clients. Please try again.',
++    );
++    expect(
++      screen.queryByRole('heading', { name: 'Valid Client' }),
++    ).not.toBeInTheDocument();
++    expect(
++      screen.queryByRole('heading', { name: 'Malformed Client' }),
++    ).not.toBeInTheDocument();
++  });
++
++  it.each<{ description: string; payload: unknown }>([
++    { description: 'a null envelope', payload: null },
++    {
++      description: 'an object envelope',
++      payload: { clients: [validListedClient] },
++    },
++    {
++      description: 'an array row',
++      payload: [validListedClient, []],
++    },
++    {
++      description: 'a numeric Client ID',
++      payload: [
++        validListedClient,
++        {
++          id: 7,
++          displayName: 'Malformed Client',
++          relatedToActiveCompany: true,
++        },
++      ],
++    },
++    {
++      description: 'a null display name',
++      payload: [
++        validListedClient,
++        {
++          id: 'malformed-client',
++          displayName: null,
++          relatedToActiveCompany: true,
++        },
++      ],
++    },
++    {
++      description: 'a missing Company relationship',
++      payload: [
++        validListedClient,
++        { id: 'malformed-client', displayName: 'Malformed Client' },
++      ],
++    },
++  ])(
++    'rejects a successful Client list containing $description',
++    async ({ payload }) => {
++      vi.stubGlobal(
++        'fetch',
++        vi
++          .fn()
++          .mockResolvedValueOnce(
++            new Response(JSON.stringify(payload), { status: 200 }),
++          ),
++      );
++      render(
++        <ClientWorkspace
++          actor={actor}
++          identity={deterministicBrowserIdentity()}
++          onCompanyContextRejected={vi.fn()}
++          onActivityRecorded={vi.fn(async () => undefined)}
++        />,
++      );
++
++      expect(await screen.findByRole('alert')).toHaveTextContent(
++        'We could not load Clients. Please try again.',
++      );
++      expect(
++        screen.queryByRole('heading', { name: 'Valid Client' }),
++      ).not.toBeInTheDocument();
++      expect(
++        screen.queryByRole('heading', { name: 'Malformed Client' }),
++      ).not.toBeInTheDocument();
++      expect(
++        screen.queryByText('No Clients for PRISMA-PRIM yet.'),
++      ).not.toBeInTheDocument();
++    },
++  );
++
++  it('retains an unconfirmed registration draft and retries its exact command after malformed success', async () => {
++    const registrations: Array<{
++      body: unknown;
++      idempotencyKey: string | null;
++    }> = [];
++    let listReads = 0;
++    let registered = false;
++    const registeredClient = {
++      id: 'registered-client',
++      displayName: 'Literal Client SRL',
++      relatedToActiveCompany: true,
++    };
++    vi.stubGlobal(
++      'fetch',
++      vi.fn(async (input: string | URL | Request, request?: RequestInit) => {
++        if (String(input) !== '/api/clients')
++          throw new Error(`Unexpected request: ${String(input)}`);
++        if (request?.method === 'POST') {
++          registrations.push({
++            body: request.body,
++            idempotencyKey: new Headers(request.headers).get('idempotency-key'),
++          });
++          if (registrations.length === 1)
++            return new Response(
++              JSON.stringify({
++                displayName: 'Literal Client SRL',
++                relatedToActiveCompany: true,
++              }),
++              { status: 201 },
++            );
++          registered = true;
++          return new Response(JSON.stringify(registeredClient), {
++            status: 201,
++          });
++        }
++        listReads += 1;
++        return new Response(
++          JSON.stringify(registered ? [registeredClient] : []),
++          { status: 200 },
++        );
++      }),
++    );
++    const recordActivity = vi.fn(async () => undefined);
++    render(
++      <ClientWorkspace
++        actor={actor}
++        identity={deterministicBrowserIdentity()}
++        onCompanyContextRejected={vi.fn()}
++        onActivityRecorded={recordActivity}
++      />,
++    );
++    await screen.findByText('No Clients for PRISMA-PRIM yet.');
++    fireEvent.change(screen.getByLabelText('Client display name'), {
++      target: { value: '  Literal Client SRL  ' },
++    });
++    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
++
++    expect(await screen.findByRole('alert')).toHaveTextContent(
++      'We could not load Clients. Please try again.',
++    );
++    expect(screen.getByLabelText('Client display name')).toHaveValue(
++      '  Literal Client SRL  ',
++    );
++    expect(
++      screen.queryByText('Client created and linked to the active Company.'),
++    ).not.toBeInTheDocument();
++    expect(recordActivity).not.toHaveBeenCalled();
++    expect(listReads).toBe(1);
++
++    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
++
++    expect(
++      await screen.findByRole('heading', { name: 'Literal Client SRL' }),
++    ).toBeInTheDocument();
++    expect(
++      screen.getByText('Client created and linked to the active Company.'),
++    ).toBeInTheDocument();
++    expect(screen.getByLabelText('Client display name')).toHaveValue('');
++    expect(recordActivity).toHaveBeenCalledOnce();
++    expect(listReads).toBe(2);
++    expect(registrations).toHaveLength(2);
++    expect(registrations[0]).toEqual({
++      body: JSON.stringify({ displayName: 'Literal Client SRL' }),
++      idempotencyKey: expect.any(String),
++    });
++    expect(registrations[0]?.idempotencyKey).toBeTruthy();
++    expect(registrations[1]).toEqual(registrations[0]);
++  });
++
++  it('rejects malformed search results and retains the query for a successful retry', async () => {
++    const searches: string[] = [];
++    vi.stubGlobal(
++      'fetch',
++      vi.fn(async (input: string | URL | Request) => {
++        const path = String(input);
++        if (path === '/api/clients')
++          return new Response(JSON.stringify([]), { status: 200 });
++        if (path === '/api/clients/search?query=Literal%20Client') {
++          searches.push(path);
++          return new Response(
++            JSON.stringify(
++              searches.length === 1
++                ? [
++                    {
++                      id: 'valid-search-client',
++                      displayName: 'Valid Search Client',
++                      relatedToActiveCompany: false,
++                    },
++                    {
++                      id: 'malformed-search-client',
++                      displayName: 'Malformed Search Client',
++                      relatedToActiveCompany: 'false',
++                    },
++                  ]
++                : [
++                    {
++                      id: 'valid-search-client',
++                      displayName: 'Valid Search Client',
++                      relatedToActiveCompany: false,
++                    },
++                  ],
++            ),
++            { status: 200 },
++          );
++        }
++        throw new Error(`Unexpected request: ${path}`);
++      }),
++    );
++    render(
++      <ClientWorkspace
++        actor={actor}
++        identity={deterministicBrowserIdentity()}
++        onCompanyContextRejected={vi.fn()}
++        onActivityRecorded={vi.fn(async () => undefined)}
++      />,
++    );
++    await screen.findByText('No Clients for PRISMA-PRIM yet.');
++    fireEvent.change(screen.getByLabelText('Find a shared Client'), {
++      target: { value: '  Literal Client  ' },
++    });
++    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
++
++    expect(await screen.findByRole('alert')).toHaveTextContent(
++      'We could not load Clients. Please try again.',
++    );
++    expect(screen.getByLabelText('Find a shared Client')).toHaveValue(
++      '  Literal Client  ',
++    );
++    expect(
++      screen.queryByRole('heading', { name: 'Valid Search Client' }),
++    ).not.toBeInTheDocument();
++    expect(
++      screen.queryByRole('heading', { name: 'Malformed Search Client' }),
++    ).not.toBeInTheDocument();
++    expect(
++      screen.queryByRole('button', { name: 'Add to PRISMA-PRIM' }),
++    ).not.toBeInTheDocument();
++
++    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
++
++    expect(
++      await screen.findByRole('heading', { name: 'Valid Search Client' }),
++    ).toBeInTheDocument();
++    expect(
++      screen.getByRole('button', { name: 'Add to PRISMA-PRIM' }),
++    ).toBeEnabled();
++    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
++    expect(searches).toEqual([
++      '/api/clients/search?query=Literal%20Client',
++      '/api/clients/search?query=Literal%20Client',
++    ]);
++  });
++
++  it('does not confirm a malformed attachment and settles before a successful retry', async () => {
++    let listReads = 0;
++    let attachments = 0;
++    let linked = false;
++    const linkedClient = {
++      id: 'attachment-client',
++      displayName: 'Attachable Client',
++      relatedToActiveCompany: true,
++    };
++    vi.stubGlobal(
++      'fetch',
++      vi.fn(async (input: string | URL | Request, request?: RequestInit) => {
++        const path = String(input);
++        if (path === '/api/clients') {
++          listReads += 1;
++          return new Response(JSON.stringify(linked ? [linkedClient] : []), {
++            status: 200,
++          });
++        }
++        if (path === '/api/clients/search?query=Attachable')
++          return new Response(
++            JSON.stringify([
++              {
++                id: 'attachment-client',
++                displayName: 'Attachable Client',
++                relatedToActiveCompany: false,
++              },
++            ]),
++            { status: 200 },
++          );
++        if (
++          path ===
++            '/api/clients/attachment-client/active-company-relationship' &&
++          request?.method === 'PUT'
++        ) {
++          attachments += 1;
++          if (attachments === 1)
++            return new Response(
++              JSON.stringify({
++                id: 'attachment-client',
++                relatedToActiveCompany: true,
++              }),
++              { status: 200 },
++            );
++          linked = true;
++          return new Response(JSON.stringify(linkedClient), { status: 200 });
++        }
++        throw new Error(`Unexpected request: ${path}`);
++      }),
++    );
++    const recordActivity = vi.fn(async () => undefined);
++    render(
++      <ClientWorkspace
++        actor={actor}
++        identity={deterministicBrowserIdentity()}
++        onCompanyContextRejected={vi.fn()}
++        onActivityRecorded={recordActivity}
++      />,
++    );
++    await screen.findByText('No Clients for PRISMA-PRIM yet.');
++    fireEvent.change(screen.getByLabelText('Find a shared Client'), {
++      target: { value: 'Attachable' },
++    });
++    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
++    fireEvent.click(
++      await screen.findByRole('button', { name: 'Add to PRISMA-PRIM' }),
++    );
++
++    expect(await screen.findByRole('alert')).toHaveTextContent(
++      'We could not load Clients. Please try again.',
++    );
++    expect(
++      screen.queryByText('Available in PRISMA-PRIM'),
++    ).not.toBeInTheDocument();
++    expect(recordActivity).not.toHaveBeenCalled();
++    expect(listReads).toBe(1);
++    await waitFor(() =>
++      expect(
++        screen.getByRole('button', { name: 'Search Clients' }),
++      ).toBeEnabled(),
++    );
++
++    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
++    fireEvent.click(
++      await screen.findByRole('button', { name: 'Add to PRISMA-PRIM' }),
++    );
++
++    expect(
++      await screen.findByRole('heading', {
++        name: 'Attachable Client',
++        level: 3,
++      }),
++    ).toBeInTheDocument();
++    expect(screen.getByText('Available in PRISMA-PRIM')).toBeInTheDocument();
++    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
++    expect(recordActivity).toHaveBeenCalledOnce();
++    expect(listReads).toBe(2);
++    expect(attachments).toBe(2);
++  });
++
++  it('accepts additive response fields while listing, searching, attaching and registering Clients', async () => {
++    const listedClient = {
++      id: 'listed-client',
++      displayName: 'Listed Client',
++      relatedToActiveCompany: true,
++      futureDirectoryData: { revision: 7 },
++    };
++    const sharedClient = {
++      id: 'shared-client',
++      displayName: 'Shared Client',
++      relatedToActiveCompany: true,
++      futureRelationshipData: ['additional information'],
++    };
++    const registeredClient = {
++      id: 'registered-client',
++      displayName: 'Registered Client',
++      relatedToActiveCompany: true,
++      futureRegistrationData: { accepted: true },
++    };
++    let linked = false;
++    let registered = false;
++    vi.stubGlobal(
++      'fetch',
++      vi.fn(async (input: string | URL | Request, request?: RequestInit) => {
++        const path = String(input);
++        if (path === '/api/clients' && request?.method === 'POST') {
++          registered = true;
++          return new Response(JSON.stringify(registeredClient), {
++            status: 201,
++          });
++        }
++        if (path === '/api/clients')
++          return new Response(
++            JSON.stringify([
++              listedClient,
++              ...(linked ? [sharedClient] : []),
++              ...(registered ? [registeredClient] : []),
++            ]),
++            { status: 200 },
++          );
++        if (path === '/api/clients/search?query=Shared')
++          return new Response(
++            JSON.stringify([
++              {
++                id: 'shared-client',
++                displayName: 'Shared Client',
++                relatedToActiveCompany: false,
++                futureSearchData: { rank: 1 },
++              },
++            ]),
++            { status: 200 },
++          );
++        if (
++          path === '/api/clients/shared-client/active-company-relationship' &&
++          request?.method === 'PUT'
++        ) {
++          linked = true;
++          return new Response(JSON.stringify(sharedClient), { status: 200 });
++        }
++        throw new Error(`Unexpected request: ${path}`);
++      }),
++    );
++    const recordActivity = vi.fn(async () => undefined);
++    render(
++      <ClientWorkspace
++        actor={actor}
++        identity={deterministicBrowserIdentity()}
++        onCompanyContextRejected={vi.fn()}
++        onActivityRecorded={recordActivity}
++      />,
++    );
++
++    expect(
++      await screen.findByRole('heading', { name: 'Listed Client', level: 3 }),
++    ).toBeInTheDocument();
++    fireEvent.change(screen.getByLabelText('Find a shared Client'), {
++      target: { value: 'Shared' },
++    });
++    fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
++    expect(
++      await screen.findByRole('heading', { name: 'Shared Client', level: 4 }),
++    ).toBeInTheDocument();
++    fireEvent.click(screen.getByRole('button', { name: 'Add to PRISMA-PRIM' }));
++    expect(
++      await screen.findByRole('heading', { name: 'Shared Client', level: 3 }),
++    ).toBeInTheDocument();
++    expect(screen.getByText('Available in PRISMA-PRIM')).toBeInTheDocument();
++
++    fireEvent.change(screen.getByLabelText('Client display name'), {
++      target: { value: 'Registered Client' },
++    });
++    fireEvent.click(screen.getByRole('button', { name: 'Create Client' }));
++
++    expect(
++      await screen.findByRole('heading', {
++        name: 'Registered Client',
++        level: 3,
++      }),
++    ).toBeInTheDocument();
++    expect(
++      screen.getByText('Client created and linked to the active Company.'),
++    ).toBeInTheDocument();
++    expect(screen.getByLabelText('Client display name')).toHaveValue('');
++    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
++    expect(recordActivity).toHaveBeenCalledTimes(2);
++  });
++});
+diff --git a/apps/web/src/client/ClientWorkspace.tsx b/apps/web/src/client/ClientWorkspace.tsx
+index 0a26998..910d37c 100644
+--- a/apps/web/src/client/ClientWorkspace.tsx
++++ b/apps/web/src/client/ClientWorkspace.tsx
+@@ -35,7 +35,12 @@ import {
+ } from './client-registration.copy';
+ import { useClientDirectoryCopy } from './client-directory.copy';
+ import { ApplicationPresentation } from '../production-shell/application-presentation';
+-import { ClientDirectory, type ClientAccountView } from './ClientDirectory';
++import { ClientDirectory } from './ClientDirectory';
++import {
++  readClientAccountList,
++  readClientAccountView,
++  type ClientAccountView,
++} from './client-account-response';
+ import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
+ import './client-directory.css';
+ 
+@@ -225,7 +230,7 @@ export function ClientWorkspace({
+         pending: pendingList,
+         identity,
+         execute: (api, signal) =>
+-          api.request<ClientAccountView[]>('/clients', {
++          api.request<unknown>('/clients', {
+             companyContextId,
+             signal,
+           }),
+@@ -234,7 +239,10 @@ export function ClientWorkspace({
+             return;
+           setListState(
+             result.status === 'ok'
+-              ? { status: 'ready', clients: result.value }
++              ? {
++                  status: 'ready',
++                  clients: readClientAccountList(result.value),
++                }
+               : { status: 'error' },
+           );
+         },
+@@ -325,7 +333,7 @@ export function ClientWorkspace({
+       pending: pendingCreate,
+       identity,
+       execute: (api, signal) =>
+-        api.request<ClientAccountView>('/clients', {
++        api.request<unknown>('/clients', {
+           method: 'POST',
+           headers: {
+             'content-type': 'application/json',
+@@ -360,6 +368,7 @@ export function ClientWorkspace({
+           setCreateState({ status: 'error' });
+           return;
+         }
++        readClientAccountView(result.value);
+         retryCommand.current = undefined;
+         setDisplayName('');
+         setTaxId('');
+@@ -389,7 +398,7 @@ export function ClientWorkspace({
+       pending: pendingSearch,
+       identity,
+       execute: (api, signal) =>
+-        api.request<ClientAccountView[]>(
++        api.request<unknown>(
+           `/clients/search?query=${encodeURIComponent(query)}`,
+           { companyContextId: activeCompany.id, signal },
+         ),
+@@ -401,7 +410,7 @@ export function ClientWorkspace({
+         if (signal.aborted) return;
+         setSearchState(
+           result.status === 'ok'
+-            ? { status: 'ready', clients: result.value }
++            ? { status: 'ready', clients: readClientAccountList(result.value) }
+             : result.status === 'validation'
+               ? { status: 'validation' }
+               : { status: 'error' },
+@@ -418,7 +427,7 @@ export function ClientWorkspace({
+       pending: pendingAttach,
+       identity,
+       execute: (api, signal) =>
+-        api.request<ClientAccountView>(
++        api.request<unknown>(
+           `/clients/${encodeURIComponent(clientAccountId)}/active-company-relationship`,
+           {
+             method: 'PUT',
+@@ -436,12 +445,13 @@ export function ClientWorkspace({
+           setSearchState({ status: 'error' });
+           return;
+         }
++        const attachedClient = readClientAccountView(result.value);
+         setSearchState((current) =>
+           current.status === 'ready'
+             ? {
+                 status: 'ready',
+                 clients: current.clients.map((client) =>
+-                  client.id === result.value.id ? result.value : client,
++                  client.id === attachedClient.id ? attachedClient : client,
+                 ),
+               }
+             : current,
+diff --git a/apps/web/src/client/client-account-response.ts b/apps/web/src/client/client-account-response.ts
+new file mode 100644
+index 0000000..d9e32f6
+--- /dev/null
++++ b/apps/web/src/client/client-account-response.ts
+@@ -0,0 +1,29 @@
++export function readClientAccountView(value: unknown) {
++  if (
++    typeof value !== 'object' ||
++    value === null ||
++    Array.isArray(value) ||
++    !('id' in value) ||
++    typeof value.id !== 'string' ||
++    !('displayName' in value) ||
++    typeof value.displayName !== 'string' ||
++    !('relatedToActiveCompany' in value) ||
++    typeof value.relatedToActiveCompany !== 'boolean'
++  ) {
++    throw new Error('Invalid Client account response.');
++  }
++  return {
++    id: value.id,
++    displayName: value.displayName,
++    relatedToActiveCompany: value.relatedToActiveCompany,
++  };
++}
++
++export type ClientAccountView = ReturnType<typeof readClientAccountView>;
++
++export function readClientAccountList(value: unknown): ClientAccountView[] {
++  if (!Array.isArray(value)) {
++    throw new Error('Invalid Client account list response.');
++  }
++  return value.map(readClientAccountView);
++}
+diff --git a/docs/agents/typescript-discipline.md b/docs/agents/typescript-discipline.md
+index 5e77d99..2cf0c8e 100644
+--- a/docs/agents/typescript-discipline.md
++++ b/docs/agents/typescript-discipline.md
+@@ -10,37 +10,58 @@ default; they do not depend on a prompt naming a TypeScript skill.
+ ## Model valid states constructively
+ 
+ - Choose the simplest total type that represents the domain. Use discriminated
+-  unions when behavior varies by state so illegal states are unrepresentable;
+-  avoid parallel optional fields that admit contradictory combinations.
+-- Make state handling exhaustive. Use a `never` check when a switch or mapping
+-  must cover every variant so a newly added variant fails type checking until
+-  it is handled deliberately.
+-- Prefer schema-derived types and `satisfies` over duplicated declarations,
+-  widened annotations, or unchecked casts. Keep the runtime validator and the
+-  type it proves under one owner.
+-
+-## Prove boundaries once
+-
+-- Treat data from external boundaries as `unknown`, including HTTP payloads,
+-  environment variables, persisted JSON, storage, and third-party responses.
+-  Validate exactly once at the boundary that owns the input, then pass the
+-  resulting typed value inward instead of repeating ad hoc checks.
+-- Do not use `any`. Do not use type assertions with `as` or non-null assertions
+-  to manufacture evidence. An assertion is acceptable only when it expresses
+-  a complete runtime claim already validated at the same boundary and no
+-  narrower TypeScript construct can preserve that proof.
++  unions where practical to make relevant illegal states unrepresentable; avoid
++  parallel optional fields that admit contradictory combinations. Types do not
++  replace database constraints or checks on concurrent state.
++- Make decisions over closed unions exhaustive. Use a `never` check when a
++  switch or mapping must cover every variant. Partial projections and open
++  external protocols may instead need an explicit compatibility fallback.
++- Keep an owned runtime contract and its type together. Prefer parser-derived
++  or schema-derived types, database inference and `satisfies` where they preserve
++  useful evidence. A simple interface is appropriate when it does not duplicate
++  a validator. Do not introduce a schema library or shared package solely to
++  satisfy this preference; compare maintenance and integration costs first.
++
++## Establish and preserve boundary evidence
++
++- Use `unknown` for unparsed JSON and other inputs whose structure is not
++  established. Retain platform, driver and schema types to the extent that their
++  enforced guarantees apply: environment values already have a string-or-absent
++  representation, while an ORM JSON type annotation alone proves no structure.
++- Validate and normalize representation at its owning boundary, then pass the
++  established type inward. Check domain constraints where their context is
++  available, and recheck authorization, versions and mutable state at the
++  operation or transaction that relies on them. Avoid repeating a check only
++  while its invariant remains established for the unchanged value.
++- State compatibility deliberately. An HTTP reader may accept additive fields
++  while proving only the fields it consumes; this does not relax the publisher's
++  contract. Persisted receipts and historical snapshots need their own format
++  and evolution rules. Do not reuse a permissive HTTP reader where discarding
++  persisted information would change historical or replay semantics.
++- Do not use `any` in domain contracts or allow unchecked values to spread from
++  interop code. Keep a necessary library exception local, name its supported
++  contract and verify the boundary; it must still satisfy the lint configuration.
++  Do not use type assertions with `as` or non-null assertions to manufacture
++  evidence. A necessary assertion must express a complete runtime claim backed
++  by control flow, validation or an enforced platform/library/lifecycle contract
++  that still holds at use. Prefer inference or a guard when it preserves that
++  proof. A cast, annotation or comment does not itself validate a value.
+ - Fail closed when an unrecognized value affects authorization, permissions,
+   identity, tenancy, or version compatibility.
+ 
+ ## Keep interfaces and tests honest
+ 
+-- Use object arguments when parameter ordering is ambiguous or several values
+-  share a type. Keep public interfaces narrow and name domain concepts rather
++- Use object arguments when parameter ordering is ambiguous, especially for
++  business identifiers. Keep established framework APIs and simple unambiguous
++  calls intact. Keep public interfaces narrow and name domain concepts rather
+   than transporting loosely related primitives.
+-- Test behavior through the highest stable public seam. Mock only true system
+-  boundaries, not the module whose contract the test is meant to prove. Cover
+-  rejected, malformed, unauthorized, and stale inputs when the seam admits
+-  them.
++- Test behavior through the smallest stable public seam that proves the
++  contract. Use REST/PostgreSQL or browser seams when the behavior depends on
++  transactions, constraints or browser integration; deterministic calculations
++  and decoders can have focused public-function tests. Mock true system
++  boundaries or explicit collaborators whose behavior is not under test, and
++  retain the integration proof when wiring matters. Cover rejected, malformed,
++  unauthorized and stale inputs when the seam admits them.
+ 
+ ## Review contract
+ 
+diff --git a/scripts/typescript-discipline-contract.test.mjs b/scripts/typescript-discipline-contract.test.mjs
+index 546df21..bf3f8f5 100644
+--- a/scripts/typescript-discipline-contract.test.mjs
++++ b/scripts/typescript-discipline-contract.test.mjs
+@@ -33,8 +33,20 @@ test('TypeScript implementation and review share one mandatory repository contra
+   assert.match(normalizedDiscipline, /discriminated unions/i);
+   assert.match(normalizedDiscipline, /illegal states.*unrepresentable/i);
+   assert.match(normalizedDiscipline, /simplest total type/i);
+-  assert.match(normalizedDiscipline, /external boundar.*`unknown`/i);
+-  assert.match(normalizedDiscipline, /validate exactly once/i);
++  // These checks establish discoverability, not the technical merit of policy.
++  assert.match(normalizedDiscipline, /`unknown` for unparsed JSON/i);
++  assert.match(
++    normalizedDiscipline,
++    /retain platform, driver and schema types/i,
++  );
++  assert.match(
++    normalizedDiscipline,
++    /recheck authorization, versions and mutable state/i,
++  );
++  assert.match(
++    normalizedDiscipline,
++    /persisted receipts and historical snapshots/i,
++  );
+   assert.match(normalizedDiscipline, /do not use `any`/i);
+   assert.match(normalizedDiscipline, /do not use.*type assertions.*`as`/i);
+   assert.match(normalizedDiscipline, /complete runtime claim/i);
+@@ -46,7 +58,7 @@ test('TypeScript implementation and review share one mandatory repository contra
+     /object arguments.*ordering is ambiguous/i,
+   );
+   assert.match(normalizedDiscipline, /test.*public seam/i);
+-  assert.match(normalizedDiscipline, /mock only.*system boundaries/i);
++  assert.match(normalizedDiscipline, /mock true system boundaries/i);
+ 
+   for (const pointer of [agents, execution]) {
+     assert.doesNotMatch(pointer, /discriminated unions.*illegal states/is);
+-- 
+2.52.0
+
