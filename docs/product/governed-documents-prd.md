@@ -98,6 +98,12 @@ upload history. Its PDF-only draft requires no external-reference placeholder;
 official designation requires clean stored content. The independent family gate
 adds to existing metadata/content authority and does not create verified evidence.
 
+[Exact mission Task results](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
+may declare a result against one frozen mission Version and its exact preserved
+PDF under both Task and Document read boundaries. The Task-owned append-only
+declaration never follows a new official Version, changes Document governance or
+establishes delivery, acceptance, verification or certification.
+
 External sync is asynchronous and idempotent. Provider deletion, renaming, duplicate callbacks and outages produce visible recoverable states without rewriting the business record.
 
 ## 10. Security and reliability
