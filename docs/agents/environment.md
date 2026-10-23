@@ -62,6 +62,29 @@ For the original Linux/X64 image only, CI can migrate the exact existing archive
 from its previous script-based key. A different image or platform cannot use that
 migration; an ordinary cold miss still acquires the pinned official image.
 
+### Slow readiness probes
+
+The default `standard` readiness profile gives each pnpm and Chromium subprocess
+10 seconds. After activating the installed runtime, a slow managed harness may
+explicitly select the bounded `cloud` allowance:
+
+```bash
+node scripts/agent-doctor.mjs --profile web --readiness-profile cloud
+```
+
+This gives each of those two probes at most 60 seconds; it also works with
+`base`, `postgres` and `web-postgres`. Text and JSON output identify the selected
+readiness profile. Unknown or missing readiness-profile values fail before any
+probe. Neither allowance changes the PostgreSQL subprocess or operation limits,
+database safety/version checks, browser scenarios, application assertions or
+verification gates.
+
+A timed-out probe still fails, as does a denied or unrecognized probe result.
+Only the executable check's explicit missing/non-executable result recommends
+installing Chromium; a timeout or harness denial does not prove browser absence.
+The doctor checks the configured executable's execute permission; an actual
+browser launch and journey are still required for browser evidence.
+
 ## Verification commands
 
 CI PostgreSQL services and Railway packaging use Docker Official Images from

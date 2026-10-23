@@ -186,17 +186,7 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
       'Run bash scripts/agent-pnpm.sh install --frozen-lockfile.',
       { ciRecoverable: true },
     ),
-    result(
-      'chromium',
-      needsChromium ? (snapshot.chromiumAvailable ? 'PASS' : 'FAIL') : 'SKIP',
-      needsChromium
-        ? snapshot.chromiumAvailable
-          ? 'Playwright Chromium is installed and executable.'
-          : 'Playwright Chromium is missing or not executable.'
-        : 'Playwright Chromium is not required by the selected profile.',
-      `Run bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install --with-deps chromium.`,
-      { ciRecoverable: true },
-    ),
+    evaluateChromium(needsChromium, snapshot.chromiumProbe),
     result(
       'database-variables',
       needsPostgres ? (databaseVariablesValid ? 'PASS' : 'FAIL') : 'SKIP',
@@ -241,6 +231,55 @@ export function evaluateEnvironment(snapshot, profile = 'base') {
   };
 }
 
+function evaluateChromium(required, probe = { state: 'not-run' }) {
+  if (!required)
+    return result(
+      'chromium',
+      'SKIP',
+      'Playwright Chromium is not required by the selected profile.',
+    );
+  switch (probe.state) {
+    case 'available':
+      return result(
+        'chromium',
+        'PASS',
+        'Playwright Chromium is installed and executable.',
+      );
+    case 'timed-out':
+      return result(
+        'chromium',
+        'FAIL',
+        'The Playwright Chromium readiness probe timed out (ETIMEDOUT).',
+        'Activate the installed runtime and retry with --readiness-profile cloud; a timeout does not establish that Chromium is missing.',
+        { ciRecoverable: true },
+      );
+    case 'sandbox-denied':
+      return result(
+        'chromium',
+        'FAIL',
+        `The harness sandbox denied the Chromium probe (${probe.detail}).`,
+        'Run the doctor in a harness that permits repository subprocesses.',
+        { ciRecoverable: true },
+      );
+    case 'missing':
+      return result(
+        'chromium',
+        'FAIL',
+        'Playwright Chromium is missing or not executable.',
+        'Run bash scripts/agent-pnpm.sh --filter @prisma-prim/web exec playwright install --with-deps chromium.',
+        { ciRecoverable: true },
+      );
+    default:
+      return result(
+        'chromium',
+        'FAIL',
+        'The Chromium readiness probe could not verify the executable.',
+        'Check the activated pnpm, Playwright dependencies and harness permissions before installing a browser.',
+        { ciRecoverable: true },
+      );
+  }
+}
+
 function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
   if (!requiredPnpm) {
     return result(
@@ -267,6 +306,16 @@ function evaluatePnpm(requiredPnpm, parsedRequiredPnpm, actualPnpm, probe) {
       'FAIL',
       `The harness sandbox denied the pnpm subprocess (${probe.detail ?? 'permission denied'}).`,
       `Verify the harness subprocess policy with corepack pnpm --version; use a permitted shell or update the sandbox policy before relying on pnpm checks.`,
+      { ciRecoverable: true },
+    );
+  }
+
+  if (probe.state === 'failed' && probe.detail === 'ETIMEDOUT') {
+    return result(
+      'pnpm',
+      'FAIL',
+      'The pnpm readiness probe timed out (ETIMEDOUT).',
+      'Activate the installed runtime and retry with --readiness-profile cloud; the effective pnpm version must still be verified.',
       { ciRecoverable: true },
     );
   }
@@ -380,10 +429,14 @@ function evaluatePostgres(
   }
 }
 
-export function inspectEnvironment(profile = 'base') {
+export function inspectEnvironment(
+  profile = 'base',
+  { readinessProfile = 'standard' } = {},
+) {
   const snapshot = collectEnvironmentSnapshot({
     needsChromium: requiresChromium(profile),
     needsPostgres: requiresPostgres(profile),
+    readinessProfile,
   });
 
   return evaluateEnvironment(snapshot, profile);
@@ -405,6 +458,9 @@ function main() {
   const profileIndex = process.argv.indexOf('--profile');
   const profile = profileIndex >= 0 ? process.argv[profileIndex + 1] : 'base';
   const json = process.argv.includes('--json');
+  const readinessIndex = process.argv.indexOf('--readiness-profile');
+  const readinessProfile =
+    readinessIndex >= 0 ? process.argv[readinessIndex + 1] : 'standard';
 
   if (!new Set(['base', 'postgres', 'web', 'web-postgres']).has(profile)) {
     process.stderr.write(
@@ -414,10 +470,16 @@ function main() {
     return;
   }
 
-  const report = inspectEnvironment(profile);
+  if (!['standard', 'cloud'].includes(readinessProfile)) {
+    process.stderr.write('Expected --readiness-profile standard or cloud.\n');
+    process.exitCode = 2;
+    return;
+  }
+
+  const report = inspectEnvironment(profile, { readinessProfile });
   const results = report.checks;
   process.stdout.write(
-    `${json ? JSON.stringify({ profile, results }, null, 2) : formatResults(results)}\n`,
+    `${json ? JSON.stringify({ profile, readinessProfile, results }, null, 2) : `Readiness profile: ${readinessProfile}\n${formatResults(results)}`}\n`,
   );
 
   if (results.some((check) => check.status === 'FAIL')) {

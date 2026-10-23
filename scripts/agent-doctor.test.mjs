@@ -14,7 +14,7 @@ const healthyEnvironment = {
   workspaceManifestExists: true,
   lockfileExists: true,
   dependenciesInstalled: true,
-  chromiumAvailable: true,
+  chromiumProbe: { state: 'available' },
   databaseUrl:
     'postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev',
   testDatabaseUrl:
@@ -83,7 +83,7 @@ test('accepts the complete canonical environment', () => {
 test('the web profile requires an executable Chromium', () => {
   const healthy = evaluateEnvironment(healthyEnvironment, 'web');
   const missing = evaluateEnvironment(
-    { ...healthyEnvironment, chromiumAvailable: false },
+    { ...healthyEnvironment, chromiumProbe: { state: 'missing' } },
     'web',
   );
 
@@ -91,9 +91,38 @@ test('the web profile requires an executable Chromium', () => {
   assert.equal(missing.find((check) => check.id === 'chromium').status, 'FAIL');
 });
 
+test('a timed-out Chromium probe fails as a timeout instead of missing Chromium', () => {
+  const checks = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      chromiumProbe: { state: 'timed-out' },
+    },
+    'web',
+  );
+  const chromium = checks.find((check) => check.id === 'chromium');
+  assert.equal(chromium.status, 'FAIL');
+  assert.match(chromium.summary, /timed out/iu);
+  assert.doesNotMatch(chromium.summary, /missing|not executable/iu);
+  assert.match(chromium.remediation, /--readiness-profile cloud/u);
+});
+
+test('a timed-out pnpm probe still requires effective version verification', () => {
+  const check = evaluateEnvironment(
+    {
+      ...healthyEnvironment,
+      pnpmProbe: { state: 'failed', detail: 'ETIMEDOUT' },
+    },
+    'web',
+  ).find((entry) => entry.id === 'pnpm');
+  assert.equal(check.status, 'FAIL');
+  assert.match(check.summary, /timed out/iu);
+  assert.match(check.remediation, /--readiness-profile cloud/u);
+  assert.match(check.remediation, /version must still be verified/u);
+});
+
 test('the postgres profile verifies databases without requiring Chromium', () => {
   const results = evaluateEnvironment(
-    { ...healthyEnvironment, chromiumAvailable: false },
+    { ...healthyEnvironment, chromiumProbe: { state: 'missing' } },
     'postgres',
   );
 
@@ -123,7 +152,7 @@ test('reports missing hosted prerequisites without any delegation hint', () => {
   const report = evaluateEnvironmentReport(
     {
       ...healthyEnvironment,
-      chromiumAvailable: false,
+      chromiumProbe: { state: 'missing' },
       databaseUrl: '',
       testDatabaseUrl: '',
       postgresProbe: { state: 'not-run' },
@@ -473,7 +502,7 @@ test('reports pnpm and dependency setup drift independently in the base profile'
     ...healthyEnvironment,
     pnpmProbe: { state: 'available', version: '11.16.0' },
     dependenciesInstalled: false,
-    chromiumAvailable: false,
+    chromiumProbe: { state: 'missing' },
   });
   const failedIds = results
     .filter((check) => check.status === 'FAIL')
