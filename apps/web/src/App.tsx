@@ -12,6 +12,8 @@ import {
 } from './project/ProjectTemplateConfiguration';
 import { useAppCopy } from './app.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
+import { UnassignedTasks } from './project/UnassignedTasks';
+import { useUnassignedTasksCopy } from './project/unassigned-tasks.copy';
 import {
   ProjectWorkspace,
   type ProjectOpenTarget,
@@ -49,6 +51,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
   const ideasCopy = useIdeasCopy();
   const prismeCopy = usePrismeCopy();
+  const unassignedCopy = useUnassignedTasksCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [templateCatalogueRevision, setTemplateCatalogueRevision] = useState(0);
   const [projectClientFilter, setProjectClientFilter] = useState<{
@@ -601,6 +604,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <MyTasks
           key={`my-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onOpenTask={openProject}
+        />
+      ),
+    });
+  if (canReadTasks(access.actor))
+    sections.push({
+      id: 'unassigned-tasks',
+      label: unassignedCopy('title'),
+      description: unassignedCopy('description'),
+      mountWhenSelected: true,
+      content: (
+        <UnassignedTasks
+          key={`unassigned-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
           onOpenTask={openProject}

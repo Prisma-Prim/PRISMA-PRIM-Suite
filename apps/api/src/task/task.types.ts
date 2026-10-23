@@ -61,6 +61,21 @@ export interface TaskProjectLabels {
 }
 /** An open Task assigned to the reader, with the Project list's own labels. */
 export type AssignedTaskView = TaskView & { project: TaskProjectLabels };
+/** A readable open Task whose stored assignment is explicitly empty. */
+export type UnassignedTaskView = Extract<
+  TaskView,
+  { status: OpenTaskState }
+> & {
+  assignee: null;
+  project: TaskProjectLabels;
+};
+export interface UnassignedTasksPage {
+  companyId: string;
+  offset: number;
+  pageSize: 25;
+  hasNextPage: boolean;
+  tasks: UnassignedTaskView[];
+}
 /** One current, complete page of the reader's dated open Tasks. */
 export type DueSoonTaskView = Extract<
   AssignedTaskView,

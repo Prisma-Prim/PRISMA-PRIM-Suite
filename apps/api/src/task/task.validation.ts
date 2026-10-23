@@ -181,6 +181,10 @@ export function dueSoonTasksQuery(value: unknown): { offset: number } {
 export function attentionTasksQuery(value: unknown): { offset: number } {
   return taskPageQuery(value);
 }
+/** Current unassigned Tasks, using the same bounded offset-only grammar. */
+export function unassignedTasksQuery(value: unknown): { offset: number } {
+  return taskPageQuery(value);
+}
 /** Current Company overdue Tasks, using the same bounded offset-only grammar. */
 export function overdueTasksQuery(value: unknown): { offset: number } {
   return taskPageQuery(value);

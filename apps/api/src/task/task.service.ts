@@ -11,6 +11,7 @@ import {
   eq,
   gte,
   inArray,
+  isNull,
   lt,
   lte,
   or,
@@ -37,6 +38,7 @@ import { ProjectService } from '../project/project.service.js';
 import {
   assignedTasksQuery,
   attentionTasksQuery,
+  unassignedTasksQuery,
   cancelInput,
   createInput,
   editInput,
@@ -53,6 +55,8 @@ import {
   DEFAULT_TASK_PRIORITY,
   OPEN_TASK_STATES,
   type AssignedTaskView,
+  type UnassignedTaskView,
+  type UnassignedTasksPage,
   type AttentionRule,
   type AttentionTasksPage,
   type CompanyOverdueTasks,
@@ -186,6 +190,76 @@ export class TaskService {
           tasks: rows.flatMap((row) => {
             const project = projects.get(row.projectId);
             return project ? [{ ...view(row), project }] : [];
+          }),
+        };
+      },
+      { isolationLevel: 'repeatable read' },
+    );
+  }
+  /** Current authority and the 25+1 matching-row lookahead share one snapshot. */
+  async listUnassigned(
+    actor: ActorContext,
+    query: unknown,
+  ): Promise<UnassignedTasksPage> {
+    const { offset } = unassignedTasksQuery(query);
+    return this.database.transaction(
+      async () => {
+        const companyId = await this.access.requireActor(actor);
+        // Project owns original-Client visibility, including historical labels and
+        // readable closed Projects. No Project lifecycle filter belongs here.
+        const readableProjects = new Map(
+          (await this.projects.list(actor)).map((project) => [
+            project.id,
+            {
+              id: project.id,
+              title: project.title,
+              clientDisplayName: project.clientDisplayName,
+            },
+          ]),
+        );
+        const page = { companyId, offset, pageSize: 25 as const };
+        if (readableProjects.size === 0)
+          return { ...page, hasNextPage: false, tasks: [] };
+        const rows = await this.database.connection
+          .select()
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.workspaceId, actor.workspaceId),
+              eq(tasks.companyId, companyId),
+              isNull(tasks.assigneeMembershipId),
+              inArray(tasks.status, [...OPEN_TASK_STATES]),
+              inArray(tasks.projectId, [...readableProjects.keys()]),
+            ),
+          )
+          .orderBy(
+            sql`${tasks.dueDate} ASC NULLS LAST`,
+            asc(tasks.createdAt),
+            asc(tasks.id),
+          )
+          .limit(26)
+          .offset(offset);
+        return {
+          ...page,
+          hasNextPage: rows.length > page.pageSize,
+          tasks: rows.slice(0, page.pageSize).map((row): UnassignedTaskView => {
+            const task = view(row);
+            const project = readableProjects.get(task.projectId);
+            if (!project || task.assignee !== null)
+              throw new Error('Invalid unassigned Task projection.');
+            switch (task.status) {
+              case 'todo':
+              case 'in_progress':
+              case 'blocked':
+                return { ...task, assignee: null, project };
+              case 'done':
+              case 'cancelled':
+                throw new Error('Invalid unassigned Task state.');
+              default: {
+                const exhaustive: never = task;
+                return exhaustive;
+              }
+            }
           }),
         };
       },

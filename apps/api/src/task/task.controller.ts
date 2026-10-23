@@ -46,6 +46,12 @@ export class TaskController {
   ) {
     return this.tasks.listAssigned(actor(request), query);
   }
+  @Get('unassigned-tasks') listUnassigned(
+    @Req() request: ActorContextRequest,
+    @Query() query: unknown,
+  ) {
+    return this.tasks.listUnassigned(actor(request), query);
+  }
   @Get('due-soon-tasks') listDueSoon(
     @Req() request: ActorContextRequest,
     @Query() query: unknown,
