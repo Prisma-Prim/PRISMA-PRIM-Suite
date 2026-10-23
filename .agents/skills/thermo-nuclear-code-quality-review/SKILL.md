@@ -31,11 +31,9 @@ Apply the baseline prompt above, plus these explicit review rules:
    - Assume there is often a "code judo" move available: a re-organization that uses the existing architecture more effectively and makes the change dramatically simpler and more elegant.
    - If you see a path to delete complexity rather than rearrange it, push hard for that path.
 
-1. **Do not let a PR push a file from under 1k lines to over 1k lines without a very strong reason.**
-   - Treat this as a strong code-quality smell by default.
-   - Prefer extracting helpers, subcomponents, modules, or local abstractions instead of letting a file sprawl past 1000 lines.
-   - If the diff crosses that threshold, explicitly ask whether the code should be decomposed first.
-   - Only waive this if there is a compelling structural reason and the resulting file is still clearly organized.
+1. **Treat a file crossing 1000 lines as a structural review signal.**
+   - Explain whether decomposition would reduce complexity within the changed scope.
+   - Do not require extraction merely to satisfy the line count; a cohesive, clearly organized file can remain intact.
 
 2. **Do not allow random spaghetti growth in existing code.**
    - Be highly suspicious of new ad-hoc conditionals, scattered special cases, or one-off branches inserted into unrelated flows.
@@ -166,27 +164,6 @@ Prioritize findings in this order:
 Do not flood the review with low-value nits if there are larger structural issues.
 Prefer a smaller number of high-conviction comments over a long list of cosmetic notes.
 
-## Approval Bar
+## Review disposition
 
-Do not approve merely because behavior seems correct.
-The bar for approval is:
-
-- no clear structural regression
-- no obvious missed opportunity to make the implementation dramatically simpler when such a path is visible
-- no unjustified file-size explosion
-- no obvious spaghetti-growth from special-case branching
-- no obviously hacky or magical abstraction that makes the code harder to reason about
-- no unnecessary wrapper/cast/optionality churn obscuring the real design
-- no clear architecture-boundary leak or avoidable canonical-helper duplication
-- no missed opportunity for an obvious decomposition that would materially improve maintainability
-
-Treat these as presumptive blockers unless the author can justify them clearly:
-
-- the PR preserves a lot of incidental complexity when there is a plausible code-judo move that would delete it
-- the PR pushes a file from below 1000 lines to above 1000 lines
-- the PR adds ad-hoc branching that makes an existing flow more tangled
-- the PR solves a local problem by scattering feature checks across shared code
-- the PR adds an unnecessary abstraction, wrapper, or cast-heavy contract that makes the design more indirect
-- the PR duplicates an existing helper or puts logic in the wrong layer when there is a clear canonical home
-
-If those conditions are not met, leave explicit, actionable feedback and push for a cleaner decomposition.
+Apply the repository's [review policy](../../../AGENTS.md#review-policy) to every finding. Structural observations do not add blocking criteria or review rounds. Record nonblocking improvements as follow-ups without expanding the assigned issue.

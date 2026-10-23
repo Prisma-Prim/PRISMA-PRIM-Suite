@@ -753,7 +753,9 @@ for (const frame of ['classic', 'prisme'] as const) {
           json: {
             companyId: company.id,
             today: '2026-09-27',
-            total: tasks.length,
+            total: 2,
+            offset: 0,
+            pageSize: 25,
             tasks: [
               { ...collect, project: labels, daysOverdue: 7 },
               { ...manual, project: labels, daysOverdue: 1 },
@@ -1012,13 +1014,15 @@ for (const frame of ['classic', 'prisme'] as const) {
         exact: true,
       })
       .click();
-    await expect(projectsTarget).toBeFocused();
     const projectTasks = page
       .locator('.project-workspace')
       .getByRole('region', { name: 'Tasks', exact: true });
-    await expect(
-      projectTasks.getByRole('heading', { name: collect.title, exact: true }),
-    ).toBeVisible();
+    const openedTask = projectTasks.getByRole('heading', {
+      name: collect.title,
+      exact: true,
+    });
+    await expect(openedTask).toBeVisible();
+    await expect(openedTask).toBeFocused();
     const taskDueDate = projectTasks.locator(
       `dd time[datetime="${collect.dueDate}"]`,
     );

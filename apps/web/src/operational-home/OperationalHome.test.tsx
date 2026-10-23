@@ -91,7 +91,7 @@ const draft = overdueTask(
 );
 
 type Reply = () => Response | Promise<Response>;
-type Call = { path: string; init: RequestInit | undefined };
+type Call = { path: string; search: string; init: RequestInit | undefined };
 /** Answers each path from its own queue; the last reply of a queue repeats. */
 function stub(routes: Record<string, Reply[]>) {
   const calls: Call[] = [];
@@ -99,8 +99,9 @@ function stub(routes: Record<string, Reply[]>) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
-      const path = new URL(url, window.location.origin).pathname;
-      calls.push({ path, init });
+      const parsed = new URL(url, window.location.origin);
+      const path = parsed.pathname;
+      calls.push({ path, search: parsed.search, init });
       const replies = routes[path];
       if (!replies) throw new Error(`Unexpected request to ${path}`);
       const index = served.get(path) ?? 0;
@@ -123,10 +124,31 @@ const status =
   (code: number): Reply =>
   () =>
     new Response(null, { status: code });
+/** Public response fixtures: one complete, bounded page, never a full UI result. */
+const pagingTasks = Array.from({ length: 107 }, (_, index) =>
+  overdueTask(
+    `page-${String(index + 1).padStart(3, '0')}`,
+    `Paged note ${index + 1}`,
+    '2026-09-19',
+    8,
+  ),
+);
+const requestedOffsets = (server: ReturnType<typeof stub>) =>
+  server.calls
+    .filter((call) => call.path === '/api/overdue-tasks')
+    .map((call) => call.search);
 const home = (summaries: unknown[] = allSummaries, changes = {}) =>
   json({ companyId: company.id, today, summaries, ...changes });
 const overdueList = (tasks: unknown[], total = tasks.length, changes = {}) =>
-  json({ companyId: company.id, today, total, tasks, ...changes });
+  json({
+    companyId: company.id,
+    today,
+    total,
+    offset: 0,
+    pageSize: 25,
+    tasks,
+    ...changes,
+  });
 
 function renderHome(
   props: Partial<Parameters<typeof OperationalHome>[0]> = {},
@@ -403,6 +425,265 @@ describe('Company summary', () => {
 });
 
 describe('Overdue Tasks panel', () => {
+  it('browses every one of 107 Tasks in bounded pages, then goes back and restarts', async () => {
+    const server = stub({
+      '/api/operational-home': [home([{ kind: 'overdue_tasks', count: 107 }])],
+      '/api/overdue-tasks': [
+        overdueList(pagingTasks.slice(0, 25), 107),
+        overdueList(pagingTasks.slice(25, 50), 107, { offset: 25 }),
+        overdueList(pagingTasks.slice(50, 75), 107, { offset: 50 }),
+        overdueList(pagingTasks.slice(75, 100), 107, { offset: 75 }),
+        overdueList(pagingTasks.slice(100), 107, { offset: 100 }),
+        overdueList(pagingTasks.slice(75, 100), 107, { offset: 75 }),
+        overdueList(pagingTasks.slice(0, 25), 107),
+      ],
+    });
+    const { onOpenTask } = renderHome();
+    fireEvent.click(
+      await screen.findByRole('button', { name: overdueCard('107') }),
+    );
+    const seen: Array<string | null> = [];
+    // Literal expected boundaries are independent of the returned page metadata.
+    for (const expected of [
+      { first: 1, last: 25, size: 25 },
+      { first: 26, last: 50, size: 25 },
+      { first: 51, last: 75, size: 25 },
+      { first: 76, last: 100, size: 25 },
+      { first: 101, last: 107, size: 7 },
+    ]) {
+      await within(panel()).findByText(
+        `Overdue Tasks ${expected.first}–${expected.last} of 107.`,
+      );
+      const list = within(panel()).getByRole('list', {
+        name: copy.overdue.listLabel,
+      });
+      expect(within(list).getAllByRole('listitem')).toHaveLength(expected.size);
+      const headings = within(list).getAllByRole('heading');
+      expect(headings[0]).toHaveTextContent(`Paged note ${expected.first}`);
+      expect(headings.at(-1)).toHaveTextContent(`Paged note ${expected.last}`);
+      seen.push(...headings.map((heading) => heading.textContent));
+      const next = within(panel()).getByRole('button', { name: 'Next page' });
+      if (expected.first === 1) {
+        const previous = within(panel()).getByRole('button', {
+          name: 'Previous page',
+        });
+        expect(previous).toBeDisabled();
+        fireEvent.click(previous);
+        expect(requestedOffsets(server)).toEqual(['?offset=0']);
+      }
+      if (expected.last < 107) fireEvent.click(next);
+      else {
+        expect(next).toBeDisabled();
+        fireEvent.click(next);
+        expect(server.count('/api/overdue-tasks')).toBe(5);
+      }
+    }
+    expect(seen).toEqual(pagingTasks.map((task) => task.title));
+    expect(new Set(seen).size).toBe(107);
+    fireEvent.click(
+      within(panel()).getByRole('button', {
+        name: 'Open Paged note 107 in ISO 9001 — GRUP Demo SA (GRUP Demo SA)',
+      }),
+    );
+    expect(onOpenTask).toHaveBeenCalledOnce();
+    expect(onOpenTask).toHaveBeenCalledWith({
+      projectId: iso.id,
+      taskId: 'page-107',
+    });
+    fireEvent.click(
+      within(panel()).getByRole('button', { name: 'Previous page' }),
+    );
+    await within(panel()).findByText('Overdue Tasks 76–100 of 107.');
+    expect(
+      within(panel()).queryByRole('heading', { name: 'Paged note 107' }),
+    ).toBeNull();
+    fireEvent.click(
+      within(panel()).getByRole('button', { name: 'Refresh from the start' }),
+    );
+    await within(panel()).findByText('Overdue Tasks 1–25 of 107.');
+    expect(
+      within(panel()).getByRole('button', { name: 'Previous page' }),
+    ).toBeDisabled();
+    expect(requestedOffsets(server)).toEqual([
+      '?offset=0',
+      '?offset=25',
+      '?offset=50',
+      '?offset=75',
+      '?offset=100',
+      '?offset=75',
+      '?offset=0',
+    ]);
+    expect(card(overdueCard('107'))).toBeVisible();
+    expect(server.count('/api/operational-home')).toBe(1);
+  });
+
+  it('clears old rows and count after a later-page failure, then retries the same page', async () => {
+    const server = stub({
+      '/api/operational-home': [home([{ kind: 'overdue_tasks', count: 26 }])],
+      '/api/overdue-tasks': [
+        overdueList(pagingTasks.slice(0, 25), 26),
+        status(500),
+        overdueList(pagingTasks.slice(25, 26), 26, { offset: 25 }),
+      ],
+    });
+    renderHome();
+    fireEvent.click(
+      await screen.findByRole('button', { name: overdueCard('26') }),
+    );
+    await within(panel()).findByText('Overdue Tasks 1–25 of 26.');
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
+    expect(await within(panel()).findByRole('alert')).toHaveTextContent(
+      copy.overdue.error,
+    );
+    expect(within(panel()).queryByRole('list')).toBeNull();
+    expect(within(panel()).queryByText('Overdue Tasks 1–25 of 26.')).toBeNull();
+    expect(
+      within(panel()).queryByRole('heading', { name: 'Paged note 1' }),
+    ).toBeNull();
+    fireEvent.click(
+      within(panel()).getByRole('button', { name: copy.overdue.retry }),
+    );
+    await within(panel()).findByRole('heading', { name: 'Paged note 26' });
+    expect(panel()).toHaveTextContent('Overdue Tasks 26–26 of 26.');
+    expect(
+      within(panel()).getByRole('button', { name: 'Next page' }),
+    ).toBeDisabled();
+    expect(requestedOffsets(server)).toEqual([
+      '?offset=0',
+      '?offset=25',
+      '?offset=25',
+    ]);
+  });
+
+  it.each([
+    { label: 'remaining Tasks before this offset', total: 25 },
+    { label: 'no remaining overdue Tasks', total: 0 },
+  ])(
+    'distinguishes an empty later page with $label and explicitly restarts',
+    async ({ total }) => {
+      const firstAfterChange = total === 0 ? [] : pagingTasks.slice(0, 25);
+      const server = stub({
+        '/api/operational-home': [home([{ kind: 'overdue_tasks', count: 26 }])],
+        '/api/overdue-tasks': [
+          overdueList(pagingTasks.slice(0, 25), 26),
+          overdueList([], total, { offset: 25 }),
+          overdueList(firstAfterChange, total),
+        ],
+      });
+      renderHome();
+      fireEvent.click(
+        await screen.findByRole('button', { name: overdueCard('26') }),
+      );
+      await within(panel()).findByText('Overdue Tasks 1–25 of 26.');
+      fireEvent.click(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      );
+      const state =
+        total === 0
+          ? copy.overdue.empty({ company: company.displayName })
+          : 'This page no longer contains Tasks. There are now 25 overdue Tasks; return to the start.';
+      await within(panel()).findByText(state);
+      expect(within(panel()).queryByRole('list')).toBeNull();
+      expect(
+        within(panel()).getByRole('button', { name: 'Next page' }),
+      ).toBeDisabled();
+      if (total > 0)
+        expect(
+          within(panel()).queryByText(
+            copy.overdue.empty({ company: company.displayName }),
+          ),
+        ).toBeNull();
+      fireEvent.click(
+        within(panel()).getByRole('button', {
+          name: total === 0 ? 'Refresh from the start' : 'Return to the start',
+        }),
+      );
+      if (total === 0)
+        await within(panel()).findByText(
+          copy.overdue.empty({ company: company.displayName }),
+        );
+      else await within(panel()).findByText('Overdue Tasks 1–25 of 25.');
+      await waitFor(() =>
+        expect(requestedOffsets(server)).toEqual([
+          '?offset=0',
+          '?offset=25',
+          '?offset=0',
+        ]),
+      );
+      expect(
+        within(panel()).getByRole('button', { name: 'Previous page' }),
+      ).toBeDisabled();
+    },
+  );
+
+  it('ignores a held older page after a newer explicit restart without moving focus', async () => {
+    const late = deferred<Response>();
+    const server = stub({
+      '/api/operational-home': [home([{ kind: 'overdue_tasks', count: 26 }])],
+      '/api/overdue-tasks': [
+        overdueList(pagingTasks.slice(0, 25), 26),
+        () => late.promise,
+        overdueList([collect]),
+      ],
+    });
+    renderHome();
+    fireEvent.click(
+      await screen.findByRole('button', { name: overdueCard('26') }),
+    );
+    await within(panel()).findByText('Overdue Tasks 1–25 of 26.');
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Next page' }));
+    await waitFor(() => expect(server.count('/api/overdue-tasks')).toBe(2));
+    const refresh = within(panel()).getByRole('button', {
+      name: 'Refresh from the start',
+    });
+    refresh.focus();
+    try {
+      fireEvent.click(refresh);
+      const current = await within(panel()).findByRole('heading', {
+        name: collect.title,
+      });
+      expect(panel()).toHaveTextContent('Overdue Tasks 1–1 of 1.');
+      expect(refresh).toHaveFocus();
+      await act(async () => {
+        late.resolve(
+          Response.json({
+            companyId: company.id,
+            today,
+            total: 26,
+            offset: 25,
+            pageSize: 25,
+            tasks: pagingTasks.slice(25, 26),
+          }),
+        );
+        await late.promise;
+      });
+      expect(
+        within(panel()).getByRole('heading', { name: collect.title }),
+      ).toBe(current);
+      expect(
+        within(panel()).queryByRole('heading', { name: 'Paged note 26' }),
+      ).toBeNull();
+      expect(panel()).toHaveTextContent('Overdue Tasks 1–1 of 1.');
+      expect(refresh).toHaveFocus();
+      expect(requestedOffsets(server)).toEqual([
+        '?offset=0',
+        '?offset=25',
+        '?offset=0',
+      ]);
+    } finally {
+      late.resolve(
+        Response.json({
+          companyId: company.id,
+          today,
+          total: 26,
+          offset: 25,
+          pageSize: 25,
+          tasks: pagingTasks.slice(25, 26),
+        }),
+      );
+    }
+  });
+
   it('reads the list only when opened, moves focus into it and returns focus to the card on Close', async () => {
     const server = stub({
       '/api/operational-home': [home()],
@@ -480,14 +761,14 @@ describe('Overdue Tasks panel', () => {
     expect(server.count('/api/overdue-tasks')).toBe(1);
   });
 
-  it('states the truncation, the empty list, the error with Retry and the denial', async () => {
-    const hundred = Array.from({ length: 100 }, (_, index) =>
+  it('states the bounded page and whole count, the empty list, the error with Retry and the denial', async () => {
+    const firstPage = Array.from({ length: 25 }, (_, index) =>
       overdueTask(`task-${index}`, `Notes ${index}`, '2026-09-19', 8),
     );
     const server = stub({
       '/api/operational-home': [home()],
       '/api/overdue-tasks': [
-        overdueList(hundred, 101),
+        overdueList(firstPage, 107),
         overdueList([]),
         status(500),
         overdueList([collect]),
@@ -507,11 +788,9 @@ describe('Overdue Tasks panel', () => {
       );
 
     expect(
-      await within(await open()).findByText(
-        'Showing the 100 oldest of 101 overdue Tasks.',
-      ),
+      await within(await open()).findByText('Overdue Tasks 1–25 of 107.'),
     ).toBeVisible();
-    expect(within(panel()).getAllByRole('listitem')).toHaveLength(100);
+    expect(within(panel()).getAllByRole('listitem')).toHaveLength(25);
     close();
 
     expect(
@@ -564,6 +843,19 @@ describe('Overdue Tasks panel', () => {
       overdueList([{ ...collect, daysOverdue: 1 }]),
     ],
     ['more rows than the total', overdueList([collect, draft], 1)],
+    ['a missing offset', overdueList([collect], 1, { offset: undefined })],
+    ['a missing page size', overdueList([collect], 1, { pageSize: undefined })],
+    ['a different page size', overdueList([collect], 1, { pageSize: 100 })],
+    [
+      'a complete page for another offset',
+      overdueList(pagingTasks.slice(25, 50), 50, { offset: 25 }),
+    ],
+    ['an incomplete page for the total', overdueList([collect], 26)],
+    ['a negative total', overdueList([], -1)],
+    ['an unsafe total', overdueList([], Number.MAX_SAFE_INTEGER + 1)],
+    ['more than one page of rows', overdueList(pagingTasks.slice(0, 26), 26)],
+    ['duplicate Task identities', overdueList([collect, collect], 2)],
+    ['an inversion of due dates', overdueList([draft, collect], 2)],
   ])('fails closed on %s', async (_case, reply) => {
     stub({ '/api/operational-home': [home()], '/api/overdue-tasks': [reply] });
     renderHome();

@@ -84,22 +84,38 @@ jobs:
     if: ${{ needs.scope.outputs.docs_only != 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    outputs:
+      cache_key: ${{ steps.postgres_image.outputs.key }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
       # A run pulls the pinned image at most once; main's cache, readable by
       # every pull request, makes later runs pull nothing.
+      - name: Resolve PostgreSQL archive key
+        id: postgres_image
+        run: echo "key=$(bash scripts/ci-start-postgres.sh cache-key)" >> "$GITHUB_OUTPUT"
+
       - name: Look up cached PostgreSQL image
         id: lookup
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/postgres-image/postgres.tar
-          key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
+          key: ${{ steps.postgres_image.outputs.key }}
           lookup-only: true
 
+      # Migrate main's archive from the old whole-script key (#798).
+      # The exact image/platform guard prevents reuse after a pin change.
+      - name: Restore compatible legacy PostgreSQL archive
+        id: legacy
+        if: ${{ steps.lookup.outputs.cache-hit != 'true' && steps.postgres_image.outputs.key == 'postgres-image-Linux-X64-b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24' }}
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/postgres-image/postgres.tar
+          key: postgres-image-0ca492758d0f2da5e6d4b627ed0caef2927a438da76d7fdcd5968d9254fefb47
+
       - name: Acquire PostgreSQL image
-        if: ${{ steps.lookup.outputs.cache-hit != 'true' }}
+        if: ${{ steps.lookup.outputs.cache-hit != 'true' && steps.legacy.outputs.cache-hit != 'true' }}
         env:
           POSTGRES_IMAGE_ARCHIVE: ${{ runner.temp }}/postgres-image/postgres.tar
         run: bash scripts/ci-start-postgres.sh acquire
@@ -109,7 +125,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/postgres-image/postgres.tar
-          key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
+          key: ${{ steps.postgres_image.outputs.key }}
 
   api:
     needs: [checks, scope, postgres_image]
@@ -309,7 +325,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/postgres-image/postgres.tar
-          key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
+          key: ${{ needs.postgres_image.outputs.cache_key }}
 
       # Like PostgreSQL, main's cache is readable by later PRs. The key owns
       # the reviewed FROM digests and the offline provenance verifier together.

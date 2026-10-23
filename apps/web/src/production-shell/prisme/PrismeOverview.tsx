@@ -41,6 +41,7 @@ export function SectionIcon({
     'operational-risks': ShieldAlert,
     projects: FolderKanban,
     'my-tasks': ListTodo,
+    'unassigned-tasks': ClipboardList,
     clients: Users,
     access: ShieldCheck,
     companies: Building2,
