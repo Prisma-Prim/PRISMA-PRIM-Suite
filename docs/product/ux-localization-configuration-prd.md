@@ -46,7 +46,7 @@ On 2026-09-26, Dan confirmed Prisme as the current application design and remove
 - progressive disclosure for advanced detail.
 
 The bounded Company **Unassigned Tasks** view in the
-[Project/Task PRD §25](release-1-project-task-prd.md#25-approved-company-unassigned-preparation-task-discovery)
+[Project/Task PRD §26](release-1-project-task-prd.md#26-approved-company-unassigned-preparation-task-discovery)
 is a separate Task-read entry for the active Company. It opens exact Tasks through
 the existing Project navigation and preserves current context, target authority
 and read-only mutation restrictions. It does not change My Tasks, add another

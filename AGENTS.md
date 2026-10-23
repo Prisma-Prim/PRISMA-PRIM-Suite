@@ -67,7 +67,7 @@ Each pull request receives one self-review and at most one review round. `docs/a
 - After the complete local evidence gate passes, product code may receive one automated review on the final head. For documentation and PRD pull requests, agents' applicable Standards/Spec preparation and recorded disposition suffice; neither owner review nor separate owner confirmation is required.
 - A finding blocks only when it is a defect inside the changed scope that breaks an acceptance criterion, a security or data-integrity boundary, or a regression against `main`. Every other finding is recorded as a follow-up in the pull request body and does not change the branch.
 - Apply all blocking findings in one correction commit. Do not request another review after it; a single confirmation review is allowed only when the correction touched authorization, tenancy, migration, or Activity Log code, and it cannot lead to a third.
-- If the correction would exceed a focused fix, or CI fails twice on the same pull request for non-trivial reasons, stop: close the pull request, report the diagnosis on the issue, and start a fresh session after the owner re-scopes it.
+- Follow the [review stopping rules](docs/agents/issue-execution.md#review-round): oversized corrections and new blocking confirmation findings still require closure and re-scoping. Two failed complete verification runs pause further full runs without closing the pull request; targeted diagnosis may continue.
 
 ## Decision authority
 

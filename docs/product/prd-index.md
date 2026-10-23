@@ -49,6 +49,7 @@ The pinned matrix preserves the duplicate matching/union-design blocker as it st
 | [Historical Migration, Search and Export](historical-migration-search-export-prd.md)             | Draft           | Import provenance, findability, export and reconciliation                 |
 | [AI and Knowledge Governance](ai-knowledge-governance-prd.md)                                    | Draft           | AI authority, citations, privacy and human approval                       |
 | [Platform Security, Reliability and Operations](platform-security-reliability-operations-prd.md) | Draft           | Security controls, recovery, observability and service posture            |
+| [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft           | Equivalent-work qualification, processing resource bounds and evidence    |
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
 ## 5. Release 1 capability PRDs
@@ -119,6 +120,18 @@ or actual assignment.
 Authorization, Activity, Client/Project, UX and Platform owners retain
 their boundaries. No sending, automatic closure, assurance appeal, reminder,
 finance or attachment capability is approved by this bounded addition.
+
+### Bounded Company operational-risk intake
+
+The [Company operational-risk intake PRD](company-operational-risk-intake-prd.md)
+prepares an unassessed manual record/reopen, factual follow-up and preserved intake-
+correction journey. Dan's separate 2026-10-21 access choice permits explicit
+Company consultation/recording assignments without expanding existing rights.
+Its status is Approved — bounded first journey, v1.0, following root's ordered
+Standards then Spec agent review on 2026-10-21; runtime delivery is not inferred. Authorization, Activity, UX and Platform retain their ownership.
+The capability's readiness section owns the local-work/publication boundary.
+Scoring, responsible-person assignment, structured journal correction, escalation
+and the broader Risk/improvement module remain outside this first journey.
 
 ## 8. Delivered foundation and live work routing
 

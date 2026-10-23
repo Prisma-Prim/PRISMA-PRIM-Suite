@@ -406,13 +406,15 @@ it('preserves an uncertain change and retries it with the same body and key', as
     },
   });
   const onActivityRecorded = vi.fn();
-  show({ onActivityRecorded });
+  const onProjectChanged = vi.fn();
+  show({ onActivityRecorded, onProjectChanged });
   await choose(ion);
   expect(
     await within(region()).findByText(
       'The change is not confirmed. Retry the same change to safely recover its recorded result.',
     ),
   ).toBeInTheDocument();
+  expect(onProjectChanged).not.toHaveBeenCalled();
   const responsibleRegion = region();
   expect(
     within(responsibleRegion).queryByRole('button', { name: 'Change' }),
@@ -432,7 +434,39 @@ it('preserves an uncertain change and retries it with the same body and key', as
   expect(retried).toEqual(first);
   expect(first?.key).toEqual(expect.any(String));
   expect(onActivityRecorded).toHaveBeenCalledTimes(1);
+  expect(onProjectChanged).toHaveBeenCalledTimes(1);
 });
+
+it.each(['throw', 'reject'] as const)(
+  'keeps a confirmed responsibility receipt when its parent refresh fails with %s and its reread is unavailable',
+  async (failure) => {
+    const { puts } = server({
+      read: (state) =>
+        state.revision > 0 ? new Response(null, { status: 503 }) : undefined,
+    });
+    const onProjectChanged = vi.fn(() => {
+      if (failure === 'throw') throw new Error('Parent refresh unavailable');
+      return Promise.reject(new Error('Parent refresh unavailable'));
+    });
+    const onActivityRecorded = vi.fn();
+    show({ onProjectChanged, onActivityRecorded });
+    await choose(ion);
+    await within(region()).findByText(
+      'The responsible member could not be loaded.',
+    );
+    await waitFor(() => expect(onActivityRecorded).toHaveBeenCalledTimes(1));
+    expect(onProjectChanged).toHaveBeenCalledTimes(1);
+    expect(
+      within(region()).getByText('Responsible member saved.'),
+    ).toBeInTheDocument();
+    expect(
+      within(region()).queryByRole('button', {
+        name: 'Retry responsible member change',
+      }),
+    ).toBeNull();
+    expect(puts()).toHaveLength(1);
+  },
+);
 
 it('preserves the responsible-member draft while the interface locale changes', async () => {
   const { puts } = server();
