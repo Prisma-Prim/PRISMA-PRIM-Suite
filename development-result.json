@@ -1,0 +1,75 @@
+{
+  "status": "failed_original_broader_development_check",
+  "source": "128421935fac8c292ce781e18420b47af5ecd9ec",
+  "base": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+  "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+  "completedFamilies": [
+    "format",
+    "lint",
+    "strict API/web types",
+    "script tests",
+    "API parallel (failed)"
+  ],
+  "apiParallel": {
+    "passed": 2714,
+    "failed": 1,
+    "optionalSkipped": 1,
+    "failure": "Existing Project actor-revocation race, HTTP500/40P01 instead of200/403"
+  },
+  "baselineControl": {
+    "productionUnchanged": true,
+    "canonicalAssertionsUnchanged": true,
+    "boundedRepeatedRevocationCases": 20,
+    "stoppedAtFirstFailure": true,
+    "passedBeforeFailure": 5,
+    "failed": 1,
+    "sameHttp500AndDeadlock": true,
+    "diagnosticCopyRemoved": true
+  },
+  "unchangedCodeProof": [
+    {
+      "path": "apps/api/src/project/project-responsibility.service.ts",
+      "baseAndCandidateIdentical": true,
+      "sha256": "d4fb9b3c8b429774a332e77f0d7eb88e14216d51a33a6339423bf7788e96a0ed"
+    },
+    {
+      "path": "apps/api/src/access/project-responsible-access.service.ts",
+      "baseAndCandidateIdentical": true,
+      "sha256": "969b24047831aa102a6827def1e4187f70469358a38c3a6c0744db29ed6d8203"
+    },
+    {
+      "path": "apps/api/src/project/project-responsible.rest.test.ts",
+      "baseAndCandidateIdentical": true,
+      "sha256": "6ef9704164eba826dfb9145d1929cc7187875704497cccbd8f7a62c41d846e18"
+    },
+    {
+      "path": "apps/api/src/access/company-context-assignment.service.ts",
+      "method": "private async requireActiveTargets(",
+      "baseAndCandidateIdentical": true,
+      "sha256": "fb300b7c52ba7726e6b388b26767419dc313e917aef5825a22463ed4a9645a19"
+    },
+    {
+      "path": "apps/api/src/access/company-context-authorization.ts",
+      "method": "private async requireLiveCapturedAssignment(",
+      "baseAndCandidateIdentical": true,
+      "sha256": "3594b3c01f19568d15fa607d5dbb843aa55a5e6151bd7337875497c762d45e01"
+    }
+  ],
+  "separatelyExecutedRemainingFamilies": {
+    "apiPostgresSerial": {
+      "passed": 102,
+      "exitCode": 0
+    },
+    "webUnit": {
+      "passed": 2942,
+      "exitCode": 0
+    },
+    "productionBuilds": {
+      "api": "passed",
+      "web": "passed"
+    }
+  },
+  "originalRunRelabeledPassed": false,
+  "existingRuntimeFollowUp": 830,
+  "finalIntegration": "Complete independent public CI40039612253 pending under owner747route; not a canonical local-gate attestation"
+}

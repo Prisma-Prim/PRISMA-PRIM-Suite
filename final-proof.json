@@ -1,0 +1,301 @@
+{
+  "status": "passed",
+  "kind": "root validation of independent complete GitHub Actions CI, not canonical local-gate attestation",
+  "pr": 831,
+  "issue": 827,
+  "source": "fe50179a4bdb8070eda55badca6419c5b7ce92a3",
+  "base": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+  "tree": "b323215f0545d6a65c7f587371471049a687de29",
+  "run": 40039612253,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253",
+  "event": "workflow_dispatch",
+  "verifiedJobs": 16,
+  "verifiedTestSteps": 10,
+  "jobs": [
+    {
+      "id": 120707330915,
+      "name": "scope",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707330915"
+    },
+    {
+      "id": 120707331010,
+      "name": "checks",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707331010"
+    },
+    {
+      "id": 120707416334,
+      "name": "postgres_image",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707416334"
+    },
+    {
+      "id": 120707980264,
+      "name": "api (serial)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980264"
+    },
+    {
+      "id": 120707980279,
+      "name": "web_unit",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980279"
+    },
+    {
+      "id": 120707980283,
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980283"
+    },
+    {
+      "id": 120707980321,
+      "name": "browser (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980321"
+    },
+    {
+      "id": 120707980327,
+      "name": "acceptance (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980327"
+    },
+    {
+      "id": 120707980332,
+      "name": "api (3/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980332"
+    },
+    {
+      "id": 120707980341,
+      "name": "browser (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980341"
+    },
+    {
+      "id": 120707980355,
+      "name": "browser (3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980355"
+    },
+    {
+      "id": 120707980368,
+      "name": "acceptance (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980368"
+    },
+    {
+      "id": 120707980378,
+      "name": "packaging",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980378"
+    },
+    {
+      "id": 120707980385,
+      "name": "api (1/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980385"
+    },
+    {
+      "id": 120707980417,
+      "name": "api (2/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120707980417"
+    },
+    {
+      "id": 120710619255,
+      "name": "quality",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/job/120710619255"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 12539366307,
+      "name": "browser-evidence-part-acceptance-2-40039612253",
+      "bytes": 57019262,
+      "providerDigest": "sha256:3975966900cb6eb6f5060551a60fc0ddbf586066e9f9838cbbf31f927246f4c8",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/artifacts/12539366307",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12539071042,
+      "name": "browser-evidence-part-browser-2-40039612253",
+      "bytes": 76957051,
+      "providerDigest": "sha256:5bd58bbce420dc7c76a2b442a2ed00b3e1a61b3acc09d52826db66f499af2c6a",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/artifacts/12539071042",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12539056353,
+      "name": "browser-evidence-part-browser-3-40039612253",
+      "bytes": 70466225,
+      "providerDigest": "sha256:704c726d484fa1621713fd25bb74a806ee7564450fa54f91268aa1b1841ccd9e",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/artifacts/12539056353",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12538514321,
+      "name": "browser-evidence-part-browser-1-40039612253",
+      "bytes": 114013159,
+      "providerDigest": "sha256:d1b0420eeb733b85923d0b267d3acded1d2bdbce4eef5b270508fcc8769b1eac",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/artifacts/12538514321",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12538279237,
+      "name": "browser-evidence-part-acceptance-1-40039612253",
+      "bytes": 66319648,
+      "providerDigest": "sha256:e4b51b4aec536fe4cafab7f5c69f99ccebb77482c9e68b8527e612ada4448e62",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/artifacts/12538279237",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    }
+  ],
+  "aggregateArtifact": {
+    "id": 12539087070,
+    "name": "browser-evidence-pr-40039612253",
+    "bytes": 384775257,
+    "providerDigest": "sha256:975eeb035122eea0bdba96766ea06a4a145d0a55c3132237cd1a1a29e80b5aef",
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40039612253/artifacts/12539087070",
+    "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+  },
+  "artifactTransfer": {
+    "zipBytesVerifiedLocally": false,
+    "note": "No transfer/403 claim for this run unless separately documented; provider artifact metadata is distinct from byte-verified selected local evidence."
+  },
+  "captureProvenance": "Two visually inspected synthetic LOCAL actual-App/PostgreSQL mission acceptance captures from reviewed source1284219/treecd840 before the sole test-assertion correction; root verified unchanged product bytes at final source. Deterministic identity/scanner boundary fixtures; not downloaded CI screenshots or real Clerk/maintained-ClamAV proof.",
+  "captures": [
+    {
+      "name": "mission-desktop.png",
+      "bytes": 184357,
+      "sha256": "396ed3b14c5d95d6c6181284f96b064d43d81c867c21e3e688d29901c00e181d"
+    },
+    {
+      "name": "mission-narrow.png",
+      "bytes": 135194,
+      "sha256": "176422d03655b76f5fa9aa2ea18c0d8222ce8ad9c38f5fc05a9f0e901eb9b69f"
+    }
+  ],
+  "ownerRoute": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "reviewDisposition": {
+    "source": "128421935fac8c292ce781e18420b47af5ecd9ec",
+    "base": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+    "round": 1,
+    "selfReview": "Standards then Spec; structural checkpoint recorded in review-preparation.md",
+    "independent": {
+      "standards": {
+        "report": "standards-review.md",
+        "blocking": 0,
+        "nonblocking": 1,
+        "finding": "New revokeMissionDeliverableAccess has positional membership/company arguments; no swapped value or behavior defect found; named command object is a follow-up under bounded policy."
+      },
+      "spec": {
+        "report": "spec-review.md",
+        "blocking": 0,
+        "nonblocking": 0
+      }
+    },
+    "correction": {
+      "required": true,
+      "reason": "CI browser assertion still expected questionnaire-only warning; actual changed generic mission warning is correct",
+      "commits": [
+        "fe50179a4bdb8070eda55badca6419c5b7ce92a3"
+      ],
+      "paths": [
+        "apps/web/e2e/project-documents.spec.ts"
+      ],
+      "scope": "one expected literal only, no product change",
+      "rootReview": "Standards then Spec inspection of exact correction; same stale-copy search across web found only this assertion",
+      "targetedEvidence": {
+        "browserDesktopAndNarrow": 18,
+        "format": "passed",
+        "eslint": "passed",
+        "buildTypecheck": "passed within browser startup"
+      },
+      "originalFailedCi": 40038308478
+    },
+    "confirmation": {
+      "status": "not applicable: correction touches only a browser assertion; no authorization, tenancy, migration or Activity Log correction"
+    },
+    "verification": "Broader local pnpm verify failed in an unchanged-main Project actor-revocation deadlock, reproduced on3277 with unchanged public assertions; tracked separately as#830. The original run stays failed; independently run remaining local families and final full GitHub CI still required.",
+    "existingRuntimeFollowUp": 830,
+    "finalSource": "fe50179a4bdb8070eda55badca6419c5b7ce92a3"
+  },
+  "developmentCheck": {
+    "status": "failed_original_broader_development_check",
+    "source": "128421935fac8c292ce781e18420b47af5ecd9ec",
+    "base": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+    "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+    "completedFamilies": [
+      "format",
+      "lint",
+      "strict API/web types",
+      "script tests",
+      "API parallel (failed)"
+    ],
+    "apiParallel": {
+      "passed": 2714,
+      "failed": 1,
+      "optionalSkipped": 1,
+      "failure": "Existing Project actor-revocation race, HTTP500/40P01 instead of200/403"
+    },
+    "baselineControl": {
+      "productionUnchanged": true,
+      "canonicalAssertionsUnchanged": true,
+      "boundedRepeatedRevocationCases": 20,
+      "stoppedAtFirstFailure": true,
+      "passedBeforeFailure": 5,
+      "failed": 1,
+      "sameHttp500AndDeadlock": true,
+      "diagnosticCopyRemoved": true
+    },
+    "unchangedCodeProof": [
+      {
+        "path": "apps/api/src/project/project-responsibility.service.ts",
+        "baseAndCandidateIdentical": true,
+        "sha256": "d4fb9b3c8b429774a332e77f0d7eb88e14216d51a33a6339423bf7788e96a0ed"
+      },
+      {
+        "path": "apps/api/src/access/project-responsible-access.service.ts",
+        "baseAndCandidateIdentical": true,
+        "sha256": "969b24047831aa102a6827def1e4187f70469358a38c3a6c0744db29ed6d8203"
+      },
+      {
+        "path": "apps/api/src/project/project-responsible.rest.test.ts",
+        "baseAndCandidateIdentical": true,
+        "sha256": "6ef9704164eba826dfb9145d1929cc7187875704497cccbd8f7a62c41d846e18"
+      },
+      {
+        "path": "apps/api/src/access/company-context-assignment.service.ts",
+        "method": "private async requireActiveTargets(",
+        "baseAndCandidateIdentical": true,
+        "sha256": "fb300b7c52ba7726e6b388b26767419dc313e917aef5825a22463ed4a9645a19"
+      },
+      {
+        "path": "apps/api/src/access/company-context-authorization.ts",
+        "method": "private async requireLiveCapturedAssignment(",
+        "baseAndCandidateIdentical": true,
+        "sha256": "3594b3c01f19568d15fa607d5dbb843aa55a5e6151bd7337875497c762d45e01"
+      }
+    ],
+    "separatelyExecutedRemainingFamilies": {
+      "apiPostgresSerial": {
+        "passed": 102,
+        "exitCode": 0
+      },
+      "webUnit": {
+        "passed": 2942,
+        "exitCode": 0
+      },
+      "productionBuilds": {
+        "api": "passed",
+        "web": "passed"
+      }
+    },
+    "originalRunRelabeledPassed": false,
+    "existingRuntimeFollowUp": 830,
+    "finalIntegration": "Complete independent public CI40039612253 pending under owner747route; not a canonical local-gate attestation"
+  },
+  "keepEvidenceThrough": "2026-11-07T23:37:29Z"
+}

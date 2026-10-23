@@ -1,0 +1,29 @@
+{
+  "source": "128421935fac8c292ce781e18420b47af5ecd9ec",
+  "tree": "cd840a5e03e62e55e67c05858cd2a4383c1eb436",
+  "kind": "local actual App/PostgreSQL, deterministic identity/scanner boundaries; not Clerk or real ClamAV definitions",
+  "viewports": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "name": "narrow",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "files": [
+    {
+      "name": "mission-desktop.png",
+      "bytes": 184357,
+      "sha256": "396ed3b14c5d95d6c6181284f96b064d43d81c867c21e3e688d29901c00e181d"
+    },
+    {
+      "name": "mission-narrow.png",
+      "bytes": 135194,
+      "sha256": "176422d03655b76f5fa9aa2ea18c0d8222ce8ad9c38f5fc05a9f0e901eb9b69f"
+    }
+  ]
+}

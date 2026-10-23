@@ -1,0 +1,106 @@
+{
+  "id": 40038308478,
+  "status": "completed",
+  "conclusion": "failure",
+  "source": "128421935fac8c292ce781e18420b47af5ecd9ec",
+  "jobs": [
+    {
+      "id": 120703115942,
+      "name": "checks",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703116082,
+      "name": "scope",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703202463,
+      "name": "postgres_image",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808744,
+      "name": "build",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808804,
+      "name": "browser (1)",
+      "status": "completed",
+      "conclusion": "cancelled"
+    },
+    {
+      "id": 120703808807,
+      "name": "browser (2)",
+      "status": "completed",
+      "conclusion": "cancelled"
+    },
+    {
+      "id": 120703808819,
+      "name": "browser (3)",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "id": 120703808830,
+      "name": "api (serial)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808837,
+      "name": "api (1/3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808840,
+      "name": "web_unit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808868,
+      "name": "acceptance (2)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808928,
+      "name": "api (2/3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808944,
+      "name": "packaging",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703808983,
+      "name": "api (3/3)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120703809063,
+      "name": "acceptance (1)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "id": 120706860378,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "cause": "Project Documents browser assertion expected obsolete questionnaire-only warning",
+  "correction": "fe50179a4bdb8070eda55badca6419c5b7ce92a3"
+}

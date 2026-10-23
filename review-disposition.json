@@ -1,0 +1,44 @@
+{
+  "source": "128421935fac8c292ce781e18420b47af5ecd9ec",
+  "base": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+  "round": 1,
+  "selfReview": "Standards then Spec; structural checkpoint recorded in review-preparation.md",
+  "independent": {
+    "standards": {
+      "report": "standards-review.md",
+      "blocking": 0,
+      "nonblocking": 1,
+      "finding": "New revokeMissionDeliverableAccess has positional membership/company arguments; no swapped value or behavior defect found; named command object is a follow-up under bounded policy."
+    },
+    "spec": {
+      "report": "spec-review.md",
+      "blocking": 0,
+      "nonblocking": 0
+    }
+  },
+  "correction": {
+    "required": true,
+    "reason": "CI browser assertion still expected questionnaire-only warning; actual changed generic mission warning is correct",
+    "commits": [
+      "fe50179a4bdb8070eda55badca6419c5b7ce92a3"
+    ],
+    "paths": [
+      "apps/web/e2e/project-documents.spec.ts"
+    ],
+    "scope": "one expected literal only, no product change",
+    "rootReview": "Standards then Spec inspection of exact correction; same stale-copy search across web found only this assertion",
+    "targetedEvidence": {
+      "browserDesktopAndNarrow": 18,
+      "format": "passed",
+      "eslint": "passed",
+      "buildTypecheck": "passed within browser startup"
+    },
+    "originalFailedCi": 40038308478
+  },
+  "confirmation": {
+    "status": "not applicable: correction touches only a browser assertion; no authorization, tenancy, migration or Activity Log correction"
+  },
+  "verification": "Broader local pnpm verify failed in an unchanged-main Project actor-revocation deadlock, reproduced on3277 with unchanged public assertions; tracked separately as#830. The original run stays failed; independently run remaining local families and final full GitHub CI still required.",
+  "existingRuntimeFollowUp": 830,
+  "finalSource": "fe50179a4bdb8070eda55badca6419c5b7ce92a3"
+}
