@@ -40,6 +40,16 @@ type Load =
 type DocumentFilter =
   | { kind: 'text'; query: string }
   | { kind: 'client'; clientDossierId: string; displayName: string };
+function documentFilterText(value: string) {
+  // Preserve other languages' letters while comparing Romanian spelling variants.
+  return value
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[ăâ]/gu, 'a')
+    .replace(/î/gu, 'i')
+    .replace(/[șş]/gu, 's')
+    .replace(/[țţ]/gu, 't');
+}
 /** One request to open a Document; a newer request id supersedes older ones. */
 export type RequestedDocument = { documentId: string; requestId: number };
 export function DocumentWorkspace({
@@ -866,17 +876,19 @@ export function DocumentWorkspace({
     restrictionAwaitsRead &&
     state.refreshFailedUnder === clientIdentityRevision;
   const normalizedFilterQuery =
-    filter.kind === 'text' ? filter.query.trim().toLowerCase() : '';
+    filter.kind === 'text' ? documentFilterText(filter.query.trim()) : '';
   const filteredDocuments =
     state.status === 'ready' && !restrictionAwaitsRead
       ? state.documents.filter((document) =>
           filter.kind === 'client'
             ? document.clientDossierId === filter.clientDossierId
             : normalizedFilterQuery.length === 0 ||
-              document.title.toLowerCase().includes(normalizedFilterQuery) ||
-              document.clientDisplayName
-                .toLowerCase()
-                .includes(normalizedFilterQuery),
+              documentFilterText(document.title).includes(
+                normalizedFilterQuery,
+              ) ||
+              documentFilterText(document.clientDisplayName).includes(
+                normalizedFilterQuery,
+              ),
         )
       : [];
   return (
