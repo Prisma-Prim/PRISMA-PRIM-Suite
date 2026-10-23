@@ -115,6 +115,12 @@ export interface CompanyOverdueTasks {
   total: number;
   tasks: OverdueTaskView[];
 }
+/** One current fixed-size page, with the complete authorized count. */
+export interface CompanyOverdueTasksPage extends CompanyOverdueTasks {
+  today: string;
+  offset: number;
+  pageSize: 25;
+}
 export type TaskChanges = {
   [K in keyof TaskFields]?: { before: TaskFields[K]; after: TaskFields[K] };
 };
