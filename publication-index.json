@@ -1,0 +1,52 @@
+{
+  "source": "e220aca5c5be7c5bc215ca07b6c6de2dc1e83ce3",
+  "base": "b9799c1713d8b9e8d5228b7627c3300b53815617",
+  "integration": "e220aca5c5be7c5bc215ca07b6c6de2dc1e83ce3",
+  "tree": "96dd0c4f2599a2b38be2b470bb5d09a74224b0eb",
+  "startedAt": "2026-10-23T13:21:13.020Z",
+  "status": "passed",
+  "scope": "docs_only",
+  "provenance": "Exact original canonical manifest/report and all six sanitizer-produced local logs; self-reported execution, not independent GitHub attestation. Operator reviewed text evidence; no browser or real business data.",
+  "files": [
+    {
+      "path": "logs/doctor.log",
+      "bytes": 636,
+      "sha256": "1282629be5768d15372b6be2436b948f64cf998d14b5953fcfa021bc8e527cb4"
+    },
+    {
+      "path": "logs/documentation.log",
+      "bytes": 2282,
+      "sha256": "81391657739a784a6a57310f8d0fe1737da185f1b00e5208983a2a41dcbe3dd2"
+    },
+    {
+      "path": "logs/format.log",
+      "bytes": 87,
+      "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+    },
+    {
+      "path": "logs/lint.log",
+      "bytes": 11,
+      "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+    },
+    {
+      "path": "logs/scripts.log",
+      "bytes": 44342,
+      "sha256": "d578724754088d4ad21d01625a838a40908bf0d727b84d3644ba6134ebb2397e"
+    },
+    {
+      "path": "logs/types.log",
+      "bytes": 187,
+      "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 264637,
+      "sha256": "852570d8de1748903d39e26c12ea64f15d0583a36e36a80063549bd0b7d9a208"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3657,
+      "sha256": "598332e5700b3abb4be18066d6ed4a8523a0dc983ece76c80e49bd328f7be113"
+    }
+  ]
+}
