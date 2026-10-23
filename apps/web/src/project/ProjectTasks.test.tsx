@@ -390,6 +390,36 @@ it('filters loaded Tasks locally by title and current status while preserving se
   expect(fetcher).toHaveBeenCalledTimes(fetchCount);
 });
 
+it('finds a loaded Romanian Task title with plain spelling without a request', async () => {
+  const title = 'Pregătire Ștefan';
+  const fetcher = fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({
+            mutable: true,
+            tasks: [{ ...savedTask, title }],
+          })
+        : undefined,
+  });
+  const tasks = await openFilteredTasks();
+  const navigation = within(tasks).getByRole('navigation', { name: 'Tasks' });
+  expect(within(navigation).getByRole('button', { name: title })).toBeVisible();
+  await waitFor(() =>
+    expect(
+      within(tasks).getByRole('button', { name: 'Create Task' }),
+    ).toBeEnabled(),
+  );
+  const before = fetcher.mock.calls.length;
+
+  changeValue(within(navigation).getByLabelText('Search Tasks'), ' STEFAN ');
+
+  expect(within(navigation).getByRole('button', { name: title })).toBeVisible();
+  expect(within(navigation).getByLabelText('Search Tasks')).toHaveValue(
+    ' STEFAN ',
+  );
+  expect(fetcher).toHaveBeenCalledTimes(before);
+});
+
 const anaPop = {
   workspaceMembershipId: 'membership-ana',
   displayLabel: 'Ana Pop',
@@ -464,6 +494,256 @@ async function openFilteredTasks(
   await within(tasks).findByRole('navigation', { name: 'Tasks' });
   return tasks;
 }
+
+it.each([
+  {
+    title: 'Pregătire Ștefan — Țară Câmp Învățare',
+    query: ' PREGATIRE STEFAN — TARA CAMP INVATARE ',
+    matches: true,
+  },
+  {
+    title:
+      'Prega\u0306tire S\u0326tefan — T\u0326ara\u0306 Ca\u0302mp I\u0302nva\u0306t\u0326are',
+    query: 'pregătire ştefan — ţară câmp învăţare',
+    matches: true,
+  },
+  {
+    title: 'Pregatire Stefan — Tara Camp Invatare',
+    query:
+      'Prega\u0306tire S\u0327TEFAN — T\u0327ARA\u0306 CA\u0302MP I\u0302NVA\u0306T\u0326ARE',
+    matches: true,
+  },
+  { title: 'йод', query: 'иод', matches: false },
+  { title: 'иод', query: 'йод', matches: false },
+  { title: 'и\u0306од', query: 'ЙОД', matches: true },
+  { title: 'Café', query: 'Cafe', matches: false },
+])(
+  'compares the loaded literal Task title $title with $query without widening other language distinctions',
+  async ({ title, query, matches }) => {
+    const fetcher = fixture({
+      read: (url) =>
+        url === '/api/projects/project/tasks'
+          ? Response.json({ mutable: true, tasks: [{ ...savedTask, title }] })
+          : undefined,
+    });
+    const tasks = await openFilteredTasks();
+    const navigation = within(tasks).getByRole('navigation', { name: 'Tasks' });
+    expect(
+      within(navigation).getByRole('button', { name: title }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        within(tasks).getByRole('button', { name: 'Create Task' }),
+      ).toBeEnabled(),
+    );
+    const before = fetcher.mock.calls.length;
+
+    changeValue(within(navigation).getByLabelText('Search Tasks'), query);
+
+    if (matches) {
+      expect(
+        within(navigation).getByRole('button', { name: title }),
+      ).toBeVisible();
+    } else {
+      expect(
+        within(navigation).queryByRole('button', { name: title }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(navigation).getByText('No Tasks match the current filters.'),
+      ).toBeVisible();
+    }
+    expect(within(navigation).getByLabelText('Search Tasks')).toHaveValue(
+      query,
+    );
+    changeValue(within(navigation).getByLabelText('Search Tasks'), '');
+    expect(
+      within(navigation).getByRole('button', { name: title }),
+    ).toBeVisible();
+    expect(fetcher).toHaveBeenCalledTimes(before);
+  },
+);
+
+it('matches only a loaded Task title rather than its responsible member label', async () => {
+  const title = 'Pregătire Ștefan';
+  const fetcher = fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({
+            mutable: true,
+            tasks: [
+              { ...savedTask, title, assignee: ionRadu },
+              {
+                ...savedTask,
+                id: 'other-task',
+                title: 'Altă lucrare',
+                assignee: { ...anaPop, displayLabel: 'Ștefan' },
+              },
+            ],
+          })
+        : undefined,
+  });
+  const tasks = await openFilteredTasks();
+  await waitFor(() =>
+    expect(
+      within(tasks).getByRole('button', { name: 'Create Task' }),
+    ).toBeEnabled(),
+  );
+  const before = fetcher.mock.calls.length;
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'Stefan');
+  expect(listedTitles(tasks)).toEqual([title]);
+  expect(fetcher).toHaveBeenCalledTimes(before);
+});
+
+it('intersects Romanian title spelling with the existing status, member and date filters in server order', async () => {
+  const first = {
+    ...savedTask,
+    title: 'Pregătire Ștefan — prima',
+    assignee: anaPop,
+    dueDate: '2026-10-06',
+  };
+  const completed = {
+    ...first,
+    id: 'completed-romanian',
+    title: 'Pregătire Ștefan — încheiată',
+    status: 'done',
+    completion: { actor: attribution, occurredAt: savedTask.updatedAt },
+  };
+  const otherMember = {
+    ...first,
+    id: 'other-romanian',
+    title: 'Pregătire Ștefan — Ion',
+    assignee: ionRadu,
+    dueDate: '2026-10-08',
+  };
+  const titleOnly = {
+    ...first,
+    id: 'unrelated-title',
+    title: 'Altă sarcină',
+    dueDate: '2026-10-09',
+  };
+  const fetcher = fixture({
+    read: (url) =>
+      url === '/api/projects/project/tasks'
+        ? Response.json({
+            mutable: true,
+            tasks: [first, completed, otherMember, titleOnly],
+          })
+        : undefined,
+  });
+  const tasks = await openFilteredTasks();
+  await waitFor(() =>
+    expect(
+      within(tasks).getByRole('button', { name: 'Create Task' }),
+    ).toBeEnabled(),
+  );
+  const before = fetcher.mock.calls.length;
+
+  changeValue(within(tasks).getByLabelText('Search Tasks'), ' sTeFaN ');
+  expect(listedTitles(tasks)).toEqual([
+    first.title,
+    completed.title,
+    otherMember.title,
+  ]);
+  changeValue(within(tasks).getByLabelText('Task status'), 'todo');
+  expect(listedTitles(tasks)).toEqual([first.title, otherMember.title]);
+  selectResponsible(tasks, 'Ana Pop');
+  expect(listedTitles(tasks)).toEqual([first.title]);
+  selectDateFilter(tasks, 'Date range');
+  enterBound(tasks, 'Task date from', '2026-10-07');
+  enterBound(tasks, 'Task date through', '2026-10-09');
+  expect(
+    within(tasks).getByText('No Tasks match the current filters.'),
+  ).toBeVisible();
+  enterBound(tasks, 'Task date from', '2026-10-06');
+  expect(listedTitles(tasks)).toEqual([first.title]);
+  changeValue(within(tasks).getByLabelText('Search Tasks'), '');
+  expect(listedTitles(tasks)).toEqual([first.title, titleOnly.title]);
+  expect(within(tasks).getByLabelText('Task status')).toHaveValue('todo');
+  expect(responsibleFilter(tasks)).toHaveValue('member:membership-ana');
+  expect(within(tasks).getByLabelText('Task date from')).toHaveValue(
+    '2026-10-06',
+  );
+  expect(within(tasks).getByLabelText('Task date through')).toHaveValue(
+    '2026-10-09',
+  );
+  expect(fetcher).toHaveBeenCalledTimes(before);
+});
+
+it('keeps the exact uncertain Task correction while Romanian title filtering hides its row', async () => {
+  const original = { ...savedTask, title: 'Pregătire Ștefan' };
+  const corrected = { ...original, title: 'Corecție Ștefan', version: 2 };
+  const commands: { key: string | null; body: unknown }[] = [];
+  let replayed = false;
+  const fetcher = fixture({
+    read: (url) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({
+          mutable: true,
+          tasks: [
+            replayed ? corrected : original,
+            { ...savedTask, id: 'other-task', title: 'Altă lucrare' },
+          ],
+        });
+      if (url === '/api/tasks/task')
+        return Response.json({
+          mutable: true,
+          task: replayed ? corrected : original,
+        });
+      return undefined;
+    },
+    mutate: (_url, request) => {
+      commands.push({
+        key: new Headers(request.headers).get('idempotency-key'),
+        body: JSON.parse(
+          typeof request.body === 'string' ? request.body : '{}',
+        ),
+      });
+      if (commands.length === 1) return new Response(null, { status: 500 });
+      replayed = true;
+      return Response.json(corrected);
+    },
+  });
+  const tasks = await openFilteredTasks();
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'Stefan');
+  fireEvent.click(within(tasks).getByRole('button', { name: original.title }));
+  await within(tasks).findByRole('heading', { name: original.title });
+  await waitFor(() =>
+    expect(
+      within(tasks).getByRole('button', { name: 'Save Task' }),
+    ).toBeEnabled(),
+  );
+  changeValue(within(tasks).getByLabelText('Task title'), corrected.title);
+  fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+  await within(tasks).findByRole('button', {
+    name: 'Retry pending Task change',
+  });
+  const before = fetcher.mock.calls.length;
+
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'alta');
+
+  expect(listedTitles(tasks)).toEqual(['Altă lucrare']);
+  expect(
+    within(tasks).getByRole('heading', { name: original.title }),
+  ).toBeVisible();
+  expect(within(tasks).getByLabelText('Task title')).toHaveValue(
+    corrected.title,
+  );
+  expect(commands).toHaveLength(1);
+  expect(fetcher).toHaveBeenCalledTimes(before);
+  changeValue(within(tasks).getByLabelText('Search Tasks'), 'STEFAN');
+  fireEvent.click(
+    within(tasks).getByRole('button', { name: 'Retry pending Task change' }),
+  );
+  await within(tasks).findByRole('heading', { name: corrected.title });
+  expect(commands).toHaveLength(2);
+  expect(commands[0]).toEqual(commands[1]);
+  expect(commands[0]?.body).toEqual({
+    expectedVersion: 1,
+    title: corrected.title,
+  });
+  expect(within(tasks).getByLabelText('Search Tasks')).toHaveValue('STEFAN');
+  expect(listedTitles(tasks)).toEqual([corrected.title]);
+});
 
 it('filters loaded Tasks by responsible member and combines it with the title and status filters', async () => {
   const fetcher = fixture({

@@ -133,6 +133,18 @@ type TaskFeedback =
   | 'uncertain'
   | 'validation';
 type TaskFilter = 'all' | TaskState;
+
+function taskFilterText(value: string) {
+  // Fold Romanian spelling only; other distinctions such as й/и remain intact.
+  return value
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[ăâ]/gu, 'a')
+    .replace(/î/gu, 'i')
+    .replace(/[șş]/gu, 's')
+    .replace(/[țţ]/gu, 't');
+}
+
 // Responsible members are matched by membership identity so homonymous members stay distinct.
 type AssigneeFilter =
   | { kind: 'all' }
@@ -378,7 +390,7 @@ function TaskProject({
     (current?.mutable ?? (load.kind === 'ready' && load.listing.mutable));
   const editable =
     canManage && mutable && mutation.kind === 'idle' && members !== null;
-  const normalizedTaskSearch = taskSearch.trim().toLowerCase();
+  const normalizedTaskSearch = taskFilterText(taskSearch.trim());
   const dateSelection = resolveDateFilter(dateFilter);
   const unusableRange = dateSelection.kind === 'unusable';
   const visibleTasks =
@@ -388,7 +400,7 @@ function TaskProject({
             (taskFilter === 'all' || task.status === taskFilter) &&
             matchesAssignee(task, assigneeFilter) &&
             matchesDate(task, dateSelection) &&
-            task.title.toLowerCase().includes(normalizedTaskSearch),
+            taskFilterText(task.title).includes(normalizedTaskSearch),
         )
       : [];
   // Options come only from the loaded rows the reader already sees, never from the eligible-member query.
