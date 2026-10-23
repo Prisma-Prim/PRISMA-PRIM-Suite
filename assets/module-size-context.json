@@ -1,0 +1,69 @@
+{
+  "kind": "static size inventory, not a complexity/defect measurement",
+  "source": "28c31ee8048a210524e6a269b62616e597708eb1",
+  "included": "rg-visible .ts/.tsx under apps/api/src and apps/web/src",
+  "excluded": "test/spec/__tests__ files and recoverable ui-baseline",
+  "productionFiles": 545,
+  "largestByLines": [
+    {
+      "path": "apps/api/src/accountability/accountability.service.ts",
+      "lines": 3480,
+      "bytes": 122541
+    },
+    {
+      "path": "apps/web/src/commercial-intake/CommercialIntakeWorkspace.tsx",
+      "lines": 3455,
+      "bytes": 121491
+    },
+    {
+      "path": "apps/api/src/offer/offer.service.ts",
+      "lines": 2622,
+      "bytes": 91702
+    },
+    {
+      "path": "apps/api/src/access/company-context-assignment.service.ts",
+      "lines": 2270,
+      "bytes": 69996
+    },
+    {
+      "path": "apps/api/src/commercial-intake/commercial-intake.service.ts",
+      "lines": 1978,
+      "bytes": 67229
+    },
+    {
+      "path": "apps/api/src/access/company-context-authorization.ts",
+      "lines": 1856,
+      "bytes": 66158
+    },
+    {
+      "path": "apps/api/src/demonstration/demonstration-runner.ts",
+      "lines": 1673,
+      "bytes": 56184
+    },
+    {
+      "path": "apps/web/src/pricing-configuration/TariffVersionPanel.tsx",
+      "lines": 1490,
+      "bytes": 49959
+    },
+    {
+      "path": "apps/api/src/recovery/synthetic-recovery.command.ts",
+      "lines": 1418,
+      "bytes": 48021
+    },
+    {
+      "path": "apps/web/src/contract/ContractPanel.tsx",
+      "lines": 1343,
+      "bytes": 51019
+    },
+    {
+      "path": "apps/web/src/pricing-configuration/PricingSnapshotPanel.tsx",
+      "lines": 1328,
+      "bytes": 45908
+    },
+    {
+      "path": "apps/web/src/documents/DocumentWorkspace.tsx",
+      "lines": 1308,
+      "bytes": 48882
+    }
+  ]
+}

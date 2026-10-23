@@ -1,0 +1,31 @@
+{
+  "oldSource": "28c31ee8048a210524e6a269b62616e597708eb1",
+  "oldBase": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+  "source": "92f502415999f33ec2f056ba0871706892bf7fd3",
+  "base": "53de3106951083eeb8e726a663476a26dbe3ff41",
+  "integrationTree": "05dbcd277db5a1735a2108362406800613eabd9f",
+  "mainDeltaCommit": "53de3106951083eeb8e726a663476a26dbe3ff41",
+  "mainDeltaFiles": 58,
+  "pilotFiles": [
+    "apps/web/e2e/client-response-contract.spec.ts",
+    "apps/web/src/client/ClientDirectory.tsx",
+    "apps/web/src/client/ClientWorkspace.response-contract.test.tsx",
+    "apps/web/src/client/ClientWorkspace.tsx",
+    "apps/web/src/client/client-account-response.ts",
+    "docs/agents/typescript-discipline.md",
+    "scripts/typescript-discipline-contract.test.mjs"
+  ],
+  "pilotHashes": {
+    "apps/web/e2e/client-response-contract.spec.ts": "84d0217f9e03c2a409c194406e239c910cc97fe4c57d909f011fd22dd4bd3b21",
+    "apps/web/src/client/ClientDirectory.tsx": "415df463d178c5007dbfe2dd4b438d710464ad77ac6c21fabd92ad4e740f33cc",
+    "apps/web/src/client/ClientWorkspace.response-contract.test.tsx": "44e704424be5408c326a02254e8e000ab7b60f52cd984e5d44a029ef265db270",
+    "apps/web/src/client/ClientWorkspace.tsx": "f6404e74a83297d655622a71ad06ccf126a4167026aaa2c4201df43823793722",
+    "apps/web/src/client/client-account-response.ts": "1449e9ac640d8c63a776ab7f1db08d1118f4649f412c3d8a277608969c4b5af2",
+    "docs/agents/typescript-discipline.md": "7609b48668da18bda5f88a2ceb4b3878e4a3a1204376d9ad3464242d195677e1",
+    "scripts/typescript-discipline-contract.test.mjs": "ccb8302bb2920f7335e212596441fc0846456131dc9d097b0129550c17072568"
+  },
+  "reviewedPatchSHA256": "3a7f3b7cf763abba44af771824312788290527e991b26878b160e08a110beff3",
+  "patchByteIdenticalAfterComposition": true,
+  "reviewDisposition": "Original independent Standards/Spec review remains applicable: unchanged exact pilot diff and no overlapping files; no new review round. New base adds mission PDF behavior, independently merged on main; its integration will receive a fresh full gate.",
+  "supersededRun": "prisma-quality-integration-28c31ee-3; API parallel passed, API serial interrupted by root after detecting base advance; no current-base or merge-pass claim."
+}

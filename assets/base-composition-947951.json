@@ -1,0 +1,37 @@
+{
+  "oldSource": "92f502415999f33ec2f056ba0871706892bf7fd3",
+  "oldBase": "53de3106951083eeb8e726a663476a26dbe3ff41",
+  "source": "c3c3b237ccd7111c9a11404b750242727794c9c1",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "integrationTree": "45bcd2efde687f3bcf26c9eee5f25896ec22cae4",
+  "mainDeltaFiles": [
+    "docs/product/activity-log-accountability-prd.md",
+    "docs/product/governed-documents-prd.md",
+    "docs/product/prd-index.md",
+    "docs/product/release-1-project-task-prd.md",
+    "docs/product/tenant-company-client-authorization-prd.md"
+  ],
+  "pilotFiles": [
+    "apps/web/e2e/client-response-contract.spec.ts",
+    "apps/web/src/client/ClientDirectory.tsx",
+    "apps/web/src/client/ClientWorkspace.response-contract.test.tsx",
+    "apps/web/src/client/ClientWorkspace.tsx",
+    "apps/web/src/client/client-account-response.ts",
+    "docs/agents/typescript-discipline.md",
+    "scripts/typescript-discipline-contract.test.mjs"
+  ],
+  "pilotHashes": {
+    "apps/web/e2e/client-response-contract.spec.ts": "84d0217f9e03c2a409c194406e239c910cc97fe4c57d909f011fd22dd4bd3b21",
+    "apps/web/src/client/ClientDirectory.tsx": "415df463d178c5007dbfe2dd4b438d710464ad77ac6c21fabd92ad4e740f33cc",
+    "apps/web/src/client/ClientWorkspace.response-contract.test.tsx": "44e704424be5408c326a02254e8e000ab7b60f52cd984e5d44a029ef265db270",
+    "apps/web/src/client/ClientWorkspace.tsx": "f6404e74a83297d655622a71ad06ccf126a4167026aaa2c4201df43823793722",
+    "apps/web/src/client/client-account-response.ts": "1449e9ac640d8c63a776ab7f1db08d1118f4649f412c3d8a277608969c4b5af2",
+    "docs/agents/typescript-discipline.md": "7609b48668da18bda5f88a2ceb4b3878e4a3a1204376d9ad3464242d195677e1",
+    "scripts/typescript-discipline-contract.test.mjs": "ccb8302bb2920f7335e212596441fc0846456131dc9d097b0129550c17072568"
+  },
+  "reviewedPatchSHA256": "3a7f3b7cf763abba44af771824312788290527e991b26878b160e08a110beff3",
+  "patchByteIdenticalAfterComposition": true,
+  "reviewDisposition": "Original Standards/Spec review remains applicable to identical7file pilot diff; no new round. New base contains product documentation only.",
+  "supersededRun": "prisma-quality-integration-92f5024-4; six families passed, root interruptedAPI-parallel after second main advance. No complete/current-base pass.",
+  "verificationState": "Awaiting owner coordination for a main freeze window after2successive advances; no blind full rerun."
+}

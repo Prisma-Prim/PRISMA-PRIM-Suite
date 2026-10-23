@@ -1,0 +1,54 @@
+{
+  "schema": "bounded-qualification-publication/v2",
+  "source": "c3c3b237ccd7111c9a11404b750242727794c9c1",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "integrationTree": "45bcd2efde687f3bcf26c9eee5f25896ec22cae4",
+  "status": "draft implementation reviewed; complete current-base verification paused for stable-main coordination",
+  "files": [
+    {
+      "path": "assets/typescript-quality-report-c3c3b23-qualification-v2.md",
+      "bytes": 22897,
+      "sha256": "5564c7cd1d23c5b01001698d6f2f144f1d9c096379ab199d04d85fb2007c41cc",
+      "scope": "critical report, current-base validation pending"
+    },
+    {
+      "path": "assets/response-migration-candidates.md",
+      "bytes": 4938,
+      "sha256": "66aaff5e4af3e168b50671a282a4bfec0a2c5be417fe3912efbadc71c657d72d",
+      "scope": "noncanonical static candidates, source92f; current application code unchanged"
+    },
+    {
+      "path": "assets/large-module-candidates.md",
+      "bytes": 4859,
+      "sha256": "5f10492a67dd9a3338b820ebf96f87e47a1b9e19ab04bd00af27f4c030847801",
+      "scope": "noncanonical static candidates, source92f; current application code unchanged"
+    },
+    {
+      "path": "assets/module-size-context.json",
+      "bytes": 1821,
+      "sha256": "d021c4c989e5682dc291de252636190401b383ddb73b5ac2f6ad25d8e3a18e03",
+      "scope": "original source28c static size context, not architectural defect proof"
+    },
+    {
+      "path": "assets/base-composition-53de.json",
+      "bytes": 2239,
+      "sha256": "e3024930a094d6ec68bf3d38e5186e9ae4ed290b9793adfe6cf9c7b9bab428b0",
+      "scope": "operator-authored unchanged-diff proof"
+    },
+    {
+      "path": "assets/base-composition-947951.json",
+      "bytes": 2428,
+      "sha256": "f57df32b27f643bd1b3e954c0515a2c0a34c6838203bf79389027a598357b059",
+      "scope": "operator-authored unchanged-diff proof"
+    }
+  ],
+  "originalQualificationSource": "28c31ee8048a210524e6a269b62616e597708eb1",
+  "originalQualificationIndex": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/6b23fa3d8ef7b1232819f9732f02ec69f83c9bec/INDEX.json",
+  "latestSupersededRunIndex": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/f4e2393bda6c388a90e73e05abd994db864ef9eb/INDEX.json",
+  "selection": "Reports/static counts/public code-composition metadata only. No raw test logs, source data bodies, environment/configuration/credentials or binary assets selected. Earlier experiment/screenshot archives are linked, not duplicated.",
+  "limits": {
+    "maxTotalBytes": 20971520,
+    "maxBlobBytes": 5242880
+  },
+  "retention": "Supplemental qualification; not complete-run merge evidence. Keep review-needed evidence, apply14day post-merge policy and delete only owned temporary refs; never integrate orphan evidence into product history."
+}
