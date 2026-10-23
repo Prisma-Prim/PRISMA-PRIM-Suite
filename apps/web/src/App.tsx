@@ -87,6 +87,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     requestId: number;
   }>();
   const [projectOpenRequestId, setProjectOpenRequestId] = useState(0);
+  const [projectDirectoryRequestId, setProjectDirectoryRequestId] = useState(0);
   const navigateToSection = useCallback(
     (
       section:
@@ -322,6 +323,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         onOpenClients={() => navigateToSection('clients')}
         onOpenProjects={() => {
           setProjectOpenRequestId((value) => value + 1);
+          setProjectDirectoryRequestId((value) => value + 1);
           setProjectClientFilter(undefined);
           navigateToSection('projects');
         }}
@@ -491,6 +493,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
             canAccessProjects && activeCompanyId
               ? (client) => {
                   setProjectOpenRequestId((value) => value + 1);
+                  setProjectDirectoryRequestId((value) => value + 1);
                   setProjectClientFilter({
                     navigationContext,
                     clientDossierId: client.id,
@@ -561,6 +564,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
                   : undefined
               }
               projectOpenRequestId={projectOpenRequestId}
+              projectDirectoryRequestId={projectDirectoryRequestId}
             />
           )}
           {canReadProjectTemplateCatalogue(access.actor) && (

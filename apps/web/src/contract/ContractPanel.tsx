@@ -23,7 +23,7 @@ import {
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import { useInterfaceLocale } from '../localization/interface-locale';
+import { useContractRecordedValues } from './contract-recorded-values';
 import { useContractCopy } from './contract.copy';
 import {
   readAcceptedOfferSource,
@@ -100,6 +100,7 @@ export function ContractPanel({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onOpenProject?: (projectId: string) => void;
 }) {
+  const { formatNumber } = useContractRecordedValues();
   const copy = useContractCopy();
   const addendumCopy = useContractAddendumCopy();
   const precontractCopy = useContractPrecontractCopy();
@@ -435,8 +436,9 @@ export function ContractPanel({
               <h5>{precontractCopy('section')}</h5>
               <p>
                 {precontractCopy('reference')}{' '}
-                {view.precontract.illustrativeReference} ·{' '}
-                {versionCopy('versionLabel')} {view.precontract.versionNumber} ·{' '}
+                {formatNumber(view.precontract.illustrativeReference)} ·{' '}
+                {versionCopy('versionLabel')}{' '}
+                {formatNumber(view.precontract.versionNumber)} ·{' '}
                 {decisionCopy(
                   view.precontract.decisionState === 'APPROVED'
                     ? 'approved'
@@ -583,7 +585,8 @@ export function ContractPanel({
                             setAgreementId(item.id);
                           }}
                         >
-                          {addendumCopy('open')} {item.addendumOrdinal}
+                          {addendumCopy('open')}{' '}
+                          {formatNumber(item.addendumOrdinal)}
                         </button>{' '}
                         ·{' '}
                         {decisionCopy(
@@ -1036,7 +1039,11 @@ export function ContractPanel({
 }
 function ContractSummary({ contract }: { contract: ContractView }) {
   const { version } = contract;
-  const { locale, formatDate, formatNumber } = useInterfaceLocale();
+  const {
+    formatCalendarDate: formatDate,
+    formatNumber,
+    formatDecimal,
+  } = useContractRecordedValues();
   const directCopy = useContractDirectCopy();
   const copy = useContractCopy();
   const addendumCopy = useContractAddendumCopy();
@@ -1046,18 +1053,6 @@ function ContractSummary({ contract }: { contract: ContractView }) {
   const signatureCopy = useContractSignatureCopy();
   const ruleSetCopy = useContractRuleSetCopy();
   const source = contract.sourceOffer ?? contract.parent;
-  const integerFormatter = new Intl.NumberFormat(locale);
-  const decimalSeparator =
-    new Intl.NumberFormat(locale, { minimumFractionDigits: 1 })
-      .formatToParts(1n)
-      .find((part) => part.type === 'decimal')?.value ?? '.';
-  function formatDecimal(value: string): string {
-    const parts = /^(-?)(\d+)(?:\.(\d+))?$/u.exec(value);
-    if (!parts) return value;
-    const [, sign = '', integer = '0', fraction] = parts;
-    // Keep every fractional digit; only group the exact integer for display.
-    return `${sign}${integerFormatter.format(BigInt(integer))}${fraction === undefined ? '' : decimalSeparator + fraction}`;
-  }
   return (
     <>
       {contract.kind === 'PRECONTRACT' && <h5>{precontractCopy('title')}</h5>}

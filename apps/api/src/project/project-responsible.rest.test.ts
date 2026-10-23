@@ -343,6 +343,447 @@ describe.skipIf(!databaseUrl)(
       });
     }
 
+    it('lists only my current open Projects through the authenticated directory', async () => {
+      const colleague = await member('ion', true);
+      const colleagueProject = await command('/projects', {
+        title: 'Colleague preparation',
+        clientAccountId: clientId,
+      });
+      const unassignedProject = await command('/projects', {
+        title: 'Unassigned preparation',
+        clientAccountId: clientId,
+      });
+      expect(await set(0, ownerMembershipId)).toMatchObject({
+        revision: 1,
+        responsible: { workspaceMembershipId: ownerMembershipId },
+      });
+      const colleagueChange = await change(
+        0,
+        colleague,
+        {},
+        string(colleagueProject.id),
+      );
+      expect(colleagueChange.status).toBe(200);
+
+      const allResponse = await request('/projects');
+      expect(allResponse.status).toBe(200);
+      const allValue: unknown = await allResponse.json();
+      const allProjects = objects(allValue);
+      expect(allProjects).toEqual([
+        project,
+        colleagueProject,
+        unassignedProject,
+      ]);
+      expect(allProjects.map((row) => row.status)).toEqual([
+        'preparatory',
+        'preparatory',
+        'preparatory',
+      ]);
+
+      const mineResponse = await request('/projects?view=mine_open');
+      expect(mineResponse.status).toBe(200);
+      const mineValue: unknown = await mineResponse.json();
+      expect(objects(mineValue)).toEqual([project]);
+    });
+
+    async function directory(options: Parameters<typeof request>[1] = {}) {
+      const response = await request('/projects?view=mine_open', options);
+      expect(response.status).toBe(200);
+      const value: unknown = await response.json();
+      return objects(value);
+    }
+    async function responsibleProject(input: {
+      title: string;
+      membershipId: string;
+    }) {
+      const value = await command('/projects', {
+        title: input.title,
+        clientAccountId: clientId,
+      });
+      const response = await change(
+        0,
+        input.membershipId,
+        {},
+        string(value.id),
+      );
+      expect(response.status).toBe(200);
+      return value;
+    }
+    async function transitionProject(input: {
+      projectId: string;
+      value: unknown;
+    }) {
+      const response = await request(
+        `/projects/${input.projectId}/lifecycle-transitions`,
+        { method: 'POST', value: input.value },
+      );
+      expect(response.status).toBe(200);
+      return body(response);
+    }
+    async function activateProject(target: string) {
+      await transitionProject({
+        projectId: target,
+        value: {
+          action: 'activate',
+          expectedLifecycleRevision: 0,
+          declaration: {
+            approvedOffer: 'missing',
+            contractOrPrecontract: 'missing',
+            projectPlan: 'missing',
+            initialDocuments: 'missing',
+            deadlines: 'missing',
+            financialConditions: 'missing',
+            risks: 'missing',
+          },
+          startException: {
+            reason: 'Synthetic preparation exception.',
+            completionMembershipId: ownerMembershipId,
+            completionDueDate: '2035-01-01',
+          },
+        },
+      });
+    }
+    async function directoryPersistence() {
+      // Read-only observations prove absence of writes; commands remain public REST.
+      const result = await harness.pool.query<{ value: unknown }>(`
+        SELECT jsonb_build_object(
+          'projects', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM projects entry),
+          'clients', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM client_accounts entry),
+          'relationships', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM client_company_relationships entry),
+          'assignments', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM company_role_assignments entry),
+          'responsibilityCommands', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM project_responsibility_commands entry),
+          'lifecycleCommands', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM project_lifecycle_commands entry),
+          'transitions', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM project_lifecycle_transitions entry),
+          'startDeclarations', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM project_start_declarations entry),
+          'activity', (SELECT jsonb_agg(to_jsonb(entry) ORDER BY entry.id) FROM activity_log_events entry)
+        ) AS value
+      `);
+      return result.rows[0]?.value;
+    }
+
+    it('keeps legacy ignored query parameters and rejects malformed new directory selectors without writes', async () => {
+      await set(0, ownerMembershipId);
+      const before = await directoryPersistence();
+      for (const path of [
+        '/projects?legacy=kept',
+        '/projects?membershipId=someone-else',
+        '/projects?viewName=mine_open',
+      ]) {
+        const response = await request(path);
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual([project]);
+      }
+      for (const query of [
+        'view=',
+        'view=all',
+        'view=unknown',
+        'view=mine_open&view=mine_open',
+        'view[]=mine_open',
+        'view[nested]=mine_open',
+        'view=mine_open&extra=1',
+        'view=mine_open&workspaceMembershipId=someone-else',
+        'view=mine_open&companyId=someone-else',
+        'view=mine_open&scope=all',
+      ]) {
+        const response = await request(`/projects?${query}`);
+        expect(response.status, query).toBe(400);
+        const value: unknown = await response.json();
+        expect(JSON.stringify(value)).not.toContain(project.title);
+      }
+      expect(await directory()).toEqual([project]);
+      expect(await directoryPersistence()).toEqual(before);
+    });
+
+    it('selects preparatory, active and on-hold self responsibilities and preserves creation-time then ID order', async () => {
+      await command('/company-project-approver-assignments', {
+        workspaceMembershipId: ownerMembershipId,
+        companyId,
+      });
+      await set(0, ownerMembershipId);
+      const active = await responsibleProject({
+        title: 'Active own Project',
+        membershipId: ownerMembershipId,
+      });
+      const held = await responsibleProject({
+        title: 'Held own Project',
+        membershipId: ownerMembershipId,
+      });
+      await activateProject(string(active.id));
+      await activateProject(string(held.id));
+      await transitionProject({
+        projectId: string(held.id),
+        value: {
+          action: 'hold',
+          expectedLifecycleRevision: 1,
+          reason: 'Explicit synthetic hold.',
+        },
+      });
+      // Fixed creation ties are historical input, not a substitute for lifecycle commands.
+      await harness.pool.query(
+        'UPDATE projects SET created_at=$1 WHERE id=ANY($2::uuid[])',
+        ['2034-01-01T00:00:00.000Z', [projectId, active.id, held.id]],
+      );
+      const expected = [projectId, string(active.id), string(held.id)].sort();
+      const result = await directory();
+      expect(result.map((row) => row.id)).toEqual(expected);
+      expect(new Map(result.map((row) => [row.id, row.status]))).toEqual(
+        new Map([
+          [projectId, 'preparatory'],
+          [active.id, 'active'],
+          [held.id, 'on_hold'],
+        ]),
+      );
+      const before = await directoryPersistence();
+      expect(await directory()).toEqual(result);
+      expect(await directoryPersistence()).toEqual(before);
+    });
+
+    it('excludes completed, cancelled, unassigned and other-responsible Projects after supported public commands', async () => {
+      await command('/company-project-approver-assignments', {
+        workspaceMembershipId: ownerMembershipId,
+        companyId,
+      });
+      const ion = await member('ion', true);
+      const completed = await responsibleProject({
+        title: 'Completed own Project',
+        membershipId: ownerMembershipId,
+      });
+      const cancelled = await responsibleProject({
+        title: 'Cancelled own Project',
+        membershipId: ownerMembershipId,
+      });
+      const other = await responsibleProject({
+        title: 'Other responsible Project',
+        membershipId: ion,
+      });
+      await activateProject(string(completed.id));
+      await transitionProject({
+        projectId: string(completed.id),
+        value: {
+          action: 'complete',
+          expectedLifecycleRevision: 1,
+          note: 'Explicit completion.',
+        },
+      });
+      await transitionProject({
+        projectId: string(cancelled.id),
+        value: {
+          action: 'cancel',
+          expectedLifecycleRevision: 0,
+          reason: 'Explicit cancellation.',
+        },
+      });
+      expect(await directory()).toEqual([]);
+      expect(
+        (await directory({ subject: 'ion' })).map((row) => row.id),
+      ).toEqual([other.id]);
+      const all = await request('/projects');
+      const value: unknown = await all.json();
+      expect(all.status).toBe(200);
+      expect(objects(value).map((row) => row.id)).toEqual([
+        projectId,
+        completed.id,
+        cancelled.id,
+        other.id,
+      ]);
+    });
+
+    it('rechecks current responsibility without requiring Project update, Tasks, Templates or Approver rights for reads', async () => {
+      const ion = await member('ion', true);
+      await set(0, ion);
+      await captureLegacyVersion(ion);
+      const current = await read('/access/current-actor', { subject: 'ion' });
+      expect(object(current.activeCompany).projectPermissions).toEqual([
+        'project.read',
+        'project.create',
+      ]);
+      expect(object(current.activeCompany).taskPermissions ?? []).toEqual([]);
+      expect(
+        object(current.activeCompany).projectTemplatePermissions ?? [],
+      ).toEqual([]);
+      expect(
+        object(current.activeCompany).projectApproverPermissions ?? [],
+      ).toEqual([]);
+      expect(await directory({ subject: 'ion' })).toEqual([project]);
+      const before = await directoryPersistence();
+      expect(await directory({ subject: 'ion' })).toEqual([project]);
+      expect(await directoryPersistence()).toEqual(before);
+      await set(1, ownerMembershipId);
+      expect(await directory({ subject: 'ion' })).toEqual([]);
+      expect(await directory()).toEqual([project]);
+      await set(2, null);
+      expect(await directory()).toEqual([]);
+    });
+
+    it('revalidates live Project and Client grants and the selected Company without revealing hidden rows', async () => {
+      const ion = await member('ion', true);
+      await set(0, ion);
+      const scope = { subject: 'ion' };
+      expect(await directory(scope)).toEqual([project]);
+      for (const kind of ['project', 'client'] satisfies Kind[]) {
+        await revoke(kind, ion);
+        const response = await request('/projects?view=mine_open', scope);
+        expect(response.status, kind).toBe(403);
+        expect(JSON.stringify(await response.json())).not.toContain(
+          project.title,
+        );
+        await grant(kind, ion);
+        expect(await directory(scope)).toEqual([project]);
+      }
+      // Known live Client/Project bundles provide effective context as before.
+      await revoke('context', ion);
+      expect(await directory(scope)).toEqual([project]);
+      await grant('context', ion);
+      for (const company of ['', randomUUID()]) {
+        const response = await request('/projects?view=mine_open', {
+          ...scope,
+          company,
+        });
+        expect(response.status).toBe(403);
+        expect(JSON.stringify(await response.json())).not.toContain(
+          project.title,
+        );
+      }
+      await command('/workspace-membership-suspensions', {
+        workspaceMembershipId: ion,
+      });
+      const suspended = await request('/projects?view=mine_open', scope);
+      expect(suspended.status).toBe(403);
+      expect(JSON.stringify(await suspended.json())).not.toContain(
+        project.title,
+      );
+    });
+
+    it.each([null, 'unknown'])(
+      'fails closed for captured Project permission version %s without responsibility granting access',
+      async (version) => {
+        const ion = await member('ion', true);
+        await set(0, ion);
+        expect(await directory({ subject: 'ion' })).toEqual([project]);
+        await withUnsupportedPermissionVersion(
+          await projectAssignment(ion),
+          version,
+          async () => {
+            const response = await request('/projects?view=mine_open', {
+              subject: 'ion',
+            });
+            expect(response.status).toBe(403);
+            expect(JSON.stringify(await response.json())).not.toContain(
+              project.title,
+            );
+          },
+        );
+        expect(await directory({ subject: 'ion' })).toEqual([project]);
+      },
+    );
+
+    it('preserves original superseded Client reads and reversal fences through repeated Mine reads', async () => {
+      await set(0, ownerMembershipId);
+      const union = await unionSetup(true);
+      const before = await directoryPersistence();
+      const own = await directory();
+      expect(own).toEqual([
+        expect.objectContaining({
+          id: projectId,
+          clientAccountId: clientId,
+          clientDossierId: union.second,
+        }),
+      ]);
+      expect(await directory()).toEqual(own);
+      expect(await directoryPersistence()).toEqual(before);
+      const reversed = await reverse(union.reference);
+      expect(reversed.status).toBe(201);
+      expect(await directory()).toEqual([
+        expect.objectContaining({
+          id: projectId,
+          clientAccountId: clientId,
+          clientDossierId: clientId,
+        }),
+      ]);
+    });
+
+    it.each([null, 'unknown'])(
+      'fails closed for captured Client permission version %s on the self directory',
+      async (version) => {
+        const ion = await member('ion', true);
+        await set(0, ion);
+        expect(await directory({ subject: 'ion' })).toEqual([project]);
+        const assignment = await harness.pool.query<{ id: string }>(
+          "SELECT id FROM company_role_assignments WHERE bundle='company_director_client_access' AND workspace_membership_id=$1 AND company_id=$2 AND revoked_at IS NULL",
+          [ion, companyId],
+        );
+        await withUnsupportedPermissionVersion(
+          string(assignment.rows[0]?.id),
+          version,
+          async () => {
+            const response = await request('/projects?view=mine_open', {
+              subject: 'ion',
+            });
+            expect(response.status).toBe(403);
+            expect(JSON.stringify(await response.json())).not.toContain(
+              project.title,
+            );
+          },
+        );
+        expect(await directory({ subject: 'ion' })).toEqual([project]);
+      },
+    );
+
+    it('removes a self Project when its original Client or relationship becomes unreadable', async () => {
+      await set(0, ownerMembershipId);
+      expect(await directory()).toEqual([project]);
+      // Existing invalidation fixtures; no public archive workflow is invented.
+      await harness.pool.query(
+        "UPDATE client_company_relationships SET status='archived' WHERE company_id=$1 AND client_account_id=$2",
+        [companyId, clientId],
+      );
+      expect(await directory()).toEqual([]);
+      await harness.pool.query(
+        "UPDATE client_company_relationships SET status='active' WHERE company_id=$1 AND client_account_id=$2",
+        [companyId, clientId],
+      );
+      expect(await directory()).toEqual([project]);
+      await harness.pool.query(
+        "UPDATE client_accounts SET status='archived' WHERE id=$1",
+        [clientId],
+      );
+      expect(await directory()).toEqual([]);
+    });
+
+    it('denies an inactive Internal User or Company instead of returning an empty successful self directory', async () => {
+      const ion = await member('ion', true);
+      await set(0, ion);
+      const current = await read('/access/current-actor', { subject: 'ion' });
+      expect(await directory({ subject: 'ion' })).toEqual([project]);
+      await harness.pool.query(
+        "UPDATE internal_users SET status='inactive' WHERE id=$1",
+        [string(current.internalUserId)],
+      );
+      const inactiveUser = await request('/projects?view=mine_open', {
+        subject: 'ion',
+      });
+      expect(inactiveUser.status).toBe(403);
+      expect(JSON.stringify(await inactiveUser.json())).not.toContain(
+        project.title,
+      );
+      await harness.pool.query(
+        "UPDATE internal_users SET status='active' WHERE id=$1",
+        [string(current.internalUserId)],
+      );
+      expect(await directory({ subject: 'ion' })).toEqual([project]);
+      await harness.pool.query(
+        "UPDATE companies SET status='inactive' WHERE id=$1",
+        [companyId],
+      );
+      const inactiveCompany = await request('/projects?view=mine_open', {
+        subject: 'ion',
+      });
+      expect(inactiveCompany.status).toBe(403);
+      expect(JSON.stringify(await inactiveCompany.json())).not.toContain(
+        project.title,
+      );
+    });
+
     it('captures Project Access v2 on a fresh grant and lets its holder name, reload and replace the responsible member', async () => {
       const actor = await read('/access/current-actor');
       expect(object(actor.activeCompany).projectPermissions).toEqual([
