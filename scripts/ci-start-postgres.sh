@@ -3,6 +3,7 @@
 #
 #   ci-start-postgres.sh acquire  Pull the image and write the cached archive
 #                                 (the postgres_image job, on a cache miss).
+#   ci-start-postgres.sh cache-key  Print the image/platform-bound archive key.
 #   ci-start-postgres.sh start    Load the cached archive (pulling only if it
 #                                 is missing) and run PostgreSQL on
 #                                 127.0.0.1:5432 (each database job).
@@ -17,8 +18,12 @@ postgres_image='public.ecr.aws/docker/library/postgres:17-alpine@sha256:b0f9560a
 # A digest-only reference is not kept by docker save/load, so the pulled
 # image is saved and run under this stable local tag.
 local_image='prisma-prim-ci/postgres:17-pinned'
+mode="${1:?usage: ci-start-postgres.sh acquire|start|cache-key}"
+if [ "$mode" = cache-key ]; then
+  printf 'postgres-image-%s-%s-%s\n' "${RUNNER_OS:?}" "${RUNNER_ARCH:?}" "${postgres_image##*@sha256:}"
+  exit 0
+fi
 archive="${POSTGRES_IMAGE_ARCHIVE:?POSTGRES_IMAGE_ARCHIVE must name the cached image archive}"
-mode="${1:?usage: ci-start-postgres.sh acquire|start}"
 
 pull_pinned_image() {
   for attempt in 1 2 3 4 5; do
@@ -71,6 +76,7 @@ esac
 
 docker run --pull=never --detach --name ci-postgres \
   --publish 127.0.0.1:5432:5432 \
+  --tmpfs /var/lib/postgresql/data:rw,nosuid,nodev,size=2g \
   --env POSTGRES_DB=prisma_prim_dev \
   --env POSTGRES_USER=prisma_prim \
   --env POSTGRES_PASSWORD=prisma_prim \

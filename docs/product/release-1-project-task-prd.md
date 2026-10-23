@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review; remaining capability Draft\
-**Version:** 0.10\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis; remaining capability Draft\
+**Version:** 0.11\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -270,6 +270,25 @@ warning. Loading, empty, validation, no eligible assignee, denied/revoked access
 missing, conflict/reload, uncertain retry and historical-Client read-only states
 are explicit. Same-context navigation preserves useful drafts and command
 identity; actor, Company and permission changes invalidate old state and replies.
+
+### Local Task title filtering
+
+The existing local Task title filter delivered under [#270](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/270)
+also accepts Romanian spelling with or without diacritics under [#778](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/778).
+Preserve trimmed case-insensitive substring matching, canonical Unicode equivalence
+and the Romanian pairs `ă/â/a`, `î/i`, `ș/ş/s`, `ț/ţ/t` on both query and Task title.
+Other language distinctions, including Russian `й/и`, remain distinct. This is
+comparison only: keep stored and displayed text and the literal query unchanged.
+
+Filter only already-loaded authorized Task titles, preserving server order and
+the existing status, responsible-member and date filter choices. Typing, clearing
+or changing interface locale adds no request or business write; locale changes
+preserve the literal query. Existing authority/context retirement and stale-reply
+rules remain intact. Filtering does not close selected detail, discard drafts or
+alter an uncertain command's exact payload, expected version or key. Existing
+authoritative refreshes still determine current rows and do not redefine the open
+detail's authority. This bounded convenience adds no field, permission, event,
+backend behavior, global/content/history search or identity-matching rule.
 
 Public component tests start the observable red-to-green proof. PostgreSQL REST
 tests own permission isolation, assignment eligibility, dates, state/version
@@ -777,3 +796,79 @@ App/API/disposable-PostgreSQL desktop 1440px and narrow 390px journeys prove the
 normal selection, exact opening, four locales, keyboard focus and horizontal fit
 with inspected original screenshots. No new deadline, priority, assignment,
 workflow, export, provider or all-Companies behavior belongs to this approved slice.
+
+## 26. Approved Company unassigned preparation Task discovery
+
+On 2026-10-21, coordinating root approved this bounded projection under Dan's
+explicit maximum safe-Sarcina delivery and delegated agent product-review
+instruction. It is a reversible product synthesis, not newly recovered Iurie
+evidence. Sections 18–20 continue to own Task records, authority and mutations;
+§23 owns Project lifecycle. This addition changes neither My Tasks nor the
+personal attention/upcoming or Company overdue definitions.
+
+An actor with the existing current Company Task-read prerequisites can discover
+open preparation Tasks with a stored null assignee across all currently readable
+Projects in that Company, then open the exact Task using the existing Project
+navigation. The set includes `todo`, `in_progress` and `blocked`, without a
+due-date restriction or additional Project-lifecycle filter. An assigned member's
+later ineligibility does not clear their assignment: that Task remains excluded,
+and its attribution/history is preserved. Original superseded Client labels and
+read visibility are unchanged.
+
+No permission or assignment expands. Reads require current Company/Workspace,
+membership/session, `task.read`, Project read and original-Client read/relationship
+authority. Workspace ownership, context selection and being the creator or
+responsible member grant nothing. The list never requests eligible members.
+Opening a row reuses fresh owning reads. `task.manage`, current Project/Client
+mutability and live assignee eligibility remain independently required only by
+the existing deliberate assignment command.
+
+The narrow authenticated Company read accepts only a single nonnegative
+safe-integer offset and returns Company, offset, fixed page size 25, next-page
+presence and the permitted Task rows. Unsupported, repeated, array, fractional,
+negative and unsafe inputs fail. Each read applies current authority and page
+selection in one repeatable-read snapshot, with at most 25+1 matching Task rows
+for the existence lookahead. Order is due date ascending with undated last,
+then creation time and identifier. Rows show literal Task title, open state,
+manual priority, date/No due date and the already readable Project/Client labels.
+No dashboard metric, total count, badge, urgency classification or ranking is
+added. Pagination does not promise a frozen snapshot across requests or mutations.
+
+Previous, Next and Refresh are explicit; Refresh starts at zero. An out-of-range
+page offers back/refresh, without automatic traversal. The read-only Company
+view is available only through the existing Task-read entry predicate. Current
+Company, identity/session/membership/authority changes and newer requests retire
+old rows/replies. Loading, empty, out-of-range, unavailable/retry, denied and
+malformed/foreign-response states are explicit. Interface locale changes preserve
+the page, literal content, focus and request state without a business write.
+Use the existing Prisme controls and inspected desktop 1440px/narrow 390px journeys.
+
+The user opens the exact Task in its existing Project detail. A separately
+authorized manager chooses a currently eligible member and explicitly saves
+through the existing Task version/idempotency/uncertainty/conflict protocol.
+Returning to this view reads fresh state: a committed assignment or closed Task
+is absent; deliberate reopening or clearing an assignment may make it reappear.
+The list creates no event, Task version/history, command outcome, Client fence
+or assignment, and adds no alternate mutation or optimistic success path.
+
+Readable open unassigned Tasks under completed/cancelled Projects, if present,
+remain discoverable and open their existing read-only detail. The view does not
+hide such records, reactivate a Project or relax the closure/write guards.
+Superseded-original Client records likewise retain their existing read-only
+mutation restriction. Existing assignment history and current ineligibility are
+never rewritten to manufacture an unassigned Task.
+
+Real App public composition proves the discover/open workflow without an
+import/fixture/404-only RED; disposable PostgreSQL REST proves exact set,
+25-row boundaries/order, unknown-input refusal, current authority and side-effect
+absence. Registered real desktop/narrow journeys find an undated row beyond the
+first page, open and deliberately assign that exact Task through the existing
+form, reload its history and return to a fresh list. Readonly/no-manage,
+historical/closed-Project, assigned-but-ineligible, revocation/late replies and
+four-locale continuity cases remain required.
+
+General team/all-Companies registers, member directories, bulk/automatic
+assignment, reminders/notifications, generation/dependencies, completion evidence,
+new states/lifecycle or Template changes, exports and new grants remain excluded.
+This bounded discovery projection confers no real mission-start authority and
+adds no whole historical MVP capability credit.

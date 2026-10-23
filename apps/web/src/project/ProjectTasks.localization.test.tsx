@@ -373,6 +373,46 @@ async function openEnglishTask() {
 }
 
 it.each(languages)(
+  'keeps a literal plain-Romanian title query and selected Task without requests when switching to $code',
+  async (language) => {
+    const literal = { ...task, title: 'Pregătire Ștefan' };
+    const fetch = vi.fn(async (url: string) => {
+      if (url === '/api/projects/project/tasks')
+        return Response.json({ mutable: true, tasks: [literal] });
+      if (url === '/api/tasks/task')
+        return Response.json({ mutable: true, task: literal });
+      if (url === '/api/tasks/task/history')
+        return Response.json({ events: [] });
+      return readResponse(url);
+    });
+    vi.stubGlobal('fetch', fetch);
+    localStorage.setItem('prisma-prim.interface-locale', 'en');
+    mountTasks();
+    fireEvent.click(await screen.findByRole('button', { name: literal.title }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Save Task' })).toBeEnabled(),
+    );
+    changeValue(screen.getByLabelText('Search Tasks'), ' STEFAN ');
+    expect(screen.getByRole('button', { name: literal.title })).toBeVisible();
+    const before = fetch.mock.calls.length;
+
+    switchLanguage(language.code);
+
+    const region = screen.getByRole('region', { name: language.title });
+    expect(within(region).getByLabelText(language.search)).toHaveValue(
+      ' STEFAN ',
+    );
+    expect(
+      within(region).getByRole('button', { name: literal.title }),
+    ).toBeVisible();
+    expect(
+      within(region).getByRole('heading', { name: literal.title }),
+    ).toBeVisible();
+    expect(fetch).toHaveBeenCalledTimes(before);
+  },
+);
+
+it.each(languages)(
   'preserves fields, exact calendar bounds, literal filters and attributed history without requests on $code switching',
   async (language) => {
     vi.stubEnv('TZ', 'America/New_York');

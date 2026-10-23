@@ -92,6 +92,12 @@ type ProjectRequest =
       requestedTask?: RequestedTask & { projectId: string };
     }
   | { kind: 'register'; command: Registration };
+/** A Task-focus destination is valid only with an exact Task target. */
+export type ProjectOpenTarget = { projectId: string } & (
+  { taskId?: string; focus?: undefined } | { taskId: string; focus: 'task' }
+);
+export type RequestedProject = ProjectOpenTarget & { requestId: number };
+
 export function ProjectWorkspace({
   actor,
   identity,
@@ -120,7 +126,7 @@ export function ProjectWorkspace({
    * Opens this Project as choosing its row would, then its optional Task as
    * choosing that Task's row would; each new request id once.
    */
-  requestedProject?: { projectId: string; taskId?: string; requestId: number };
+  requestedProject?: RequestedProject;
   /** Increases whenever another section asks to open Projects. */
   projectOpenRequestId?: number;
   /** Home/Client request the directory; an exact Project/Task open does not. */
@@ -340,11 +346,13 @@ export function ProjectWorkspace({
     }
     if (pending && registering.current) return;
     consumedProjectRequest.current = requestedProject.requestId;
-    const { projectId, taskId, requestId } = requestedProject;
+    const { projectId, taskId, requestId, focus } = requestedProject;
     void run(`/projects/${encodeURIComponent(projectId)}`, {
       kind: 'open',
       requestedTask:
-        taskId === undefined ? undefined : { projectId, taskId, requestId },
+        taskId === undefined
+          ? undefined
+          : { projectId, taskId, requestId, focus },
     });
   }, [requestedProject, load.kind, pending]);
 
@@ -485,7 +493,11 @@ export function ProjectWorkspace({
           identityRevision: startedUnder,
           requestedTask:
             target?.projectId === result.value.id
-              ? { taskId: target.taskId, requestId: target.requestId }
+              ? {
+                  taskId: target.taskId,
+                  requestId: target.requestId,
+                  focus: target.focus,
+                }
               : undefined,
         });
         refreshRow(result.value, startedUnder);

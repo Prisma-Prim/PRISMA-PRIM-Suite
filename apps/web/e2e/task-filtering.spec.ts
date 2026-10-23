@@ -425,6 +425,115 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   });
 });
 
+test('finds a literal Romanian Task with plain spelling and preserves its draft and query through four interface languages', async ({
+  page,
+}, testInfo) => {
+  const title = 'Pregătire Ștefan — Țară';
+  const draft = 'Ciornă literală — Черновик';
+  const rows = taskFixtures().map((task, index) =>
+    index === 0 ? { ...task, title } : task,
+  );
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.startsWith('/api/')) requests.push(`${request.method()} ${path}`);
+  });
+  await interceptApplication(page, rows, () => {});
+  await page.goto('/?frame=prisme#projects');
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(
+    page.getByLabel('Active Company', { exact: true }),
+    company.id,
+  );
+  if (testInfo.project.name === 'narrow')
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await page.goto('/?frame=prisme#projects');
+  await page
+    .getByRole('button', {
+      name: `${project.title} Client: ${client.displayName}`,
+      exact: true,
+    })
+    .click();
+  const tasks = page.locator('.project-tasks').filter({ visible: true });
+  const navigation = tasks.getByRole('navigation', {
+    name: 'Tasks',
+    exact: true,
+  });
+  await expect(
+    navigation.getByRole('button', { name: title, exact: true }),
+  ).toBeVisible();
+  await tasks
+    .getByRole('searchbox', { name: 'Search Tasks', exact: true })
+    .fill(' STEFAN ');
+  await expect(navigation.getByRole('listitem').getByRole('button')).toHaveText(
+    [title],
+  );
+  await navigation.getByRole('button', { name: title, exact: true }).click();
+  await expect(
+    tasks.getByRole('button', { name: 'Save Task', exact: true }),
+  ).toBeEnabled();
+  await tasks
+    .getByRole('textbox', { name: 'Task title', exact: true })
+    .fill(draft);
+  const before = requests.length;
+
+  for (const language of [
+    { code: 'ro', search: 'Căutați Sarcini', titleLabel: 'Titlul Sarcinii' },
+    { code: 'ru', search: 'Поиск Задач', titleLabel: 'Название Задачи' },
+    {
+      code: 'fr',
+      search: 'Rechercher des Tâches',
+      titleLabel: 'Titre de la Tâche',
+    },
+    { code: 'en', search: 'Search Tasks', titleLabel: 'Task title' },
+  ]) {
+    await selectOption(page.locator('#interface-locale'), language.code);
+    const search = tasks.getByRole('searchbox', {
+      name: language.search,
+      exact: true,
+    });
+    await expect(search).toHaveValue(' STEFAN ');
+    await expect(
+      tasks.getByRole('button', { name: title, exact: true }),
+    ).toBeVisible();
+    await expect(
+      tasks.getByRole('heading', { name: title, exact: true }),
+    ).toBeVisible();
+    await expect(
+      tasks.getByRole('textbox', { name: language.titleLabel, exact: true }),
+    ).toHaveValue(draft);
+    expect(requests).toHaveLength(before);
+    await search.focus();
+    await search.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    await expect(search).toBeFocused();
+    expect(
+      await search.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return (
+          element.matches(':focus-visible') &&
+          style.outlineStyle !== 'none' &&
+          parseFloat(style.outlineWidth) > 0
+        );
+      }),
+    ).toBe(true);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await tasks.screenshot({
+      path: testInfo.outputPath(
+        `task-romanian-${language.code}-${testInfo.project.name}.png`,
+      ),
+    });
+  }
+  expect(
+    requests.filter((request) => /^(POST|PATCH|PUT|DELETE) /u.test(request)),
+  ).toEqual([]);
+});
+
 function taskFixtures(): TaskView[] {
   const base: TaskView = {
     id: 'collect-task',

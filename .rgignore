@@ -1,0 +1,3 @@
+# Generated snapshots remain available through explicit paths or -g overrides.
+# SQL migrations, the journal and schema source remain searchable.
+/apps/api/drizzle/meta/*_snapshot.json

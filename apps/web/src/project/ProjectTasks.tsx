@@ -53,7 +53,11 @@ import {
 } from './TaskPresentation';
 
 /** A requested open of one Task of the selected Project. */
-export type RequestedTask = { taskId: string; requestId: number };
+export type RequestedTask = {
+  taskId: string;
+  requestId: number;
+  focus?: 'task';
+};
 type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -70,7 +74,13 @@ type Load =
   | { kind: 'ready'; listing: Listing };
 type Detail =
   | { kind: 'loading' | 'error' | 'missing' }
-  | { kind: 'ready'; task: TaskView; mutable: boolean; events: TaskEvent[] };
+  | {
+      kind: 'ready';
+      task: TaskView;
+      mutable: boolean;
+      events: TaskEvent[];
+      requestedOpenId?: number;
+    };
 type Command = { key: string } & (
   | {
       action: 'create';
@@ -123,6 +133,18 @@ type TaskFeedback =
   | 'uncertain'
   | 'validation';
 type TaskFilter = 'all' | TaskState;
+
+function taskFilterText(value: string) {
+  // Fold Romanian spelling only; other distinctions such as й/и remain intact.
+  return value
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[ăâ]/gu, 'a')
+    .replace(/î/gu, 'i')
+    .replace(/[șş]/gu, 's')
+    .replace(/[țţ]/gu, 't');
+}
+
 // Responsible members are matched by membership identity so homonymous members stay distinct.
 type AssigneeFilter =
   | { kind: 'all' }
@@ -345,6 +367,8 @@ function TaskProject({
   const mutationRequest = useRef<AbortController | null>(null);
   /** The latest requested open already applied. */
   const consumedTaskRequest = useRef<number | undefined>(undefined);
+  const taskHeading = useRef<HTMLHeadingElement>(null);
+  const focusedTaskRequest = useRef<number | undefined>(undefined);
   const companyId = actor.activeCompany?.id ?? '';
   const scope = { companyId, projectId };
   const canRead =
@@ -366,7 +390,7 @@ function TaskProject({
     (current?.mutable ?? (load.kind === 'ready' && load.listing.mutable));
   const editable =
     canManage && mutable && mutation.kind === 'idle' && members !== null;
-  const normalizedTaskSearch = taskSearch.trim().toLowerCase();
+  const normalizedTaskSearch = taskFilterText(taskSearch.trim());
   const dateSelection = resolveDateFilter(dateFilter);
   const unusableRange = dateSelection.kind === 'unusable';
   const visibleTasks =
@@ -376,7 +400,7 @@ function TaskProject({
             (taskFilter === 'all' || task.status === taskFilter) &&
             matchesAssignee(task, assigneeFilter) &&
             matchesDate(task, dateSelection) &&
-            task.title.toLowerCase().includes(normalizedTaskSearch),
+            taskFilterText(task.title).includes(normalizedTaskSearch),
         )
       : [];
   // Options come only from the loaded rows the reader already sees, never from the eligible-member query.
@@ -427,7 +451,11 @@ function TaskProject({
     setFeedback(null);
     setMutation({ kind: 'blocked' });
   }
-  async function refresh(taskId: string | null, controller: AbortController) {
+  async function refresh(
+    taskId: string | null,
+    controller: AbortController,
+    requestedOpenId?: number,
+  ) {
     const api = await createAuthenticatedApiClient(identity);
     if (controller.signal.aborted) return;
     const options = { companyContextId: companyId, signal: controller.signal };
@@ -458,7 +486,7 @@ function TaskProject({
           scope,
           taskId,
         );
-        nextDetail = { kind: 'ready', ...task, events };
+        nextDetail = { kind: 'ready', ...task, events, requestedOpenId };
       } catch (error: unknown) {
         if (!(error instanceof ReadFailure) || error.kind !== 'missing')
           throw error;
@@ -516,7 +544,7 @@ function TaskProject({
   }
   async function open(
     taskId: string | null,
-    options: { reload?: boolean } = {},
+    options: { reload?: boolean; requestedOpenId?: number } = {},
   ) {
     request.current?.abort();
     const controller = new AbortController();
@@ -539,7 +567,7 @@ function TaskProject({
     }
     setLoad({ kind: 'loading' });
     try {
-      await refresh(taskId, controller);
+      await refresh(taskId, controller, options.requestedOpenId);
     } catch (error: unknown) {
       if (controller.signal.aborted) return;
       if (error instanceof ReadFailure && error.kind === 'denied') deny();
@@ -573,8 +601,32 @@ function TaskProject({
     )
       return;
     consumedTaskRequest.current = requestedTask.requestId;
-    void open(requestedTask.taskId);
+    void open(requestedTask.taskId, {
+      requestedOpenId: requestedTask.requestId,
+    });
   }, [requestedTask, commandSettling]);
+  // The section keeps ordinary Task-opening focus. Only an explicit Task-focus
+  // intent moves the final destination after its current-authority read is ready.
+  // Reloads/locales never replay it; a newer open or unmount cancels it.
+  useEffect(() => {
+    if (
+      !requestedTask ||
+      requestedTask.focus !== 'task' ||
+      detail?.kind !== 'ready' ||
+      detail.requestedOpenId !== requestedTask.requestId ||
+      detail.task.id !== requestedTask.taskId ||
+      focusedTaskRequest.current === requestedTask.requestId
+    )
+      return;
+    const frame = window.requestAnimationFrame(() => {
+      const heading = taskHeading.current;
+      if (!heading?.isConnected) return;
+      focusedTaskRequest.current = requestedTask.requestId;
+      heading.scrollIntoView?.({ block: 'start' });
+      heading.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [detail, requestedTask]);
 
   async function run(command: Command) {
     request.current?.abort();
@@ -974,7 +1026,9 @@ function TaskProject({
               {detail?.kind === 'missing' && <p role="alert">{copy.missing}</p>}
               {current && (
                 <>
-                  <h5>{current.task.title}</h5>
+                  <h5 ref={taskHeading} tabIndex={-1}>
+                    {current.task.title}
+                  </h5>
                   <p className="task-status">
                     {copy.states[current.task.status]}
                   </p>

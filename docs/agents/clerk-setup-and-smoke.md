@@ -104,6 +104,10 @@ prove identity.
    prevent Clerk sign-out. Authentication links and the provider return carry the
    same untrusted intent in a URL fragment, captured and removed before Clerk
    mounts; no membership or permission is read from that continuation.
+   New continuations use `#/?invitation-intent=...` so Clerk can compose its hash
+   routes. The recipient entry also reads the legacy `#invitation-intent=...`
+   envelope, applies the same validation and removes either before Clerk mounts;
+   an existing retry key is preserved rather than regenerated.
 3. Confirm one acceptance event as Owner and, only for a new Internal User,
    one provisioning event. The approved semantics live in the
    [Activity Log PRD](../product/activity-log-accountability-prd.md#4-event-contract).

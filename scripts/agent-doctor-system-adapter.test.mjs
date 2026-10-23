@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { constants as osConstants, tmpdir } from 'node:os';
 import { performance } from 'node:perf_hooks';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
@@ -11,6 +11,7 @@ import { evaluateEnvironment } from './agent-doctor.mjs';
 import {
   classifyPnpmCommand,
   classifyPostgresCommand,
+  collectEnvironmentSnapshot,
   createPostgresChildSource,
   probePostgres,
   probePostgresTargets,
@@ -60,6 +61,161 @@ test('preserves missing and sandbox-denied pnpm classifications', () => {
     state: 'sandbox-denied',
     detail: 'EPERM',
   });
+});
+
+test('cloud readiness admits a slower executable probe without certifying a timeout', () => {
+  const runner = (_executable, args, options) => {
+    if (!args.includes('@prisma-prim/web'))
+      return { status: 0, stdout: 'pnpm/11.20.0' };
+    return options.timeout < 11_000
+      ? { status: null, error: { code: 'ETIMEDOUT' }, signal: 'SIGTERM' }
+      : { status: 0, stdout: 'PRISMA_PRIM_CHROMIUM=available' };
+  };
+  const standard = collectEnvironmentSnapshot(
+    { needsChromium: true, needsPostgres: false },
+    runner,
+  );
+  const cloud = collectEnvironmentSnapshot(
+    { needsChromium: true, needsPostgres: false, readinessProfile: 'cloud' },
+    runner,
+  );
+  assert.deepEqual(standard.chromiumProbe, { state: 'timed-out' });
+  assert.deepEqual(cloud.chromiumProbe, { state: 'available' });
+  assert.equal(
+    evaluateEnvironment(standard, 'web').checks.find(
+      (check) => check.id === 'chromium',
+    ).status,
+    'FAIL',
+  );
+  assert.equal(
+    evaluateEnvironment(cloud, 'web').checks.find(
+      (check) => check.id === 'chromium',
+    ).status,
+    'PASS',
+  );
+});
+
+test('both readiness profiles keep missing, denied and unknown Chromium failures distinct', () => {
+  const cases = [
+    [
+      { status: 1, stdout: 'PRISMA_PRIM_CHROMIUM=missing' },
+      { state: 'missing' },
+    ],
+    [{ status: null, error: { code: 'ETIMEDOUT' } }, { state: 'timed-out' }],
+    [
+      { status: null, error: { code: 'EPERM' } },
+      { state: 'sandbox-denied', detail: 'EPERM' },
+    ],
+    [
+      { status: null, error: { code: 'EACCES' } },
+      { state: 'sandbox-denied', detail: 'EACCES' },
+    ],
+    [{ status: null, error: { code: 'ENOENT' } }, { state: 'failed' }],
+    [{ status: 1, stderr: 'private-token' }, { state: 'failed' }],
+    [{ status: 0, stdout: 'unexpected' }, { state: 'failed' }],
+    [
+      {
+        status: 0,
+        stdout: 'PRISMA_PRIM_CHROMIUM=available',
+        error: { code: 'EIO' },
+      },
+      { state: 'failed' },
+    ],
+    [
+      {
+        status: 0,
+        stdout: 'PRISMA_PRIM_CHROMIUM=available',
+        signal: 'SIGTERM',
+      },
+      { state: 'failed' },
+    ],
+  ];
+  for (const readinessProfile of ['standard', 'cloud']) {
+    for (const [response, expected] of cases) {
+      const snapshot = collectEnvironmentSnapshot(
+        { needsChromium: true, needsPostgres: false, readinessProfile },
+        (_executable, args) =>
+          args.includes('@prisma-prim/web')
+            ? response
+            : { status: 0, stdout: 'pnpm/11.20.0' },
+      );
+      assert.deepEqual(snapshot.chromiumProbe, expected);
+      const check = evaluateEnvironment(snapshot, 'web').checks.find(
+        (entry) => entry.id === 'chromium',
+      );
+      assert.equal(check.status, 'FAIL');
+      assert.doesNotMatch(JSON.stringify(check), /private-token/u);
+      if (expected.state !== 'missing')
+        assert.doesNotMatch(check.summary, /is missing/iu);
+    }
+  }
+});
+
+test('readiness allowances are finite, opt-in and do not change PostgreSQL probes', () => {
+  const previousDevelopment = process.env.DATABASE_URL;
+  const previousTest = process.env.TEST_DATABASE_URL;
+  process.env.DATABASE_URL = 'postgres://u:p@127.0.0.1/development';
+  process.env.TEST_DATABASE_URL = 'postgres://u:p@127.0.0.1/development_test';
+  try {
+    for (const [readinessProfile, expected] of [
+      ['standard', 10_000],
+      ['cloud', 60_000],
+    ]) {
+      const budgets = [];
+      const snapshot = collectEnvironmentSnapshot(
+        { needsChromium: true, needsPostgres: true, readinessProfile },
+        (_executable, args, options) => {
+          budgets.push(options.timeout);
+          if (args.includes('@prisma-prim/api')) return command(envelope());
+          return {
+            status: 0,
+            stdout: args.includes('@prisma-prim/web')
+              ? 'PRISMA_PRIM_CHROMIUM=available'
+              : 'pnpm/11.20.0',
+          };
+        },
+      );
+      assert.deepEqual(budgets, [expected, 15_000, expected]);
+      assert.equal(snapshot.postgresProbe.state, 'available');
+    }
+    assert.throws(
+      () =>
+        collectEnvironmentSnapshot(
+          {
+            needsChromium: true,
+            needsPostgres: true,
+            readinessProfile: 'unbounded',
+          },
+          () => assert.fail('invalid readiness profile launched a subprocess'),
+        ),
+      /Expected readiness profile standard or cloud/u,
+    );
+  } finally {
+    if (previousDevelopment === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDevelopment;
+    if (previousTest === undefined) delete process.env.TEST_DATABASE_URL;
+    else process.env.TEST_DATABASE_URL = previousTest;
+  }
+});
+
+test('the doctor CLI rejects a missing or unsupported readiness profile before probing', () => {
+  for (const suffix of [[], ['unbounded'], ['0'], ['--json']]) {
+    const child = spawnSync(
+      process.execPath,
+      [
+        fileURLToPath(new URL('./agent-doctor.mjs', import.meta.url)),
+        '--readiness-profile',
+        ...suffix,
+      ],
+      { encoding: 'utf8', timeout: 10_000 },
+    );
+    assert.equal(child.status, 2);
+    assert.equal(child.stdout, '');
+    assert.match(
+      child.stderr,
+      /Expected --readiness-profile standard or cloud/u,
+    );
+  }
 });
 
 test('collects the repository Node pin separately from the host runtime', async () => {
