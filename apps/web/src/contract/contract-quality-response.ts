@@ -7,6 +7,9 @@ const rules = {
   PARTY_IDENTITY_MATCHES_SOURCE: 'WARNING',
   PARTY_IDENTITY_CURRENT: 'WARNING',
   PARTY_TAX_ID_RECORDED: 'ERROR',
+  PRICE_MATCHES_SOURCE_OFFER: 'ERROR',
+  CONDITIONS_MATCH_SOURCE_OFFER: 'ERROR',
+  SOURCE_OFFER_ACCEPTED: 'ERROR',
   PRICE_MATCHES_ACCEPTED_OFFER: 'ERROR',
   PRICING_SNAPSHOT_COHERENT: 'ERROR',
   CONDITIONS_MATCH_ACCEPTED_OFFER: 'ERROR',
@@ -19,11 +22,11 @@ const rules = {
 } satisfies Record<string, 'WARNING' | 'ERROR'>;
 export type ContractQualityCode = keyof typeof rules;
 /** `CONTRACT_QUALITY_ILLUSTRATIVE` versions; any other value fails closed. */
-export type ContractQualityRuleSetVersion = 1 | 2;
+export type ContractQualityRuleSetVersion = 1 | 2 | 3;
 export function isContractQualityRuleSetVersion(
   value: unknown,
 ): value is ContractQualityRuleSetVersion {
-  return value === 1 || value === 2;
+  return value === 1 || value === 2 || value === 3;
 }
 export interface ContractQualityRunView {
   id: string;
@@ -62,7 +65,11 @@ export function readRecordedContractQualityRun(
   value: unknown,
   binding: ContractQualityRunBinding,
 ): ContractQualityRunView {
-  return readRun(value, binding, binding.ruleSetVersion === 2 ? [1, 2] : [1]);
+  return readRun(
+    value,
+    binding,
+    binding.ruleSetVersion === 2 ? [1, 2] : [binding.ruleSetVersion],
+  );
 }
 function readRun(
   value: unknown,
@@ -86,11 +93,16 @@ function readRun(
     'PARTY_IDENTITY_MATCHES_SOURCE',
     'PARTY_IDENTITY_CURRENT',
     'PARTY_TAX_ID_RECORDED',
-    'PRICE_MATCHES_ACCEPTED_OFFER',
+    ruleSetVersion === 3
+      ? 'PRICE_MATCHES_SOURCE_OFFER'
+      : 'PRICE_MATCHES_ACCEPTED_OFFER',
     'PRICING_SNAPSHOT_COHERENT',
-    'CONDITIONS_MATCH_ACCEPTED_OFFER',
+    ruleSetVersion === 3
+      ? 'CONDITIONS_MATCH_SOURCE_OFFER'
+      : 'CONDITIONS_MATCH_ACCEPTED_OFFER',
     'ADDED_CONDITIONS_CONFIRMED',
   ];
+  if (ruleSetVersion === 3) codes.push('SOURCE_OFFER_ACCEPTED');
   if (addendum && 'pricingSnapshotId' in addendum) {
     codes.splice(6);
     if (addendum.pricingSnapshotId !== null)

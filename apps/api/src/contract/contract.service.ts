@@ -58,7 +58,10 @@ import {
   ContractVersionReader,
   recordedRecipient,
 } from './contract-version-reader.js';
-import { readCreateContractCommand } from './contract.validation.js';
+import {
+  readPrepareContractCommand,
+  readCreateContractCommand,
+} from './contract.validation.js';
 import { agreementGenerationFields } from './contract-representation.js';
 
 type ContractRow = typeof contracts.$inferSelect;
@@ -85,6 +88,20 @@ export class ContractService {
     payload: unknown;
     idempotencyKey: string | undefined;
   }) {
+    return this.createFromOffer(input, 'ACCEPTED_OFFER');
+  }
+  async prepare(input: Parameters<ContractService['create']>[0]) {
+    return this.createFromOffer(input, 'OFFER_PREPARATION');
+  }
+  private async createFromOffer(
+    input: Parameters<ContractService['create']>[0],
+    origin: 'ACCEPTED_OFFER' | 'OFFER_PREPARATION',
+  ) {
+    const early = origin === 'OFFER_PREPARATION';
+    if (early)
+      await this.authorization.requireContractAccess(input.actor, [
+        'commercial.contract.prepare_pending_offer',
+      ]);
     await this.authorization.requireContractAccess(input.actor, [
       'commercial.contract.prepare',
     ]);
@@ -102,35 +119,74 @@ export class ContractService {
           input.opportunityId,
           true,
         );
-        const command = readCreateContractCommand(input.payload);
-        const source = await this.offers.resolveAcceptedContractSource({
-          actor,
-          opportunityId: opportunity.id,
-          offerVersionId: command.acceptedOfferVersionId,
-          lock: false,
-        });
-        const selection =
-          source.recipient.kind === 'PRIMARY'
-            ? { kind: 'PRIMARY' as const }
-            : {
-                kind: 'ADDITIONAL' as const,
-                legalEntityId: source.recipient.additionalLegalEntityId,
-              };
-        // Client's write fence precedes any Offer lock or live identity projection.
-        const recipient = await this.clients.lockOfferRecipient(
-          actor,
-          source.originalClientAccountId,
-          selection,
-        );
-        await this.offers.resolveAcceptedContractSource({
-          actor,
-          opportunityId: opportunity.id,
-          offerVersionId: command.acceptedOfferVersionId,
-          lock: true,
-        });
+        if (early) {
+          await this.authorization.requireContractAccess(
+            actor,
+            ['commercial.contract.prepare_pending_offer'],
+            true,
+          );
+          await this.authorization.requireOfferAccess(
+            actor,
+            ['commercial.offer.read'],
+            true,
+          );
+          await this.clients.lockRecipientReadAuthority(actor);
+        }
+        const command = early
+          ? readPrepareContractCommand(input.payload)
+          : readCreateContractCommand(input.payload);
+        const resolveSource = async () => {
+          if (early && opportunity.status !== 'OPEN')
+            throw conflict(
+              'OPPORTUNITY_NOT_OPEN',
+              'The Opportunity is not open.',
+            );
+          const selected = {
+            actor,
+            opportunityId: opportunity.id,
+            offerVersionId: command.sourceOfferVersionId,
+            lock: false,
+          };
+          const source = early
+            ? await this.offers.resolvePreparationContractSource({
+                ...selected,
+                allowAccepted: false,
+              })
+            : await this.offers.resolveAcceptedContractSource(selected);
+          const selection =
+            source.recipient.kind === 'PRIMARY'
+              ? { kind: 'PRIMARY' as const }
+              : {
+                  kind: 'ADDITIONAL' as const,
+                  legalEntityId: source.recipient.additionalLegalEntityId,
+                };
+          if (early)
+            await this.clients.lockActiveReferenceClient(
+              actor,
+              source.originalClientAccountId,
+            );
+          const recipient = await this.clients.lockOfferRecipient(
+            actor,
+            source.originalClientAccountId,
+            selection,
+          );
+          if (early)
+            await this.offers.resolvePreparationContractSource({
+              ...selected,
+              lock: true,
+              allowAccepted: false,
+            });
+          else
+            await this.offers.resolveAcceptedContractSource({
+              ...selected,
+              lock: true,
+            });
+          return { source, recipient };
+        };
+        const acceptedSource = early ? null : await resolveSource();
         const fingerprint = commandFingerprint({
           opportunityId: opportunity.id,
-          payload: input.payload,
+          payload: early ? command : input.payload,
         });
         await this.databaseContext.connection.execute(
           sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${idempotencyKey}`},0))`,
@@ -184,6 +240,7 @@ export class ContractService {
             throw new Error('Missing recorded Contract.');
           return this.versions.view(actor, existing.contract, existing.version);
         }
+        const { source, recipient } = acceptedSource ?? (await resolveSource());
         const target = { actor, companyId, opportunityId: opportunity.id };
         const mainContract = await this.versions.find(target);
         const precontract = await this.versions.findPrecontract(target);
@@ -237,6 +294,7 @@ export class ContractService {
             clientRequestId: source.clientRequestId,
             originalClientAccountId: source.originalClientAccountId,
             kind: command.kind,
+            origin,
             sourceOfferId: source.offerId,
             sourceOfferVersionId: source.offerVersionId,
             precontractId:
@@ -270,6 +328,12 @@ export class ContractService {
             termEndsOn: command.termEndsOn,
             specialConditions: command.specialConditions,
             ...agreementGenerationFields(command),
+            ...(early
+              ? {
+                  sourceOfferVersionId: source.offerVersionId,
+                  templateCode: 'CONTRACT_PREPARATION_ILLUSTRATIVE',
+                }
+              : {}),
           })
           .returning();
         if (!version) throw new Error('Contract Version was not recorded.');
@@ -290,11 +354,17 @@ export class ContractService {
           contractId: contract.id,
           contractVersionId: version.id,
           illustrativeReference: contract.illustrativeReference,
-          source: {
-            kind: 'ACCEPTED_OFFER',
-            contractKind: command.kind,
-            offerVersionId: source.offerVersionId,
-          },
+          source: early
+            ? {
+                kind: 'OFFER_PREPARATION',
+                contractKind: 'CONTRACT',
+                offerVersionId: source.offerVersionId,
+              }
+            : {
+                kind: 'ACCEPTED_OFFER',
+                contractKind: command.kind,
+                offerVersionId: source.offerVersionId,
+              },
           pricingSnapshotId: source.pricingSnapshotId,
           occurredAt: createdAt,
         });
@@ -544,12 +614,14 @@ export class ContractService {
     version: VersionRow;
   }): Promise<ContractQualityEvaluation> {
     const source =
-      contract.origin !== 'ACCEPTED_OFFER'
+      contract.origin !== 'ACCEPTED_OFFER' &&
+      contract.origin !== 'OFFER_PREPARATION'
         ? null
         : await this.offers.inspectContractQualitySource({
             actor,
             opportunityId: contract.opportunityId,
             contractId: contract.id,
+            contractVersionId: version.id,
           });
     const parent =
       contract.kind === 'ADDENDUM'
@@ -608,7 +680,10 @@ export class ContractService {
       versionId: version.id,
       headVersionId: head?.id,
     });
-    const ruleSetVersion = contractQualityRuleSetVersion(pricing);
+    const ruleSetVersion = contractQualityRuleSetVersion(
+      pricing,
+      contract.origin,
+    );
     const evaluatedAt = this.clock.now();
     const results = evaluateContractQuality({
       ruleSetVersion,
@@ -651,7 +726,12 @@ export class ContractService {
           }
         : source
           ? {
-              kind: 'ACCEPTED_OFFER',
+              ...(contract.origin === 'OFFER_PREPARATION'
+                ? {
+                    kind: 'OFFER_PREPARATION' as const,
+                    accepted: source.sourceAccepted,
+                  }
+                : { kind: 'ACCEPTED_OFFER' as const }),
               companyId: source.companyId,
               partyKey: partyKey(
                 source.originalClientAccountId,

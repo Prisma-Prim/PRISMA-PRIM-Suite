@@ -1,20 +1,58 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PreliminaryWork } from './contract-representation.js';
-interface AcceptedOfferCreation {
-  readonly acceptedOfferVersionId: string;
+interface OfferCreationFields {
+  readonly sourceOfferVersionId: string;
   readonly termStartsOn: string | null;
   readonly specialConditions: string | null;
 }
 export type CreateContractCommand =
-  | (AcceptedOfferCreation & {
+  | (OfferCreationFields & {
       readonly kind: 'CONTRACT';
       readonly termEndsOn: string | null;
     })
-  | (AcceptedOfferCreation & {
+  | (OfferCreationFields & {
       readonly kind: 'PRECONTRACT';
       readonly termEndsOn: string;
       readonly preliminaryWork: PreliminaryWork;
     });
+export function readPrepareContractCommand(value: unknown) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw invalid('body');
+  const input = Object.fromEntries(Object.entries(value));
+  for (const key of Object.keys(input))
+    if (
+      ![
+        'sourceOfferVersionId',
+        'termStartsOn',
+        'termEndsOn',
+        'specialConditions',
+      ].includes(key)
+    )
+      throw invalid(key);
+  if (!isPricingSnapshotId(input.sourceOfferVersionId))
+    throw invalid('sourceOfferVersionId');
+  return {
+    kind: 'CONTRACT' as const,
+    sourceOfferVersionId: input.sourceOfferVersionId.toLowerCase(),
+    ...readEnteredContractFields(input),
+  };
+}
+export function readPrepareContractVersionCommand(value: unknown) {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw invalid('body');
+  const input = Object.fromEntries(Object.entries(value));
+  if (!isPricingSnapshotId(input.sourceOfferVersionId))
+    throw invalid('sourceOfferVersionId');
+  const entered = readCreateContractVersionCommand(
+    Object.fromEntries(
+      Object.entries(input).filter(([key]) => key !== 'sourceOfferVersionId'),
+    ),
+  );
+  return {
+    ...entered,
+    sourceOfferVersionId: input.sourceOfferVersionId.toLowerCase(),
+  };
+}
 const PRELIMINARY_FIELDS = [
   'preliminaryWorkScope',
   'preliminaryFinancialConditions',
@@ -128,8 +166,16 @@ export function readCreateContractCommand(
   )
     throw invalid('acceptedOfferVersionId');
   return kind === 'PRECONTRACT'
-    ? { kind, acceptedOfferVersionId, ...readPrecontractFields(input) }
-    : { kind, acceptedOfferVersionId, ...readEnteredContractFields(input) };
+    ? {
+        kind,
+        sourceOfferVersionId: acceptedOfferVersionId,
+        ...readPrecontractFields(input),
+      }
+    : {
+        kind,
+        sourceOfferVersionId: acceptedOfferVersionId,
+        ...readEnteredContractFields(input),
+      };
 }
 // Resolve recognizable selected-resource authority before key resolution. Full
 // field validation follows receipt resolution, including malformed identities.

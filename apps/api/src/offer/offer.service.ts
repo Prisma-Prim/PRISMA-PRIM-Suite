@@ -19,6 +19,7 @@ import { CommercialIntakeService } from '../commercial-intake/commercial-intake.
 import { DatabaseContext } from '../database/database-context.js';
 import {
   contracts,
+  contractVersions,
   offerCommands,
   offerReferenceCounters,
   offerVersions,
@@ -84,6 +85,7 @@ export class OfferService {
   async readContractSourceReference(input: {
     actor: ActorContext;
     contractId: string;
+    contractVersionId?: string;
     opportunityId: string;
   }) {
     const companyId = await this.authorization.requireContractAccess(
@@ -100,8 +102,21 @@ export class OfferService {
       .select({
         illustrativeReference: offers.illustrativeReference,
         versionNumber: offerVersions.versionNumber,
+        version: offerVersions,
+        origin: contracts.origin,
       })
       .from(contracts)
+      .innerJoin(
+        contractVersions,
+        and(
+          eq(contractVersions.workspaceId, contracts.workspaceId),
+          eq(contractVersions.companyId, contracts.companyId),
+          eq(contractVersions.contractId, contracts.id),
+          input.contractVersionId === undefined
+            ? eq(contractVersions.versionNumber, 1)
+            : eq(contractVersions.id, input.contractVersionId),
+        ),
+      )
       .innerJoin(
         offers,
         and(
@@ -114,7 +129,10 @@ export class OfferService {
       .innerJoin(
         offerVersions,
         and(
-          eq(offerVersions.id, contracts.sourceOfferVersionId),
+          eq(
+            offerVersions.id,
+            sql`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+          ),
           eq(offerVersions.offerId, offers.id),
           eq(offerVersions.workspaceId, contracts.workspaceId),
           eq(offerVersions.companyId, contracts.companyId),
@@ -129,7 +147,28 @@ export class OfferService {
         ),
       );
     if (!source) throw new NotFoundException();
-    return source;
+    const response =
+      source.origin === 'OFFER_PREPARATION'
+        ? await this.findClientResponse({
+            workspaceId: input.actor.workspaceId,
+            companyId,
+            offerVersionId: source.version.id,
+          })
+        : undefined;
+    return {
+      illustrativeReference: source.illustrativeReference,
+      versionNumber: source.versionNumber,
+      ...(source.origin === 'OFFER_PREPARATION'
+        ? {
+            eligibility: {
+              current: source.version.supersededByVersionId === null,
+              response: response?.outcome ?? 'PENDING',
+              pendingValidityElapsed:
+                this.clock.now() >= source.version.validUntil,
+            },
+          }
+        : {}),
+    };
   }
 
   /** Inspect only immutable source facts attached to a currently readable Contract. */
@@ -137,6 +176,7 @@ export class OfferService {
     actor: ActorContext;
     opportunityId: string;
     contractId: string;
+    contractVersionId?: string;
   }) {
     const companyId = await this.authorization.requireContractAccess(
       input.actor,
@@ -155,12 +195,26 @@ export class OfferService {
       })
       .from(contracts)
       .innerJoin(
+        contractVersions,
+        and(
+          eq(contractVersions.workspaceId, contracts.workspaceId),
+          eq(contractVersions.companyId, contracts.companyId),
+          eq(contractVersions.contractId, contracts.id),
+          input.contractVersionId === undefined
+            ? eq(contractVersions.versionNumber, 1)
+            : eq(contractVersions.id, input.contractVersionId),
+        ),
+      )
+      .innerJoin(
         offerVersions,
         and(
           eq(offerVersions.workspaceId, contracts.workspaceId),
           eq(offerVersions.companyId, contracts.companyId),
           eq(offerVersions.offerId, contracts.sourceOfferId),
-          eq(offerVersions.id, contracts.sourceOfferVersionId),
+          eq(
+            offerVersions.id,
+            sql`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+          ),
         ),
       )
       .where(
@@ -172,7 +226,15 @@ export class OfferService {
         ),
       );
     if (!source) throw new NotFoundException();
+    const response = await this.findClientResponse({
+      workspaceId: input.actor.workspaceId,
+      companyId,
+      offerVersionId: source.version.id,
+    });
     return {
+      sourceAccepted:
+        !source.version.supersededByVersionId &&
+        response?.outcome === 'ACCEPTED',
       companyId: source.version.companyId,
       originalClientAccountId: source.originalClientAccountId,
       recipient: offerRecipientCopy(source.version),
@@ -257,6 +319,94 @@ export class OfferService {
       );
     if (version.provenance !== 'ILLUSTRATIVE')
       throw new Error('Invalid accepted Offer provenance.');
+    return {
+      offerId: offer.id,
+      offerVersionId: version.id,
+      originalClientAccountId: offer.originalClientAccountId,
+      clientRequestId: offer.clientRequestId,
+      pricingSnapshotId: version.pricingSnapshotId,
+      recipient: offerRecipientCopy(version),
+      scopeNote: version.scopeNote,
+      commercialConditions: version.commercialConditions,
+    };
+  }
+
+  /** New binding eligibility; callers hold Opportunity then Client before requesting the Offer fence. */
+  async resolvePreparationContractSource(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    lock: boolean;
+    allowAccepted: boolean;
+  }) {
+    const companyId = await this.authorization.requireOfferAccess(
+      input.actor,
+      ['commercial.offer.read'],
+      true,
+    );
+    const query = this.databaseContext.connection
+      .select()
+      .from(offers)
+      .where(
+        and(
+          eq(offers.workspaceId, input.actor.workspaceId),
+          eq(offers.companyId, companyId),
+          eq(offers.opportunityId, input.opportunityId),
+        ),
+      );
+    const [offer] = input.lock ? await query.for('share') : await query;
+    if (!offer) throw new NotFoundException();
+    const { version } = await this.requireOfferById(
+      input.actor,
+      companyId,
+      offer.id,
+      input.offerVersionId,
+    );
+    const response = await this.findClientResponse({
+      workspaceId: input.actor.workspaceId,
+      companyId,
+      offerVersionId: version.id,
+    });
+    const decision = await this.findDecision(
+      input.actor.workspaceId,
+      companyId,
+      version.id,
+    );
+    const transmission = await this.findTransmission(
+      input.actor.workspaceId,
+      companyId,
+      version.id,
+    );
+    const accepted = response?.outcome === 'ACCEPTED';
+    if (
+      !accepted &&
+      (
+        await this.intake.requireReadableOfferOpportunity(
+          input.actor,
+          input.opportunityId,
+          false,
+        )
+      ).status !== 'OPEN'
+    )
+      throw namedConflict(
+        'OPPORTUNITY_NOT_OPEN',
+        'The Opportunity is not open.',
+      );
+    if (
+      version.supersededByVersionId ||
+      (accepted
+        ? !input.allowAccepted
+        : response !== undefined ||
+          decision?.state !== 'APPROVED' ||
+          !transmission ||
+          this.clock.now() >= version.validUntil)
+    )
+      throw namedConflict(
+        'OFFER_NOT_PREPARABLE',
+        'Select a current approved and transmitted pending Offer Version.',
+      );
+    if (version.provenance !== 'ILLUSTRATIVE')
+      throw new Error('Invalid preparation source provenance.');
     return {
       offerId: offer.id,
       offerVersionId: version.id,

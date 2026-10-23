@@ -34,6 +34,7 @@ export function ContractRepresentationViewer({
   versionId,
   versionState,
   kind,
+  preparation = false,
   onCompanyContextRejected,
   onActorRevalidated,
   onWorkspaceAccessRejected,
@@ -46,6 +47,7 @@ export function ContractRepresentationViewer({
   /** The viewed version's own recorded state, shown outside the exact bytes. */
   versionState: ContractVersionState;
   kind: ContractView['kind'];
+  preparation?: boolean;
   onCompanyContextRejected: (companyId: string) => void;
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected: () => Promise<void> | void;
@@ -95,6 +97,7 @@ export function ContractRepresentationViewer({
             contractId,
             versionId,
             kind,
+            preparation,
           }),
         });
       } catch {
@@ -110,6 +113,7 @@ export function ContractRepresentationViewer({
     contractId,
     versionId,
     kind,
+    preparation,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
@@ -196,13 +200,21 @@ function readRepresentation({
   contractId,
   versionId,
   kind,
+  preparation,
 }: {
   value: unknown;
   contractId: string;
   versionId: string;
   kind: ContractView['kind'];
+  preparation: boolean;
 }) {
-  const binding = BINDINGS[kind];
+  const binding =
+    kind === 'CONTRACT' && preparation
+      ? {
+          ...BINDINGS.CONTRACT,
+          templateCode: 'CONTRACT_PREPARATION_ILLUSTRATIVE',
+        }
+      : BINDINGS[kind];
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw new Error('Invalid Contract representation.');
   if (

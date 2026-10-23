@@ -54,6 +54,7 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_pricing_user',
   'company_offer_preparer',
   'company_contract_preparer',
+  'company_contract_early_preparation',
   'company_contract_approver',
   'company_offer_approver',
   'company_pricing_adjustment',
@@ -759,10 +760,12 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_pricing_user_assignment.revoked',
   'company_offer_preparer_assignment.granted',
   'company_contract_preparer_assignment.granted',
+  'company_contract_early_preparation_assignment.granted',
   'company_contract_approver_assignment.granted',
   'company_offer_approver_assignment.granted',
   'company_offer_preparer_assignment.revoked',
   'company_contract_preparer_assignment.revoked',
+  'company_contract_early_preparation_assignment.revoked',
   'company_contract_approver_assignment.revoked',
   'company_offer_approver_assignment.revoked',
   'company_pricing_adjustment_assignment.granted',
@@ -855,6 +858,7 @@ export const activityLogEvents = pgTable(
               | 'Company Pricing User'
               | 'Company Offer Preparer'
               | 'Company Contract Preparer'
+              | 'Company Contract Early Preparation'
               | 'Company Contract Approver'
               | 'Company Offer Approver'
               | 'Company Pricing Adjustment'

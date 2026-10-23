@@ -1,3 +1,9 @@
+import { useContractRecordedValues } from './contract-recorded-values';
+import { useContractPreparationCopy } from './contract-preparation.copy';
+import {
+  readContractPreparationSource,
+  type ContractPreparationSource,
+} from './contract-response';
 import { contractPath } from './contract-response';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
@@ -45,6 +51,21 @@ export function ContractVersionPanel({
   onProtectionChange: (value: boolean) => void;
 }) {
   const copy = useContractVersionCopy();
+  const preparationCopy = useContractPreparationCopy();
+  const { formatNumber } = useContractRecordedValues();
+  const early = contract.origin === 'OFFER_PREPARATION';
+  const mayEdit =
+    mayRevise &&
+    !contract.version.supersededByVersionId &&
+    contract.version.executionState !== 'EXECUTED';
+  const sourceRejection = useRef(reject);
+  sourceRejection.current = reject;
+  const [sourceView, setSourceView] = useState<
+    | { kind: 'loading' | 'unavailable' }
+    | { kind: 'available'; source: ContractPreparationSource }
+  >({ kind: 'loading' });
+  const [selectedSource, setSelectedSource] = useState('');
+  const [sourceReload, setSourceReload] = useState(0);
   const precontractCopy = useContractPrecontractCopy();
   const preliminary = contract.version.preliminaryWork;
   const [feedback, setFeedback] = useState<Feedback>('idle');
@@ -70,12 +91,49 @@ export function ContractVersionPanel({
     },
     [onProtectionChange],
   );
+  useEffect(() => {
+    if (!early || !mayEdit) return;
+    const controller = new AbortController();
+    setSourceView({ kind: 'loading' });
+    setSelectedSource('');
+    void (async () => {
+      try {
+        const api = await createAuthenticatedApiClient(identity);
+        if (controller.signal.aborted) return;
+        const result = await api.request<unknown>(
+          `/offers/opportunities/${encodeURIComponent(opportunityId)}`,
+          { companyContextId: companyId, signal: controller.signal },
+        );
+        if (controller.signal.aborted) return;
+        if (await sourceRejection.current(result, controller.signal)) {
+          if (!controller.signal.aborted)
+            setSourceView({ kind: 'unavailable' });
+          return;
+        }
+        if (controller.signal.aborted) return;
+        const source =
+          result.status === 'ok'
+            ? readContractPreparationSource(result.value, true)
+            : null;
+        setSourceView(
+          source ? { kind: 'available', source } : { kind: 'unavailable' },
+        );
+      } catch {
+        if (!controller.signal.aborted) setSourceView({ kind: 'unavailable' });
+      }
+    })();
+    return () => controller.abort();
+  }, [identity, companyId, opportunityId, early, mayEdit, sourceReload]);
   const frozen =
     feedback === 'running' || feedback === 'uncertain' || protectedCommand;
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
-      !mayRevise ||
+      (early &&
+        !attempt.current &&
+        (sourceView.kind !== 'available' ||
+          selectedSource !== sourceView.source.id)) ||
+      !mayEdit ||
       protectedCommand ||
       feedback === 'running' ||
       [
@@ -105,6 +163,7 @@ export function ContractVersionPanel({
       key: crypto.randomUUID(),
       body: JSON.stringify({
         expectedContractRevision: contract.revision,
+        ...(early ? { sourceOfferVersionId: selectedSource } : {}),
         termStartsOn: start || null,
         termEndsOn: end || null,
         specialConditions: conditions || null,
@@ -189,16 +248,58 @@ export function ContractVersionPanel({
       if (!controller.signal.aborted) setFeedback('uncertain');
     }
   }
-  if (
-    !mayRevise ||
-    contract.version.supersededByVersionId ||
-    contract.version.executionState === 'EXECUTED'
-  )
-    return null;
+  if (!mayEdit) return null;
   return (
     <section className="contract-revision" aria-label={copy('title')}>
       <h5>{copy('title')}</h5>
       <form onSubmit={(event) => void submit(event)}>
+        {early && (
+          <>
+            <p>{preparationCopy('banner')}</p>
+            <label>
+              {preparationCopy('source')}
+              <select
+                required
+                value={selectedSource}
+                disabled={frozen || sourceView.kind !== 'available'}
+                onChange={(event) => {
+                  attempt.current = undefined;
+                  setSelectedSource(event.target.value);
+                }}
+              >
+                <option value="">{preparationCopy('choose')}</option>
+                {sourceView.kind === 'available' && (
+                  <option value={sourceView.source.id}>
+                    {preparationCopy('offer')}{' '}
+                    {formatNumber(sourceView.source.illustrativeReference)} ·{' '}
+                    {preparationCopy('version')}{' '}
+                    {formatNumber(sourceView.source.versionNumber)} ·{' '}
+                    {preparationCopy(
+                      sourceView.source.response === 'ACCEPTED'
+                        ? 'accepted'
+                        : 'pending',
+                    )}
+                  </option>
+                )}
+              </select>
+            </label>
+            {sourceView.kind === 'unavailable' && (
+              <p role="alert">{preparationCopy('unavailable')}</p>
+            )}
+            <button
+              type="button"
+              disabled={frozen}
+              onClick={() => {
+                attempt.current = undefined;
+                setSelectedSource('');
+                setSourceReload((value) => value + 1);
+              }}
+            >
+              {preparationCopy('reload')}
+            </button>
+          </>
+        )}
+
         <label>
           {copy('start')}
           <input

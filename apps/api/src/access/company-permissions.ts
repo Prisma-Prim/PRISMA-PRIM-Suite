@@ -188,6 +188,10 @@ export const COMPANY_ROLE_BUNDLES = {
       ],
     },
   },
+  company_contract_early_preparation: {
+    label: 'Company Contract Early Preparation',
+    versions: { v1: ['commercial.contract.prepare_pending_offer'] },
+  },
   company_contract_approver: {
     label: 'Company Contract Approver',
     versions: {
@@ -735,9 +739,22 @@ export const COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_contract_preparer.label;
 export const COMPANY_CONTRACT_PREPARER_V1_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_contract_preparer.versions.v1;
+export const COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE =
+  'company_contract_early_preparation' satisfies CompanyRoleBundle;
+export const COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_contract_early_preparation.label;
+export const COMPANY_CONTRACT_EARLY_PREPARATION_V1_PERMISSIONS =
+  COMPANY_ROLE_BUNDLES.company_contract_early_preparation.versions.v1;
+export function contractEarlyPreparationPermissionsFor(version: unknown) {
+  return companyRolePermissionsFor(
+    COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
+    version,
+  );
+}
 export type CompanyContractPermission =
   | CompanyRolePermission<'company_contract_preparer'>
-  | CompanyRolePermission<'company_contract_approver'>;
+  | CompanyRolePermission<'company_contract_approver'>
+  | CompanyRolePermission<'company_contract_early_preparation'>;
 export function contractPreparerPermissionsFor(
   version: unknown,
 ): readonly CompanyContractPermission[] {

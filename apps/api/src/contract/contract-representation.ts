@@ -118,7 +118,11 @@ export function agreementGenerationFields(
       };
 }
 type AgreementLayout =
-  | { readonly kind: 'CONTRACT'; readonly precontractReference: number | null }
+  | {
+      readonly kind: 'CONTRACT';
+      readonly precontractReference: number | null;
+      readonly preparation?: boolean;
+    }
   | { readonly kind: 'PRECONTRACT'; readonly preliminaryWork: PreliminaryWork };
 
 export function renderContractRepresentation(
@@ -126,7 +130,10 @@ export function renderContractRepresentation(
 ) {
   // Persisted JSON is validated here once; no unknown generation version can render.
   if (
-    input.templateCode !== CONTRACT_TEMPLATE_CODE ||
+    (input.templateCode !== CONTRACT_TEMPLATE_CODE &&
+      input.templateCode !== 'CONTRACT_PREPARATION_ILLUSTRATIVE') ||
+    (input.templateCode === 'CONTRACT_PREPARATION_ILLUSTRATIVE' &&
+      input.sourceOffer === null) ||
     input.templateVersion !== CONTRACT_TEMPLATE_VERSION ||
     !supportedClauses(input.clauseVersions, CONTRACT_CLAUSE_VERSIONS)
   )
@@ -134,9 +141,10 @@ export function renderContractRepresentation(
   const html = renderAgreementHtml(input, {
     kind: 'CONTRACT',
     precontractReference: input.precontractReference,
+    preparation: input.templateCode === 'CONTRACT_PREPARATION_ILLUSTRATIVE',
   });
   return {
-    templateCode: CONTRACT_TEMPLATE_CODE,
+    templateCode: input.templateCode,
     templateVersion: CONTRACT_TEMPLATE_VERSION,
     clauseVersions: CONTRACT_CLAUSE_VERSIONS,
     html,
@@ -219,11 +227,15 @@ function renderAgreementHtml(
         ...(input.sourceOffer
           ? ([
               [
-                'Source accepted Offer reference',
+                layout.kind === 'CONTRACT' && layout.preparation
+                  ? 'Source Offer reference'
+                  : 'Source accepted Offer reference',
                 String(input.sourceOffer.illustrativeReference),
               ],
               [
-                'Source accepted Offer Version',
+                layout.kind === 'CONTRACT' && layout.preparation
+                  ? 'Source Offer Version'
+                  : 'Source accepted Offer Version',
                 String(input.sourceOffer.versionNumber),
               ],
             ] satisfies [string, string][])
@@ -245,7 +257,7 @@ function renderAgreementHtml(
     clause(
       'CL_SUBJECT',
       'Subject',
-      `<dl>${details([[input.sourceOffer ? 'Accepted scope' : 'Scope', input.scopeNote]])}</dl>`,
+      `<dl>${details([[input.sourceOffer ? (layout.kind === 'CONTRACT' && layout.preparation ? 'Source scope' : 'Accepted scope') : 'Scope', input.scopeNote]])}</dl>`,
     ),
     clause(
       'CL_PRICE',
@@ -273,7 +285,9 @@ function renderAgreementHtml(
       `<dl>${details([
         [
           input.sourceOffer
-            ? 'Accepted commercial conditions'
+            ? layout.kind === 'CONTRACT' && layout.preparation
+              ? 'Source commercial conditions'
+              : 'Accepted commercial conditions'
             : 'Commercial conditions',
           input.commercialConditions,
         ],

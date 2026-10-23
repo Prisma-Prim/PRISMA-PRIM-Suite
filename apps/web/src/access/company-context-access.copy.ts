@@ -27,6 +27,9 @@ export const companyContextAccessCopy = {
     'Company Pricing User v1 grants read-only access to offerings and the Pricing configuration; it grants no publication. Company context must already be authorized separately.',
   offerPreparerBundle: 'Company Offer Preparer',
   contractPreparerBundle: 'Company Contract Preparer',
+  contractEarlyPreparationBundle: 'Company Contract Early Preparation',
+  contractEarlyPreparationPrerequisites:
+    'Allows Contract drafts before Offer acceptance. Contract preparation, Company Client read, Offer read, Opportunity read and Company context remain separately required. Grants no approval or signature rights.',
   contractPreparerPrerequisites:
     'Allows Contract preparation and reading; Company context, Opportunity read, Offer read and Client read must be assigned separately. Project linking is not yet available.',
   offerApproverBundle: 'Company Offer Approver',
@@ -107,6 +110,10 @@ export const companyContextAccessCopy = {
       'granted Company Contract Approver',
     'company_contract_approver_assignment.revoked':
       'revoked Company Contract Approver',
+    'company_contract_early_preparation_assignment.granted':
+      'granted Company Contract Early Preparation',
+    'company_contract_early_preparation_assignment.revoked':
+      'revoked Company Contract Early Preparation',
     'company_contract_preparer_assignment.granted':
       'granted Company Contract Preparer',
     'company_contract_preparer_assignment.revoked':

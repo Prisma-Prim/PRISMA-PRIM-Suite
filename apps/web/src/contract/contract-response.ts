@@ -126,6 +126,25 @@ export type ContractView = ContractContent &
         sourceOffer: { illustrativeReference: number; versionNumber: number };
       }
     | {
+        kind: 'CONTRACT';
+        origin: 'OFFER_PREPARATION';
+        parentContractId: null;
+        addendumOrdinal: null;
+        parent: null;
+        precontract: PrecontractReference | null;
+        sourceOfferVersionId: string;
+        sourceOffer: {
+          illustrativeReference: number;
+          versionNumber: number;
+          eligibility: {
+            current: boolean;
+            response: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+            pendingValidityElapsed: boolean;
+          };
+        };
+        versionSourceOfferVersionId: string;
+      }
+    | {
         kind: 'PRECONTRACT';
         origin: 'ACCEPTED_OFFER';
         parentContractId: null;
@@ -216,6 +235,8 @@ export function readContract(value: unknown): ContractView {
   const isAddendum = input.kind === 'ADDENDUM';
   const isDirect = input.kind === 'CONTRACT' && input.origin === 'DIRECT';
   const isPrecontract = input.kind === 'PRECONTRACT';
+  const isPreparation =
+    input.kind === 'CONTRACT' && input.origin === 'OFFER_PREPARATION';
   const preliminaryWork =
     version.preliminaryWork === null || version.preliminaryWork === undefined
       ? null
@@ -233,7 +254,7 @@ export function readContract(value: unknown): ContractView {
   if (
     !(
       ((input.kind === 'CONTRACT' || isPrecontract) &&
-        input.origin === 'ACCEPTED_OFFER' &&
+        (input.origin === 'ACCEPTED_OFFER' || isPreparation) &&
         sourceOffer !== null &&
         snapshot !== null) ||
       (isDirect &&
@@ -314,13 +335,15 @@ export function readContract(value: unknown): ContractView {
     version.qualityRuleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
     !isContractQualityRuleSetVersion(qualityRuleSetVersion) ||
     qualityRuleSetVersion !==
-      (snapshot !== null &&
-      snapshotLines(snapshot.lines).some((line) => {
-        const adjustment = record(line).adjustment;
-        return adjustment !== null && adjustment !== undefined;
-      })
-        ? 2
-        : 1)
+      (isPreparation
+        ? 3
+        : snapshot !== null &&
+            snapshotLines(snapshot.lines).some((line) => {
+              const adjustment = record(line).adjustment;
+              return adjustment !== null && adjustment !== undefined;
+            })
+          ? 2
+          : 1)
   )
     throw new Error('Invalid Contract Quality Check binding.');
   const binding: ContractQualityRunBinding = {
@@ -451,6 +474,41 @@ export function readContract(value: unknown): ContractView {
       sourceOffer: null,
     };
   if (!sourceOffer) throw new Error('Missing Contract Offer source.');
+  if (isPreparation) {
+    const eligibility = record(sourceOffer.eligibility);
+    const response = eligibility.response;
+    if (
+      typeof eligibility.current !== 'boolean' ||
+      typeof eligibility.pendingValidityElapsed !== 'boolean' ||
+      (response !== 'PENDING' &&
+        response !== 'ACCEPTED' &&
+        response !== 'REJECTED' &&
+        response !== 'EXPIRED')
+    )
+      throw new Error('Invalid preparation source eligibility.');
+    return {
+      ...content,
+      kind: 'CONTRACT',
+      origin: 'OFFER_PREPARATION',
+      parentContractId: null,
+      parent: null,
+      addendumOrdinal: null,
+      precontract,
+      sourceOfferVersionId: string(input.sourceOfferVersionId),
+      sourceOffer: {
+        illustrativeReference: positiveInteger(
+          sourceOffer.illustrativeReference,
+        ),
+        versionNumber: positiveInteger(sourceOffer.versionNumber),
+        eligibility: {
+          current: eligibility.current,
+          response,
+          pendingValidityElapsed: eligibility.pendingValidityElapsed,
+        },
+      },
+      versionSourceOfferVersionId: string(version.sourceOfferVersionId),
+    };
+  }
   const accepted = {
     origin: 'ACCEPTED_OFFER',
     parentContractId: null,
@@ -533,6 +591,45 @@ function positiveInteger(value: unknown): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 1)
     throw new Error('Invalid Contract source reference.');
   return value;
+}
+export interface ContractPreparationSource {
+  id: string;
+  illustrativeReference: number;
+  versionNumber: number;
+  response: 'PENDING' | 'ACCEPTED';
+}
+export function readContractPreparationSource(
+  value: unknown,
+  allowAccepted = false,
+): ContractPreparationSource | null {
+  const input = record(value);
+  if (input.offer === null) return null;
+  const offer = record(input.offer),
+    version = record(offer.version);
+  if (version.provenance !== 'ILLUSTRATIVE' || version.provisional !== true)
+    throw new Error('Invalid preparation source.');
+  if (version.supersededByVersionId !== null) return null;
+  const response = version.clientResponseState;
+  if (response === 'ACCEPTED' && allowAccepted)
+    return {
+      id: string(version.id),
+      illustrativeReference: positiveInteger(offer.illustrativeReference),
+      versionNumber: positiveInteger(version.versionNumber),
+      response,
+    };
+  if (
+    response !== 'PENDING' ||
+    version.decisionState !== 'APPROVED' ||
+    version.transmissionState !== 'TRANSMITTED' ||
+    version.validityElapsed !== false
+  )
+    return null;
+  return {
+    id: string(version.id),
+    illustrativeReference: positiveInteger(offer.illustrativeReference),
+    versionNumber: positiveInteger(version.versionNumber),
+    response,
+  };
 }
 export function readAcceptedOfferSource(value: unknown): string | null {
   const input = record(value);

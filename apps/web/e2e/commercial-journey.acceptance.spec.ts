@@ -68,6 +68,7 @@ type Bundle =
   | 'company-offer-preparer'
   | 'company-offer-approver'
   | 'company-contract-preparer'
+  | 'company-contract-early-preparation'
   | 'company-contract-approver'
   | 'company-project'
   | 'company-opportunity-manager'
@@ -108,6 +109,10 @@ const assignmentContracts = {
   },
   'company-contract-preparer': {
     label: 'Company Contract Preparer',
+    versions: ['v1'],
+  },
+  'company-contract-early-preparation': {
+    label: 'Company Contract Early Preparation',
     versions: ['v1'],
   },
   'company-contract-approver': {
@@ -404,6 +409,329 @@ function responseGate<T>() {
   });
   return { promise, resolve: (value: T) => release(value) };
 }
+
+test('prepares a pending-Offer Contract, revises its exact source and executes only after explicit acceptance', async ({
+  page,
+  request,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  const narrow = testInfo.project.name.endsWith('narrow');
+  const suffix = narrow ? 'EarlyNarrow' : 'EarlyDesktop';
+  const companyName = `Synthetic ${suffix} Company`;
+  const subject = `Synthetic ${suffix} Request`;
+  const companyId = await registerCompany(request, {
+    displayName: companyName,
+    suffix,
+  });
+  const membership = await membershipOf(request, identities.ada);
+  for (const bundle of [
+    ...journeyBundles,
+    'company-contract-early-preparation',
+  ] as const)
+    await grant(request, { bundle, membership, companyId });
+  const step = ({
+    path,
+    data,
+    key,
+  }: {
+    path: string;
+    data: unknown;
+    key: string;
+  }) =>
+    command(request, {
+      identity: identities.ada,
+      path,
+      data,
+      key: suffix + '-' + key,
+      companyId,
+      decode: object,
+    });
+  const client = await step({
+    path: '/clients',
+    data: {
+      displayName: `Synthetic ${suffix} Client`,
+      taxId: `SYNTHETIC-${suffix}`,
+      address: 'Synthetic address',
+    },
+    key: 'client',
+  });
+  const captured = await step({
+    path: '/commercial-intake/requests',
+    data: {
+      originalText: 'Synthetic source only.',
+      subject,
+      clientAccountId: text(client.id),
+      opportunity: {
+        title: 'Prepare the first internal Contract',
+        nextAction: 'Prepare the draft',
+      },
+    },
+    key: 'request',
+  });
+  const opportunityId = text(object(captured.initialOpportunity).id);
+  const offeringId = await publishIllustrativeConfiguration(request, {
+    companyId,
+    suffix,
+    serviceName: `Synthetic ${suffix} Service`,
+  });
+  const snapshot = await step({
+    path: `/pricing/opportunities/${opportunityId}/snapshots`,
+    data: {
+      pricingRuleVersionNumber: 1,
+      lines: [{ offeringId, tariffVersionNumber: 1, quantity: '1' }],
+    },
+    key: 'snapshot',
+  });
+  const offerPath = `/offers/opportunities/${opportunityId}`;
+  async function prepareSource(expectedRevision: number | null) {
+    await step({
+      path: offerPath + (expectedRevision === null ? '' : '/versions'),
+      data: {
+        ...(expectedRevision === null
+          ? {}
+          : { expectedOfferRevision: expectedRevision }),
+        pricingSnapshotId: text(snapshot.id),
+        recipient: { kind: 'PRIMARY' },
+        scopeNote: 'Synthetic source scope',
+        commercialConditions: 'Synthetic recorded conditions',
+      },
+      key: 'source-' + String(expectedRevision),
+    });
+    const draft = (
+      await apiRead(request, {
+        identity: identities.ada,
+        companyId,
+        path: offerPath,
+        decode: decodeOfferDetail,
+      })
+    ).offer;
+    const path = offerPath + '/versions/' + draft.version.id;
+    await step({
+      path: path + '/approve',
+      data: {
+        expectedOfferRevision: draft.revision,
+        acknowledgedWarningCodes: [],
+      },
+      key: 'source-approve-' + draft.version.versionNumber,
+    });
+    const transmitted = await step({
+      path: path + '/transmission',
+      data: {
+        expectedOfferRevision: draft.revision + 1,
+        acknowledgedWarningCodes: [],
+      },
+      key: 'source-transmit-' + draft.version.versionNumber,
+    });
+    return {
+      id: draft.version.id,
+      transmittedAt: text(transmitted.transmittedAt),
+    };
+  }
+  const firstSource = await prepareSource(null);
+  const journey: Journey = { page, narrow, companyId, companyName, subject };
+  await reopenRequest(journey);
+  const contract = page.getByRole('region', { name: 'Contract', exact: true });
+  const prepare = contract.locator('form').filter({
+    has: page.getByRole('button', {
+      name: 'Prepare Contract before acceptance',
+      exact: true,
+    }),
+  });
+  const literal = '  Synthetic internal draft — șț  ';
+  await prepare.getByLabel('Special conditions', { exact: true }).fill(literal);
+  const creation = page.waitForResponse(
+    mutation('POST', /\/contracts\/opportunities\/[^/]+\/preparation$/u),
+  );
+  await prepare
+    .getByRole('button', {
+      name: 'Prepare Contract before acceptance',
+      exact: true,
+    })
+    .click();
+  const createdResponse = await creation;
+  expect(createdResponse.status()).toBe(201);
+  const created = object(await createdResponse.json());
+  expect(created.origin).toBe('OFFER_PREPARATION');
+  expect(object(created.version).sourceOfferVersionId).toBe(firstSource.id);
+  await expect(
+    contract.getByRole('definition').filter({ hasText: literal.trim() }),
+  ).toBeVisible();
+  expect(
+    await contract
+      .getByRole('definition')
+      .filter({ hasText: literal.trim() })
+      .textContent(),
+  ).toBe(literal);
+  const documentRead = page.waitForResponse(
+    mutation('GET', /\/versions\/[^/]+\/representation$/u),
+  );
+  await contract
+    .getByRole('button', { name: 'Open exact Contract document', exact: true })
+    .click();
+  expect((await documentRead).status()).toBe(200);
+  await expect(
+    contract
+      .frameLocator('iframe')
+      .getByText('Source Offer Version', { exact: true }),
+  ).toBeVisible();
+  await capture(page, testInfo, 'early-pending-complete-draft');
+  const checks = page.waitForResponse(mutation('POST', /\/quality-checks$/u));
+  await contract
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  const run = object(await (await checks).json());
+  expect(run.ruleSetVersion).toBe(3);
+  expect(run.results).toEqual(
+    expect.arrayContaining([
+      { code: 'SOURCE_OFFER_ACCEPTED', status: 'ERROR' },
+    ]),
+  );
+  const refused = page.waitForResponse(mutation('POST', /\/approve$/u));
+  await contract
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .click();
+  expect((await refused).status()).toBe(409);
+  await expect(
+    contract.getByRole('button', {
+      name: 'Record both simulated signatures',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  const source = await prepareSource(3);
+  const revision = contract.getByRole('region', {
+    name: 'Revise Contract before signature',
+    exact: true,
+  });
+  const sourceRead = page.waitForResponse(
+    mutation('GET', /\/offers\/opportunities\/[^/]+$/u),
+  );
+  await revision
+    .getByRole('button', { name: 'Reload available source', exact: true })
+    .click();
+  expect((await sourceRead).status()).toBe(200);
+  const sourceChoice = revision.getByRole('combobox', {
+    name: 'Source Offer',
+    exact: true,
+  });
+  await expect(sourceChoice).toBeEnabled();
+  await expect(
+    sourceChoice.getByRole('option', {
+      name: 'Offer 1 · Version 2 · Awaiting Client response',
+      exact: true,
+    }),
+  ).toHaveCount(1);
+  await sourceChoice.selectOption({
+    label: 'Offer 1 · Version 2 · Awaiting Client response',
+  });
+  await revision
+    .getByRole('textbox', { name: 'Revised special conditions', exact: true })
+    .fill('Synthetic successor draft');
+  const revised = page.waitForResponse(
+    mutation('POST', /\/contracts\/opportunities\/[^/]+\/versions$/u),
+  );
+  await revision
+    .getByRole('button', { name: 'Create new Contract Version', exact: true })
+    .click();
+  expect((await revised).status()).toBe(201);
+  await expect(
+    contract
+      .getByRole('definition')
+      .filter({ hasText: /^Synthetic successor draft$/u }),
+  ).toBeVisible();
+  await capture(page, testInfo, 'early-successor-draft');
+  await reopenRequest(journey, { record: 'offer' });
+  const offer = page.getByRole('region', {
+    name: 'Illustrative Offer',
+    exact: true,
+  });
+  const response = offer.locator('.offer-client-response');
+  await response
+    .getByLabel('Reported received time (UTC)')
+    .fill(source.transmittedAt);
+  const accepted = page.waitForResponse(
+    mutation('POST', /\/client-response$/u),
+  );
+  await response
+    .getByRole('button', { name: 'Record simulated acceptance', exact: true })
+    .click();
+  expect((await accepted).status()).toBe(201);
+  await reopenRequest(journey);
+  const freshChecks = page.waitForResponse(
+    mutation('POST', /\/quality-checks$/u),
+  );
+  await contract
+    .getByRole('button', { name: 'Run Contract Quality Checks', exact: true })
+    .click();
+  const fresh = object(await (await freshChecks).json());
+  expect(fresh.ruleSetVersion).toBe(3);
+  expect(fresh.results).toEqual(
+    expect.arrayContaining([{ code: 'SOURCE_OFFER_ACCEPTED', status: 'PASS' }]),
+  );
+  await contract
+    .getByRole('checkbox', {
+      name: 'I acknowledge this warning: Added terms and conditions need confirmation',
+      exact: true,
+    })
+    .check();
+  const approved = page.waitForResponse(mutation('POST', /\/approve$/u));
+  await contract
+    .getByRole('button', {
+      name: 'Approve exact Contract Version',
+      exact: true,
+    })
+    .click();
+  expect((await approved).status()).toBe(201);
+  const signedOn = await approvalDate(request, {
+    companyId,
+    path: `/contracts/opportunities/${opportunityId}`,
+  });
+  await contract
+    .getByLabel('Provider signatory label', { exact: true })
+    .fill('Synthetic Provider');
+  await contract
+    .getByLabel('Client signatory label', { exact: true })
+    .fill('Synthetic Client');
+  await contract
+    .getByLabel('Provider signing date', { exact: true })
+    .fill(signedOn);
+  await contract
+    .getByLabel('Client signing date', { exact: true })
+    .fill(signedOn);
+  const signed = page.waitForResponse(mutation('POST', /\/signature$/u));
+  await contract
+    .getByRole('button', {
+      name: 'Record both simulated signatures',
+      exact: true,
+    })
+    .click();
+  expect((await signed).status()).toBe(201);
+  await expect(
+    contract.getByText('Executed — simulated evidence only', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    contract.getByRole('region', {
+      name: 'Revise Contract before signature',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  const candidates = await request.get(
+    `${apiOrigin}/api/contracts/opportunities/${opportunityId}/project-candidates`,
+    { headers: { ...identities.ada, 'x-company-context-id': companyId } },
+  );
+  expect(candidates.status()).toBe(200);
+  const history = await apiRead(request, {
+    identity: identities.ada,
+    companyId,
+    path: `/contracts/opportunities/${opportunityId}/versions/${text(object(created.version).id)}`,
+    decode: decodeAgreementDetail,
+  });
+  expect(history.contract.version.sourceOfferVersionId).toBe(firstSource.id);
+  expect(history.contract.version.specialConditions).toBe(literal);
+  await capture(page, testInfo, 'early-executed-project-eligible');
+});
 
 test('follows one commercial case from Request to signed agreement, Project and Activity', async ({
   page,
@@ -3774,7 +4102,7 @@ async function publishIllustrativeConfiguration(
     suffix,
     serviceName,
   }: { companyId: string; suffix: string; serviceName: string },
-): Promise<void> {
+): Promise<string> {
   const step = <T>({
     path,
     data,
@@ -3843,6 +4171,7 @@ async function publishIllustrativeConfiguration(
   });
   // Both versions take effect on the synthetic server clock, not after a sleep.
   await writeClockOffset(initialClockOffset + 120_000);
+  return offering.id;
 }
 
 async function approvalDate(

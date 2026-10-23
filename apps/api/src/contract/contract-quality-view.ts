@@ -16,7 +16,10 @@ export function qualityRunView(
 ): ContractQualityRun {
   if (
     row.ruleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
-    (row.ruleSetVersion !== 1 && row.ruleSetVersion !== 2) ||
+    (row.ruleSetVersion !== 1 &&
+      row.ruleSetVersion !== 2 &&
+      row.ruleSetVersion !== 3) ||
+    (row.ruleSetVersion === 3) !== (contract.origin === 'OFFER_PREPARATION') ||
     row.contractVersionId !== version.id
   )
     throw new Error('Unsupported stored Contract Quality Check rule set.');
@@ -31,11 +34,13 @@ export function qualityRunView(
       row.results,
       contractQualityCodes(
         version.termEndsOn,
-        contract.origin === 'DIRECT'
-          ? { kind: 'DIRECT' }
-          : version.templateCode === 'ADDENDUM_ILLUSTRATIVE'
-            ? { pricingSnapshotId: version.pricingSnapshotId }
-            : null,
+        contract.origin === 'OFFER_PREPARATION'
+          ? { kind: 'OFFER_PREPARATION' }
+          : contract.origin === 'DIRECT'
+            ? { kind: 'DIRECT' }
+            : version.templateCode === 'ADDENDUM_ILLUSTRATIVE'
+              ? { pricingSnapshotId: version.pricingSnapshotId }
+              : null,
       ),
     ),
   };

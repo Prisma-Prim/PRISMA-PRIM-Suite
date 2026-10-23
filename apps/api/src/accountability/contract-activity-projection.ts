@@ -276,7 +276,8 @@ function sourceFields(
   if (kind === 'CONTRACT' && origin === 'DIRECT') return ['kind', 'origin'];
   if (
     (kind === 'CONTRACT' || kind === 'PRECONTRACT') &&
-    origin === 'ACCEPTED_OFFER' &&
+    (origin === 'ACCEPTED_OFFER' ||
+      (kind === 'CONTRACT' && origin === 'OFFER_PREPARATION')) &&
     isUuid(metadata.offerVersionId)
   )
     return ['kind', 'origin', 'offerVersionId'];
@@ -315,6 +316,7 @@ function recordsBinding(metadata: Record<string, unknown>): boolean {
   const { ruleSetVersion, acknowledgedWarningCodes } = metadata;
   return (
     isRuleSetVersion(ruleSetVersion) &&
+    (ruleSetVersion === 3) === (metadata.origin === 'OFFER_PREPARATION') &&
     hasDistinctMembers(acknowledgedWarningCodes, CONTRACT_WARNING_CODES)
   );
 }
@@ -322,5 +324,5 @@ function recordsBinding(metadata: Record<string, unknown>): boolean {
 function isRuleSetVersion(
   value: unknown,
 ): value is ContractQualityRuleSetVersion {
-  return value === 1 || value === 2;
+  return value === 1 || value === 2 || value === 3;
 }

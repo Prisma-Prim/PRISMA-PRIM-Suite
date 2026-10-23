@@ -11,16 +11,19 @@ type Identity = Pick<
   OfferRecipientCopy,
   'legalName' | 'taxId' | 'legalAddress'
 >;
+type OfferQualitySource = {
+  readonly companyId: string;
+  readonly partyKey: string;
+  readonly identity: Identity;
+  readonly snapshotId: string;
+  readonly scopeNote: string | null;
+  readonly commercialConditions: string | null;
+} & (
+  | { readonly kind: 'ACCEPTED_OFFER' }
+  | { readonly kind: 'OFFER_PREPARATION'; readonly accepted: boolean }
+);
 type Source =
-  | {
-      readonly kind: 'ACCEPTED_OFFER';
-      readonly companyId: string;
-      readonly partyKey: string;
-      readonly identity: Identity;
-      readonly snapshotId: string;
-      readonly scopeNote: string | null;
-      readonly commercialConditions: string | null;
-    }
+  | OfferQualitySource
   | { readonly kind: 'DIRECT'; readonly companyId: string }
   | {
       readonly kind: 'ADDENDUM';
@@ -34,13 +37,16 @@ type Source =
 /**
  * `CONTRACT_QUALITY_ILLUSTRATIVE` versions (PRD sections 19.5 and 18.5). Version
  * 2 keeps every code, severity and applicability of version 1 and differs only
- * in checking the stored fixed-discount trace of an adjusted Snapshot.
+ * in checking the stored fixed-discount trace of an adjusted Snapshot. Version
+ * 3 binds early preparation, preserving both Snapshot forms and requiring
+ * acceptance of the exact current source Offer Version.
  */
-export type ContractQualityRuleSetVersion = 1 | 2;
+export type ContractQualityRuleSetVersion = 1 | 2 | 3;
 /**
  * The binding of a new run, derived by the server from the version's immutable
  * Snapshot and never accepted as input: any adjusted line binds v2; otherwise,
- * including a version without a Snapshot, v1. Migration 0064 enforces it.
+ * including a version without a Snapshot, v1. Early-preparation Versions bind
+ * v3. Migrations 0064 and 0074 enforce these bindings.
  */
 export function contractQualityRuleSetVersion(
   snapshot: {
@@ -48,7 +54,9 @@ export function contractQualityRuleSetVersion(
       Pick<PricingSnapshotLineRecord, 'adjustment'>
     >;
   } | null,
+  origin?: string | null,
 ): ContractQualityRuleSetVersion {
+  if (origin === 'OFFER_PREPARATION') return 3;
   return snapshot?.lines.some((line) => line.adjustment !== null) ? 2 : 1;
 }
 export interface ContractQualityInput {
@@ -78,6 +86,9 @@ export const CONTRACT_QUALITY_RULES = {
   PARTY_IDENTITY_MATCHES_SOURCE: 'WARNING',
   PARTY_IDENTITY_CURRENT: 'WARNING',
   PARTY_TAX_ID_RECORDED: 'ERROR',
+  PRICE_MATCHES_SOURCE_OFFER: 'ERROR',
+  CONDITIONS_MATCH_SOURCE_OFFER: 'ERROR',
+  SOURCE_OFFER_ACCEPTED: 'ERROR',
   PRICE_MATCHES_ACCEPTED_OFFER: 'ERROR',
   PRICING_SNAPSHOT_COHERENT: 'ERROR',
   CONDITIONS_MATCH_ACCEPTED_OFFER: 'ERROR',
@@ -138,22 +149,28 @@ export function evaluateContractQuality(
   );
   // One immutable Snapshot carries one set of lines, totals and stored
   // adjustments, so services, value, tax and adjustments are identical.
-  if (source.kind === 'ACCEPTED_OFFER')
+  if (source.kind === 'ACCEPTED_OFFER' || source.kind === 'OFFER_PREPARATION')
     check(
-      'PRICE_MATCHES_ACCEPTED_OFFER',
+      source.kind === 'OFFER_PREPARATION'
+        ? 'PRICE_MATCHES_SOURCE_OFFER'
+        : 'PRICE_MATCHES_ACCEPTED_OFFER',
       input.snapshotId === source.snapshotId,
     );
   // Version 2 reuses the Offer v2 trace check; it never reprices or writes.
   if (input.snapshotId !== null)
     check(
       'PRICING_SNAPSHOT_COHERENT',
-      input.ruleSetVersion === 1
+      input.ruleSetVersion === 1 ||
+        (input.ruleSetVersion === 3 &&
+          !input.snapshot?.lines.some((line) => line.adjustment !== null))
         ? coherentSnapshot(input.snapshot)
         : coherentAdjustedSnapshot(input.snapshot),
     );
-  if (source.kind === 'ACCEPTED_OFFER') {
+  if (source.kind === 'ACCEPTED_OFFER' || source.kind === 'OFFER_PREPARATION') {
     check(
-      'CONDITIONS_MATCH_ACCEPTED_OFFER',
+      source.kind === 'OFFER_PREPARATION'
+        ? 'CONDITIONS_MATCH_SOURCE_OFFER'
+        : 'CONDITIONS_MATCH_ACCEPTED_OFFER',
       input.scopeNote === source.scopeNote &&
         input.commercialConditions === source.commercialConditions,
     );
@@ -165,6 +182,8 @@ export function evaluateContractQuality(
         !input.preliminaryWork,
     );
   }
+  if (source.kind === 'OFFER_PREPARATION')
+    check('SOURCE_OFFER_ACCEPTED', source.accepted);
   if (source.kind === 'DIRECT') check('DIRECT_ORIGIN_REVIEWED', false);
   if (source.kind === 'ADDENDUM') {
     check(
@@ -200,8 +219,13 @@ function sameIdentity(left: Identity, right: Identity) {
 export function contractQualityCodes(
   termEndsOn: string | null,
   source:
-    { pricingSnapshotId: string | null } | { kind: 'DIRECT' } | null = null,
+    | { pricingSnapshotId: string | null }
+    | { kind: 'DIRECT' }
+    | { kind: 'OFFER_PREPARATION' }
+    | null = null,
 ): ContractQualityCode[] {
+  const early =
+    source !== null && 'kind' in source && source.kind === 'OFFER_PREPARATION';
   const codes: ContractQualityCode[] = [
     'SOURCE_COMPANY_MATCHES',
     'PARTY_AVAILABLE',
@@ -209,11 +233,12 @@ export function contractQualityCodes(
     'PARTY_IDENTITY_MATCHES_SOURCE',
     'PARTY_IDENTITY_CURRENT',
     'PARTY_TAX_ID_RECORDED',
-    'PRICE_MATCHES_ACCEPTED_OFFER',
+    early ? 'PRICE_MATCHES_SOURCE_OFFER' : 'PRICE_MATCHES_ACCEPTED_OFFER',
     'PRICING_SNAPSHOT_COHERENT',
-    'CONDITIONS_MATCH_ACCEPTED_OFFER',
+    early ? 'CONDITIONS_MATCH_SOURCE_OFFER' : 'CONDITIONS_MATCH_ACCEPTED_OFFER',
     'ADDED_CONDITIONS_CONFIRMED',
   ];
+  if (early) codes.push('SOURCE_OFFER_ACCEPTED');
   if (source && 'pricingSnapshotId' in source) {
     codes.splice(6);
     if (source.pricingSnapshotId !== null)
@@ -222,7 +247,7 @@ export function contractQualityCodes(
     if (source.pricingSnapshotId !== null)
       codes.push('CURRENCY_MATCHES_PARENT');
   }
-  if (source && 'kind' in source)
+  if (source && 'kind' in source && source.kind === 'DIRECT')
     codes.splice(
       0,
       codes.length,

@@ -1557,7 +1557,9 @@ export class AccountabilityService {
           contractId: contracts.id,
           kind: contracts.kind,
           origin: contracts.origin,
-          sourceOfferVersionId: contracts.sourceOfferVersionId,
+          sourceOfferVersionId: sql<
+            string | null
+          >`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
           parentContractId: contracts.parentContractId,
           addendumOrdinal: contracts.addendumOrdinal,
           illustrativeReference: contracts.illustrativeReference,
@@ -3156,10 +3158,12 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_offer_preparer_assignment.granted':
     case 'company_contract_approver_assignment.granted':
     case 'company_contract_preparer_assignment.granted':
+    case 'company_contract_early_preparation_assignment.granted':
     case 'company_offer_approver_assignment.granted':
     case 'company_offer_preparer_assignment.revoked':
     case 'company_contract_approver_assignment.revoked':
     case 'company_contract_preparer_assignment.revoked':
+    case 'company_contract_early_preparation_assignment.revoked':
     case 'company_offer_approver_assignment.revoked':
     case 'company_pricing_adjustment_assignment.granted':
     case 'company_pricing_adjustment_assignment.revoked':
@@ -3447,10 +3451,11 @@ function contractEventMetadata(
   switch (source.kind) {
     case 'DIRECT':
       return { kind: 'CONTRACT', origin: 'DIRECT' };
+    case 'OFFER_PREPARATION':
     case 'ACCEPTED_OFFER':
       return {
         kind: source.contractKind,
-        origin: 'ACCEPTED_OFFER',
+        origin: source.kind,
         offerVersionId: source.offerVersionId,
       };
     case 'ADDENDUM':

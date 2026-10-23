@@ -72,6 +72,8 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   pricingUserPermissionAssignmentId?: string;
   pricingUserPermissionSetVersion?: 'v1';
   contractPermissions?: CompanyContractPermission[];
+  contractEarlyPreparationAssignmentId?: string;
+  contractEarlyPreparationPermissionSetVersion?: 'v1';
   contractPermissionAssignmentId?: string;
   contractPermissionSetVersion?: 'v1';
   contractApproverAssignmentId?: string;
