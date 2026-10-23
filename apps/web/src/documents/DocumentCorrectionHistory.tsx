@@ -50,6 +50,8 @@ export function DocumentCorrectionHistory({
         actor.workspaceMembershipId,
         company.id,
         documentId,
+        company.missionDeliverableAccessAssignmentId,
+        company.missionDeliverableAccessPermissionSetVersion,
         canReadReference,
       ])}
       identity={identity}

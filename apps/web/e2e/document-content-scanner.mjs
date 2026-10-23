@@ -30,7 +30,10 @@ export async function startDocumentAcceptanceScanner() {
       while (offset + 4 <= input.length) {
         const size = input.readUInt32BE(offset);
         if (size === 0) {
-          socket.end('stream: OK\0');
+          // A valid synthetic PDF with this explicit marker exercises scanner unavailability.
+          if (input.includes(Buffer.from('UNAV questionnaire A')))
+            socket.destroy();
+          else socket.end('stream: OK\0');
           return;
         }
         if (size > 5242880) {

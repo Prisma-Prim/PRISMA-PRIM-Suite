@@ -25,17 +25,28 @@ afterEach(() => vi.unstubAllGlobals());
 it.each([
   {
     role: 'reader',
+    route: 'document-content-reader',
+    value: 'document-content-reader',
     label: 'Company Document Content Reader',
     option: 'Company confidential PDF reader',
   },
   {
     role: 'uploader',
+    route: 'document-content-uploader',
+    value: 'document-content-uploader',
     label: 'Company Document Content Uploader',
     option: 'Company confidential PDF uploader',
   },
+  {
+    role: 'mission family',
+    route: 'mission-deliverable-access',
+    value: 'mission-deliverable-access',
+    label: 'Company Mission Deliverable Access',
+    option: 'Company Mission Deliverable Access',
+  },
 ])(
   'grants and revokes the independent captured-v1 PDF $role bundle through administration',
-  async ({ role, label, option }) => {
+  async ({ route, value, label, option }) => {
     let active = false;
     const commands: Array<{
       path: string;
@@ -67,9 +78,7 @@ it.each([
             companies: [{ id: companyId, displayName: 'Company DEMO' }],
             assignments: active ? [assignment()] : [],
           });
-        if (
-          path.startsWith(`/api/company-document-content-${role}-assignments`)
-        ) {
+        if (path.startsWith(`/api/company-${route}-assignments`)) {
           active = method === 'POST';
           commands.push({
             path,
@@ -90,10 +99,7 @@ it.each([
     await screen.findByLabelText('Workspace member');
     selectOption(screen.getByLabelText('Workspace member'), memberId);
     selectOption(screen.getByLabelText('Company', { exact: true }), companyId);
-    selectOption(
-      screen.getByLabelText('Access bundle'),
-      `document-content-${role}`,
-    );
+    selectOption(screen.getByLabelText('Access bundle'), value);
     expect(screen.getByLabelText('Access bundle')).toHaveTextContent(option);
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
     await screen.findByText('Access granted. Server state refreshed.');
@@ -107,12 +113,12 @@ it.each([
     );
     expect(commands).toEqual([
       {
-        path: `/api/company-document-content-${role}-assignments`,
+        path: `/api/company-${route}-assignments`,
         method: 'POST',
         key: expect.any(String),
       },
       {
-        path: `/api/company-document-content-${role}-assignments/${memberId}/${companyId}`,
+        path: `/api/company-${route}-assignments/${memberId}/${companyId}`,
         method: 'DELETE',
         key: expect.any(String),
       },
@@ -123,6 +129,7 @@ it.each([
 it.each([
   'Company Document Content Reader',
   'Company Document Content Uploader',
+  'Company Mission Deliverable Access',
 ])('fails closed on unknown captured version for %s', async (bundle) => {
   vi.stubGlobal(
     'fetch',

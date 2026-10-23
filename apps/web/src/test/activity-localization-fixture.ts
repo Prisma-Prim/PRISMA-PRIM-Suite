@@ -477,6 +477,18 @@ export const activityEventsByAction = {
     action: 'company_document_registrar_assignment.revoked',
     target: targets.company_role_assignment,
   },
+  'company_mission_deliverable_access_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_mission_deliverable_access_assignment.granted',
+    action: 'company_mission_deliverable_access_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_mission_deliverable_access_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_mission_deliverable_access_assignment.revoked',
+    action: 'company_mission_deliverable_access_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_document_content_reader_assignment.granted': {
     ...ordinary,
     id: 'event-company_document_content_reader_assignment.granted',

@@ -98,6 +98,10 @@ const targetTypes = {
     'company_role_assignment',
   'company_document_registrar_assignment.granted': 'company_role_assignment',
   'company_document_registrar_assignment.revoked': 'company_role_assignment',
+  'company_mission_deliverable_access_assignment.granted':
+    'company_role_assignment',
+  'company_mission_deliverable_access_assignment.revoked':
+    'company_role_assignment',
   'company_document_content_reader_assignment.granted':
     'company_role_assignment',
   'company_document_content_reader_assignment.revoked':

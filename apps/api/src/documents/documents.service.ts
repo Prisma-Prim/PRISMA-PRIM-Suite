@@ -7,7 +7,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -67,11 +67,27 @@ export class DocumentsService {
     requireDocumentPermission(actor, 'document.read');
     const command = registration(value);
     const idempotencyKey = requireIdempotencyKey(key);
+    const payload =
+      command.type === 'questionnaire'
+        ? {
+            clientId: command.clientId,
+            title: command.title,
+            purpose: command.purpose,
+            url: command.url,
+          }
+        : command;
     const fingerprint = createHash('sha256')
-      .update(JSON.stringify({ companyId, ...command }))
+      .update(JSON.stringify({ companyId, ...payload }))
       .digest('hex');
     return this.database.transaction(async () => {
       await this.authorization.requireDocumentAccess(actor, true);
+      if (
+        command.type === 'mission-deliverable' &&
+        !(await this.authorization.hasMissionDeliverableAccess(actor, {
+          lockAssignment: true,
+        }))
+      )
+        throw new ForbiddenException();
       // Serialize retries before looking up the actor-owned command. A failed
       // mutation rolls back the identity, content, Client fence and history.
       await this.database.connection.execute(
@@ -97,6 +113,8 @@ export class DocumentsService {
           );
         return this.readDetail(actor, existing.id);
       }
+      if (command.type === 'mission-deliverable')
+        await this.clients.lockActiveReferenceClient(actor, command.clientId);
       await this.clients.recordReferenceUse(actor, command.clientId);
       const [document] = await this.database.connection
         .insert(workingDocuments)
@@ -106,6 +124,7 @@ export class DocumentsService {
           clientId: command.clientId,
           title: command.title,
           purpose: command.purpose,
+          type: command.type,
           createdByMembershipId: actor.workspaceMembershipId,
           idempotencyKey,
           requestFingerprint: fingerprint,
@@ -127,14 +146,15 @@ export class DocumentsService {
         })
         .returning();
       if (!version) throw new Error('Version was not created.');
-      await this.database.connection.insert(documentRepresentations).values({
-        workspaceId: actor.workspaceId,
-        companyId,
-        versionId: version.id,
-        url: command.url,
-        addedByMembershipId: actor.workspaceMembershipId,
-        addedAt: version.createdAt,
-      });
+      if (command.type === 'questionnaire')
+        await this.database.connection.insert(documentRepresentations).values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          versionId: version.id,
+          url: command.url,
+          addedByMembershipId: actor.workspaceMembershipId,
+          addedAt: version.createdAt,
+        });
       await this.accountability.recordDocumentRegistered({
         actor,
         companyId,
@@ -146,6 +166,8 @@ export class DocumentsService {
   async list(actor: ActorContext): Promise<WorkingDocument[]> {
     const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
+    const familyAllowed =
+      await this.authorization.hasMissionDeliverableAccess(actor);
     const rows = await this.database.connection
       .select({
         id: workingDocuments.id,
@@ -179,6 +201,12 @@ export class DocumentsService {
         and(
           eq(workingDocuments.workspaceId, actor.workspaceId),
           eq(workingDocuments.companyId, companyId),
+          familyAllowed
+            ? inArray(workingDocuments.type, [
+                'questionnaire',
+                'mission-deliverable',
+              ])
+            : eq(workingDocuments.type, 'questionnaire'),
         ),
       )
       .orderBy(desc(workingDocuments.createdAt), desc(workingDocuments.id));
@@ -281,23 +309,22 @@ export class DocumentsService {
     actor: ActorContext,
     idValue: unknown,
     resolvedDossierIds: ReadonlyMap<string, string> | undefined,
+    options: { lockFamily: boolean } = { lockFamily: false },
   ): Promise<{ document: WorkingDocument; projectId: string | null }> {
-    const visible = await this.boundary.requireVisible(actor, idValue);
+    const visible = await this.boundary.requireVisible(actor, idValue, options);
     const { companyId, document: row, client } = visible;
-    const working = await this.versions.workingVersion({
-      workspaceId: row.workspaceId,
-      companyId,
-      documentId: row.id,
-    });
+    const working = await this.versions.workingVersion(
+      {
+        workspaceId: row.workspaceId,
+        companyId,
+        documentId: row.id,
+      },
+      row.type,
+    );
     const clientDossierId = (
       resolvedDossierIds ?? (await this.clientDossierIds(actor, [row.clientId]))
     ).get(row.clientId);
-    const representation = {
-      id: working.representation.id,
-      kind: 'external-reference',
-      verification: 'unverified',
-    } as const;
-    const document: WorkingDocument = {
+    const base: Omit<WorkingDocument, 'type' | 'version'> = {
       id: row.id,
       workspaceId: row.workspaceId,
       companyId,
@@ -306,7 +333,6 @@ export class DocumentsService {
       clientDisplayName: client.displayName,
       title: row.title,
       purpose: row.purpose,
-      type: 'questionnaire',
       confidentiality: 'company-confidential',
       createdAt: row.createdAt.toISOString(),
       createdByMembershipId: row.createdByMembershipId,
@@ -316,18 +342,36 @@ export class DocumentsService {
         client.status === 'active' && working.status === 'draft'
           ? 'allowed'
           : 'read-only',
-      version: {
-        id: working.id,
-        status: working.status,
-        representation: canReadReference(actor)
-          ? {
-              ...representation,
-              access: 'granted',
-              url: working.representation.url,
-            }
-          : { ...representation, access: 'denied' },
-      },
     };
+    const identity = { id: working.id, status: working.status };
+    const document: WorkingDocument =
+      working.documentType === 'mission-deliverable'
+        ? {
+            ...base,
+            type: 'mission-deliverable',
+            version: { ...identity, representation: null },
+          }
+        : {
+            ...base,
+            type: 'questionnaire',
+            version: {
+              ...identity,
+              representation: canReadReference(actor)
+                ? {
+                    id: working.representation.id,
+                    kind: 'external-reference',
+                    verification: 'unverified',
+                    access: 'granted',
+                    url: working.representation.url,
+                  }
+                : {
+                    id: working.representation.id,
+                    kind: 'external-reference',
+                    verification: 'unverified',
+                    access: 'denied',
+                  },
+            },
+          };
     return { document, projectId: row.projectId };
   }
   /**
@@ -405,10 +449,17 @@ export class DocumentsService {
               correction.beforePurpose,
               correction.afterPurpose,
             );
-            const url = materialChange(
-              correction.beforeUrl,
-              correction.afterUrl,
-            );
+            if (
+              (correction.beforeUrl === null) !==
+              (correction.afterUrl === null)
+            )
+              throw new Error(
+                'A Document correction reference pair is incomplete.',
+              );
+            const url =
+              correction.beforeUrl !== null && correction.afterUrl !== null
+                ? materialChange(correction.beforeUrl, correction.afterUrl)
+                : undefined;
             return {
               revision: correction.revision,
               occurredAt: correction.occurredAt.toISOString(),
@@ -459,7 +510,15 @@ export class DocumentsService {
         sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
       );
       // Visibility is rechecked after any competing retry finishes.
-      const visible = await this.read(actor, documentId);
+      const visible = (
+        await this.readReference(actor, documentId, undefined, {
+          lockFamily: true,
+        })
+      ).document;
+      if (visible.type === 'mission-deliverable' && command.url !== undefined)
+        throw new BadRequestException(
+          'Mission deliverables do not accept external references.',
+        );
       const fingerprint = createHash('sha256')
         .update(JSON.stringify({ companyId, documentId, ...command }))
         .digest('hex');
@@ -507,21 +566,32 @@ export class DocumentsService {
         throw new ConflictException(
           'The working Document changed. Reload before correcting it.',
         );
-      const working = await this.versions.workingVersion({
-        workspaceId: actor.workspaceId,
-        companyId,
-        documentId,
-      });
+      const working = await this.versions.workingVersion(
+        {
+          workspaceId: actor.workspaceId,
+          companyId,
+          documentId,
+        },
+        current.type,
+      );
       if (working.status !== 'draft') throw documentVersionStateInvalid();
+      const reference =
+        working.documentType === 'questionnaire'
+          ? {
+              id: working.representation.id,
+              before: working.representation.url,
+              after: command.url ?? working.representation.url,
+            }
+          : null;
       const after = {
         title: command.title ?? current.title,
         purpose: command.purpose ?? current.purpose,
-        url: command.url ?? working.representation.url,
+        url: reference?.after ?? null,
       };
       const changed =
         after.title !== current.title ||
         after.purpose !== current.purpose ||
-        after.url !== working.representation.url;
+        (reference !== null && reference.after !== reference.before);
       const revision = changed
         ? current.workingRevision + 1
         : current.workingRevision;
@@ -535,10 +605,11 @@ export class DocumentsService {
             workingRevision: revision,
           })
           .where(eq(workingDocuments.id, documentId));
-        await this.database.connection
-          .update(documentRepresentations)
-          .set({ url: after.url })
-          .where(eq(documentRepresentations.id, working.representation.id));
+        if (reference)
+          await this.database.connection
+            .update(documentRepresentations)
+            .set({ url: reference.after })
+            .where(eq(documentRepresentations.id, reference.id));
       }
       const [recorded] = await this.database.connection
         .insert(documentCorrectionCommands)
@@ -554,7 +625,7 @@ export class DocumentsService {
           outcome: changed ? 'corrected' : 'unchanged',
           beforeTitle: current.title,
           beforePurpose: current.purpose,
-          beforeUrl: working.representation.url,
+          beforeUrl: reference?.before ?? null,
           afterTitle: after.title,
           afterPurpose: after.purpose,
           afterUrl: after.url,
@@ -602,10 +673,23 @@ function registration(value: unknown) {
   const clientId = requireUuid(row.clientId);
   const title = requiredText(row.title, 200);
   const purpose = requiredText(row.purpose, 2000);
+  if (row.type === 'mission-deliverable') {
+    if (
+      Object.keys(row).some(
+        (key) => !['type', 'clientId', 'title', 'purpose'].includes(key),
+      )
+    )
+      throw new BadRequestException(
+        'Mission deliverables do not accept external references.',
+      );
+    return { type: 'mission-deliverable' as const, clientId, title, purpose };
+  }
+  if (row.type !== undefined && row.type !== 'questionnaire')
+    throw new BadRequestException('Unsupported Document family.');
   if (typeof row.url !== 'string' || !row.url.trim())
     throw new BadRequestException('An HTTPS reference is required.');
   const url = referenceUrl(row.url);
-  return { clientId, title, purpose, url };
+  return { type: 'questionnaire' as const, clientId, title, purpose, url };
 }
 function correction(value: unknown): {
   expectedRevision: number;

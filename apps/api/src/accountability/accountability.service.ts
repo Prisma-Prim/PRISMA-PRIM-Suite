@@ -1,3 +1,5 @@
+import { companyRoleAssignments } from '../database/schema/index.js';
+import { missionDeliverableAssignment } from '../access/mission-deliverable-access.js';
 import { ideaEvents } from '../database/schema/ideas.js';
 import type { ProjectTemplateVersion } from '../project-template/project-template.definition.js';
 import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
@@ -2183,6 +2185,20 @@ export class AccountabilityService {
         actorMembershipId: input.actor.workspaceMembershipId,
       });
   }
+  /** Scope family authority inside each dated query, before its page bound. */
+  private documentFamilyVisibility(actor: ActorContext) {
+    const grant = missionDeliverableAssignment(actor);
+    const mission = grant
+      ? exists(
+          this.databaseContext.connection
+            .select({ id: companyRoleAssignments.id })
+            .from(companyRoleAssignments)
+            .where(grant),
+        )
+      : sql`false`;
+    return sql`(${eq(workingDocuments.type, 'questionnaire')} OR (${eq(workingDocuments.type, 'mission-deliverable')} AND ${mission}))`;
+  }
+
   async documentEvents(
     actor: ActorContext,
   ): Promise<DocumentRegisteredActivityEvent[]> {
@@ -2259,6 +2275,7 @@ export class AccountabilityService {
         and(
           eq(documentRegistrationEvents.workspaceId, actor.workspaceId),
           eq(documentRegistrationEvents.companyId, actor.activeCompany.id),
+          this.documentFamilyVisibility(actor),
         ),
       )
       .orderBy(
@@ -2358,6 +2375,7 @@ export class AccountabilityService {
         and(
           eq(documentCorrectionCommands.workspaceId, actor.workspaceId),
           eq(documentCorrectionCommands.companyId, actor.activeCompany.id),
+          this.documentFamilyVisibility(actor),
           eq(documentCorrectionCommands.outcome, 'corrected'),
         ),
       )
@@ -2466,6 +2484,7 @@ export class AccountabilityService {
         and(
           eq(documentVersionCommands.workspaceId, actor.workspaceId),
           eq(documentVersionCommands.companyId, actor.activeCompany.id),
+          this.documentFamilyVisibility(actor),
         ),
       )
       .orderBy(
@@ -2627,6 +2646,7 @@ export class AccountabilityService {
         and(
           eq(documentProjectEvents.workspaceId, actor.workspaceId),
           eq(documentProjectEvents.companyId, actor.activeCompany.id),
+          this.documentFamilyVisibility(actor),
         ),
       )
       .orderBy(
@@ -3138,7 +3158,9 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_approver_assignment.granted':
     case 'company_document_approver_assignment.revoked':
     case 'company_document_content_reader_assignment.granted':
+    case 'company_mission_deliverable_access_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
+    case 'company_mission_deliverable_access_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':
     case 'company_document_content_uploader_assignment.revoked':
     case 'company_project_assignment.granted':
