@@ -261,7 +261,7 @@ it('translates the ready registry without replacing literal drafts, Client selec
   fireEvent.change(url, {
     target: { value: 'https://example.test/literal?language=en' },
   });
-  fireEvent.change(filter, { target: { value: 'Literal questionnaire' } });
+  fireEvent.change(filter, { target: { value: 'Client {client} S Я é' } });
   await act(async () => undefined);
   expect(fetcher).toHaveBeenCalledTimes(2);
   const baseline = fetcher.mock.calls.length;
@@ -312,7 +312,10 @@ it('translates the ready registry without replacing literal drafts, Client selec
     expect(title).toHaveValue('Titlu {literal} Я é');
     expect(purpose).toHaveValue('Scop {purpose} Ș Я é');
     expect(url).toHaveValue('https://example.test/literal?language=en');
-    expect(filter).toHaveValue('Literal questionnaire');
+    expect(filter).toHaveValue('Client {client} S Я é');
+    expect(
+      screen.getByRole('button', { name: document.title }),
+    ).toBeInTheDocument();
     expect(globalThis.document.querySelector('time')).toBe(registrationTime);
     expect(registrationTime).toHaveAttribute('datetime', document.createdAt);
     expect(fetcher).toHaveBeenCalledTimes(baseline);

@@ -255,6 +255,126 @@ it('filters only loaded visible fields in server order and resets for a new Comp
   ).toHaveValue('');
   expect(screen.queryByText(document.purpose)).not.toBeInTheDocument();
 });
+it('matches only Romanian spelling variants in loaded Document titles and Client labels without I/O', async () => {
+  const rows = [
+    {
+      id: 'opaque-romanian',
+      clientId: 'client-romanian',
+      title: 'Ședință inițială',
+      clientDisplayName: 'Țară Advisory',
+    },
+    {
+      id: 'decomposed',
+      clientId: 'client-decomposed',
+      title: 'Pa\u0306dure Ca\u0302mp I\u0302nceput S\u0327i T\u0327ara\u0306',
+      clientDisplayName: 'Comerț Ștefan',
+    },
+    {
+      id: 'russian-short-i',
+      clientId: 'client-russian-short-i',
+      title: 'Май',
+      clientDisplayName: 'Russian short i',
+    },
+    {
+      id: 'russian-i',
+      clientId: 'client-russian-i',
+      title: 'Маи',
+      clientDisplayName: 'Russian i',
+    },
+    {
+      id: 'french-accent',
+      clientId: 'client-french-accent',
+      title: 'Énergie',
+      clientDisplayName: 'French accent',
+    },
+    {
+      id: 'french-plain',
+      clientId: 'client-french-plain',
+      title: 'Energie',
+      clientDisplayName: 'French plain',
+    },
+  ].map((row) => ({
+    ...document,
+    ...row,
+    version: {
+      ...document.version,
+      id: `version-${row.id}`,
+      representation: {
+        ...document.version.representation,
+        id: `representation-${row.id}`,
+      },
+    },
+  }));
+  const fetcher = vi.fn(async (url: string) =>
+    Response.json(url.endsWith('/clients') ? [] : rows),
+  );
+  stubFetch(fetcher);
+  render(
+    <ApplicationPresentation value="prisme">
+      <DocumentWorkspace actor={actor} identity={identity} />
+    </ApplicationPresentation>,
+  );
+  const workspace = await screen.findByRole('region', {
+    name: 'Working Documents',
+  });
+  const filter = await within(workspace).findByRole('searchbox', {
+    name: 'Filter working Documents',
+  });
+  const list = within(workspace).getByRole('list');
+  expect(within(list).getAllByRole('button')).toHaveLength(6);
+  const initialRequests = fetcher.mock.calls.length;
+  for (const { query, titles } of [
+    { query: ' sedinta ', titles: ['Ședință inițială'] },
+    { query: 'S\u0326EDINT\u0326A\u0306', titles: ['Ședință inițială'] },
+    {
+      query: 't\u0327ara',
+      titles: [
+        'Ședință inițială',
+        'Pa\u0306dure Ca\u0302mp I\u0302nceput S\u0327i T\u0327ara\u0306',
+      ],
+    },
+    {
+      query: 'PADURE CAMP INCEPUT SI TARA',
+      titles: [
+        'Pa\u0306dure Ca\u0302mp I\u0302nceput S\u0327i T\u0327ara\u0306',
+      ],
+    },
+    {
+      query: ' COMERT STEFAN ',
+      titles: [
+        'Pa\u0306dure Ca\u0302mp I\u0302nceput S\u0327i T\u0327ara\u0306',
+      ],
+    },
+    { query: 'МАЙ', titles: ['Май'] },
+    { query: 'МАИ', titles: ['Маи'] },
+    { query: 'energie', titles: ['Energie'] },
+    { query: 'ÉNERGIE', titles: ['Énergie'] },
+    { query: 'e\u0301nergie', titles: ['Énergie'] },
+    { query: 'opaque-romanian', titles: [] },
+    { query: 'Prepare assessment', titles: [] },
+    { query: 'https://example.test/questionnaire', titles: [] },
+    {
+      query: '',
+      titles: [
+        'Ședință inițială',
+        'Pa\u0306dure Ca\u0302mp I\u0302nceput S\u0327i T\u0327ara\u0306',
+        'Май',
+        'Маи',
+        'Énergie',
+        'Energie',
+      ],
+    },
+  ]) {
+    changeValue(filter, query);
+    expect(
+      within(list)
+        .queryAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(titles);
+    expect(filter).toHaveValue(query);
+  }
+  expect(fetcher).toHaveBeenCalledTimes(initialRequests);
+});
 const dossierDocuments = [
   {
     ...document,
