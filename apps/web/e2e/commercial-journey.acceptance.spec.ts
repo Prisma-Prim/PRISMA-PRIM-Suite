@@ -600,11 +600,42 @@ test('prepares a pending-Offer Contract, revises its exact source and executes o
       exact: true,
     }),
   ).toHaveCount(0);
-  const source = await prepareSource(3);
   const revision = contract.getByRole('region', {
     name: 'Revise Contract before signature',
     exact: true,
   });
+  const sourceChoice = revision.getByRole('combobox', {
+    name: 'Source Offer',
+    exact: true,
+  });
+  await expect(sourceChoice).toBeEnabled();
+  await sourceChoice.selectOption({
+    label: 'Offer 1 · Version 1 · Awaiting Client response',
+  });
+  await revision
+    .getByRole('textbox', { name: 'Revised special conditions', exact: true })
+    .fill('Synthetic successor draft');
+  const source = await prepareSource(3);
+  const refusedSource = page.waitForResponse(
+    mutation('POST', /\/contracts\/opportunities\/[^/]+\/versions$/u),
+  );
+  await revision
+    .getByRole('button', { name: 'Create new Contract Version', exact: true })
+    .click();
+  const sourceRefusal = await refusedSource;
+  expect(sourceRefusal.status()).toBe(409);
+  expect(object(await sourceRefusal.json()).code).toBe('OFFER_NOT_PREPARABLE');
+  await expect(
+    revision.getByText(
+      'This source is unavailable for a new preparation. Reload and select an eligible same-party Offer Version.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    revision.getByText('This retry key belongs to another command.', {
+      exact: true,
+    }),
+  ).toHaveCount(0);
   const sourceRead = page.waitForResponse(
     mutation('GET', /\/offers\/opportunities\/[^/]+$/u),
   );
@@ -612,10 +643,6 @@ test('prepares a pending-Offer Contract, revises its exact source and executes o
     .getByRole('button', { name: 'Reload available source', exact: true })
     .click();
   expect((await sourceRead).status()).toBe(200);
-  const sourceChoice = revision.getByRole('combobox', {
-    name: 'Source Offer',
-    exact: true,
-  });
   await expect(sourceChoice).toBeEnabled();
   await expect(
     sourceChoice.getByRole('option', {
@@ -626,9 +653,12 @@ test('prepares a pending-Offer Contract, revises its exact source and executes o
   await sourceChoice.selectOption({
     label: 'Offer 1 · Version 2 · Awaiting Client response',
   });
-  await revision
-    .getByRole('textbox', { name: 'Revised special conditions', exact: true })
-    .fill('Synthetic successor draft');
+  await expect(
+    revision.getByRole('textbox', {
+      name: 'Revised special conditions',
+      exact: true,
+    }),
+  ).toHaveValue('Synthetic successor draft');
   const revised = page.waitForResponse(
     mutation('POST', /\/contracts\/opportunities\/[^/]+\/versions$/u),
   );

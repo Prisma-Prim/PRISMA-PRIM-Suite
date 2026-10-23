@@ -55,6 +55,166 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it.each([
+    'OFFER_NOT_PREPARABLE',
+    'OPPORTUNITY_NOT_OPEN',
+    'CONTRACT_SOURCE_PARTY_MISMATCH',
+  ])(
+    'retires a refused early source after %s and permits explicit replacement with a fresh key',
+    async (code) => {
+      const stored = {
+        ...fixture(),
+        origin: 'OFFER_PREPARATION',
+        sourceOfferVersionId: 'pending-version',
+        sourceOffer: {
+          illustrativeReference: 7,
+          versionNumber: 2,
+          eligibility: {
+            current: true,
+            response: 'PENDING',
+            pendingValidityElapsed: false,
+          },
+        },
+        version: {
+          ...fixture().version,
+          sourceOfferVersionId: 'pending-version',
+          qualityRuleSetVersion: 3,
+        },
+      };
+      const posts: { body: unknown; key: string | null }[] = [];
+      let sourceReads = 0;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const path = String(input);
+        if (path.endsWith('/versions') && init?.method === 'POST') {
+          posts.push({
+            body: JSON.parse(String(init.body)),
+            key: new Headers(init.headers).get('idempotency-key'),
+          });
+          return posts.length === 1
+            ? response({ code }, 409)
+            : response({}, 503);
+        }
+        if (path.includes('/offers/'))
+          return ++sourceReads === 1
+            ? pendingOfferResponse()
+            : pendingOfferResponse({ id: 'next-source', versionNumber: 3 });
+        if (path.endsWith('/versions'))
+          return response({ items: [], nextCursor: null });
+        return response({ contract: stored });
+      });
+      renderWithEnglishLocale(
+        <ContractPanel
+          actor={earlyActor()}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      const select = await screen.findByRole('combobox', {
+        name: 'Source Offer',
+      });
+      await waitFor(() => expect(select).toBeEnabled());
+      fireEvent.change(select, { target: { value: 'pending-version' } });
+      const literal = '  Preserved source recovery — șț  ';
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'Revised special conditions' }),
+        { target: { value: literal } },
+      );
+      const save = screen.getByRole('button', {
+        name: 'Create new Contract Version',
+      });
+      fireEvent.click(save);
+      expect(
+        await screen.findByText(
+          'This source is unavailable for a new preparation. Reload and select an eligible same-party Offer Version.',
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText('This retry key belongs to another command.'),
+      ).not.toBeInTheDocument();
+      expect(save).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Reload available source' }),
+      );
+      await screen.findByRole('option', {
+        name: 'Offer 7 · Version 3 · Awaiting Client response',
+      });
+      fireEvent.change(select, { target: { value: 'next-source' } });
+      expect(save).toBeEnabled();
+      fireEvent.click(save);
+      await waitFor(() => expect(posts).toHaveLength(2));
+      expect(posts[1]?.body).toMatchObject({
+        sourceOfferVersionId: 'next-source',
+        expectedContractRevision: 1,
+        specialConditions: literal,
+      });
+      expect(posts[1]?.key).not.toBe(posts[0]?.key);
+    },
+  );
+  it.each(['STALE_CONTRACT_REVISION', 'CONTRACT_VERSION_SUPERSEDED'])(
+    'keeps %s blocked until full Contract reload despite source reload and reselection',
+    async (code) => {
+      const stored = {
+        ...fixture(),
+        origin: 'OFFER_PREPARATION',
+        sourceOfferVersionId: 'pending-version',
+        sourceOffer: {
+          illustrativeReference: 7,
+          versionNumber: 2,
+          eligibility: {
+            current: true,
+            response: 'PENDING',
+            pendingValidityElapsed: false,
+          },
+        },
+        version: {
+          ...fixture().version,
+          sourceOfferVersionId: 'pending-version',
+          qualityRuleSetVersion: 3,
+        },
+      };
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+        String(input).endsWith('/versions') && init?.method === 'POST'
+          ? response({ code }, 409)
+          : String(input).includes('/offers/')
+            ? pendingOfferResponse()
+            : String(input).endsWith('/versions')
+              ? response({ items: [], nextCursor: null })
+              : response({ contract: stored }),
+      );
+      renderWithEnglishLocale(
+        <ContractPanel
+          actor={earlyActor()}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      const select = await screen.findByRole('combobox', {
+        name: 'Source Offer',
+      });
+      await waitFor(() => expect(select).toBeEnabled());
+      fireEvent.change(select, { target: { value: 'pending-version' } });
+      const save = screen.getByRole('button', {
+        name: 'Create new Contract Version',
+      });
+      fireEvent.click(save);
+      expect(
+        await screen.findByText(
+          'The Contract changed. Reload it before revising.',
+        ),
+      ).toBeVisible();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Reload available source' }),
+      );
+      await waitFor(() => expect(select).toBeEnabled());
+      fireEvent.change(select, { target: { value: 'pending-version' } });
+      expect(save).toBeDisabled();
+      expect(
+        screen.getByText('The Contract changed. Reload it before revising.'),
+      ).toBeVisible();
+    },
+  );
   it('opens an exact superseded preparation Version without loading an unused Offer selection', async () => {
     const stored = {
       ...fixture(),
@@ -5414,13 +5574,18 @@ function earlyActor(): ActorContext {
     },
   };
 }
-function pendingOfferResponse() {
+function pendingOfferResponse(
+  source: { id: string; versionNumber: number } = {
+    id: 'pending-version',
+    versionNumber: 2,
+  },
+) {
   return response({
     offer: {
       illustrativeReference: 7,
       version: {
-        id: 'pending-version',
-        versionNumber: 2,
+        id: source.id,
+        versionNumber: source.versionNumber,
         decisionState: 'APPROVED',
         transmissionState: 'TRANSMITTED',
         clientResponseState: 'PENDING',

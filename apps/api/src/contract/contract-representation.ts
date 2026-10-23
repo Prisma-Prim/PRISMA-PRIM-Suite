@@ -315,7 +315,9 @@ function renderAgreementHtml(
       [
         'Template Version',
         (layout.kind === 'CONTRACT'
-          ? CONTRACT_TEMPLATE_CODE
+          ? layout.preparation
+            ? 'CONTRACT_PREPARATION_ILLUSTRATIVE'
+            : CONTRACT_TEMPLATE_CODE
           : PRECONTRACT_TEMPLATE_CODE) + ' v1 (unapproved)',
       ],
       [

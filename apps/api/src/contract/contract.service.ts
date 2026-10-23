@@ -241,6 +241,7 @@ export class ContractService {
           return this.versions.view(actor, existing.contract, existing.version);
         }
         const { source, recipient } = acceptedSource ?? (await resolveSource());
+        const copiedRecipient = early ? source.recipient : recipient.recipient;
         const target = { actor, companyId, opportunityId: opportunity.id };
         const mainContract = await this.versions.find(target);
         const precontract = await this.versions.findPrecontract(target);
@@ -313,14 +314,14 @@ export class ContractService {
             opportunityId: opportunity.id,
             pricingSnapshotId: source.pricingSnapshotId,
             recipientClientAccountId: recipient.currentClientAccountId,
-            recipientKind: recipient.recipient.kind,
+            recipientKind: copiedRecipient.kind,
             recipientAdditionalLegalEntityId:
-              recipient.recipient.kind === 'ADDITIONAL'
-                ? recipient.recipient.additionalLegalEntityId
+              copiedRecipient.kind === 'ADDITIONAL'
+                ? copiedRecipient.additionalLegalEntityId
                 : null,
-            recipientLegalName: recipient.recipient.legalName,
-            recipientTaxId: recipient.recipient.taxId,
-            recipientLegalAddress: recipient.recipient.legalAddress,
+            recipientLegalName: copiedRecipient.legalName,
+            recipientTaxId: copiedRecipient.taxId,
+            recipientLegalAddress: copiedRecipient.legalAddress,
             issuingCompanyLabel: actor.activeCompany?.displayName ?? '',
             scopeNote: source.scopeNote,
             commercialConditions: source.commercialConditions,

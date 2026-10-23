@@ -225,6 +225,7 @@ export async function createContractVersion(
               earlySource.recipient.additionalLegalEntityId))
       )
         throw conflict('CONTRACT_SOURCE_PARTY_MISMATCH');
+      const copiedRecipient = earlySource?.recipient ?? recipient.recipient;
       await dependencies.databaseContext.connection
         .select({ id: contracts.id })
         .from(contracts)
@@ -276,14 +277,14 @@ export async function createContractVersion(
             ? source.pricingSnapshotId
             : command.pricingSnapshotId,
           recipientClientAccountId: recipient.currentClientAccountId,
-          recipientKind: recipient.recipient.kind,
+          recipientKind: copiedRecipient.kind,
           recipientAdditionalLegalEntityId:
-            recipient.recipient.kind === 'ADDITIONAL'
-              ? recipient.recipient.additionalLegalEntityId
+            copiedRecipient.kind === 'ADDITIONAL'
+              ? copiedRecipient.additionalLegalEntityId
               : null,
-          recipientLegalName: recipient.recipient.legalName,
-          recipientTaxId: recipient.recipient.taxId,
-          recipientLegalAddress: recipient.recipient.legalAddress,
+          recipientLegalName: copiedRecipient.legalName,
+          recipientTaxId: copiedRecipient.taxId,
+          recipientLegalAddress: copiedRecipient.legalAddress,
           issuingCompanyLabel: current.version.issuingCompanyLabel,
           scopeNote: source ? source.scopeNote : command.scopeNote,
           commercialConditions: source

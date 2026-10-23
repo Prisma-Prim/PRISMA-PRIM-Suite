@@ -24,6 +24,7 @@ type Feedback =
   | 'unavailable'
   | 'stale'
   | 'executed'
+  | 'sourceRefused'
   | 'conflict'
   | 'success';
 export function ContractVersionPanel({
@@ -141,6 +142,7 @@ export function ContractVersionPanel({
         'unavailable',
         'stale',
         'executed',
+        'sourceRefused',
         'conflict',
         'success',
       ].includes(feedback)
@@ -235,6 +237,17 @@ export function ContractVersionPanel({
       } else if (result.status === 'conflict') {
         attempt.current = undefined;
         const code = conflictCode(result);
+        if (
+          early &&
+          (code === 'OFFER_NOT_PREPARABLE' ||
+            code === 'OPPORTUNITY_NOT_OPEN' ||
+            code === 'CONTRACT_SOURCE_PARTY_MISMATCH')
+        ) {
+          setSourceView({ kind: 'unavailable' });
+          setSelectedSource('');
+          setFeedback('sourceRefused');
+          return;
+        }
         setFeedback(
           code === 'CONTRACT_EXECUTED'
             ? 'executed'
@@ -265,6 +278,7 @@ export function ContractVersionPanel({
                 onChange={(event) => {
                   attempt.current = undefined;
                   setSelectedSource(event.target.value);
+                  if (feedback === 'sourceRefused') setFeedback('idle');
                 }}
               >
                 <option value="">{preparationCopy('choose')}</option>
@@ -283,9 +297,10 @@ export function ContractVersionPanel({
                 )}
               </select>
             </label>
-            {sourceView.kind === 'unavailable' && (
-              <p role="alert">{preparationCopy('unavailable')}</p>
-            )}
+            {sourceView.kind === 'unavailable' &&
+              feedback !== 'sourceRefused' && (
+                <p role="alert">{preparationCopy('unavailable')}</p>
+              )}
             <button
               type="button"
               disabled={frozen}
@@ -371,6 +386,7 @@ export function ContractVersionPanel({
               'unavailable',
               'stale',
               'executed',
+              'sourceRefused',
               'conflict',
               'success',
             ].includes(feedback)
@@ -385,7 +401,9 @@ export function ContractVersionPanel({
       </form>
       {feedback !== 'idle' && feedback !== 'running' && (
         <p role={feedback === 'success' ? 'status' : 'alert'}>
-          {copy(feedback)}
+          {feedback === 'sourceRefused'
+            ? preparationCopy('unavailable')
+            : copy(feedback)}
         </p>
       )}
     </section>

@@ -81,6 +81,160 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it.each([
+    'recipient_legal_name',
+    'recipient_tax_id',
+    'recipient_legal_address',
+  ])(
+    'D1 database source guard rejects injected %s drift and rolls back the complete creation',
+    async (column) => {
+      const target = await earlySourceFixture();
+      const before = await earlyEffects();
+      try {
+        await pool.query(
+          `CREATE FUNCTION inject_early_identity_drift() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.${column}:='Synthetic injected identity'; RETURN NEW; END; $$; CREATE TRIGGER a_inject_early_identity_drift BEFORE INSERT ON contract_versions FOR EACH ROW EXECUTE FUNCTION inject_early_identity_drift();`,
+        );
+        const refused = await sendEarly({
+          fixture: target.fixture,
+          path: target.base + '/preparation',
+          body: target.body,
+          key: 'early-injected-identity',
+        });
+        expect(refused.status).toBe(500);
+        expect(await json(refused)).toMatchObject({
+          code: 'CONTRACT_CREATION_UNCERTAIN',
+        });
+        expect(await earlyEffects()).toEqual(before);
+      } finally {
+        await pool.query(
+          'DROP TRIGGER IF EXISTS a_inject_early_identity_drift ON contract_versions; DROP FUNCTION IF EXISTS inject_early_identity_drift();',
+        );
+      }
+      expect(
+        (
+          await sendEarly({
+            fixture: target.fixture,
+            path: target.base + '/preparation',
+            body: target.body,
+            key: 'early-injected-identity',
+          })
+        ).status,
+      ).toBe(201);
+    },
+  );
+  it.each(['creation', 'revision'] as const)(
+    'D1 copies exact source identity at %s and warns separately about current Client corrections',
+    async (stage) => {
+      const target = await earlySourceFixture();
+      let sourceId = target.body.sourceOfferVersionId;
+      async function correctIdentity(label: string) {
+        const client = record(
+          await json(
+            await request({
+              path: '/clients/' + target.fixture.clientId,
+              companyId: target.fixture.companyId,
+            }),
+          ),
+        );
+        expect(
+          (
+            await request({
+              path: '/clients/' + target.fixture.clientId,
+              companyId: target.fixture.companyId,
+              init: {
+                method: 'PATCH',
+                headers: {
+                  'content-type': 'application/json',
+                  'idempotency-key': 'early-identity-' + label,
+                },
+                body: JSON.stringify({
+                  expectedVersion: numberField(client, 'version'),
+                  displayName: 'Synthetic corrected ' + label,
+                  taxId: 'SYNTHETIC-' + label,
+                  address: 'Synthetic address ' + label,
+                }),
+              },
+            })
+          ).status,
+        ).toBe(200);
+      }
+      if (stage === 'revision') {
+        await command({
+          path: target.base + '/preparation',
+          companyId: target.fixture.companyId,
+          body: target.body,
+          key: 'early-original-identity',
+        });
+        await correctIdentity('source');
+        sourceId = await successorSource(target.fixture);
+      }
+      const source = record(
+        record(
+          record(
+            await json(
+              await request({
+                path: '/offers/opportunities/' + target.fixture.opportunityId,
+                companyId: target.fixture.companyId,
+              }),
+            ),
+          ).offer,
+        ).version,
+      );
+      const expectedIdentity = record(source.recipient);
+      await correctIdentity('current');
+      await command({
+        path:
+          target.base + (stage === 'creation' ? '/preparation' : '/versions'),
+        companyId: target.fixture.companyId,
+        body: {
+          sourceOfferVersionId: sourceId,
+          ...(stage === 'revision' ? { expectedContractRevision: 1 } : {}),
+        },
+        key: 'early-copy-exact-identity',
+      });
+      const reopened = record(
+        record(
+          await json(
+            await request({
+              path: target.base,
+              companyId: target.fixture.companyId,
+            }),
+          ),
+        ).contract,
+      );
+      const version = record(reopened.version);
+      expect(version.sourceOfferVersionId).toBe(sourceId);
+      expect(version.recipient).toMatchObject({
+        legalName: expectedIdentity.legalName,
+        taxId: expectedIdentity.taxId,
+        legalAddress: expectedIdentity.legalAddress,
+      });
+      const html = stringField(record(version.representation), 'html');
+      expect(html).toContain(stringField(expectedIdentity, 'legalName'));
+      expect(html).not.toContain('Synthetic corrected current');
+      expect(html).toContain(
+        'CONTRACT_PREPARATION_ILLUSTRATIVE v1 (unapproved)',
+      );
+      const checks = record(
+        await command({
+          path:
+            target.base +
+            '/versions/' +
+            stringField(version, 'id') +
+            '/quality-checks',
+          companyId: target.fixture.companyId,
+          body: {},
+          key: 'early-copied-identity-checks',
+        }),
+      );
+      expect(checks.results).toEqual(
+        expect.arrayContaining([
+          { code: 'PARTY_IDENTITY_MATCHES_SOURCE', status: 'PASS' },
+          { code: 'PARTY_IDENTITY_CURRENT', status: 'WARNING' },
+        ]),
+      );
+    },
+  );
   it('D1 prepares and reopens a complete pending-source Contract only with the independent opt-in grant', async () => {
     const fixture = await acceptedOffer({ stopAt: 'TRANSMITTED' });
     await grantContract(fixture, 'early-ordinary-grant');
@@ -150,6 +304,7 @@ withPostgres('First illustrative Contract REST', () => {
     expect(text).toContain('Provisional illustrative');
     expect(text).toContain(body.specialConditions);
     expect(text).not.toContain('Accepted Offer');
+    expect(text).toContain('CONTRACT_PREPARATION_ILLUSTRATIVE v1 (unapproved)');
     const versionId = stringField(record(created.version), 'id');
     const run = record(
       await command({

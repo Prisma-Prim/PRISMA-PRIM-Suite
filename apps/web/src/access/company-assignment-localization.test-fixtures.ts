@@ -297,6 +297,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'contract-early-preparation',
+    canonical: 'Company Contract Early Preparation',
+    version: 'v1',
+    labels: {
+      ro: 'Pregătire anticipată a contractelor companiei',
+      ru: 'Ранняя подготовка договоров компании',
+      fr: 'Préparation anticipée des contrats de la société',
+      en: 'Company Contract Early Preparation',
+    },
+  },
+  {
     value: 'contract-approver',
     canonical: 'Company Contract Approver',
     version: 'v1',
