@@ -81,6 +81,1162 @@ withPostgres('First illustrative Contract REST', () => {
     await harness?.close();
     await database?.close();
   });
+  it.each([
+    'recipient_legal_name',
+    'recipient_tax_id',
+    'recipient_legal_address',
+  ])(
+    'D1 database source guard rejects injected %s drift and rolls back the complete creation',
+    async (column) => {
+      const target = await earlySourceFixture();
+      const before = await earlyEffects();
+      try {
+        await pool.query(
+          `CREATE FUNCTION inject_early_identity_drift() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.${column}:='Synthetic injected identity'; RETURN NEW; END; $$; CREATE TRIGGER a_inject_early_identity_drift BEFORE INSERT ON contract_versions FOR EACH ROW EXECUTE FUNCTION inject_early_identity_drift();`,
+        );
+        const refused = await sendEarly({
+          fixture: target.fixture,
+          path: target.base + '/preparation',
+          body: target.body,
+          key: 'early-injected-identity',
+        });
+        expect(refused.status).toBe(500);
+        expect(await json(refused)).toMatchObject({
+          code: 'CONTRACT_CREATION_UNCERTAIN',
+        });
+        expect(await earlyEffects()).toEqual(before);
+      } finally {
+        await pool.query(
+          'DROP TRIGGER IF EXISTS a_inject_early_identity_drift ON contract_versions; DROP FUNCTION IF EXISTS inject_early_identity_drift();',
+        );
+      }
+      expect(
+        (
+          await sendEarly({
+            fixture: target.fixture,
+            path: target.base + '/preparation',
+            body: target.body,
+            key: 'early-injected-identity',
+          })
+        ).status,
+      ).toBe(201);
+    },
+  );
+  it.each(['creation', 'revision'] as const)(
+    'D1 copies exact source identity at %s and warns separately about current Client corrections',
+    async (stage) => {
+      const target = await earlySourceFixture();
+      let sourceId = target.body.sourceOfferVersionId;
+      async function correctIdentity(label: string) {
+        const client = record(
+          await json(
+            await request({
+              path: '/clients/' + target.fixture.clientId,
+              companyId: target.fixture.companyId,
+            }),
+          ),
+        );
+        expect(
+          (
+            await request({
+              path: '/clients/' + target.fixture.clientId,
+              companyId: target.fixture.companyId,
+              init: {
+                method: 'PATCH',
+                headers: {
+                  'content-type': 'application/json',
+                  'idempotency-key': 'early-identity-' + label,
+                },
+                body: JSON.stringify({
+                  expectedVersion: numberField(client, 'version'),
+                  displayName: 'Synthetic corrected ' + label,
+                  taxId: 'SYNTHETIC-' + label,
+                  address: 'Synthetic address ' + label,
+                }),
+              },
+            })
+          ).status,
+        ).toBe(200);
+      }
+      if (stage === 'revision') {
+        await command({
+          path: target.base + '/preparation',
+          companyId: target.fixture.companyId,
+          body: target.body,
+          key: 'early-original-identity',
+        });
+        await correctIdentity('source');
+        sourceId = await successorSource(target.fixture);
+      }
+      const source = record(
+        record(
+          record(
+            await json(
+              await request({
+                path: '/offers/opportunities/' + target.fixture.opportunityId,
+                companyId: target.fixture.companyId,
+              }),
+            ),
+          ).offer,
+        ).version,
+      );
+      const expectedIdentity = record(source.recipient);
+      await correctIdentity('current');
+      await command({
+        path:
+          target.base + (stage === 'creation' ? '/preparation' : '/versions'),
+        companyId: target.fixture.companyId,
+        body: {
+          sourceOfferVersionId: sourceId,
+          ...(stage === 'revision' ? { expectedContractRevision: 1 } : {}),
+        },
+        key: 'early-copy-exact-identity',
+      });
+      const reopened = record(
+        record(
+          await json(
+            await request({
+              path: target.base,
+              companyId: target.fixture.companyId,
+            }),
+          ),
+        ).contract,
+      );
+      const version = record(reopened.version);
+      expect(version.sourceOfferVersionId).toBe(sourceId);
+      expect(version.recipient).toMatchObject({
+        legalName: expectedIdentity.legalName,
+        taxId: expectedIdentity.taxId,
+        legalAddress: expectedIdentity.legalAddress,
+      });
+      const html = stringField(record(version.representation), 'html');
+      expect(html).toContain(stringField(expectedIdentity, 'legalName'));
+      expect(html).not.toContain('Synthetic corrected current');
+      expect(html).toContain(
+        'CONTRACT_PREPARATION_ILLUSTRATIVE v1 (unapproved)',
+      );
+      const checks = record(
+        await command({
+          path:
+            target.base +
+            '/versions/' +
+            stringField(version, 'id') +
+            '/quality-checks',
+          companyId: target.fixture.companyId,
+          body: {},
+          key: 'early-copied-identity-checks',
+        }),
+      );
+      expect(checks.results).toEqual(
+        expect.arrayContaining([
+          { code: 'PARTY_IDENTITY_MATCHES_SOURCE', status: 'PASS' },
+          { code: 'PARTY_IDENTITY_CURRENT', status: 'WARNING' },
+        ]),
+      );
+    },
+  );
+  it('D1 prepares and reopens a complete pending-source Contract only with the independent opt-in grant', async () => {
+    const fixture = await acceptedOffer({ stopAt: 'TRANSMITTED' });
+    await grantContract(fixture, 'early-ordinary-grant');
+    const source = await contractPayload(fixture);
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    const body = {
+      sourceOfferVersionId: source.acceptedOfferVersionId,
+      termStartsOn: '2026-10-01',
+      termEndsOn: '2027-10-01',
+      specialConditions: '  Literal draft conditions — șț  ',
+    };
+    const denied = await request({
+      path: base + '/preparation',
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'early-create',
+        },
+        body: JSON.stringify(body),
+      },
+    });
+    expect(denied.status).toBe(403);
+    await command({
+      path: '/company-contract-early-preparation-assignments',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+      key: 'early-opt-in',
+    });
+    const created = record(
+      await command({
+        path: base + '/preparation',
+        companyId: fixture.companyId,
+        body,
+        key: 'early-create',
+      }),
+    );
+    expect(created).toMatchObject({
+      origin: 'OFFER_PREPARATION',
+      kind: 'CONTRACT',
+      revision: 1,
+      sourceOfferVersionId: body.sourceOfferVersionId,
+      version: {
+        sourceOfferVersionId: body.sourceOfferVersionId,
+        scopeNote: 'Accepted scope',
+        commercialConditions: 'Accepted conditions',
+        specialConditions: body.specialConditions,
+        decisionState: 'PENDING',
+        executionState: 'NOT_EXECUTED',
+        representation: {
+          templateCode: 'CONTRACT_PREPARATION_ILLUSTRATIVE',
+          templateVersion: 1,
+        },
+      },
+    });
+    const reopened = record(
+      await json(await request({ path: base, companyId: fixture.companyId })),
+    );
+    expect(reopened.contract).toEqual(created);
+    const text = stringField(
+      record(record(created.version).representation),
+      'html',
+    );
+    expect(text).toContain('Provisional illustrative');
+    expect(text).toContain(body.specialConditions);
+    expect(text).not.toContain('Accepted Offer');
+    expect(text).toContain('CONTRACT_PREPARATION_ILLUSTRATIVE v1 (unapproved)');
+    const versionId = stringField(record(created.version), 'id');
+    const run = record(
+      await command({
+        path: base + '/versions/' + versionId + '/quality-checks',
+        companyId: fixture.companyId,
+        body: {},
+        key: 'early-quality',
+      }),
+    );
+    expect(run).toMatchObject({ ruleSetVersion: 3 });
+    expect(run.results).toEqual(
+      expect.arrayContaining([
+        { code: 'SOURCE_OFFER_ACCEPTED', status: 'ERROR' },
+        { code: 'PRICE_MATCHES_SOURCE_OFFER', status: 'PASS' },
+        { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+        { code: 'CONDITIONS_MATCH_SOURCE_OFFER', status: 'PASS' },
+      ]),
+    );
+    const revised = record(
+      await command({
+        path: base + '/versions',
+        companyId: fixture.companyId,
+        key: 'early-revise',
+        body: {
+          sourceOfferVersionId: body.sourceOfferVersionId,
+          expectedContractRevision: 1,
+          specialConditions: 'Revised literal draft',
+        },
+      }),
+    );
+    expect(revised).toMatchObject({
+      contractId: created.id,
+      revision: 2,
+      versionNumber: 2,
+    });
+    const oldVersion = record(
+      record(
+        await json(
+          await request({
+            path: base + '/versions/' + versionId,
+            companyId: fixture.companyId,
+          }),
+        ),
+      ).contract,
+    );
+    expect(record(oldVersion.version).representation).toEqual(
+      record(created.version).representation,
+    );
+    expect(record(oldVersion.version).sourceOfferVersionId).toBe(
+      body.sourceOfferVersionId,
+    );
+    await command({
+      path: '/company-contract-approver-assignments',
+      key: 'early-approver',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+    });
+    const currentId = stringField(revised, 'contractVersionId');
+    const approvalPath = base + '/versions/' + currentId + '/approve';
+    const approvalBody = {
+      expectedContractRevision: 2,
+      acknowledgedWarningCodes: ['ADDED_CONDITIONS_CONFIRMED'],
+    };
+    const blocked = await request({
+      path: approvalPath,
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': 'early-approval',
+        },
+        body: JSON.stringify(approvalBody),
+      },
+    });
+    expect(blocked.status).toBe(409);
+    expect(await json(blocked)).toMatchObject({ code: 'QUALITY_CHECK_ERRORS' });
+    await command({
+      path:
+        '/offers/opportunities/' +
+        fixture.opportunityId +
+        '/versions/' +
+        body.sourceOfferVersionId +
+        '/client-response',
+      companyId: fixture.companyId,
+      key: 'early-explicit-acceptance',
+      body: {
+        expectedOfferRevision: 3,
+        outcome: 'ACCEPTED',
+        receivedAt: instant.toISOString(),
+      },
+    });
+    const approved = record(
+      await command({
+        path: approvalPath,
+        companyId: fixture.companyId,
+        key: 'early-approval',
+        body: approvalBody,
+      }),
+    );
+    expect(approved).toMatchObject({ qualityRun: { ruleSetVersion: 3 } });
+    const signed = record(
+      await command({
+        path: base + '/versions/' + currentId + '/signature',
+        companyId: fixture.companyId,
+        key: 'early-signature',
+        body: { ...signaturePayload(), expectedContractRevision: 3 },
+      }),
+    );
+    expect(signed).toMatchObject({
+      evidenceKind: 'SIMULATED',
+      qualityRun: { ruleSetVersion: 3 },
+    });
+    const replay = await command({
+      path: base + '/preparation',
+      companyId: fixture.companyId,
+      body,
+      key: 'early-create',
+    });
+    expect(replay).toMatchObject({
+      id: created.id,
+      origin: 'OFFER_PREPARATION',
+      version: { id: versionId, specialConditions: body.specialConditions },
+    });
+    await command({
+      path: '/company-project-assignments',
+      key: 'early-project-grant',
+      body: {
+        workspaceMembershipId: fixture.actorMembershipId,
+        companyId: fixture.companyId,
+      },
+    });
+    expect(
+      (
+        await request({
+          path: base + '/project-candidates',
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(200);
+    const addendum = record(
+      await command({
+        path: base + '/agreements/' + stringField(created, 'id') + '/addenda',
+        companyId: fixture.companyId,
+        key: 'early-executed-addendum',
+        body: {
+          expectedContractRevision: 4,
+          changeSummary: 'Synthetic post-execution amendment',
+        },
+      }),
+    );
+    expect(addendum).toMatchObject({
+      kind: 'ADDENDUM',
+      parentContractId: created.id,
+      version: { representation: { templateCode: 'ADDENDUM_ILLUSTRATIVE' } },
+    });
+  });
+  it('D1 binds an explicit successor source to a new Contract Version while preserving original provenance and receipts', async () => {
+    const target = await earlyContract();
+    const oldId = stringField(record(target.created.version), 'id');
+    const sourceId = await successorSource(target.fixture);
+    const revisionBody = {
+      sourceOfferVersionId: sourceId,
+      expectedContractRevision: 1,
+      specialConditions: 'Successor terms',
+    };
+    const result = record(
+      await command({
+        path: target.base + '/versions',
+        companyId: target.fixture.companyId,
+        body: revisionBody,
+        key: 'early-successor',
+      }),
+    );
+    const read = record(
+      record(
+        await json(
+          await request({
+            path: target.base,
+            companyId: target.fixture.companyId,
+          }),
+        ),
+      ).contract,
+    );
+    expect(read).toMatchObject({
+      id: target.created.id,
+      sourceOfferVersionId: target.body.sourceOfferVersionId,
+      version: {
+        id: result.contractVersionId,
+        sourceOfferVersionId: sourceId,
+        scopeNote: 'Successor scope',
+        commercialConditions: 'Successor conditions',
+      },
+      sourceOffer: { versionNumber: 2 },
+    });
+    const exact = record(
+      record(
+        await json(
+          await request({
+            path: target.base + '/versions/' + oldId,
+            companyId: target.fixture.companyId,
+          }),
+        ),
+      ).contract,
+    );
+    expect(exact).toMatchObject({
+      sourceOffer: { versionNumber: 1 },
+      version: { sourceOfferVersionId: target.body.sourceOfferVersionId },
+    });
+    expect(record(exact.version).representation).toEqual(
+      record(target.created.version).representation,
+    );
+    expect(
+      await command({
+        path: target.base + '/preparation',
+        companyId: target.fixture.companyId,
+        body: target.body,
+        key: 'early-fixture-create',
+      }),
+    ).toMatchObject({ id: target.created.id, version: { id: oldId } });
+    expect(
+      await command({
+        path: target.base + '/versions',
+        companyId: target.fixture.companyId,
+        body: revisionBody,
+        key: 'early-successor',
+      }),
+    ).toEqual(result);
+    const events = (
+      await pool.query<{ metadata: unknown }>(
+        "SELECT metadata FROM contract_events WHERE contract_version_id=$1 AND action='contract_version.created'",
+        [result.contractVersionId],
+      )
+    ).rows;
+    expect(events).toEqual([
+      {
+        metadata: expect.objectContaining({
+          origin: 'OFFER_PREPARATION',
+          offerVersionId: sourceId,
+        }),
+      },
+    ]);
+    expect((await pool.query('SELECT id FROM contracts')).rowCount).toBe(1);
+    await expect(
+      pool.query(
+        'UPDATE contract_versions SET source_offer_version_id=$1 WHERE id=$2',
+        [sourceId, oldId],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query(
+        'UPDATE contracts SET source_offer_version_id=$1 WHERE id=$2',
+        [sourceId, target.created.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+  it.each(['DRAFT', 'APPROVED', 'ACCEPTED'] as const)(
+    'D1 refuses a new early binding from a %s source without artifacts',
+    async (stage) => {
+      const target = await earlySourceFixture(stage);
+      const before = await earlyEffects();
+      const response = await sendEarly({
+        fixture: target.fixture,
+        path: target.base + '/preparation',
+        body: target.body,
+        key: 'early-ineligible',
+      });
+      expect(response.status).toBe(409);
+      expect(await json(response)).toMatchObject({
+        code: 'OFFER_NOT_PREPARABLE',
+      });
+      expect(await earlyEffects()).toEqual(before);
+    },
+  );
+  it('D1 refuses a foreign source even when the actor can prepare in both Companies', async () => {
+    const first = await earlySourceFixture();
+    const second = await earlySourceFixture(
+      'TRANSMITTED',
+      await preparedOffer('-early-foreign'),
+    );
+    const before = await earlyEffects();
+    const response = await sendEarly({
+      fixture: second.fixture,
+      path: second.base + '/preparation',
+      body: first.body,
+      key: 'early-foreign-source',
+    });
+    expect(response.status).toBe(404);
+    expect(await earlyEffects()).toEqual(before);
+  });
+  it.each([
+    'rejected',
+    'expired',
+    'superseded',
+    'archived Client',
+    'superseded Client',
+    'closed Opportunity',
+  ] as const)(
+    'D1 replays a committed result after source becomes %s but refuses a new write',
+    async (state) => {
+      const target = await earlyContract();
+      const revisionBody = {
+        ...target.body,
+        expectedContractRevision: 1,
+        specialConditions: 'Committed revision',
+      };
+      const revision = await command({
+        path: target.base + '/versions',
+        companyId: target.fixture.companyId,
+        body: revisionBody,
+        key: 'early-revision-before-invalidation',
+      });
+      if (state === 'rejected')
+        await command({
+          path:
+            '/offers/opportunities/' +
+            target.fixture.opportunityId +
+            '/versions/' +
+            target.body.sourceOfferVersionId +
+            '/client-response',
+          companyId: target.fixture.companyId,
+          key: 'early-reject-source',
+          body: {
+            expectedOfferRevision: 3,
+            outcome: 'REJECTED',
+            receivedAt: instant.toISOString(),
+            reason: 'Synthetic refusal',
+          },
+        });
+      if (state === 'expired') instant = new Date('2027-09-27T09:00:00.000Z');
+      if (state === 'superseded') await successorSource(target.fixture);
+      if (state === 'archived Client')
+        await pool.query(
+          "UPDATE client_accounts SET status='archived' WHERE id=$1",
+          [target.fixture.clientId],
+        );
+      if (state === 'superseded Client') {
+        const canonical = entity(
+          await command({
+            path: '/clients',
+            companyId: target.fixture.companyId,
+            key: 'early-canonical-client',
+            body: { displayName: 'Synthetic canonical Client' },
+          }),
+        );
+        // Reproduce an existing duplicate; union and retained retries use public commands.
+        await pool.query(
+          'UPDATE client_accounts SET tax_id=(SELECT tax_id FROM client_accounts WHERE id=$1) WHERE id=$2',
+          [target.fixture.clientId, canonical.id],
+        );
+        const review = record(
+          await command({
+            path: '/clients/' + target.fixture.clientId + '/union-reviews',
+            companyId: target.fixture.companyId,
+            key: 'early-client-union-review',
+            body: {},
+          }),
+        );
+        expect(review.outcome).toBe('comparison');
+        await command({
+          path:
+            '/client-union-reviews/' +
+            stringField(review, 'reviewReference') +
+            '/confirm',
+          companyId: target.fixture.companyId,
+          key: 'early-client-union',
+          body: {
+            canonicalClientId: canonical.id,
+            fields: {
+              displayName: canonical.id,
+              taxId: canonical.id,
+              address: canonical.id,
+              telephone: canonical.id,
+              generalEmail: canonical.id,
+              businessActivity: canonical.id,
+            },
+            companyIds: [target.fixture.companyId],
+            reviewedDifferences: true,
+            reason: 'Synthetic original provenance remains readable.',
+          },
+        });
+      }
+      if (state === 'closed Opportunity') {
+        await command({
+          path: '/company-opportunity-manager-assignments',
+          key: 'early-outcome-grant',
+          body: {
+            workspaceMembershipId: target.fixture.actorMembershipId,
+            companyId: target.fixture.companyId,
+          },
+        });
+        expect(
+          (
+            await sendEarly({
+              fixture: target.fixture,
+              path:
+                '/commercial-intake/opportunities/' +
+                target.fixture.opportunityId +
+                '/outcome',
+              body: {
+                expectedVersion: 1,
+                status: 'LOST',
+                lossReasonCode: 'COMPETITOR',
+              },
+              key: 'early-close-opportunity',
+            })
+          ).status,
+        ).toBe(200);
+      }
+      const before = await earlyEffects();
+      const replay = await command({
+        path: target.base + '/preparation',
+        companyId: target.fixture.companyId,
+        body: target.body,
+        key: 'early-fixture-create',
+      });
+      expect(replay).toMatchObject({
+        id: target.created.id,
+        version: { id: record(target.created.version).id },
+      });
+      expect(
+        await command({
+          path: target.base + '/versions',
+          companyId: target.fixture.companyId,
+          body: revisionBody,
+          key: 'early-revision-before-invalidation',
+        }),
+      ).toEqual(revision);
+      if (state === 'superseded Client')
+        expect(
+          (
+            await sendEarly({
+              fixture: target.fixture,
+              path: target.base + '/versions',
+              body: { ...revisionBody, expectedContractRevision: 2 },
+              key: 'early-new-revision-after-client-succession',
+            })
+          ).status,
+        ).toBe(404);
+      const fresh = await sendEarly({
+        fixture: target.fixture,
+        path: target.base + '/preparation',
+        body: target.body,
+        key: 'early-fresh-after-invalidation',
+      });
+      expect(fresh.status).toBe(
+        state === 'archived Client' || state === 'superseded Client'
+          ? 404
+          : 409,
+      );
+      expect(await earlyEffects()).toEqual(before);
+    },
+  );
+  it('D1 refuses a successor naming a different legal entity and retains its complete prior Version', async () => {
+    const target = await earlyContract();
+    const currentClient = record(
+      await json(
+        await request({
+          path: '/clients/' + target.fixture.clientId,
+          companyId: target.fixture.companyId,
+        }),
+      ),
+    );
+    const entity = record(
+      await command({
+        path: '/clients/' + target.fixture.clientId + '/legal-entities',
+        companyId: target.fixture.companyId,
+        key: 'early-other-party',
+        body: {
+          expectedClientVersion: numberField(currentClient, 'version'),
+          legalName: 'Synthetic Additional Party',
+          taxId: 'SYNTHETIC-ADDITIONAL',
+          legalAddress: 'Synthetic address',
+        },
+      }),
+    );
+    const sourceId = await successorSource(target.fixture, {
+      kind: 'ADDITIONAL',
+      legalEntityId: stringField(record(entity.legalEntity), 'id'),
+    });
+    const before = await earlyEffects();
+    const refused = await sendEarly({
+      fixture: target.fixture,
+      path: target.base + '/versions',
+      body: { sourceOfferVersionId: sourceId, expectedContractRevision: 1 },
+      key: 'early-wrong-party',
+    });
+    expect(refused.status).toBe(409);
+    expect(await json(refused)).toMatchObject({
+      code: 'CONTRACT_SOURCE_PARTY_MISMATCH',
+    });
+    expect(await earlyEffects()).toEqual(before);
+    expect(
+      await json(
+        await request({
+          path: target.base,
+          companyId: target.fixture.companyId,
+        }),
+      ),
+    ).toMatchObject({
+      contract: {
+        revision: 1,
+        version: { sourceOfferVersionId: target.body.sourceOfferVersionId },
+      },
+    });
+  });
+  it.each(['last event', 'response construction'] as const)(
+    'D1 rolls back every artifact and Client fence after %s failure, then safely retries',
+    async (failure) => {
+      const target = await earlySourceFixture();
+      const before = await earlyEffects();
+      const binding = (
+        await pool.query<{ definition: string }>(
+          "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='contract_versions'::regclass AND conname='contract_versions_template_binding_check'",
+        )
+      ).rows[0];
+      if (!binding) throw new Error('Missing template constraint');
+      try {
+        if (failure === 'last event')
+          await pool.query(
+            "CREATE FUNCTION fail_early_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic last event failure'; END; $$; CREATE TRIGGER fail_early_event BEFORE INSERT ON contract_events FOR EACH ROW WHEN (NEW.action='contract_version.created') EXECUTE FUNCTION fail_early_event()",
+          );
+        else
+          await pool.query(
+            "ALTER TABLE contract_versions DROP CONSTRAINT contract_versions_template_binding_check; CREATE FUNCTION fail_early_response() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.clause_versions := '[]'::jsonb; RETURN NEW; END; $$; CREATE TRIGGER fail_early_response BEFORE INSERT ON contract_versions FOR EACH ROW EXECUTE FUNCTION fail_early_response()",
+          );
+        const response = await sendEarly({
+          fixture: target.fixture,
+          path: target.base + '/preparation',
+          body: target.body,
+          key: 'early-rollback',
+        });
+        expect(response.status).toBe(500);
+        expect(await json(response)).toMatchObject({
+          code: 'CONTRACT_CREATION_UNCERTAIN',
+        });
+        expect(await earlyEffects()).toEqual(before);
+      } finally {
+        if (failure === 'last event')
+          await pool.query(
+            'DROP TRIGGER fail_early_event ON contract_events; DROP FUNCTION fail_early_event()',
+          );
+        else
+          await pool.query(
+            'DROP TRIGGER fail_early_response ON contract_versions; DROP FUNCTION fail_early_response(); ALTER TABLE contract_versions ADD CONSTRAINT contract_versions_template_binding_check ' +
+              binding.definition,
+          );
+      }
+      const saved = record(
+        await command({
+          path: target.base + '/preparation',
+          companyId: target.fixture.companyId,
+          body: target.body,
+          key: 'early-rollback',
+        }),
+      );
+      expect(saved).toMatchObject({
+        illustrativeReference: 1,
+        version: { versionNumber: 1 },
+      });
+      expect(
+        (await pool.query('SELECT id FROM contract_commands')).rowCount,
+      ).toBe(1);
+    },
+  );
+  it('D1 preserves ordinary Contract reads after early and independent Offer grants are revoked, and denies receipt replay', async () => {
+    const target = await earlyContract();
+    for (const bundle of [
+      'contract-early-preparation',
+      'offer-preparer',
+      'offer-approver',
+    ]) {
+      const response = await request({
+        path:
+          '/company-' +
+          bundle +
+          '-assignments/' +
+          target.fixture.actorMembershipId +
+          '/' +
+          target.fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'early-revoke-' + bundle },
+        },
+      });
+      expect(response.status).toBe(200);
+    }
+    const before = await earlyEffects();
+    const read = await request({
+      path: target.base,
+      companyId: target.fixture.companyId,
+    });
+    expect(read.status).toBe(200);
+    expect(await json(read)).toMatchObject({
+      contract: {
+        id: target.created.id,
+        version: { sourceOfferVersionId: target.body.sourceOfferVersionId },
+      },
+    });
+    expect(
+      (
+        await sendEarly({
+          fixture: target.fixture,
+          path: target.base + '/preparation',
+          body: target.body,
+          key: 'early-fixture-create',
+        })
+      ).status,
+    ).toBe(403);
+    expect(await earlyEffects()).toEqual(before);
+  });
+  it.each(['contract-preparer', 'director-client'] as const)(
+    'D1 retains the independent %s authority requirement even for an exact receipt',
+    async (bundle) => {
+      const target = await earlyContract();
+      await command({
+        path: '/company-context-assignments',
+        key: 'early-independent-context',
+        body: {
+          workspaceMembershipId: target.fixture.actorMembershipId,
+          companyId: target.fixture.companyId,
+        },
+      });
+      const revoked = await request({
+        path:
+          '/company-' +
+          bundle +
+          '-assignments/' +
+          target.fixture.actorMembershipId +
+          '/' +
+          target.fixture.companyId,
+        init: {
+          method: 'DELETE',
+          headers: { 'idempotency-key': 'early-independent-revoke' },
+        },
+      });
+      expect(revoked.status).toBe(200);
+      const before = await earlyEffects();
+      expect(
+        (
+          await sendEarly({
+            fixture: target.fixture,
+            path: target.base + '/preparation',
+            body: target.body,
+            key: 'early-fixture-create',
+          })
+        ).status,
+      ).toBe(403);
+      expect(
+        (
+          await request({
+            path: target.base,
+            companyId: target.fixture.companyId,
+          })
+        ).status,
+      ).toBe(bundle === 'director-client' ? 200 : 403);
+      expect(await earlyEffects()).toEqual(before);
+    },
+  );
+  it('D1 converges identical initial keys and serializes distinct successor intents against one revision', async () => {
+    const target = await earlySourceFixture();
+    const initial = await Promise.all(
+      [1, 2].map(() =>
+        sendEarly({
+          fixture: target.fixture,
+          path: target.base + '/preparation',
+          body: target.body,
+          key: 'early-concurrent-create',
+        }),
+      ),
+    );
+    expect(initial.map((response) => response.status)).toEqual([201, 201]);
+    const bodies = await Promise.all(initial.map(json));
+    expect(bodies[0]).toEqual(bodies[1]);
+    const revision = {
+      ...target.body,
+      expectedContractRevision: 1,
+      specialConditions: 'Concurrent successor',
+    };
+    const results = await Promise.all(
+      ['one', 'two'].map((key) =>
+        sendEarly({
+          fixture: target.fixture,
+          path: target.base + '/versions',
+          body: revision,
+          key: 'early-concurrent-' + key,
+        }),
+      ),
+    );
+    expect(results.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+    expect((await pool.query('SELECT id FROM contracts')).rowCount).toBe(1);
+    expect(
+      (await pool.query('SELECT id FROM contract_versions')).rowCount,
+    ).toBe(2);
+    expect(
+      (
+        await pool.query(
+          "SELECT id FROM contract_commands WHERE kind='CREATE_VERSION'",
+        )
+      ).rowCount,
+    ).toBe(1);
+  });
+  it('D1 rejects malformed, caller-owned fields and changed intent under an existing key', async () => {
+    const target = await earlySourceFixture();
+    const before = await earlyEffects();
+    for (const extra of [
+      { kind: 'DIRECT' },
+      { origin: 'OFFER_PREPARATION' },
+      { pricingSnapshotId: target.fixture.snapshotId },
+      { specialConditions: 'bad\0value' },
+      { termStartsOn: '2027-02-29' },
+      { termStartsOn: '2027-01-02', termEndsOn: '2027-01-01' },
+    ]) {
+      expect(
+        (
+          await sendEarly({
+            fixture: target.fixture,
+            path: target.base + '/preparation',
+            body: { ...target.body, ...extra },
+            key: 'early-invalid',
+          })
+        ).status,
+      ).toBe(400);
+      expect(await earlyEffects()).toEqual(before);
+    }
+    await command({
+      path: target.base + '/preparation',
+      companyId: target.fixture.companyId,
+      body: target.body,
+      key: 'early-valid',
+    });
+    const saved = await earlyEffects();
+    const conflict = await sendEarly({
+      fixture: target.fixture,
+      path: target.base + '/preparation',
+      body: { ...target.body, specialConditions: 'Changed intent' },
+      key: 'early-valid',
+    });
+    expect(conflict.status).toBe(409);
+    expect(await json(conflict)).toMatchObject({
+      code: 'IDEMPOTENCY_CONFLICT',
+    });
+    expect(await earlyEffects()).toEqual(saved);
+  });
+  it.each(['client', 'early grant'] as const)(
+    'D1 refuses a command queued behind %s invalidation without writes',
+    async (fence) => {
+      const target = await earlySourceFixture();
+      const blocker = await pool.connect();
+      let pending: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('Missing barrier');
+        if (fence === 'client')
+          await blocker.query(
+            "UPDATE client_accounts SET status='archived' WHERE id=$1",
+            [target.fixture.clientId],
+          );
+        else
+          await blocker.query(
+            "UPDATE company_role_assignments SET revoked_at=now() WHERE company_id=$1 AND bundle::text='company_contract_early_preparation'",
+            [target.fixture.companyId],
+          );
+        pending = sendEarly({
+          fixture: target.fixture,
+          path: target.base + '/preparation',
+          body: target.body,
+          key: 'early-fence-command',
+        });
+        await waitForBlocker(pid);
+        await blocker.query('COMMIT');
+        const before = await earlyEffects();
+        expect((await pending).status).toBe(fence === 'client' ? 404 : 403);
+        expect(await earlyEffects()).toEqual(before);
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await pending;
+      }
+    },
+  );
+  it.each([
+    { source: 'acceptance', preparationFirst: false },
+    { source: 'acceptance', preparationFirst: true },
+    { source: 'successor', preparationFirst: false },
+    { source: 'successor', preparationFirst: true },
+  ])(
+    'D1 serializes $source with preparationFirst=$preparationFirst at the Opportunity fence',
+    async ({ source, preparationFirst }) => {
+      const target = await earlySourceFixture();
+      const blocker = await pool.connect();
+      let first: Promise<Response> | undefined,
+        second: Promise<Response> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]?.pid;
+        if (pid === undefined) throw new Error('Missing source barrier');
+        await blocker.query(
+          'SELECT id FROM opportunities WHERE id=$1 FOR UPDATE',
+          [target.fixture.opportunityId],
+        );
+        const prepare = () =>
+          sendEarly({
+            fixture: target.fixture,
+            path: target.base + '/preparation',
+            body: target.body,
+            key: 'early-source-race',
+          });
+        const invalidate = () =>
+          source === 'acceptance'
+            ? sendEarly({
+                fixture: target.fixture,
+                path:
+                  '/offers/opportunities/' +
+                  target.fixture.opportunityId +
+                  '/versions/' +
+                  target.body.sourceOfferVersionId +
+                  '/client-response',
+                body: {
+                  expectedOfferRevision: 3,
+                  outcome: 'ACCEPTED',
+                  receivedAt: instant.toISOString(),
+                },
+                key: 'early-source-acceptance',
+              })
+            : sendEarly({
+                fixture: target.fixture,
+                path:
+                  '/offers/opportunities/' +
+                  target.fixture.opportunityId +
+                  '/versions',
+                body: {
+                  expectedOfferRevision: 3,
+                  pricingSnapshotId: target.fixture.snapshotId,
+                  recipient: { kind: 'PRIMARY' },
+                },
+                key: 'early-source-replacement',
+              });
+        first = preparationFirst ? prepare() : invalidate();
+        const preceding = await waitForBlocker(pid);
+        second = preparationFirst ? invalidate() : prepare();
+        await waitForBlocker(pid, preceding);
+        await blocker.query('COMMIT');
+        expect((await first).status).toBe(201);
+        expect((await second).status).toBe(preparationFirst ? 201 : 409);
+        expect((await pool.query('SELECT id FROM contracts')).rowCount).toBe(
+          preparationFirst ? 1 : 0,
+        );
+        expect(
+          (await pool.query('SELECT id FROM contract_events')).rowCount,
+        ).toBe(preparationFirst ? 2 : 0);
+        if (preparationFirst)
+          expect(
+            (
+              await sendEarly({
+                fixture: target.fixture,
+                path: target.base + '/preparation',
+                body: target.body,
+                key: 'early-source-race',
+              })
+            ).status,
+          ).toBe(201);
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await first;
+        await second;
+      }
+    },
+  );
+  it.each(['v2', null])(
+    'D1 fails closed for an unsupported captured early grant %s',
+    async (version) => {
+      const target = await earlySourceFixture();
+      const check = (
+        await pool.query<{ definition: string }>(
+          "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='company_role_assignments'::regclass AND conname='company_role_assignments_permission_set_version_check'",
+        )
+      ).rows[0];
+      if (!check) throw new Error('Missing captured-version check');
+      const before = await earlyEffects();
+      try {
+        await pool.query(
+          'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
+        );
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version=$1 WHERE company_id=$2 AND bundle::text='company_contract_early_preparation'",
+          [version, target.fixture.companyId],
+        );
+        const actor = record(
+          await json(
+            await request({
+              path: '/access/current-actor',
+              companyId: target.fixture.companyId,
+            }),
+          ),
+        );
+        expect(
+          record(actor.activeCompany).contractEarlyPreparationAssignmentId,
+        ).toBeUndefined();
+        expect(
+          (
+            await sendEarly({
+              fixture: target.fixture,
+              path: target.base + '/preparation',
+              body: target.body,
+              key: 'early-unknown-grant',
+            })
+          ).status,
+        ).toBe(403);
+        expect(await earlyEffects()).toEqual(before);
+      } finally {
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE company_id=$1 AND bundle::text='company_contract_early_preparation'",
+          [target.fixture.companyId],
+        );
+        await pool.query(
+          'ALTER TABLE company_role_assignments ADD CONSTRAINT company_role_assignments_permission_set_version_check ' +
+            check.definition,
+        );
+      }
+    },
+  );
   it('C7 creates a Precontract from the Accepted Offer and the later main Contract records it', async () => {
     const fixture = await acceptedOffer();
     await grantContract(fixture, 'c7-grant');
@@ -9560,7 +10716,7 @@ withPostgres('First illustrative Contract REST', () => {
           }>(
             `SELECT
         (SELECT jsonb_agg(to_jsonb(c)-ARRAY['direct_reason','parent_contract_id','addendum_ordinal','precontract_id']::text[] ORDER BY id) FROM contracts c) AS contracts,
-        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-ARRAY['change_summary','template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] WHEN $4::boolean THEN to_jsonb(v)-ARRAY['change_summary','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] ELSE to_jsonb(v)-ARRAY['change_summary','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
+        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-'source_offer_version_id'-ARRAY['change_summary','template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] WHEN $4::boolean THEN to_jsonb(v)-'source_offer_version_id'-ARRAY['change_summary','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] ELSE to_jsonb(v)-'source_offer_version_id'-ARRAY['change_summary','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
         (SELECT jsonb_agg(CASE WHEN $3::boolean THEN to_jsonb(c)-'result_version_id' ELSE to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id','result_project_link_id','result_version_id']::text[] END ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
@@ -9571,6 +10727,8 @@ withPostgres('First illustrative Contract REST', () => {
             [
               index === 53,
               [
+                'contract_versions_source_offer_version_fk',
+                'contract_versions_preparation_source_check',
                 'contract_versions_template_binding_check',
                 'contracts_precontract_fk',
                 'contracts_parent_ordinal_unique',
@@ -9579,6 +10737,7 @@ withPostgres('First illustrative Contract REST', () => {
                 'contract_reference_counters_check',
                 'contracts_addendum_evidence',
                 'contracts_direct_evidence',
+                'contracts_preparation_evidence',
                 'contract_versions_lineage_check',
                 'contract_versions_predecessor_fk',
                 'contract_versions_successor_fk',
@@ -9617,6 +10776,13 @@ withPostgres('First illustrative Contract REST', () => {
         const before = (await evidence()).rows;
         await migrate(drizzle(pool), { migrationsFolder: 'drizzle' });
         expect((await evidence()).rows).toEqual(before);
+        expect(
+          (
+            await pool.query(
+              'SELECT id FROM contract_versions WHERE source_offer_version_id IS NOT NULL',
+            )
+          ).rowCount,
+        ).toBe(0);
         expect(
           (
             await pool.query(
@@ -11784,6 +12950,115 @@ withPostgres('First illustrative Contract REST', () => {
       path: base + '/versions/' + versionId + '/quality-checks',
     };
   }
+  async function earlySourceFixture(
+    stopAt: 'DRAFT' | 'APPROVED' | 'TRANSMITTED' | 'ACCEPTED' = 'TRANSMITTED',
+    prepared?: PreparedOffer,
+  ) {
+    const fixture = await acceptedOffer({
+      stopAt,
+      prepared,
+      suffix: prepared?.companyId ?? '',
+    });
+    await grantContract(fixture, 'early-fixture-preparer-' + fixture.companyId);
+    await command({
+      path: '/company-contract-early-preparation-assignments',
+      key: 'early-fixture-opt-in-' + fixture.companyId,
+      body: {
+        companyId: fixture.companyId,
+        workspaceMembershipId: fixture.actorMembershipId,
+      },
+    });
+    const body = {
+      sourceOfferVersionId: (await contractPayload(fixture))
+        .acceptedOfferVersionId,
+    };
+    const base = '/contracts/opportunities/' + fixture.opportunityId;
+    return { fixture, body, base };
+  }
+  async function earlyContract(prepared?: PreparedOffer) {
+    const target = await earlySourceFixture('TRANSMITTED', prepared);
+    const created = record(
+      await command({
+        path: target.base + '/preparation',
+        companyId: target.fixture.companyId,
+        body: target.body,
+        key: 'early-fixture-create',
+      }),
+    );
+    return { ...target, created };
+  }
+  async function sendEarly({
+    fixture,
+    path,
+    body,
+    key,
+  }: {
+    fixture: PreparedOffer;
+    path: string;
+    body: unknown;
+    key: string;
+  }) {
+    return request({
+      path,
+      companyId: fixture.companyId,
+      init: {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'idempotency-key': key },
+        body: JSON.stringify(body),
+      },
+    });
+  }
+  async function earlyEffects() {
+    return (
+      await pool.query<{ effects: unknown }>(`SELECT jsonb_build_object(
+      'contracts',(SELECT count(*) FROM contracts), 'versions',(SELECT count(*) FROM contract_versions),
+      'receipts',(SELECT count(*) FROM contract_commands), 'events',(SELECT count(*) FROM contract_events),
+      'references',(SELECT jsonb_agg(to_jsonb(c) ORDER BY company_id,kind) FROM contract_reference_counters c),
+      'clientVersions',(SELECT jsonb_agg(jsonb_build_object('id',id,'version',version) ORDER BY id) FROM client_accounts)) AS effects`)
+    ).rows;
+  }
+  async function successorSource(
+    fixture: PreparedOffer,
+    recipient:
+      { kind: 'PRIMARY' } | { kind: 'ADDITIONAL'; legalEntityId: string } = {
+      kind: 'PRIMARY',
+    },
+  ) {
+    const path = '/offers/opportunities/' + fixture.opportunityId;
+    const before = record(
+      record(await json(await request({ path, companyId: fixture.companyId })))
+        .offer,
+    );
+    await command({
+      path: path + '/versions',
+      companyId: fixture.companyId,
+      key: 'early-offer-successor',
+      body: {
+        expectedOfferRevision: numberField(before, 'revision'),
+        pricingSnapshotId: fixture.snapshotId,
+        recipient,
+        scopeNote: 'Successor scope',
+        commercialConditions: 'Successor conditions',
+      },
+    });
+    const after = record(
+      record(await json(await request({ path, companyId: fixture.companyId })))
+        .offer,
+    );
+    const versionId = stringField(record(after.version), 'id');
+    for (const [step, revision] of [
+      ['approve', numberField(after, 'revision')],
+      ['transmission', numberField(after, 'revision') + 1],
+    ] as const) {
+      await command({
+        path: path + '/versions/' + versionId + '/' + step,
+        companyId: fixture.companyId,
+        key: 'early-successor-' + step,
+        body: { expectedOfferRevision: revision, acknowledgedWarningCodes: [] },
+      });
+    }
+    return versionId;
+  }
   async function grantContract(fixture: PreparedOffer, key: string) {
     return command({
       path: '/company-contract-preparer-assignments',
@@ -11843,9 +13118,11 @@ withPostgres('First illustrative Contract REST', () => {
     suffix = '',
     prepared,
     recipient = { kind: 'PRIMARY' },
+    stopAt = 'ACCEPTED',
   }: {
     suffix?: string;
     prepared?: PreparedOffer;
+    stopAt?: 'DRAFT' | 'APPROVED' | 'TRANSMITTED' | 'ACCEPTED';
     recipient?:
       { kind: 'PRIMARY' } | { kind: 'ADDITIONAL'; legalEntityId: string };
   } = {}) {
@@ -11872,28 +13149,31 @@ withPostgres('First illustrative Contract REST', () => {
       key: 'approver' + suffix,
     });
     const base = `/offers/opportunities/${fixture.opportunityId}/versions/${stringField(record(offer.version), 'id')}`;
+    if (stopAt === 'DRAFT') return fixture;
     await command({
       path: base + '/approve',
       body: { expectedOfferRevision: 1, acknowledgedWarningCodes: [] },
       key: 'approve' + suffix,
       companyId: fixture.companyId,
     });
+    if (stopAt === 'APPROVED') return fixture;
     await command({
       path: base + '/transmission',
       body: { expectedOfferRevision: 2, acknowledgedWarningCodes: [] },
       key: 'transmit' + suffix,
       companyId: fixture.companyId,
     });
-    await command({
-      path: base + '/client-response',
-      body: {
-        expectedOfferRevision: 3,
-        outcome: 'ACCEPTED',
-        receivedAt: instant.toISOString(),
-      },
-      key: 'accept' + suffix,
-      companyId: fixture.companyId,
-    });
+    if (stopAt === 'ACCEPTED')
+      await command({
+        path: base + '/client-response',
+        body: {
+          expectedOfferRevision: 3,
+          outcome: 'ACCEPTED',
+          receivedAt: instant.toISOString(),
+        },
+        key: 'accept' + suffix,
+        companyId: fixture.companyId,
+      });
     return fixture;
   }
   async function command({

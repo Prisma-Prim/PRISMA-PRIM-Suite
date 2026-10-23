@@ -43,7 +43,7 @@ The [bounded pending-Offer Contract preparation contract](release-3-commercial-2
 under #821 adds an opt-in illustrative Contract origin with exact source per
 Version and explicit successor recovery. Preparation never records acceptance;
 approval/signature still require the exact accepted source. Its status and live
-tracker own product disposition and subsequent runtime delivery.
+tracker own product disposition; [#823](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/823) tracks subsequent runtime delivery.
 
 ## 4. Cross-cutting PRDs
 

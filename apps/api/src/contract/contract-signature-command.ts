@@ -283,7 +283,7 @@ export async function recordContractSignature(
         contractId: current.contract.id,
         contractVersionId: current.version.id,
         versionNumber: current.version.versionNumber,
-        source: contractSource(current.contract),
+        source: contractSource(current.contract, current.version),
         pricingSnapshotId: current.version.pricingSnapshotId,
         ruleSetVersion: quality.ruleSetVersion,
         acknowledgedWarningCodes: warnings,

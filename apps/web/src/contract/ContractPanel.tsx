@@ -1,3 +1,4 @@
+import { useContractPreparationCopy } from './contract-preparation.copy';
 import { ContractDirectEditor } from './ContractDirectEditor';
 import { ContractPrecontractEditor } from './ContractPrecontractEditor';
 import { useContractPrecontractCopy } from './contract-precontract.copy';
@@ -27,6 +28,8 @@ import { useContractRecordedValues } from './contract-recorded-values';
 import { useContractCopy } from './contract.copy';
 import {
   readAcceptedOfferSource,
+  readContractPreparationSource,
+  type ContractPreparationSource,
   readContract,
   readContractDetail,
   readOpportunityContracts,
@@ -40,6 +43,7 @@ type View =
   | {
       kind: 'empty';
       acceptedVersionId: string | null;
+      pendingSource: ContractPreparationSource | null;
       precontract: PrecontractSummary | null;
     }
   | {
@@ -102,6 +106,7 @@ export function ContractPanel({
 }) {
   const { formatNumber } = useContractRecordedValues();
   const copy = useContractCopy();
+  const preparationCopy = useContractPreparationCopy();
   const addendumCopy = useContractAddendumCopy();
   const precontractCopy = useContractPrecontractCopy();
   const decisionCopy = useContractDecisionCopy();
@@ -135,6 +140,26 @@ export function ContractPanel({
     context?.offerPermissions?.includes('commercial.offer.read') &&
     context?.clientPermissions?.includes('client.read'),
   );
+  const mayPrepareEarly = Boolean(
+    mayRead &&
+    context?.contractPermissionSetVersion === 'v1' &&
+    context.contractPermissionAssignmentId &&
+    context.contractPermissions?.includes('commercial.contract.prepare') &&
+    context.contractPermissions.includes(
+      'commercial.contract.prepare_pending_offer',
+    ) &&
+    context.contractEarlyPreparationPermissionSetVersion === 'v1' &&
+    context.contractEarlyPreparationAssignmentId &&
+    context.clientPermissions?.includes('client.read') &&
+    context.clientPermissionAssignmentId &&
+    (context.clientPermissionSetVersion === 'v1' ||
+      context.clientPermissionSetVersion === 'v2') &&
+    context.offerPermissions?.includes('commercial.offer.read') &&
+    ((context.offerPermissionSetVersion === 'v1' &&
+      context.offerPermissionAssignmentId) ||
+      (context.offerApproverPermissionSetVersion === 'v1' &&
+        context.offerApproverAssignmentId)),
+  );
   const mayPrepareDirect = Boolean(
     mayRead &&
     context?.contractPermissionSetVersion === 'v1' &&
@@ -162,6 +187,8 @@ export function ContractPanel({
     companyId,
     context?.contractPermissionAssignmentId,
     context?.contractPermissionSetVersion,
+    context?.contractEarlyPreparationAssignmentId,
+    context?.contractEarlyPreparationPermissionSetVersion,
     context?.contractApproverAssignmentId,
     context?.contractApproverPermissionSetVersion,
     context?.contractPermissions,
@@ -182,6 +209,11 @@ export function ContractPanel({
     context?.projectPermissions,
     actor.workspacePermissions,
   ]);
+  const [savedEarlyRevision, setSavedEarlyRevision] = useState<{
+    stamp: string;
+    opportunityId: string;
+    identity: BrowserIdentity;
+  } | null>(null);
   const [view, setView] = useState<View>({ kind: 'loading' }),
     [feedback, setFeedback] = useState<Feedback>(null),
     [running, setRunning] = useState(false),
@@ -266,10 +298,12 @@ export function ContractPanel({
         )
           throw new Error('Mismatched Contract.');
         setView({ kind: 'ready', contract, stamp, identity });
+        setSavedEarlyRevision(null);
         return;
       }
       let acceptedVersionId: string | null = null;
-      if (mayPrepare) {
+      let pendingSource: ContractPreparationSource | null = null;
+      if (mayPrepare || mayPrepareEarly) {
         const source = await api.request<unknown>(
           `/offers/opportunities/${encodeURIComponent(opportunityId)}`,
           { companyContextId: companyId, signal },
@@ -284,10 +318,16 @@ export function ContractPanel({
           setView({ kind: 'error' });
           return;
         }
-        acceptedVersionId = readAcceptedOfferSource(source.value);
+        acceptedVersionId = mayPrepare
+          ? readAcceptedOfferSource(source.value)
+          : null;
+        pendingSource = mayPrepareEarly
+          ? readContractPreparationSource(source.value)
+          : null;
       }
       setView({
         kind: 'empty',
+        pendingSource,
         acceptedVersionId,
         precontract: opened.precontract,
       });
@@ -328,10 +368,10 @@ export function ContractPanel({
     if (
       running ||
       precontractProtected ||
-      !mayPrepare ||
+      (!mayPrepare && !mayPrepareEarly) ||
       !companyId ||
       view.kind !== 'empty' ||
-      !view.acceptedVersionId
+      (!view.acceptedVersionId && !view.pendingSource)
     )
       return;
     if (
@@ -345,7 +385,9 @@ export function ContractPanel({
     const command = attempt.current ?? {
       key: crypto.randomUUID(),
       body: JSON.stringify({
-        acceptedOfferVersionId: view.acceptedVersionId,
+        ...(view.pendingSource && !view.acceptedVersionId
+          ? { sourceOfferVersionId: view.pendingSource.id }
+          : { acceptedOfferVersionId: view.acceptedVersionId }),
         termStartsOn: termStartsOn || null,
         termEndsOn: termEndsOn || null,
         specialConditions: specialConditions || null,
@@ -361,7 +403,7 @@ export function ContractPanel({
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/contracts/opportunities/${encodeURIComponent(opportunityId)}`,
+        `/contracts/opportunities/${encodeURIComponent(opportunityId)}${view.pendingSource && !view.acceptedVersionId ? '/preparation' : ''}`,
         {
           method: 'POST',
           companyContextId: companyId,
@@ -385,7 +427,8 @@ export function ContractPanel({
         if (
           contract.companyId !== companyId ||
           contract.opportunityId !== opportunityId ||
-          contract.sourceOfferVersionId !== view.acceptedVersionId
+          contract.sourceOfferVersionId !==
+            (view.acceptedVersionId ?? view.pendingSource?.id)
         )
           throw new Error('Mismatched Contract result.');
         attempt.current = undefined;
@@ -421,6 +464,11 @@ export function ContractPanel({
     <section className="contract-panel" aria-label={copy('title')}>
       <h4>{copy('title')}</h4>
       <p className="contract-banner">{copy('banner')}</p>
+      {savedEarlyRevision?.stamp === stamp &&
+        savedEarlyRevision.opportunityId === opportunityId &&
+        savedEarlyRevision.identity === identity && (
+          <p role="status">{versionCopy('success')}</p>
+        )}
       {view.kind === 'loading' && <p role="status">{copy('loading')}</p>}
       {(view.kind === 'error' || view.kind === 'denied') && (
         <p role="alert">{copy(view.kind)}</p>
@@ -526,6 +574,24 @@ export function ContractPanel({
         view.contract.opportunityId === opportunityId &&
         companyId && (
           <>
+            {view.contract.origin === 'OFFER_PREPARATION' && (
+              <p>
+                {preparationCopy('banner')}{' '}
+                {preparationCopy(
+                  view.contract.sourceOffer.eligibility.current &&
+                    view.contract.sourceOffer.eligibility.response ===
+                      'ACCEPTED'
+                    ? 'accepted'
+                    : view.contract.sourceOffer.eligibility.current &&
+                        view.contract.sourceOffer.eligibility.response ===
+                          'PENDING' &&
+                        !view.contract.sourceOffer.eligibility
+                          .pendingValidityElapsed
+                      ? 'pending'
+                      : 'unavailable',
+                )}
+              </p>
+            )}
             {view.contract.kind === 'ADDENDUM' && (
               <button
                 type="button"
@@ -679,7 +745,8 @@ export function ContractPanel({
                 void load(controller.signal, versionId);
               }}
             />
-            {view.contract.origin === 'ACCEPTED_OFFER' && (
+            {(view.contract.origin === 'ACCEPTED_OFFER' ||
+              view.contract.origin === 'OFFER_PREPARATION') && (
               <ContractVersionPanel
                 key={
                   stamp +
@@ -693,12 +760,15 @@ export function ContractPanel({
                 opportunityId={opportunityId}
                 contract={view.contract}
                 mayRevise={Boolean(
+                  (view.contract.origin !== 'OFFER_PREPARATION' ||
+                    mayPrepareEarly) &&
                   context?.contractPermissionSetVersion === 'v1' &&
                   context.contractPermissionAssignmentId &&
                   context.contractPermissions?.includes(
                     'commercial.contract.prepare',
                   ) &&
-                  context.clientPermissions?.includes('client.read'),
+                  (view.contract.origin === 'OFFER_PREPARATION' ||
+                    context.clientPermissions?.includes('client.read')),
                 )}
                 protectedCommand={
                   qualityProtected ||
@@ -709,6 +779,8 @@ export function ContractPanel({
                 reject={reject}
                 onProtectionChange={setVersionProtected}
                 onCreated={() => {
+                  if (view.contract.origin === 'OFFER_PREPARATION')
+                    setSavedEarlyRevision({ stamp, opportunityId, identity });
                   request.current?.abort();
                   const controller = new AbortController();
                   request.current = controller;
@@ -758,6 +830,7 @@ export function ContractPanel({
               contractId={view.contract.id}
               kind={view.contract.kind}
               versionId={view.contract.version.id}
+              preparation={view.contract.origin === 'OFFER_PREPARATION'}
               versionState={view.contract.version}
               onCompanyContextRejected={onCompanyContextRejected}
               onActorRevalidated={onActorRevalidated}
@@ -978,44 +1051,61 @@ export function ContractPanel({
             />
           </>
         )}
-      {view.kind === 'empty' && view.acceptedVersionId && mayPrepare && (
-        <form onSubmit={(event) => void submit(event)}>
-          <label>
-            {copy('start')}
-            <input
-              type="date"
-              value={termStartsOn}
-              disabled={locked}
-              onChange={(event) => setStart(event.target.value)}
-            />
-          </label>
-          <label>
-            {copy('end')}
-            <input
-              type="date"
-              value={termEndsOn}
-              disabled={locked}
-              onChange={(event) => setEnd(event.target.value)}
-            />
-          </label>
-          <label>
-            {copy('conditions')}
-            <textarea
-              maxLength={4000}
-              value={specialConditions}
-              disabled={locked}
-              onChange={(event) => setConditions(event.target.value)}
-            />
-          </label>
-          <button type="submit" disabled={running || precontractProtected}>
-            {running
-              ? copy('running')
-              : feedback === 'uncertain'
-                ? copy('retry')
-                : copy('create')}
-          </button>
-        </form>
-      )}
+      {view.kind === 'empty' &&
+        ((view.acceptedVersionId && mayPrepare) ||
+          (view.pendingSource && mayPrepareEarly)) && (
+          <form onSubmit={(event) => void submit(event)}>
+            {view.pendingSource && !view.acceptedVersionId && (
+              <>
+                <p>{preparationCopy('banner')}</p>
+                <p>
+                  {preparationCopy('source')}: {preparationCopy('offer')}{' '}
+                  {formatNumber(view.pendingSource.illustrativeReference)} ·{' '}
+                  {preparationCopy('version')}{' '}
+                  {formatNumber(view.pendingSource.versionNumber)} ·{' '}
+                  {preparationCopy('pending')}
+                </p>
+              </>
+            )}
+
+            <label>
+              {copy('start')}
+              <input
+                type="date"
+                value={termStartsOn}
+                disabled={locked}
+                onChange={(event) => setStart(event.target.value)}
+              />
+            </label>
+            <label>
+              {copy('end')}
+              <input
+                type="date"
+                value={termEndsOn}
+                disabled={locked}
+                onChange={(event) => setEnd(event.target.value)}
+              />
+            </label>
+            <label>
+              {copy('conditions')}
+              <textarea
+                maxLength={4000}
+                value={specialConditions}
+                disabled={locked}
+                onChange={(event) => setConditions(event.target.value)}
+              />
+            </label>
+            <button type="submit" disabled={running || precontractProtected}>
+              {running
+                ? copy('running')
+                : feedback === 'uncertain'
+                  ? copy('retry')
+                  : view.pendingSource && !view.acceptedVersionId
+                    ? preparationCopy('create')
+                    : copy('create')}
+            </button>
+          </form>
+        )}
       {feedback && (
         <p role={feedback === 'success' ? 'status' : 'alert'}>
           {copy(feedback)}
@@ -1046,6 +1136,7 @@ function ContractSummary({ contract }: { contract: ContractView }) {
   } = useContractRecordedValues();
   const directCopy = useContractDirectCopy();
   const copy = useContractCopy();
+  const preparationCopy = useContractPreparationCopy();
   const addendumCopy = useContractAddendumCopy();
   const precontractCopy = useContractPrecontractCopy();
   const versionCopy = useContractVersionCopy();
@@ -1094,16 +1185,22 @@ function ContractSummary({ contract }: { contract: ContractView }) {
             ? directCopy('title')
             : contract.kind === 'ADDENDUM'
               ? addendumCopy('parent')
-              : copy('source')}
+              : contract.origin === 'OFFER_PREPARATION'
+                ? preparationCopy('source')
+                : copy('source')}
         </dt>
         <dd>
           {contract.origin === 'DIRECT' ? (
             directCopy('origin')
           ) : (
             <>
-              {copy('reference')}{' '}
+              {contract.origin === 'OFFER_PREPARATION'
+                ? preparationCopy('offer')
+                : copy('reference')}{' '}
               {source ? formatNumber(source.illustrativeReference) : null} ·{' '}
-              {copy('sourceVersion')}{' '}
+              {contract.origin === 'OFFER_PREPARATION'
+                ? preparationCopy('version')
+                : copy('sourceVersion')}{' '}
               {source ? formatNumber(source.versionNumber) : null}
             </>
           )}
@@ -1137,15 +1234,19 @@ function ContractSummary({ contract }: { contract: ContractView }) {
         {contract.kind !== 'ADDENDUM' && (
           <>
             <dt>
-              {contract.origin === 'DIRECT'
-                ? directCopy('scope')
-                : copy('scope')}
+              {contract.origin === 'OFFER_PREPARATION'
+                ? preparationCopy('scope')
+                : contract.origin === 'DIRECT'
+                  ? directCopy('scope')
+                  : copy('scope')}
             </dt>
             <dd>{version.scopeNote ?? copy('missing')}</dd>
             <dt>
-              {contract.origin === 'DIRECT'
-                ? directCopy('commercial')
-                : copy('commercial')}
+              {contract.origin === 'OFFER_PREPARATION'
+                ? preparationCopy('commercial')
+                : contract.origin === 'DIRECT'
+                  ? directCopy('commercial')
+                  : copy('commercial')}
             </dt>
             <dd>{version.commercialConditions ?? copy('missing')}</dd>
             <dt>{copy('start')}</dt>
@@ -1189,9 +1290,11 @@ function ContractSummary({ contract }: { contract: ContractView }) {
           <div className="contract-price">
             <table>
               <caption>
-                {contract.origin === 'DIRECT'
-                  ? directCopy('snapshot')
-                  : copy('price')}{' '}
+                {contract.origin === 'OFFER_PREPARATION'
+                  ? preparationCopy('price')
+                  : contract.origin === 'DIRECT'
+                    ? directCopy('snapshot')
+                    : copy('price')}{' '}
                 ({version.pricingSnapshot.currency})
               </caption>
               <thead>

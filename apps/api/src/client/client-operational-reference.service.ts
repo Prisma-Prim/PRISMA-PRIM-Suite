@@ -266,6 +266,15 @@ export class ClientOperationalReferenceService {
     return references;
   }
 
+  /** Live Company Client identity-read authority only; no current-original or relationship eligibility.
+   * Authorized receipt replay uses this fence before deciding whether a new recipient binding is needed.
+   */
+  async lockRecipientReadAuthority(actor: ActorContext): Promise<void> {
+    if (!actor.activeCompany?.clientPermissions.includes('client.read'))
+      throw new ForbiddenException();
+    await this.lockCompanyClientReadAuthority(actor, actor.activeCompany.id);
+  }
+
   /**
    * Resolves and locks one legal recipient through Client's identity and
    * relationship ownership. Offer receives only the fixed copy and fence data.
@@ -275,11 +284,7 @@ export class ClientOperationalReferenceService {
     originalClientAccountId: string,
     selection: ClientLegalRecipientSelection,
   ): Promise<LockedClientLegalRecipient> {
-    // Legal identity has the same Company Client read boundary as the dossier
-    // and additional entities; Workspace management grants only minimal identity.
-    if (!actor.activeCompany?.clientPermissions.includes('client.read'))
-      throw new ForbiddenException();
-    await this.lockCompanyClientReadAuthority(actor, actor.activeCompany.id);
+    await this.lockRecipientReadAuthority(actor);
     const references = await this.readProjectReferences(
       actor,
       [originalClientAccountId],

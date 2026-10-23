@@ -319,7 +319,7 @@ export async function decideContractVersion(
               acknowledgedWarningCodes: approval.warnings,
             }
           : { kind: 'REJECT' },
-        source: contractSource(current.contract),
+        source: contractSource(current.contract, current.version),
         pricingSnapshotId: current.version.pricingSnapshotId,
         occurredAt: decidedAt,
       });

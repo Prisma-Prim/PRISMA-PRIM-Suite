@@ -335,7 +335,7 @@ Contract-history visibility and exact-target prerequisites remain unchanged;
 source preparation creates no acceptance or signature event. Authorization
 section8 owns the two separate assignment-administration events and their safe
 bundle-label metadata. The #821 delegated product disposition approves this
-bounded contract; it does not claim runtime events or new visibility.
+bounded contract; #823 tracks runtime delivery under this existing visibility.
 
 ## 8. Retention, correction and export
 

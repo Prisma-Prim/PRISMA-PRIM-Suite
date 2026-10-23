@@ -49,6 +49,7 @@ type AssignmentBundle =
   | 'pricing-user'
   | 'offer-preparer'
   | 'contract-preparer'
+  | 'contract-early-preparation'
   | 'contract-approver'
   | 'offer-approver'
   | 'pricing-adjustment'
@@ -92,6 +93,8 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'pricing-user': '/company-pricing-user-assignments',
   'offer-preparer': '/company-offer-preparer-assignments',
   'contract-preparer': '/company-contract-preparer-assignments',
+  'contract-early-preparation':
+    '/company-contract-early-preparation-assignments',
   'contract-approver': '/company-contract-approver-assignments',
   'offer-approver': '/company-offer-approver-assignments',
   'pricing-adjustment': '/company-pricing-adjustment-assignments',
@@ -557,6 +560,10 @@ export function CompanyContextAccess({
                 value: 'contract-preparer',
                 label: copy('contractPreparerBundle'),
               },
+              {
+                value: 'contract-early-preparation',
+                label: copy('contractEarlyPreparationBundle'),
+              },
               { value: 'contract-approver', label: decisionCopy('bundle') },
               { value: 'offer-approver', label: copy('offerApproverBundle') },
               {
@@ -629,6 +636,7 @@ export function CompanyContextAccess({
                 value === 'pricing-user' ||
                 value === 'offer-preparer' ||
                 value === 'contract-preparer' ||
+                value === 'contract-early-preparation' ||
                 value === 'contract-approver' ||
                 value === 'offer-approver' ||
                 value === 'pricing-adjustment' ||
@@ -690,6 +698,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'contract-preparer' && (
             <p>{copy('contractPreparerPrerequisites')}</p>
+          )}
+          {bundle === 'contract-early-preparation' && (
+            <p>{copy('contractEarlyPreparationPrerequisites')}</p>
           )}
           {bundle === 'contract-approver' && (
             <p>{decisionCopy('prerequisites')}</p>
@@ -812,6 +823,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'pricing-user': 'Company Pricing User',
     'offer-preparer': 'Company Offer Preparer',
     'contract-preparer': 'Company Contract Preparer',
+    'contract-early-preparation': 'Company Contract Early Preparation',
     'contract-approver': 'Company Contract Approver',
     'offer-approver': 'Company Offer Approver',
     'pricing-adjustment': 'Company Pricing Adjustment',

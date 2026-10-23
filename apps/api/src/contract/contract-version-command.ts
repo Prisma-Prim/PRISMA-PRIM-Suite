@@ -25,6 +25,7 @@ import {
 import { commandFingerprint } from '../command/idempotent-command.js';
 import {
   readCreateContractVersionCommand,
+  readPrepareContractVersionCommand,
   readAddendumCommand,
   readDirectVersionCommand,
   readPrecontractVersionCommand,
@@ -96,6 +97,23 @@ export async function createContractVersion(
           : { contractId: input.contractId }),
       });
       if (!found) throw new NotFoundException();
+      const early = found.contract.origin === 'OFFER_PREPARATION';
+      if (early) {
+        await dependencies.authorization.requireContractAccess(
+          actor,
+          ['commercial.contract.prepare_pending_offer'],
+          true,
+        );
+        await dependencies.authorization.requireOfferAccess(
+          actor,
+          ['commercial.offer.read'],
+          true,
+        );
+        await dependencies.clients.lockRecipientReadAuthority(actor);
+      }
+      const earlyCommand = early
+        ? readPrepareContractVersionCommand(input.payload)
+        : null;
       // Preserve command ordering: Opportunity, scoped key, Client fence, receipt, Contract.
       await dependencies.databaseContext.connection.execute(
         sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${key}`},0))`,
@@ -111,11 +129,13 @@ export async function createContractVersion(
               }
             : null;
       if (!selection) throw new Error('Invalid recorded Contract party.');
-      const recipient = await dependencies.clients.lockOfferRecipient(
-        actor,
-        found.contract.originalClientAccountId,
-        selection,
-      );
+      const lockRecipient = () =>
+        dependencies.clients.lockOfferRecipient(
+          actor,
+          found.contract.originalClientAccountId,
+          selection,
+        );
+      const legacyRecipient = early ? null : await lockRecipient();
       const selectedSnapshotId =
         found.contract.origin === 'DIRECT' || found.contract.kind === 'ADDENDUM'
           ? selectedAddendumSnapshotId(input.payload)
@@ -133,7 +153,7 @@ export async function createContractVersion(
         ...(input.contractId === undefined
           ? {}
           : { contractId: input.contractId }),
-        payload: input.payload,
+        payload: earlyCommand ?? input.payload,
       });
       const [receipt] = await dependencies.databaseContext.connection
         .select()
@@ -169,15 +189,43 @@ export async function createContractVersion(
         if (!stored) throw new Error('Missing recorded Contract Version.');
         return createdVersionResult(stored.contract, stored.version);
       }
-      const command = readVersionCommand(found, input.payload);
+      if (early)
+        await dependencies.clients.lockActiveReferenceClient(
+          actor,
+          found.contract.originalClientAccountId,
+        );
+      const recipient = legacyRecipient ?? (await lockRecipient());
+      const command = readVersionCommand(found, input.payload, earlyCommand);
+      const earlySource = earlyCommand
+        ? await dependencies.offers.resolvePreparationContractSource({
+            actor,
+            opportunityId: input.opportunityId,
+            offerVersionId: earlyCommand.sourceOfferVersionId,
+            lock: true,
+            allowAccepted: true,
+          })
+        : null;
       const source =
-        found.contract.origin !== 'ACCEPTED_OFFER'
+        earlySource ??
+        (found.contract.origin !== 'ACCEPTED_OFFER'
           ? null
           : await dependencies.offers.inspectContractQualitySource({
               actor,
               opportunityId: input.opportunityId,
               contractId: found.contract.id,
-            });
+            }));
+      if (
+        earlySource &&
+        (found.contract.sourceOfferId !== earlySource.offerId ||
+          found.contract.originalClientAccountId !==
+            earlySource.originalClientAccountId ||
+          found.version.recipientKind !== earlySource.recipient.kind ||
+          (earlySource.recipient.kind === 'ADDITIONAL' &&
+            found.version.recipientAdditionalLegalEntityId !==
+              earlySource.recipient.additionalLegalEntityId))
+      )
+        throw conflict('CONTRACT_SOURCE_PARTY_MISMATCH');
+      const copiedRecipient = earlySource?.recipient ?? recipient.recipient;
       await dependencies.databaseContext.connection
         .select({ id: contracts.id })
         .from(contracts)
@@ -229,14 +277,14 @@ export async function createContractVersion(
             ? source.pricingSnapshotId
             : command.pricingSnapshotId,
           recipientClientAccountId: recipient.currentClientAccountId,
-          recipientKind: recipient.recipient.kind,
+          recipientKind: copiedRecipient.kind,
           recipientAdditionalLegalEntityId:
-            recipient.recipient.kind === 'ADDITIONAL'
-              ? recipient.recipient.additionalLegalEntityId
+            copiedRecipient.kind === 'ADDITIONAL'
+              ? copiedRecipient.additionalLegalEntityId
               : null,
-          recipientLegalName: recipient.recipient.legalName,
-          recipientTaxId: recipient.recipient.taxId,
-          recipientLegalAddress: recipient.recipient.legalAddress,
+          recipientLegalName: copiedRecipient.legalName,
+          recipientTaxId: copiedRecipient.taxId,
+          recipientLegalAddress: copiedRecipient.legalAddress,
           issuingCompanyLabel: current.version.issuingCompanyLabel,
           scopeNote: source ? source.scopeNote : command.scopeNote,
           commercialConditions: source
@@ -253,6 +301,12 @@ export async function createContractVersion(
                 clauseVersions: ADDENDUM_CLAUSE_VERSIONS,
               }
             : agreementGenerationFields(command.generation)),
+          ...(earlyCommand
+            ? {
+                sourceOfferVersionId: earlyCommand.sourceOfferVersionId,
+                templateCode: 'CONTRACT_PREPARATION_ILLUSTRATIVE',
+              }
+            : {}),
           createdByInternalUserId: actor.internalUserId,
           createdByWorkspaceMembershipId: actor.workspaceMembershipId,
           createdAt,
@@ -289,7 +343,7 @@ export async function createContractVersion(
         contractVersionId: version.id,
         versionNumber: version.versionNumber,
         predecessorVersionNumber: current.version.versionNumber,
-        source: contractSource(current.contract),
+        source: contractSource(current.contract, version),
         pricingSnapshotId: version.pricingSnapshotId,
         occurredAt: createdAt,
       });
@@ -309,6 +363,7 @@ export async function createContractVersion(
 function readVersionCommand(
   found: { contract: ContractRow; version: VersionRow },
   payload: unknown,
+  earlyCommand: ReturnType<typeof readPrepareContractVersionCommand> | null,
 ) {
   const inherited = {
     changeSummary: null,
@@ -334,6 +389,12 @@ function readVersionCommand(
       } as const,
     };
   }
+  if (found.contract.origin === 'OFFER_PREPARATION' && earlyCommand)
+    return {
+      ...earlyCommand,
+      ...inherited,
+      generation: { kind: 'CONTRACT' } as const,
+    };
   if (found.contract.origin === 'DIRECT')
     return {
       ...readDirectVersionCommand(payload),

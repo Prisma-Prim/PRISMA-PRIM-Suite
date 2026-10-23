@@ -30,6 +30,7 @@ import type {
   COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
+  COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
   COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
   COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
@@ -191,10 +192,12 @@ export type CanonicalActivityEvent =
         | 'company_pricing_user_assignment.revoked'
         | 'company_offer_preparer_assignment.granted'
         | 'company_contract_preparer_assignment.granted'
+        | 'company_contract_early_preparation_assignment.granted'
         | 'company_contract_approver_assignment.granted'
         | 'company_offer_approver_assignment.granted'
         | 'company_offer_preparer_assignment.revoked'
         | 'company_contract_preparer_assignment.revoked'
+        | 'company_contract_early_preparation_assignment.revoked'
         | 'company_contract_approver_assignment.revoked'
         | 'company_offer_approver_assignment.revoked'
         | 'company_pricing_adjustment_assignment.granted'
@@ -251,6 +254,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
@@ -367,10 +371,12 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_user_assignment.revoked'
     | 'company_offer_preparer_assignment.granted'
     | 'company_contract_preparer_assignment.granted'
+    | 'company_contract_early_preparation_assignment.granted'
     | 'company_contract_approver_assignment.granted'
     | 'company_offer_approver_assignment.granted'
     | 'company_offer_preparer_assignment.revoked'
     | 'company_contract_preparer_assignment.revoked'
+    | 'company_contract_early_preparation_assignment.revoked'
     | 'company_contract_approver_assignment.revoked'
     | 'company_offer_approver_assignment.revoked'
     | 'company_pricing_adjustment_assignment.granted'
@@ -474,6 +480,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL

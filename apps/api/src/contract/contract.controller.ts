@@ -73,6 +73,19 @@ export class ContractController {
       idempotencyKey,
     });
   }
+  @Post('preparation') prepare(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.contracts.prepare({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post() create(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,

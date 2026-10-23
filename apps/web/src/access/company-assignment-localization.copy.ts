@@ -23,6 +23,8 @@ const keys = [
   'pricingUserPrerequisites',
   'offerPreparerBundle',
   'contractPreparerBundle',
+  'contractEarlyPreparationBundle',
+  'contractEarlyPreparationPrerequisites',
   'contractPreparerPrerequisites',
   'offerApproverBundle',
   'offerApproverPrerequisites',
@@ -58,6 +60,11 @@ const keys = [
 // unchanged administration validator and the component's exhaustive mapping.
 export const companyAssignmentMessages = defineMessages(keys, {
   ro: {
+    contractEarlyPreparationBundle:
+      'Pregătire anticipată a contractelor companiei',
+    contractEarlyPreparationPrerequisites:
+      'Permite schițe de Contract înainte de acceptarea Ofertei. Contextul Companiei, pregătirea Contractului și citirea Clientului Companiei, Ofertei și Oportunității rămân necesare separat. Nu acordă aprobare sau semnare.',
+
     eyebrow: 'Acces',
     title: 'Acces la companie',
     description:
@@ -129,6 +136,10 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'Starea accesului nu a putut fi încărcată sau modificată.',
   },
   ru: {
+    contractEarlyPreparationBundle: 'Ранняя подготовка договоров компании',
+    contractEarlyPreparationPrerequisites:
+      'Разрешает черновики договора до принятия предложения. Контекст компании, подготовка договора и чтение клиента компании, предложения и возможности требуются отдельно. Не даёт права одобрения или подписи.',
+
     eyebrow: 'Доступ',
     title: 'Доступ к компании',
     description:
@@ -196,6 +207,11 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'Не удалось загрузить или изменить состояние доступа.',
   },
   fr: {
+    contractEarlyPreparationBundle:
+      'Préparation anticipée des contrats de la société',
+    contractEarlyPreparationPrerequisites:
+      'Autorise les brouillons avant acceptation de l’offre. Le contexte société, la préparation du contrat et la lecture du client de la société, de l’offre et de l’opportunité restent requis séparément. N’accorde aucun droit d’approbation ou de signature.',
+
     eyebrow: 'Accès',
     title: 'Accès à la société',
     description:
@@ -266,6 +282,10 @@ export const companyAssignmentMessages = defineMessages(keys, {
     error: 'L’état des accès n’a pas pu être chargé ou modifié.',
   },
   en: {
+    contractEarlyPreparationBundle: 'Company Contract Early Preparation',
+    contractEarlyPreparationPrerequisites:
+      'Allows Contract drafts before Offer acceptance. Company context, Contract preparation, Company Client read and Offer/Opportunity read remain separately required. Grants no approval or signature rights.',
+
     eyebrow: 'Access',
     title: 'Company access',
     description:

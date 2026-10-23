@@ -517,6 +517,10 @@ describe('App', () => {
         'granted Company Contract Approver',
       'company_contract_approver_assignment.revoked':
         'revoked Company Contract Approver',
+      'company_contract_early_preparation_assignment.granted':
+        'granted Company Contract Early Preparation',
+      'company_contract_early_preparation_assignment.revoked':
+        'revoked Company Contract Early Preparation',
       'company_opportunity_manager_assignment.granted':
         'granted Company Opportunity Manager',
       'company_opportunity_manager_assignment.revoked':

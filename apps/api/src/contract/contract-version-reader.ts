@@ -289,7 +289,7 @@ export class ContractVersionReader {
   }
 
   async view(actor: ActorContext, contract: ContractRow, version: VersionRow) {
-    const source = contractSource(contract);
+    const source = contractSource(contract, version);
     if (
       !Number.isInteger(contract.revision) ||
       contract.revision < 1 ||
@@ -366,8 +366,10 @@ export class ContractVersionReader {
     // Approval and signature runs use the rule set bound to the immutable
     // Snapshot. Only an older run recorded before rule set v2 existed may name
     // version 1 on a version bound to version 2; nothing else is readable.
-    const qualityRuleSetVersion =
-      contractQualityRuleSetVersion(pricingSnapshot);
+    const qualityRuleSetVersion = contractQualityRuleSetVersion(
+      pricingSnapshot,
+      contract.origin,
+    );
     const latestQualityRun = latestRun
       ? qualityRunView(latestRun, version, contract)
       : null;
@@ -385,11 +387,12 @@ export class ContractVersionReader {
         'A stored Contract run does not match its bound rule set.',
       );
     const sourceOffer =
-      source.kind !== 'ACCEPTED_OFFER'
+      source.kind !== 'ACCEPTED_OFFER' && source.kind !== 'OFFER_PREPARATION'
         ? null
         : await this.offers.readContractSourceReference({
             actor,
             contractId: contract.id,
+            contractVersionId: version.id,
             opportunityId: contract.opportunityId,
           });
     const parent =
@@ -493,6 +496,9 @@ export class ContractVersionReader {
       ),
       ...(clientReference ? { clientReference } : {}),
       version: {
+        ...(contract.origin === 'OFFER_PREPARATION'
+          ? { sourceOfferVersionId: version.sourceOfferVersionId }
+          : {}),
         id: version.id,
         qualityRuleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE' as const,
         qualityRuleSetVersion,

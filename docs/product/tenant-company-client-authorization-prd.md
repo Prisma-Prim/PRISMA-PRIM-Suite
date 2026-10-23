@@ -440,8 +440,10 @@ Workspace ownership or migration acquires it; absent/null/unknown captured
 versions fail closed. No real person is assigned by this contract.
 
 Creating or revising the `OFFER_PREPARATION` origin additionally requires ordinary
-captured Contract preparation and exact source Offer/Opportunity read authority
-in the same active Company. The extra grant supplies none of those prerequisites
+captured Contract preparation, exact source Offer/Opportunity read and the
+existing Company Client identity-read authority in the same active Company.
+This retains the Client recipient-copy boundary; it grants no Client read
+through Contract rights. The extra grant supplies none of those prerequisites
 and no Client, pricing, approval, signature, Project, Activity, administration or
 cross-Company permission. Reads of the resulting Contracts and exact historical
 Versions use ordinary Contract/Opportunity read authority, without gaining Offer
@@ -456,7 +458,7 @@ its permitted history. Assignment events are exactly
 `company_contract_early_preparation_assignment.revoked`, with existing
 administration visibility, bundle-label-only metadata and one event per actual
 state change. The #821 delegated product disposition approves this bounded
-contract; runtime delivery remains separate.
+contract; runtime delivery is tracked in #823.
 
 ## 9. Lifecycle and accountability
 

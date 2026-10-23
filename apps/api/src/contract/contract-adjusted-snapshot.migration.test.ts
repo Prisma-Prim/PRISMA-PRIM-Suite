@@ -137,15 +137,22 @@ it.skipIf(!databaseUrl)(
             async (table) =>
               (
                 await query(
-                  `SELECT to_jsonb(row_value) AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
+                  `SELECT to_jsonb(row_value)${table === 'contract_versions' ? "-'source_offer_version_id'" : ''} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
                 )
               ).rows,
           ),
         );
       const before = await evidence();
       await migrate(connection, { migrationsFolder: resolve('drizzle') });
-      // No backfill, recheck or rewrite: every delivered row is byte-identical.
+      // Every pre-existing field is byte-identical; the additive source column stays NULL on legacy Versions.
       expect(await evidence()).toEqual(before);
+      expect(
+        (
+          await query(
+            'SELECT id FROM contract_versions WHERE source_offer_version_id IS NOT NULL',
+          )
+        ).rowCount,
+      ).toBe(0);
       expect(
         (
           await query(

@@ -512,6 +512,20 @@
       "when": 1792599900000,
       "tag": "0072_company_operational_risks",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1792777221574,
+      "tag": "0073_contract_early_preparation",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792777411479,
+      "tag": "0074_contract_preparation_quality",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import type { contracts } from '../database/schema/index.js';
+import type { contracts, contractVersions } from '../database/schema/index.js';
 export type ContractEventSource =
   | { kind: 'DIRECT' }
   | {
@@ -6,9 +6,15 @@ export type ContractEventSource =
       contractKind: 'CONTRACT' | 'PRECONTRACT';
       offerVersionId: string;
     }
+  | {
+      kind: 'OFFER_PREPARATION';
+      contractKind: 'CONTRACT';
+      offerVersionId: string;
+    }
   | { kind: 'ADDENDUM'; parentContractId: string; addendumOrdinal: number };
 export function contractSource(
   contract: typeof contracts.$inferSelect,
+  version?: typeof contractVersions.$inferSelect,
 ): ContractEventSource {
   if (
     (contract.kind === 'CONTRACT' || contract.kind === 'PRECONTRACT') &&
@@ -26,17 +32,27 @@ export function contractSource(
     )
       return { kind: 'DIRECT' };
     if (
-      contract.origin === 'ACCEPTED_OFFER' &&
+      (contract.origin === 'ACCEPTED_OFFER' ||
+        (contract.kind === 'CONTRACT' &&
+          contract.origin === 'OFFER_PREPARATION' &&
+          version?.sourceOfferVersionId)) &&
       contract.sourceOfferId &&
       contract.sourceOfferVersionId &&
       contract.directReason === null &&
       (contract.kind === 'CONTRACT' || contract.precontractId === null)
     )
-      return {
-        kind: 'ACCEPTED_OFFER',
-        contractKind: contract.kind,
-        offerVersionId: contract.sourceOfferVersionId,
-      };
+      return contract.origin === 'OFFER_PREPARATION' &&
+        version?.sourceOfferVersionId
+        ? {
+            kind: 'OFFER_PREPARATION',
+            contractKind: 'CONTRACT',
+            offerVersionId: version.sourceOfferVersionId,
+          }
+        : {
+            kind: 'ACCEPTED_OFFER',
+            contractKind: contract.kind,
+            offerVersionId: contract.sourceOfferVersionId,
+          };
   }
   if (
     contract.kind === 'ADDENDUM' &&

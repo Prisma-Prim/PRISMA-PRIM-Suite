@@ -70,10 +70,12 @@ import {
   COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_OFFER_PREPARER_BUNDLE,
   COMPANY_CONTRACT_PREPARER_BUNDLE,
+  COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
   COMPANY_CONTRACT_APPROVER_BUNDLE,
   COMPANY_OFFER_APPROVER_BUNDLE,
   COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
+  COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
   COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
   COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
@@ -135,6 +137,7 @@ type BundleDefinition = {
     | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
     | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
     | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
+    | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
     | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
@@ -268,6 +271,11 @@ const CONTRACT_PREPARER_BUNDLE: BundleDefinition = {
   label: COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
+const CONTRACT_EARLY_PREPARATION_BUNDLE: BundleDefinition = {
+  value: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
+  label: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
 const CONTRACT_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_APPROVER_BUNDLE,
   label: COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
@@ -354,6 +362,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_PRICING_USER_BUNDLE,
   COMPANY_OFFER_PREPARER_BUNDLE,
   COMPANY_CONTRACT_PREPARER_BUNDLE,
+  COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
   COMPANY_CONTRACT_APPROVER_BUNDLE,
   COMPANY_OFFER_APPROVER_BUNDLE,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
@@ -709,6 +718,41 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       CONTRACT_PREPARER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+
+  async grantContractEarlyPreparation(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CONTRACT_EARLY_PREPARATION_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeContractEarlyPreparation({
+    actor,
+    workspaceMembershipId,
+    companyId,
+    idempotencyKey,
+  }: {
+    actor: ActorContext;
+    workspaceMembershipId: unknown;
+    companyId: unknown;
+    idempotencyKey: string | undefined;
+  }): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CONTRACT_EARLY_PREPARATION_BUNDLE,
       'revoke',
       workspaceMembershipId,
       companyId,
@@ -1839,6 +1883,10 @@ function assignmentAction(
       return granted
         ? 'company_contract_preparer_assignment.granted'
         : 'company_contract_preparer_assignment.revoked';
+    case COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE:
+      return granted
+        ? 'company_contract_early_preparation_assignment.granted'
+        : 'company_contract_early_preparation_assignment.revoked';
     case COMPANY_CONTRACT_APPROVER_BUNDLE:
       return granted
         ? 'company_contract_approver_assignment.granted'
@@ -2090,6 +2138,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Contract Early Preparation version.');
+      return {
+        ...base,
+        bundle: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_CONTRACT_APPROVER_BUNDLE:

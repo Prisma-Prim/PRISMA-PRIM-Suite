@@ -11,6 +11,48 @@ import {
   contractQualityCodes,
   type ContractQualityInput,
 } from './contract-quality.js';
+
+describe('Contract preparation Quality Checks v3', () => {
+  it.each([
+    { name: 'unadjusted', input: () => valid },
+    { name: 'adjusted', input: () => adjustedValid },
+  ])(
+    'checks the full $name trace and exact acceptance without changing stored prices',
+    ({ input }) => {
+      const original = input();
+      const before = structuredClone(original.snapshot);
+      const prepared = {
+        ...original,
+        ruleSetVersion: 3,
+        source: { ...valid.source, kind: 'OFFER_PREPARATION', accepted: false },
+      } satisfies ContractQualityInput;
+      expect(
+        contractQualityRuleSetVersion(original.snapshot, 'OFFER_PREPARATION'),
+      ).toBe(3);
+      expect(evaluateContractQuality(prepared)).toEqual(
+        expect.arrayContaining([
+          { code: 'PRICE_MATCHES_SOURCE_OFFER', status: 'PASS' },
+          { code: 'CONDITIONS_MATCH_SOURCE_OFFER', status: 'PASS' },
+          { code: 'PRICING_SNAPSHOT_COHERENT', status: 'PASS' },
+          { code: 'SOURCE_OFFER_ACCEPTED', status: 'ERROR' },
+        ]),
+      );
+      expect(
+        evaluateContractQuality({
+          ...prepared,
+          source: { ...prepared.source, accepted: true },
+        }),
+      ).toContainEqual({ code: 'SOURCE_OFFER_ACCEPTED', status: 'PASS' });
+      expect(
+        evaluateContractQuality({
+          ...prepared,
+          snapshot: { ...original.snapshot, total: '0.00' },
+        }),
+      ).toContainEqual({ code: 'PRICING_SNAPSHOT_COHERENT', status: 'ERROR' });
+      expect(original.snapshot).toEqual(before);
+    },
+  );
+});
 const CALCULATED_BY = 'membership-calculator';
 const CALCULATED_AT = '2026-10-07T11:00:00.000Z';
 const identity = {

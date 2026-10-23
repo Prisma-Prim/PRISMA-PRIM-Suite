@@ -40,6 +40,9 @@ const keys = [
   'PARTY_IDENTITY_MATCHES_SOURCE',
   'PARTY_IDENTITY_CURRENT',
   'PARTY_TAX_ID_RECORDED',
+  'PRICE_MATCHES_SOURCE_OFFER',
+  'CONDITIONS_MATCH_SOURCE_OFFER',
+  'SOURCE_OFFER_ACCEPTED',
   'PRICE_MATCHES_ACCEPTED_OFFER',
   'PRICING_SNAPSHOT_COHERENT',
   'CONDITIONS_MATCH_ACCEPTED_OFFER',
@@ -49,6 +52,10 @@ const keys = [
 ] as const;
 export const contractSignatureMessages = defineMessages(keys, {
   en: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Price matches the source Offer',
+    CONDITIONS_MATCH_SOURCE_OFFER: 'Conditions match the source Offer',
+    SOURCE_OFFER_ACCEPTED: 'The exact source Offer Version is accepted',
+
     DIRECT_ORIGIN_REVIEWED: 'Direct origin requires review',
     PARENT_EXECUTED: 'Parent agreement is executed',
     CURRENCY_MATCHES_PARENT: 'Currency matches the parent',
@@ -102,6 +109,10 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Illustrative markers are present',
   },
   ro: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Prețul corespunde Ofertei sursă',
+    CONDITIONS_MATCH_SOURCE_OFFER: 'Condițiile corespund Ofertei sursă',
+    SOURCE_OFFER_ACCEPTED: 'Versiunea exactă a Ofertei sursă este acceptată',
+
     DIRECT_ORIGIN_REVIEWED: 'Originea directă necesită verificare',
     PARENT_EXECUTED: 'Acordul părinte este executat',
     CURRENCY_MATCHES_PARENT: 'Moneda corespunde acordului părinte',
@@ -159,6 +170,11 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Marcajele ilustrative sunt prezente',
   },
   fr: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Le prix correspond à l’offre source',
+    CONDITIONS_MATCH_SOURCE_OFFER:
+      'Les conditions correspondent à l’offre source',
+    SOURCE_OFFER_ACCEPTED: 'La version exacte de l’offre source est acceptée',
+
     DIRECT_ORIGIN_REVIEWED: 'L’origine directe doit être examinée',
     PARENT_EXECUTED: 'L’accord parent est exécuté',
     CURRENCY_MATCHES_PARENT: 'La devise correspond à celle du parent',
@@ -216,6 +232,11 @@ export const contractSignatureMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Les mentions illustratives sont présentes',
   },
   ru: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Цена соответствует исходному предложению',
+    CONDITIONS_MATCH_SOURCE_OFFER:
+      'Условия соответствуют исходному предложению',
+    SOURCE_OFFER_ACCEPTED: 'Точная версия исходного предложения принята',
+
     DIRECT_ORIGIN_REVIEWED: 'Прямое происхождение требует проверки',
     PARENT_EXECUTED: 'Родительское соглашение исполнено',
     CURRENCY_MATCHES_PARENT: 'Валюта соответствует родительскому соглашению',

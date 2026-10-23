@@ -55,6 +55,553 @@ function SignatureLocaleChoices() {
   );
 }
 describe('ContractPanel', () => {
+  it.each([
+    'OFFER_NOT_PREPARABLE',
+    'OPPORTUNITY_NOT_OPEN',
+    'CONTRACT_SOURCE_PARTY_MISMATCH',
+  ])(
+    'retires a refused early source after %s and permits explicit replacement with a fresh key',
+    async (code) => {
+      const stored = {
+        ...fixture(),
+        origin: 'OFFER_PREPARATION',
+        sourceOfferVersionId: 'pending-version',
+        sourceOffer: {
+          illustrativeReference: 7,
+          versionNumber: 2,
+          eligibility: {
+            current: true,
+            response: 'PENDING',
+            pendingValidityElapsed: false,
+          },
+        },
+        version: {
+          ...fixture().version,
+          sourceOfferVersionId: 'pending-version',
+          qualityRuleSetVersion: 3,
+        },
+      };
+      const posts: { body: unknown; key: string | null }[] = [];
+      let sourceReads = 0;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const path = String(input);
+        if (path.endsWith('/versions') && init?.method === 'POST') {
+          posts.push({
+            body: JSON.parse(String(init.body)),
+            key: new Headers(init.headers).get('idempotency-key'),
+          });
+          return posts.length === 1
+            ? response({ code }, 409)
+            : response({}, 503);
+        }
+        if (path.includes('/offers/'))
+          return ++sourceReads === 1
+            ? pendingOfferResponse()
+            : pendingOfferResponse({ id: 'next-source', versionNumber: 3 });
+        if (path.endsWith('/versions'))
+          return response({ items: [], nextCursor: null });
+        return response({ contract: stored });
+      });
+      renderWithEnglishLocale(
+        <ContractPanel
+          actor={earlyActor()}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      const select = await screen.findByRole('combobox', {
+        name: 'Source Offer',
+      });
+      await waitFor(() => expect(select).toBeEnabled());
+      fireEvent.change(select, { target: { value: 'pending-version' } });
+      const literal = '  Preserved source recovery — șț  ';
+      fireEvent.change(
+        screen.getByRole('textbox', { name: 'Revised special conditions' }),
+        { target: { value: literal } },
+      );
+      const save = screen.getByRole('button', {
+        name: 'Create new Contract Version',
+      });
+      fireEvent.click(save);
+      expect(
+        await screen.findByText(
+          'This source is unavailable for a new preparation. Reload and select an eligible same-party Offer Version.',
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText('This retry key belongs to another command.'),
+      ).not.toBeInTheDocument();
+      expect(save).toBeDisabled();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Reload available source' }),
+      );
+      await screen.findByRole('option', {
+        name: 'Offer 7 · Version 3 · Awaiting Client response',
+      });
+      fireEvent.change(select, { target: { value: 'next-source' } });
+      expect(save).toBeEnabled();
+      fireEvent.click(save);
+      await waitFor(() => expect(posts).toHaveLength(2));
+      expect(posts[1]?.body).toMatchObject({
+        sourceOfferVersionId: 'next-source',
+        expectedContractRevision: 1,
+        specialConditions: literal,
+      });
+      expect(posts[1]?.key).not.toBe(posts[0]?.key);
+    },
+  );
+  it.each(['STALE_CONTRACT_REVISION', 'CONTRACT_VERSION_SUPERSEDED'])(
+    'keeps %s blocked until full Contract reload despite source reload and reselection',
+    async (code) => {
+      const stored = {
+        ...fixture(),
+        origin: 'OFFER_PREPARATION',
+        sourceOfferVersionId: 'pending-version',
+        sourceOffer: {
+          illustrativeReference: 7,
+          versionNumber: 2,
+          eligibility: {
+            current: true,
+            response: 'PENDING',
+            pendingValidityElapsed: false,
+          },
+        },
+        version: {
+          ...fixture().version,
+          sourceOfferVersionId: 'pending-version',
+          qualityRuleSetVersion: 3,
+        },
+      };
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) =>
+        String(input).endsWith('/versions') && init?.method === 'POST'
+          ? response({ code }, 409)
+          : String(input).includes('/offers/')
+            ? pendingOfferResponse()
+            : String(input).endsWith('/versions')
+              ? response({ items: [], nextCursor: null })
+              : response({ contract: stored }),
+      );
+      renderWithEnglishLocale(
+        <ContractPanel
+          actor={earlyActor()}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      const select = await screen.findByRole('combobox', {
+        name: 'Source Offer',
+      });
+      await waitFor(() => expect(select).toBeEnabled());
+      fireEvent.change(select, { target: { value: 'pending-version' } });
+      const save = screen.getByRole('button', {
+        name: 'Create new Contract Version',
+      });
+      fireEvent.click(save);
+      expect(
+        await screen.findByText(
+          'The Contract changed. Reload it before revising.',
+        ),
+      ).toBeVisible();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Reload available source' }),
+      );
+      await waitFor(() => expect(select).toBeEnabled());
+      fireEvent.change(select, { target: { value: 'pending-version' } });
+      expect(save).toBeDisabled();
+      expect(
+        screen.getByText('The Contract changed. Reload it before revising.'),
+      ).toBeVisible();
+    },
+  );
+  it('opens an exact superseded preparation Version without loading an unused Offer selection', async () => {
+    const stored = {
+      ...fixture(),
+      origin: 'OFFER_PREPARATION',
+      sourceOfferVersionId: 'pending-version',
+      revision: 2,
+      sourceOffer: {
+        illustrativeReference: 7,
+        versionNumber: 2,
+        eligibility: {
+          current: false,
+          response: 'PENDING',
+          pendingValidityElapsed: false,
+        },
+      },
+      version: {
+        ...fixture().version,
+        sourceOfferVersionId: 'pending-version',
+        qualityRuleSetVersion: 3,
+        supersededByVersionId: 'version-two',
+      },
+    };
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input) =>
+        String(input).includes('/offers/')
+          ? pendingOfferResponse()
+          : String(input).endsWith('/versions')
+            ? response({ items: [], nextCursor: null })
+            : response({ contract: stored }),
+      );
+    renderWithEnglishLocale(
+      <ContractPanel
+        actor={earlyActor()}
+        identity={identity}
+        opportunityId="opportunity-one"
+        requestedVersion={{
+          contractId: stored.id,
+          contractVersionId: stored.version.id,
+          kind: 'CONTRACT',
+        }}
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    expect(await screen.findByText(/Synthetic recorded party/u)).toBeVisible();
+    expect(
+      screen.queryByRole('region', {
+        name: 'Revise Contract before signature',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.filter(([input]) =>
+        String(input).includes('/offers/'),
+      ),
+    ).toHaveLength(0);
+  });
+  it('keeps a confirmed early revision distinct from a subsequent failed Contract refresh', async () => {
+    const stored = {
+      ...fixture(),
+      origin: 'OFFER_PREPARATION',
+      sourceOfferVersionId: 'pending-version',
+      sourceOffer: {
+        illustrativeReference: 7,
+        versionNumber: 2,
+        eligibility: {
+          current: true,
+          response: 'PENDING',
+          pendingValidityElapsed: false,
+        },
+      },
+      version: {
+        ...fixture().version,
+        sourceOfferVersionId: 'pending-version',
+        qualityRuleSetVersion: 3,
+      },
+    };
+    let committed = false;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = String(input);
+      if (path.endsWith('/versions') && init?.method === 'POST') {
+        committed = true;
+        return response(
+          {
+            contractId: stored.id,
+            contractVersionId: 'version-two',
+            versionNumber: 2,
+            revision: 2,
+            provisional: true,
+          },
+          201,
+        );
+      }
+      if (path.includes('/offers/')) return pendingOfferResponse();
+      if (path.endsWith('/versions'))
+        return response({ items: [], nextCursor: null });
+      return committed ? response({}, 503) : response({ contract: stored });
+    });
+    renderWithEnglishLocale(
+      <ContractPanel
+        actor={earlyActor()}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    const select = await screen.findByRole('combobox', {
+      name: 'Source Offer',
+    });
+    await waitFor(() =>
+      expect(
+        within(select).getByRole('option', { name: /Offer 7.*Version 2/u }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.change(select, { target: { value: 'pending-version' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create new Contract Version' }),
+    );
+    expect(
+      await screen.findByText(
+        resolveMessage(contractVersionMessages, 'en', 'success'),
+      ),
+    ).toBeVisible();
+    expect(
+      await screen.findByText(resolveMessage(contractMessages, 'en', 'error')),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(
+        resolveMessage(contractVersionMessages, 'en', 'uncertain'),
+      ),
+    ).not.toBeInTheDocument();
+  });
+  it('preserves the exact pending-source command and key across uncertainty and a locale change, then retires it on early-grant loss', async () => {
+    window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+    const posts: { body: string; key: string | null }[] = [];
+    const fetcher = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        if (String(input).endsWith('/preparation') && init?.method === 'POST') {
+          if (typeof init.body !== 'string')
+            throw new Error('Expected literal command body');
+          posts.push({
+            body: init.body,
+            key: new Headers(init.headers).get('idempotency-key'),
+          });
+          return response({ code: 'CONTRACT_CREATION_UNCERTAIN' }, 500);
+        }
+        return String(input).includes('/offers/')
+          ? pendingOfferResponse()
+          : response({ contract: null, precontract: null });
+      });
+    const renderPanel = (member: ActorContext) => (
+      <InterfaceLocaleProvider>
+        <SignatureLocaleChoices />
+        <ContractPanel
+          actor={member}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>
+    );
+    const { rerender } = render(renderPanel(earlyActor()));
+    fireEvent.change(await screen.findByLabelText('Special conditions'), {
+      target: { value: '  Literal pending draft — șț  ' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Prepare Contract before acceptance',
+      }),
+    );
+    await screen.findByRole('button', {
+      name: resolveMessage(contractMessages, 'en', 'retry'),
+    });
+    const reads = fetcher.mock.calls.filter(
+      ([, init]) => init?.method !== 'POST',
+    ).length;
+    fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: resolveMessage(contractMessages, 'fr', 'retry'),
+      }),
+    );
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[1]).toEqual(posts[0]);
+    expect(posts[0]?.key).toBeTruthy();
+    expect(
+      fetcher.mock.calls.filter(([, init]) => init?.method !== 'POST'),
+    ).toHaveLength(reads);
+    const command: unknown = JSON.parse(posts[0]?.body ?? 'null');
+    expect(command).toEqual({
+      sourceOfferVersionId: 'pending-version',
+      termStartsOn: null,
+      termEndsOn: null,
+      specialConditions: '  Literal pending draft — șț  ',
+    });
+    rerender(renderPanel(actor(true)));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: resolveMessage(contractMessages, 'fr', 'retry'),
+        }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByDisplayValue('  Literal pending draft — șț  '),
+    ).not.toBeInTheDocument();
+  });
+  it.each(['revoked', 'replaced', 'client revoked'] as const)(
+    'retires an early draft and its late success when its captured grant is %s',
+    async (change) => {
+      window.localStorage.setItem(interfaceLocaleStorageKey, 'en');
+      let finish: (value: Response) => void = () => {
+        throw new Error('No pending creation');
+      };
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        if (String(input).endsWith('/preparation') && init?.method === 'POST')
+          return new Promise<Response>((resolve) => {
+            finish = resolve;
+          });
+        return String(input).includes('/offers/')
+          ? pendingOfferResponse()
+          : response({ contract: null, precontract: null });
+      });
+      const member = earlyActor();
+      const { rerender } = renderWithEnglishLocale(
+        <ContractPanel
+          actor={member}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      fireEvent.change(await screen.findByLabelText('Special conditions'), {
+        target: { value: 'Retired early literal' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Prepare Contract before acceptance',
+        }),
+      );
+      await screen.findByRole('button', {
+        name: resolveMessage(contractMessages, 'en', 'running'),
+      });
+      const company = member.activeCompany;
+      if (!company) throw new Error('Missing Company');
+      const next: ActorContext =
+        change === 'revoked'
+          ? actor(true)
+          : change === 'client revoked'
+            ? {
+                ...member,
+                activeCompany: {
+                  ...company,
+                  clientPermissions: [],
+                  clientPermissionAssignmentId: undefined,
+                  clientPermissionSetVersion: undefined,
+                },
+              }
+            : {
+                ...member,
+                activeCompany: {
+                  ...company,
+                  contractEarlyPreparationAssignmentId: 'replacement-grant',
+                },
+              };
+      rerender(
+        <ContractPanel
+          actor={next}
+          identity={identity}
+          opportunityId="opportunity-one"
+          onCompanyContextRejected={() => undefined}
+        />,
+      );
+      await act(async () => {
+        finish(
+          response({
+            ...fixture(),
+            origin: 'OFFER_PREPARATION',
+            sourceOfferVersionId: 'pending-version',
+            sourceOffer: {
+              illustrativeReference: 7,
+              versionNumber: 2,
+              eligibility: {
+                current: true,
+                response: 'PENDING',
+                pendingValidityElapsed: false,
+              },
+            },
+            version: {
+              ...fixture().version,
+              sourceOfferVersionId: 'pending-version',
+              qualityRuleSetVersion: 3,
+            },
+          }),
+        );
+      });
+      await waitFor(() =>
+        expect(
+          screen.queryByDisplayValue('Retired early literal'),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByText('Synthetic recorded party'),
+      ).not.toBeInTheDocument();
+      if (change === 'replaced')
+        expect(await screen.findByLabelText('Special conditions')).toHaveValue(
+          '',
+        );
+      else
+        expect(
+          screen.queryByRole('button', {
+            name: 'Prepare Contract before acceptance',
+          }),
+        ).not.toBeInTheDocument();
+    },
+  );
+  it('offers a complete pending-Offer preparation form only under the additional captured grant', async () => {
+    const baseActor = actor(true);
+    const earlyActor = {
+      ...baseActor,
+      activeCompany: {
+        ...baseActor.activeCompany,
+        id: 'company-one',
+        displayName: 'Company',
+        contractPermissions: [
+          ...(baseActor.activeCompany?.contractPermissions ?? []),
+          'commercial.contract.prepare_pending_offer' as const,
+        ],
+        offerPermissionAssignmentId: 'offer-assignment',
+        offerPermissionSetVersion: 'v1' as const,
+        clientPermissionAssignmentId: 'client-grant',
+        clientPermissionSetVersion: 'v1' as const,
+        contractEarlyPreparationAssignmentId: 'early-assignment',
+        contractEarlyPreparationPermissionSetVersion: 'v1' as const,
+      },
+    };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      async (url: string | URL | Request) =>
+        String(url).includes('/offers/')
+          ? response({
+              offer: {
+                illustrativeReference: 7,
+                version: {
+                  id: 'pending-version',
+                  versionNumber: 2,
+                  decisionState: 'APPROVED',
+                  transmissionState: 'TRANSMITTED',
+                  clientResponseState: 'PENDING',
+                  validityElapsed: false,
+                  supersededByVersionId: null,
+                  provenance: 'ILLUSTRATIVE',
+                  provisional: true,
+                },
+              },
+            })
+          : response({ contract: null, precontract: null }),
+    );
+    const { rerender } = renderWithEnglishLocale(
+      <ContractPanel
+        actor={baseActor}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    await screen.findByText(copyEmpty);
+    expect(
+      screen.queryByRole('button', {
+        name: 'Prepare Contract before acceptance',
+      }),
+    ).not.toBeInTheDocument();
+    rerender(
+      <ContractPanel
+        actor={earlyActor}
+        identity={identity}
+        opportunityId="opportunity-one"
+        onCompanyContextRejected={() => undefined}
+      />,
+    );
+    expect(
+      await screen.findByRole('button', {
+        name: 'Prepare Contract before acceptance',
+      }),
+    ).toBeEnabled();
+    expect(screen.getByText(/Offer 7.*Version 2/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Special conditions')).toBeInTheDocument();
+  });
   it.each(contractRecordedLocales)(
     'localizes recorded history values without changing exact historical navigation in $locale',
     async (expected) => {
@@ -5005,6 +5552,50 @@ function adjustedFixture() {
       },
     },
   };
+}
+function earlyActor(): ActorContext {
+  const member = actor(true),
+    company = member.activeCompany;
+  if (!company) throw new Error('Missing Company');
+  return {
+    ...member,
+    activeCompany: {
+      ...company,
+      contractPermissions: [
+        ...(company.contractPermissions ?? []),
+        'commercial.contract.prepare_pending_offer',
+      ],
+      offerPermissionAssignmentId: 'offer-grant',
+      offerPermissionSetVersion: 'v1',
+      clientPermissionAssignmentId: 'client-grant',
+      clientPermissionSetVersion: 'v1',
+      contractEarlyPreparationAssignmentId: 'early-grant',
+      contractEarlyPreparationPermissionSetVersion: 'v1',
+    },
+  };
+}
+function pendingOfferResponse(
+  source: { id: string; versionNumber: number } = {
+    id: 'pending-version',
+    versionNumber: 2,
+  },
+) {
+  return response({
+    offer: {
+      illustrativeReference: 7,
+      version: {
+        id: source.id,
+        versionNumber: source.versionNumber,
+        decisionState: 'APPROVED',
+        transmissionState: 'TRANSMITTED',
+        clientResponseState: 'PENDING',
+        validityElapsed: false,
+        supersededByVersionId: null,
+        provenance: 'ILLUSTRATIVE',
+        provisional: true,
+      },
+    },
+  });
 }
 function actor(prepare: boolean): ActorContext {
   return {

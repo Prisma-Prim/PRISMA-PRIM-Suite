@@ -1,4 +1,9 @@
 import {
+  COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
+  COMPANY_CONTRACT_EARLY_PREPARATION_V1_PERMISSIONS,
+  contractEarlyPreparationPermissionsFor,
+} from './company-permissions.js';
+import {
   COMPANY_IDEAS_READER_BUNDLE,
   COMPANY_IDEAS_RECORDER_BUNDLE,
   COMPANY_IDEAS_REVIEWER_BUNDLE,
@@ -999,6 +1004,14 @@ export class CompanyContextAuthorization {
       )
     )
       grants.push(capturedGrant(COMPANY_CONTRACT_APPROVER_BUNDLE));
+    if (
+      required.every((p) =>
+        COMPANY_CONTRACT_EARLY_PREPARATION_V1_PERMISSIONS.some(
+          (own) => own === p,
+        ),
+      )
+    )
+      grants.push(capturedGrant(COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE));
     if (!grants.length) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
@@ -1354,6 +1367,7 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_USER_BUNDLE,
         COMPANY_OFFER_PREPARER_BUNDLE,
         COMPANY_CONTRACT_PREPARER_BUNDLE,
+        COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
         COMPANY_CONTRACT_APPROVER_BUNDLE,
         COMPANY_OFFER_APPROVER_BUNDLE,
         COMPANY_PRICING_ADJUSTMENT_BUNDLE,
@@ -1701,6 +1715,17 @@ export class CompanyContextAuthorization {
         company.contractPermissionSetVersion = 'v1';
       }
       if (
+        row.bundle === COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.contractPermissions = [
+          ...(company.contractPermissions ?? []),
+          ...contractEarlyPreparationPermissionsFor(row.permissionSetVersion),
+        ];
+        company.contractEarlyPreparationAssignmentId = row.assignmentId;
+        company.contractEarlyPreparationPermissionSetVersion = 'v1';
+      }
+      if (
         row.bundle === COMPANY_CONTRACT_APPROVER_BUNDLE &&
         row.permissionSetVersion === 'v1'
       ) {
@@ -1752,6 +1777,7 @@ function capturedGrant(
     | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE
     | typeof COMPANY_OFFER_PREPARER_BUNDLE
     | typeof COMPANY_CONTRACT_PREPARER_BUNDLE
+    | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE
     | typeof COMPANY_CONTRACT_APPROVER_BUNDLE
     | typeof COMPANY_OFFER_APPROVER_BUNDLE
     | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE

@@ -62,11 +62,14 @@ export interface ActorContext {
     pricingUserPermissionSetVersion?: 'v1';
     contractPermissions?: Array<
       | 'commercial.contract.read'
+      | 'commercial.contract.prepare_pending_offer'
       | 'commercial.contract.prepare'
       | 'commercial.contract.project.link'
       | 'commercial.contract.approve'
       | 'commercial.contract.signature.record'
     >;
+    contractEarlyPreparationAssignmentId?: string;
+    contractEarlyPreparationPermissionSetVersion?: 'v1';
     contractPermissionAssignmentId?: string;
     contractPermissionSetVersion?: 'v1';
     contractApproverAssignmentId?: string;

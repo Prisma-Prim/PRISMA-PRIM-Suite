@@ -36,6 +36,9 @@ const keys = [
   'PARTY_IDENTITY_MATCHES_SOURCE',
   'PARTY_IDENTITY_CURRENT',
   'PARTY_TAX_ID_RECORDED',
+  'PRICE_MATCHES_SOURCE_OFFER',
+  'CONDITIONS_MATCH_SOURCE_OFFER',
+  'SOURCE_OFFER_ACCEPTED',
   'PRICE_MATCHES_ACCEPTED_OFFER',
   'PRICING_SNAPSHOT_COHERENT',
   'CONDITIONS_MATCH_ACCEPTED_OFFER',
@@ -46,6 +49,10 @@ const keys = [
 
 export const contractQualityMessages = defineMessages(keys, {
   ro: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Prețul corespunde Ofertei sursă',
+    CONDITIONS_MATCH_SOURCE_OFFER: 'Condițiile corespund Ofertei sursă',
+    SOURCE_OFFER_ACCEPTED: 'Versiunea exactă a Ofertei sursă este acceptată',
+
     title: 'Verificări de calitate ale Contractului',
     empty: 'Contractul nu are încă o verificare de calitate înregistrată.',
     run: 'Rulează verificările de calitate ale Contractului',
@@ -95,6 +102,11 @@ export const contractQualityMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Marcajele ilustrative sunt prezente',
   },
   ru: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Цена соответствует исходному предложению',
+    CONDITIONS_MATCH_SOURCE_OFFER:
+      'Условия соответствуют исходному предложению',
+    SOURCE_OFFER_ACCEPTED: 'Точная версия исходного предложения принята',
+
     title: 'Проверки качества договора',
     empty: 'Для договора ещё нет записанных проверок качества.',
     run: 'Выполнить проверки качества договора',
@@ -140,6 +152,11 @@ export const contractQualityMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Иллюстративные отметки присутствуют',
   },
   fr: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Le prix correspond à l’offre source',
+    CONDITIONS_MATCH_SOURCE_OFFER:
+      'Les conditions correspondent à l’offre source',
+    SOURCE_OFFER_ACCEPTED: 'La version exacte de l’offre source est acceptée',
+
     title: 'Contrôles qualité du contrat',
     empty: 'Aucun contrôle qualité du contrat n’est encore enregistré.',
     run: 'Exécuter les contrôles qualité du contrat',
@@ -189,6 +206,10 @@ export const contractQualityMessages = defineMessages(keys, {
     PROVISIONAL_MARKER_PRESENT: 'Les mentions illustratives sont présentes',
   },
   en: {
+    PRICE_MATCHES_SOURCE_OFFER: 'Price matches the source Offer',
+    CONDITIONS_MATCH_SOURCE_OFFER: 'Conditions match the source Offer',
+    SOURCE_OFFER_ACCEPTED: 'The exact source Offer Version is accepted',
+
     title: 'Contract Quality Checks',
     empty: 'No Contract Quality Check run yet.',
     run: 'Run Contract Quality Checks',
