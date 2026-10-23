@@ -616,3 +616,61 @@
   border-color: var(--shell-blue);
   background: var(--shell-blue);
 }
+/* Fixed Company overdue pages retain the accepted Prisme controls and focus. */
+.operational-home-overdue button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-height: 2.75rem;
+  white-space: normal;
+}
+.prisme-shell .operational-home-overdue button {
+  min-height: 2.75rem;
+}
+.operational-home-overdue button svg {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+}
+.operational-home-overdue-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  border-top: 1px solid var(--shell-line);
+  padding-top: 1rem;
+}
+.prisme-shell .operational-home-overdue-pagination {
+  padding: 1rem 1.25rem;
+}
+.prisme-shell .operational-home .operational-home-overdue-pagination-next {
+  border-color: #7963c4;
+  color: #fff;
+  background: #7963c4;
+}
+.operational-home .operational-home-overdue button:disabled {
+  border-color: var(--shell-line);
+  color: var(--shell-muted);
+  background: var(--shell-canvas, #f7f9fc);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.operational-home-overdue .operational-home-state--changed,
+.prisme-shell .operational-home-overdue .operational-home-state--changed {
+  border: 1px solid #ecdda8;
+  border-radius: 8px;
+  padding: 1rem;
+  color: #725921;
+  background: #fffaf0;
+}
+@media (max-width: 650px) {
+  .operational-home-overdue-pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .operational-home-overdue-pagination button {
+    width: 100%;
+  }
+}

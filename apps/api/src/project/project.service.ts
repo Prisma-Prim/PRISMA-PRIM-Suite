@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -30,7 +30,7 @@ export class ProjectService {
     private readonly accountability: AccountabilityService,
   ) {}
 
-  async list(actor: ActorContext) {
+  async list(actor: ActorContext, selection?: { view: 'mine_open' }) {
     const companyId = await this.authorization.requireProjectAccess(actor);
     const rows = await this.databaseContext.connection
       .select()
@@ -39,6 +39,18 @@ export class ProjectService {
         and(
           eq(projects.workspaceId, actor.workspaceId),
           eq(projects.companyId, companyId),
+          selection?.view === 'mine_open'
+            ? and(
+                eq(
+                  projects.responsibleMembershipId,
+                  actor.workspaceMembershipId,
+                ),
+                inArray(
+                  projects.status,
+                  projects.status.enumValues.filter(isOpenProjectStatus),
+                ),
+              )
+            : undefined,
         ),
       )
       .orderBy(asc(projects.createdAt), asc(projects.id));

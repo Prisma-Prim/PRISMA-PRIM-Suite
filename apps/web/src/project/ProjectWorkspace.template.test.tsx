@@ -284,10 +284,16 @@ it('preserves an independently authorized manual creation draft and its exact un
 });
 
 it('preserves the selected Project and independently authorized Task draft when the Template grant is revoked', async () => {
+  let respondToTasks: ((response: Response) => void) | undefined;
+  const tasksReply = new Promise<Response>((resolve) => {
+    respondToTasks = resolve;
+  });
+  const readTasks = vi.fn(() => tasksReply);
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/projects') return Response.json([project]);
+      if (url === `/api/projects/${projectId}/tasks`) return readTasks();
       if (url.endsWith('/eligible-task-assignees'))
         return Response.json({ members: [] });
       return baseRead(url);
@@ -302,7 +308,16 @@ it('preserves the selected Project and independently authorized Task draft when 
   );
   const opened = await screen.findByRole('article', { name: project.title });
   await screen.findByRole('region', { name: 'Plan copied from template' });
-  const tasks = screen.getByRole('region', { name: 'Tasks' });
+  const tasks = await screen.findByRole('region', { name: 'Tasks' });
+  await waitFor(() => expect(readTasks).toHaveBeenCalledOnce());
+  expect(
+    within(tasks).queryByRole('textbox', { name: 'Task title' }),
+  ).not.toBeInTheDocument();
+  await act(async () => {
+    if (!respondToTasks) throw new Error('The Task read was not held.');
+    respondToTasks(Response.json({ mutable: true, tasks: [] }));
+    await tasksReply;
+  });
   const taskTitle = await within(tasks).findByRole('textbox', {
     name: 'Task title',
   });

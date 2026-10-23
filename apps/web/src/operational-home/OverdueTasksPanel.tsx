@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight, RefreshCw, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
@@ -9,9 +10,9 @@ import {
 import { useOperationalHomeCopy } from './operational-home-localized.copy';
 
 type Load =
-  | { kind: 'loading' }
-  | { kind: 'error' }
-  | { kind: 'denied' }
+  | { kind: 'loading'; offset: number }
+  | { kind: 'error'; offset: number }
+  | { kind: 'denied'; offset: number }
   | { kind: 'ready'; list: CompanyOverdueTasks };
 
 /**
@@ -33,55 +34,98 @@ export function OverdueTasksPanel({
 }) {
   const copy = useOperationalHomeCopy().overdue;
   const titleId = useId();
-  const [load, setLoad] = useState<Load>({ kind: 'loading' });
+  const [load, setLoad] = useState<Load>({ kind: 'loading', offset: 0 });
   const pending = useRef<AbortController | undefined>(undefined);
 
-  function read() {
-    setLoad({ kind: 'loading' });
+  function read(offset: number) {
+    setLoad({ kind: 'loading', offset });
     void runLatestAuthenticatedRequest({
       pending,
       identity,
       execute: (api, signal) =>
-        api.request<unknown>('/overdue-tasks', {
+        api.request<unknown>(`/overdue-tasks?offset=${offset}`, {
           companyContextId: company.id,
           signal,
         }),
       onResult: async (result, signal) => {
         if (result.status === 'unauthorized') {
           await identity.rejectSession();
-          if (!signal.aborted) setLoad({ kind: 'denied' });
-        } else if (result.status === 'forbidden') setLoad({ kind: 'denied' });
-        else if (result.status !== 'ok') setLoad({ kind: 'error' });
+          if (!signal.aborted) setLoad({ kind: 'denied', offset });
+        } else if (result.status === 'forbidden')
+          setLoad({ kind: 'denied', offset });
+        else if (result.status !== 'ok') setLoad({ kind: 'error', offset });
         else
           setLoad({
             kind: 'ready',
-            list: readCompanyOverdueTasks(result.value, company.id),
+            list: readCompanyOverdueTasks(result.value, {
+              companyId: company.id,
+              offset,
+            }),
           });
       },
-      onError: () => setLoad({ kind: 'error' }),
+      onError: () => setLoad({ kind: 'error', offset }),
     });
   }
   useEffect(() => {
-    read();
+    read(0);
     return () => pending.current?.abort();
-  }, [identity]);
+  }, [identity, company.id]);
+  const offset = load.kind === 'ready' ? load.list.offset : load.offset;
+  const busy = load.kind === 'loading';
+  const unavailablePage =
+    load.kind === 'ready' &&
+    load.list.total > 0 &&
+    load.list.tasks.length === 0;
 
   return (
-    <section className="operational-home-overdue" aria-labelledby={titleId}>
+    <section
+      className="operational-home-overdue"
+      aria-labelledby={titleId}
+      aria-busy={busy}
+    >
       <header className="operational-home-overdue-heading">
         <h3 id={titleId} ref={headingRef} tabIndex={-1}>
           {copy.title({ company: company.displayName })}
         </h3>
         <button type="button" aria-label={copy.closeName} onClick={onClose}>
+          <X aria-hidden="true" />
           {copy.close}
         </button>
       </header>
       <OverdueTasks
         load={load}
         company={company.displayName}
-        onRetry={read}
+        onRetry={() => read(offset)}
         onOpenTask={onOpenTask}
       />
+      {load.kind !== 'denied' && (
+        <footer className="operational-home-overdue-pagination">
+          <button
+            type="button"
+            disabled={busy || offset === 0}
+            onClick={() => read(Math.max(0, offset - 25))}
+          >
+            <ChevronLeft aria-hidden="true" />
+            {copy.previous}
+          </button>
+          <button
+            type="button"
+            className="operational-home-overdue-pagination-next"
+            disabled={
+              load.kind !== 'ready' ||
+              offset + load.list.tasks.length >= load.list.total
+            }
+            onClick={() => read(offset + 25)}
+          >
+            {copy.next}
+            <ChevronRight aria-hidden="true" />
+          </button>
+          <button type="button" onClick={() => read(0)}>
+            <RefreshCw aria-hidden="true" />
+            {unavailablePage ? copy.restart : copy.refresh}
+          </button>
+        </footer>
+      )}
     </section>
   );
 }
@@ -122,21 +166,32 @@ function OverdueTasks({
       const { tasks, total } = load.list;
       if (tasks.length === 0)
         return (
-          <p className="operational-home-state">{copy.empty({ company })}</p>
+          <p
+            role="status"
+            className={
+              total === 0
+                ? 'operational-home-state'
+                : 'operational-home-state operational-home-state--changed'
+            }
+          >
+            {total === 0
+              ? copy.empty({ company })
+              : copy.outOfRange({ total: formatNumber(total) })}
+          </p>
         );
       return (
         <>
-          {total > tasks.length && (
-            <p className="operational-home-overdue-note">
-              {copy.truncated({
-                shown: formatNumber(tasks.length),
-                total: formatNumber(total),
-              })}
-            </p>
-          )}
+          <p className="operational-home-overdue-note" role="status">
+            {copy.page({
+              first: formatNumber(load.list.offset + 1),
+              last: formatNumber(load.list.offset + tasks.length),
+              total: formatNumber(total),
+            })}
+          </p>
           <ol
             className="operational-home-overdue-list"
             aria-label={copy.listLabel}
+            start={load.list.offset + 1}
           >
             {tasks.map((task) => (
               <li key={task.id}>

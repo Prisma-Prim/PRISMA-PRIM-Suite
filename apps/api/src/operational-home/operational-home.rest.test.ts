@@ -370,11 +370,20 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
     });
 
     const list = await overdue();
-    expect(Object.keys(list)).toEqual(['companyId', 'today', 'total', 'tasks']);
+    expect(Object.keys(list)).toEqual([
+      'companyId',
+      'today',
+      'total',
+      'tasks',
+      'offset',
+      'pageSize',
+    ]);
     expect(list).toMatchObject({
       companyId: companyA,
       today: '2026-09-27',
       total: 6,
+      offset: 0,
+      pageSize: 25,
     });
     const iso = {
       id: projects.iso,
@@ -560,7 +569,7 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
     );
   });
 
-  it('orders the overdue list by due date, creation and identifier, bounds it at 100 rows and refuses exactly as My Tasks', async () => {
+  it('browses all 107 overdue Tasks in fixed ordered pages and refuses exactly as My Tasks', async () => {
     const { projects, tasks } = fixture;
     // Equal due dates and creation times prove the creation and identifier
     // tie-breaks. 101 Tasks copy the scope and creator of an API-created Task.
@@ -576,19 +585,55 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
       `SELECT id::text AS id, title FROM tasks WHERE title LIKE 'Tied notes %'
        ORDER BY created_at, id`,
     );
-    const list = await overdue();
-    expect(list.total).toBe(107);
-    const rows = objects(list.tasks);
-    expect(rows).toHaveLength(100);
+    // This existing initialized public route must admit a bounded second page;
+    // main currently refuses offset with HTTP 400 before returning any rows.
+    const second = object(await read('/overdue-tasks?offset=25'));
+    expect(second).toMatchObject({
+      companyId: companyA,
+      today: '2026-09-27',
+      total: 107,
+      offset: 25,
+      pageSize: 25,
+    });
+    expect(objects(second.tasks).map((row) => row.id)).toEqual(
+      tied.rows.slice(25, 50).map((row) => row.id),
+    );
+    const pages = [
+      await overdue(),
+      second,
+      object(await read('/overdue-tasks?offset=50')),
+      object(await read('/overdue-tasks?offset=75')),
+      object(await read('/overdue-tasks?offset=100')),
+    ];
+    expect(pages.map((page) => objects(page.tasks).length)).toEqual([
+      25, 25, 25, 25, 7,
+    ]);
+    for (const [index, page] of pages.entries())
+      expect(page).toMatchObject({
+        companyId: companyA,
+        today: '2026-09-27',
+        total: 107,
+        offset: index * 25,
+        pageSize: 25,
+      });
+    const rows = pages.flatMap((page) => objects(page.tasks));
     // The 101 Tasks due 2026-09-19 come first: the 100 created at the tied
     // instant by identifier, then the later-created one; the rest follow.
-    expect(rows.map((row) => row.id)).toEqual(
-      tied.rows.map((row) => row.id).slice(0, 100),
-    );
-    expect(rows.every((row) => row.daysOverdue === 8)).toBe(true);
-    expect(rows.every((row) => row.assignee === null)).toBe(true);
+    expect(rows.map((row) => row.id)).toEqual([
+      ...tied.rows.map((row) => row.id),
+      tasks.inProgress,
+      tasks.historical,
+      tasks.unassigned,
+      tasks.colleague,
+      tasks.blocked,
+      tasks.chisinauOnly,
+    ]);
+    expect(new Set(rows.map((row) => row.id)).size).toBe(107);
+    const tiedRows = rows.slice(0, 101);
+    expect(tiedRows.every((row) => row.daysOverdue === 8)).toBe(true);
+    expect(tiedRows.every((row) => row.assignee === null)).toBe(true);
     expect(
-      rows.every(
+      tiedRows.every(
         (row) =>
           object(row.project).id === projects.iso && row.status === 'todo',
       ),
@@ -636,6 +681,80 @@ describe.skipIf(!databaseUrl)('Operational home REST contract', () => {
     expect(await anonymous('/overdue-tasks')).toEqual(
       await anonymous('/assigned-tasks'),
     );
+  });
+
+  it('rejects malformed, repeated and unsafe overdue offsets and unknown page queries', async () => {
+    for (const query of [
+      'offset=-1',
+      'offset=1.5',
+      'offset=9007199254740992',
+      'offset=1&offset=2',
+      'offset[]=0',
+      'offset=',
+      'offset=0&pageSize=100',
+      'offset=0&scope=all',
+    ]) {
+      const response = await request(`/overdue-tasks?${query}`);
+      expect([query, response.status]).toEqual([query, 400]);
+      const refusal = object(await body(response));
+      for (const key of ['companyId', 'total', 'tasks', 'offset', 'pageSize'])
+        expect(refusal).not.toHaveProperty(key);
+    }
+    // The server accepts safe offsets, including a non-UI step and the maximum.
+    const next = object(await read('/overdue-tasks?offset=1'));
+    expect(next).toMatchObject({
+      companyId: companyA,
+      today: '2026-09-27',
+      total: 6,
+      offset: 1,
+      pageSize: 25,
+    });
+    expect(objects(next.tasks).map((row) => row.id)).toEqual([
+      fixture.tasks.historical,
+      fixture.tasks.unassigned,
+      fixture.tasks.colleague,
+      fixture.tasks.blocked,
+      fixture.tasks.chisinauOnly,
+    ]);
+    expect(await read('/overdue-tasks?offset=9007199254740991')).toEqual({
+      companyId: companyA,
+      today: '2026-09-27',
+      total: 6,
+      tasks: [],
+      offset: Number.MAX_SAFE_INTEGER,
+      pageSize: 25,
+    });
+  });
+
+  it('rechecks later overdue pages after each captured read loss and a Company mismatch', async () => {
+    const options = {
+      subject: 'home-colleague',
+    } satisfies Parameters<typeof request>[1];
+    async function refusedLikeAssigned(context: Parameters<typeof request>[1]) {
+      const assigned = await request('/assigned-tasks', context);
+      expect(assigned.status).toBe(403);
+      const response = await request('/overdue-tasks?offset=25', context);
+      expect([response.status, await response.text()]).toEqual([
+        403,
+        await assigned.text(),
+      ]);
+    }
+    // Six seeded Tasks are sufficient: an authorized later page is empty but
+    // carries the full six; a lost read must reveal neither count nor rows.
+    for (const kind of ['client', 'project', 'task'] satisfies Grant[]) {
+      expect(await read('/overdue-tasks?offset=25', options)).toEqual({
+        companyId: companyA,
+        today: '2026-09-27',
+        total: 6,
+        tasks: [],
+        offset: 25,
+        pageSize: 25,
+      });
+      await revoke(kind, fixture.colleague);
+      await refusedLikeAssigned(options);
+      await grant(kind, fixture.colleague);
+    }
+    await refusedLikeAssigned({ ...options, company: fixture.companyB });
   });
 
   it('writes no Activity Log event, command receipt, version or Client fence advance', async () => {

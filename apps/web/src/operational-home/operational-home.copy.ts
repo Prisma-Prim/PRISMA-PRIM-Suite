@@ -55,8 +55,21 @@ export const operationalHomeCopy = {
     denied: 'The overdue Tasks are not available with your current access.',
     empty: ({ company }: Pick<Context, 'company'>) =>
       `No overdue Tasks in the Projects you can open in ${company}.`,
-    truncated: ({ shown, total }: { shown: string; total: string }) =>
-      `Showing the ${shown} oldest of ${total} overdue Tasks.`,
+    page: ({
+      first,
+      last,
+      total,
+    }: {
+      first: string;
+      last: string;
+      total: string;
+    }) => `Overdue Tasks ${first}–${last} of ${total}.`,
+    previous: 'Previous page',
+    next: 'Next page',
+    refresh: 'Refresh from the start',
+    restart: 'Return to the start',
+    outOfRange: ({ total }: { total: string }) =>
+      `This page no longer contains Tasks. There are now ${total} overdue Tasks; return to the start.`,
     listLabel: 'Overdue Tasks, oldest due date first',
     overdueBy: ({ days, count }: { days: number; count: string }) =>
       days === 1 ? `Overdue by ${count} day` : `Overdue by ${count} days`,

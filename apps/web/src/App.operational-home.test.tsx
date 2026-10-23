@@ -82,11 +82,18 @@ function actorFor(
   };
 }
 
-type ServerRequest = { route: string; companyId: string | null };
+type ServerRequest = {
+  route: string;
+  companyId: string | null;
+  search: string;
+};
 
 /** A two-Company server; a held route waits for an explicit release. */
 function installServer(
-  initial: { actor?: (companyId: string) => ActorContext } = {},
+  initial: {
+    actor?: (companyId: string) => ActorContext;
+    overdueTasks?: readonly (typeof overdueTask)[];
+  } = {},
 ) {
   const state = {
     actor: initial.actor ?? ((companyId: string) => actorFor(companyId)),
@@ -95,12 +102,14 @@ function installServer(
     showProjectSummaries: true,
     showAttention: false,
     showNoRuleAttentionTask: false,
+    overdueTasks: initial.overdueTasks ?? [overdueTask],
+    showTaskSummary: true,
   };
   const requests: ServerRequest[] = [];
   const holding = new Set<string>();
   const held: Array<ServerRequest & { answer: (response: Response) => void }> =
     [];
-  function answer({ route, companyId }: ServerRequest): Response {
+  function answer({ route, companyId, search }: ServerRequest): Response {
     const company = companyId ?? companyA.id;
     if (route === 'GET /api/access/current-actor')
       return Response.json(state.actor(company));
@@ -121,10 +130,17 @@ function installServer(
                 : current.active_clients,
           },
           { kind: 'open_projects', count: current.open_projects },
-          { kind: 'overdue_tasks', count: current.overdue_tasks },
+          {
+            kind: 'overdue_tasks',
+            count:
+              company === companyA.id
+                ? state.overdueTasks.length
+                : current.overdue_tasks,
+          },
         ].filter(
           (entry) =>
-            state.showProjectSummaries || entry.kind === 'active_clients',
+            (state.showProjectSummaries || entry.kind === 'active_clients') &&
+            (state.showTaskSummary || entry.kind !== 'overdue_tasks'),
         ),
         ...(state.showAttention
           ? {
@@ -155,27 +171,26 @@ function installServer(
           : {}),
       });
     }
-    if (route === 'GET /api/overdue-tasks')
-      return Response.json(
-        company === companyA.id
-          ? {
-              companyId: company,
-              today,
-              total: 1,
-              tasks: [
-                {
-                  ...overdueTask,
-                  project: {
-                    id: project.id,
-                    title: project.title,
-                    clientDisplayName: project.clientDisplayName,
-                  },
-                  daysOverdue: 7,
-                },
-              ],
-            }
-          : { companyId: company, today, total: 0, tasks: [] },
-      );
+    if (route === 'GET /api/overdue-tasks') {
+      const offset = Number(new URLSearchParams(search).get('offset') ?? 0);
+      const rows = company === companyA.id ? state.overdueTasks : [];
+      return Response.json({
+        companyId: company,
+        today,
+        total: rows.length,
+        offset,
+        pageSize: 25,
+        tasks: rows.slice(offset, offset + 25).map((task) => ({
+          ...task,
+          project: {
+            id: project.id,
+            title: project.title,
+            clientDisplayName: project.clientDisplayName,
+          },
+          daysOverdue: 7,
+        })),
+      });
+    }
     if (route === 'GET /api/assigned-tasks')
       return Response.json({ tasks: [] });
     if (route === 'GET /api/clients') return Response.json([]);
@@ -190,13 +205,15 @@ function installServer(
     if (route === `GET /api/projects/${project.id}`)
       return Response.json(project);
     if (route === `GET /api/projects/${project.id}/tasks`)
-      return Response.json({ mutable: true, tasks: [overdueTask] });
+      return Response.json({ mutable: true, tasks: state.overdueTasks });
     if (route === `GET /api/projects/${project.id}/eligible-task-assignees`)
       return Response.json({ members: [] });
-    if (route === `GET /api/tasks/${overdueTask.id}`)
-      return Response.json({ mutable: true, task: overdueTask });
-    if (route === `GET /api/tasks/${overdueTask.id}/history`)
-      return Response.json({ events: [] });
+    for (const task of state.overdueTasks) {
+      if (route === `GET /api/tasks/${task.id}`)
+        return Response.json({ mutable: true, task });
+      if (route === `GET /api/tasks/${task.id}/history`)
+        return Response.json({ events: [] });
+    }
     return new Response(null, { status: 404 });
   }
   vi.stubGlobal(
@@ -206,6 +223,7 @@ function installServer(
       const request: ServerRequest = {
         route: `${init?.method ?? 'GET'} ${url.pathname}`,
         companyId: new Headers(init?.headers).get('x-company-context-id'),
+        search: url.search,
       };
       requests.push(request);
       if (!holding.has(`${request.route}@${request.companyId}`))
@@ -217,6 +235,7 @@ function installServer(
   );
   return {
     state,
+    requests,
     count: (route: string, companyId?: string) =>
       requests.filter(
         (request) =>
@@ -245,6 +264,12 @@ function installServer(
   };
 }
 
+const overdueRoute = 'GET /api/overdue-tasks';
+const nextPageTasks = Array.from({ length: 26 }, (_, index) => ({
+  ...overdueTask,
+  id: `overdue-page-${String(index + 1).padStart(2, '0')}`,
+  title: `Overdue page Task ${index + 1}`,
+}));
 const homeRoute = 'GET /api/operational-home';
 const summary = () => screen.getByRole('region', { name: copy.title });
 const cardName = (kind: keyof typeof copy.summaries, count: number) =>
@@ -314,6 +339,170 @@ describe('Operational home through App', () => {
     document.documentElement.lang = language;
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
+  });
+
+  it('opens the exact Task from the next overdue page through the real App Project intent', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer({ overdueTasks: nextPageTasks });
+    render(<App identity={deterministicBrowserIdentity()} />);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: cardName('overdue_tasks', 26),
+      }),
+    );
+    const panel = await screen.findByRole('region', {
+      name: copy.overdue.title({ company: companyA.displayName }),
+    });
+    await within(panel).findByRole('heading', { name: 'Overdue page Task 1' });
+    fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
+    fireEvent.click(
+      await within(panel).findByRole('button', {
+        name: copy.overdue.openTask({
+          task: 'Overdue page Task 26',
+          project: project.title,
+          client: project.clientDisplayName,
+        }),
+      }),
+    );
+    await waitFor(() =>
+      expect(server.count('GET /api/tasks/overdue-page-26')).toBe(1),
+    );
+    const projectsRegion = await screen.findByRole('region', {
+      name: 'Projects',
+    });
+    const taskRegion = await within(projectsRegion).findByRole('region', {
+      name: 'Tasks',
+    });
+    const openedTask = await within(taskRegion).findByRole('heading', {
+      name: 'Overdue page Task 26',
+    });
+    expect(openedTask).toBeVisible();
+    await waitFor(() => expect(openedTask).toHaveFocus());
+    expect(server.count(`GET /api/projects/${project.id}`)).toBe(1);
+    expect(
+      server.requests
+        .filter((request) => request.route === overdueRoute)
+        .map((request) => request.search),
+    ).toEqual(['?offset=0', '?offset=25']);
+    expect(window.location.href).not.toContain('overdue-page-26');
+  });
+
+  it('ignores a held next-page response after switching Company and restarts from zero on return', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer({ overdueTasks: nextPageTasks });
+    render(<App identity={deterministicBrowserIdentity()} />);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: cardName('overdue_tasks', 26),
+      }),
+    );
+    const panel = await screen.findByRole('region', {
+      name: copy.overdue.title({ company: companyA.displayName }),
+    });
+    await within(panel).findByRole('heading', { name: 'Overdue page Task 1' });
+    server.hold(overdueRoute, companyA.id);
+    fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
+    await waitFor(() =>
+      expect(server.count(overdueRoute, companyA.id)).toBe(2),
+    );
+    try {
+      await selectCompany(companyB.id);
+      await screen.findByRole('button', {
+        name: cardName('active_clients', 71),
+      });
+      expect(overduePanel(companyA)).toBeNull();
+      expect(overduePanel(companyB)).toBeNull();
+      screen.getByLabelText('Active Company', { exact: true }).focus();
+    } finally {
+      await server.release(overdueRoute, companyA.id);
+    }
+    expect(
+      screen.getByLabelText('Active Company', { exact: true }),
+    ).toHaveFocus();
+    expect(shownCards()).toEqual([
+      cardName('active_clients', 71),
+      cardName('open_projects', 72),
+      cardName('overdue_tasks', 0),
+    ]);
+    expect(
+      screen.queryByRole('heading', { name: 'Overdue page Task 26' }),
+    ).toBeNull();
+    expect(overduePanel(companyA)).toBeNull();
+    await selectCompany(companyA.id);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: cardName('overdue_tasks', 26),
+      }),
+    );
+    const returned = await screen.findByRole('region', {
+      name: copy.overdue.title({ company: companyA.displayName }),
+    });
+    await within(returned).findByRole('heading', {
+      name: 'Overdue page Task 1',
+    });
+    expect(
+      within(returned).getByRole('button', { name: 'Previous page' }),
+    ).toBeDisabled();
+    expect(
+      server.requests
+        .filter(
+          (request) =>
+            request.route === overdueRoute && request.companyId === companyA.id,
+        )
+        .map((request) => request.search),
+    ).toEqual(['?offset=0', '?offset=25', '?offset=0']);
+  });
+
+  it('retires a held overdue page when live actor revalidation removes Task read', async () => {
+    window.history.replaceState(null, '', '/?frame=classic');
+    const server = installServer({ overdueTasks: nextPageTasks });
+    render(<App identity={deterministicBrowserIdentity()} />);
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: cardName('overdue_tasks', 26),
+      }),
+    );
+    const panel = await screen.findByRole('region', {
+      name: copy.overdue.title({ company: companyA.displayName }),
+    });
+    await within(panel).findByRole('heading', { name: 'Overdue page Task 1' });
+    server.hold(overdueRoute, companyA.id);
+    fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }));
+    await waitFor(() =>
+      expect(server.count(overdueRoute, companyA.id)).toBe(2),
+    );
+    server.state.actor = (companyId) => ({
+      ...actorFor(companyId),
+      activeCompany: {
+        ...(companyId === companyB.id ? companyB : companyA),
+        clientPermissions: ['client.read'],
+        clientPermissionAssignmentId: 'client-grant',
+        clientPermissionSetVersion: 'v1',
+        projectPermissions: ['project.read'],
+        taskPermissions: [],
+      },
+    });
+    server.state.showTaskSummary = false;
+    server.state.refuseSearch = true;
+    try {
+      changeValue(screen.getByLabelText('Find a shared Client'), 'Demo');
+      fireEvent.click(screen.getByRole('button', { name: 'Search Clients' }));
+      await waitFor(() => expect(server.count(homeRoute)).toBe(2));
+      await waitFor(() => expect(overduePanel(companyA)).toBeNull());
+    } finally {
+      await server.release(overdueRoute, companyA.id);
+    }
+    expect(
+      screen.queryByRole('button', { name: cardName('overdue_tasks', 26) }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('heading', { name: 'Overdue page Task 26' }),
+    ).toBeNull();
+    expect(shownCards()).toEqual([
+      cardName('active_clients', 3),
+      cardName('open_projects', 2),
+    ]);
+    expect(server.count(overdueRoute, companyA.id)).toBe(2);
   });
 
   it('renders the region in the Classic home surface below the welcome text', async () => {

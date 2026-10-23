@@ -45,6 +45,23 @@ unsupported OS and change the Docker toolchain. A runner change requires proving
 browser installation, production packaging and every existing verification family
 on the proposed environment, with image-integrity checks preserved.
 
+The shared CI setup reuses that runner's Chromium system libraries without
+running APT. It caches Playwright browser downloads by Ubuntu release, runner OS,
+architecture and the resolved Playwright version. The ordinary Chromium install
+command fills a cold or incomplete cache and is a no-op when the matching browser
+is present. Playwright's host checks remain enabled; the doctor and both browser
+families still run.
+CI API and acceptance jobs mount only their disposable PostgreSQL data directory
+on a 2 GiB tmpfs. PostgreSQL durability settings remain at their defaults; the
+mount disappears with the container. Production packaging and local managed
+PostgreSQL retain their existing storage behavior.
+
+The PostgreSQL archive cache is keyed by the immutable image digest and runner
+OS/architecture, so changing startup flags does not trigger another image pull.
+For the original Linux/X64 image only, CI can migrate the exact existing archive
+from its previous script-based key. A different image or platform cannot use that
+migration; an ordinary cold miss still acquires the pinned official image.
+
 ### Slow readiness probes
 
 The default `standard` readiness profile gives each pnpm and Chromium subprocess
@@ -254,6 +271,18 @@ node scripts/managed-postgres.mjs -- corepack pnpm test:unit
 ```
 
 The runner creates uniquely named, labelled Docker network and volume resources outside the checkout, waits on container health, creates both local databases, applies the reviewed Drizzle migrations to a pristine development database, and injects safe temporary `DATABASE_URL` and `TEST_DATABASE_URL` values into the requested command. It keeps cache and temporary state outside the checkout, and removes the exact container, network, volume, and temporary directory on success, failure, or interruption. Safe descendant termination relies on POSIX process groups, so Windows users must use native PostgreSQL or a POSIX/Linux Docker harness. A Docker socket denied by the harness sandbox is a permission-policy failure; use the native path or a harness with Docker permission rather than weakening database verification.
+
+Cold startup permits at most 240 state observations, with the existing 250ms
+interval: at most 59.75 seconds of scheduled polling delay plus Docker inspection
+time. This is a finite observation allowance, not a wall-clock readiness promise;
+each infrastructure command retains its separate 120-second deadline. Success
+requires a running container whose health check confirms that PID 1 is the final
+`postgres` server before `pg_isready` succeeds. An unhealthy or stopped container,
+an unrecognized response, or a failed Docker inspection stops before migrations
+and runs the same owned cleanup. Failure diagnostics report validated container
+and health states, exit code and observation count; exhaustion also reports the
+poll interval. They do not dump health logs, environment or database URLs.
+Verification-command and test deadlines are unchanged.
 
 Some hosted command boundaries virtualize spawned process identifiers and do not expose the detached child through `/proc` or deliver the normal child lifecycle events. The process-group integration tests run a capability probe first and skip only the real detached-child cases when those semantics are unavailable; deterministic injected tests still cover TERM-to-KILL escalation. A capability skip is honest missing local coverage, and does not make the managed runner safe in that harness. Use native PostgreSQL or another capable local harness to execute these cases. Explicitly request manual GitHub Actions when independent real POSIX process-group coverage is needed, and confirm that the cases executed. A skipped process-group case is not an executed pass.
 

@@ -50,6 +50,8 @@ Before editing, an agent:
 
 This route is complete when the agent can name the behaviour to deliver, the artifact that owns it, the decisions it may take, the decisions it must escalate, the proof required and the deliberately excluded work. If any of those is materially ambiguous, the issue is not implementation-ready.
 
+Start schema investigations in `apps/api/src/database/schema/` and inspect the relevant SQL migration for changes. Default recursive ripgrep searches omit generated Drizzle snapshots; SQL migrations and `meta/_journal.json` remain visible. To inspect snapshots, pass their path explicitly or run `rg -n -g '*_snapshot.json' -- PATTERN .` from the repository root or `apps/api`. GitHub classifies those snapshots as generated; their full diffs remain available.
+
 ## 5. Where new information goes
 
 | Information produced                              | Destination                                                           |

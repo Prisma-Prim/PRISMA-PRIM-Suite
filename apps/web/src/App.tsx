@@ -1,6 +1,10 @@
 import { IdeasWorkspace } from './ideas/IdeasWorkspace';
 import { ideasAuthority, ideasContextKey } from './ideas/ideas-contract';
 import { useIdeasCopy } from './ideas/ideas.copy';
+import {
+  OperationalRiskWorkspace,
+  canReadOperationalRisks,
+} from './operational-risk/OperationalRiskWorkspace';
 import { ActivityLog } from './production-shell/ActivityLog';
 import {
   ProjectTemplateConfiguration,
@@ -8,7 +12,11 @@ import {
 } from './project/ProjectTemplateConfiguration';
 import { useAppCopy } from './app.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
-import { ProjectWorkspace } from './project/ProjectWorkspace';
+import {
+  ProjectWorkspace,
+  type ProjectOpenTarget,
+  type RequestedProject,
+} from './project/ProjectWorkspace';
 import {
   ApplicationContentSurface,
   ApplicationShell,
@@ -76,13 +84,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   >();
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
-  const [requestedProject, setRequestedProject] = useState<{
-    context: string;
-    projectId: string;
-    taskId?: string;
-    requestId: number;
-  }>();
+  const [requestedProject, setRequestedProject] = useState<
+    RequestedProject & { context: string }
+  >();
   const [projectOpenRequestId, setProjectOpenRequestId] = useState(0);
+  const [projectDirectoryRequestId, setProjectDirectoryRequestId] = useState(0);
   const navigateToSection = useCallback(
     (
       section:
@@ -281,12 +287,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // The Projects owner reads the requested Project itself, then its optional
   // Task; no Project or Task identity reaches the URL or history state.
   const openProject = canAccessProjects
-    ? (target: { projectId: string; taskId?: string }) => {
+    ? (target: ProjectOpenTarget) => {
         setProjectOpenRequestId((value) => value + 1);
         setRequestedProject((current) => ({
+          ...target,
           context: projectRequestContext,
-          projectId: target.projectId,
-          taskId: target.taskId,
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('projects');
@@ -318,11 +323,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         onOpenClients={() => navigateToSection('clients')}
         onOpenProjects={() => {
           setProjectOpenRequestId((value) => value + 1);
+          setProjectDirectoryRequestId((value) => value + 1);
           setProjectClientFilter(undefined);
           navigateToSection('projects');
         }}
         onOpenMyTasks={() => navigateToSection('my-tasks')}
         onOpenTask={openProject}
+        onOpenOverdueTask={
+          openProject
+            ? (target) => openProject({ ...target, focus: 'task' })
+            : undefined
+        }
         activity={{
           state: access.activityLog,
           activeCompanyId: activeCompany.id,
@@ -342,6 +353,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <IdeasWorkspace
           key={`ideas:${access.sessionGeneration}:${ideasContextKey(access.actor)}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
+  if (canReadOperationalRisks(access.actor) && access.actor.activeCompany)
+    sections.push({
+      id: 'operational-risks',
+      ...prismeCopy.sections.risks,
+      content: (
+        <OperationalRiskWorkspace
+          key={`operational-risks:${access.sessionGeneration}:${access.actor.workspaceMembershipId}:${access.actor.activeCompany.id}:${access.actor.activeCompany.operationalRiskReaderAssignmentId ?? 'none'}:${access.actor.activeCompany.operationalRiskReaderPermissionSetVersion ?? 'none'}:${access.actor.activeCompany.operationalRiskRecorderAssignmentId ?? 'none'}:${access.actor.activeCompany.operationalRiskRecorderPermissionSetVersion ?? 'none'}:${access.actor.activeCompany.operationalRiskPermissions?.join(',') ?? 'none'}`}
           actor={access.actor}
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}
@@ -472,6 +498,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
             canAccessProjects && activeCompanyId
               ? (client) => {
                   setProjectOpenRequestId((value) => value + 1);
+                  setProjectDirectoryRequestId((value) => value + 1);
                   setProjectClientFilter({
                     navigationContext,
                     clientDossierId: client.id,
@@ -542,6 +569,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
                   : undefined
               }
               projectOpenRequestId={projectOpenRequestId}
+              projectDirectoryRequestId={projectDirectoryRequestId}
             />
           )}
           {canReadProjectTemplateCatalogue(access.actor) && (

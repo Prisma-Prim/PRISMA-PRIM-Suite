@@ -90,7 +90,16 @@ import {
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
   profitabilityContributorPermissionsFor,
   profitabilityDirectorPermissionsFor,
+  COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
+  operationalRiskReaderPermissionsFor,
+  operationalRiskRecorderPermissionsFor,
 } from './company-permissions.js';
+
+import {
+  projectIdeasAssignment,
+  requireIdeasCapturedGrant,
+} from './ideas-captured-grants.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
   ...COMPANY_CONTEXT_USE_BUNDLES,
@@ -115,65 +124,37 @@ export class CompanyContextAuthorization {
     lock = false,
   ): Promise<string> {
     const company = actor.activeCompany;
-    if (
-      !company ||
-      company.ideasReaderPermissionSetVersion !== 'v1' ||
-      !company.ideasReaderPermissionAssignmentId ||
-      !company.ideasReaderPermissions?.includes('idea.read')
-    )
-      throw new ForbiddenException();
+    if (!company) throw new ForbiddenException();
+    const reader = requireIdeasCapturedGrant(company, 'reader');
     await this.requireLiveCapturedAssignment(
       actor,
       company.id,
       and(
-        eq(companyRoleAssignments.bundle, COMPANY_IDEAS_READER_BUNDLE),
-        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+        eq(companyRoleAssignments.bundle, reader.bundle),
         eq(
-          companyRoleAssignments.id,
-          company.ideasReaderPermissionAssignmentId,
+          companyRoleAssignments.permissionSetVersion,
+          reader.permissionSetVersion,
         ),
+        eq(companyRoleAssignments.id, reader.assignmentId),
       ) ?? sql`false`,
       lock,
     );
     await this.requireLiveCompanyContext(actor, company.id, lock);
-    if (operation === 'record') {
-      if (
-        company.ideasRecorderPermissionSetVersion !== 'v1' ||
-        !company.ideasRecorderPermissionAssignmentId ||
-        !company.ideasRecorderPermissions?.includes('idea.record')
-      )
-        throw new ForbiddenException();
-      await this.requireLiveCapturedAssignment(
-        actor,
-        company.id,
-        and(
-          eq(companyRoleAssignments.bundle, COMPANY_IDEAS_RECORDER_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
-          eq(
-            companyRoleAssignments.id,
-            company.ideasRecorderPermissionAssignmentId,
-          ),
-        ) ?? sql`false`,
-        lock,
+    if (operation === 'record' || operation === 'disposition') {
+      const mutation = requireIdeasCapturedGrant(
+        company,
+        operation === 'record' ? 'recorder' : 'reviewer',
       );
-    }
-    if (operation === 'disposition') {
-      if (
-        company.ideasReviewerPermissionSetVersion !== 'v1' ||
-        !company.ideasReviewerPermissionAssignmentId ||
-        !company.ideasReviewerPermissions?.includes('idea.disposition.record')
-      )
-        throw new ForbiddenException();
       await this.requireLiveCapturedAssignment(
         actor,
         company.id,
         and(
-          eq(companyRoleAssignments.bundle, COMPANY_IDEAS_REVIEWER_BUNDLE),
-          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          eq(companyRoleAssignments.bundle, mutation.bundle),
           eq(
-            companyRoleAssignments.id,
-            company.ideasReviewerPermissionAssignmentId,
+            companyRoleAssignments.permissionSetVersion,
+            mutation.permissionSetVersion,
           ),
+          eq(companyRoleAssignments.id, mutation.assignmentId),
         ) ?? sql`false`,
         lock,
       );
@@ -1387,6 +1368,8 @@ export class CompanyContextAuthorization {
         COMPANY_IDEAS_REVIEWER_BUNDLE,
         COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
         COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
+        COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
+        COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
         COMPANY_TASK_MANAGER_BUNDLE,
         COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
         COMPANY_PROJECT_APPROVER_BUNDLE,
@@ -1426,30 +1409,7 @@ export class CompanyContextAuthorization {
         displayName: row.displayName,
         clientPermissions: [],
       };
-      if (
-        row.bundle === COMPANY_IDEAS_READER_BUNDLE &&
-        row.permissionSetVersion === 'v1'
-      ) {
-        company.ideasReaderPermissions = ['idea.read'];
-        company.ideasReaderPermissionAssignmentId = row.assignmentId;
-        company.ideasReaderPermissionSetVersion = 'v1';
-      }
-      if (
-        row.bundle === COMPANY_IDEAS_RECORDER_BUNDLE &&
-        row.permissionSetVersion === 'v1'
-      ) {
-        company.ideasRecorderPermissions = ['idea.record'];
-        company.ideasRecorderPermissionAssignmentId = row.assignmentId;
-        company.ideasRecorderPermissionSetVersion = 'v1';
-      }
-      if (
-        row.bundle === COMPANY_IDEAS_REVIEWER_BUNDLE &&
-        row.permissionSetVersion === 'v1'
-      ) {
-        company.ideasReviewerPermissions = ['idea.disposition.record'];
-        company.ideasReviewerPermissionAssignmentId = row.assignmentId;
-        company.ideasReviewerPermissionSetVersion = 'v1';
-      }
+      Object.assign(company, projectIdeasAssignment(row));
       if (row.bundle === COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE) {
         if (
           row.permissionSetVersion !== 'v1' &&
@@ -1565,6 +1525,28 @@ export class CompanyContextAuthorization {
         ];
         company.profitabilityDirectorPermissionAssignmentId = row.assignmentId;
         company.profitabilityDirectorPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_OPERATIONAL_RISK_READER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.operationalRiskPermissions = [
+          ...(company.operationalRiskPermissions ?? []),
+          ...operationalRiskReaderPermissionsFor(row.permissionSetVersion),
+        ];
+        company.operationalRiskReaderAssignmentId = row.assignmentId;
+        company.operationalRiskReaderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.operationalRiskPermissions = [
+          ...(company.operationalRiskPermissions ?? []),
+          ...operationalRiskRecorderPermissionsFor(row.permissionSetVersion),
+        ];
+        company.operationalRiskRecorderAssignmentId = row.assignmentId;
+        company.operationalRiskRecorderPermissionSetVersion = 'v1';
       }
       // The reader bundle carries Activity read only. It never contributes
       // Company context, so it is resolved but not authorizing.
