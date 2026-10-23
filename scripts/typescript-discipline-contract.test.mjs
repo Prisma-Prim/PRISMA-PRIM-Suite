@@ -33,8 +33,20 @@ test('TypeScript implementation and review share one mandatory repository contra
   assert.match(normalizedDiscipline, /discriminated unions/i);
   assert.match(normalizedDiscipline, /illegal states.*unrepresentable/i);
   assert.match(normalizedDiscipline, /simplest total type/i);
-  assert.match(normalizedDiscipline, /external boundar.*`unknown`/i);
-  assert.match(normalizedDiscipline, /validate exactly once/i);
+  // These checks establish discoverability, not the technical merit of policy.
+  assert.match(normalizedDiscipline, /`unknown` for unparsed JSON/i);
+  assert.match(
+    normalizedDiscipline,
+    /retain platform, driver and schema types/i,
+  );
+  assert.match(
+    normalizedDiscipline,
+    /recheck authorization, versions and mutable state/i,
+  );
+  assert.match(
+    normalizedDiscipline,
+    /persisted receipts and historical snapshots/i,
+  );
   assert.match(normalizedDiscipline, /do not use `any`/i);
   assert.match(normalizedDiscipline, /do not use.*type assertions.*`as`/i);
   assert.match(normalizedDiscipline, /complete runtime claim/i);
@@ -46,7 +58,7 @@ test('TypeScript implementation and review share one mandatory repository contra
     /object arguments.*ordering is ambiguous/i,
   );
   assert.match(normalizedDiscipline, /test.*public seam/i);
-  assert.match(normalizedDiscipline, /mock only.*system boundaries/i);
+  assert.match(normalizedDiscipline, /mock true system boundaries/i);
 
   for (const pointer of [agents, execution]) {
     assert.doesNotMatch(pointer, /discriminated unions.*illegal states/is);

@@ -10,37 +10,58 @@ default; they do not depend on a prompt naming a TypeScript skill.
 ## Model valid states constructively
 
 - Choose the simplest total type that represents the domain. Use discriminated
-  unions when behavior varies by state so illegal states are unrepresentable;
-  avoid parallel optional fields that admit contradictory combinations.
-- Make state handling exhaustive. Use a `never` check when a switch or mapping
-  must cover every variant so a newly added variant fails type checking until
-  it is handled deliberately.
-- Prefer schema-derived types and `satisfies` over duplicated declarations,
-  widened annotations, or unchecked casts. Keep the runtime validator and the
-  type it proves under one owner.
+  unions where practical to make relevant illegal states unrepresentable; avoid
+  parallel optional fields that admit contradictory combinations. Types do not
+  replace database constraints or checks on concurrent state.
+- Make decisions over closed unions exhaustive. Use a `never` check when a
+  switch or mapping must cover every variant. Partial projections and open
+  external protocols may instead need an explicit compatibility fallback.
+- Keep an owned runtime contract and its type together. Prefer parser-derived
+  or schema-derived types, database inference and `satisfies` where they preserve
+  useful evidence. A simple interface is appropriate when it does not duplicate
+  a validator. Do not introduce a schema library or shared package solely to
+  satisfy this preference; compare maintenance and integration costs first.
 
-## Prove boundaries once
+## Establish and preserve boundary evidence
 
-- Treat data from external boundaries as `unknown`, including HTTP payloads,
-  environment variables, persisted JSON, storage, and third-party responses.
-  Validate exactly once at the boundary that owns the input, then pass the
-  resulting typed value inward instead of repeating ad hoc checks.
-- Do not use `any`. Do not use type assertions with `as` or non-null assertions
-  to manufacture evidence. An assertion is acceptable only when it expresses
-  a complete runtime claim already validated at the same boundary and no
-  narrower TypeScript construct can preserve that proof.
+- Use `unknown` for unparsed JSON and other inputs whose structure is not
+  established. Retain platform, driver and schema types to the extent that their
+  enforced guarantees apply: environment values already have a string-or-absent
+  representation, while an ORM JSON type annotation alone proves no structure.
+- Validate and normalize representation at its owning boundary, then pass the
+  established type inward. Check domain constraints where their context is
+  available, and recheck authorization, versions and mutable state at the
+  operation or transaction that relies on them. Avoid repeating a check only
+  while its invariant remains established for the unchanged value.
+- State compatibility deliberately. An HTTP reader may accept additive fields
+  while proving only the fields it consumes; this does not relax the publisher's
+  contract. Persisted receipts and historical snapshots need their own format
+  and evolution rules. Do not reuse a permissive HTTP reader where discarding
+  persisted information would change historical or replay semantics.
+- Do not use `any` in domain contracts or allow unchecked values to spread from
+  interop code. Keep a necessary library exception local, name its supported
+  contract and verify the boundary; it must still satisfy the lint configuration.
+  Do not use type assertions with `as` or non-null assertions to manufacture
+  evidence. A necessary assertion must express a complete runtime claim backed
+  by control flow, validation or an enforced platform/library/lifecycle contract
+  that still holds at use. Prefer inference or a guard when it preserves that
+  proof. A cast, annotation or comment does not itself validate a value.
 - Fail closed when an unrecognized value affects authorization, permissions,
   identity, tenancy, or version compatibility.
 
 ## Keep interfaces and tests honest
 
-- Use object arguments when parameter ordering is ambiguous or several values
-  share a type. Keep public interfaces narrow and name domain concepts rather
+- Use object arguments when parameter ordering is ambiguous, especially for
+  business identifiers. Keep established framework APIs and simple unambiguous
+  calls intact. Keep public interfaces narrow and name domain concepts rather
   than transporting loosely related primitives.
-- Test behavior through the highest stable public seam. Mock only true system
-  boundaries, not the module whose contract the test is meant to prove. Cover
-  rejected, malformed, unauthorized, and stale inputs when the seam admits
-  them.
+- Test behavior through the smallest stable public seam that proves the
+  contract. Use REST/PostgreSQL or browser seams when the behavior depends on
+  transactions, constraints or browser integration; deterministic calculations
+  and decoders can have focused public-function tests. Mock true system
+  boundaries or explicit collaborators whose behavior is not under test, and
+  retain the integration proof when wiring matters. Cover rejected, malformed,
+  unauthorized and stale inputs when the seam admits them.
 
 ## Review contract
 
