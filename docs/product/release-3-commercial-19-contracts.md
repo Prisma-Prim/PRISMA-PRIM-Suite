@@ -18,6 +18,8 @@ Iurie interview items are cited from [#81](https://github.com/Prisma-Prim/PRISMA
 
 An authorized user of the Company responsible for an Accepted Offer turns it into a Contract, and optionally first into a Precontract, whose complete Contract Versions take the accepted content without re-entry. Deterministic Quality Checks verify concordance with the accepted Offer Version. An approver approves or rejects an exact version and records simulated signature evidence, which makes that version the executed, immutable agreement. A later change to an executed agreement is a separate Addendum. After execution, the user links the agreement to an existing authorized Project, or creates one after reviewing every candidate, never blindly. Every Contract artifact is visibly provisional.
 
+The approved [pending-Offer preparation contract](release-3-commercial-22-controlled-evidence-2026-10.md#224-bounded-pending-offer-contract-preparation-821) adds the explicitly gated `OFFER_PREPARATION` origin for an ordinary illustrative Contract. Its immutable Versions capture their own exact source Offer Version and can be revised against an eligible successor. Preparing one never records Client acceptance; its fresh v3 checks block approval/signature until the exact source is accepted. The existing accepted/direct/Precontract/Addendum contracts below remain unchanged.
+
 Inherited and not restated (Decided):
 
 - sections 3, 7, 9, 10 and 18 of this PRD, in particular the Accepted Offer of section 18.8;
@@ -89,6 +91,8 @@ The MVP delivers two origins (PC3):
 
 Not in the MVP: **import** of historical agreements belongs to governed migration through an import batch (Decided, [DR §15.1](consolidated-product-decision-record.md#151-migration-is-a-governed-business-process), DEC-140), and **renewal** waits for real renewal practice (S04-Q37 not mapped). The API and database reject `IMPORTED` and `RENEWAL`.
 
+For the additional ordinary-Contract origin `OFFER_PREPARATION`, section22.4 owns the opt-in initial command, per-Version source binding, explicit successor-source revision, preparation Template and v3 check gate. It is neither DIRECT nor a Precontract. The root source remains initial provenance; an exact Version read or event uses that Version's source. Existing `ACCEPTED_OFFER` roots retain their fixed accepted source and previous database rows are not rebound.
+
 ### 19.4 Commands and transitions
 
 Each command runs in the server-validated active Company and follows section 19.13. Every command on an existing Contract except Run Quality Checks carries `expectedContractRevision`, and a command on a superseded version returns `CONTRACT_VERSION_SUPERSEDED`.
@@ -135,6 +139,8 @@ In this MVP, the approved representation is the generated agreement, so "generat
 Rules whose inputs the server sets by construction still run, so the mandatory concordance is a stored, reproducible result. Runs, decision-instant evaluation, rule set versioning and acknowledgement follow section 18.5 exactly, with Record signature in the place of Record transmission. Approved exceptions and overrides are excluded.
 
 **Rule set version 2.** Since the adjusted-Snapshot compatibility slice ([#561](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/561)), each new run of a Contract Version whose Snapshot has an adjusted line uses `CONTRACT_QUALITY_ILLUSTRATIVE` version 2; any other version, including one without a Snapshot, uses version 1. The server derives this binding for each run from the version's immutable Snapshot and never accepts it as input (PC8). Version 2 keeps version 1's codes, severities and applicability. Only `PRICING_SNAPSHOT_COHERENT` differs: it applies the version-2 trace check of section 18.5, so Offer and Contract coherence agree on identical inputs, and nothing is re-priced or written to the Snapshot. `PRICE_MATCHES_ACCEPTED_OFFER` still compares the referenced Snapshot, so adjustments are identical. Earlier runs keep their version: a pending version that already references an adjusted Snapshot keeps its stored version-1 runs and gets version 2 on its next run. Approve and Record signature evaluate the bound rule set at their decision instant, and their events record its version (section 19.12). The Template Versions of section 19.7 already render the stored adjustment strings, so no Template or Clause Version changes.
+
+Section22.4 additionally binds early-origin runs to v3: full adjusted/unadjusted Snapshot coherence and exact-source concordance, with `SOURCE_OFFER_ACCEPTED` as an unacknowledgeable ERROR while the exact source is pending or no longer eligible. Its price/condition result labels describe the source Offer without calling a pending source accepted. Existing v1/v2 rules, stored runs and ordinary-origin bindings remain unchanged. The new origin never bypasses fresh approval/signature checks.
 
 ### 19.6 Permissions and approval
 

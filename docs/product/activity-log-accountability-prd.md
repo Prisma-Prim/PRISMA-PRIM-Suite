@@ -319,6 +319,24 @@ bundle grants Activity read. Authorization section 8 owns separate grant/revoke
 administration events with their existing minimal visibility. Recording a measure
 or reassessment proves no score, effectiveness, spending, task or closure decision.
 
+The approved [pending-Offer Contract preparation contract](release-3-commercial-22-controlled-evidence-2026-10.md#224-bounded-pending-offer-contract-preparation-821)
+uses the existing Contract creation, Version, check, decision, signature and
+relationship event families, not a second preparation aggregate or success-event
+family. Initial creation and each new Version carry the factual source kind
+`OFFER_PREPARATION` and that exact Contract Version's source Offer Version
+identifier under the existing minimal typed source contract. Historical events
+never resolve their source through the root's initial source or today's head.
+No proposed term, party, amount or confidential text enters event metadata.
+
+Contract/Version/source binding, head/reference/receipt, original-Client fence
+and the applicable existing event commit atomically. Denied, invalid, stale,
+failed and replayed commands create no success event. Existing commercial
+Contract-history visibility and exact-target prerequisites remain unchanged;
+source preparation creates no acceptance or signature event. Authorization
+section8 owns the two separate assignment-administration events and their safe
+bundle-label metadata. The #821 delegated product disposition approves this
+bounded contract; it does not claim runtime events or new visibility.
+
 ## 8. Retention, correction and export
 
 Events are append-only. A mistaken business action is corrected in its owning module, which records a compensating or correction event.

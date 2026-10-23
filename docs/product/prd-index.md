@@ -39,6 +39,12 @@ The [evidence-boundary rollover tracker #112](https://github.com/Prisma-Prim/PRI
 
 The pinned matrix preserves the duplicate matching/union-design blocker as it stood at the 2026-08-23 evidence snapshot. Later DEC-213 / #148 Product Owner synthesis by Dan resolves one conservative governed duplicate-resolution slice without changing Iurie evidence. General fuzzy matching, asynchronous multi-person approval and Client Legal Entity/branch modelling remain outside that slice. The decision record and owning PRDs resolve only the product-design blocker; live GitHub trackers continue to own current implementation readiness, blockers and delivery state.
 
+The [bounded pending-Offer Contract preparation contract](release-3-commercial-22-controlled-evidence-2026-10.md#224-bounded-pending-offer-contract-preparation-821)
+under #821 adds an opt-in illustrative Contract origin with exact source per
+Version and explicit successor recovery. Preparation never records acceptance;
+approval/signature still require the exact accepted source. Its status and live
+tracker own product disposition and subsequent runtime delivery.
+
 ## 4. Cross-cutting PRDs
 
 | PRD                                                                                              | Document status | Primary authority                                                         |

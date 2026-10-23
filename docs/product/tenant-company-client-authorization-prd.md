@@ -430,6 +430,34 @@ membership/server time and bundle-label-only metadata convention. No-op, denied,
 failed and exact-replayed administration commands emit none. Their existing
 administration visibility reveals no Risk content and confers no Risk read.
 
+The approved [pending-Offer Contract preparation contract](release-3-commercial-22-controlled-evidence-2026-10.md#224-bounded-pending-offer-contract-preparation-821)
+adds **Company Contract Early Preparation v1**, containing exactly
+`commercial.contract.prepare_pending_offer`. It is an independent opt-in
+captured Company bundle, explicitly granted/revoked through existing assignment
+administration by an active administrator with `company.assignment.manage` for
+an active same-Workspace member and active Company. No old assignment, title,
+Workspace ownership or migration acquires it; absent/null/unknown captured
+versions fail closed. No real person is assigned by this contract.
+
+Creating or revising the `OFFER_PREPARATION` origin additionally requires ordinary
+captured Contract preparation and exact source Offer/Opportunity read authority
+in the same active Company. The extra grant supplies none of those prerequisites
+and no Client, pricing, approval, signature, Project, Activity, administration or
+cross-Company permission. Reads of the resulting Contracts and exact historical
+Versions use ordinary Contract/Opportunity read authority, without gaining Offer
+or pricing rights. Ordinary approval/signature rights remain independently
+captured and require the source-acceptance and check gates in section22.4.
+
+Revocation/suspension is rechecked on new early commands and their receipt replay.
+Loaded write drafts and late replies retire when required captured authorities
+change; an independently authorized ordinary Contract read owner may retain only
+its permitted history. Assignment events are exactly
+`company_contract_early_preparation_assignment.granted` and
+`company_contract_early_preparation_assignment.revoked`, with existing
+administration visibility, bundle-label-only metadata and one event per actual
+state change. The #821 delegated product disposition approves this bounded
+contract; runtime delivery remains separate.
+
 ## 9. Lifecycle and accountability
 
 Companies, memberships, role assignments, Clients, legal entities and relationships have explicit active/archived or enabled/disabled states. Critical create, scope change, archive, duplicate resolution and permission changes create canonical Activity Log events only when their owning capability authorizes the event family.
