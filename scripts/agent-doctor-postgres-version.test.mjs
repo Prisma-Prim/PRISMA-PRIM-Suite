@@ -12,7 +12,7 @@ const healthyEnvironment = {
   workspaceManifestExists: true,
   lockfileExists: true,
   dependenciesInstalled: true,
-  chromiumAvailable: true,
+  chromiumProbe: { state: 'available' },
   databaseUrl:
     'postgresql://prisma_prim:prisma_prim@127.0.0.1:5432/prisma_prim_dev',
   testDatabaseUrl:

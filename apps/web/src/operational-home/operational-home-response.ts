@@ -44,11 +44,13 @@ export type CompanyOverdueTasks = {
   companyId: string;
   today: string;
   total: number;
+  offset: number;
+  pageSize: 25;
   tasks: OverdueTask[];
 };
 
-/** The overdue list's server bound (Operational Dashboard PRD §17.2). */
-const OVERDUE_TASK_ROW_LIMIT = 100;
+/** The fixed overdue page size (Operational Dashboard PRD §17.2). */
+const OVERDUE_TASK_PAGE_SIZE = 25;
 /** The My attention bound of Operational Dashboard PRD §17.3. */
 const ATTENTION_TASK_ROW_LIMIT = 10;
 
@@ -212,20 +214,25 @@ function calendarDayDistance(from: string, to: string): number {
 /** Validates the Company overdue-Task list once at the fetch boundary. */
 export function readCompanyOverdueTasks(
   value: unknown,
-  companyId: string,
+  reader: { companyId: string; offset: number },
 ): CompanyOverdueTasks {
+  const { companyId, offset } = reader;
   const row = record(value);
   const result = {
     companyId: company(row.companyId, companyId),
     today: today(row.today),
     total: count(row.total),
+    offset: count(row.offset),
   };
   if (
+    result.offset !== offset ||
+    row.pageSize !== OVERDUE_TASK_PAGE_SIZE ||
     !Array.isArray(row.tasks) ||
-    row.tasks.length > OVERDUE_TASK_ROW_LIMIT ||
-    row.tasks.length > result.total
+    row.tasks.length !==
+      Math.min(OVERDUE_TASK_PAGE_SIZE, Math.max(0, result.total - offset))
   )
     throw new Error('Invalid overdue Tasks');
+  const seen = new Set<string>();
   const tasks = row.tasks.map((item: unknown): OverdueTask => {
     const entry = record(item);
     const owner = record(entry.project);
@@ -235,6 +242,8 @@ export function readCompanyOverdueTasks(
       clientDisplayName: text(owner.clientDisplayName),
     };
     const task = readTask(entry, { companyId, projectId: project.id });
+    if (seen.has(task.id)) throw new Error('Duplicate overdue Task.');
+    seen.add(task.id);
     const daysOverdue = count(entry.daysOverdue, 1);
     const dueDate = task.dueDate;
     // Exact YYYY-MM-DD values order as their text.
@@ -262,5 +271,18 @@ export function readCompanyOverdueTasks(
       }
     }
   });
-  return { ...result, tasks };
+  // Equal projected milliseconds do not establish PostgreSQL's identifier tie.
+  // Preserve server order and reject only inversions visible in the public facts.
+  for (let index = 1; index < tasks.length; index++) {
+    const previous = tasks[index - 1];
+    const current = tasks[index];
+    if (!previous || !current) throw new Error('Invalid overdue Task page.');
+    if (
+      previous.dueDate > current.dueDate ||
+      (previous.dueDate === current.dueDate &&
+        Date.parse(previous.createdAt) > Date.parse(current.createdAt))
+    )
+      throw new Error('Unordered overdue Task page.');
+  }
+  return { ...result, pageSize: 25, tasks };
 }

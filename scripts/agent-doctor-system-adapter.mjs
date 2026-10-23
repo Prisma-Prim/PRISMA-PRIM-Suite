@@ -489,28 +489,39 @@ export function probePostgres(
   return classifyPostgresCommand(command);
 }
 
-function probePnpm() {
+function probePnpm(timeout, runner) {
   const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   return classifyPnpmCommand(
-    run(executable, [
-      'exec',
-      'node',
-      '--input-type=module',
-      '--eval',
-      'process.stdout.write(process.env.npm_config_user_agent ?? "")',
-    ]),
+    run(
+      executable,
+      [
+        'exec',
+        'node',
+        '--input-type=module',
+        '--eval',
+        'process.stdout.write(process.env.npm_config_user_agent ?? "")',
+      ],
+      { timeout },
+      runner,
+    ),
   );
 }
 
-function playwrightChromiumIsAvailable() {
+function probeChromium(timeout, runner) {
   const executable = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
   const probe = [
-    'import { existsSync } from "node:fs";',
+    'import { accessSync, constants } from "node:fs";',
     'import { chromium } from "@playwright/test";',
-    'process.exit(existsSync(chromium.executablePath()) ? 0 : 1);',
+    'try { accessSync(chromium.executablePath(), constants.X_OK);',
+    'process.stdout.write("PRISMA_PRIM_CHROMIUM=available"); }',
+    'catch (error) {',
+    'if (["ENOENT", "ENOTDIR", "EACCES"].includes(error.code)) {',
+    'process.stdout.write("PRISMA_PRIM_CHROMIUM=missing"); process.exitCode = 1;',
+    '} else { throw error; } }',
   ].join(' ');
-  return (
-    run(executable, [
+  const command = run(
+    executable,
+    [
       '--filter',
       '@prisma-prim/web',
       'exec',
@@ -518,11 +529,36 @@ function playwrightChromiumIsAvailable() {
       '--input-type=module',
       '--eval',
       probe,
-    ]).status === 0
+    ],
+    { timeout },
+    runner,
   );
+  const code = command.error ? canonicalCode(command.error) : null;
+  if (code === 'ETIMEDOUT') return { state: 'timed-out' };
+  if (code === 'EACCES' || code === 'EPERM')
+    return { state: 'sandbox-denied', detail: code };
+  if (command.error == null && command.signal == null) {
+    if (
+      command.status === 0 &&
+      command.stdout === 'PRISMA_PRIM_CHROMIUM=available'
+    )
+      return { state: 'available' };
+    if (
+      command.status === 1 &&
+      command.stdout === 'PRISMA_PRIM_CHROMIUM=missing'
+    )
+      return { state: 'missing' };
+  }
+  return { state: 'failed' };
 }
 
-export function collectEnvironmentSnapshot({ needsChromium, needsPostgres }) {
+export function collectEnvironmentSnapshot(
+  { needsChromium, needsPostgres, readinessProfile = 'standard' },
+  runner = spawnSync,
+) {
+  if (!['standard', 'cloud'].includes(readinessProfile))
+    throw new RangeError('Expected readiness profile standard or cloud.');
+  const readinessTimeout = readinessProfile === 'cloud' ? 60_000 : 10_000;
   const packageJson = JSON.parse(
     readFileSync(resolve(repositoryRoot, 'package.json'), 'utf8'),
   );
@@ -532,7 +568,7 @@ export function collectEnvironmentSnapshot({ needsChromium, needsPostgres }) {
     databaseUrl,
     testDatabaseUrl,
   );
-  const pnpmProbe = probePnpm();
+  const pnpmProbe = probePnpm(readinessTimeout, runner);
   const dependenciesInstalled = existsSync(
     resolve(repositoryRoot, 'node_modules'),
   );
@@ -544,7 +580,7 @@ export function collectEnvironmentSnapshot({ needsChromium, needsPostgres }) {
       postgresProbe = { state: 'sandbox-denied', detail: pnpmProbe.detail };
     else if (!dependenciesInstalled)
       postgresProbe = { state: 'tooling-missing', detail: 'dependencies' };
-    else postgresProbe = probePostgres(databaseUrl, testDatabaseUrl);
+    else postgresProbe = probePostgres(databaseUrl, testDatabaseUrl, runner);
   }
   return {
     nodeRange: packageJson.engines?.node ?? '',
@@ -557,7 +593,9 @@ export function collectEnvironmentSnapshot({ needsChromium, needsPostgres }) {
     ),
     lockfileExists: existsSync(resolve(repositoryRoot, 'pnpm-lock.yaml')),
     dependenciesInstalled,
-    chromiumAvailable: needsChromium ? playwrightChromiumIsAvailable() : false,
+    chromiumProbe: needsChromium
+      ? probeChromium(readinessTimeout, runner)
+      : { state: 'not-run' },
     databaseUrl,
     testDatabaseUrl,
     postgresProbe,

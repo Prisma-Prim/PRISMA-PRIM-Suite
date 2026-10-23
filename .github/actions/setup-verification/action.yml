@@ -6,7 +6,7 @@ inputs:
     description: Provision the isolated test database using POSTGRES_ADMIN_URL.
     default: 'true'
   chromium:
-    description: Install Chromium and its system dependencies for browser verification.
+    description: Restore or install Chromium using the Ubuntu 24.04 runner's system libraries.
     default: 'true'
 
 runs:
@@ -27,12 +27,18 @@ runs:
 
     # Database shards share the one image archive the postgres_image job
     # cached, instead of each pulling from the throttled public registry.
+    - name: Resolve PostgreSQL archive key
+      if: ${{ inputs.postgres == 'true' }}
+      id: postgres_image
+      shell: bash
+      run: echo "key=$(bash scripts/ci-start-postgres.sh cache-key)" >> "$GITHUB_OUTPUT"
+
     - name: Restore PostgreSQL image
       if: ${{ inputs.postgres == 'true' }}
       uses: actions/cache/restore@v4
       with:
         path: ${{ runner.temp }}/postgres-image/postgres.tar
-        key: postgres-image-${{ hashFiles('scripts/ci-start-postgres.sh') }}
+        key: ${{ steps.postgres_image.outputs.key }}
 
     - name: Start PostgreSQL
       if: ${{ inputs.postgres == 'true' }}
@@ -53,7 +59,24 @@ runs:
         client.query("CREATE DATABASE prisma_prim_test OWNER prisma_prim"); await
         client.end();'
 
-    - name: Install Chromium explicitly
+    # Ubuntu 24.04 already supplies the supported Chromium system libraries.
+    # Bind browser downloads to the installed Playwright version and platform.
+    - name: Resolve Playwright version
+      if: ${{ inputs.chromium == 'true' }}
+      id: playwright
+      shell: bash
+      run: |
+        version=$(pnpm --filter @prisma-prim/web exec playwright --version)
+        echo "version=${version#Version }" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Chromium
+      if: ${{ inputs.chromium == 'true' }}
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: chromium-ubuntu-24.04-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+
+    - name: Ensure Chromium is installed
       if: ${{ inputs.chromium == 'true' }}
       shell: bash
-      run: pnpm --filter @prisma-prim/web exec playwright install --with-deps chromium
+      run: pnpm --filter @prisma-prim/web exec playwright install chromium

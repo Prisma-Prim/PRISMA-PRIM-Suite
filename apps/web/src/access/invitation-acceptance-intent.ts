@@ -14,9 +14,12 @@ export function captureAcceptanceIntent(): AcceptanceIntent | undefined {
     const incomingId = url.searchParams.get('invitation');
     if (!isUuid(incomingId)) return undefined;
     const invitationId = incomingId.toLowerCase();
-    const continuation = new URLSearchParams(url.hash.slice(1)).get(
-      'invitation-intent',
-    );
+    // Clerk's hash router requires a slash-prefixed route. Continue reading
+    // legacy fragments so already-issued authentication returns stay recoverable.
+    const fragment = url.hash.startsWith('#/?')
+      ? url.hash.slice(3)
+      : url.hash.slice(1);
+    const continuation = new URLSearchParams(fragment).get('invitation-intent');
     if (continuation !== null && continuation.length > 100_000)
       return undefined;
     const incomingIntent: unknown =
@@ -79,7 +82,7 @@ export function acceptanceContinuationUrl(
   const fragment = new URLSearchParams({
     'invitation-intent': JSON.stringify(intent),
   });
-  return '/accept-invitation?' + query.toString() + '#' + fragment.toString();
+  return '/accept-invitation?' + query.toString() + '#/?' + fragment.toString();
 }
 export function saveAcceptanceIntent(intent: AcceptanceIntent) {
   try {

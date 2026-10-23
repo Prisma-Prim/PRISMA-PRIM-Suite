@@ -1,3 +1,5 @@
+import { ForbiddenException } from '@nestjs/common';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -9,6 +11,8 @@ import {
   type PostgresRestTestHarness,
 } from '../database/postgres-rest-test-harness.js';
 import type { ActorContext } from './access.types.js';
+import { DatabaseContext } from '../database/database-context.js';
+import { CompanyContextAuthorization } from './company-context-authorization.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
@@ -21,6 +25,7 @@ const BUNDLES = [
     prefix: 'ideasReader',
     action: 'company_ideas_reader_assignment',
     permissions: ['idea.read'],
+    operation: 'read',
   },
   {
     path: 'company-ideas-recorder-assignments',
@@ -29,6 +34,7 @@ const BUNDLES = [
     prefix: 'ideasRecorder',
     action: 'company_ideas_recorder_assignment',
     permissions: ['idea.record'],
+    operation: 'record',
   },
   {
     path: 'company-ideas-reviewer-assignments',
@@ -37,14 +43,16 @@ const BUNDLES = [
     prefix: 'ideasReviewer',
     action: 'company_ideas_reviewer_assignment',
     permissions: ['idea.disposition.record'],
+    operation: 'disposition',
   },
-];
+] as const;
 
 withPostgres('Ideas assignment administration and live authorization', () => {
   let isolated: IsolatedPostgresTestDatabase;
   let harness: PostgresRestTestHarness;
   let origin: string;
   let pool: Pool;
+  let authorization: CompanyContextAuthorization;
   let sequence = 0;
 
   // Bound historical migrations and Nest bootstrap separately from assertions.
@@ -73,6 +81,9 @@ withPostgres('Ideas assignment administration and live authorization', () => {
       },
     });
     ({ origin, pool } = harness);
+    authorization = new CompanyContextAuthorization(
+      new DatabaseContext(drizzle({ client: pool })),
+    );
   }, 120_000);
   beforeEach(async () => {
     await pool.query('TRUNCATE workspaces, internal_users CASCADE');
@@ -116,7 +127,10 @@ withPostgres('Ideas assignment administration and live authorization', () => {
       const projection = record(
         await (await selected('member', companyId)).json(),
       );
-      expect(record(projection.activeCompany)).toMatchObject({
+      expect(record(projection.activeCompany)).toEqual({
+        id: companyId,
+        displayName: 'Synthetic Company',
+        clientPermissions: [],
         [`${bundle.prefix}Permissions`]: bundle.permissions,
         [`${bundle.prefix}PermissionAssignmentId`]: assignment.id,
         [`${bundle.prefix}PermissionSetVersion`]: 'v1',
@@ -168,7 +182,11 @@ withPostgres('Ideas assignment administration and live authorization', () => {
         record(await (await selected('member', companyId)).json())
           .activeCompany,
       );
-      expect(after[`${bundle.prefix}Permissions`]).toBeUndefined();
+      expect(after).toEqual({
+        id: companyId,
+        displayName: 'Synthetic Company',
+        clientPermissions: [],
+      });
       const events = (await activity('owner')).filter(
         (event) =>
           typeof event.action === 'string' &&
@@ -178,7 +196,112 @@ withPostgres('Ideas assignment administration and live authorization', () => {
         `${bundle.action}.granted`,
         `${bundle.action}.revoked`,
       ]);
-      expect((await request(bundle.path, 'POST', body)).status).toBe(201);
+      const freshGrant = await request(bundle.path, 'POST', body);
+      expect(freshGrant.status).toBe(201);
+      const freshAssignment = record(await freshGrant.json());
+      expect(freshAssignment.id).not.toBe(assignment.id);
+      expect(
+        record(
+          record(await (await selected('member', companyId)).json())
+            .activeCompany,
+        ),
+      ).toEqual({
+        id: companyId,
+        displayName: 'Synthetic Company',
+        clientPermissions: [],
+        [`${bundle.prefix}Permissions`]: bundle.permissions,
+        [`${bundle.prefix}PermissionAssignmentId`]: freshAssignment.id,
+        [`${bundle.prefix}PermissionSetVersion`]: 'v1',
+      });
+    },
+  );
+
+  it.each(BUNDLES)(
+    '$label requires a complete captured grant and rejects its retired identity after a fresh v1 grant',
+    async (bundle) => {
+      await actor('owner');
+      const member = await actor('member');
+      const companyId = await company();
+      await grant(
+        'company-context-assignments',
+        member.workspaceMembershipId,
+        companyId,
+      );
+      await grant(
+        'company-ideas-reader-assignments',
+        member.workspaceMembershipId,
+        companyId,
+      );
+      await grant(bundle.path, member.workspaceMembershipId, companyId);
+      const activeCompany = await authorization.resolveAuthorizedActiveCompany(
+        member,
+        companyId,
+      );
+      if (!activeCompany) throw new Error('Expected authorized Company.');
+      const captured: ActorContext = { ...member, activeCompany };
+      await expect(
+        authorization.requireIdeasAccess(captured, bundle.operation),
+      ).resolves.toBe(companyId);
+
+      const additionalPermission = { ...activeCompany };
+      Object.defineProperty(
+        additionalPermission,
+        `${bundle.prefix}Permissions`,
+        {
+          value: [...bundle.permissions, 'synthetic.unrelated'],
+        },
+      );
+      await expect(
+        authorization.requireIdeasAccess(
+          { ...captured, activeCompany: additionalPermission },
+          bundle.operation,
+        ),
+      ).resolves.toBe(companyId);
+
+      const invalidFields = [
+        { suffix: 'Permissions', values: [undefined, []] },
+        {
+          suffix: 'PermissionAssignmentId',
+          values: [undefined, '', '00000000-0000-4000-8000-000000007339'],
+        },
+        {
+          suffix: 'PermissionSetVersion',
+          values: [undefined, null, 'v2', 'toString'],
+        },
+      ];
+      for (const { suffix, values } of invalidFields) {
+        for (const value of values) {
+          const malformedCompany = { ...activeCompany };
+          // Deliberately exercise runtime drift at Access's existing Actor seam.
+          Object.defineProperty(malformedCompany, `${bundle.prefix}${suffix}`, {
+            value,
+          });
+          await expect(
+            authorization.requireIdeasAccess(
+              { ...captured, activeCompany: malformedCompany },
+              bundle.operation,
+            ),
+          ).rejects.toBeInstanceOf(ForbiddenException);
+        }
+      }
+
+      const revoked = await request(
+        `${bundle.path}/${member.workspaceMembershipId}/${companyId}`,
+        'DELETE',
+      );
+      expect(revoked.status).toBe(200);
+      await grant(bundle.path, member.workspaceMembershipId, companyId);
+      await expect(
+        authorization.requireIdeasAccess(captured, bundle.operation),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      const refreshedCompany =
+        await authorization.resolveAuthorizedActiveCompany(member, companyId);
+      await expect(
+        authorization.requireIdeasAccess(
+          { ...member, activeCompany: refreshedCompany },
+          bundle.operation,
+        ),
+      ).resolves.toBe(companyId);
     },
   );
 

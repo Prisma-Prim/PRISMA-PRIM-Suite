@@ -60,6 +60,7 @@ import {
   type AttentionRule,
   type AttentionTasksPage,
   type CompanyOverdueTasks,
+  type CompanyOverdueTasksPage,
   type DueSoonTasksPage,
   type TaskAttention,
   type TaskActor,
@@ -70,8 +71,8 @@ import {
   type TaskView,
 } from './task.types.js';
 type TaskRow = typeof tasks.$inferSelect;
-/** The Company overdue-Task list shows at most this many rows with its total. */
-const OVERDUE_TASK_ROW_LIMIT = 100;
+/** Each Company overdue-Task page carries at most this many rows. */
+const OVERDUE_TASK_PAGE_SIZE = 25;
 /** The My attention queue shows at most this many rows with its full total. */
 const ATTENTION_TASK_ROW_LIMIT = 10;
 @Injectable()
@@ -473,29 +474,41 @@ export class TaskService {
   async listOverdue(
     actor: ActorContext,
     query: unknown,
-  ): Promise<CompanyOverdueTasks & { today: string }> {
-    overdueTasksQuery(query);
+  ): Promise<CompanyOverdueTasksPage> {
+    const { offset } = overdueTasksQuery(query);
     const today = operationalDate(this.clock.now());
     const { companyId, total, tasks } = await this.database.transaction(
       () =>
         this.readCompanyOverdueTasks(actor, {
           today,
-          rowLimit: OVERDUE_TASK_ROW_LIMIT,
+          rowLimit: OVERDUE_TASK_PAGE_SIZE,
+          offset,
         }),
       { isolationLevel: 'repeatable read' },
     );
-    return { companyId, today, total, tasks };
+    return {
+      companyId,
+      today,
+      total,
+      tasks,
+      offset,
+      pageSize: OVERDUE_TASK_PAGE_SIZE,
+    };
   }
   /**
    * Open Tasks of the reader's Project list in the active Company, whatever
    * their responsible member, due before `today` (Operational Dashboard PRD
    * §17.2): the total and at most `rowLimit` rows by due date, creation time
-   * and identifier. It reuses the Task read boundary of My Tasks, opens no
+   * and identifier, starting at `offset`. It reuses My Tasks authority, opens no
    * transaction of its own and so runs inside the caller's snapshot.
    */
   async readCompanyOverdueTasks(
     actor: ActorContext,
-    { today, rowLimit }: { today: string; rowLimit: number },
+    {
+      today,
+      rowLimit,
+      offset = 0,
+    }: { today: string; rowLimit: number; offset?: number },
   ): Promise<CompanyOverdueTasks> {
     const companyId = await this.access.requireActor(actor);
     const projects = new Map(
@@ -522,13 +535,15 @@ export class TaskService {
       .from(tasks)
       .where(overdue);
     const total = counted?.total ?? 0;
-    if (total === 0 || rowLimit === 0) return { companyId, total, tasks: [] };
+    if (offset >= total || rowLimit === 0)
+      return { companyId, total, tasks: [] };
     const rows = await this.database.connection
       .select()
       .from(tasks)
       .where(overdue)
       .orderBy(asc(tasks.dueDate), asc(tasks.createdAt), asc(tasks.id))
-      .limit(rowLimit);
+      .limit(rowLimit)
+      .offset(offset);
     return {
       companyId,
       total,

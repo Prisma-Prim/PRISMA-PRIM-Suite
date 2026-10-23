@@ -31,8 +31,10 @@ type Props = {
   onOpenClients: () => void;
   onOpenProjects: () => void;
   onOpenMyTasks: () => void;
-  /** Opens an overdue Task in its Project; rows offer Open only when supplied. */
+  /** Opens a Task through the existing Project intent when supplied. */
   onOpenTask?: (task: { projectId: string; taskId: string }) => void;
+  /** Optional final Task-focus intent for the Company overdue disclosure only. */
+  onOpenOverdueTask?: (task: { projectId: string; taskId: string }) => void;
 };
 
 type Load =
@@ -73,6 +75,7 @@ function CompanySummary({
   onOpenProjects,
   onOpenMyTasks,
   onOpenTask,
+  onOpenOverdueTask,
 }: Props) {
   const copy = useOperationalHomeCopy();
   const { formatDate } = useInterfaceLocale();
@@ -220,7 +223,7 @@ function CompanySummary({
           company={company}
           identity={identity}
           headingRef={panelHeading}
-          onOpenTask={onOpenTask}
+          onOpenTask={onOpenOverdueTask ?? onOpenTask}
           onClose={() => {
             setPanelOpen(false);
             overdueCard.current?.focus();
