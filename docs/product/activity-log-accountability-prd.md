@@ -193,6 +193,16 @@ Metadata carries only the affected Version number plus the source or superseded 
 
 Projection follows `document.corrected`: only in the recording Company, to actors with current Document metadata read and the original Client/Company visibility, inside the existing newest-first bounded page. Failed, denied and replayed commands create none. The section 20 correction history of the Document Registry PRD remains limited to `document.corrected`.
 
+The [mission-deliverable family](release-1-document-registry-prd.md#23-approved-bounded-mission-deliverable-pdfs-825)
+reuses existing Document registration/correction/Version/content/association events
+and their atomic minimal metadata. No new success event follows a denial, empty
+PDF designation, rollback or exact replay. Every mission event projection additionally
+requires live family access and the ordinary target read boundary; relationship
+events still require both endpoints. Filter inaccessible family events before
+page bounds/counts/labels. No filename, checksum, bytes, external content, title,
+purpose or hidden Project identity is added to event metadata. Captured family
+assignment grant/revoke events follow the existing Company assignment convention.
+
 For the approved [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306),
 one committed material update creates exactly one
 `opportunity.next_action.updated` event in the same transaction as the new

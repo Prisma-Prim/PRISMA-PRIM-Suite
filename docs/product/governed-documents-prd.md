@@ -92,6 +92,12 @@ User-facing labels are localized independently from stable internal semantics.
 
 PostgreSQL owns Document identity, formal versions, permissions and provenance. Google Drive, Synology or another provider stores Locations and file bytes through adapters. The bounded questionnaire-PDF slice in Document Registry PRD [section 22](release-1-document-registry-prd.md#22-approved-provisional-stored-questionnaire-pdfs-633) initially uses a private PostgreSQL byte-storage adapter under [ADR 0008](../adr/0008-bounded-document-content-storage.md); its bounded immutable bytes share transactional durability with governed metadata. This initial adapter does not make a database row or storage location the Document identity and does not prescribe future providers.
 
+The separately approved [mission-deliverable family](release-1-document-registry-prd.md#23-approved-bounded-mission-deliverable-pdfs-825)
+reuses this same private bounded content adapter, exact Versions and immutable
+upload history. Its PDF-only draft requires no external-reference placeholder;
+official designation requires clean stored content. The independent family gate
+adds to existing metadata/content authority and does not create verified evidence.
+
 External sync is asynchronous and idempotent. Provider deletion, renaming, duplicate callbacks and outages produce visible recoverable states without rewriting the business record.
 
 ## 10. Security and reliability

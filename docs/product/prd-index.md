@@ -45,6 +45,13 @@ Version and explicit successor recovery. Preparation never records acceptance;
 approval/signature still require the exact accepted source. Its status and live
 tracker own product disposition; [#823](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/823) tracks subsequent runtime delivery.
 
+The [bounded mission-deliverable PDF contract](release-1-document-registry-prd.md#23-approved-bounded-mission-deliverable-pdfs-825)
+under #825 extends existing private PDF/Version/Project association owners with
+one explicitly gated Company-confidential family. It preserves exact content,
+requires no placeholder URL and grants no implicit evidence, Task completion or
+operational authority. #820 owns D3/D4/D2 sequencing; runtime delivery follows a
+separate implementation child after the contract is merged.
+
 ## 4. Cross-cutting PRDs
 
 | PRD                                                                                              | Document status | Primary authority                                                         |

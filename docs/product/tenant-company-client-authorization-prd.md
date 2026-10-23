@@ -164,6 +164,26 @@ The [stored questionnaire-PDF slice](release-1-document-registry-prd.md#22-appro
 
 Neither bundle grants context, Client read, Document metadata/reference read, Version management, designation or the other content permission. Existing bundles and assignments never expand automatically. Download additionally requires the current Document metadata/Client/Company read boundary. Upload additionally requires the Reader grant and existing Version-management authority, and revalidates all of them after scanning before committing. No migration or bootstrap implicitly assigns either bundle; real first-tenant grants remain an explicit configuration action.
 
+The [mission-deliverable PDF family](release-1-document-registry-prd.md#23-approved-bounded-mission-deliverable-pdfs-825)
+adds the separate opt-in **Company Mission Deliverable Access v1**, containing
+exactly `document.mission_deliverable.access`. An active holder of
+`company.assignment.manage` explicitly grants/revokes its captured `v1` for an
+active same-Workspace membership and active Company through existing Company
+assignment administration. Null/unknown captured versions fail closed. Existing
+assignments and bootstrap/migration data never gain it implicitly.
+
+The gate adds no Company context, Client, Document register/read/correct,
+Version/reference/content, Project/Organizer, designation, Activity or administration
+permission. Each mission read/command requires the live gate and its existing
+ordinary permissions; questionnaires do not require it. Gate revocation removes
+mission metadata/content/history/Activity visibility and mutation/replay authority,
+including after an in-flight scan. Content Reader revocation independently hides
+protected PDF metadata/history/downloads. Authorization is enforced by the owning
+live Company assignment boundary, not a label, cached actor flag or storage path.
+Its attributable transitions are
+`company_mission_deliverable_access_assignment.granted` and `.revoked`, following
+the existing Company assignment event/metadata convention with no real grants.
+
 The [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306)
 adds `commercial.opportunity.next_action.update` only through captured
 **Company Commercial Intake v2**. Intake v1 remains exactly the four read and

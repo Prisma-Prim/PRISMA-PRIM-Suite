@@ -75,3 +75,12 @@ Public PostgreSQL REST and browser tests prove the authorized upload/download
 journey and historical preservation. Deterministic network-provider fixtures
 prove denial, outage, malformed responses and revoke-during-scan races; a
 separate disposable real ClamAV check proves clean PDF and EICAR outcomes.
+
+## Bounded scope extension — mission deliverables
+
+[Document Registry §23 / #825](../product/release-1-document-registry-prd.md#23-approved-bounded-mission-deliverable-pdfs-825)
+extends this same 5 MiB private adapter and scan/parse/immutable-Version guarantees
+to one Company-confidential mission-deliverable family. It adds no provider,
+filesystem persistence, real scanner configuration or storage permission. Its
+reference-free draft and explicit family-access gate remain capability-owned;
+existing questionnaire bytes, history and authority are unchanged.

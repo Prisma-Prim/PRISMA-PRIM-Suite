@@ -292,6 +292,9 @@ revision/idempotency behavior, atomic history and the Client reversal fence.
 Component and desktop/narrow browser tests prove the attach/reload/open/remove
 journey. No external provider integration or new verification harness is needed.
 
+Section 23 extends this same association contract to its opt-in mission-deliverable
+family, without changing endpoint authority, original Client identity or lifecycle effects.
+
 ## 19. Approved unverified working-reference correction (#250)
 
 Dan approved this bounded MVP correction on 2026-09-19. An explicitly authorized
@@ -374,7 +377,7 @@ export, and it changes neither the ledger nor the empty public metadata of
 
 ## 21. Approved provisional official Document Versions (#400)
 
-Under Dan's 24 September 2026 delegation of reversible provisional MVP choices inside a vertical implementation, this section normalizes the content-status dimension of formal Versions for every registered Document, which today means the working questionnaires of section 17. It applies Iurie's confirmed rules:
+Under Dan's 24 September 2026 delegation of reversible provisional MVP choices inside a vertical implementation, this section normalizes the content-status dimension of formal Versions for every registered Document, initially the working questionnaires of section 17. Section 23 extends these Version semantics to its PDF-only family, with the explicit reference-free draft and stored-PDF designation rules stated there. It applies Iurie's confirmed rules:
 
 - an approved official Document is never modified silently;
 - current and previous Versions stay visible, with who approved them and when (coverage S03-Q04 and S03-Q06);
@@ -565,7 +568,181 @@ synthetic clean PDF and EICAR content. Component and desktop/narrow browser
 journeys prove upload, unchanged retry, reload, download and authority loss.
 
 Iurie may validate or replace the provisional questionnaire family and size
-bound through a later focused contract. Other families,
+bound through a later focused contract. Section 23 separately authorizes one
+mission-deliverable family using these same stored-content guarantees. Other families,
 formats, provider sync, general malware operations, sending, signature, evidence
 reuse, indexing, retention and deletion remain deferred. The substitution register
 indexes the provisional storage scope without recording an Iurie decision.
+
+## 23. Approved bounded mission-deliverable PDFs (#825)
+
+**Authority and status:** Dan requested D3 → D4 → D2 on 2026-10-23 after the
+source-backed #820 recommendation and D1 delivery. This is the approved bounded
+D3 product synthesis for that request, not new Iurie evidence, a general family
+catalogue or approval of a real operational document. Sections 18, 20–22,
+[Authorization §8](tenant-company-client-authorization-prd.md#8-initial-permission-families),
+[Activity §7](activity-log-accountability-prd.md#7-authorization-and-privacy)
+and [ADR 0008](../adr/0008-bounded-document-content-storage.md) retain their owners.
+Runtime delivery requires a separate implementation issue after this contract is
+merged. D2 and D4 do not block D3.
+
+### Outcome, actors and stories
+
+A collaborator preserves one Company-confidential **mission-deliverable** Document
+with its own exact stored PDF Versions, can organize it under an existing Project
+and can reopen what was preserved. This supplies a usable mission output without
+inventing a URL or claiming that upload means completion, external delivery,
+acceptance, certification or verified evidence.
+
+1. As a registrar, I select the mission-deliverable family and original Client,
+   enter its title/purpose and create a clearly empty draft without an external URL.
+2. As a metadata reader, I distinguish that family and draft/official/superseded
+   content states without acquiring stored-content authority.
+3. As an uploader, I upload a clean bounded PDF and explicitly correct a draft
+   by another preserved upload without overwriting earlier bytes.
+4. As a content reader, I download exact current or historical bytes, including
+   a previous upload of a draft, with its original attribution.
+5. As an approver, I designate a draft only after it holds a clean stored PDF,
+   freezing its metadata and content under the existing official-Version rules.
+6. As a registrar, I start a successor draft without copying predecessor PDF
+   bytes and preserve the prior official Version while preparing its correction.
+7. As a Project organizer, I link/remove the Document using the existing exact
+   original Client/Company and open-Project association contract.
+8. As a Project reader, I see only independently readable mission Documents;
+   Project visibility alone reveals neither their metadata nor their bytes.
+9. As an administrator, I explicitly grant/revoke the new captured family gate
+   independently from ordinary metadata, content, organization and approval rights.
+10. As an actor facing a lost response, I retry the unchanged command safely;
+    a saved outcome remains saved even if a later refresh fails.
+11. As a historical reader, I reopen readable Versions after original Client
+    supersession without silently redirecting a write to the canonical Client.
+12. As a reviewer, I reconstruct actor/time, correction and supersession through
+    existing bounded history without learning hidden content or Project facts.
+
+### Family, registration and representation
+
+The new immutable type is `mission-deliverable`; existing Documents remain
+`questionnaire`. Both remain `company-confidential`. Type is server-validated and
+never changed by correction. Unsupported types fail closed. Preserve existing
+questionnaire registration payloads, receipts, required HTTPS references and
+Version behavior.
+
+Mission registration requires the existing title (trimmed 1–200), purpose
+(trimmed 1–2000), exact active original Client and active Company relationship.
+It explicitly selects the new family, accepts no external URL, and creates a
+Document and Version 1 draft with no external Representation or stored PDF.
+Do not synthesize a placeholder URL or conflate a missing PDF with a failed read.
+The server establishes Workspace, Company, creator, time and original Client.
+Registration, one `document.registered` event and the original Client operational-use
+fence commit together; an exact authorized replay returns its existing outcome.
+Different family/input/Company under that actor/Workspace key conflicts without
+new records, history or fence advances. Retain questionnaire fingerprint semantics.
+
+A mission draft permits title/purpose correction through the existing correction
+revision, no-op, receipt and before/after history contract. It permits no external
+URL correction, typed-reference addition or removal. These operations remain
+available to questionnaires exactly as before. Read models constructively
+represent a reference-free mission Version; no fabricated Representation identity
+or nullable-field combination may mislabel it as an external reference.
+
+### Stored content and formal Versions
+
+Reuse section 22's 5 MiB PDF limit, actual-stream validation, quarantine,
+fail-closed configured scan, structural parsing, immutable bytes/provenance,
+private adapter, content metadata minimization, upload history and exact attachment
+downloads. A mission upload is an ordinary stored-content Version command, never
+an implicit official designation. The absence of external references does not
+prevent uploading, reading or listing a mission Version.
+
+Version status remains `draft → official → superseded`, at most 50 Versions.
+A mission draft can become official only when it has a successfully preserved
+clean PDF. A new designation freezes the current PDF and title/purpose and
+supersedes the prior official Version atomically. Empty draft designation is a
+named safe refusal with no revision, receipt, status, event or Client-fence effect.
+The database integrity boundary also prevents a mission official Version without
+its stored clean PDF. Existing questionnaire designation semantics are unchanged.
+
+A successor draft copies no stored PDF and no external references for this family.
+It is explicitly empty until upload; the preceding official and all superseded
+Versions and their exact uploads stay readable. No Version, upload or bytes are
+discarded, replaced in place or removed. Metadata correction requires an active
+original Client and current draft; historical superseded Clients remain read-only.
+Official designation is not transmission, signature, Client acceptance, an
+Approved Document for indexing or a declaration that a Task was completed.
+
+### Authority and association
+
+The independent opt-in **Company Mission Deliverable Access v1** contains exactly
+`document.mission_deliverable.access`. Authorization §8 owns captured-version,
+live-check and administration semantics. It is required for every mission-family
+metadata/content/history/Activity/association read and every command, in addition
+to the already required authorities. It grants none of those ordinary rights.
+
+Registration needs existing Document register/read and original Client authority.
+Correction and Version management retain their distinct permissions. Upload keeps
+content Reader + Uploader + Version-management requirements; download keeps
+metadata + content Reader. Designation retains Document metadata/reference read
+and the existing separate Approver permission; no per-family approver matrix or
+first-tenant assignment is inferred. The family gate never substitutes for
+Project read or the separate Project Organizer permission.
+
+Lists, counts, dated pages, Client navigation, Project-linked lists/selectors and
+Activity projections filter unauthorized mission records before pagination and
+returning labels or identities. Known-resource reads/commands without the family
+gate use the existing safe not-found boundary after ordinary read authorization;
+explicit mission registration without the gate is forbidden. Loss of the family
+gate retires pending UI work and denies subsequent reads/replays; loss of content
+Reader hides content metadata/history/downloads without concealing otherwise
+readable Document metadata. Existing assignments, roles and migration rows gain
+no new family authority. No migration or bootstrap grants the opt-in.
+
+Reuse section 18's optional one-Project association, exact original Client,
+Company/Workspace matching, independent two-end read authority, Organizer grant,
+association revision, explicit unlink-before-relink, receipts and immutable history.
+Existing links survive Project closure and original Client supersession as readable
+history; new link/removal remains refused. Project progress and Task states do not
+change. A mission can be registered/uploaded independently of a Project; linking
+is a separate deliberate command, not a side effect of registration or upload.
+
+### Transactions, UI and public proof
+
+Reuse existing Version revision/key/fingerprint/receipt and Client lock ordering.
+Every new content/Version/correction/association command rechecks live family
+and ordinary authority before receipt replay and at the owning write boundary.
+Recheck after scanning before any byte commit. Revocation racing a scan, stale
+revision, concurrent designation or invalidated original Client cannot publish
+bytes, increment revisions/fences or append misleading success history. Preserve
+existing exact-replay meaning: replay never selects old content as current or
+rewrites a later state. Never hold the database transaction open during scanning.
+
+Use the existing Documents workspace, Version/content controls and Project
+Document association UI. Family selection is explicit and localized; the mission
+form has no required URL. Show empty draft, absent PDF, denied content, unavailable
+content, loading, malformed upload, stale conflict and uncertain command distinctly.
+Uncertain upload preserves its exact file/body/key for explicit retry. Context,
+actor or relevant authority changes retire pending work and late replies. A
+confirmed command followed by refresh failure stays confirmed. A visible current
+Version and older selectable Versions remain unambiguous at desktop and narrow widths.
+
+First prove a failing public PostgreSQL REST registration/upload/official-successor
+journey, then make it pass with original questionnaire regressions. Cover unknown
+types, family/Company/Workspace refusal, metadata-only readers, family revocation,
+post-scan revocation, original Client union/archive, exact replay, changed keys,
+concurrent upload/designation and injected rollback. Prove migration from existing
+questionnaire rows without backfill grants or changed identity/history; reject
+family mutation and empty mission designation at the integrity boundary. Inspect
+all affected metadata/history/Activity/list/association routes for the same family
+leak pattern. Register an actual App/PostgreSQL desktop1440/narrow390 journey that
+creates without URL, uploads, links/reloads, downloads byte-identical content,
+designates, starts a successor and reopens prior bytes under negative permissions.
+
+### Deliberately deferred
+
+Task result links (D4), reproducible thirteen-activity plans (D2), general stages
+and mission closure, new family catalogs, generation/Templates, operational legal
+content, source imports, actual sending/signing/receipt evidence, numbering,
+automatic verification, OCR/AI/indexing, cross-Company sharing, provider sync,
+retention/deletion and real assignments or deployment remain outside D3. Real-data
+use still needs the existing Platform readiness and configured maintained scanner;
+synthetic protocol fixtures are not real-provider proof. No additional Iurie
+questionnaire is needed to implement this bounded provisional family.
