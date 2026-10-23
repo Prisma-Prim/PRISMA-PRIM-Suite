@@ -128,6 +128,28 @@ authority. Its holder must independently possess the owning Project's context an
 read prerequisites before reading Tasks; `task.manage` additionally permits their
 bounded manual mutations under the Project/Task PRD.
 
+The [exact mission Task result contract](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
+adds independent opt-in **Company Task Result Recorder v1**, containing exactly
+`task.result.record`. Existing Company assignment administration explicitly grants
+or revokes captured `v1` for an active same-Workspace membership and active Company
+through current `company.assignment.manage`. Null/unknown versions fail closed.
+No existing Task Manager or other bundle, ownership, title, assignment or migration
+gains this permission. It grants no context, Task/Project/Client/Document/content
+read, Task management, upload, designation, Organizer, verification, Activity or
+administration authority.
+
+New result commands and their committed replay require all independently live
+Task-manage/read and exact Project/original-Client plus Document metadata,
+Mission Deliverable Access and Content Reader prerequisites from §27. Read-only
+result/history access retains the combined read prerequisites without requiring
+Recorder. Access serializes required grants against successful revocation or
+suspension; captured assignment identity/version enters UI retirement only,
+never substitutes for server checks. Its attributable transitions are
+`company_task_result_recorder_assignment.granted` and `.revoked`, following the
+existing minimal bundle-label Company assignment administration convention,
+exactly once per actual state change and never for failed/repeated/replayed state.
+No real assignment is authorized by this contract.
+
 The [Project responsible member slice](release-1-project-task-prd.md#21-approved-project-responsible-member-367) adds `project.update`, listed among the initial permissions of the consolidated decision record §8.1. It exists only through captured **Company Project Access v2**, which is v1 (`project.read`, `project.create`) plus `project.update`. Project Access v1 remains exactly read and create. Existing v1 assignments never expand in place and receive no migration grant. A fresh grant after explicit revocation captures v2 through the existing Company assignment administration and its attributable grant/revoke events. Every delivered Project-read and Project-create check accepts captured v1 or v2; `project.update` requires a live v2; null or unknown versions fail closed. In this slice `project.update` authorizes only the responsible-member change defined by the Project/Task PRD. It grants no Task, Document, Client, Company context or administration authority. No other bundle, Workspace ownership, Company Context Access, Company Director Client Access or Task Manager assignment confers it.
 
 The [provisional Project lifecycle](release-1-project-task-prd.md#23-approved-provisional-project-lifecycle-406) adds the opt-in **Company Project Approver v1**. It contains exactly `project.lifecycle.transition` (activate, hold, resume) and `project.close` (complete, cancel): the separate lifecycle-transition and close permissions of Project/Task PRD section 8 and decision record §8.1.

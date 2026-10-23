@@ -52,6 +52,12 @@ requires no placeholder URL and grants no implicit evidence, Task completion or
 operational authority. #820 owns D3/D4/D2 sequencing; runtime delivery follows a
 separate implementation child after the contract is merged.
 
+The [bounded exact mission Task result contract](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
+under #832 links attributable result declarations/corrections to frozen readable
+mission Versions, preserving originals and independent Task/Document authority.
+It changes no ordinary completion, stage, approval or certification semantics.
+D4 implementation follows its merged contract; #820 retains D3 → D4 → D2 ordering.
+
 ## 4. Cross-cutting PRDs
 
 | PRD                                                                                              | Document status | Primary authority                                                         |
