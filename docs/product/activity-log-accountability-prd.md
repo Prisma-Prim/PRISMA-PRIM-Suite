@@ -115,6 +115,23 @@ events. Assignment grant/revoke uses
 `company_task_manager_assignment.revoked` with existing administration visibility.
 No event mutation/deletion route or general member-directory exposure is added.
 
+For [exact mission Task results](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832),
+each committed first declaration or material correction records respectively
+`task.result.recorded` or `task.result.corrected`, targeting the Company-owned
+result declaration with server actor membership/time. Metadata contains only the
+result revision; declaration/reason and exact Document/Version/PDF facts remain in
+immutable Task-owned result history. The event shares its transaction with result
+history/revision, receipt and original Client fence. Denials, failed writes,
+normalized no-ops and exact replay record none.
+
+These are internal records: this slice adds no ordinary Task-history or general
+Activity projection for them. Result-specific public history requires both the
+current Task/Project/original-Client and Document metadata/family/content-Reader
+boundaries, including after correction, unlinking, succession and Task reopening.
+No ordinary Task queue/history exposes their IDs, text or Document metadata.
+Their separate administration events follow Authorization §8's existing minimal
+bundle-label convention and confer no result access.
+
 For the [provisional illustrative Project Template creation journey](release-1-project-task-prd.md#24-approved-provisional-creation-from-an-illustrative-template-634),
 one successful creation records the ordinary `project.created` and four ordinary
 `task.created` events together with the Project, immutable copied provenance,

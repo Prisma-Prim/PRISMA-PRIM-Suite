@@ -872,3 +872,174 @@ assignment, reminders/notifications, generation/dependencies, completion evidenc
 new states/lifecycle or Template changes, exports and new grants remain excluded.
 This bounded discovery projection confers no real mission-start authority and
 adds no whole historical MVP capability credit.
+
+## 27. Approved exact mission Task results (#832)
+
+**Authority and status:** Approved bounded product synthesis under Dan's explicit
+D3 → D4 → D2 request of 2026-10-23, after D3 #827 / PR #831. This is not new
+Iurie evidence, verification of performed work or certification authority.
+[Document Registry §23](release-1-document-registry-prd.md#23-approved-bounded-mission-deliverable-pdfs-825)
+owns the delivered mission family; §§18,20,23 retain ordinary Task and Project
+semantics. Authorization §8 and Activity §7 retain their cross-cutting owners.
+Runtime follows a separate implementation issue after this contract merges.
+
+### Outcome and stories
+
+A collaborator deliberately declares what one ordinary Project Task produced and
+selects one exact readable frozen mission-deliverable Version. The declaration
+can later be reopened and corrected without rewriting what was recorded. Existing
+manually created Tasks suffice; neither a copied plan nor D2 blocks this outcome.
+
+1. As a Task reader with Document/content authority, I reopen the current declared
+   result and its exact Version/PDF, rather than a link that follows the latest.
+2. As a separately authorized recorder, I select a named eligible Version from
+   the Task's Project and record my result declaration without entering raw IDs.
+3. As a recorder, I correct the current declaration or selected Version with an
+   attributed reason, preserving the prior declaration and its exact PDF.
+4. As a reader, I distinguish a superseded Document Version from the current
+   official Version without treating either as approved or externally accepted work.
+5. As a Task manager, I complete or reopen an ordinary Task without changing its
+   recorded results or acquiring result authority merely through Task assignment.
+6. As a reader whose Document access is withdrawn, I retain independently readable
+   Task fields without receiving confidential result text, identities or PDF details.
+7. As a recorder after a transport failure, I retry the exact uncertain command;
+   a confirmed result followed by refresh failure remains confirmed.
+
+### Result stream and exact reference
+
+Each Task has its own initially empty result stream at revision zero. A first
+record contains trimmed declaration text of 1–2000 characters and one exact
+mission Document, frozen Version and preserved clean PDF identity. The server
+derives the Task, Project, original Client, Company and Workspace, establishes
+result identity, actor and time, and records revision one. No other Document
+family, external URL, missing PDF or mutable draft qualifies.
+
+Eligible Versions are `official` or `superseded` with their preserved clean PDF.
+Selecting a historical frozen Version is deliberate and visibly historical; it
+never selects a successor implicitly. The exact PDF identity remains fixed even
+after a new official designation. The recorder selects the Document and Version;
+Documents resolves and captures that frozen Version's current PDF, rather than
+accepting an arbitrary upload identity. Read labels use the frozen Version's
+title/number, not a later draft's mutable metadata. The new command additionally requires the
+Document's current association to that Task's exact Project and identical original
+Client, Workspace and Company. Canonical union identity never substitutes for the
+original. Later unlinking or Document succession preserves recorded history and
+does not itself grant or remove ordinary target-read authority.
+
+A correction appends a successor declaration with the observed stream revision,
+new text/reference and a trimmed reason of 1–500 characters, pointing to its
+predecessor. It may change text, the selected eligible Version, or both. The latest
+declaration is current; earlier declarations are immutable history. No in-place
+edit, deletion, withdrawal, automatic retargeting or result approval is introduced.
+A normalized unchanged text/reference correction is a no-op: after all current
+authority/state/revision checks it confirms the existing result and may retain a
+receipt, but adds no revision, declaration, Activity event or Client-fence advance.
+A reason alone does not create a material correction.
+
+New records/corrections require an open Task, open Project (§23), active exact
+original Client and active Company relationship. Done/cancelled Tasks require
+ordinary explicit reopening before a new result command. Existing results survive
+completion, cancellation, reopening, Project closure and original Client
+supersession as readable history under live authority. The result is a human
+declaration, not Task completion, document designation, external delivery,
+acceptance, verified evidence, obligation fulfillment or certification. Ordinary
+Task completion remains permitted without a result; no stage/closure gate changes.
+
+### Authority and confidentiality
+
+The new independently captured **Company Task Result Recorder v1** contains
+exactly `task.result.record`, under Authorization §8. It grants none of its read
+prerequisites. New commands and exact committed replays additionally require
+ordinary live Task manage/read, Project/original-Client read, Document metadata
+read, Mission Deliverable Access and Document Content Reader in the same active
+Company. They require no upload, Version-management, designation or Organizer
+authority merely to select an already linked frozen Version. Existing assignments,
+Workspace ownership, creator/responsible identity and migration grant nothing.
+
+Result current/history and eligible-Version reads require live Task/Project/
+original-Client read plus the Document metadata, mission-family and content-Reader
+boundaries. Recorder authority is not required merely to read. Exact downloads
+continue through Documents' existing live content boundary. Denied Document rights
+make the result resource unavailable without disclosing whether it exists;
+otherwise readable Task fields and ordinary history remain available. An authorized
+empty stream is distinct from denied/unavailable result access.
+
+Never project result IDs, declaration/reason text, Document/Version/PDF identities,
+filenames or hidden counts into ordinary Task list/queue DTOs or Task history.
+Result-specific history owns them under the combined read boundary. Its newest-first
+pages contain at most 25 currently readable declarations, with stable revision
+ordering and any next-page indication computed after privacy predicates. Current
+and history reads share a coherent snapshot. An older readable declaration must
+never be presented as current when the actual latest declaration is unreadable.
+Unknown captured versions, wrong Company/Workspace and mismatched target IDs fail
+closed. Assignment loss retires pending result UI and late replies.
+
+### Commands, concurrency and history
+
+Result commands carry the observed Task version, observed result revision and
+stable actor/Workspace idempotency key in a dedicated result-command namespace.
+The first record requires an empty stream; correction requires its exact current
+revision. Conflicting key/body/Company/Task reuse and stale observations fail
+without writes. Current authority and both recorded endpoints are checked before
+returning an exact committed receipt, before rejecting its historical observations.
+Replay may confirm earlier success after later Task completion, Client supersession
+or Document unlinking; it never restores a prior declaration as current.
+
+Serialize new result writes against ordinary Task edits/closure and competing
+result commands. If Task completion commits first, a new result command fails;
+if recording commits first, later ordinary completion remains valid. Competing
+commands for one result revision have at most one material outcome. The result
+revision is independent: recording does not change ordinary Task fields/status/
+version, existing command fingerprints or ordinary Task event meanings. Revision
+exhaustion is a safe refusal without wraparound or partial writes.
+
+Use the existing Access write fences and Client-owned identity-before-relationship
+lock ordering, then the Task/Document owning boundaries. Revalidate exact frozen
+Version/PDF, current Project association and required live assignments through
+commit. Result revision, immutable declaration/history, minimal Activity event,
+receipt and original Client operational-use fence commit atomically; revocation,
+invalidated related records, injected persistence failure and stale state leave
+none of those partial effects. Reads, refusals, no-ops and replay advance no fence.
+Migration preserves ordinary Tasks/receipts and existing Document bytes/history;
+it creates no initial result or automatic assignment.
+
+Activity §7 owns minimal internal `task.result.recorded` and
+`task.result.corrected` records. This slice exposes result history through its
+combined Task/Document boundary, not the ordinary Task or general Activity feed.
+No separate verification/approval decision or broad Activity read is inferred.
+
+### User journey and proof
+
+Extend existing Task detail in Prisme/Classic, retaining ordinary Task controls.
+Show an authorized empty stream, eligible named frozen Versions with status/number,
+current declared result and exact PDF access, explicit correction and ordered
+history. No eligible Version leaves ordinary Task work available and explains
+that an associated frozen mission PDF is needed. Preserve keyboard operation,
+localized copy and readable desktop/narrow layouts.
+
+Loading, denied/revoked, unavailable, malformed, conflict/reload, historical
+read-only and uncertain command states remain distinct. Preserve an uncertain
+command's exact body, observations and key for explicit retry. A confirmed command
+followed by failed refresh stays confirmed with a separate reload action; never
+offer to resend it as a new intention. Actor, Company, Task or required captured
+authority changes retire old drafts and late responses.
+
+Start with failing public PostgreSQL REST proof: record against a linked frozen
+mission Version, reload, create/designate a successor, reopen/download the original
+bytes, correct, complete/reopen the Task and verify immutable declaration history.
+Cover malformed/draft/empty/other-family and mismatched Client/Project/Company/
+Workspace references; independent Task/record/metadata/family/content denials and
+unknown versions; revocation/replay, stale observations, competing correction and
+Task closure, exact/changed-key retry, no-op and injected atomic rollback. Prove
+upgrade preservation and no backfill grants. Inspect every affected list/history/
+Activity/selector for the same confidentiality pattern. Register the actual
+App/PostgreSQL journey at desktop1440/narrow390 with synthetic data, exact historical
+downloads, correction and negative authority. Deterministic provider fixtures are
+not real Clerk or maintained-scanner proof.
+
+### Exclusions and readiness
+
+This bounded D4 contract is ready for one complete vertical implementation after
+merge. D2 copied plans, D5 stage rules, D13 closure obligations, universal evidence
+types, bulk assignment, verification/acceptance/signature, operational certification,
+real grants/data/providers, generation, OCR/AI, exports and deployment remain separate.
