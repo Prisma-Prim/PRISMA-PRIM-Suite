@@ -1,0 +1,19 @@
+{
+  "source": "a659b048873ad9af20bc1c30d125926bba221939",
+  "base": "3ea23bf960e7e28f7916912fe6a9eadb5d775a31",
+  "tree": "bb2101aed0ad8e3fe1be9ae46194d39e3f25eb8b",
+  "pr": 826,
+  "issue": 825,
+  "failedAttempts": [
+    {
+      "run": 1,
+      "cause": "Sanitized canonical environment omitted store/cache selectors; pnpm readiness triggered automatic dependency verification/reinstallation and timed out. No substantive check executed."
+    },
+    {
+      "run": 2,
+      "cause": "Existing approved verify_deps_before_run=false restored actual pnpm readiness, but prior timed-out installation had left task-owned node_modules incomplete: prettier executable absent. Format did not run."
+    }
+  ],
+  "identifiedTreatment": "Frozen offline forced reinstall restored task-owned dependency tree. Under the same sanitized environment, pnpm11.20.0, Prettier3.9.6 and full format:check now succeed with existing allowed pnpm_config_verify_deps_before_run=false. No tracked configuration/assertion/source change. Both failures remain failed; no third full attempt was started until this prerequisite was restored.",
+  "nextAttempt": 3
+}
