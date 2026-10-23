@@ -143,6 +143,7 @@ export interface ActorContext {
       | 'client.duplicate.resolve'
     >;
     documentPermissions?: Array<
+      | 'document.mission_deliverable.access'
       | 'document.read'
       | 'document.register'
       | 'document.reference.read'
@@ -153,6 +154,8 @@ export interface ActorContext {
       | 'document.version.designate_official'
       | 'document.project.manage'
     >;
+    missionDeliverableAccessAssignmentId?: string;
+    missionDeliverableAccessPermissionSetVersion?: 'v1';
     documentPermissionSetVersion?: 'v1' | 'v2' | 'v3';
     /** The live Company Document Approver assignment, if any. */
     documentContentReaderAssignmentId?: string;

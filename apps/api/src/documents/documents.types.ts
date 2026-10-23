@@ -1,4 +1,4 @@
-export interface WorkingDocument {
+interface WorkingDocumentBase {
   id: string;
   workspaceId: string;
   companyId: string;
@@ -8,24 +8,37 @@ export interface WorkingDocument {
   clientDisplayName: string;
   title: string;
   purpose: string;
-  type: 'questionnaire';
   confidentiality: 'company-confidential';
   createdAt: string;
   createdByMembershipId: string;
   workingRevision: number;
   /** Allowed only while the original Client is active and a draft exists. */
   correction: 'allowed' | 'read-only';
-  /** The working Version: the draft if one exists, otherwise the official one. */
-  version: {
-    id: string;
-    status: 'draft' | 'official';
-    representation: {
-      id: string;
-      kind: 'external-reference';
-      verification: 'unverified';
-    } & ({ access: 'granted'; url: string } | { access: 'denied' });
-  };
 }
+
+interface WorkingVersionIdentity {
+  id: string;
+  status: 'draft' | 'official';
+}
+interface WorkingExternalReference {
+  id: string;
+  kind: 'external-reference';
+  verification: 'unverified';
+}
+export type WorkingDocument = WorkingDocumentBase &
+  (
+    | {
+        type: 'questionnaire';
+        version: WorkingVersionIdentity & {
+          representation: WorkingExternalReference &
+            ({ access: 'granted'; url: string } | { access: 'denied' });
+        };
+      }
+    | {
+        type: 'mission-deliverable';
+        version: WorkingVersionIdentity & { representation: null };
+      }
+  );
 
 /** The optional preparatory Project a working Document is organized in. */
 export type DocumentProjectAssociation =
@@ -33,10 +46,10 @@ export type DocumentProjectAssociation =
   | { state: 'unlinked' };
 
 /** A single-Document response; lists never carry the association. */
-export interface WorkingDocumentDetail extends WorkingDocument {
+export type WorkingDocumentDetail = WorkingDocument & {
   /** Present only for a current Project reader; absence never means unlinked. */
   projectAssociation?: DocumentProjectAssociation;
-}
+};
 
 interface DocumentFieldChange {
   before: string;

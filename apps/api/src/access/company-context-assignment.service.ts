@@ -44,7 +44,9 @@ import {
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+  COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
+  COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
@@ -127,6 +129,7 @@ type BundleDefinition = {
     | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL
+    | typeof COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
@@ -227,6 +230,11 @@ const DOCUMENT_APPROVER_BUNDLE: BundleDefinition = {
 const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   label: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const MISSION_DELIVERABLE_ACCESS_BUNDLE: BundleDefinition = {
+  value: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  label: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const DOCUMENT_CONTENT_UPLOADER_BUNDLE: BundleDefinition = {
@@ -373,6 +381,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+  COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
 ] as const;
 
@@ -1419,6 +1428,34 @@ export class CompanyContextAssignmentService {
       idempotencyKey,
     );
   }
+  grantMissionDeliverableAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_DELIVERABLE_ACCESS_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeMissionDeliverableAccess(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_DELIVERABLE_ACCESS_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
   grantDocumentContentUploader(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -1843,6 +1880,10 @@ function assignmentAction(
       return granted
         ? 'company_document_content_reader_assignment.granted'
         : 'company_document_content_reader_assignment.revoked';
+    case COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE:
+      return granted
+        ? 'company_mission_deliverable_access_assignment.granted'
+        : 'company_mission_deliverable_access_assignment.revoked';
     case COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE:
       return granted
         ? 'company_document_content_uploader_assignment.granted'
@@ -2043,6 +2084,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Mission Deliverable Access version.');
+      return {
+        ...base,
+        bundle: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE:

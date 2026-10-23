@@ -977,6 +977,7 @@ describe.skipIf(!databaseUrl)(
           context,
           clients,
           documents,
+          boundary,
           projects,
           new ProjectClosedGuard(context),
         ),

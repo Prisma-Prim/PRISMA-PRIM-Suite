@@ -440,6 +440,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'mission-deliverable-access',
+    canonical: 'Company Mission Deliverable Access',
+    version: 'v1',
+    labels: {
+      en: 'Company Mission Deliverable Access',
+      fr: 'Accès aux livrables de mission de la société',
+      ro: 'Acces la livrabilele misiunii companiei',
+      ru: 'Доступ к результатам миссии компании',
+    },
+  },
+  {
     value: 'document-content-reader',
     canonical: 'Company Document Content Reader',
     version: 'v1',

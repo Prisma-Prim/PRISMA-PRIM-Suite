@@ -6,7 +6,7 @@ export const projectDocumentsCopy = {
   linked: 'attached a working Document to a Project',
   unlinked: 'removed a working Document from a Project',
   warning:
-    'Draft questionnaires with unverified external references. Attachments are working material, not accepted evidence or permission to start work.',
+    'Working Documents may contain external references or preserved mission PDFs. Attachment does not record acceptance or permission to start work.',
   loading: 'Loading working Documents…',
   empty: 'No working Documents attached.',
   noEligible: 'No eligible working Documents for this original Client.',
@@ -66,7 +66,7 @@ export const projectDocumentsMessages = defineMessages(keys, {
   ro: {
     title: 'Documente de lucru',
     warning:
-      'Chestionare în ciornă cu referințe externe neverificate. Asocierile sunt materiale de lucru, nu dovezi acceptate și nici permisiune de a începe o misiune reală.',
+      'Documentele de lucru pot conține referințe externe sau PDF-uri păstrate ale misiunii. Asocierea nu înregistrează acceptarea sau permisiunea de a începe lucrul.',
     loading: 'Se încarcă Documentele de lucru…',
     empty: 'Nu există Documente de lucru asociate.',
     noEligible:
@@ -101,7 +101,7 @@ export const projectDocumentsMessages = defineMessages(keys, {
   ru: {
     title: 'Рабочие Документы',
     warning:
-      'Черновики анкет с непроверенными внешними ссылками. Связи являются рабочими материалами, а не принятыми доказательствами или разрешением начать реальную работу.',
+      'Рабочие Документы могут содержать внешние ссылки или сохранённые PDF миссии. Прикрепление не означает принятия или разрешения начать работу.',
     loading: 'Загрузка рабочих Документов…',
     empty: 'Нет связанных рабочих Документов.',
     noEligible:
@@ -136,7 +136,7 @@ export const projectDocumentsMessages = defineMessages(keys, {
   fr: {
     title: 'Documents de travail',
     warning:
-      'Questionnaires en brouillon avec des références externes non vérifiées. Les associations sont du matériel de travail, pas des preuves acceptées ni une autorisation de démarrer une mission réelle.',
+      'Les Documents de travail peuvent contenir des références externes ou des PDF de mission conservés. Le rattachement ne vaut ni acceptation ni autorisation de commencer le travail.',
     loading: 'Chargement des Documents de travail…',
     empty: 'Aucun Document de travail associé.',
     noEligible: 'Aucun Document de travail admissible pour ce Client initial.',

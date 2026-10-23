@@ -1,9 +1,9 @@
-import { requireQuestionnairePdfStructure } from './document-pdf-validation.js';
+import { requireDocumentPdfStructure } from './document-pdf-validation.js';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
 import type {
   DocumentPdfContent,
-  ValidatedQuestionnairePdf,
+  ValidatedDocumentPdf,
 } from './document-pdf.types.js';
 import { createHash } from 'node:crypto';
 import {
@@ -61,11 +61,13 @@ export interface DocumentScope {
  * The working Version: the draft if one exists, otherwise the current
  * official Version, with its ordered references.
  */
-export interface WorkingVersion {
-  id: string;
-  status: 'draft' | 'official';
-  representation: { id: string; url: string };
-}
+export type WorkingVersion = { id: string; status: 'draft' | 'official' } & (
+  | {
+      documentType: 'questionnaire';
+      representation: { id: string; url: string };
+    }
+  | { documentType: 'mission-deliverable'; representation: null }
+);
 
 type VersionCommandAction = typeof documentVersionCommands.$inferSelect.action;
 type CommandRow = typeof documentVersionCommands.$inferSelect;
@@ -111,7 +113,10 @@ export class DocumentVersionsService {
    * official Version: no Version is ever discarded, and designation always
    * leaves one official Version.
    */
-  async workingVersion(scope: DocumentScope): Promise<WorkingVersion> {
+  async workingVersion(
+    scope: DocumentScope,
+    documentType: DocumentRow['type'],
+  ): Promise<WorkingVersion> {
     const rows = await this.database.connection
       .select({
         id: documentVersions.id,
@@ -120,7 +125,7 @@ export class DocumentVersionsService {
         url: documentRepresentations.url,
       })
       .from(documentVersions)
-      .innerJoin(
+      .leftJoin(
         documentRepresentations,
         and(
           eq(documentRepresentations.workspaceId, documentVersions.workspaceId),
@@ -146,9 +151,21 @@ export class DocumentVersionsService {
       (working.status !== 'draft' && working.status !== 'official')
     )
       throw new Error('The Document has no working Version.');
+    const identity = { id: working.id, status: working.status };
+    if (documentType === 'mission-deliverable') {
+      if (working.representationId !== null)
+        throw new Error(
+          'A mission Version cannot contain an external reference.',
+        );
+      return { ...identity, documentType, representation: null };
+    }
+    if (working.representationId === null || working.url === null)
+      throw new Error(
+        'A questionnaire Version requires an external reference.',
+      );
     return {
-      id: working.id,
-      status: working.status,
+      ...identity,
+      documentType,
       representation: { id: working.representationId, url: working.url },
     };
   }
@@ -200,7 +217,7 @@ export class DocumentVersionsService {
             url: documentRepresentations.url,
           })
           .from(documentVersions)
-          .innerJoin(
+          .leftJoin(
             documentRepresentations,
             and(
               eq(
@@ -219,7 +236,7 @@ export class DocumentVersionsService {
             ),
           )
           .innerJoin(creator, eq(creator.id, creatorMembership.internalUserId))
-          .innerJoin(
+          .leftJoin(
             adderMembership,
             and(
               eq(
@@ -232,7 +249,7 @@ export class DocumentVersionsService {
               ),
             ),
           )
-          .innerJoin(adder, eq(adder.id, adderMembership.internalUserId))
+          .leftJoin(adder, eq(adder.id, adderMembership.internalUserId))
           .leftJoin(
             designatorMembership,
             and(
@@ -284,22 +301,39 @@ export class DocumentVersionsService {
         const grouped = new Map<string, DocumentVersionView>();
         for (const row of rows) {
           const existing = grouped.get(row.version.id);
-          const item = reference(
-            {
-              id: row.representationId,
-              url: row.url,
-              position: row.representationPosition,
-              form: row.representationForm,
-              appendedAfterDesignation:
-                row.representationAppendedAfterDesignation,
-              addedAt: row.representationAddedAt,
-              addedByDisplayName: row.representationAddedByDisplayName,
-            },
-            referenceReader,
-            existing === undefined,
-          );
+          let item: DocumentVersionReference | null = null;
+          if (row.representationId !== null) {
+            if (
+              row.url === null ||
+              row.representationPosition === null ||
+              row.representationForm === null ||
+              row.representationAppendedAfterDesignation === null ||
+              row.representationAddedAt === null ||
+              row.representationAddedByDisplayName === null
+            )
+              throw new Error('A Document reference is incomplete.');
+            item = reference(
+              {
+                id: row.representationId,
+                url: row.url,
+                position: row.representationPosition,
+                form: row.representationForm,
+                appendedAfterDesignation:
+                  row.representationAppendedAfterDesignation,
+                addedAt: row.representationAddedAt,
+                addedByDisplayName: row.representationAddedByDisplayName,
+              },
+              referenceReader,
+              existing === undefined,
+            );
+          }
+          if (
+            (visible.document.type === 'questionnaire' && item === null) ||
+            (visible.document.type === 'mission-deliverable' && item !== null)
+          )
+            throw new Error('Document reference does not match its family.');
           if (existing) {
-            existing.representations.push(item);
+            if (item) existing.representations.push(item);
             continue;
           }
           grouped.set(
@@ -374,7 +408,7 @@ export class DocumentVersionsService {
       idempotencyKey,
       authorize: () =>
         this.authorization.requireDocumentVersionManagement(actor),
-      apply: (scope) => this.applyDraft(actor, scope),
+      apply: (scope, document) => this.applyDraft(actor, scope, document),
     });
   }
 
@@ -386,7 +420,7 @@ export class DocumentVersionsService {
       versionId: string;
       expectedRevision: number;
       idempotencyKey: string;
-      pdf: ValidatedQuestionnairePdf;
+      pdf: ValidatedDocumentPdf;
     },
   ): Promise<DocumentVersionReceipt> {
     const command: VersionCommandIdentity = {
@@ -413,6 +447,7 @@ export class DocumentVersionsService {
       const visible = await this.boundary.requireVisible(
         actor,
         input.documentId,
+        { lockFamily: true },
       );
       const scope = {
         workspaceId: actor.workspaceId,
@@ -432,7 +467,7 @@ export class DocumentVersionsService {
     });
     if (replay) return replay;
     const scan = await this.scanner.scan(input.pdf.bytes);
-    await requireQuestionnairePdfStructure(input.pdf.bytes);
+    await requireDocumentPdfStructure(input.pdf.bytes);
     return this.execute(actor, {
       ...command,
       authorize: async () =>
@@ -473,6 +508,7 @@ export class DocumentVersionsService {
   }> {
     const companyId =
       await this.authorization.requireDocumentContentUpload(actor);
+    await this.boundary.lockFamilyForCommand(actor, command.documentId);
     const recorded = await this.replayCommand(actor, command, companyId);
     return { companyId, recorded };
   }
@@ -507,8 +543,13 @@ export class DocumentVersionsService {
       fingerprintBody: { form: body.form, url: body.url },
       authorize: () =>
         this.authorization.requireDocumentVersionManagement(actor),
-      apply: (scope) =>
-        this.applyRepresentationAddition(actor, scope, versionId, body),
+      apply: (scope, document) => {
+        if (document.type === 'mission-deliverable')
+          throw new BadRequestException(
+            'Mission deliverables do not accept external references',
+          );
+        return this.applyRepresentationAddition(actor, scope, versionId, body);
+      },
     });
   }
 
@@ -536,13 +577,18 @@ export class DocumentVersionsService {
       fingerprintBody: { representationId },
       authorize: () =>
         this.authorization.requireDocumentVersionManagement(actor),
-      apply: (scope) =>
-        this.applyRepresentationRemoval(
+      apply: (scope, document) => {
+        if (document.type === 'mission-deliverable')
+          throw new BadRequestException(
+            'Mission deliverables do not accept external references',
+          );
+        return this.applyRepresentationRemoval(
           actor,
           scope,
           versionId,
           representationId,
-        ),
+        );
+      },
     });
   }
 
@@ -590,6 +636,7 @@ export class DocumentVersionsService {
       const visible = await this.boundary.requireVisible(
         actor,
         command.documentId,
+        { lockFamily: true },
       );
       const scope: DocumentScope = {
         workspaceId: actor.workspaceId,
@@ -719,6 +766,15 @@ export class DocumentVersionsService {
     const versions = await this.versionsOf(scope);
     const draft = versions.find((version) => version.id === versionId);
     if (draft?.status !== 'draft') throw documentVersionStateInvalid();
+    if (
+      document.type === 'mission-deliverable' &&
+      !(await this.pdfs.hasStoredContent(scope, versionId))
+    )
+      throw new ConflictException({
+        code: 'document_pdf_required',
+        message:
+          'Preserve a clean PDF before designating this mission Version as official.',
+      });
     const official = versions.find((version) => version.status === 'official');
     // The previous official Version is superseded first, so at no statement
     // does the Document hold two official Versions.
@@ -751,6 +807,7 @@ export class DocumentVersionsService {
   private async applyDraft(
     actor: ActorContext,
     scope: DocumentScope,
+    document: DocumentRow,
   ): Promise<AppliedCommand> {
     const versions = await this.versionsOf(scope);
     const official = versions.find((version) => version.status === 'official');
@@ -778,7 +835,7 @@ export class DocumentVersionsService {
         ),
       )
       .orderBy(asc(documentRepresentations.position));
-    if (officialReferences.length === 0)
+    if (document.type === 'questionnaire' && officialReferences.length === 0)
       throw new Error('The official Version has no reference.');
     const number = Math.max(...versions.map((version) => version.number)) + 1;
     const [draft] = await this.database.connection
@@ -796,19 +853,20 @@ export class DocumentVersionsService {
         createdAt: documentVersions.createdAt,
       });
     if (!draft) throw new Error('The draft Version was not created.');
-    await this.database.connection.insert(documentRepresentations).values(
-      officialReferences.map((reference, index) => ({
-        workspaceId: scope.workspaceId,
-        companyId: scope.companyId,
-        versionId: draft.id,
-        position: index + 1,
-        form: reference.form,
-        url: reference.url,
-        addedByMembershipId: actor.workspaceMembershipId,
-        addedAt: draft.createdAt,
-        appendedAfterDesignation: false,
-      })),
-    );
+    if (officialReferences.length > 0)
+      await this.database.connection.insert(documentRepresentations).values(
+        officialReferences.map((reference, index) => ({
+          workspaceId: scope.workspaceId,
+          companyId: scope.companyId,
+          versionId: draft.id,
+          position: index + 1,
+          form: reference.form,
+          url: reference.url,
+          addedByMembershipId: actor.workspaceMembershipId,
+          addedAt: draft.createdAt,
+          appendedAfterDesignation: false,
+        })),
+      );
     return {
       versionId: draft.id,
       versionNumber: number,
@@ -1123,7 +1181,7 @@ function versionView(row: {
   creatorDisplayName: string;
   designatorDisplayName: string | null;
   supersededByVersionNumber: number | null;
-  reference: DocumentVersionReference;
+  reference: DocumentVersionReference | null;
   pdfContent: DocumentPdfContent;
 }): DocumentVersionView {
   const { version } = row;
@@ -1132,7 +1190,7 @@ function versionView(row: {
     number: version.number,
     createdAt: version.createdAt.toISOString(),
     createdBy: { displayName: row.creatorDisplayName },
-    representations: [row.reference],
+    representations: row.reference ? [row.reference] : [],
     pdfContent: row.pdfContent,
   };
   switch (version.status) {

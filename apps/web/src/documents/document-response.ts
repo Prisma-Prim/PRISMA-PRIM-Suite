@@ -2,7 +2,7 @@ import {
   readDocumentPdfContent,
   type DocumentPdfContent,
 } from './document-pdf-response';
-export interface WorkingDocument {
+interface WorkingDocumentBase {
   id: string;
   companyId: string;
   clientId: string;
@@ -11,19 +11,25 @@ export interface WorkingDocument {
   clientDisplayName: string;
   title: string;
   purpose: string;
-  type: 'questionnaire';
   confidentiality: 'company-confidential';
   createdAt: string;
   workingRevision: number;
   /** Allowed only while the original Client is active and a draft exists. */
   correction: 'allowed' | 'read-only';
-  /** The working Version: the draft if one exists, otherwise the official one. */
-  version: {
-    id: string;
-    status: 'draft' | 'official';
-    representation: DocumentReference;
-  };
 }
+export type DocumentFamily = 'questionnaire' | 'mission-deliverable';
+type WorkingVersion = { id: string; status: 'draft' | 'official' };
+export type WorkingDocument = WorkingDocumentBase &
+  (
+    | {
+        type: 'questionnaire';
+        version: WorkingVersion & { representation: DocumentReference };
+      }
+    | {
+        type: 'mission-deliverable';
+        version: WorkingVersion & { representation: null };
+      }
+  );
 /** One unverified external reference; its URL only under Representation read. */
 export type DocumentReference = {
   id: string;
@@ -35,10 +41,10 @@ export type DocumentProjectAssociation =
   | { state: 'linked'; project: { id: string; title: string } }
   | { state: 'unlinked' };
 /** A single-Document response; lists never carry the association. */
-export interface WorkingDocumentDetail extends WorkingDocument {
+export type WorkingDocumentDetail = WorkingDocument & {
   /** Present only for a current Project reader; absence never means unlinked. */
   projectAssociation?: DocumentProjectAssociation;
-}
+};
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid response');
@@ -90,15 +96,14 @@ export function readDocument(value: unknown): WorkingDocument {
   const row = record(value);
   const version = record(row.version);
   if (
-    row.type !== 'questionnaire' ||
+    (row.type !== 'questionnaire' && row.type !== 'mission-deliverable') ||
     row.confidentiality !== 'company-confidential' ||
     (version.status !== 'draft' && version.status !== 'official') ||
     (row.correction !== 'allowed' && row.correction !== 'read-only')
   )
     throw new Error('Unknown Document state');
-  const reference = readReference(version.representation);
   const clientDossierId = optionalString(row.clientDossierId);
-  return {
+  const base: WorkingDocumentBase = {
     id: string(row.id),
     companyId: string(row.companyId),
     clientId: string(row.clientId),
@@ -106,18 +111,33 @@ export function readDocument(value: unknown): WorkingDocument {
     clientDisplayName: string(row.clientDisplayName),
     title: string(row.title),
     purpose: string(row.purpose),
-    type: row.type,
     confidentiality: row.confidentiality,
     createdAt: instant(row.createdAt),
     workingRevision: positiveInteger(row.workingRevision),
     correction: row.correction,
-    version: {
-      id: string(version.id),
-      status: version.status,
-      representation: reference,
-    },
+  };
+  const working: WorkingVersion = {
+    id: string(version.id),
+    status: version.status,
+  };
+  if (row.type === 'questionnaire')
+    return {
+      ...base,
+      type: row.type,
+      version: {
+        ...working,
+        representation: readReference(version.representation),
+      },
+    };
+  if (version.representation !== null)
+    throw new Error('Invalid mission Document reference');
+  return {
+    ...base,
+    type: row.type,
+    version: { ...working, representation: null },
   };
 }
+
 export function readDocuments(value: unknown): WorkingDocument[] {
   if (!Array.isArray(value)) throw new Error('Invalid list');
   return value.map(readDocument);
@@ -272,7 +292,10 @@ export interface DocumentVersions {
  * with at most one draft and one official Version; anything else is not a
  * consistent read and is rejected.
  */
-export function readDocumentVersions(value: unknown): DocumentVersions {
+export function readDocumentVersions(
+  value: unknown,
+  family: DocumentFamily = 'questionnaire',
+): DocumentVersions {
   const read = record(value);
   if (
     !Array.isArray(read.versions) ||
@@ -280,7 +303,9 @@ export function readDocumentVersions(value: unknown): DocumentVersions {
     typeof read.mutable !== 'boolean'
   )
     throw new Error('Invalid Versions');
-  const versions = read.versions.map(readDocumentVersion);
+  const versions = read.versions.map((version) =>
+    readDocumentVersion(version, family),
+  );
   let upperBound = Number.POSITIVE_INFINITY;
   for (const version of versions) {
     if (version.number >= upperBound) throw new Error('Invalid Versions');
@@ -295,11 +320,16 @@ export function readDocumentVersions(value: unknown): DocumentVersions {
     versions,
   };
 }
-function readDocumentVersion(value: unknown): DocumentVersion {
+function readDocumentVersion(
+  value: unknown,
+  family: DocumentFamily,
+): DocumentVersion {
   const row = record(value);
   if (
     !Array.isArray(row.representations) ||
-    row.representations.length < 1 ||
+    (family === 'questionnaire'
+      ? row.representations.length < 1
+      : row.representations.length !== 0) ||
     row.representations.length > 10
   )
     throw new Error('Invalid Version reference');
@@ -321,6 +351,12 @@ function readDocumentVersion(value: unknown): DocumentVersion {
     references,
     pdfContent: readDocumentPdfContent(row.pdfContent),
   };
+  if (
+    family === 'mission-deliverable' &&
+    row.status !== 'draft' &&
+    base.pdfContent.state !== 'stored'
+  )
+    throw new Error('Invalid official mission PDF');
   switch (row.status) {
     case 'draft':
       return { ...base, status: 'draft' };

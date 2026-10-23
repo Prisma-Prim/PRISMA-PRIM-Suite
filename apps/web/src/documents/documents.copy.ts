@@ -1,9 +1,11 @@
 import { defineMessages, useMessages } from '../localization/messages';
 
 export const documentsCopy = {
+  confirmedRefreshFailed:
+    'The command was confirmed, but the Document could not be refreshed. Reload to read its current state.',
   eyebrow: 'Document registry',
   title: 'Working Documents',
-  description: 'Company-confidential questionnaire references',
+  description: 'Company-confidential working Documents',
   loading: 'Loading working references…',
   filterLabel: 'Filter working Documents',
   filterPlaceholder: 'Search by Document or Client',
@@ -98,14 +100,17 @@ const keys = [
   'reload',
   'uncertain',
   'retryCorrection',
+  'confirmedRefreshFailed',
   'requestedDocumentHeld',
 ] as const;
 
 export const documentsMessages = defineMessages(keys, {
   ro: {
+    confirmedRefreshFailed:
+      'Comanda a fost confirmată, dar Documentul nu a putut fi reîncărcat. Reîncarcă pentru a citi starea actuală.',
     eyebrow: 'Registrul Documentelor',
     title: 'Documente de lucru',
-    description: 'Referințe la chestionare confidențiale ale Companiei',
+    description: 'Documente de lucru confidențiale ale Companiei',
     loading: 'Se încarcă referințele de lucru…',
     filterLabel: 'Filtrează Documentele de lucru',
     filterPlaceholder: 'Caută după Document sau Client',
@@ -153,9 +158,11 @@ export const documentsMessages = defineMessages(keys, {
       'Documentul solicitat se deschide după salvarea sau anularea acestei corectări.',
   },
   ru: {
+    confirmedRefreshFailed:
+      'Команда подтверждена, но Документ не удалось обновить. Загрузите его снова, чтобы прочитать текущее состояние.',
     eyebrow: 'Реестр Документов',
     title: 'Рабочие Документы',
-    description: 'Конфиденциальные ссылки Компании на опросники',
+    description: 'Конфиденциальные рабочие Документы Компании',
     loading: 'Загрузка рабочих ссылок…',
     filterLabel: 'Фильтр рабочих Документов',
     filterPlaceholder: 'Поиск по Документу или Клиенту',
@@ -202,9 +209,11 @@ export const documentsMessages = defineMessages(keys, {
       'Запрошенный Документ откроется после сохранения или отмены этого исправления.',
   },
   fr: {
+    confirmedRefreshFailed:
+      'La commande a été confirmée, mais le Document n’a pas pu être actualisé. Rechargez-le pour lire son état actuel.',
     eyebrow: 'Registre des Documents',
     title: 'Documents de travail',
-    description: 'Références de questionnaires confidentiels de la Société',
+    description: 'Documents de travail confidentiels de la Société',
     loading: 'Chargement des références de travail…',
     filterLabel: 'Filtrer les Documents de travail',
     filterPlaceholder: 'Rechercher par Document ou Client',
@@ -253,9 +262,11 @@ export const documentsMessages = defineMessages(keys, {
       'Le Document demandé s’ouvre après l’enregistrement ou l’annulation de cette correction.',
   },
   en: {
+    confirmedRefreshFailed:
+      'The command was confirmed, but the Document could not be refreshed. Reload to read its current state.',
     eyebrow: 'Document registry',
     title: 'Working Documents',
-    description: 'Company-confidential questionnaire references',
+    description: 'Company-confidential working Documents',
     loading: 'Loading working references…',
     filterLabel: 'Filter working Documents',
     filterPlaceholder: 'Search by Document or Client',
@@ -306,6 +317,7 @@ export const documentsMessages = defineMessages(keys, {
 export function useDocumentsCopy() {
   const message = useMessages(documentsMessages);
   return {
+    confirmedRefreshFailed: message('confirmedRefreshFailed'),
     eyebrow: message('eyebrow'),
     title: message('title'),
     description: message('description'),

@@ -1,3 +1,4 @@
+import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
 import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
 import { useProjectStageCopy } from '../project/project-stage.copy';
@@ -38,6 +39,7 @@ type AssignmentBundle =
   | 'task-manager'
   | 'company-context'
   | 'director-client'
+  | 'mission-deliverable-access'
   | 'document-registrar'
   | 'document-content-reader'
   | 'document-content-uploader'
@@ -82,6 +84,8 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'company-context': '/company-context-assignments',
   'director-client': '/company-director-client-assignments',
   'document-registrar': '/company-document-registrar-assignments',
+  'mission-deliverable-access':
+    '/company-mission-deliverable-access-assignments',
   'document-content-reader': '/company-document-content-reader-assignments',
   'document-content-uploader': '/company-document-content-uploader-assignments',
   'document-approver': '/company-document-approver-assignments',
@@ -256,6 +260,7 @@ export function CompanyContextAccess({
   ]);
 
   const pdfCopy = useDocumentPdfCopy();
+  const missionCopy = useMissionDeliverableCopy();
   if (!canManageAssignments) return null;
 
   async function submit(event: FormEvent, submission: Submission) {
@@ -601,6 +606,10 @@ export function CompanyContextAccess({
                 label: copy('documentRegistrarBundle'),
               },
               {
+                value: 'mission-deliverable-access',
+                label: missionCopy.t('bundle'),
+              },
+              {
                 value: 'document-content-reader',
                 label: pdfCopy.t('readerBundle'),
               },
@@ -649,6 +658,7 @@ export function CompanyContextAccess({
                 value === 'company-context' ||
                 value === 'director-client' ||
                 value === 'document-project-organizer' ||
+                value === 'mission-deliverable-access' ||
                 value === 'document-registrar' ||
                 value === 'project' ||
                 value === 'document-content-reader' ||
@@ -683,6 +693,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'project-approver' && (
             <p>{copy('projectApproverPrerequisites')}</p>
+          )}
+          {bundle === 'mission-deliverable-access' && (
+            <p>{missionCopy.t('prerequisites')}</p>
           )}
           {bundle === 'document-content-reader' && (
             <p>{pdfCopy.t('readerPrerequisites')}</p>
@@ -836,6 +849,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'task-manager': 'Company Task Manager',
     'document-project-organizer': 'Company Document Project Organizer',
     'document-registrar': 'Company Document Registrar',
+    'mission-deliverable-access': 'Company Mission Deliverable Access',
     'document-content-reader': 'Company Document Content Reader',
     'document-content-uploader': 'Company Document Content Uploader',
     'document-approver': 'Company Document Approver',

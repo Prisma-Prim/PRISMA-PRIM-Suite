@@ -1,3 +1,4 @@
+import { hasMissionDeliverableAccess } from '../documents/mission-deliverable-access';
 import { useContext, useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
@@ -110,7 +111,18 @@ function ProjectDocumentSession({
     if (result.status === 'forbidden' || result.status === 'notFound')
       return { kind: 'denied' };
     if (result.status !== 'ok') return { kind: 'error' };
-    return { kind: 'ready', listing: readListing(result.value) };
+    const listing = readListing(result.value);
+    return {
+      kind: 'ready',
+      listing: {
+        ...listing,
+        documents: listing.documents.filter(
+          (row) =>
+            row.document.type === 'questionnaire' ||
+            hasMissionDeliverableAccess(actor.activeCompany),
+        ),
+      },
+    };
   }
   useEffect(() => {
     const controller = new AbortController();
@@ -291,8 +303,9 @@ function ProjectDocumentSession({
               <h5>{row.document.title}</h5>
               <p>{row.document.purpose}</p>
               {!eligible &&
+                row.document.type === 'questionnaire' &&
                 (canOpen &&
-                row.document.version.representation.access === 'granted' ? (
+                row.document.version.representation?.access === 'granted' ? (
                   <a
                     href={row.document.version.representation.url}
                     target="_blank"

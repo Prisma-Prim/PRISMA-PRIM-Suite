@@ -1,3 +1,5 @@
+import { useMissionDeliverableCopy } from './mission-deliverable.copy';
+import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { DocumentPdfContent } from './DocumentPdfContent';
 import {
   useCallback,
@@ -21,6 +23,7 @@ import {
   isRepresentationForm,
   readDocumentVersionReceipt,
   readDocumentVersions,
+  type DocumentFamily,
   type DocumentRepresentationForm,
   type DocumentVersion,
   type DocumentVersionReference,
@@ -100,6 +103,7 @@ export function DocumentVersions({
   actor,
   identity,
   documentId,
+  documentType = 'questionnaire',
   workingRevision,
   onRefresh,
   onCompanyContextRejected = () => undefined,
@@ -109,6 +113,7 @@ export function DocumentVersions({
   actor: ActorContext;
   identity: BrowserIdentity;
   documentId: string;
+  documentType?: DocumentFamily;
   /** The open Document's revision; a newer one reloads the Versions. */
   workingRevision: number;
   /** Re-reads the open Document and its list after a confirmed or stale command. */
@@ -116,7 +121,13 @@ export function DocumentVersions({
 } & Partial<AccessRejection>) {
   const company = actor.activeCompany;
   const permissions = company?.documentPermissions ?? [];
-  if (!company || !permissions.includes('document.read')) return null;
+  if (
+    !company ||
+    !permissions.includes('document.read') ||
+    (documentType === 'mission-deliverable' &&
+      !hasMissionDeliverableAccess(company))
+  )
+    return null;
   const canReadReference = permissions.includes('document.reference.read');
   return (
     <VersionsSection
@@ -125,6 +136,9 @@ export function DocumentVersions({
         actor.workspaceMembershipId,
         company.id,
         documentId,
+        documentType,
+        company.missionDeliverableAccessAssignmentId,
+        company.missionDeliverableAccessPermissionSetVersion,
         [...permissions].sort(),
         company.documentPermissionSetVersion ?? null,
         company.documentApproverAssignmentId ?? null,
@@ -138,6 +152,7 @@ export function DocumentVersions({
       identity={identity}
       companyId={company.id}
       documentId={documentId}
+      documentType={documentType}
       workingRevision={workingRevision}
       canDesignate={
         canReadReference &&
@@ -165,6 +180,7 @@ function VersionsSection({
   identity,
   companyId,
   documentId,
+  documentType,
   workingRevision,
   canDesignate,
   canStartDraft,
@@ -175,6 +191,7 @@ function VersionsSection({
   identity: BrowserIdentity;
   companyId: string;
   documentId: string;
+  documentType: DocumentFamily;
   workingRevision: number;
   canDesignate: boolean;
   canStartDraft: boolean;
@@ -228,11 +245,14 @@ function VersionsSection({
           setRead({ status: 'error' });
           return;
         }
-        setRead({ status: 'ready', read: readDocumentVersions(result.value) });
+        setRead({
+          status: 'ready',
+          read: readDocumentVersions(result.value, documentType),
+        });
       },
       onError: () => setRead({ status: 'error' }),
     });
-  }, [identity, companyId, documentId]);
+  }, [identity, companyId, documentId, documentType]);
 
   // A newer working revision or an explicit reload re-reads the Versions; the
   // loaded rows stay visible until the newer read answers.
@@ -458,8 +478,9 @@ function VersionsSection({
               <VersionRow
                 key={version.id}
                 version={version}
+                documentType={documentType}
                 mutable={read.read.mutable}
-                canManage={canStartDraft}
+                canManage={canStartDraft && documentType === 'questionnaire'}
                 busy={busy}
                 onAdd={addReference}
                 onRemove={removeReference}
@@ -514,7 +535,9 @@ function VersionsSection({
                 />
                 {read.read.mutable &&
                   canDesignate &&
-                  version.status === 'draft' && (
+                  version.status === 'draft' &&
+                  (documentType === 'questionnaire' ||
+                    version.pdfContent.state === 'stored') && (
                     <button
                       type="button"
                       disabled={busy}
@@ -570,6 +593,7 @@ function VersionsSection({
 
 function VersionRow({
   version,
+  documentType,
   mutable,
   canManage,
   busy,
@@ -578,6 +602,7 @@ function VersionRow({
   children,
 }: {
   version: DocumentVersion;
+  documentType: DocumentFamily;
   mutable: boolean;
   canManage: boolean;
   busy: boolean;
@@ -607,37 +632,39 @@ function VersionRow({
         label={copy.createdBy(version.createdByDisplayName)}
         at={version.createdAt}
       />
-      <Designation version={version} />
-      <ol
-        className="working-document-version-references"
-        aria-label={copy.references(version.number)}
-      >
-        {version.references.map((reference) => (
-          <li key={reference.id}>
-            <VersionReference
-              number={version.number}
-              reference={reference}
-              showPrimary={version.status === 'draft'}
-            />
-            <Attribution
-              label={copy.addedBy(reference.addedByDisplayName)}
-              at={reference.addedAt}
-            />
-            {mutable &&
-              canManage &&
-              version.status === 'draft' &&
-              version.references.length > 1 && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => onRemove(version, reference)}
-                >
-                  {copy.removeReference}
-                </button>
-              )}
-          </li>
-        ))}
-      </ol>
+      <Designation version={version} documentType={documentType} />
+      {documentType === 'questionnaire' && (
+        <ol
+          className="working-document-version-references"
+          aria-label={copy.references(version.number)}
+        >
+          {version.references.map((reference) => (
+            <li key={reference.id}>
+              <VersionReference
+                number={version.number}
+                reference={reference}
+                showPrimary={version.status === 'draft'}
+              />
+              <Attribution
+                label={copy.addedBy(reference.addedByDisplayName)}
+                at={reference.addedAt}
+              />
+              {mutable &&
+                canManage &&
+                version.status === 'draft' &&
+                version.references.length > 1 && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onRemove(version, reference)}
+                  >
+                    {copy.removeReference}
+                  </button>
+                )}
+            </li>
+          ))}
+        </ol>
+      )}
       <div className="working-document-version-actions">{children}</div>
       {mutable && canManage && version.status !== 'superseded' && (
         <ReferenceForm
@@ -650,8 +677,15 @@ function VersionRow({
   );
 }
 
-function Designation({ version }: { version: DocumentVersion }) {
+function Designation({
+  version,
+  documentType,
+}: {
+  version: DocumentVersion;
+  documentType: DocumentFamily;
+}) {
   const copy = useDocumentVersionsCopy();
+  const missionCopy = useMissionDeliverableCopy();
   switch (version.status) {
     case 'draft':
       return null;
@@ -678,7 +712,9 @@ function Designation({ version }: { version: DocumentVersion }) {
             />
           ) : (
             <p className="working-document-version-notice">
-              {copy.frozenNotice}
+              {documentType === 'mission-deliverable'
+                ? missionCopy.t('warning')
+                : copy.frozenNotice}
             </p>
           )}
         </>
