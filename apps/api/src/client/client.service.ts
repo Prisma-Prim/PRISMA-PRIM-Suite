@@ -292,7 +292,11 @@ export class ClientService {
         and(
           eq(clientAccounts.workspaceId, actor.workspaceId),
           eq(clientAccounts.status, 'active'),
-          sql`${clientAccounts.displayName} ILIKE ${pattern} ESCAPE ${'\\'}`,
+          sql`translate(normalize(${clientAccounts.displayName}, NFC),
+            'ĂÂÎȘŞȚŢăâîșşțţ', 'AAISSTTaaisstt')
+            ILIKE translate(normalize(${pattern}, NFC),
+              'ĂÂÎȘŞȚŢăâîșşțţ', 'AAISSTTaaisstt')
+            ESCAPE ${'\\'}`,
           actor.workspacePermissions.includes('client.manage')
             ? undefined
             : sql`${clientCompanyRelationships.id} IS NOT NULL`,

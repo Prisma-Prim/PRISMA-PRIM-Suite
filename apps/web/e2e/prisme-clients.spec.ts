@@ -638,7 +638,16 @@ test('keeps failures real and attachment pending independent from edited search'
     }
     return route.fulfill({ status: 404 });
   });
+  const initialClientLoad = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === '/api/clients' &&
+      response.request().headers()['x-company-context-id'] === company.id &&
+      response.status() === 503,
+  );
   await page.goto('/?frame=prisme#clients');
+  const failedClientLoad = await initialClientLoad;
+  expect(await failedClientLoad.finished()).toBeNull();
   await expect(
     page.getByText('We could not load Clients. Please try again.'),
   ).toBeVisible();
