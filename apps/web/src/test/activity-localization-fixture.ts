@@ -189,6 +189,30 @@ export const activityEventsByAction = {
     action: 'company.registered',
     target: targets.company,
   },
+  'company_operational_risk_reader_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_operational_risk_reader_assignment.granted',
+    action: 'company_operational_risk_reader_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_operational_risk_reader_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_operational_risk_reader_assignment.revoked',
+    action: 'company_operational_risk_reader_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_operational_risk_recorder_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_operational_risk_recorder_assignment.granted',
+    action: 'company_operational_risk_recorder_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_operational_risk_recorder_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_operational_risk_recorder_assignment.revoked',
+    action: 'company_operational_risk_recorder_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_task_manager_assignment.granted': {
     ...ordinary,
     id: 'event-company_task_manager_assignment.granted',

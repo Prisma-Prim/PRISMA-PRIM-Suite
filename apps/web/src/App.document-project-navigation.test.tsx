@@ -155,6 +155,8 @@ function installServer() {
       return Response.json(
         inB ? [otherCompanyProject] : [betaProject, atelierProject],
       );
+    if (route === 'GET /api/projects?view=mine_open')
+      return Response.json(inB ? [] : [betaProject]);
     if (route === 'POST /api/projects')
       return Response.json(registeredProject, { status: 201 });
     const opened = [atelierProject, betaProject].find(
@@ -181,7 +183,7 @@ function installServer() {
       const url = new URL(input.toString(), window.location.origin);
       const headers = new Headers(init?.headers);
       const request: ServerRequest = {
-        route: `${init?.method ?? 'GET'} ${url.pathname}`,
+        route: `${init?.method ?? 'GET'} ${url.pathname}${url.pathname === '/api/projects' ? url.search : ''}`,
         companyId: headers.get('x-company-context-id'),
         key: headers.get('idempotency-key'),
         body: typeof init?.body === 'string' ? init.body : undefined,
@@ -291,6 +293,61 @@ describe('Opening the linked Project from a working Document through App', () =>
     vi.unstubAllGlobals();
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
+  });
+
+  it('preserves Mine through the real App exact outside-Project Document intent', async () => {
+    window.history.replaceState(null, '', '/?frame=prisme#projects');
+    const server = installServer();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await projectRow(betaRow);
+    const view = within(projectsRegion()).getByRole('combobox', {
+      name: 'Project view',
+    });
+    const closed = within(projectsRegion()).getByRole('checkbox', {
+      name: 'Include closed Projects',
+    });
+    fireEvent.click(closed);
+    expect(closed).toBeChecked();
+    changeValue(view, 'mine_open');
+    await waitFor(() => {
+      const list = within(projectsRegion()).getByRole('list', {
+        name: 'Projects',
+      });
+      expect(within(list).getAllByRole('button')).toHaveLength(1);
+      expect(within(list).getByRole('button', { name: betaRow })).toBeVisible();
+      expect(
+        within(list).queryByRole('button', { name: atelierRow }),
+      ).toBeNull();
+    });
+    const allReads = server.count('GET /api/projects');
+    navigateTo('Working Documents');
+    fireEvent.click(
+      within(await openLinkedDocument()).getByRole('button', {
+        name: 'Open Project',
+      }),
+    );
+    await waitFor(() => {
+      const detail = projectDetail();
+      if (!detail) throw new Error('Expected independent Project detail.');
+      expect(
+        within(detail).getByText(`Client: ${atelier.displayName}`),
+      ).toBeVisible();
+    });
+    expect(view).toHaveTextContent('My open Projects');
+    expect(server.count('GET /api/projects')).toBe(allReads);
+    const list = within(projectsRegion()).getByRole('list', {
+      name: 'Projects',
+    });
+    expect(within(list).getAllByRole('button')).toHaveLength(1);
+    expect(within(list).getByRole('button', { name: betaRow })).toBeVisible();
+    expect(server.count(`GET ${atelierDetailPath}`)).toBe(1);
+    changeValue(view, 'all');
+    await waitFor(() => expect(view).toHaveTextContent('All Projects'));
+    expect(
+      within(projectsRegion()).getByRole('checkbox', {
+        name: 'Include closed Projects',
+      }),
+    ).toBeChecked();
   });
 
   it('opens the linked one of two same-titled Projects by its own read and keeps the other Project’s Task draft', async () => {

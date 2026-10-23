@@ -275,7 +275,14 @@ function Responsible({
       setMutation({ kind: 'idle' });
       setFeedback(receipt.outcome === 'changed' ? 'saved' : 'unchanged');
       // A receipt is historical; only a fresh read authorizes the next change.
-      await load();
+      // The confirmed command refreshes its parent independently of that read.
+      // Refresh failures cannot make the validated receipt uncertain again.
+      await Promise.allSettled([
+        load(),
+        Promise.resolve().then(() => {
+          if (!controller.signal.aborted) return onProjectChanged?.();
+        }),
+      ]);
       if (receipt.outcome === 'changed' && !controller.signal.aborted) {
         try {
           await onActivityRecorded?.();
