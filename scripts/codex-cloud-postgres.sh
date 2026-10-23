@@ -57,8 +57,8 @@ cluster_installed() {
 refresh_package_index() {
   # The container image bakes third-party apt sources that a hardened harness
   # network can block: apt.llvm.org answers 403 through the Codex Cloud proxy.
-  # A partial refresh is therefore expected, and the one index this installer
-  # needs is proven separately by pgdg_candidate_is_available.
+  # A partial refresh is therefore expected. The PGDG source is refreshed
+  # separately with strict error handling before installing PostgreSQL.
   apt_get update -qq ||
     echo 'Some apt sources could not be refreshed; continuing with the sources that succeeded.' >&2
 }
@@ -71,6 +71,16 @@ pgdg_candidate_is_available() {
   [[ "${policy}" == *apt.postgresql.org* ]]
 }
 
+publish_signing_key() (
+  local temporary_key
+  temporary_key="$(mktemp)"
+  trap 'rm -f -- "${temporary_key}"' EXIT
+  curl -fsSL -o "${temporary_key}" https://www.postgresql.org/media/keys/ACCC4CF8.asc ||
+    fail 'could not download the complete PostgreSQL repository signing key.'
+  [[ -s "${temporary_key}" ]] || fail 'the PostgreSQL repository signing key is empty.'
+  as_root install -m 644 "${temporary_key}" "$1"
+)
+
 install_packages() {
   local codename keyring source_list
   codename="$(. /etc/os-release && echo "${VERSION_CODENAME}")"
@@ -79,18 +89,24 @@ install_packages() {
   source_list='/etc/apt/sources.list.d/pgdg.list'
 
   refresh_package_index
-  if ! command -v curl >/dev/null; then
+  if ! command -v curl >/dev/null ||
+    [[ "$(dpkg-query -W -f='${Status}' ca-certificates 2>/dev/null || true)" != 'install ok installed' ]]; then
     apt_get install -y -qq --no-install-recommends curl ca-certificates ||
-      fail 'curl is required to fetch the PostgreSQL repository signing key.'
+      fail 'curl and CA certificates are required to fetch the PostgreSQL repository signing key.'
   fi
   as_root install -d /usr/share/postgresql-common/pgdg
   if ! as_root test -s "${keyring}"; then
-    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc |
-      as_root tee "${keyring}" >/dev/null
+    publish_signing_key "${keyring}"
   fi
   printf 'deb [signed-by=%s] https://apt.postgresql.org/pub/repos/apt %s-pgdg main\n' \
     "${keyring}" "${codename}" | as_root tee "${source_list}" >/dev/null
-  refresh_package_index
+  # A scoped refresh must retain distribution indexes needed by PGDG dependencies.
+  apt_get update -qq \
+    -o "Dir::Etc::sourcelist=${source_list}" \
+    -o 'Dir::Etc::sourceparts=-' \
+    -o 'APT::Get::List-Cleanup=0' \
+    -o 'APT::Update::Error-Mode=any' ||
+    fail 'the PGDG index could not be refreshed from apt.postgresql.org.'
   pgdg_candidate_is_available ||
     fail "postgresql-${postgres_major} is not available from apt.postgresql.org; the PGDG index could not be refreshed."
   apt_get install -y -qq --no-install-recommends \
@@ -98,9 +114,19 @@ install_packages() {
 }
 
 start_cluster() {
-  local status
-  status="$(as_root pg_lsclusters --no-header |
-    awk -v major="${postgres_major}" -v name="${cluster_name}" '$1 == major && $2 == name { print $4 }')"
+  local clusters major name cluster_port cluster_status remainder status='' target_port=''
+  clusters="$(as_root pg_lsclusters --no-header)"
+  while read -r major name cluster_port cluster_status remainder; do
+    if [[ "${major}" == "${postgres_major}" && "${name}" == "${cluster_name}" ]]; then
+      target_port="${cluster_port}"
+      status="${cluster_status}"
+    elif [[ "${cluster_port}" == "${port}" ]]; then
+      fail "port ${port} belongs to conflicting cluster ${major}/${name}; expected ${postgres_major}/${cluster_name}."
+    fi
+  done <<<"${clusters}"
+  [[ -n "${status}" ]] || fail "cluster ${postgres_major}/${cluster_name} was not found."
+  [[ "${target_port}" == "${port}" ]] ||
+    fail "cluster ${postgres_major}/${cluster_name} uses port ${target_port}; expected ${port}."
   if [[ "${status}" != online ]]; then
     as_root pg_ctlcluster "${postgres_major}" "${cluster_name}" start
   fi
@@ -115,14 +141,25 @@ start_cluster() {
 }
 
 ensure_application_identities() {
-  local role_exists database
+  local role_exists role_compliant database database_exists database_owner
   role_exists="$(as_postgres_sql -tA -c "SELECT 1 FROM pg_roles WHERE rolname = '${database_user}'")"
   if [[ "${role_exists}" != '1' ]]; then
     as_postgres_sql -c "CREATE ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'"
+  else
+    role_compliant="$(as_postgres_sql -tA -c "SELECT rolcanlogin AND rolcreatedb AND NOT rolsuper AND NOT rolcreaterole AND NOT rolreplication AND NOT rolbypassrls FROM pg_roles WHERE rolname = '${database_user}'")"
+    if [[ "${role_compliant}" != 't' ]]; then
+      as_postgres_sql -c "ALTER ROLE ${database_user} WITH LOGIN CREATEDB NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD '${database_password}'"
+    fi
   fi
   for database in "${development_database}" "${test_database}"; do
-    if [[ "$(as_postgres_sql -tA -c "SELECT 1 FROM pg_database WHERE datname = '${database}'")" != '1' ]]; then
+    database_exists="$(as_postgres_sql -tA -c "SELECT 1 FROM pg_database WHERE datname = '${database}'")"
+    if [[ "${database_exists}" != '1' ]]; then
       as_postgres_sql -c "CREATE DATABASE ${database} OWNER ${database_user} TEMPLATE template0"
+    else
+      database_owner="$(as_postgres_sql -tA -c "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = '${database}'")"
+      if [[ "${database_owner}" != "${database_user}" ]]; then
+        as_postgres_sql -c "ALTER DATABASE ${database} OWNER TO ${database_user}"
+      fi
     fi
   done
 }
@@ -163,14 +200,21 @@ persist_application_targets() {
   echo "Exported DATABASE_URL and TEST_DATABASE_URL for agent shells in ${runtime_file}."
 }
 
-if ! cluster_installed; then
-  [[ "${mode}" == '--install' ]] ||
-    fail "PostgreSQL ${postgres_major} is not installed; rerun with --install."
-  install_packages
-  cluster_installed || fail "the postgresql-${postgres_major} package did not create the ${cluster_name} cluster."
-fi
+main() {
+  if ! cluster_installed; then
+    [[ "${mode}" == '--install' ]] ||
+      fail "PostgreSQL ${postgres_major} is not installed; rerun with --install."
+    install_packages
+    cluster_installed || fail "the postgresql-${postgres_major} package did not create the ${cluster_name} cluster."
+  fi
 
-start_cluster
-ensure_application_identities
-verify_application_connection
-persist_application_targets
+  start_cluster
+  ensure_application_identities
+  verify_application_connection
+  persist_application_targets
+}
+
+# Sourcing exposes the installer entry point without provisioning the host.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main
+fi
