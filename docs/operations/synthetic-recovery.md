@@ -90,7 +90,17 @@ cleanup failure. Inspect the JSON outcome as well as the exit status.
 
 A successful restore result binds revision, archive/verification fingerprints,
 server/tool versions, cutoff/completion/reference, measured intervals and caller
-bounds, public check fingerprints and cleanup. The technical custom-dump limit
+bounds, public check fingerprints and cleanup. Once a validated restore invocation
+starts, failed and cancelled reports preserve the available measurements, caller
+comparisons, archive timestamps/fingerprints, completed checks and current public
+check progress. Expected/observed statuses and fingerprints identify a mismatch
+without exposing response bodies. The report distinguishes a committed database
+restore from a completed exercise; a later bound/verification/cleanup failure
+never reports recovery success. Only validated facts are included at each stage;
+a malformed configuration still yields a minimal refusal. The recovery timer is
+captured before cleanup, whose actual complete/incomplete result remains separate.
+
+The technical custom-dump limit
 is 128 MiB and each public response is bounded to 8 MiB; these are implementation
 limits, not production capacity or policy promises.
 

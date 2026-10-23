@@ -2055,7 +2055,9 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
     if (
       typeof original !== 'object' ||
       original === null ||
-      Array.isArray(original)
+      Array.isArray(original) ||
+      !('applicationRevision' in original) ||
+      typeof original.applicationRevision !== 'string'
     )
       throw new Error('Expected retained configuration.');
     const retainedArchive = await readFile(archivePath);
@@ -2188,6 +2190,42 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
         );
         await closed;
         expect(stdout).toContain('"outcome":"cancelled"');
+        const companyReadIndex = publicEvidence.evidence.reads.findIndex(
+          (read) => read.key === 'exact-companies',
+        );
+        const pendingRead = publicEvidence.evidence.reads[companyReadIndex];
+        if (!pendingRead || companyReadIndex <= 0)
+          throw new Error(
+            'Expected independent principal reads before companies.',
+          );
+        const report: unknown = JSON.parse(stdout);
+        expect(report).toMatchObject({
+          outcome: 'cancelled',
+          reason: 'restore-cancelled',
+          applicationRevision: original.applicationRevision,
+          completedAt: await readRetainedReference({ completionEvidencePath }),
+          referenceInstant: await readRetainedReference({
+            completionEvidencePath,
+          }),
+          maximumRecencyMilliseconds: 300_000,
+          maximumRecoveryMilliseconds: 30_000,
+          recoveryMilliseconds: expect.any(Number),
+          databaseRestore: 'complete',
+          cleanup: 'complete',
+          checks: publicEvidence.evidence.reads
+            .slice(0, companyReadIndex)
+            .map((read) => ({
+              key: read.key,
+              status: read.expectedStatus,
+              sha256: read.sha256,
+            })),
+          verification: {
+            state: 'reading',
+            key: pendingRead.key,
+            expectedStatus: pendingRead.expectedStatus,
+            expectedSha256: pendingRead.sha256,
+          },
+        });
         expect(stdout).not.toContain('"outcome":"recovered"');
         expect(stdout).not.toContain(target.targetUrl);
         expect(stderr).toBe('');
@@ -2299,6 +2337,215 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
         'SELECT count(*)::integer AS count FROM client_accounts',
       ),
     ).toMatchObject({ rows: before.rows });
+  }, 30_000);
+
+  it.each(['status', 'content'])(
+    'preserves measured evidence and earlier checks after a public %s mismatch',
+    async (mode) => {
+      if (!databaseUrl || !container)
+        throw new Error('Expected supplied tools.');
+      const original: unknown = JSON.parse(
+        await readFile(backupConfig, 'utf8'),
+      );
+      if (
+        typeof original !== 'object' ||
+        original === null ||
+        Array.isArray(original) ||
+        !('applicationRevision' in original) ||
+        typeof original.applicationRevision !== 'string' ||
+        !('verificationEvidencePath' in original) ||
+        typeof original.verificationEvidencePath !== 'string'
+      )
+        throw new Error(
+          'Expected independently retained verification evidence.',
+        );
+      const first = publicEvidence.evidence.reads[0];
+      const second = publicEvidence.evidence.reads[1];
+      if (!first || !second)
+        throw new Error('Expected two independent public reads.');
+      const referenceInstant = await readRetainedReference({
+        completionEvidencePath,
+      });
+      const retainedBefore = await fingerprintRetainedFiles([
+        archivePath,
+        completionEvidencePath,
+      ]);
+      const target = await createIsolatedPostgresTestDatabase({
+        baseDatabaseUrl: databaseUrl,
+        namePrefix: 'recovery736_mismatch',
+      });
+      try {
+        const tools = join(temporaryRoot, `report-${mode}`);
+        await mkdir(tools, { mode: 0o700 });
+        const preload = join(tools, 'response.cjs');
+        const canary = 'PRIVATE_RECOVERY_RESPONSE_DIAGNOSTIC_CANARY';
+        // Both ordinary restored public reads actually run. Alter only the
+        // second external HTTP response after receiving it, never the feature.
+        await writeFile(
+          preload,
+          `const original = globalThis.fetch;\nlet reads = 0;\nglobalThis.fetch = async (...args) => {\n  const response = await original(...args);\n  reads += 1;\n  if (reads !== 2) return response;\n  await response.arrayBuffer();\n  return new Response(${JSON.stringify(canary)}, { status: ${mode === 'status' ? '503' : 'response.status'} });\n};\n`,
+          { mode: 0o600, flag: 'wx' },
+        );
+        const configPath = join(tools, 'restore.json');
+        await writeFile(
+          configPath,
+          JSON.stringify({
+            ...original,
+            database: { url: target.targetUrl, container },
+            measurement: {
+              referenceInstant,
+              maximumRecencyMilliseconds: 300_000,
+              maximumRecoveryMilliseconds: 30_000,
+            },
+          }),
+          { mode: 0o600, flag: 'wx' },
+        );
+        const result = await invokeOperator({
+          entry,
+          operation: 'restore',
+          configPath,
+          environment: ordinaryEnvironment(target.targetUrl),
+          nodeArguments: ['--require', preload],
+        });
+        expect(result).toMatchObject({ exitCode: 2, stderr: '' });
+        const report: unknown = JSON.parse(result.stdout);
+        expect(report).toMatchObject({
+          outcome: 'refused',
+          reason:
+            mode === 'status'
+              ? 'public-authority-or-record-mismatch'
+              : 'public-content-mismatch',
+          applicationRevision: original.applicationRevision,
+          archiveSha256: createHash('sha256')
+            .update(await readFile(archivePath))
+            .digest('hex'),
+          verificationFingerprint: createHash('sha256')
+            .update(await readFile(original.verificationEvidencePath))
+            .digest('hex'),
+          postgresServerVersion: sourceServerVersion,
+          postgresToolVersion: sourceToolVersion,
+          completedAt: referenceInstant,
+          referenceInstant,
+          maximumRecencyMilliseconds: 300_000,
+          maximumRecoveryMilliseconds: 30_000,
+          recoveryMilliseconds: expect.any(Number),
+          databaseRestore: 'complete',
+          cleanup: 'complete',
+          checks: [
+            {
+              key: first.key,
+              status: first.expectedStatus,
+              sha256: first.sha256,
+            },
+          ],
+          verification: {
+            state: mode === 'status' ? 'response' : 'fingerprinted',
+            key: second.key,
+            expectedStatus: second.expectedStatus,
+            expectedSha256: second.sha256,
+            observedStatus: mode === 'status' ? 503 : second.expectedStatus,
+            ...(mode === 'content'
+              ? {
+                  observedSha256: createHash('sha256')
+                    .update(canary)
+                    .digest('hex'),
+                }
+              : {}),
+          },
+        });
+        if (mode === 'status')
+          expect(report).not.toHaveProperty('verification.observedSha256');
+        expect(result.stdout).not.toContain(canary);
+        expect(result.stdout).not.toContain(target.targetUrl);
+        expect(result.stdout).not.toContain(source.targetUrl);
+        expect(result.stdout).not.toContain('"outcome":"recovered"');
+        expect(
+          await fingerprintRetainedFiles([archivePath, completionEvidencePath]),
+        ).toEqual(retainedBefore);
+      } finally {
+        await target.close();
+      }
+    },
+    30_000,
+  );
+
+  it('preserves completed verification evidence when the real application pool closes but reports cleanup failure', async () => {
+    if (!databaseUrl || !container) throw new Error('Expected supplied tools.');
+    const original: unknown = JSON.parse(await readFile(backupConfig, 'utf8'));
+    if (
+      typeof original !== 'object' ||
+      original === null ||
+      Array.isArray(original) ||
+      !('applicationRevision' in original) ||
+      typeof original.applicationRevision !== 'string'
+    )
+      throw new Error('Expected independently retained configuration.');
+    const referenceInstant = await readRetainedReference({
+      completionEvidencePath,
+    });
+    const target = await createIsolatedPostgresTestDatabase({
+      baseDatabaseUrl: databaseUrl,
+      namePrefix: 'recovery736_cleanup',
+    });
+    try {
+      const tools = join(temporaryRoot, 'report-pool-cleanup');
+      await mkdir(tools, { mode: 0o700 });
+      const preload = join(tools, 'pool-close.cjs');
+      const canary = 'PRIVATE_RECOVERY_POOL_CLOSE_DIAGNOSTIC_CANARY';
+      // Inject a failure at the external database client boundary only AFTER
+      // the actual pool closes, so the fixture itself leaves no connection.
+      await writeFile(
+        preload,
+        `const pg = require('pg');\nconst original = pg.Pool.prototype.end;\npg.Pool.prototype.end = async function (...args) {\n  await original.apply(this, args);\n  throw new Error(${JSON.stringify(canary)});\n};\n`,
+        { mode: 0o600, flag: 'wx' },
+      );
+      const configPath = join(tools, 'restore.json');
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          ...original,
+          database: { url: target.targetUrl, container },
+          measurement: {
+            referenceInstant,
+            maximumRecencyMilliseconds: 300_000,
+            maximumRecoveryMilliseconds: 30_000,
+          },
+        }),
+        { mode: 0o600, flag: 'wx' },
+      );
+      const result = await invokeOperator({
+        entry,
+        operation: 'restore',
+        configPath,
+        environment: ordinaryEnvironment(target.targetUrl),
+        nodeArguments: ['--require', preload],
+      });
+      expect(result).toMatchObject({ exitCode: 1, stderr: '' });
+      const report: unknown = JSON.parse(result.stdout);
+      expect(report).toMatchObject({
+        outcome: 'failed',
+        reason: 'owned-cleanup-incomplete',
+        applicationRevision: original.applicationRevision,
+        completedAt: referenceInstant,
+        referenceInstant,
+        maximumRecencyMilliseconds: 300_000,
+        maximumRecoveryMilliseconds: 30_000,
+        recoveryMilliseconds: expect.any(Number),
+        databaseRestore: 'complete',
+        cleanup: 'incomplete',
+        verification: { state: 'complete' },
+        checks: publicEvidence.evidence.reads.map((read) => ({
+          key: read.key,
+          status: read.expectedStatus,
+          sha256: read.sha256,
+        })),
+      });
+      expect(result.stdout).not.toContain(canary);
+      expect(result.stdout).not.toContain(target.targetUrl);
+      expect(result.stdout).not.toContain('"outcome":"recovered"');
+    } finally {
+      await target.close();
+    }
   }, 30_000);
 
   it('restores separately with the source unavailable and reopens exact public evidence', async () => {
@@ -2425,6 +2672,8 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
       typeof original !== 'object' ||
       original === null ||
       Array.isArray(original) ||
+      !('applicationRevision' in original) ||
+      typeof original.applicationRevision !== 'string' ||
       !('completionEvidencePath' in original) ||
       typeof original.completionEvidencePath !== 'string'
     )
@@ -2506,6 +2755,33 @@ withRecovery('retained synthetic recovery through the compiled CLI', () => {
           expect(result.exitCode, result.stdout).toBe(2);
           expect(result.stdout).toContain('recovery-duration-bound-exceeded');
           expect(result.stdout).not.toContain('"outcome":"recovered"');
+          const report: unknown = JSON.parse(result.stdout);
+          expect(report).toMatchObject({
+            outcome: 'refused',
+            reason: 'recovery-duration-bound-exceeded',
+            applicationRevision: original.applicationRevision,
+            archiveSha256: createHash('sha256')
+              .update(await readFile(archivePath))
+              .digest('hex'),
+            snapshotCutoff: completion.snapshotCutoff,
+            completedAt: completion.completedAt,
+            referenceInstant: completion.completedAt,
+            recencyMilliseconds: exactRecency,
+            maximumRecencyMilliseconds: exactRecency,
+            recencyBoundSatisfied: true,
+            recoveryMilliseconds: 26,
+            maximumRecoveryMilliseconds: 25,
+            recoveryBoundSatisfied: false,
+            databaseRestore: 'complete',
+            checks: [],
+            cleanup: 'complete',
+          });
+          expect(result.stdout).not.toContain(target.targetUrl);
+          const restored = await target.targetPool.query<{ count: number }>(
+            'SELECT count(*)::integer AS count FROM public.workspaces WHERE id=$1',
+            [workspaceId],
+          );
+          expect(restored.rows).toEqual([{ count: 1 }]);
         }
       } finally {
         await target.close();

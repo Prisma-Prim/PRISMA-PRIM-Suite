@@ -88,10 +88,15 @@ export async function runSyntheticRecoveryCommand(
       );
     }
     return 0;
-  } catch (error: unknown) {
+  } catch (failure: unknown) {
+    const error =
+      failure instanceof RecoveryExerciseFailure ? failure.failure : failure;
+    const evidence =
+      failure instanceof RecoveryExerciseFailure ? failure.evidence : undefined;
     if (error instanceof RecoveryCleanupFailure) {
       input.write(
         JSON.stringify({
+          ...evidence,
           outcome: 'failed',
           reason: 'owned-cleanup-incomplete',
           cleanup: 'incomplete',
@@ -103,9 +108,10 @@ export async function runSyntheticRecoveryCommand(
     if (input.signal?.aborted) {
       input.write(
         JSON.stringify({
+          ...evidence,
           outcome: 'cancelled',
           reason: `${operation}-cancelled`,
-          cleanup: 'attempted',
+          cleanup: evidence?.cleanup ?? 'attempted',
         }),
       );
       return 2;
@@ -113,6 +119,7 @@ export async function runSyntheticRecoveryCommand(
     const refusal = error instanceof RecoveryRefusal;
     input.write(
       JSON.stringify({
+        ...evidence,
         outcome: refusal ? 'refused' : 'failed',
         reason: refusal ? error.reason : `${operation}-incomplete`,
       }),
@@ -130,6 +137,71 @@ class RecoveryRefusal extends Error {
 class RecoveryCleanupFailure extends Error {
   constructor() {
     super('Owned synthetic recovery cleanup is incomplete.');
+  }
+}
+
+interface AuthenticatedRecoveryArchive {
+  readonly archiveSha256: string;
+  readonly snapshotCutoff: string;
+}
+
+interface VerifiedRecoveryArchive extends AuthenticatedRecoveryArchive {
+  readonly verificationFingerprint: string;
+  readonly completedAt: string;
+  readonly recencyMilliseconds: number;
+  readonly recencyBoundSatisfied: boolean;
+}
+
+type RecoveryArchiveProgress =
+  | { readonly stage: 'started' }
+  | ({ readonly stage: 'archive-authenticated' } & AuthenticatedRecoveryArchive)
+  | ({ readonly stage: 'archive-verified' } & VerifiedRecoveryArchive)
+  | ({
+      readonly stage: 'destination-admitted';
+      readonly postgresServerVersion: string;
+      readonly postgresToolVersion: string;
+    } & VerifiedRecoveryArchive);
+
+interface ExpectedRecoveryCheck {
+  readonly key: string;
+  readonly expectedStatus: number;
+  readonly expectedSha256: string;
+}
+
+type RecoveryVerificationProgress =
+  | { readonly state: 'not-started' | 'complete' }
+  | ({ readonly state: 'reading' } & ExpectedRecoveryCheck)
+  | ({
+      readonly state: 'response';
+      readonly observedStatus: number;
+    } & ExpectedRecoveryCheck)
+  | ({
+      readonly state: 'fingerprinted';
+      readonly observedStatus: number;
+      readonly observedSha256: string;
+    } & ExpectedRecoveryCheck);
+
+type RecoveryFailureEvidence = RecoveryArchiveProgress & {
+  readonly applicationRevision: string;
+  readonly referenceInstant: string;
+  readonly maximumRecencyMilliseconds: number;
+  readonly maximumRecoveryMilliseconds: number;
+  readonly recoveryMilliseconds: number;
+  readonly recoveryBoundSatisfied: boolean;
+  readonly checks: readonly { key: string; status: number; sha256: string }[];
+  readonly verification: RecoveryVerificationProgress;
+  readonly databaseRestore: 'not-complete' | 'complete';
+  readonly cleanup: 'complete' | 'incomplete';
+  readonly policy: 'caller-bounds-only';
+};
+
+/** Keeps only validated, non-secret exercise facts across the error boundary. */
+class RecoveryExerciseFailure extends Error {
+  constructor(
+    readonly failure: unknown,
+    readonly evidence: RecoveryFailureEvidence,
+  ) {
+    super('Synthetic recovery exercise failed.');
   }
 }
 
@@ -422,6 +494,32 @@ async function restoreAndVerify(
   )
     throw new RecoveryRefusal('ordinary-empty-admission-required');
   const started = performance.now();
+  let archiveProgress: RecoveryArchiveProgress = { stage: 'started' };
+  let verification: RecoveryVerificationProgress = { state: 'not-started' };
+  let databaseRestore: 'not-complete' | 'complete' = 'not-complete';
+  let recoveryMilliseconds: number | undefined;
+  const checks: { key: string; status: number; sha256: string }[] = [];
+  const failureEvidence = (
+    cleanup: 'complete' | 'incomplete',
+  ): RecoveryFailureEvidence => {
+    const duration = recoveryMilliseconds ?? performance.now() - started;
+    return {
+      ...archiveProgress,
+      applicationRevision: config.applicationRevision,
+      referenceInstant: config.measurement.referenceInstant,
+      maximumRecencyMilliseconds: config.measurement.maximumRecencyMilliseconds,
+      maximumRecoveryMilliseconds:
+        config.measurement.maximumRecoveryMilliseconds,
+      recoveryMilliseconds: duration,
+      recoveryBoundSatisfied:
+        duration <= config.measurement.maximumRecoveryMilliseconds,
+      checks,
+      verification,
+      databaseRestore,
+      cleanup,
+      policy: 'caller-bounds-only',
+    };
+  };
   const withinDuration = () => {
     signal?.throwIfAborted();
     if (
@@ -430,15 +528,30 @@ async function restoreAndVerify(
     )
       throw new RecoveryRefusal('recovery-duration-bound-exceeded');
   };
-  const archive = await protectedFile(
-    config.archivePath,
-    MAXIMUM_DUMP_BYTES + 32 * 1024,
-  );
-  const key = await protectedFile(config.keyPath, 32);
+  let key: Buffer | undefined;
   let plaintext: Buffer | undefined;
   let application:
     Awaited<ReturnType<typeof startRecoveryApplication>> | undefined;
+  const closeRestoredApplication = async () => {
+    try {
+      await completeOwnedCleanup([
+        {
+          name: 'restored application',
+          cleanup: async () => {
+            await application?.close();
+          },
+        },
+      ]);
+    } catch (error: unknown) {
+      throw new RecoveryExerciseFailure(error, failureEvidence('incomplete'));
+    }
+  };
   try {
+    const archive = await protectedFile(
+      config.archivePath,
+      MAXIMUM_DUMP_BYTES + 32 * 1024,
+    );
+    key = await protectedFile(config.keyPath, 32);
     if (
       key.length !== 32 ||
       archive.length < MAGIC.length + 4 + 12 + 16 ||
@@ -491,6 +604,12 @@ async function restoreAndVerify(
     )
       throw new RecoveryRefusal('incompatible-authenticated-archive');
     const snapshotCutoff = text(metadata.snapshotCutoff);
+    const snapshotMilliseconds = instant(snapshotCutoff);
+    archiveProgress = {
+      stage: 'archive-authenticated',
+      archiveSha256: sha256(archive),
+      snapshotCutoff,
+    };
     const evidenceBytes = await protectedFile(
       config.verificationEvidencePath,
       MAXIMUM_CONFIG_BYTES,
@@ -518,12 +637,21 @@ async function restoreAndVerify(
       completion.snapshotCutoff !== snapshotCutoff ||
       completion.applicationRevision !== config.applicationRevision ||
       completion.verificationFingerprint !== metadata.verificationFingerprint ||
-      instant(snapshotCutoff) > instant(completedAt) ||
+      snapshotMilliseconds > instant(completedAt) ||
       instant(completedAt) > config.measurement.referenceMilliseconds
     )
       throw new RecoveryRefusal('inconsistent-completion-evidence');
     const recencyMilliseconds =
-      config.measurement.referenceMilliseconds - instant(snapshotCutoff);
+      config.measurement.referenceMilliseconds - snapshotMilliseconds;
+    archiveProgress = {
+      ...archiveProgress,
+      stage: 'archive-verified',
+      verificationFingerprint: sha256(evidenceBytes),
+      completedAt,
+      recencyMilliseconds,
+      recencyBoundSatisfied:
+        recencyMilliseconds <= config.measurement.maximumRecencyMilliseconds,
+    };
     if (recencyMilliseconds > config.measurement.maximumRecencyMilliseconds)
       throw new RecoveryRefusal('recency-bound-exceeded');
     withinDuration();
@@ -535,7 +663,14 @@ async function restoreAndVerify(
       postgresToolVersion,
       signal,
     );
+    archiveProgress = {
+      ...archiveProgress,
+      stage: 'destination-admitted',
+      postgresServerVersion,
+      postgresToolVersion,
+    };
     await transactionalRestore(target, plaintext, signal);
+    databaseRestore = 'complete';
     withinDuration();
     await assertPersistedRecoveryPrincipals({
       databaseUrl: config.database.url,
@@ -546,9 +681,14 @@ async function restoreAndVerify(
       databaseUrl: config.database.url,
       principals: evidence.principals,
     });
-    const checks: { key: string; status: number; sha256: string }[] = [];
     for (const read of evidence.reads) {
       withinDuration();
+      verification = {
+        state: 'reading',
+        key: read.key,
+        expectedStatus: read.expectedStatus,
+        expectedSha256: read.sha256,
+      };
       const response = await fetch(`${application.origin}/api${read.path}`, {
         method: 'GET',
         redirect: 'error',
@@ -560,14 +700,26 @@ async function restoreAndVerify(
           ...(read.companyId ? { 'x-company-context-id': read.companyId } : {}),
         },
       });
+      verification = {
+        ...verification,
+        state: 'response',
+        observedStatus: response.status,
+      };
       if (response.status !== read.expectedStatus)
         throw new RecoveryRefusal('public-authority-or-record-mismatch');
       const observed = await responseFingerprint(response);
+      verification = {
+        ...verification,
+        state: 'fingerprinted',
+        observedSha256: observed,
+      };
       if (observed !== read.sha256)
         throw new RecoveryRefusal('public-content-mismatch');
       checks.push({ key: read.key, status: response.status, sha256: observed });
     }
+    verification = { state: 'complete' };
     withinDuration();
+    recoveryMilliseconds = performance.now() - started;
     return {
       outcome: 'recovered',
       applicationRevision: config.applicationRevision,
@@ -580,24 +732,25 @@ async function restoreAndVerify(
       referenceInstant: config.measurement.referenceInstant,
       recencyMilliseconds,
       maximumRecencyMilliseconds: config.measurement.maximumRecencyMilliseconds,
-      recoveryMilliseconds: performance.now() - started,
+      recoveryMilliseconds,
       maximumRecoveryMilliseconds:
         config.measurement.maximumRecoveryMilliseconds,
       checks,
       cleanup: 'complete',
       policy: 'caller-bounds-only',
     };
+  } catch (error: unknown) {
+    recoveryMilliseconds ??= performance.now() - started;
+    throw new RecoveryExerciseFailure(
+      error,
+      failureEvidence(
+        error instanceof RecoveryCleanupFailure ? 'incomplete' : 'complete',
+      ),
+    );
   } finally {
-    key.fill(0);
+    key?.fill(0);
     plaintext?.fill(0);
-    await completeOwnedCleanup([
-      {
-        name: 'restored application',
-        cleanup: async () => {
-          await application?.close();
-        },
-      },
-    ]);
+    await closeRestoredApplication();
   }
 }
 
