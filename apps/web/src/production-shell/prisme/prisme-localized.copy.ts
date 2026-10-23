@@ -90,8 +90,7 @@ export const prismeMessages = defineMessages(keys, {
     clientsLabel: 'Clienți',
     clientsDescription: 'Găsiți Clienți și lucrați cu dosarele lor comune.',
     documentsLabel: 'Documente de lucru',
-    documentsDescription:
-      'Referințe confidențiale ale chestionarelor Companiei.',
+    documentsDescription: 'Documente de lucru confidențiale ale Companiei.',
     projectsLabel: 'Proiecte',
     projectsDescription: 'Înregistrați și redeschideți Proiecte pregătitoare.',
     myTasksLabel: 'Sarcinile mele',
@@ -148,7 +147,7 @@ export const prismeMessages = defineMessages(keys, {
     clientsLabel: 'Клиенты',
     clientsDescription: 'Находите Клиентов и работайте с их общими досье.',
     documentsLabel: 'Рабочие Документы',
-    documentsDescription: 'Конфиденциальные ссылки на анкеты Компании.',
+    documentsDescription: 'Конфиденциальные рабочие Документы Компании.',
     projectsLabel: 'Проекты',
     projectsDescription:
       'Регистрируйте и повторно открывайте подготовительные Проекты.',
@@ -208,8 +207,7 @@ export const prismeMessages = defineMessages(keys, {
     clientsDescription:
       'Retrouvez les Clients et travaillez avec leurs dossiers partagés.',
     documentsLabel: 'Documents de travail',
-    documentsDescription:
-      'Références confidentielles aux questionnaires de l’Entreprise.',
+    documentsDescription: 'Documents de travail confidentiels de l’Entreprise.',
     projectsLabel: 'Projets',
     projectsDescription: 'Enregistrez et rouvrez les Projets préparatoires.',
     myTasksLabel: 'Mes Tâches',
@@ -269,7 +267,7 @@ export const prismeMessages = defineMessages(keys, {
     clientsLabel: 'Clients',
     clientsDescription: 'Find Clients and work with their shared dossiers.',
     documentsLabel: 'Working Documents',
-    documentsDescription: 'Company-confidential questionnaire references',
+    documentsDescription: 'Company-confidential working Documents',
     projectsLabel: 'Projects',
     projectsDescription: 'Register and reopen preparatory Projects.',
     myTasksLabel: 'My Tasks',

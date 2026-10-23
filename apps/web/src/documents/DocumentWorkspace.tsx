@@ -1,3 +1,5 @@
+import { hasMissionDeliverableAccess } from './mission-deliverable-access';
+import { useMissionDeliverableCopy } from './mission-deliverable.copy';
 import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -52,7 +54,26 @@ function documentFilterText(value: string) {
 }
 /** One request to open a Document; a newer request id supersedes older ones. */
 export type RequestedDocument = { documentId: string; requestId: number };
-export function DocumentWorkspace({
+export function DocumentWorkspace(
+  props: Parameters<typeof DocumentSession>[0],
+) {
+  const company = props.actor.activeCompany;
+  return (
+    <DocumentSession
+      key={JSON.stringify([
+        props.actor.workspaceId,
+        props.actor.workspaceMembershipId,
+        company?.id,
+        hasMissionDeliverableAccess(company),
+        company?.missionDeliverableAccessAssignmentId,
+        company?.missionDeliverableAccessPermissionSetVersion,
+      ])}
+      {...props}
+    />
+  );
+}
+
+function DocumentSession({
   actor,
   identity,
   onActivityRecorded = () => undefined,
@@ -86,6 +107,7 @@ export function DocumentWorkspace({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const copy = useDocumentsCopy();
+  const missionCopy = useMissionDeliverableCopy();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
   const [filter, setFilter] = useState<DocumentFilter>({
@@ -98,6 +120,9 @@ export function DocumentWorkspace({
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
   const [url, setUrl] = useState('');
+  const [family, setFamily] = useState<'questionnaire' | 'mission-deliverable'>(
+    'questionnaire',
+  );
   /** `registered`: a confirmed registration that did not replace the view. */
   const [mutation, setMutation] = useState<
     'idle' | 'pending' | 'error' | 'registered'
@@ -107,7 +132,9 @@ export function DocumentWorkspace({
     | 'idle'
     | 'pending'
     | 'saved'
+    | 'saved-refresh-failed'
     | 'unchanged'
+    | 'unchanged-refresh-failed'
     | 'uncertain'
     | 'conflict'
     | 'denied'
@@ -160,7 +187,11 @@ export function DocumentWorkspace({
   const acceptedRequestId = useRef(requestedDocument?.requestId);
   const activeFilter = useRef(filter);
   activeFilter.current = filter;
-  const registrationPayload = JSON.stringify({ clientId, title, purpose, url });
+  const registrationPayload = JSON.stringify(
+    family === 'questionnaire'
+      ? { clientId, title, purpose, url }
+      : { clientId, title, purpose, type: family },
+  );
   /** The registration draft as the member holds it now, as a command payload. */
   const currentRegistrationPayload = useRef(registrationPayload);
   currentRegistrationPayload.current = registrationPayload;
@@ -202,6 +233,19 @@ export function DocumentWorkspace({
   const canRead =
     actor.activeCompany?.documentPermissions?.includes('document.read') ===
     true;
+  const canUseMission = hasMissionDeliverableAccess(actor.activeCompany);
+  function readVisibleDocuments(value: unknown): WorkingDocument[] {
+    return readDocuments(value).filter(
+      (document) => document.type === 'questionnaire' || canUseMission,
+    );
+  }
+  function readVisibleDetail(value: unknown): WorkingDocumentDetail {
+    const document = readDocumentDetail(value);
+    if (document.type === 'mission-deliverable' && !canUseMission)
+      throw new Error('Unavailable Document family');
+    return document;
+  }
+
   const canRegister =
     actor.activeCompany?.documentPermissions?.includes('document.register') ===
     true;
@@ -394,7 +438,7 @@ export function DocumentWorkspace({
           throw new Error('Load failed');
         // Read the payload here: a rejected response must fail closed on this
         // request instead of throwing inside a later React update.
-        const loadedDocuments = readDocuments(documents.value);
+        const loadedDocuments = readVisibleDocuments(documents.value);
         const loadedClients = readClients(clients.value);
         publishList(sequence, () => ({
           status: 'ready',
@@ -461,7 +505,7 @@ export function DocumentWorkspace({
           return;
         }
         if (reopened.status !== 'ok') throw new Error('Refresh failed');
-        const reloaded = readDocumentDetail(reopened.value);
+        const reloaded = readVisibleDetail(reopened.value);
         setDetail((current) =>
           current?.id === reloaded.id ? reloaded : current,
         );
@@ -566,7 +610,7 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status !== 'ok') throw new Error('Read failed');
-      const opened = readDocumentDetail(result.value);
+      const opened = readVisibleDetail(result.value);
       setDetail(opened);
       settleDetailRead(opened, startedUnderRevision);
       setEditing(false);
@@ -620,8 +664,8 @@ export function DocumentWorkspace({
       }
       if (documentResult.status !== 'ok' || documentsResult.status !== 'ok')
         throw new Error('Refresh failed');
-      const refreshed = readDocumentDetail(documentResult.value);
-      const documents = readDocuments(documentsResult.value);
+      const refreshed = readVisibleDetail(documentResult.value);
+      const documents = readVisibleDocuments(documentsResult.value);
       setDetail((current) =>
         current?.id === refreshed.id ? refreshed : current,
       );
@@ -640,12 +684,17 @@ export function DocumentWorkspace({
       !detail ||
       !canCorrect ||
       detail.correction !== 'allowed' ||
-      detail.version.representation.access !== 'granted'
+      (detail.type === 'questionnaire' &&
+        detail.version.representation.access !== 'granted')
     )
       return;
     setTitle(detail.title);
     setPurpose(detail.purpose);
-    setUrl(detail.version.representation.url);
+    setUrl(
+      detail.version.representation?.access === 'granted'
+        ? detail.version.representation.url
+        : '',
+    );
     correctionRevision.current = detail.workingRevision;
     setEditing(true);
     setCorrection('idle');
@@ -665,7 +714,7 @@ export function DocumentWorkspace({
               correctionRevision.current ?? detail.workingRevision,
             title,
             purpose,
-            url,
+            ...(detail.type === 'questionnaire' ? { url } : {}),
           });
           return previous?.documentId === detail.id &&
             previous.payload === payload
@@ -678,6 +727,7 @@ export function DocumentWorkspace({
     const request = new AbortController();
     pending.current = request;
     setCorrection('pending');
+    let confirmedOutcome: 'corrected' | 'unchanged' | undefined;
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
@@ -718,6 +768,11 @@ export function DocumentWorkspace({
       const receipt = readDocumentCorrectionReceipt(result.value);
       if (receipt.documentId !== detail.id)
         throw new Error('Unexpected correction receipt');
+      confirmedOutcome = receipt.outcome;
+      if (receipt.outcome === 'corrected')
+        void Promise.resolve()
+          .then(onActivityRecorded)
+          .catch(() => undefined);
       const sequence = reserveListWrite();
       const startedUnderRevision = identityRevision.current;
       const [documentResult, documentsResult] = await Promise.all([
@@ -733,8 +788,8 @@ export function DocumentWorkspace({
       if (request.signal.aborted) return;
       if (documentResult.status !== 'ok' || documentsResult.status !== 'ok')
         throw new Error('Reload failed');
-      const saved = readDocumentDetail(documentResult.value);
-      const documents = readDocuments(documentsResult.value);
+      const saved = readVisibleDetail(documentResult.value);
+      const documents = readVisibleDocuments(documentsResult.value);
       setDetail(saved);
       settleDetailRead(saved, startedUnderRevision);
       publishList(sequence, (current) =>
@@ -745,14 +800,29 @@ export function DocumentWorkspace({
       setEditing(false);
       setCorrection(receipt.outcome === 'corrected' ? 'saved' : 'unchanged');
       correctionRetry.current = undefined;
-      if (receipt.outcome === 'corrected') await onActivityRecorded();
     } catch {
-      if (!request.signal.aborted) setCorrection('uncertain');
+      if (request.signal.aborted) return;
+      if (confirmedOutcome === undefined) setCorrection('uncertain');
+      else {
+        setEditing(false);
+        correctionRetry.current = undefined;
+        setCorrection(
+          confirmedOutcome === 'corrected'
+            ? 'saved-refresh-failed'
+            : 'unchanged-refresh-failed',
+        );
+      }
     }
   }
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!companyId || mutation === 'pending') return;
+    if (
+      !companyId ||
+      !canRegister ||
+      (family === 'mission-deliverable' && !canUseMission) ||
+      mutation === 'pending'
+    )
+      return;
     const payload = registrationPayload;
     const command =
       retry.current?.payload === payload
@@ -795,7 +865,7 @@ export function DocumentWorkspace({
         return;
       }
       if (result.status !== 'ok') throw new Error('Registration failed');
-      const saved = readDocumentDetail(result.value);
+      const saved = readVisibleDetail(result.value);
       // A registration confirmed after a Client identity change cannot vouch
       // for its derived dossier target. Until a current read replaces it, the
       // confirmed Document offers no dossier navigation and matches no dossier
@@ -911,9 +981,12 @@ export function DocumentWorkspace({
         </>
       )}
       <p className={isPrisme ? 'working-documents-warning' : undefined}>
-        {detail?.version.status === 'official'
-          ? copy.officialWarning
-          : copy.warning}
+        {detail?.type === 'mission-deliverable' ||
+        (!detail && family === 'mission-deliverable')
+          ? missionCopy.t('warning')
+          : detail?.version.status === 'official'
+            ? copy.officialWarning
+            : copy.warning}
       </p>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'denied' && <p role="alert">{copy.denied}</p>}
@@ -975,18 +1048,20 @@ export function DocumentWorkspace({
                       onChange={(event) => setPurpose(event.target.value)}
                     />
                   </label>
-                  <label>
-                    {copy.url}
-                    <input
-                      required
-                      type="url"
-                      disabled={
-                        correction === 'pending' || correction === 'uncertain'
-                      }
-                      value={url}
-                      onChange={(event) => setUrl(event.target.value)}
-                    />
-                  </label>
+                  {detail.type === 'questionnaire' && (
+                    <label>
+                      {copy.url}
+                      <input
+                        required
+                        type="url"
+                        disabled={
+                          correction === 'pending' || correction === 'uncertain'
+                        }
+                        value={url}
+                        onChange={(event) => setUrl(event.target.value)}
+                      />
+                    </label>
+                  )}
                   <button
                     className={isPrisme ? 'prisme-primary-action' : undefined}
                     disabled={
@@ -1010,7 +1085,11 @@ export function DocumentWorkspace({
               ) : (
                 <>
                   <h3>{detail.title}</h3>
-                  <p>{workingVersionLabel(detail.version.status, copy)}</p>
+                  <p>
+                    {detail.type === 'mission-deliverable'
+                      ? missionCopy.t(detail.version.status)
+                      : workingVersionLabel(detail.version.status, copy)}
+                  </p>
                   <p>{detail.clientDisplayName}</p>
                   {detail.clientDossierId &&
                     onOpenClientDossier &&
@@ -1031,7 +1110,7 @@ export function DocumentWorkspace({
                 />
               )}
               {!editing &&
-              detail.version.representation.access === 'granted' ? (
+              detail.version.representation?.access === 'granted' ? (
                 <a
                   href={detail.version.representation.url}
                   target="_blank"
@@ -1039,14 +1118,15 @@ export function DocumentWorkspace({
                 >
                   {copy.open}
                 </a>
-              ) : !editing ? (
+              ) : !editing && detail.type === 'questionnaire' ? (
                 <p>{copy.referenceDenied}</p>
               ) : null}
               {!editing &&
                 canCorrect &&
                 correction !== 'conflict' &&
                 detail.correction === 'allowed' &&
-                detail.version.representation.access === 'granted' && (
+                (detail.type === 'mission-deliverable' ||
+                  detail.version.representation.access === 'granted') && (
                   <button
                     className={isPrisme ? 'prisme-primary-action' : undefined}
                     onClick={beginCorrection}
@@ -1060,9 +1140,22 @@ export function DocumentWorkspace({
                 </button>
               )}
               {correction === 'pending' && <p role="status">{copy.saving}</p>}
-              {correction === 'saved' && <p role="status">{copy.saved}</p>}
-              {correction === 'unchanged' && (
+              {(correction === 'saved' ||
+                correction === 'saved-refresh-failed') && (
+                <p role="status">{copy.saved}</p>
+              )}
+              {(correction === 'unchanged' ||
+                correction === 'unchanged-refresh-failed') && (
                 <p role="status">{copy.unchanged}</p>
+              )}
+              {(correction === 'saved-refresh-failed' ||
+                correction === 'unchanged-refresh-failed') && (
+                <>
+                  <p role="alert">{copy.confirmedRefreshFailed}</p>
+                  <button onClick={() => void open(detail.id)}>
+                    {copy.reload}
+                  </button>
+                </>
               )}
               {correction === 'denied' && (
                 <p role="alert">{copy.correctionDenied}</p>
@@ -1092,6 +1185,7 @@ export function DocumentWorkspace({
                 actor={actor}
                 identity={identity}
                 documentId={detail.id}
+                documentType={detail.type}
                 workingRevision={detail.workingRevision}
                 onRefresh={async () => {
                   await refreshOpenDetail(detail.id);
@@ -1144,6 +1238,34 @@ export function DocumentWorkspace({
                   }
                   onSubmit={(event) => void submit(event)}
                 >
+                  {canUseMission && (
+                    <>
+                      <label htmlFor="document-family">
+                        {missionCopy.t('family')}
+                      </label>
+                      <Select
+                        id="document-family"
+                        value={family}
+                        options={[
+                          {
+                            value: 'questionnaire',
+                            label: missionCopy.t('questionnaire'),
+                          },
+                          {
+                            value: 'mission-deliverable',
+                            label: missionCopy.t('mission'),
+                          },
+                        ]}
+                        onValueChange={(value) => {
+                          if (
+                            value === 'questionnaire' ||
+                            value === 'mission-deliverable'
+                          )
+                            setFamily(value);
+                        }}
+                      />
+                    </>
+                  )}
                   <label htmlFor="document-client">{copy.client}</label>
                   <Select
                     id="document-client"
@@ -1174,15 +1296,17 @@ export function DocumentWorkspace({
                       onChange={(event) => setPurpose(event.target.value)}
                     />
                   </label>
-                  <label>
-                    {copy.url}
-                    <input
-                      required
-                      type="url"
-                      value={url}
-                      onChange={(event) => setUrl(event.target.value)}
-                    />
-                  </label>
+                  {family === 'questionnaire' && (
+                    <label>
+                      {copy.url}
+                      <input
+                        required
+                        type="url"
+                        value={url}
+                        onChange={(event) => setUrl(event.target.value)}
+                      />
+                    </label>
+                  )}
                   <button
                     className={isPrisme ? 'prisme-primary-action' : undefined}
                     disabled={mutation === 'pending'}

@@ -45,6 +45,8 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
   documentPermissionSetVersion?: DocumentPermissionSetVersion;
+  missionDeliverableAccessAssignmentId?: string;
+  missionDeliverableAccessPermissionSetVersion?: 'v1';
   /** The live captured Company Document Approver assignment, if any. */
   documentApproverAssignmentId?: string;
   documentApproverPermissionSetVersion?: 'v1';

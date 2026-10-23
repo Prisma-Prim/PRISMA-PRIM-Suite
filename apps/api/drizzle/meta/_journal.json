@@ -526,6 +526,13 @@
       "when": 1792777411479,
       "tag": "0074_contract_preparation_quality",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1792792370965,
+      "tag": "0075_mission_deliverable_pdfs",
+      "breakpoints": true
     }
   ]
 }

@@ -21,7 +21,7 @@ export interface DocumentPdfUploadHistory {
 }
 
 /** Validated once at the bounded PDF input boundary, before scanning. */
-export interface ValidatedQuestionnairePdf {
+export interface ValidatedDocumentPdf {
   bytes: Buffer;
   fileName: string;
   size: number;
@@ -32,4 +32,4 @@ export interface CleanDocumentScan {
   engine: string;
   scannedAt: Date;
 }
-export const MAXIMUM_QUESTIONNAIRE_PDF_BYTES = 5 * 1024 * 1024;
+export const MAXIMUM_DOCUMENT_PDF_BYTES = 5 * 1024 * 1024;

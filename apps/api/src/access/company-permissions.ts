@@ -305,6 +305,10 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Operational Risk Recorder',
     versions: { v1: ['risk.record'] },
   },
+  company_mission_deliverable_access: {
+    label: 'Company Mission Deliverable Access',
+    versions: { v1: ['document.mission_deliverable.access'] },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -407,6 +411,19 @@ export const DOCUMENT_V2_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_document_registrar.versions.v2;
 export const DOCUMENT_V3_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_document_registrar.versions.v3;
+export const COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE =
+  'company_mission_deliverable_access' satisfies CompanyRoleBundle;
+export const COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_mission_deliverable_access.label;
+export function missionDeliverablePermissionsFor(
+  version: unknown,
+): readonly DocumentPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+    version,
+  );
+}
+
 export const COMPANY_DOCUMENT_CONTENT_READER_BUNDLE =
   'company_document_content_reader' satisfies CompanyRoleBundle;
 export const COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL =
@@ -632,6 +649,7 @@ export type DocumentPermission =
   | CompanyRolePermission<'company_document_registrar'>
   | DocumentApproverPermission
   | CompanyRolePermission<'company_document_content_reader'>
+  | CompanyRolePermission<'company_mission_deliverable_access'>
   | CompanyRolePermission<'company_document_content_uploader'>
   | CompanyRolePermission<'company_document_project_organizer'>;
 export type DocumentPermissionSetVersion =

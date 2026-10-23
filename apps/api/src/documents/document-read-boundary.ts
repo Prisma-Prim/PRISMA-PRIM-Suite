@@ -40,6 +40,7 @@ export class DocumentReadBoundary {
   async requireVisible(
     actor: ActorContext,
     idValue: unknown,
+    options: { lockFamily: boolean } = { lockFamily: false },
   ): Promise<VisibleDocument> {
     const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
@@ -55,11 +56,46 @@ export class DocumentReadBoundary {
         ),
       );
     if (!document) throw new NotFoundException();
+    await this.requireFamily(actor, document.type, options.lockFamily);
     const client = await this.clients.readReferenceClient(
       actor,
       document.clientId,
     );
     return { companyId, document, client };
+  }
+  /** Fence a mission command before receipt inspection without changing legacy mismatch semantics. */
+  async lockFamilyForCommand(
+    actor: ActorContext,
+    documentId: string,
+  ): Promise<void> {
+    const companyId = requireDocumentPermission(actor, 'document.read');
+    await this.authorization.requireDocumentAccess(actor, true);
+    const [document] = await this.database.connection
+      .select({ type: workingDocuments.type })
+      .from(workingDocuments)
+      .where(
+        and(
+          eq(workingDocuments.workspaceId, actor.workspaceId),
+          eq(workingDocuments.companyId, companyId),
+          eq(workingDocuments.id, documentId),
+        ),
+      );
+    if (document) await this.requireFamily(actor, document.type, true);
+  }
+
+  private async requireFamily(
+    actor: ActorContext,
+    type: unknown,
+    lockAssignment: boolean,
+  ): Promise<void> {
+    if (type === 'questionnaire') return;
+    if (
+      type !== 'mission-deliverable' ||
+      !(await this.authorization.hasMissionDeliverableAccess(actor, {
+        lockAssignment,
+      }))
+    )
+      throw new NotFoundException();
   }
 }
 

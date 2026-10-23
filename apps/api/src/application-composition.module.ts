@@ -10,6 +10,7 @@ import { CompanyOperationalRiskRecorderAssignmentController } from './access/com
 import { CompanyProjectTemplateConfigurationAssignmentController } from './access/company-project-template-configuration-assignment.controller.js';
 import { CompanyProjectStageAdvancerAssignmentController } from './access/company-project-stage-advancer-assignment.controller.js';
 import { DocumentContentController } from './documents/document-content.controller.js';
+import { CompanyMissionDeliverableAccessAssignmentController } from './access/company-mission-deliverable-access-assignment.controller.js';
 import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
 import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
 import { ProjectTemplateModule } from './project-template/project-template.module.js';
@@ -152,6 +153,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyDocumentRegistrarAssignmentController,
     CompanyDocumentApproverAssignmentController,
     CompanyDocumentContentReaderAssignmentController,
+    CompanyMissionDeliverableAccessAssignmentController,
     CompanyDocumentContentUploaderAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,

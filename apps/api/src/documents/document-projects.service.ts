@@ -1,3 +1,4 @@
+import { DocumentReadBoundary } from './document-read-boundary.js';
 import {
   BadRequestException,
   ConflictException,
@@ -5,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import {
   requireIdempotencyKey,
@@ -30,6 +31,7 @@ export class DocumentProjectsService {
     private readonly database: DatabaseContext,
     private readonly clients: ClientOperationalReferenceService,
     private readonly documents: DocumentsService,
+    private readonly boundary: DocumentReadBoundary,
     private readonly projects: ProjectService,
     private readonly closedProjects: ProjectClosedGuard,
   ) {}
@@ -55,6 +57,8 @@ export class DocumentProjectsService {
             closedAs: 'not_found',
           });
         }
+        const familyAllowed =
+          await this.authorization.hasMissionDeliverableAccess(actor);
         const rows = await this.database.connection
           .select({
             id: workingDocuments.id,
@@ -66,6 +70,12 @@ export class DocumentProjectsService {
               eq(workingDocuments.workspaceId, actor.workspaceId),
               eq(workingDocuments.companyId, project.companyId),
               eq(workingDocuments.clientId, project.clientAccountId),
+              familyAllowed
+                ? inArray(workingDocuments.type, [
+                    'questionnaire',
+                    'mission-deliverable',
+                  ])
+                : eq(workingDocuments.type, 'questionnaire'),
               eligible
                 ? isNull(workingDocuments.projectId)
                 : eq(workingDocuments.projectId, projectId),
@@ -102,6 +112,7 @@ export class DocumentProjectsService {
       await this.authorization.requireDocumentProjectManage(actor);
       const companyId = actor.activeCompany?.id;
       if (!companyId) throw new ForbiddenException();
+      await this.boundary.lockFamilyForCommand(actor, documentId);
       const lockKey = JSON.stringify([
         'document.project',
         actor.workspaceId,

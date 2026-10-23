@@ -21,8 +21,8 @@ import { DocumentReadBoundary } from './document-read-boundary.js';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentVersionsService } from './document-versions.service.js';
 import {
-  MAXIMUM_QUESTIONNAIRE_PDF_BYTES,
-  type ValidatedQuestionnairePdf,
+  MAXIMUM_DOCUMENT_PDF_BYTES,
+  type ValidatedDocumentPdf,
 } from './document-pdf.types.js';
 
 /** The authenticated bounded-stream upload and exact-Version download seam. */
@@ -51,20 +51,18 @@ export class DocumentContentService {
     const idempotencyKey = requireIdempotencyKey(input.key);
     const { expectedRevision, fileName } = uploadQuery(input.query);
     // Check current authority before allocating or consuming confidential bytes.
-    await this.database.transaction(() =>
-      this.authorization.requireDocumentContentUpload(actor),
-    );
+    await this.database.transaction(async () => {
+      await this.authorization.requireDocumentContentUpload(actor);
+      await this.boundary.lockFamilyForCommand(actor, documentId);
+    });
     if (input.request.headers['content-type'] !== 'application/pdf')
       throw invalidPdf();
     const length = input.request.headers['content-length'];
     if (
       length !== undefined &&
-      (!/^\d+$/u.test(length) ||
-        Number(length) > MAXIMUM_QUESTIONNAIRE_PDF_BYTES)
+      (!/^\d+$/u.test(length) || Number(length) > MAXIMUM_DOCUMENT_PDF_BYTES)
     )
-      throw new PayloadTooLargeException(
-        'The questionnaire PDF exceeds 5 MiB.',
-      );
+      throw new PayloadTooLargeException('The Document PDF exceeds 5 MiB.');
     const pdf = await readPdf(input.request, fileName);
     return this.versions.uploadContent(actor, {
       documentId,
@@ -138,7 +136,7 @@ export class DocumentContentService {
           stored.sha256
       )
         throw new ServiceUnavailableException(
-          'The preserved questionnaire PDF is unavailable.',
+          'The preserved Document PDF is unavailable.',
         );
       return stored;
     });
@@ -179,7 +177,7 @@ function uploadQuery(value: unknown): {
 async function readPdf(
   request: IncomingMessage,
   fileName: string,
-): Promise<ValidatedQuestionnairePdf> {
+): Promise<ValidatedDocumentPdf> {
   const chunks: Buffer[] = [];
   let size = 0;
   const timer = setTimeout(
@@ -191,10 +189,8 @@ async function readPdf(
       const value: unknown = raw;
       if (!Buffer.isBuffer(value)) throw invalidPdf();
       size += value.length;
-      if (size > MAXIMUM_QUESTIONNAIRE_PDF_BYTES)
-        throw new PayloadTooLargeException(
-          'The questionnaire PDF exceeds 5 MiB.',
-        );
+      if (size > MAXIMUM_DOCUMENT_PDF_BYTES)
+        throw new PayloadTooLargeException('The Document PDF exceeds 5 MiB.');
       chunks.push(value);
     }
   } catch (error: unknown) {
@@ -221,8 +217,7 @@ async function readPdf(
 function invalidPdf(): BadRequestException {
   return new BadRequestException({
     code: 'document_pdf_invalid',
-    message:
-      'Choose a PDF questionnaire with a safe filename and at most 5 MiB.',
+    message: 'Choose a PDF with a safe filename and at most 5 MiB.',
   });
 }
 

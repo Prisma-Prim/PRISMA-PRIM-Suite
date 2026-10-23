@@ -6,6 +6,7 @@ const CAPTURED_VERSIONS = {
   'Company Ideas Reviewer': ['v1'],
   'Company Context Access': [null],
   'Company Director Client Access': ['v1', 'v2'],
+  'Company Mission Deliverable Access': ['v1'],
   'Company Document Registrar': ['v1', 'v2', 'v3'],
   'Company Document Approver': ['v1'],
   'Company Document Content Reader': ['v1'],

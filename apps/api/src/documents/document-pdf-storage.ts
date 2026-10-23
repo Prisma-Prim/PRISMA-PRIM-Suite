@@ -12,7 +12,7 @@ import type {
   DocumentPdfContent,
   DocumentPdfUploadHistory,
   PreservedDocumentPdf,
-  ValidatedQuestionnairePdf,
+  ValidatedDocumentPdf,
 } from './document-pdf.types.js';
 
 const HISTORY_PAGE_SIZE = 20;
@@ -51,7 +51,7 @@ export class DocumentPdfStorage {
     versionId: string;
     membershipId: string;
     uploadRevision: number;
-    pdf: ValidatedQuestionnairePdf;
+    pdf: ValidatedDocumentPdf;
     scan: CleanDocumentScan;
   }): Promise<string> {
     const [stored] = await this.database.connection
@@ -72,6 +72,26 @@ export class DocumentPdfStorage {
       .returning({ id: documentPdfs.id });
     if (!stored) throw new Error('The PDF was not stored.');
     return stored.id;
+  }
+
+  /** Exact scoped presence for the mission official-designation integrity gate. */
+  async hasStoredContent(
+    scope: DocumentScope,
+    versionId: string,
+  ): Promise<boolean> {
+    const [stored] = await this.database.connection
+      .select({ id: documentPdfs.id })
+      .from(documentPdfs)
+      .where(
+        and(
+          eq(documentPdfs.workspaceId, scope.workspaceId),
+          eq(documentPdfs.companyId, scope.companyId),
+          eq(documentPdfs.documentId, scope.documentId),
+          eq(documentPdfs.versionId, versionId),
+        ),
+      )
+      .limit(1);
+    return stored !== undefined;
   }
 
   /** At most one current row per Version, never its unbounded upload history. */

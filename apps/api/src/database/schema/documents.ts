@@ -24,7 +24,9 @@ export const workingDocuments = pgTable(
     workingRevision: integer('working_revision').notNull().default(1),
     title: text('title').notNull(),
     purpose: text('purpose').notNull(),
-    type: text('type').notNull().default('questionnaire'),
+    type: text('type', { enum: ['questionnaire', 'mission-deliverable'] })
+      .notNull()
+      .default('questionnaire'),
     confidentiality: text('confidentiality')
       .notNull()
       .default('company-confidential'),
@@ -79,7 +81,7 @@ export const workingDocuments = pgTable(
     }),
     check(
       'working_documents_state_check',
-      sql`${table.type} = 'questionnaire' AND ${table.confidentiality} = 'company-confidential' AND length(trim(${table.title})) BETWEEN 1 AND 200 AND length(trim(${table.purpose})) BETWEEN 1 AND 2000`,
+      sql`${table.type} IN ('questionnaire', 'mission-deliverable') AND ${table.confidentiality} = 'company-confidential' AND length(trim(${table.title})) BETWEEN 1 AND 200 AND length(trim(${table.purpose})) BETWEEN 1 AND 2000`,
     ),
   ],
 );
@@ -322,10 +324,10 @@ export const documentCorrectionCommands = pgTable(
     outcome: text('outcome', { enum: ['corrected', 'unchanged'] }).notNull(),
     beforeTitle: text('before_title').notNull(),
     beforePurpose: text('before_purpose').notNull(),
-    beforeUrl: text('before_url').notNull(),
+    beforeUrl: text('before_url'),
     afterTitle: text('after_title').notNull(),
     afterPurpose: text('after_purpose').notNull(),
-    afterUrl: text('after_url').notNull(),
+    afterUrl: text('after_url'),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -356,6 +358,10 @@ export const documentCorrectionCommands = pgTable(
         workspaceMemberships.id,
       ],
     }),
+    check(
+      'document_correction_commands_url_pair_check',
+      sql`(${table.beforeUrl} IS NULL) = (${table.afterUrl} IS NULL)`,
+    ),
     check(
       'document_correction_commands_state_check',
       sql`${table.expectedRevision} >= 1 AND ((${table.outcome} = 'corrected' AND ${table.revision} = ${table.expectedRevision} + 1) OR (${table.outcome} = 'unchanged' AND ${table.revision} = ${table.expectedRevision}))`,

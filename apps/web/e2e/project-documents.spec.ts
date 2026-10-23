@@ -317,7 +317,7 @@ test('attaches, retries unchanged, reloads, opens and removes a working Project 
   ).toBeVisible();
   await expect(
     documents.getByText(
-      'Draft questionnaires with unverified external references. Attachments are working material, not accepted evidence or permission to start work.',
+      'Working Documents may contain external references or preserved mission PDFs. Attachment does not record acceptance or permission to start work.',
     ),
   ).toBeVisible();
   const attach = documents.getByRole('button', {

@@ -1,3 +1,4 @@
+import { missionDeliverableAssignment } from './mission-deliverable-access.js';
 import {
   COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
   COMPANY_CONTRACT_EARLY_PREPARATION_V1_PERMISSIONS,
@@ -36,6 +37,8 @@ import {
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+  COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  missionDeliverablePermissionsFor,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   documentApproverPermissionsFor,
   documentPermissionsFor,
@@ -419,6 +422,23 @@ export class CompanyContextAuthorization {
       { bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE, versions: ['v1'] },
     );
   }
+  /** Current captured family authority; a write's shared lock fences revocation. */
+  async hasMissionDeliverableAccess(
+    actor: ActorContext,
+    options: { lockAssignment: boolean } = { lockAssignment: false },
+  ): Promise<boolean> {
+    const condition = missionDeliverableAssignment(actor);
+    if (!condition) return false;
+    const query = this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(condition);
+    const [assignment] = options.lockAssignment
+      ? await query.for('share')
+      : await query;
+    return assignment !== undefined;
+  }
+
   async hasDocumentContentRead(actor: ActorContext): Promise<boolean> {
     const companyId = actor.activeCompany?.id;
     if (
@@ -1389,6 +1409,7 @@ export class CompanyContextAuthorization {
         COMPANY_PROJECT_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
+        COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
@@ -1481,6 +1502,17 @@ export class CompanyContextAuthorization {
         ];
         company.documentContentUploaderAssignmentId = row.assignmentId;
         company.documentContentUploaderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          ...missionDeliverablePermissionsFor(row.permissionSetVersion),
+        ];
+        company.missionDeliverableAccessAssignmentId = row.assignmentId;
+        company.missionDeliverableAccessPermissionSetVersion = 'v1';
       }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
         if (!isDocumentPermissionSetVersion(row.permissionSetVersion)) continue;
