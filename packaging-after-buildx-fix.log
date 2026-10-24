@@ -1,0 +1,47 @@
+Acquiring pinned PostgreSQL image (attempt 1/4, limit 60s).
+Pinned PostgreSQL image acquired.
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from api.Dockerfile
+#1 transferring dockerfile: 1.34kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 1.05kB done
+#3 DONE 0.0s
+
+#4 [build 1/9] FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 31.99MB 0.3s done
+#5 DONE 0.3s
+
+#6 [build 2/9] WORKDIR /app
+#6 DONE 1.9s
+
+#7 [build 3/9] RUN npm install --global pnpm@11.20.0
+#7 71.62 npm error code SELF_SIGNED_CERT_IN_CHAIN
+#7 71.62 npm error errno SELF_SIGNED_CERT_IN_CHAIN
+#7 71.62 npm error request to https://registry.npmjs.org/pnpm failed, reason: self-signed certificate in certificate chain
+#7 71.62 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-10-24T12_57_58_910Z-debug-0.log
+#7 ERROR: process "/bin/sh -c npm install --global pnpm@11.20.0" did not complete successfully: exit code: 1
+------
+ > [build 3/9] RUN npm install --global pnpm@11.20.0:
+71.62 npm error code SELF_SIGNED_CERT_IN_CHAIN
+71.62 npm error errno SELF_SIGNED_CERT_IN_CHAIN
+71.62 npm error request to https://registry.npmjs.org/pnpm failed, reason: self-signed certificate in certificate chain
+71.62 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-10-24T12_57_58_910Z-debug-0.log
+------
+api.Dockerfile:3
+--------------------
+   1 |     FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS build
+   2 |     WORKDIR /app
+   3 | >>> RUN npm install --global pnpm@11.20.0
+   4 |     COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+   5 |     COPY apps/api/package.json apps/api/package.json
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c npm install --global pnpm@11.20.0" did not complete successfully: exit code: 1

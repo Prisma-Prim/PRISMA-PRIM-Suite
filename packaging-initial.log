@@ -1,0 +1,3 @@
+Acquiring pinned PostgreSQL image (attempt 1/4, limit 60s).
+Pinned PostgreSQL image acquired.
+ERROR: mkdir /home/agent/.docker/buildx: read-only file system

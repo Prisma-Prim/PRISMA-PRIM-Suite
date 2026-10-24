@@ -1,0 +1,30 @@
+{
+  "run": "pr848-20261024-run1-failed",
+  "status": "failed",
+  "source": "1e1283624e8f4d288e4f8aab9e338ecda9f8ac8b",
+  "base": "1a8a1242958967f9f0431de183bbfcf76e677137",
+  "integrationTree": "bff7a46e6747da15a3ba11a0e74f47df30d541c0",
+  "publication": "Original reviewed compact report, manifest and packaging logs. Full original logs and synthetic browser evidence remain local. This is not complete passing merge evidence.",
+  "files": [
+    {
+      "path": "manifest.json",
+      "bytes": 863557,
+      "sha256": "7289ae25e187d4d05a291f9131c28511d9d4163f5bfe0abfcb59f5d26a8a04ee"
+    },
+    {
+      "path": "packaging-after-buildx-fix.log",
+      "bytes": 2268,
+      "sha256": "588d474fa3ff5e33b2ddfa50069fdd98c61024efed1072a73bc096d470d2b2ec"
+    },
+    {
+      "path": "packaging-initial.log",
+      "bytes": 157,
+      "sha256": "7735d40743e602a90850256511d7b1c3a9e2cf400d8ef50718b551f12794dd94"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3581,
+      "sha256": "10acb83c9ac751f038f84a1610d6e28a7a6cb5417c061ce0147887e19380e233"
+    }
+  ]
+}
