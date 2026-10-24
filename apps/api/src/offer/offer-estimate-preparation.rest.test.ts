@@ -400,7 +400,7 @@ withPostgres('Approved-estimate internal Offer preparation REST', () => {
     },
   );
 
-  it('preserves captured v1 on repeated grants and requires explicit revoke/regrant for v2', async () => {
+  it('preserves captured v1 on repeated grants and requires explicit revoke/regrant for the current capture', async () => {
     const source = await fixture.prepare();
     await fixture.pool.query(
       "UPDATE company_role_assignments SET permission_set_version = 'v1' WHERE company_id = $1 AND workspace_membership_id = $2 AND bundle::text = 'company_offer_preparer'",
@@ -433,7 +433,7 @@ withPostgres('Approved-estimate internal Offer preparation REST', () => {
         companyId: source.companyId,
         membershipId: source.preparerMembershipId,
       }),
-    ).toMatchObject({ permissionSetVersion: 'v2' });
+    ).toMatchObject({ permissionSetVersion: 'v3' });
     const actor = responseRecord(
       await fixture.read({
         path: '/access/current-actor',
@@ -442,7 +442,7 @@ withPostgres('Approved-estimate internal Offer preparation REST', () => {
       }),
     );
     expect(actor.activeCompany).toMatchObject({
-      offerPermissionSetVersion: 'v2',
+      offerPermissionSetVersion: 'v3',
       offerPermissions: expect.arrayContaining([
         'commercial.offer.estimate.prepare',
       ]),

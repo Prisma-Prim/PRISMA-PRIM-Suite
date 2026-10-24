@@ -183,6 +183,16 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.pricing.snapshot.read',
         'commercial.offer.estimate.prepare',
       ],
+      v3: [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+        'commercial.offer.transmission.record',
+        'commercial.pricing.snapshot.read',
+        'commercial.offer.estimate.prepare',
+        'commercial.offer.model.select',
+        'commercial.offer.model_based.prepare',
+        'commercial.offer.model_based.transmission.record',
+      ],
     },
   },
   company_contract_preparer: {
@@ -216,6 +226,13 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.offer.read',
         'commercial.offer.approve',
         'commercial.offer.response.record',
+      ],
+      v2: [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+        'commercial.offer.response.record',
+        'commercial.offer.model_based.approve',
+        'commercial.offer.model_based.response.record',
       ],
     },
   },
@@ -638,6 +655,8 @@ export const COMPANY_OFFER_APPROVER_V1_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_offer_approver.versions.v1;
 export type CompanyOfferApproverPermission =
   CompanyRolePermission<'company_offer_approver'>;
+export type CompanyOfferApproverPermissionSetVersion =
+  CompanyRolePermissionSetVersion<'company_offer_approver'>;
 export type CompanyOfferPermission =
   CompanyOfferPreparerPermission | CompanyOfferApproverPermission;
 export function offerApproverPermissionsFor(
@@ -656,6 +675,8 @@ export const COMPANY_OFFER_PREPARER_V2_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_offer_preparer.versions.v2;
 export type CompanyOfferPreparerPermission =
   CompanyRolePermission<'company_offer_preparer'>;
+export type CompanyOfferPreparerPermissionSetVersion =
+  CompanyRolePermissionSetVersion<'company_offer_preparer'>;
 export function offerPreparerPermissionsFor(
   version: unknown,
 ): readonly CompanyOfferPreparerPermission[] {

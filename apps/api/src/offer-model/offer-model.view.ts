@@ -149,7 +149,7 @@ export function attribution(row: AttributedRow) {
   };
 }
 
-function storedContent(value: unknown) {
+export function storedContent(value: unknown) {
   try {
     return readOfferModelContent(value);
   } catch {

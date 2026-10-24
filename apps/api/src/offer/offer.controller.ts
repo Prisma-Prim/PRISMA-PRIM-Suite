@@ -25,6 +25,36 @@ export class OfferController {
     private readonly estimateOffers: EstimateOfferPreparationService,
   ) {}
 
+  @Post('from-approved-model')
+  createFromApprovedModel(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.estimateOffers.createFromModel({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      key,
+    });
+  }
+
+  @Post('versions/from-approved-model')
+  createVersionFromApprovedModel(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.estimateOffers.createModelVersion({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      key,
+    });
+  }
+
   @Post('from-approved-estimate')
   createFromApprovedEstimate(
     @Req() request: ActorContextRequest,

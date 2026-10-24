@@ -850,7 +850,7 @@ it('states exactly the approved commercial capabilities and action-specific prer
   });
   expect(
     screen.getByText(
-      'Company Offer Preparer v1 grants Offer read and preparation, recorded simulated transmission and read of the exact referenced Pricing Snapshot. Company context and Opportunity read must be authorized separately; naming a Client Legal Entity additionally requires Client read. It grants no pricing calculation or adjustment, Client, approval or Contract authority.',
+      'New Company Offer Preparer grants capture v3: Offer read, preparation, exact Pricing Snapshot read, approved-estimate drafts and full approved-model Offers with recorded simulated transmission. Company context, Opportunity/Client read and economic-source read remain separately authorized. Model configuration and Offer approval are separate. Existing v1/v2 grants retain their captured rights; revoke and grant again to enable the full-model journey.',
     ),
   ).toBeVisible();
   selectOption(
@@ -859,7 +859,7 @@ it('states exactly the approved commercial capabilities and action-specific prer
   );
   expect(
     screen.getByText(
-      'Company Offer Approver v1 grants Offer read, internal decisions and recorded simulated Client response. Company context and Opportunity read must be authorized separately. It grants no preparation, Client or Pricing authority.',
+      'New Company Offer Approver grants capture v2: Offer read, decisions and recorded simulated Client responses, including full approved-model Offers. Company context and Opportunity read remain separately authorized. It grants no preparation, Client, Pricing, economic-source or model-configuration access. Existing v1 grants retain their captured rights; revoke and grant again to enable the full-model journey.',
     ),
   ).toBeVisible();
   selectOption(

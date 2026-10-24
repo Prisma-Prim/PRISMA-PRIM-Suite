@@ -557,14 +557,26 @@ test('retires a real transmission authority after localized read refusal and sup
   await offer
     .getByRole('checkbox', { name: locale.rules[5], exact: true })
     .check();
-  await offer.getByRole('button', { name: locale.record, exact: true }).click();
-  await expect(
-    offer.getByText(locale.runningTransmission, { exact: true }),
-  ).toBeVisible();
+  const historyRead = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).pathname.endsWith('/versions/version-history'),
+  );
   await offer
     .locator('.offer-version-history')
     .getByRole('button', { name: locale.openOne, exact: true })
     .click();
+  await historyRead;
+  await offer.getByRole('button', { name: locale.record, exact: true }).click();
+  await expect(
+    offer.getByText(locale.runningTransmission, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    offer
+      .locator('.offer-version-history')
+      .getByRole('button', { name: locale.openOne, exact: true }),
+  ).toBeDisabled();
+  observed.releaseHistory();
   await expect(
     offer.getByRole('button', { name: locale.record, exact: true }),
   ).toHaveCount(0);

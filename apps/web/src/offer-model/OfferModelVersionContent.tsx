@@ -55,6 +55,21 @@ export function OfferModelVersionContent({
           <p className="offer-model-literal">{version.withdrawal.reason}</p>
         </div>
       )}
+      <OfferModelBody content={content} />
+    </article>
+  );
+}
+
+/** Shared literal approved-model body without configuration decisions or notes. */
+export function OfferModelBody({
+  content,
+}: {
+  content: OfferModelVersion['content'];
+}) {
+  const copy = useOfferModelCopy();
+  return (
+    <>
+      {' '}
       <dl>
         <dt>{copy('sourceDescription')}</dt>
         <dd>{content.sourceDescription}</dd>
@@ -94,6 +109,6 @@ export function OfferModelVersionContent({
           </li>
         ))}
       </ol>
-    </article>
+    </>
   );
 }

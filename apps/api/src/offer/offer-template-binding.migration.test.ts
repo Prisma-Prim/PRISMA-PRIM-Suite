@@ -196,7 +196,7 @@ it.skipIf(!databaseUrl)(
           ].map(async (table) => {
             const omitted =
               table === 'offer_versions'
-                ? " - ARRAY['template_code', 'template_version', 'predecessor_version_id', 'superseded_by_version_id', 'superseded_at','estimate_source_id','estimate_source_version_id','estimate_source_version_number','estimate_source_decision_id','estimate_source_decision_code','estimate_source_approved_at','estimate_source_amount','estimate_source_currency']::text[]"
+                ? " - ARRAY['template_code', 'template_version', 'predecessor_version_id', 'superseded_by_version_id', 'superseded_at','estimate_source_id','estimate_source_version_id','estimate_source_version_number','estimate_source_decision_id','estimate_source_decision_code','estimate_source_approved_at','estimate_source_amount','estimate_source_currency','model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]"
                 : table === 'offer_commands'
                   ? " - ARRAY['kind', 'result_quality_run_id', 'result_decision_id', 'result_transmission_id', 'result_client_response_id', 'result_version_id', 'result_offer_revision']::text[]"
                   : '';

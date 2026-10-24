@@ -298,7 +298,7 @@ const OFFER_MODEL_BUNDLES = {
 const OFFER_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_OFFER_PREPARER_BUNDLE,
   label: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
-  permissionSetVersion: 'v2',
+  permissionSetVersion: 'v3',
 };
 const CONTRACT_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_PREPARER_BUNDLE,
@@ -318,7 +318,7 @@ const CONTRACT_APPROVER_BUNDLE: BundleDefinition = {
 const OFFER_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_OFFER_APPROVER_BUNDLE,
   label: COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 const PRICING_ADJUSTMENT_BUNDLE: BundleDefinition = {
   value: COMPANY_PRICING_ADJUSTMENT_BUNDLE,
@@ -2287,7 +2287,8 @@ function assignmentRecord(
     case COMPANY_OFFER_PREPARER_BUNDLE:
       if (
         assignment.permissionSetVersion !== 'v1' &&
-        assignment.permissionSetVersion !== 'v2'
+        assignment.permissionSetVersion !== 'v2' &&
+        assignment.permissionSetVersion !== 'v3'
       )
         throw new Error('Invalid Company Offer Preparer version.');
       return {
@@ -2332,12 +2333,15 @@ function assignmentRecord(
         permissionSetVersion: 'v1',
       };
     case COMPANY_OFFER_APPROVER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
+      if (
+        assignment.permissionSetVersion !== 'v1' &&
+        assignment.permissionSetVersion !== 'v2'
+      )
         throw new Error('Invalid Company Offer Approver version.');
       return {
         ...base,
         bundle: COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
+        permissionSetVersion: assignment.permissionSetVersion,
       };
     case COMPANY_PRICING_ADJUSTMENT_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')

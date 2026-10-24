@@ -26,6 +26,8 @@ import type {
   COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
   COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
   COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
+  CompanyOfferPreparerPermissionSetVersion,
+  CompanyOfferApproverPermissionSetVersion,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
@@ -163,13 +165,16 @@ export type CompanyContextAssignmentRecord =
         | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
         | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
         | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
-        | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
-        | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL;
+        | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL;
-      permissionSetVersion: 'v1' | 'v2';
+      permissionSetVersion: CompanyOfferPreparerPermissionSetVersion;
+    })
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL;
+      permissionSetVersion: CompanyOfferApproverPermissionSetVersion;
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL;

@@ -10383,7 +10383,7 @@ withPostgres('First illustrative Contract REST', () => {
         await pool.query(
           'ALTER TABLE opportunities ADD COLUMN sales_stage_id uuid',
         );
-        // The current ORM returns the additive 0078 fields even for a legacy
+        // The current ORM returns the additive 0078/0080 fields even for a legacy
         // Snapshot Version. Temporarily expose only nullable slots for fixture
         // creation, then remove every slot before the genuine baseline upgrade.
         const estimateSourceColumns = [
@@ -10395,6 +10395,12 @@ withPostgres('First illustrative Contract REST', () => {
           ['estimate_source_approved_at', 'timestamptz'],
           ['estimate_source_amount', 'text'],
           ['estimate_source_currency', 'text'],
+          ['model_source_id', 'uuid'],
+          ['model_source_version_id', 'uuid'],
+          ['model_source_version_number', 'integer'],
+          ['model_source_decision_id', 'uuid'],
+          ['model_source_decision_outcome', 'text'],
+          ['model_generation_snapshot', 'jsonb'],
         ];
         for (const [column, type] of estimateSourceColumns)
           await pool.query(
@@ -10792,7 +10798,7 @@ withPostgres('First illustrative Contract REST', () => {
           await pool.query(`ALTER TABLE offer_versions DROP COLUMN ${column}`);
         }
         await pool.query(
-          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle='company_offer_preparer' AND permission_set_version='v2'",
+          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle IN ('company_offer_preparer','company_offer_approver') AND permission_set_version IN ('v2','v3')",
         );
         await pool.query(
           'ALTER TABLE opportunities DROP COLUMN sales_stage_id',

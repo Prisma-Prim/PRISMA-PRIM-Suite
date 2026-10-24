@@ -1,3 +1,4 @@
+import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -21,20 +22,24 @@ type CommandState =
   | 'conflict'
   | 'invalid';
 export function OfferQualityPanel({
+  onCommandLockChange,
   identity,
   companyId,
   opportunityId,
   offerVersionId,
+  qualityRuleSet = 'OFFER_QUALITY_ILLUSTRATIVE',
   qualityRuleSetVersion,
   initialRun,
   mayRun,
   reject,
   onRun,
 }: {
+  onCommandLockChange?: (locked: boolean) => void;
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
   offerVersionId: string;
+  qualityRuleSet?: OfferQualityRunView['ruleSet'];
   qualityRuleSetVersion: OfferQualityRunView['ruleSetVersion'];
   initialRun: OfferQualityRunView | null;
   mayRun: boolean;
@@ -51,6 +56,10 @@ export function OfferQualityPanel({
   const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => setRun(initialRun), [initialRun]);
+  useOfferCommandLock(
+    state === 'running' || state === 'uncertain',
+    onCommandLockChange,
+  );
   async function execute() {
     if (!mayRun || state === 'running') return;
     const command = attempt.current ?? { body: '{}', key: crypto.randomUUID() };
@@ -85,6 +94,7 @@ export function OfferQualityPanel({
       } else if (result.status === 'ok') {
         const recorded = readOfferQualityRun(result.value, {
           offerVersionId,
+          ruleSet: qualityRuleSet,
           ruleSetVersion: qualityRuleSetVersion,
         });
         setRun(recorded);
