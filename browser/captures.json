@@ -1,0 +1,50 @@
+{
+  "kind": "Selected synthetic LOCAL real-App/PostgreSQL captures; not downloaded CI screenshots or real-provider proof",
+  "source": "805c61560987194f85e817e2adbf6541868b87ef",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "integrationTree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+  "scenarioResult": "2 passed; exact old/current bytes, correction, ordinary Task complete/reopen, ordered history and independent authority denials",
+  "visualInspection": "Root visually inspected all four current-source form/history section PNGs at readable resolution. Open-form/history no-overflow and keyboard assertions pass.",
+  "files": [
+    {
+      "path": "task-result-form-desktop.png",
+      "bytes": 32163,
+      "sha256": "e15279213d0c246f691b2c95fcd2f27c79caa41b6e0010e344c7ce28b89afc93",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "kind": "Task result section"
+    },
+    {
+      "path": "task-result-history-desktop.png",
+      "bytes": 76342,
+      "sha256": "15af4ca229a523f697fc79dac873e778088eca72139bc2ba10c7d091b75110b5",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "kind": "Task result section"
+    },
+    {
+      "path": "task-result-form-narrow.png",
+      "bytes": 29279,
+      "sha256": "745396e18db3130dffba6cda53a501a78b86c93980956a12f9eb0058c56f84dc",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "kind": "Task result section"
+    },
+    {
+      "path": "task-result-history-narrow.png",
+      "bytes": 71573,
+      "sha256": "7c2b3e4df62e68f29e2218ef8c564d07c39602bb4647e5442b7caab4c1e2d46a",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "kind": "Task result section"
+    }
+  ]
+}

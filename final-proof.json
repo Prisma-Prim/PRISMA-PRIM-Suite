@@ -1,0 +1,536 @@
+{
+  "status": "passed",
+  "kind": "Root validation of independent complete public GitHub CI under owner #747 queue route; not a canonical local-gate attestation",
+  "issue": 834,
+  "pr": 835,
+  "source": "805c61560987194f85e817e2adbf6541868b87ef",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+  "run": 40059640331,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331",
+  "event": "workflow_dispatch",
+  "verifiedJobs": 16,
+  "verifiedTestSteps": 10,
+  "jobs": [
+    {
+      "id": 120770140535,
+      "name": "checks",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770140535"
+    },
+    {
+      "id": 120770140687,
+      "name": "scope",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770140687"
+    },
+    {
+      "id": 120770190522,
+      "name": "postgres_image",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770190522"
+    },
+    {
+      "id": 120770598047,
+      "name": "web_unit",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598047"
+    },
+    {
+      "id": 120770598054,
+      "name": "acceptance (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598054"
+    },
+    {
+      "id": 120770598055,
+      "name": "browser (3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598055"
+    },
+    {
+      "id": 120770598071,
+      "name": "packaging",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598071"
+    },
+    {
+      "id": 120770598072,
+      "name": "api (2/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598072"
+    },
+    {
+      "id": 120770598074,
+      "name": "api (3/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598074"
+    },
+    {
+      "id": 120770598081,
+      "name": "api (serial)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598081"
+    },
+    {
+      "id": 120770598082,
+      "name": "api (1/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598082"
+    },
+    {
+      "id": 120770598095,
+      "name": "browser (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598095"
+    },
+    {
+      "id": 120770598119,
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598119"
+    },
+    {
+      "id": 120770598146,
+      "name": "acceptance (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598146"
+    },
+    {
+      "id": 120770598166,
+      "name": "browser (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120770598166"
+    },
+    {
+      "id": 120772475283,
+      "name": "quality",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/job/120772475283"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 12547201878,
+      "name": "browser-evidence-part-browser-3-40059640331",
+      "bytes": 70877868,
+      "providerDigest": "sha256:ad100bc3938f057c408f70e88c11968e1783fd87577cf4bc50038ef01553a923",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/artifacts/12547201878",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12547002766,
+      "name": "browser-evidence-part-browser-1-40059640331",
+      "bytes": 114150000,
+      "providerDigest": "sha256:c42a7aed5b58f405f34f96874eee4dff231e647f6ee39b10d7afe53e741bc762",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/artifacts/12547002766",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12546841892,
+      "name": "browser-evidence-part-browser-2-40059640331",
+      "bytes": 77259692,
+      "providerDigest": "sha256:4478386381d1d304055fb94fb1ec3f86fcf71657ecddfeeaa3ae15005b7573f2",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/artifacts/12546841892",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12546602991,
+      "name": "browser-evidence-part-acceptance-1-40059640331",
+      "bytes": 67042537,
+      "providerDigest": "sha256:c9a8d21a2f7b89ece9cc4500fe253407f2e4865a17a2806b2190b6e81b2834ba",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/artifacts/12546602991",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    },
+    {
+      "id": 12546199973,
+      "name": "browser-evidence-part-acceptance-2-40059640331",
+      "bytes": 57663597,
+      "providerDigest": "sha256:aaec3dc8ee9da2fef738564bec4f11bf7002a48241fde90003259fac115b94a9",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/artifacts/12546199973",
+      "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+    }
+  ],
+  "aggregateArtifact": {
+    "id": 12547217510,
+    "name": "browser-evidence-pr-40059640331",
+    "bytes": 386993606,
+    "providerDigest": "sha256:d268737875d10dc8317efaf52969f05c24eec5fed9343da21db796bcfe53a6f4",
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40059640331/artifacts/12547217510",
+    "inspection": "Provider metadata and successful upload/quality-download steps; no local ZIP byte verification claimed"
+  },
+  "artifactVerification": "Provider identities, sizes/digests, five uploads and quality retrieval/aggregate upload observed. No raw ZIP byte retrieval is claimed.",
+  "development": {
+    "issue": 834,
+    "finalSource": "805c61560987194f85e817e2adbf6541868b87ef",
+    "base": "947951c420412fcd2d3416c265492625b0679431",
+    "finalTree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+    "broaderDevelopment": {
+      "source": "90a8251962aa800befc634255e39f0e820425ae1",
+      "tree": "0d81f30866778e8d4c9d8d21dadd2a7b2f6f0421",
+      "status": "passed",
+      "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+      "sourceGuard": {
+        "source": "90a8251962aa800befc634255e39f0e820425ae1",
+        "base": "947951c420412fcd2d3416c265492625b0679431",
+        "tree": "0d81f30866778e8d4c9d8d21dadd2a7b2f6f0421",
+        "cleanBefore": true,
+        "cleanAfter": true,
+        "sameSourceAfter": true,
+        "sameTreeAfter": true,
+        "exitCode": 0
+      },
+      "format": "passed",
+      "lint": "passed",
+      "apiAndWebTypes": "passed",
+      "scriptsPassed": 482,
+      "apiParallelPassed": 2761,
+      "apiParallelOptionalRealClamavSkipped": 1,
+      "apiSerialPassed": 102,
+      "webPassed": 2971,
+      "apiAndWebProductionBuilds": "passed",
+      "apiTestDefault": "Canonical implicit5000ms. Targeted local allowance and pre-fix expected RED are separate."
+    },
+    "priorStableDevelopment": {
+      "status": "passed",
+      "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+      "sourceGuard": {
+        "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+        "base": "947951c420412fcd2d3416c265492625b0679431",
+        "tree": "c03391ce8b943d4f0ac1d8c627b0f3eb33e996f7",
+        "cleanBefore": true,
+        "cleanAfter": true
+      },
+      "format": "passed",
+      "lint": "passed",
+      "apiAndWebTypes": "passed",
+      "scriptsPassed": 482,
+      "apiParallelPassed": 2759,
+      "apiParallelOptionalRealClamavSkipped": 1,
+      "apiSerialPassed": 102,
+      "webPassed": 2971,
+      "apiAndWebProductionBuilds": "passed",
+      "apiTestDefault": "canonical implicit5000ms; local targeted iteration separately used explicit15000ms allowance"
+    },
+    "finalAffectedVerification": {
+      "source": "805c61560987194f85e817e2adbf6541868b87ef",
+      "base": "947951c420412fcd2d3416c265492625b0679431",
+      "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+      "clean": true,
+      "guards": [
+        {
+          "source": "805c61560987194f85e817e2adbf6541868b87ef",
+          "base": "947951c420412fcd2d3416c265492625b0679431",
+          "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+          "cleanBefore": true,
+          "status": "passed",
+          "exitCode": 0,
+          "cleanAfter": true,
+          "sameSourceAfter": true,
+          "sameTreeAfter": true
+        },
+        {
+          "source": "805c61560987194f85e817e2adbf6541868b87ef",
+          "base": "947951c420412fcd2d3416c265492625b0679431",
+          "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+          "cleanBefore": true,
+          "status": "passed",
+          "exitCode": 0,
+          "cleanAfter": true,
+          "sameSourceAfter": true,
+          "sameTreeAfter": true
+        }
+      ],
+      "broaderDevelopmentSource": "90a8251962aa800befc634255e39f0e820425ae1",
+      "changesSinceBroaderDevelopment": [
+        "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+        "apps/web/src/project/ProjectTasks.tsx",
+        "apps/web/src/project/TaskResults.project-context.test.tsx",
+        "apps/web/src/project/TaskResults.tsx"
+      ],
+      "apiBytesUnchangedSinceBroaderDevelopment": true,
+      "affectedChecks": {
+        "format": "passed",
+        "eslint": "passed",
+        "strictWebTypes": "passed",
+        "targetedTaskResultCasesPassed": 177,
+        "wholeWebPassed": 2978,
+        "ordinaryTaskBrowserPassed": 16,
+        "actualAppPostgresPassed": 2
+      },
+      "review": "late-project-context-review.md"
+    },
+    "lateTransactionCorrection": {
+      "expectedRed": "Two public real-pool App tests failed with500/acquisition timeouts on9fe03ef",
+      "focusedGreen": 2,
+      "affectedTaskAndResultRestPassed": 159,
+      "types": "passed",
+      "lint": "passed"
+    },
+    "earlierFixtureCorrection": {
+      "source": "3d5327370dfd6d454f3b17a07fe109f2453a4810",
+      "base": "947951c420412fcd2d3416c265492625b0679431",
+      "tree": "dbc27180c3045b65e19d8c4345e8a47a2b773cf8",
+      "clean": true,
+      "affectedInputTree": "dbc27180c3045b65e19d8c4345e8a47a2b773cf8",
+      "affectedInputMatchesFinalTree": true,
+      "affectedChecks": {
+        "format": "passed",
+        "eslint": "passed",
+        "strictWebTypes": "passed",
+        "administrationUnitPassed": 79,
+        "actualInterceptedAppDesktopNarrowPassed": 26
+      },
+      "broaderDevelopmentSource": "90a8251962aa800befc634255e39f0e820425ae1",
+      "onlyChangeSinceBroaderDevelopment": "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+      "productionBytesUnchangedSinceBroaderDevelopment": true
+    },
+    "actualAppCurrentSource": {
+      "source": "805c61560987194f85e817e2adbf6541868b87ef",
+      "passed": 2,
+      "viewports": [
+        1440,
+        390
+      ],
+      "kind": "LOCAL real App/disposable PostgreSQL with deterministic external identity/scanner fixtures",
+      "captures": "browser/captures.json"
+    },
+    "priorActualAppSource": {
+      "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+      "passed": 2,
+      "captures": "Prior captures retained privately; selected public captures are current-source."
+    },
+    "initialDevelopmentAttempt": {
+      "status": "failed",
+      "scriptsPassed": 479,
+      "apiParallelPassed": 2757,
+      "apiParallelFailed": 1,
+      "apiParallelOptionalSkipped": 1,
+      "unexecuted": [
+        "apiSerial",
+        "webUnit",
+        "build"
+      ],
+      "reason": "Mixed development input: captured-identity assertion updated after old worker modules had loaded. Failed result retained; fresh committed API149passed, and stable corrected full development run independently passed."
+    },
+    "firstBrowserAttempt": {
+      "status": "failed",
+      "failedViewports": 2,
+      "reason": "Test-only stale Declare done locator versus existing Mark done control; corrected registered journey passed.",
+      "rawFailureArtifacts": "Retained privately, not selected for publication."
+    },
+    "evidenceProbe": "passed; deliberate failure artifacts checked",
+    "externalProviders": "No real Clerk or maintained ClamAV proof; optional baseline real-ClamAV case remains skipped.",
+    "scope": "Full pnpm verify on90a8251 is not relabeled805c615. Later changes are one test fixture and the focused UI-context correction; whole web/browser/App proof binds805c615, and final complete GitHub CI is still required."
+  },
+  "finalTargetedGuard": {
+    "source": "805c61560987194f85e817e2adbf6541868b87ef",
+    "base": "947951c420412fcd2d3416c265492625b0679431",
+    "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+    "clean": true,
+    "guards": [
+      {
+        "source": "805c61560987194f85e817e2adbf6541868b87ef",
+        "base": "947951c420412fcd2d3416c265492625b0679431",
+        "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+        "cleanBefore": true,
+        "status": "passed",
+        "exitCode": 0,
+        "cleanAfter": true,
+        "sameSourceAfter": true,
+        "sameTreeAfter": true
+      },
+      {
+        "source": "805c61560987194f85e817e2adbf6541868b87ef",
+        "base": "947951c420412fcd2d3416c265492625b0679431",
+        "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+        "cleanBefore": true,
+        "status": "passed",
+        "exitCode": 0,
+        "cleanAfter": true,
+        "sameSourceAfter": true,
+        "sameTreeAfter": true
+      }
+    ],
+    "broaderDevelopmentSource": "90a8251962aa800befc634255e39f0e820425ae1",
+    "changesSinceBroaderDevelopment": [
+      "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+      "apps/web/src/project/ProjectTasks.tsx",
+      "apps/web/src/project/TaskResults.project-context.test.tsx",
+      "apps/web/src/project/TaskResults.tsx"
+    ],
+    "apiBytesUnchangedSinceBroaderDevelopment": true,
+    "affectedChecks": {
+      "format": "passed",
+      "eslint": "passed",
+      "strictWebTypes": "passed",
+      "targetedTaskResultCasesPassed": 177,
+      "wholeWebPassed": 2978,
+      "ordinaryTaskBrowserPassed": 16,
+      "actualAppPostgresPassed": 2
+    },
+    "review": "late-project-context-review.md"
+  },
+  "review": {
+    "issue": 834,
+    "reviewedSource": "f1bed512cfb5a726d6c3b752e73aa0f919af966d",
+    "base": "947951c420412fcd2d3416c265492625b0679431",
+    "round": 1,
+    "selfReview": "Standards then Spec and scoped structural checkpoint before independent review.",
+    "independent": {
+      "standards": {
+        "blocking": 2,
+        "nonblocking": 0,
+        "report": "standards-review.md"
+      },
+      "spec": {
+        "blocking": 1,
+        "nonblocking": 0,
+        "report": "spec-review.md"
+      }
+    },
+    "correction": {
+      "commits": [
+        "805c61560987194f85e817e2adbf6541868b87ef"
+      ],
+      "allOriginalBlockersResolved": true,
+      "scope": [
+        "Restore existing Workspace client.manage alternative and retire pending UI on withdrawal; retain all independent grants.",
+        "Repair two new OpenAPI assignment references and four Response Object scalar descriptions.",
+        "Focused failing-before/passing-after UI, public REST and OpenAPI contracts.",
+        "Late automatic provider P1: reuse Task-owned read gates inside the result transaction; real one-connection public App RED/GREEN proof."
+      ],
+      "targetedResults": {
+        "openApiPassed": 12,
+        "uiIncludingOrdinaryTasksPassed": 93,
+        "publicResultAuthorityPassed": 11,
+        "apiAndWebTypes": "passed",
+        "lint": "passed",
+        "lateTransactionPublicRestPassed": 2,
+        "affectedTaskAndResultRestPassed": 159
+      },
+      "provisionalSourceBeforeAmend": "9fe03efcf461111c965324b995112be9fd1ea646",
+      "provisionalTransactionCorrection": "90a8251962aa800befc634255e39f0e820425ae1",
+      "provisionalFixtureSource": "3d5327370dfd6d454f3b17a07fe109f2453a4810"
+    },
+    "confirmation": {
+      "count": 1,
+      "reason": "UI authority boundary correction",
+      "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+      "tree": "c03391ce8b943d4f0ac1d8c627b0f3eb33e996f7",
+      "standards": {
+        "originalResolved": 2,
+        "newBlocking": 0,
+        "nonblocking": 0
+      },
+      "spec": {
+        "originalResolved": 1,
+        "newBlocking": 0,
+        "nonblocking": 0
+      },
+      "scope": "Only the consolidated correction delta; no third review requested.",
+      "retainedOriginalCorrectionBytesUnchanged": true,
+      "doesNotCoverLateTransactionDelta": true,
+      "retainedOriginalCorrectionFiles": [
+        "apps/api/openapi.yaml",
+        "apps/api/src/task/task-results.access.rest.test.ts",
+        "apps/web/src/project/TaskResults.test.tsx",
+        "scripts/task-results-openapi.test.mjs"
+      ],
+      "laterDiffHasNoOriginalCorrectionFileOverlap": false,
+      "originalAuthorityFallbackAndKeyLogicByteIdentical": true,
+      "doesNotCoverLateProjectContextDelta": true
+    },
+    "finalSource": "805c61560987194f85e817e2adbf6541868b87ef",
+    "verification": "Final complete independent CI40059640331 on805c615/base947951c/tree1e4eb302 passed all16jobs/all10runtimeTeststeps after all local checks and review disposition. Fresh guarded merge preconditions still apply.",
+    "recordedAt": "2026-10-24T02:11:26.320273+00:00",
+    "automaticOpeningReview": {
+      "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+      "review": 5636429412,
+      "finding": 4365690797,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/835#discussion_r4365690797",
+      "blocking": 1,
+      "valid": true,
+      "status": "fixed in amended single correction",
+      "disposition": "late-transaction-review.md",
+      "requestedByRoot": false,
+      "threadResolved": true
+    },
+    "ciCorrection": {
+      "failedRun": 40056722541,
+      "source": "90a8251962aa800befc634255e39f0e820425ae1",
+      "scope": "11-line independent expected role fixture addition only; runtime bytes unchanged",
+      "report": "ci-fixture-correction-review.md",
+      "unitPassed": 79,
+      "browserPassed": 26,
+      "typesFormatEslint": "passed",
+      "rootStandardsSpec": "passed; original reviewed product/confirmation bytes unchanged; no new review"
+    },
+    "automaticPushReviews": [
+      {
+        "review": 5636473280,
+        "source": "90a8251962aa800befc634255e39f0e820425ae1",
+        "finding": 4365728725,
+        "blocking": true,
+        "disposition": "late-project-context-review.md",
+        "threadResolved": true
+      },
+      {
+        "review": 5636590203,
+        "source": "3d5327370dfd6d454f3b17a07fe109f2453a4810",
+        "finding": 4365806692,
+        "blockingSubset": "Observed closed Project availability refresh; Project reopening remains unsupported",
+        "disposition": "late-project-context-review.md",
+        "threadResolved": true
+      }
+    ],
+    "rootRequestedAdditionalProviderReview": false,
+    "lateContextCorrection": {
+      "report": "late-project-context-review.md",
+      "expectedRed": 6,
+      "targetedPassed": 177,
+      "strengthenedDownloadCasesPassed": 6,
+      "ordinaryTaskBrowserPassed": 16,
+      "actualAppPostgresPassed": 2,
+      "typesLintFormat": "passed",
+      "fullWeb": "2978 passed on frozen805c615 with clean guards"
+    },
+    "finalConfiguredProvider": {
+      "observedOnFrozenHead": "805c61560987194f85e817e2adbf6541868b87ef",
+      "feedback": "New +1 reaction replaced in-progress eyes; no new provider findings",
+      "reactionId": 593905586,
+      "createdAt": "2026-10-24T03:42:56Z",
+      "allProviderThreadsResolved": true,
+      "binding": "Public reaction observed while PR head remained805c615; no separate no-findings review object is claimed"
+    },
+    "finalCI": {
+      "run": 40059640331,
+      "conclusion": "success",
+      "successfulJobs": 16,
+      "successfulRuntimeTestSteps": 10
+    }
+  },
+  "supersededCI": [
+    {
+      "run": 40054370284,
+      "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+      "conclusion": "cancelled",
+      "reason": "Valid nested-transaction provider finding"
+    },
+    {
+      "run": 40056722541,
+      "source": "90a8251962aa800befc634255e39f0e820425ae1",
+      "conclusion": "failure",
+      "reason": "Independent expected role fixture omitted the new Recorder; eleven-line test-only fix"
+    },
+    {
+      "run": 40057481783,
+      "source": "3d5327370dfd6d454f3b17a07fe109f2453a4810",
+      "conclusion": "cancelled",
+      "reason": "Unconsumed configured provider Project-context findings before source correction"
+    }
+  ],
+  "keepEvidenceThrough": "2026-11-09T23:59:59Z",
+  "recordedAt": "2026-10-24T03:59:19.691313+00:00"
+}

@@ -1,0 +1,48 @@
+{
+  "source": "805c61560987194f85e817e2adbf6541868b87ef",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+  "clean": true,
+  "guards": [
+    {
+      "source": "805c61560987194f85e817e2adbf6541868b87ef",
+      "base": "947951c420412fcd2d3416c265492625b0679431",
+      "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+      "cleanBefore": true,
+      "status": "passed",
+      "exitCode": 0,
+      "cleanAfter": true,
+      "sameSourceAfter": true,
+      "sameTreeAfter": true
+    },
+    {
+      "source": "805c61560987194f85e817e2adbf6541868b87ef",
+      "base": "947951c420412fcd2d3416c265492625b0679431",
+      "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+      "cleanBefore": true,
+      "status": "passed",
+      "exitCode": 0,
+      "cleanAfter": true,
+      "sameSourceAfter": true,
+      "sameTreeAfter": true
+    }
+  ],
+  "broaderDevelopmentSource": "90a8251962aa800befc634255e39f0e820425ae1",
+  "changesSinceBroaderDevelopment": [
+    "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+    "apps/web/src/project/ProjectTasks.tsx",
+    "apps/web/src/project/TaskResults.project-context.test.tsx",
+    "apps/web/src/project/TaskResults.tsx"
+  ],
+  "apiBytesUnchangedSinceBroaderDevelopment": true,
+  "affectedChecks": {
+    "format": "passed",
+    "eslint": "passed",
+    "strictWebTypes": "passed",
+    "targetedTaskResultCasesPassed": 177,
+    "wholeWebPassed": 2978,
+    "ordinaryTaskBrowserPassed": 16,
+    "actualAppPostgresPassed": 2
+  },
+  "review": "late-project-context-review.md"
+}

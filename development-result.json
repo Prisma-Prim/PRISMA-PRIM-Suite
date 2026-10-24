@@ -1,0 +1,163 @@
+{
+  "issue": 834,
+  "finalSource": "805c61560987194f85e817e2adbf6541868b87ef",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "finalTree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+  "broaderDevelopment": {
+    "source": "90a8251962aa800befc634255e39f0e820425ae1",
+    "tree": "0d81f30866778e8d4c9d8d21dadd2a7b2f6f0421",
+    "status": "passed",
+    "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+    "sourceGuard": {
+      "source": "90a8251962aa800befc634255e39f0e820425ae1",
+      "base": "947951c420412fcd2d3416c265492625b0679431",
+      "tree": "0d81f30866778e8d4c9d8d21dadd2a7b2f6f0421",
+      "cleanBefore": true,
+      "cleanAfter": true,
+      "sameSourceAfter": true,
+      "sameTreeAfter": true,
+      "exitCode": 0
+    },
+    "format": "passed",
+    "lint": "passed",
+    "apiAndWebTypes": "passed",
+    "scriptsPassed": 482,
+    "apiParallelPassed": 2761,
+    "apiParallelOptionalRealClamavSkipped": 1,
+    "apiSerialPassed": 102,
+    "webPassed": 2971,
+    "apiAndWebProductionBuilds": "passed",
+    "apiTestDefault": "Canonical implicit5000ms. Targeted local allowance and pre-fix expected RED are separate."
+  },
+  "priorStableDevelopment": {
+    "status": "passed",
+    "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+    "sourceGuard": {
+      "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+      "base": "947951c420412fcd2d3416c265492625b0679431",
+      "tree": "c03391ce8b943d4f0ac1d8c627b0f3eb33e996f7",
+      "cleanBefore": true,
+      "cleanAfter": true
+    },
+    "format": "passed",
+    "lint": "passed",
+    "apiAndWebTypes": "passed",
+    "scriptsPassed": 482,
+    "apiParallelPassed": 2759,
+    "apiParallelOptionalRealClamavSkipped": 1,
+    "apiSerialPassed": 102,
+    "webPassed": 2971,
+    "apiAndWebProductionBuilds": "passed",
+    "apiTestDefault": "canonical implicit5000ms; local targeted iteration separately used explicit15000ms allowance"
+  },
+  "finalAffectedVerification": {
+    "source": "805c61560987194f85e817e2adbf6541868b87ef",
+    "base": "947951c420412fcd2d3416c265492625b0679431",
+    "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+    "clean": true,
+    "guards": [
+      {
+        "source": "805c61560987194f85e817e2adbf6541868b87ef",
+        "base": "947951c420412fcd2d3416c265492625b0679431",
+        "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+        "cleanBefore": true,
+        "status": "passed",
+        "exitCode": 0,
+        "cleanAfter": true,
+        "sameSourceAfter": true,
+        "sameTreeAfter": true
+      },
+      {
+        "source": "805c61560987194f85e817e2adbf6541868b87ef",
+        "base": "947951c420412fcd2d3416c265492625b0679431",
+        "tree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+        "cleanBefore": true,
+        "status": "passed",
+        "exitCode": 0,
+        "cleanAfter": true,
+        "sameSourceAfter": true,
+        "sameTreeAfter": true
+      }
+    ],
+    "broaderDevelopmentSource": "90a8251962aa800befc634255e39f0e820425ae1",
+    "changesSinceBroaderDevelopment": [
+      "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+      "apps/web/src/project/ProjectTasks.tsx",
+      "apps/web/src/project/TaskResults.project-context.test.tsx",
+      "apps/web/src/project/TaskResults.tsx"
+    ],
+    "apiBytesUnchangedSinceBroaderDevelopment": true,
+    "affectedChecks": {
+      "format": "passed",
+      "eslint": "passed",
+      "strictWebTypes": "passed",
+      "targetedTaskResultCasesPassed": 177,
+      "wholeWebPassed": 2978,
+      "ordinaryTaskBrowserPassed": 16,
+      "actualAppPostgresPassed": 2
+    },
+    "review": "late-project-context-review.md"
+  },
+  "lateTransactionCorrection": {
+    "expectedRed": "Two public real-pool App tests failed with500/acquisition timeouts on9fe03ef",
+    "focusedGreen": 2,
+    "affectedTaskAndResultRestPassed": 159,
+    "types": "passed",
+    "lint": "passed"
+  },
+  "earlierFixtureCorrection": {
+    "source": "3d5327370dfd6d454f3b17a07fe109f2453a4810",
+    "base": "947951c420412fcd2d3416c265492625b0679431",
+    "tree": "dbc27180c3045b65e19d8c4345e8a47a2b773cf8",
+    "clean": true,
+    "affectedInputTree": "dbc27180c3045b65e19d8c4345e8a47a2b773cf8",
+    "affectedInputMatchesFinalTree": true,
+    "affectedChecks": {
+      "format": "passed",
+      "eslint": "passed",
+      "strictWebTypes": "passed",
+      "administrationUnitPassed": 79,
+      "actualInterceptedAppDesktopNarrowPassed": 26
+    },
+    "broaderDevelopmentSource": "90a8251962aa800befc634255e39f0e820425ae1",
+    "onlyChangeSinceBroaderDevelopment": "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+    "productionBytesUnchangedSinceBroaderDevelopment": true
+  },
+  "actualAppCurrentSource": {
+    "source": "805c61560987194f85e817e2adbf6541868b87ef",
+    "passed": 2,
+    "viewports": [
+      1440,
+      390
+    ],
+    "kind": "LOCAL real App/disposable PostgreSQL with deterministic external identity/scanner fixtures",
+    "captures": "browser/captures.json"
+  },
+  "priorActualAppSource": {
+    "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+    "passed": 2,
+    "captures": "Prior captures retained privately; selected public captures are current-source."
+  },
+  "initialDevelopmentAttempt": {
+    "status": "failed",
+    "scriptsPassed": 479,
+    "apiParallelPassed": 2757,
+    "apiParallelFailed": 1,
+    "apiParallelOptionalSkipped": 1,
+    "unexecuted": [
+      "apiSerial",
+      "webUnit",
+      "build"
+    ],
+    "reason": "Mixed development input: captured-identity assertion updated after old worker modules had loaded. Failed result retained; fresh committed API149passed, and stable corrected full development run independently passed."
+  },
+  "firstBrowserAttempt": {
+    "status": "failed",
+    "failedViewports": 2,
+    "reason": "Test-only stale Declare done locator versus existing Mark done control; corrected registered journey passed.",
+    "rawFailureArtifacts": "Retained privately, not selected for publication."
+  },
+  "evidenceProbe": "passed; deliberate failure artifacts checked",
+  "externalProviders": "No real Clerk or maintained ClamAV proof; optional baseline real-ClamAV case remains skipped.",
+  "scope": "Full pnpm verify on90a8251 is not relabeled805c615. Later changes are one test fixture and the focused UI-context correction; whole web/browser/App proof binds805c615, and final complete GitHub CI is still required."
+}

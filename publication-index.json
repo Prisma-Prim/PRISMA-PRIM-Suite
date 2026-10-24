@@ -1,0 +1,103 @@
+{
+  "pr": 835,
+  "issue": 834,
+  "run": 40059640331,
+  "source": "805c61560987194f85e817e2adbf6541868b87ef",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "integrationTree": "1e4eb3028095ba1ee3f49594f51441e2a0e8983e",
+  "kind": "Selected safe root reports of independent complete GitHub CI and reviewed LOCAL actual-App/PostgreSQL synthetic captures; not a canonical local-gate attestation or raw CI archive-byte verification.",
+  "selection": "Complete original local logs, detailed synthetic SQL fault diagnostics, failed browser traces and private business originals remain unpublished. Failed/partial development attempts stay distinct from final CI.",
+  "keepThrough": "2026-11-09T23:59:59Z",
+  "files": [
+    {
+      "path": "browser/captures.json",
+      "bytes": 1752,
+      "sha256": "2bff7783646bea9e9fc76d73d6300c19587a7d0c6988f0e55eff318c9ed1c469"
+    },
+    {
+      "path": "browser/task-result-form-desktop.png",
+      "bytes": 32163,
+      "sha256": "e15279213d0c246f691b2c95fcd2f27c79caa41b6e0010e344c7ce28b89afc93"
+    },
+    {
+      "path": "browser/task-result-form-narrow.png",
+      "bytes": 29279,
+      "sha256": "745396e18db3130dffba6cda53a501a78b86c93980956a12f9eb0058c56f84dc"
+    },
+    {
+      "path": "browser/task-result-history-desktop.png",
+      "bytes": 76342,
+      "sha256": "15af4ca229a523f697fc79dac873e778088eca72139bc2ba10c7d091b75110b5"
+    },
+    {
+      "path": "browser/task-result-history-narrow.png",
+      "bytes": 71573,
+      "sha256": "7c2b3e4df62e68f29e2218ef8c564d07c39602bb4647e5442b7caab4c1e2d46a"
+    },
+    {
+      "path": "ci-artifacts.json",
+      "bytes": 5512,
+      "sha256": "62448330adb683df7358d2480a66b2a69d9096f3953b37e3f6144a5308976405"
+    },
+    {
+      "path": "ci-fixture-correction-review.md",
+      "bytes": 2221,
+      "sha256": "d571d47f9ee3d621827b098261356270140b946d5a59ef8444e3043f077caa8e"
+    },
+    {
+      "path": "ci-jobs.json",
+      "bytes": 56769,
+      "sha256": "c8814af889c944bcd38bf02558ca5d3f61a71ff32af667e7c9e5392cb7ac469c"
+    },
+    {
+      "path": "ci-run.json",
+      "bytes": 15077,
+      "sha256": "49db3e8086e26d6b65e8fbdf219008b28254dd55e61163e90b54d512fb50462e"
+    },
+    {
+      "path": "development-result.json",
+      "bytes": 6477,
+      "sha256": "d050c4a1715f3ab9e49a139309f12f20b2c1e9b53793891facac1896e05419db"
+    },
+    {
+      "path": "final-proof.json",
+      "bytes": 21782,
+      "sha256": "e8e905bb7bb6d967df2e94c30c1cb7196e22333b0ad4c4ccc0a60f4ae01b50f7"
+    },
+    {
+      "path": "final-report.md",
+      "bytes": 4152,
+      "sha256": "0dca8973aa2aada593615fd51dedc80c2c9443a54e8e99fc094a4aca3c4ba950"
+    },
+    {
+      "path": "final-source-check.json",
+      "bytes": 1589,
+      "sha256": "e069598c33ec8b7480e26243278867e3056ee769e522f120afbe2926449bd626"
+    },
+    {
+      "path": "late-project-context-review.md",
+      "bytes": 4510,
+      "sha256": "1fa0eec75b3f188ff8419a08dada4a7a0809bfedece461ddaad53429fc191179"
+    },
+    {
+      "path": "late-transaction-review.md",
+      "bytes": 2843,
+      "sha256": "0c8662f745acb47d8ddb077339e925e36430d2c86d910eae0d6bb11d92c33a4f"
+    },
+    {
+      "path": "review-disposition.json",
+      "bytes": 5395,
+      "sha256": "15fc0deb41879ff7ad151a22a326920df8a5c24149302d3c973e66acd796ef02"
+    },
+    {
+      "path": "spec-review.md",
+      "bytes": 1641,
+      "sha256": "13c2e3044beca9eaaf87e578e66abe2a692f1c12291f636095a07165df2ccfb8"
+    },
+    {
+      "path": "standards-review.md",
+      "bytes": 1756,
+      "sha256": "02f53f579cd5b012ee95a5317743639b2718f26641e38791c9ab6264335170ef"
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "issue": 834,
+  "reviewedSource": "f1bed512cfb5a726d6c3b752e73aa0f919af966d",
+  "base": "947951c420412fcd2d3416c265492625b0679431",
+  "round": 1,
+  "selfReview": "Standards then Spec and scoped structural checkpoint before independent review.",
+  "independent": {
+    "standards": {
+      "blocking": 2,
+      "nonblocking": 0,
+      "report": "standards-review.md"
+    },
+    "spec": {
+      "blocking": 1,
+      "nonblocking": 0,
+      "report": "spec-review.md"
+    }
+  },
+  "correction": {
+    "commits": [
+      "805c61560987194f85e817e2adbf6541868b87ef"
+    ],
+    "allOriginalBlockersResolved": true,
+    "scope": [
+      "Restore existing Workspace client.manage alternative and retire pending UI on withdrawal; retain all independent grants.",
+      "Repair two new OpenAPI assignment references and four Response Object scalar descriptions.",
+      "Focused failing-before/passing-after UI, public REST and OpenAPI contracts.",
+      "Late automatic provider P1: reuse Task-owned read gates inside the result transaction; real one-connection public App RED/GREEN proof."
+    ],
+    "targetedResults": {
+      "openApiPassed": 12,
+      "uiIncludingOrdinaryTasksPassed": 93,
+      "publicResultAuthorityPassed": 11,
+      "apiAndWebTypes": "passed",
+      "lint": "passed",
+      "lateTransactionPublicRestPassed": 2,
+      "affectedTaskAndResultRestPassed": 159
+    },
+    "provisionalSourceBeforeAmend": "9fe03efcf461111c965324b995112be9fd1ea646",
+    "provisionalTransactionCorrection": "90a8251962aa800befc634255e39f0e820425ae1",
+    "provisionalFixtureSource": "3d5327370dfd6d454f3b17a07fe109f2453a4810"
+  },
+  "confirmation": {
+    "count": 1,
+    "reason": "UI authority boundary correction",
+    "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+    "tree": "c03391ce8b943d4f0ac1d8c627b0f3eb33e996f7",
+    "standards": {
+      "originalResolved": 2,
+      "newBlocking": 0,
+      "nonblocking": 0
+    },
+    "spec": {
+      "originalResolved": 1,
+      "newBlocking": 0,
+      "nonblocking": 0
+    },
+    "scope": "Only the consolidated correction delta; no third review requested.",
+    "retainedOriginalCorrectionBytesUnchanged": true,
+    "doesNotCoverLateTransactionDelta": true,
+    "retainedOriginalCorrectionFiles": [
+      "apps/api/openapi.yaml",
+      "apps/api/src/task/task-results.access.rest.test.ts",
+      "apps/web/src/project/TaskResults.test.tsx",
+      "scripts/task-results-openapi.test.mjs"
+    ],
+    "laterDiffHasNoOriginalCorrectionFileOverlap": false,
+    "originalAuthorityFallbackAndKeyLogicByteIdentical": true,
+    "doesNotCoverLateProjectContextDelta": true
+  },
+  "finalSource": "805c61560987194f85e817e2adbf6541868b87ef",
+  "verification": "Final complete independent CI40059640331 on805c615/base947951c/tree1e4eb302 passed all16jobs/all10runtimeTeststeps after all local checks and review disposition. Fresh guarded merge preconditions still apply.",
+  "recordedAt": "2026-10-24T02:11:26.320273+00:00",
+  "automaticOpeningReview": {
+    "source": "9fe03efcf461111c965324b995112be9fd1ea646",
+    "review": 5636429412,
+    "finding": 4365690797,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/835#discussion_r4365690797",
+    "blocking": 1,
+    "valid": true,
+    "status": "fixed in amended single correction",
+    "disposition": "late-transaction-review.md",
+    "requestedByRoot": false,
+    "threadResolved": true
+  },
+  "ciCorrection": {
+    "failedRun": 40056722541,
+    "source": "90a8251962aa800befc634255e39f0e820425ae1",
+    "scope": "11-line independent expected role fixture addition only; runtime bytes unchanged",
+    "report": "ci-fixture-correction-review.md",
+    "unitPassed": 79,
+    "browserPassed": 26,
+    "typesFormatEslint": "passed",
+    "rootStandardsSpec": "passed; original reviewed product/confirmation bytes unchanged; no new review"
+  },
+  "automaticPushReviews": [
+    {
+      "review": 5636473280,
+      "source": "90a8251962aa800befc634255e39f0e820425ae1",
+      "finding": 4365728725,
+      "blocking": true,
+      "disposition": "late-project-context-review.md",
+      "threadResolved": true
+    },
+    {
+      "review": 5636590203,
+      "source": "3d5327370dfd6d454f3b17a07fe109f2453a4810",
+      "finding": 4365806692,
+      "blockingSubset": "Observed closed Project availability refresh; Project reopening remains unsupported",
+      "disposition": "late-project-context-review.md",
+      "threadResolved": true
+    }
+  ],
+  "rootRequestedAdditionalProviderReview": false,
+  "lateContextCorrection": {
+    "report": "late-project-context-review.md",
+    "expectedRed": 6,
+    "targetedPassed": 177,
+    "strengthenedDownloadCasesPassed": 6,
+    "ordinaryTaskBrowserPassed": 16,
+    "actualAppPostgresPassed": 2,
+    "typesLintFormat": "passed",
+    "fullWeb": "2978 passed on frozen805c615 with clean guards"
+  },
+  "finalConfiguredProvider": {
+    "observedOnFrozenHead": "805c61560987194f85e817e2adbf6541868b87ef",
+    "feedback": "New +1 reaction replaced in-progress eyes; no new provider findings",
+    "reactionId": 593905586,
+    "createdAt": "2026-10-24T03:42:56Z",
+    "allProviderThreadsResolved": true,
+    "binding": "Public reaction observed while PR head remained805c615; no separate no-findings review object is claimed"
+  },
+  "finalCI": {
+    "run": 40059640331,
+    "conclusion": "success",
+    "successfulJobs": 16,
+    "successfulRuntimeTestSteps": 10
+  }
+}
