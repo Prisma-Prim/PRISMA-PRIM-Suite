@@ -1,0 +1,32 @@
+{
+  "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+  "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+  "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+  "clean": true,
+  "reviewStatus": "passed",
+  "reviewBlockingRemaining": 0,
+  "providerComplete": true,
+  "unresolvedReviewThreads": 0,
+  "checkedAt": "2026-10-24T05:45:52.741226+00:00",
+  "broaderDevelopment": {
+    "status": "passed",
+    "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+    "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+    "exitCode": 0,
+    "finishedAt": "2026-10-24T05:42:14.570066+00:00"
+  },
+  "actualAppBrowser": {
+    "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+    "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+    "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+    "cleanBefore": true,
+    "startedAt": "2026-10-24T05:23:53.836776+00:00",
+    "finishedAt": "2026-10-24T05:24:51.449665+00:00",
+    "exitCode": 0,
+    "cleanAfter": true,
+    "sameSourceAfter": true,
+    "sameTreeAfter": true
+  },
+  "currentRemoteHead": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+  "currentRemoteMain": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6"
+}

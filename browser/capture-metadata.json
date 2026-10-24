@@ -1,0 +1,39 @@
+{
+  "kind": "Selected LOCAL actual App/API/PostgreSQL synthetic pilot capture, not an independent GitHub screenshot",
+  "guard": {
+    "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+    "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+    "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+    "cleanBefore": true,
+    "startedAt": "2026-10-24T05:23:53.836776+00:00",
+    "finishedAt": "2026-10-24T05:24:51.449665+00:00",
+    "exitCode": 0,
+    "cleanAfter": true,
+    "sameSourceAfter": true,
+    "sameTreeAfter": true
+  },
+  "proof": "Real Select\u2192exact lost-confirmation retry\u219213Tasks\u2192mapped Task edit\u2192reload preserves source; both full journeys passed",
+  "inspectedByRoot": true,
+  "sourceTexts": "Approved anonymous literal business cells; no original customer documents or identities",
+  "images": [
+    {
+      "path": "pilot-desktop-plan.png",
+      "bytes": 176519,
+      "sha256": "bae8044b139a6e7f64f3d6aa10f5b4b0b8f251d65b4bfe002a9899bb70290a1d",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    {
+      "path": "pilot-narrow-plan.png",
+      "bytes": 154001,
+      "sha256": "2b08d8148e566be0628f773758cfbb5ce945baaa95fbdcb54899d157ffbb6ba1",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      }
+    }
+  ],
+  "visualLimit": "The narrow component capture includes the existing fixed keyboard Skip to content link overlapping part of the first row. Functional DOM assertions and no-page-overflow checks passed; the image is unedited."
+}

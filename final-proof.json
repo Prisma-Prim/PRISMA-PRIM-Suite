@@ -1,0 +1,289 @@
+{
+  "status": "passed",
+  "issue": 838,
+  "pr": 839,
+  "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+  "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+  "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+  "run": 40066673992,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992",
+  "event": "workflow_dispatch",
+  "verifiedJobs": 16,
+  "verifiedTestSteps": 10,
+  "kind": "Root validation of independent complete public GitHub CI under owner747 queue route; not canonical local-gate attestation",
+  "jobs": [
+    {
+      "id": 120791288599,
+      "name": "scope",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791288599"
+    },
+    {
+      "id": 120791288765,
+      "name": "checks",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791288765"
+    },
+    {
+      "id": 120791318387,
+      "name": "postgres_image",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791318387"
+    },
+    {
+      "id": 120791688566,
+      "name": "web_unit",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688566"
+    },
+    {
+      "id": 120791688578,
+      "name": "browser (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688578"
+    },
+    {
+      "id": 120791688586,
+      "name": "acceptance (2)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688586"
+    },
+    {
+      "id": 120791688587,
+      "name": "acceptance (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688587"
+    },
+    {
+      "id": 120791688590,
+      "name": "browser (1)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688590"
+    },
+    {
+      "id": 120791688594,
+      "name": "build",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688594"
+    },
+    {
+      "id": 120791688603,
+      "name": "browser (3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688603"
+    },
+    {
+      "id": 120791688610,
+      "name": "api (3/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688610"
+    },
+    {
+      "id": 120791688621,
+      "name": "packaging",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688621"
+    },
+    {
+      "id": 120791688658,
+      "name": "api (2/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688658"
+    },
+    {
+      "id": 120791688685,
+      "name": "api (1/3)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688685"
+    },
+    {
+      "id": 120791688708,
+      "name": "api (serial)",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120791688708"
+    },
+    {
+      "id": 120793558409,
+      "name": "quality",
+      "conclusion": "success",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/job/120793558409"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 12549980526,
+      "name": "browser-evidence-part-browser-3-40066673992",
+      "bytes": 70881887,
+      "providerDigest": "sha256:051468988198d89e80730b59097f330192d77b6a719cf9454e77533b626ffcea",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/artifacts/12549980526",
+      "inspection": "Provider metadata plus successful upload/quality retrieval; raw ZIP bytes not locally verified"
+    },
+    {
+      "id": 12549936432,
+      "name": "browser-evidence-part-browser-1-40066673992",
+      "bytes": 114095282,
+      "providerDigest": "sha256:b8bb44c70878d61c1e610b51a49873c4f582aea45f00927cacc29bcb789beec2",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/artifacts/12549936432",
+      "inspection": "Provider metadata plus successful upload/quality retrieval; raw ZIP bytes not locally verified"
+    },
+    {
+      "id": 12549711862,
+      "name": "browser-evidence-part-acceptance-1-40066673992",
+      "bytes": 67625783,
+      "providerDigest": "sha256:a85fcd980993e720510c1e6a82e64c31885de8a369f152c0da012c0b76e578a2",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/artifacts/12549711862",
+      "inspection": "Provider metadata plus successful upload/quality retrieval; raw ZIP bytes not locally verified"
+    },
+    {
+      "id": 12549682706,
+      "name": "browser-evidence-part-browser-2-40066673992",
+      "bytes": 77264381,
+      "providerDigest": "sha256:787a3f47bcc413a7bcbdb696d053cc4bcf9274565fe4823ad49df4125daabb46",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/artifacts/12549682706",
+      "inspection": "Provider metadata plus successful upload/quality retrieval; raw ZIP bytes not locally verified"
+    },
+    {
+      "id": 12549009222,
+      "name": "browser-evidence-part-acceptance-2-40066673992",
+      "bytes": 58047189,
+      "providerDigest": "sha256:ec10a74b840310e6cfe8124bc4bb809a1045ffa3b9974e30941971476a4e5f14",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/artifacts/12549009222",
+      "inspection": "Provider metadata plus successful upload/quality retrieval; raw ZIP bytes not locally verified"
+    }
+  ],
+  "aggregateArtifact": {
+    "id": 12549443124,
+    "name": "browser-evidence-pr-40066673992",
+    "bytes": 387914434,
+    "providerDigest": "sha256:bfa4e381a8a0321976b8a775d20aa2290698fef69dbcaefbf322330cbb06442f",
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40066673992/artifacts/12549443124",
+    "inspection": "Provider metadata plus successful upload/quality retrieval; raw ZIP bytes not locally verified"
+  },
+  "artifactVerification": "Actual provider metadata/digests and all five upload plus quality retrieval/aggregate steps observed; no raw archive-byte verification claimed. Selected local actual-App synthetic captures separately inspected/retrieved.",
+  "development": {
+    "issue": 838,
+    "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+    "startedAt": "2026-10-24T05:23:48.577927+00:00",
+    "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+    "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+    "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+    "cleanBefore": true,
+    "finishedAt": "2026-10-24T05:42:14.570066+00:00",
+    "exitCode": 0,
+    "cleanAfter": true,
+    "sameSourceAfter": true,
+    "sameTreeAfter": true,
+    "status": "passed",
+    "scripts": {
+      "passed": 483
+    },
+    "api": {
+      "parallelPassed": 2782,
+      "serialPassed": 102,
+      "optionalClamAvSkipped": 1
+    },
+    "web": {
+      "filesPassed": 174,
+      "testsPassed": 2982
+    },
+    "productionBuilds": {
+      "api": "passed",
+      "web": "passed"
+    },
+    "format": "passed",
+    "lint": "passed",
+    "strictTypes": "passed",
+    "apiTiming": "Repository default 5000ms; no extended timing allowance",
+    "limits": "Managed local PostgreSQL with deterministic external identity/scanner boundaries; optional real-ClamAV test not enabled. Earlier two cancelled/incomplete development runs are excluded from this passing result."
+  },
+  "review": {
+    "issue": 838,
+    "pr": 839,
+    "status": "passed",
+    "initialSource": "5fc0e9ce1a1163fdf21ec513c1d04806d4809c35",
+    "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+    "initialTree": "54a34e0905a3accae639352317abeffba5004674",
+    "finalSource": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+    "finalTree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+    "initialAxes": {
+      "Standards": {
+        "blocking": 1,
+        "nonblocking": 0
+      },
+      "Spec": {
+        "blocking": 1,
+        "nonblocking": 0
+      }
+    },
+    "uniqueInitialBlockers": 1,
+    "correctionCommits": 1,
+    "correction": "INSERT/UPDATE model-scoped position guard restores legacy0..3; genuine upgrade rejects UPDATE3\u21924/12 and preserves public copied plan",
+    "actualRed": "Existing legacy mapping UPDATE succeeds before the fix, contrary to expected23514.",
+    "affectedGreen": {
+      "apiPostgresFiles": 5,
+      "testsPassed": 24,
+      "apiTypes": "passed",
+      "lint": "passed"
+    },
+    "sensitiveConfirmationRounds": 1,
+    "confirmation": {
+      "Standards": "original blocker resolved; zero new blockers",
+      "Spec": "original blocker resolved; zero new blockers"
+    },
+    "blockingRemaining": 0,
+    "provider": {
+      "initialCompletionComment": 6380295599,
+      "initialHead": "5fc0e9ce1a1163fdf21ec513c1d04806d4809c35",
+      "kind": "Automatic implementation proposal, NOT completed review; skipped/unexecuted PostgreSQL checks not accepted",
+      "proposedTaskCommitApplied": false,
+      "inadvertentLiteralMentionRemoved": true,
+      "newProviderRequest": false,
+      "currentHeadFeedbackRecheck": {
+        "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+        "checkedAt": "2026-10-24T05:45:52.741226+00:00",
+        "reviewSubmissions": 0,
+        "inlineComments": 0,
+        "inProgressReactions": 0,
+        "newProviderRequest": false,
+        "disposition": "No pending provider task/review or current-head feedback observed; independent axis+confirmation remain applicable reviews.",
+        "unresolvedReviewThreads": 0
+      }
+    },
+    "limits": "Independent reviews and confirmations are static read-only inspection. Actual suite execution and complete CI remain root-owned; no third independent review."
+  },
+  "finalTargetedGuard": {
+    "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+    "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+    "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+    "clean": true,
+    "reviewStatus": "passed",
+    "reviewBlockingRemaining": 0,
+    "providerComplete": true,
+    "unresolvedReviewThreads": 0,
+    "checkedAt": "2026-10-24T05:45:52.741226+00:00",
+    "broaderDevelopment": {
+      "status": "passed",
+      "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+      "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+      "exitCode": 0,
+      "finishedAt": "2026-10-24T05:42:14.570066+00:00"
+    },
+    "actualAppBrowser": {
+      "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+      "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+      "tree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+      "cleanBefore": true,
+      "startedAt": "2026-10-24T05:23:53.836776+00:00",
+      "finishedAt": "2026-10-24T05:24:51.449665+00:00",
+      "exitCode": 0,
+      "cleanAfter": true,
+      "sameSourceAfter": true,
+      "sameTreeAfter": true
+    },
+    "currentRemoteHead": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+    "currentRemoteMain": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6"
+  },
+  "keepEvidenceThrough": "2026-11-08T05:45:52.780614+00:00",
+  "generatedAt": "2026-10-24T05:45:52.780629+00:00"
+}

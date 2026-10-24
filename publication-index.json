@@ -1,0 +1,88 @@
+{
+  "pr": 839,
+  "issue": 838,
+  "run": 40066673992,
+  "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+  "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+  "integrationTree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+  "kind": "Selected safe root reports of independent complete GitHub CI and reviewed LOCAL actual-App/PostgreSQL synthetic captures; not a canonical local-gate attestation or raw CI archive-byte verification.",
+  "selection": "Complete original local logs, detailed synthetic SQL fault diagnostics, failed browser traces and private business originals remain unpublished. Failed/partial development attempts stay distinct from final CI.",
+  "keepThrough": "2026-11-08T05:45:52.780614+00:00",
+  "files": [
+    {
+      "path": "browser/capture-metadata.json",
+      "bytes": 1533,
+      "sha256": "a4fe7459b3932d17713f83a822be6cce9be5f1a13df0994523a772c1877d3f77"
+    },
+    {
+      "path": "browser/pilot-desktop-plan.png",
+      "bytes": 176519,
+      "sha256": "bae8044b139a6e7f64f3d6aa10f5b4b0b8f251d65b4bfe002a9899bb70290a1d"
+    },
+    {
+      "path": "browser/pilot-narrow-plan.png",
+      "bytes": 154001,
+      "sha256": "2b08d8148e566be0628f773758cfbb5ce945baaa95fbdcb54899d157ffbb6ba1"
+    },
+    {
+      "path": "ci-artifacts.json",
+      "bytes": 5555,
+      "sha256": "dc979e1adc0d9a2210545aeebe980113341751fb39133c5f8fdd5ee67f655616"
+    },
+    {
+      "path": "ci-jobs.json",
+      "bytes": 56882,
+      "sha256": "a7fd727178b6948ec7eeb4e8833a702dbac95b862e570790c2483e22c912af67"
+    },
+    {
+      "path": "ci-run.json",
+      "bytes": 15076,
+      "sha256": "fda657b58501ecc6c9c40feaf27d9596298cbddab7b787b0083d33001121b75d"
+    },
+    {
+      "path": "confirmation-spec.md",
+      "bytes": 1772,
+      "sha256": "dae1df8d530d7f88a558f68f339903643bd80df95e5dacdf816ba148aa76d147"
+    },
+    {
+      "path": "confirmation-standards.md",
+      "bytes": 1611,
+      "sha256": "5df83adaa87c7a11b0aed128559891b38b8cb2b267300287902b936acf8f5660"
+    },
+    {
+      "path": "development-result.json",
+      "bytes": 1168,
+      "sha256": "6197ad8cf2a57777d4789d1a8777c3beb597be54a32766e1ab0eb7731e3dd182"
+    },
+    {
+      "path": "final-proof.json",
+      "bytes": 11723,
+      "sha256": "7c33bf4d770113c85ee487bbd241af7913b8b5086502566abe62602f2a797b57"
+    },
+    {
+      "path": "final-report.md",
+      "bytes": 3206,
+      "sha256": "8c178173973a656951bc38cb9b49a30b1019ed4362745d52661436d87eca0a77"
+    },
+    {
+      "path": "final-source-check.json",
+      "bytes": 1159,
+      "sha256": "6dedd3a939bd9952877bdd0aebaf92248a69748bda5eec7f891c23f7db796829"
+    },
+    {
+      "path": "review-disposition.json",
+      "bytes": 2164,
+      "sha256": "6667146855a9e7e086546104c2b1023f101dfcca7203e5bf1f0169cb387c8a66"
+    },
+    {
+      "path": "spec-review.md",
+      "bytes": 2208,
+      "sha256": "82a26cbc452dec6577f9f9df675b8b8c1b7a46ba0f23603357eff3ff135dfa29"
+    },
+    {
+      "path": "standards-review.md",
+      "bytes": 2118,
+      "sha256": "c070f6d67cb591c8914b1bff64df4ba7740bcb526ce7f2c5876315f474cb2391"
+    }
+  ]
+}

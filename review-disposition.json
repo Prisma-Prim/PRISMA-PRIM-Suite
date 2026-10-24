@@ -1,0 +1,55 @@
+{
+  "issue": 838,
+  "pr": 839,
+  "status": "passed",
+  "initialSource": "5fc0e9ce1a1163fdf21ec513c1d04806d4809c35",
+  "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+  "initialTree": "54a34e0905a3accae639352317abeffba5004674",
+  "finalSource": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+  "finalTree": "672f38cafb1c12fa94a061e0d495d87eeea7c424",
+  "initialAxes": {
+    "Standards": {
+      "blocking": 1,
+      "nonblocking": 0
+    },
+    "Spec": {
+      "blocking": 1,
+      "nonblocking": 0
+    }
+  },
+  "uniqueInitialBlockers": 1,
+  "correctionCommits": 1,
+  "correction": "INSERT/UPDATE model-scoped position guard restores legacy0..3; genuine upgrade rejects UPDATE3\u21924/12 and preserves public copied plan",
+  "actualRed": "Existing legacy mapping UPDATE succeeds before the fix, contrary to expected23514.",
+  "affectedGreen": {
+    "apiPostgresFiles": 5,
+    "testsPassed": 24,
+    "apiTypes": "passed",
+    "lint": "passed"
+  },
+  "sensitiveConfirmationRounds": 1,
+  "confirmation": {
+    "Standards": "original blocker resolved; zero new blockers",
+    "Spec": "original blocker resolved; zero new blockers"
+  },
+  "blockingRemaining": 0,
+  "provider": {
+    "initialCompletionComment": 6380295599,
+    "initialHead": "5fc0e9ce1a1163fdf21ec513c1d04806d4809c35",
+    "kind": "Automatic implementation proposal, NOT completed review; skipped/unexecuted PostgreSQL checks not accepted",
+    "proposedTaskCommitApplied": false,
+    "inadvertentLiteralMentionRemoved": true,
+    "newProviderRequest": false,
+    "currentHeadFeedbackRecheck": {
+      "source": "2ad49b9a4f124404ff28397e59f38c54ca4b3b60",
+      "checkedAt": "2026-10-24T05:45:52.741226+00:00",
+      "reviewSubmissions": 0,
+      "inlineComments": 0,
+      "inProgressReactions": 0,
+      "newProviderRequest": false,
+      "disposition": "No pending provider task/review or current-head feedback observed; independent axis+confirmation remain applicable reviews.",
+      "unresolvedReviewThreads": 0
+    }
+  },
+  "limits": "Independent reviews and confirmations are static read-only inspection. Actual suite execution and complete CI remain root-owned; no third independent review."
+}
