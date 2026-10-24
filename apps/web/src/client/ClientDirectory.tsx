@@ -1,11 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import { useClientDirectoryCopy } from './client-directory.copy';
-
-export interface ClientAccountView {
-  id: string;
-  displayName: string;
-  relatedToActiveCompany: boolean;
-}
+import type { ClientAccountView } from './client-account-response';
 
 export function ClientDirectory({
   clients,

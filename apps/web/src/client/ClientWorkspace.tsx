@@ -35,7 +35,12 @@ import {
 } from './client-registration.copy';
 import { useClientDirectoryCopy } from './client-directory.copy';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
-import { ClientDirectory, type ClientAccountView } from './ClientDirectory';
+import { ClientDirectory } from './ClientDirectory';
+import {
+  readClientAccountList,
+  readClientAccountView,
+  type ClientAccountView,
+} from './client-account-response';
 import { ClientDirectoryFeedback } from './ClientDirectoryFeedback';
 import './client-directory.css';
 
@@ -225,7 +230,7 @@ export function ClientWorkspace({
         pending: pendingList,
         identity,
         execute: (api, signal) =>
-          api.request<ClientAccountView[]>('/clients', {
+          api.request<unknown>('/clients', {
             companyContextId,
             signal,
           }),
@@ -234,7 +239,10 @@ export function ClientWorkspace({
             return;
           setListState(
             result.status === 'ok'
-              ? { status: 'ready', clients: result.value }
+              ? {
+                  status: 'ready',
+                  clients: readClientAccountList(result.value),
+                }
               : { status: 'error' },
           );
         },
@@ -325,7 +333,7 @@ export function ClientWorkspace({
       pending: pendingCreate,
       identity,
       execute: (api, signal) =>
-        api.request<ClientAccountView>('/clients', {
+        api.request<unknown>('/clients', {
           method: 'POST',
           headers: {
             'content-type': 'application/json',
@@ -360,6 +368,7 @@ export function ClientWorkspace({
           setCreateState({ status: 'error' });
           return;
         }
+        readClientAccountView(result.value);
         retryCommand.current = undefined;
         setDisplayName('');
         setTaxId('');
@@ -389,7 +398,7 @@ export function ClientWorkspace({
       pending: pendingSearch,
       identity,
       execute: (api, signal) =>
-        api.request<ClientAccountView[]>(
+        api.request<unknown>(
           `/clients/search?query=${encodeURIComponent(query)}`,
           { companyContextId: activeCompany.id, signal },
         ),
@@ -401,7 +410,7 @@ export function ClientWorkspace({
         if (signal.aborted) return;
         setSearchState(
           result.status === 'ok'
-            ? { status: 'ready', clients: result.value }
+            ? { status: 'ready', clients: readClientAccountList(result.value) }
             : result.status === 'validation'
               ? { status: 'validation' }
               : { status: 'error' },
@@ -418,7 +427,7 @@ export function ClientWorkspace({
       pending: pendingAttach,
       identity,
       execute: (api, signal) =>
-        api.request<ClientAccountView>(
+        api.request<unknown>(
           `/clients/${encodeURIComponent(clientAccountId)}/active-company-relationship`,
           {
             method: 'PUT',
@@ -436,12 +445,13 @@ export function ClientWorkspace({
           setSearchState({ status: 'error' });
           return;
         }
+        const attachedClient = readClientAccountView(result.value);
         setSearchState((current) =>
           current.status === 'ready'
             ? {
                 status: 'ready',
                 clients: current.clients.map((client) =>
-                  client.id === result.value.id ? result.value : client,
+                  client.id === attachedClient.id ? attachedClient : client,
                 ),
               }
             : current,
