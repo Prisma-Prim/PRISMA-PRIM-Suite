@@ -1,0 +1,239 @@
+{
+  "issue": 852,
+  "pr": 861,
+  "source": "2b8c90a52f491116e4dbb3b7b4ee400bff2d3e54",
+  "base": "d91354a9e2eaa05d1ab0b2fc29ce4acc67cce448",
+  "tree": "f4868cfb268dafd160288c0aac293e97bfe68932",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40126610313,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40126610313",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "doctor": {
+      "profile": "web-postgres",
+      "passed": 9
+    },
+    "broaderVerify": {
+      "passed": true,
+      "scripts": 483,
+      "apiUnit": 1400,
+      "webUnit": 3064,
+      "productionBuilds": [
+        "api",
+        "web"
+      ],
+      "postgresDependentTestsSkipped": 1622,
+      "selfReported": true
+    },
+    "affectedPostgres": {
+      "command": "node scripts/managed-postgres.mjs -- pnpm --filter @prisma-prim/api exec vitest run src/offer src/offer-model src/contract src/accountability src/access/company-permissions.test.ts src/access/company-role-bundle-registry.test.ts src/commercial-intake/commercial-intake-client-association.migration.test.ts",
+      "passed": 1020,
+      "failed": 1,
+      "failure": "One pre-existing multi-step Contract case exceeded unchanged 5000ms deadline during overlapping development checks",
+      "diagnosis": "All data/fixture failures from prior run fixed and focused13/13 passed. The lone timing failure was rerun after competing checks completed, with no assertion/deadline change; both selected cases passed. Final independent CI must still pass all jobs."
+    },
+    "focusedTimingConfirmation": {
+      "passed": 2,
+      "skipped": 191,
+      "durationSeconds": 6.43
+    },
+    "actualApp": {
+      "files": [
+        "offer-estimate.acceptance.spec.ts",
+        "offer-model-generation.acceptance.spec.ts",
+        "offer-model.acceptance.spec.ts"
+      ],
+      "viewports": [
+        1440,
+        390
+      ],
+      "passed": 8,
+      "durationMinutes": 1.7,
+      "generatedScreenshotsInspected": 6,
+      "sequentialBuilds": true
+    },
+    "finalFormat": "passed",
+    "finalLint": "passed",
+    "canonicalCompleteLocalGateExecuted": false,
+    "preparation": {
+      "order": [
+        "Standards",
+        "structural checkpoint",
+        "Spec"
+      ],
+      "blockingFindingsRemaining": 0,
+      "fixes": [
+        "strict four-kind preparation receipt binding after wrong-variant RED",
+        "pure shared stored-content projection removes introduced backend dependency cycle",
+        "new amounts use existing exact locale formatter and gross label",
+        "historical fixtures preserve only old columns/captures under actual historical constraints",
+        "new browser synthetic Client namespace independent from retained estimate fixture"
+      ]
+    },
+    "scope": "Synthetic approved-model Offer generation only; no official issuance, real acceptance, matched Contract, historical costs or production activation",
+    "finalTypes": "passed",
+    "uiCorrection": {
+      "scope": "Offer command ownership and safe retry/navigation only; API, authority, tenancy, migration and Activity code unchanged",
+      "meaningfulRed": 6,
+      "focusedUiPassed": 119,
+      "newUiCases": 7,
+      "actualAppPassed": 4,
+      "viewports": [
+        1440,
+        390
+      ],
+      "refreshedGeneratedImagesInspected": 6,
+      "actualTransmissionProof": "Real committed transmission confirmation withheld as503; sibling preparation/quality disabled; identical body/key retry recovered exact receipt, then complete successor/history and locale flow passed",
+      "readinessAudit": "Count/key assertion follows rendered transmission evidence; business assertions unchanged",
+      "format": "passed",
+      "lint": "passed",
+      "strictWebTypes": "passed",
+      "sensitiveConfirmationApplicable": false
+    },
+    "priorFinalVerification": {
+      "run": 40125222686,
+      "source": "b4d227dfb4ac44ad8ab5bce5c2a00adc2707bbb0",
+      "conclusion": "failure",
+      "diagnosedCauses": [
+        "Historical migration test rejected newly valid Preparer3",
+        "Two retirement browser scenarios clicked intentionally disabled siblings",
+        "Commercial acceptance fixture decoder lacked fresh Preparer3/Approver2"
+      ],
+      "compatibilityProductionChanges": false,
+      "focusedMigrationPassed": 1,
+      "retirementBrowserPassed": 4,
+      "commercialAcceptancePassed": 4,
+      "staticsPassed": true,
+      "retirementScreenshotsInspected": 4
+    }
+  },
+  "review": {
+    "standards": {
+      "blockingFindings": 0,
+      "nonblockingFindings": 1,
+      "finding": "Adjacent positional lock/modelBased booleans obscure call intent; use named options in a follow-up. Current authority/locking is correct, no acceptance/security/integrity/regression defect.",
+      "files": [
+        "apps/api/src/access/company-context-authorization.ts:1162",
+        "apps/api/src/offer/offer.service.ts:1160"
+      ],
+      "agent": "issue852_standards_review",
+      "independentExecution": "Static read-only review; no builds or full tests/CI"
+    },
+    "spec": {
+      "blockingFindings": 1,
+      "nonblockingFindings": 0,
+      "finding": "P2: workflow uncertainty did not block sibling preparation/history/succession, risking loss of the exact retained retry (\u00a728.10)",
+      "agent": "issue852_spec_review",
+      "remainingAcceptanceFindings": 0,
+      "independentExecution": "Read-only static review plus isolated jsdom diagnostic; no builds/full suites/CI",
+      "privateDiagnostic": "/tmp/spec-review-852/diagnostic.test.tsx"
+    },
+    "openingAutomatic": {
+      "source": "11db769617abaca1e64462e76fa028a477b093a0",
+      "completedAt": "2026-10-24T18:47:44.699208Z",
+      "findings": 0,
+      "summaryComment": 6388108124
+    },
+    "complete": true,
+    "initialSource": "11db769617abaca1e64462e76fa028a477b093a0",
+    "reviewedBase": "d91354a9e2eaa05d1ab0b2fc29ce4acc67cce448",
+    "correction": {
+      "source": "2b8c90a52f491116e4dbb3b7b4ee400bff2d3e54",
+      "commits": 1,
+      "scope": "Nine Web-only command-ownership paths plus five test-only compatibility paths; one amended correction commit. Production delta unchanged from original UI correction.",
+      "rootStandardsSpecDeltaReviewed": true,
+      "focusedUiPassed": 119,
+      "actualAppPassed": 4,
+      "correctionImagesInspected": 6,
+      "formatLintTypesPassed": true,
+      "sensitiveConfirmationApplicable": false,
+      "sensitiveConfirmationReason": "No production authorization, tenancy, migration SQL or Activity code/contract changed",
+      "previousPublishedSource": "b4d227dfb4ac44ad8ab5bce5c2a00adc2707bbb0",
+      "ciCompatibility": {
+        "productionChanges": false,
+        "paths": 5,
+        "migrationCasesPassed": 1,
+        "retirementBrowserCasesPassed": 4,
+        "commercialAcceptanceCasesPassed": 4,
+        "formatLintTypesPassed": true,
+        "rootStandardsSpecDeltaReviewed": true
+      }
+    },
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0,
+    "followups": [
+      "Use named lock/modelBased options in requireOfferQualityAccess; current behavior correct, nonblocking readability only."
+    ],
+    "newReviewRequestedAfterCorrection": false,
+    "automaticNewCommitActivity": {
+      "source": "2b8c90a52f491116e4dbb3b7b4ee400bff2d3e54",
+      "status": "completed",
+      "trigger": "New commits (configured automatically; not requested by root)",
+      "mustCompleteBeforeFinalCI": false,
+      "disposition": "Configured automatic rerun completed without findings on exact final amended source while finalCI was in progress. No new trigger or review was requested; applicable owner-authorized independent bounded round was complete before dispatch.",
+      "findings": 0,
+      "unresolvedFindings": 0,
+      "observedCompletedAt": "2026-10-24T19:53:51.771506+00:00"
+    },
+    "completedAt": "2026-10-24T19:43:21Z",
+    "applicableReviewRound": "Completed owner-authorized independent Standards/Spec reviews on initial source, consumed opening automatic review, one amended correction, root correction/test-compatibility delta examination and affected checks before finalCI dispatch. No sensitive confirmation applies.",
+    "initialDispositionCompletedAt": "2026-10-24T19:25:00Z"
+  },
+  "artifacts": [
+    {
+      "id": 12573658847,
+      "name": "browser-evidence-part-acceptance-1-40126610313",
+      "size_in_bytes": 68727166,
+      "digest": "sha256:b68932d42c913e55085a3b132344e70de31d2d83218f5d4f841ad405f7233635",
+      "expires_at": "2026-11-07T19:56:18Z"
+    },
+    {
+      "id": 12573198581,
+      "name": "browser-evidence-part-browser-3-40126610313",
+      "size_in_bytes": 71176317,
+      "digest": "sha256:b6b70514d4f1544442abe3e498cfeb38cb6c8592517dadb119b8b7349e032a6a",
+      "expires_at": "2026-11-07T19:50:24Z"
+    },
+    {
+      "id": 12573114417,
+      "name": "browser-evidence-pr-40126610313",
+      "size_in_bytes": 390289643,
+      "digest": "sha256:0e6eae85f6d7a1c61efd30c55f5f9133b245cc6bf5dd40d3556cc5889844ad37",
+      "expires_at": "2026-11-07T19:56:43Z"
+    },
+    {
+      "id": 12573087994,
+      "name": "browser-evidence-part-browser-2-40126610313",
+      "size_in_bytes": 77565196,
+      "digest": "sha256:30ffd295504301b03b7cd70889332b979b8970adc984f1eb4ffdf9e59362076b",
+      "expires_at": "2026-11-07T19:51:05Z"
+    },
+    {
+      "id": 12572993516,
+      "name": "browser-evidence-part-acceptance-2-40126610313",
+      "size_in_bytes": 59065607,
+      "digest": "sha256:c9b4504e542a697a85d94feaaedbd78dd8d811e1c8c36cd0ffdaabcc27670bf1",
+      "expires_at": "2026-11-07T19:53:41Z"
+    },
+    {
+      "id": 12572863514,
+      "name": "browser-evidence-part-browser-1-40126610313",
+      "size_in_bytes": 113755445,
+      "digest": "sha256:d8196d8e0266a27f0675367247c3c2b7573c56a149127d33f7b49dc597f5e153",
+      "expires_at": "2026-11-07T19:52:01Z"
+    }
+  ],
+  "scope": "Full approved-model consulting Offer generation and non-official simulated lifecycle only; no official numbering, matching Contract, real sending/acceptance/signature/payment, production grant/deployment or historical-cost reconstruction.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-08T19:09:30Z"
+}
