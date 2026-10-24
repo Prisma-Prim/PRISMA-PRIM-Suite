@@ -1,3 +1,4 @@
+import { useModelOfferCopy } from './model-offer.copy';
 import { OfferSummary } from './OfferSummary';
 import {
   useCallback,
@@ -27,15 +28,21 @@ import {
   readOffer,
   readOfferDetail,
   readOfferSnapshotPage,
-  offerClientResponseState,
   type OfferSnapshotSummary,
   type OfferReadView,
   isIllustrativeOffer,
+  isExecutableOffer,
+  isModelOffer,
+  applyOfferDecision,
+  applyOfferQuality,
+  applyOfferTransmission,
+  applyOfferResponse,
 } from './offer-response';
 import './offer.css';
 import {
   EstimateOfferPreparation,
   mayPrepareEstimateOffer,
+  mayPrepareModelOffer,
 } from './EstimateOfferPreparation';
 import { OfferEstimateSource } from './OfferEstimateSource';
 import { useEstimateOfferCopy } from './offer-estimate.copy';
@@ -64,7 +71,49 @@ type Attempt = { body: string; idempotencyKey: string };
 const ignoreActor = (): void => undefined;
 const ignoreWorkspace = (): void => undefined;
 
-export function OfferPanel({
+/** Scope/session/grant changes unmount all protected children and uncertain intent. */
+export function OfferPanel(props: Parameters<typeof OfferPanelOwner>[0]) {
+  const generation = useRef({ identity: props.identity, value: 0 });
+  if (generation.current.identity !== props.identity)
+    generation.current = {
+      identity: props.identity,
+      value: generation.current.value + 1,
+    };
+  const ownerKey = JSON.stringify([
+    offerAuthorityStamp(props.actor),
+    props.opportunityId,
+    props.requestedVersionId,
+    props.currentClientId,
+    generation.current.value,
+  ]);
+  return <OfferPanelOwner key={ownerKey} {...props} />;
+}
+function offerAuthorityStamp(actor: ActorContext) {
+  return JSON.stringify([
+    actor.active,
+    actor.activeCompany?.id,
+    actor.workspaceId,
+    actor.workspaceMembershipId,
+    actor.internalUserId,
+    actor.activeCompany?.offerPermissionAssignmentId,
+    actor.activeCompany?.offerApproverAssignmentId,
+    actor.activeCompany?.commercialIntakePermissionAssignmentId,
+    actor.activeCompany?.clientPermissionAssignmentId,
+    actor.activeCompany?.offerPermissions,
+    actor.activeCompany?.commercialIntakePermissions,
+    actor.activeCompany?.clientPermissions,
+    actor.activeCompany?.offerPermissionSetVersion,
+    actor.activeCompany?.offerApproverPermissionSetVersion,
+    actor.activeCompany?.profitabilityContributorPermissionAssignmentId,
+    actor.activeCompany?.profitabilityContributorPermissionSetVersion,
+    actor.activeCompany?.profitabilityContributorPermissions,
+    actor.activeCompany?.profitabilityDirectorPermissionAssignmentId,
+    actor.activeCompany?.profitabilityDirectorPermissionSetVersion,
+    actor.activeCompany?.profitabilityDirectorPermissions,
+  ]);
+}
+
+function OfferPanelOwner({
   actor,
   identity,
   opportunityId,
@@ -91,6 +140,7 @@ export function OfferPanel({
 }) {
   const copy = useOfferPreparationCopy();
   const estimateCopy = useEstimateOfferCopy();
+  const modelCopy = useModelOfferCopy();
   const offerVersionCopy = useOfferVersionCopy();
   const { formatDateTime, formatDecimal } = useOfferPresentation();
   const companyId = actor.activeCompany?.id;
@@ -111,27 +161,12 @@ export function OfferPanel({
     actor.activeCompany?.commercialIntakePermissions?.includes(
       'commercial.opportunity.read',
     );
-  const authorityStamp = JSON.stringify([
-    actor.workspaceId,
-    actor.workspaceMembershipId,
-    actor.internalUserId,
-    actor.activeCompany?.offerPermissionAssignmentId,
-    actor.activeCompany?.offerApproverAssignmentId,
-    actor.activeCompany?.commercialIntakePermissionAssignmentId,
-    actor.activeCompany?.clientPermissionAssignmentId,
-    permissions,
-    actor.activeCompany?.commercialIntakePermissions,
-    actor.activeCompany?.clientPermissions,
-    actor.activeCompany?.offerPermissionSetVersion,
-    actor.activeCompany?.profitabilityContributorPermissionAssignmentId,
-    actor.activeCompany?.profitabilityContributorPermissionSetVersion,
-    actor.activeCompany?.profitabilityContributorPermissions,
-    actor.activeCompany?.profitabilityDirectorPermissionAssignmentId,
-    actor.activeCompany?.profitabilityDirectorPermissionSetVersion,
-    actor.activeCompany?.profitabilityDirectorPermissions,
-  ]);
+  const authorityStamp = offerAuthorityStamp(actor);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [estimateOpen, setEstimateOpen] = useState(false);
+  const [preparationMode, setPreparationMode] = useState<
+    'INTERNAL' | 'COMPANY_MODEL'
+  >('INTERNAL');
   const estimateOpenRef = useRef(false);
   const [snapshotId, setSnapshotId] = useState('');
   const [recipient, setRecipient] = useState('PRIMARY');
@@ -198,7 +233,9 @@ export function OfferPanel({
         { companyContextId: companyId, signal: request.signal },
       );
       if (request.signal.aborted) return;
-      if (await reject(offerResult, request.signal)) {
+      const offerDenied = await reject(offerResult, request.signal);
+      if (request.signal.aborted) return;
+      if (offerDenied) {
         setView({ kind: 'denied' });
         return;
       }
@@ -241,10 +278,11 @@ export function OfferPanel({
         ),
       ]);
       if (request.signal.aborted) return;
-      if (
+      const denied =
         (await reject(snapshotsResult, request.signal)) ||
-        (await reject(entitiesResult, request.signal))
-      ) {
+        (await reject(entitiesResult, request.signal));
+      if (request.signal.aborted) return;
+      if (denied) {
         setView({ kind: 'denied' });
         return;
       }
@@ -311,10 +349,11 @@ export function OfferPanel({
         ),
       ]);
       if (request.signal.aborted) return;
-      if (
+      const denied =
         (await reject(snapshots, request.signal)) ||
-        (await reject(entities, request.signal))
-      ) {
+        (await reject(entities, request.signal));
+      if (request.signal.aborted) return;
+      if (denied) {
         setView({ kind: 'denied' });
         return;
       }
@@ -393,7 +432,9 @@ export function OfferPanel({
         },
       );
       if (request.signal.aborted) return;
-      if (await reject(result, request.signal)) {
+      const denied = await reject(result, request.signal);
+      if (request.signal.aborted) return;
+      if (denied) {
         setView({ kind: 'denied' });
       } else if (result.status === 'ok') {
         const offer = readOffer(result.value);
@@ -430,16 +471,22 @@ export function OfferPanel({
   return (
     <section className="offer-panel" aria-labelledby="offer-title">
       <h4 id="offer-title">
-        {estimateOpen ||
-        (view.kind === 'offer' && !isIllustrativeOffer(view.offer))
-          ? estimateCopy('internal')
-          : copy.title}
+        {(estimateOpen && preparationMode === 'COMPANY_MODEL') ||
+        (view.kind === 'offer' && isModelOffer(view.offer))
+          ? modelCopy('title')
+          : estimateOpen ||
+              (view.kind === 'offer' && !isExecutableOffer(view.offer))
+            ? estimateCopy('internal')
+            : copy.title}
       </h4>
       <p>
-        {estimateOpen ||
-        (view.kind === 'offer' && !isIllustrativeOffer(view.offer))
-          ? estimateCopy('notice')
-          : copy.explanation}
+        {(estimateOpen && preparationMode === 'COMPANY_MODEL') ||
+        (view.kind === 'offer' && isModelOffer(view.offer))
+          ? modelCopy('notice')
+          : estimateOpen ||
+              (view.kind === 'offer' && !isExecutableOffer(view.offer))
+            ? estimateCopy('notice')
+            : copy.explanation}
       </p>
       {view.kind === 'loading' && <p role="status">{copy.loading}</p>}
       {view.kind === 'denied' && <p role="status">{copy.denied}</p>}
@@ -458,31 +505,45 @@ export function OfferPanel({
         companyId &&
         currentClientId &&
         !contentLocked &&
-        mayPrepareEstimateOffer(actor) && (
-          <EstimateOfferPreparation
-            key={`estimate:${authorityStamp}:${companyId}:${opportunityId}:${view.kind === 'offer' ? view.offer.version.id : 'first'}`}
-            actor={actor}
-            identity={identity}
-            opportunityId={opportunityId}
-            clientId={currentClientId}
-            clientLabel={clientDisplayName ?? copy.clientFallback}
-            offer={view.kind === 'offer' ? view.offer : undefined}
-            reject={reject}
-            onOpen={(open) => {
-              estimateOpenRef.current = open;
-              if (open) {
-                pendingRequest.current?.abort();
-                setPending(false);
-              }
-              setEstimateOpen(open);
-            }}
-            onCreated={(offer) => {
-              pendingRequest.current?.abort();
-              attempt.current = undefined;
-              setFeedback(undefined);
-              setView({ kind: 'offer', offer });
-            }}
-          />
+        (mayPrepareEstimateOffer(actor) || mayPrepareModelOffer(actor)) && (
+          <>
+            {(['COMPANY_MODEL', 'INTERNAL'] as const)
+              .filter(
+                (mode) =>
+                  (!estimateOpen || preparationMode === mode) &&
+                  (mode === 'COMPANY_MODEL'
+                    ? mayPrepareModelOffer(actor)
+                    : mayPrepareEstimateOffer(actor)),
+              )
+              .map((mode) => (
+                <EstimateOfferPreparation
+                  mode={mode}
+                  key={`${mode}:estimate:${authorityStamp}:${companyId}:${opportunityId}:${view.kind === 'offer' ? view.offer.version.id : 'first'}`}
+                  actor={actor}
+                  identity={identity}
+                  opportunityId={opportunityId}
+                  clientId={currentClientId}
+                  clientLabel={clientDisplayName ?? copy.clientFallback}
+                  offer={view.kind === 'offer' ? view.offer : undefined}
+                  reject={reject}
+                  onOpen={(open) => {
+                    setPreparationMode(mode);
+                    estimateOpenRef.current = open;
+                    if (open) {
+                      pendingRequest.current?.abort();
+                      setPending(false);
+                    }
+                    setEstimateOpen(open);
+                  }}
+                  onCreated={(offer) => {
+                    pendingRequest.current?.abort();
+                    attempt.current = undefined;
+                    setFeedback(undefined);
+                    setView({ kind: 'offer', offer });
+                  }}
+                />
+              ))}
+          </>
         )}
       {view.kind === 'empty' && !mayPrepare && <p>{copy.noOffer}</p>}
       {view.kind === 'empty' && mayPrepare && !currentClientId && (
@@ -654,34 +715,33 @@ export function OfferPanel({
               {copy[feedback]}
             </p>
           )}
-          {companyId && isIllustrativeOffer(view.offer) && (
+          {companyId && isExecutableOffer(view.offer) && (
             <OfferQualityPanel
               key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
               identity={identity}
               companyId={companyId}
               opportunityId={opportunityId}
               offerVersionId={view.offer.version.id}
+              qualityRuleSet={view.offer.version.qualityRuleSet}
               qualityRuleSetVersion={view.offer.version.qualityRuleSetVersion}
               initialRun={view.offer.version.latestQualityRun}
               mayRun={
                 !view.offer.version.supersededByVersionId &&
-                (permissions.includes('commercial.offer.prepare') || mayApprove)
+                (isModelOffer(view.offer)
+                  ? permissions.includes(
+                      'commercial.offer.model_based.prepare',
+                    ) ||
+                    permissions.includes('commercial.offer.model_based.approve')
+                  : permissions.includes('commercial.offer.prepare') ||
+                    mayApprove)
               }
               reject={reject}
               onRun={(run) =>
                 setView((current) =>
-                  !estimateOpenRef.current &&
-                  current.kind === 'offer' &&
-                  isIllustrativeOffer(current.offer)
+                  !estimateOpenRef.current && current.kind === 'offer'
                     ? {
                         kind: 'offer',
-                        offer: {
-                          ...current.offer,
-                          version: {
-                            ...current.offer.version,
-                            latestQualityRun: run,
-                          },
-                        },
+                        offer: applyOfferQuality(current.offer, run),
                       }
                     : current,
                 )
@@ -690,6 +750,8 @@ export function OfferPanel({
           )}
           {companyId &&
             mayApprove &&
+            (!isModelOffer(view.offer) ||
+              permissions.includes('commercial.offer.model_based.approve')) &&
             !view.offer.version.supersededByVersionId && (
               <OfferDecisionPanel
                 key={`decision:${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
@@ -699,47 +761,24 @@ export function OfferPanel({
                 offer={view.offer}
                 reject={reject}
                 onDecision={(decision) =>
-                  setView((current) => {
-                    if (estimateOpenRef.current || current.kind !== 'offer')
-                      return current;
-                    if (!isIllustrativeOffer(current.offer)) {
-                      if (decision.state !== 'REJECTED') return current;
-                      return {
-                        kind: 'offer',
-                        offer: {
-                          ...current.offer,
-                          revision: decision.offerRevision,
-                          version: {
-                            ...current.offer.version,
-                            decisionState: 'REJECTED',
-                            decision,
-                          },
-                        },
-                      };
-                    }
-                    return {
-                      kind: 'offer',
-                      offer: {
-                        ...current.offer,
-                        revision: decision.offerRevision,
-                        version: {
-                          ...current.offer.version,
-                          decisionState: decision.state,
-                          decision,
-                          latestQualityRun:
-                            decision.state === 'APPROVED'
-                              ? decision.qualityRun
-                              : current.offer.version.latestQualityRun,
-                        },
-                      },
-                    };
-                  })
+                  setView((current) =>
+                    !estimateOpenRef.current && current.kind === 'offer'
+                      ? {
+                          kind: 'offer',
+                          offer: applyOfferDecision(current.offer, decision),
+                        }
+                      : current,
+                  )
                 }
               />
             )}
           {companyId &&
-            isIllustrativeOffer(view.offer) &&
+            isExecutableOffer(view.offer) &&
             mayTransmit &&
+            (!isModelOffer(view.offer) ||
+              permissions.includes(
+                'commercial.offer.model_based.transmission.record',
+              )) &&
             !view.offer.version.supersededByVersionId &&
             view.offer.version.decisionState === 'APPROVED' &&
             view.offer.version.transmissionState === 'NOT_TRANSMITTED' && (
@@ -752,23 +791,13 @@ export function OfferPanel({
                 reject={reject}
                 onTransmission={(transmission) =>
                   setView((current) =>
-                    !estimateOpenRef.current &&
-                    current.kind === 'offer' &&
-                    isIllustrativeOffer(current.offer)
+                    !estimateOpenRef.current && current.kind === 'offer'
                       ? {
                           kind: 'offer',
-                          offer: {
-                            ...current.offer,
-                            revision: transmission.offerRevision,
-                            version: {
-                              ...current.offer.version,
-                              transmissionState: 'TRANSMITTED',
-                              clientResponseState: 'PENDING',
-                              clientResponse: null,
-                              transmission,
-                              latestQualityRun: transmission.qualityRun,
-                            },
-                          },
+                          offer: applyOfferTransmission(
+                            current.offer,
+                            transmission,
+                          ),
                         }
                       : current,
                   )
@@ -776,8 +805,12 @@ export function OfferPanel({
               />
             )}
           {companyId &&
-            isIllustrativeOffer(view.offer) &&
+            isExecutableOffer(view.offer) &&
             mayRespond &&
+            (!isModelOffer(view.offer) ||
+              permissions.includes(
+                'commercial.offer.model_based.response.record',
+              )) &&
             !view.offer.version.supersededByVersionId &&
             view.offer.version.clientResponseState === 'PENDING' && (
               <OfferClientResponsePanel
@@ -789,21 +822,10 @@ export function OfferPanel({
                 reject={reject}
                 onResponse={(response) =>
                   setView((current) =>
-                    !estimateOpenRef.current &&
-                    current.kind === 'offer' &&
-                    current.offer.version.transmission
+                    !estimateOpenRef.current && current.kind === 'offer'
                       ? {
                           kind: 'offer',
-                          offer: {
-                            ...current.offer,
-                            revision: response.offerRevision,
-                            version: {
-                              ...current.offer.version,
-                              transmissionState: 'TRANSMITTED',
-                              transmission: current.offer.version.transmission,
-                              ...offerClientResponseState(response),
-                            },
-                          },
+                          offer: applyOfferResponse(current.offer, response),
                         }
                       : current,
                   )

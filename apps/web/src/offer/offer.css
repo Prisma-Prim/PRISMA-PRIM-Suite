@@ -160,3 +160,14 @@
   padding: 0;
   border: 0;
 }
+
+.estimate-offer-preparation .model-offer-confirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.estimate-offer-preparation .model-offer-confirmation input {
+  width: auto;
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+}

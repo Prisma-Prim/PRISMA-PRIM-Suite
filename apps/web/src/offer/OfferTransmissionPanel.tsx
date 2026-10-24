@@ -10,7 +10,7 @@ import { useOfferQualityCopy } from './offer-quality-decision.copy';
 import {
   readOfferTransmission,
   type OfferQualityRunView,
-  type OfferView,
+  type ExecutableOfferView,
   type OfferTransmissionView,
 } from './offer-response';
 
@@ -42,7 +42,7 @@ export function OfferTransmissionPanel({
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  offer: OfferView;
+  offer: ExecutableOfferView;
   onTransmission: (decision: OfferTransmissionView) => void;
   reject: (
     result: ApiResult<unknown>,
@@ -125,6 +125,7 @@ export function OfferTransmissionPanel({
           result.value,
           {
             offerVersionId: offer.version.id,
+            ruleSet: offer.version.qualityRuleSet,
             ruleSetVersion: offer.version.qualityRuleSetVersion,
           },
           offer.version.decision,

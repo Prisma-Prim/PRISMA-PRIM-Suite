@@ -213,6 +213,7 @@ export class AccountabilityService {
     versionNumber: number;
     occurredAt: Date;
     outcome: 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+    provenance?: 'ILLUSTRATIVE' | 'COMPANY_MODEL_ESTIMATE';
   }): Promise<void> {
     await this.databaseContext.connection.insert(offerEvents).values({
       workspaceId: input.actor.workspaceId,
@@ -229,7 +230,7 @@ export class AccountabilityService {
         versionNumber: input.versionNumber,
         evidenceKind: 'SIMULATED',
         outcome: input.outcome,
-        provenance: 'ILLUSTRATIVE',
+        provenance: input.provenance ?? 'ILLUSTRATIVE',
       },
     });
   }
@@ -243,6 +244,7 @@ export class AccountabilityService {
     occurredAt: Date;
     ruleSetVersion: OfferQualityRuleSetVersion;
     acknowledgedWarningCodes: readonly string[];
+    provenance?: 'ILLUSTRATIVE' | 'COMPANY_MODEL_ESTIMATE';
   }): Promise<void> {
     await this.databaseContext.connection.insert(offerEvents).values({
       workspaceId: input.actor.workspaceId,
@@ -258,7 +260,7 @@ export class AccountabilityService {
         offerVersionId: input.offerVersionId,
         versionNumber: input.versionNumber,
         channel: 'SIMULATED',
-        provenance: 'ILLUSTRATIVE',
+        provenance: input.provenance ?? 'ILLUSTRATIVE',
         ruleSetVersion: input.ruleSetVersion,
         acknowledgedWarningCodes: input.acknowledgedWarningCodes,
       },
@@ -275,12 +277,16 @@ export class AccountabilityService {
     decision:
       | {
           state: 'APPROVED';
+          provenance?: 'ILLUSTRATIVE' | 'COMPANY_MODEL_ESTIMATE';
           ruleSetVersion: OfferQualityRuleSetVersion;
           acknowledgedWarningCodes: readonly string[];
         }
       | {
           state: 'REJECTED';
-          provenance?: 'ILLUSTRATIVE' | 'APPROVED_ESTIMATE_INTERNAL_DRAFT';
+          provenance?:
+            | 'ILLUSTRATIVE'
+            | 'APPROVED_ESTIMATE_INTERNAL_DRAFT'
+            | 'COMPANY_MODEL_ESTIMATE';
         };
   }) {
     const { decision } = input;
@@ -301,10 +307,7 @@ export class AccountabilityService {
         offerVersionId: input.offerVersionId,
         versionNumber: input.versionNumber,
         outcome: decision.state,
-        provenance:
-          decision.state === 'REJECTED'
-            ? (decision.provenance ?? 'ILLUSTRATIVE')
-            : 'ILLUSTRATIVE',
+        provenance: decision.provenance ?? 'ILLUSTRATIVE',
         ...(decision.state === 'APPROVED'
           ? {
               ruleSetVersion: decision.ruleSetVersion,
@@ -557,19 +560,29 @@ export class AccountabilityService {
   }
 
   /** Only approved source identifiers are recorded; commercial amounts stay out. */
-  async recordInternalOfferPrepared(input: {
-    actor: ActorContext;
-    companyId: string;
-    offerId: string;
-    offerVersionId: string;
-    versionNumber: number;
-    illustrativeReference: number;
-    recipientKind: 'PRIMARY' | 'ADDITIONAL';
-    estimateVersionId: string;
-    estimateVersionNumber: number;
-    approvalDecisionId: string;
-    occurredAt: Date;
-  }): Promise<void> {
+  async recordEstimateOfferPrepared(
+    input: {
+      actor: ActorContext;
+      companyId: string;
+      offerId: string;
+      offerVersionId: string;
+      versionNumber: number;
+      illustrativeReference: number;
+      recipientKind: 'PRIMARY' | 'ADDITIONAL';
+      estimateVersionId: string;
+      estimateVersionNumber: number;
+      approvalDecisionId: string;
+      occurredAt: Date;
+    } & (
+      | { provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT' }
+      | {
+          provenance: 'COMPANY_MODEL_ESTIMATE';
+          modelVersionId: string;
+          modelVersionNumber: number;
+          modelApprovalDecisionId: string;
+        }
+    ),
+  ): Promise<void> {
     const envelope = {
       workspaceId: input.actor.workspaceId,
       companyId: input.companyId,
@@ -591,11 +604,18 @@ export class AccountabilityService {
             ? { predecessorVersionNumber: input.versionNumber - 1 }
             : {}),
           recipientKind: input.recipientKind,
-          provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+          provenance: input.provenance,
           priceSourceKind: 'DIRECTOR_APPROVED_ESTIMATE',
           estimateVersionId: input.estimateVersionId,
           estimateVersionNumber: input.estimateVersionNumber,
           approvalDecisionId: input.approvalDecisionId,
+          ...(input.provenance === 'COMPANY_MODEL_ESTIMATE'
+            ? {
+                modelVersionId: input.modelVersionId,
+                modelVersionNumber: input.modelVersionNumber,
+                modelApprovalDecisionId: input.modelApprovalDecisionId,
+              }
+            : {}),
         },
       },
     ];
@@ -607,7 +627,7 @@ export class AccountabilityService {
         metadata: {
           offerId: input.offerId,
           illustrativeReference: input.illustrativeReference,
-          provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+          provenance: input.provenance,
         },
       });
     await this.databaseContext.connection.insert(offerEvents).values(events);

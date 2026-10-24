@@ -9,7 +9,7 @@ import { useOfferClientResponseCopy } from './offer-transmission-response.copy';
 import {
   readOfferClientResponse,
   type OfferClientResponseView,
-  type OfferView,
+  type ExecutableOfferView,
 } from './offer-response';
 
 type State =
@@ -39,7 +39,7 @@ export function OfferClientResponsePanel({
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  offer: OfferView;
+  offer: ExecutableOfferView;
   onResponse: (response: OfferClientResponseView) => void;
   reject: (
     result: ApiResult<unknown>,

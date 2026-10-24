@@ -25,6 +25,7 @@ export function OfferQualityPanel({
   companyId,
   opportunityId,
   offerVersionId,
+  qualityRuleSet = 'OFFER_QUALITY_ILLUSTRATIVE',
   qualityRuleSetVersion,
   initialRun,
   mayRun,
@@ -35,6 +36,7 @@ export function OfferQualityPanel({
   companyId: string;
   opportunityId: string;
   offerVersionId: string;
+  qualityRuleSet?: OfferQualityRunView['ruleSet'];
   qualityRuleSetVersion: OfferQualityRunView['ruleSetVersion'];
   initialRun: OfferQualityRunView | null;
   mayRun: boolean;
@@ -85,6 +87,7 @@ export function OfferQualityPanel({
       } else if (result.status === 'ok') {
         const recorded = readOfferQualityRun(result.value, {
           offerVersionId,
+          ruleSet: qualityRuleSet,
           ruleSetVersion: qualityRuleSetVersion,
         });
         setRun(recorded);

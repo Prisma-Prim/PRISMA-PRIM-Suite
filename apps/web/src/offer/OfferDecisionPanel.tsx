@@ -9,7 +9,7 @@ import { useOfferDecisionCopy } from './offer-quality-decision.copy';
 import {
   readOfferDecision,
   type OfferReadView,
-  isIllustrativeOffer,
+  isExecutableOffer,
   type OfferDecisionView,
   type OfferQualityRunView,
 } from './offer-response';
@@ -72,7 +72,7 @@ export function OfferDecisionPanel({
     if (
       state === 'running' ||
       offer.version.decision ||
-      (kind === 'approve' && !isIllustrativeOffer(offer))
+      (kind === 'approve' && !isExecutableOffer(offer))
     )
       return;
     if (
@@ -125,8 +125,11 @@ export function OfferDecisionPanel({
       } else if (result.status === 'ok') {
         const decision = readOfferDecision(result.value, {
           offerVersionId: offer.version.id,
-          ...(isIllustrativeOffer(offer)
-            ? { ruleSetVersion: offer.version.qualityRuleSetVersion }
+          ...(isExecutableOffer(offer)
+            ? {
+                ruleSet: offer.version.qualityRuleSet,
+                ruleSetVersion: offer.version.qualityRuleSetVersion,
+              }
             : {}),
         });
         attempt.current = undefined;
@@ -165,7 +168,7 @@ export function OfferDecisionPanel({
   return (
     <section className="offer-decision" aria-labelledby="offer-decision-title">
       <h5 id="offer-decision-title">{copy.title}</h5>
-      {isIllustrativeOffer(offer) && <p>{copy.explanation}</p>}
+      {isExecutableOffer(offer) && <p>{copy.explanation}</p>}
       {state !== 'idle' && (
         <p role={state === 'running' ? 'status' : 'alert'}>{copy[state]}</p>
       )}
@@ -193,7 +196,7 @@ export function OfferDecisionPanel({
               ))}
             </fieldset>
           )}
-          {isIllustrativeOffer(offer) && (
+          {isExecutableOffer(offer) && (
             <button
               type="button"
               disabled={locked}

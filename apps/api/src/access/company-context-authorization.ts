@@ -78,7 +78,6 @@ import {
   COMPANY_OFFER_APPROVER_BUNDLE,
   offerPreparerPermissionsFor,
   type CompanyOfferPermission,
-  COMPANY_OFFER_APPROVER_V1_PERMISSIONS,
   offerApproverPermissionsFor,
   COMMERCIAL_INTAKE_READ_PERMISSIONS,
   commercialIntakeVersionsWith,
@@ -1143,13 +1142,12 @@ export class CompanyContextAuthorization {
     if (!company || !carriesEvery(company.offerPermissions, required))
       throw new ForbiddenException();
     const grants: SQL[] = [];
-    grants.push(...capturedOfferPreparerGrants(required));
-    if (
-      required.every((p) =>
-        COMPANY_OFFER_APPROVER_V1_PERMISSIONS.some((own) => own === p),
-      )
-    )
-      grants.push(capturedGrant(COMPANY_OFFER_APPROVER_BUNDLE));
+    grants.push(
+      ...capturedOfferGrants(COMPANY_OFFER_PREPARER_BUNDLE, required),
+    );
+    grants.push(
+      ...capturedOfferGrants(COMPANY_OFFER_APPROVER_BUNDLE, required),
+    );
     if (!grants.length) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
@@ -1164,13 +1162,46 @@ export class CompanyContextAuthorization {
   async requireOfferQualityAccess(
     actor: ActorContext,
     lock = false,
+    modelBased = false,
   ): Promise<string> {
     const company = actor.activeCompany;
     const grants: SQL[] = [];
-    if (company?.offerPermissions?.includes('commercial.offer.prepare'))
-      grants.push(...capturedOfferPreparerGrants(['commercial.offer.prepare']));
-    if (company?.offerPermissions?.includes('commercial.offer.approve'))
-      grants.push(capturedGrant(COMPANY_OFFER_APPROVER_BUNDLE));
+    if (
+      company?.offerPermissions?.includes('commercial.offer.prepare') &&
+      (!modelBased ||
+        company.offerPermissions.includes(
+          'commercial.offer.model_based.prepare',
+        ))
+    )
+      grants.push(
+        ...capturedOfferGrants(
+          COMPANY_OFFER_PREPARER_BUNDLE,
+          modelBased
+            ? [
+                'commercial.offer.prepare',
+                'commercial.offer.model_based.prepare',
+              ]
+            : ['commercial.offer.prepare'],
+        ),
+      );
+    if (
+      company?.offerPermissions?.includes('commercial.offer.approve') &&
+      (!modelBased ||
+        company.offerPermissions.includes(
+          'commercial.offer.model_based.approve',
+        ))
+    )
+      grants.push(
+        ...capturedOfferGrants(
+          COMPANY_OFFER_APPROVER_BUNDLE,
+          modelBased
+            ? [
+                'commercial.offer.approve',
+                'commercial.offer.model_based.approve',
+              ]
+            : ['commercial.offer.approve'],
+        ),
+      );
     if (!company || !grants.length) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
       actor,
@@ -1221,7 +1252,9 @@ export class CompanyContextAuthorization {
       grants.push(capturedGrant(COMPANY_PRICING_USER_BUNDLE));
     if (company?.offerPermissions?.includes('commercial.pricing.snapshot.read'))
       grants.push(
-        ...capturedOfferPreparerGrants(['commercial.pricing.snapshot.read']),
+        ...capturedOfferGrants(COMPANY_OFFER_PREPARER_BUNDLE, [
+          'commercial.pricing.snapshot.read',
+        ]),
       );
     if (!company || grants.length === 0) throw new ForbiddenException();
     await this.requireLiveCapturedAssignment(
@@ -1773,7 +1806,9 @@ export class CompanyContextAuthorization {
       }
       if (
         row.bundle === COMPANY_OFFER_PREPARER_BUNDLE &&
-        (row.permissionSetVersion === 'v1' || row.permissionSetVersion === 'v2')
+        (row.permissionSetVersion === 'v1' ||
+          row.permissionSetVersion === 'v2' ||
+          row.permissionSetVersion === 'v3')
       ) {
         company.offerPermissions = [
           ...(company.offerPermissions ?? []),
@@ -1817,14 +1852,14 @@ export class CompanyContextAuthorization {
       }
       if (
         row.bundle === COMPANY_OFFER_APPROVER_BUNDLE &&
-        row.permissionSetVersion === 'v1'
+        (row.permissionSetVersion === 'v1' || row.permissionSetVersion === 'v2')
       ) {
         company.offerPermissions = [
           ...(company.offerPermissions ?? []),
           ...offerApproverPermissionsFor(row.permissionSetVersion),
         ];
         company.offerApproverAssignmentId = row.assignmentId;
-        company.offerApproverPermissionSetVersion = 'v1';
+        company.offerApproverPermissionSetVersion = row.permissionSetVersion;
       }
       if (
         COMPANY_CONTEXT_AUTHORIZING_BUNDLES.some(
@@ -1845,12 +1880,15 @@ export class CompanyContextAuthorization {
   }
 }
 
-// Runtime authorization evaluates the captured version recorded on the live
-// assignment; every bundle introduced here exists only as v1.
-function capturedOfferPreparerGrants(
+// Read only the permissions of the live captured version; never upgrade it.
+function capturedOfferGrants(
+  bundle:
+    typeof COMPANY_OFFER_PREPARER_BUNDLE | typeof COMPANY_OFFER_APPROVER_BUNDLE,
   required: readonly CompanyOfferPermission[],
 ): SQL[] {
-  return Object.entries(COMPANY_ROLE_BUNDLES.company_offer_preparer.versions)
+  const versions: Readonly<Record<string, readonly CompanyOfferPermission[]>> =
+    COMPANY_ROLE_BUNDLES[bundle].versions;
+  return Object.entries(versions)
     .filter(([, permissions]) =>
       required.every((permission) =>
         permissions.some((own) => own === permission),
@@ -1858,7 +1896,7 @@ function capturedOfferPreparerGrants(
     )
     .map(
       ([version]) =>
-        sql`(${companyRoleAssignments.bundle}::text = ${COMPANY_OFFER_PREPARER_BUNDLE} AND ${eq(companyRoleAssignments.permissionSetVersion, version)})`,
+        sql`(${companyRoleAssignments.bundle}::text = ${bundle} AND ${eq(companyRoleAssignments.permissionSetVersion, version)})`,
     );
 }
 

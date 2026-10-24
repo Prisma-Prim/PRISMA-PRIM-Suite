@@ -1,6 +1,6 @@
 # PRD — Release 3 Commercial Workflow, section 28: approved-model Offer generation
 
-**Status:** Approved provisional product contract — runtime not delivered\
+**Status:** Approved provisional product contract — non-official generation runtime delivered ([#852](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/852))\
 **Owner:** Dan Popescu\
 **Contract issue:** [#850](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/850)
 

@@ -1,3 +1,4 @@
+import { seedHistoricalInternalOffer } from '../offer/offer-historical.test-fixture.js';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,20 +40,17 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           throw new Error('Invalid migration tag.');
         await cp(join('drizzle', `${tag}.sql`), join(previous, `${tag}.sql`));
       }
-      fixture = await openEstimateOfferFixture({ migrationsFolder: previous });
+      fixture = await openEstimateOfferFixture({
+        migrationsFolder: previous,
+        historicalOfferCaptures: { preparer: 'v2', approver: 'v1' },
+      });
       const source = await fixture.prepare();
       const path = `/offers/opportunities/${source.opportunityId}`;
-      await fixture.command({
-        path: `${path}/from-approved-estimate`,
-        companyId: source.companyId,
-        headers: ESTIMATE_OFFER_PREPARER,
+      const seeded = await seedHistoricalInternalOffer({
+        ...source,
+        pool: fixture.pool,
         key: 'pre-model-internal-offer',
-        body: estimateOfferIntent(source),
-      });
-      const before = await fixture.read({
-        path,
-        companyId: source.companyId,
-        headers: ESTIMATE_OFFER_READER,
+        payload: estimateOfferIntent(source),
       });
       const oldRows = await fixture.pool.query(`SELECT
       (SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM company_role_assignments r) AS grants,
@@ -68,13 +66,22 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           companyId: source.companyId,
           headers: ESTIMATE_OFFER_READER,
         }),
-      ).toEqual(before);
+      ).toMatchObject({
+        offer: {
+          id: seeded.offerId,
+          version: {
+            id: seeded.versionId,
+            provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+            priceSource: { amount: '125.00', taxTreatment: 'UNSPECIFIED' },
+          },
+        },
+      });
       expect(
         (
           await fixture.pool.query(`SELECT
       (SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM company_role_assignments r) AS grants,
       (SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM company_context_assignment_commands r) AS receipts,
-      (SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM offer_versions r) AS versions,
+      (SELECT jsonb_agg((to_jsonb(r) - ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]) ORDER BY id) FROM offer_versions r) AS versions,
       (SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM offer_commands r) AS commands,
       (SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM offer_events r) AS events`)
         ).rows,

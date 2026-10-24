@@ -18,7 +18,24 @@ export const OFFER_QUALITY_CODES = [
   'PRICING_CLIENT_CONTEXT_COHERENT',
   'PROVISIONAL_MARKER_PRESENT',
 ] as const;
-export type OfferQualityCode = (typeof OFFER_QUALITY_CODES)[number];
+export const MODEL_OFFER_QUALITY_CODES = [
+  'MODEL_APPROVAL_COHERENT',
+  'ECONOMIC_SOURCE_COHERENT',
+  'DECLARED_TOTALS_COHERENT',
+  'REPRESENTATION_COHERENT',
+  'VALIDITY_OPEN',
+  'RECIPIENT_AVAILABLE',
+  'RECIPIENT_IDENTITY_CURRENT',
+  'RECIPIENT_TAX_ID_RECORDED',
+  'CURRENCY_UNCHANGED',
+  'NON_OFFICIAL_MARKER_PRESENT',
+  'DECLARED_TAX_UNVERIFIED',
+  'NON_OFFICIAL_OFFER',
+  'ILLUSTRATIVE_MODEL',
+] as const;
+export type ModelOfferQualityCode = (typeof MODEL_OFFER_QUALITY_CODES)[number];
+export type OfferQualityCode =
+  (typeof OFFER_QUALITY_CODES)[number] | ModelOfferQualityCode;
 
 export function requireHeadOfferVersion(input: {
   offerVersionId: string;
@@ -35,15 +52,25 @@ export type OfferQualityResult = {
   readonly status: 'PASS' | 'WARNING' | 'ERROR';
 };
 export type OfferQualityRuleSetVersion = OfferBinding['ruleSetVersion'];
-export interface OfferQualityRun {
+interface OfferQualityRunFacts {
   readonly id: string;
   readonly offerVersionId: string;
-  readonly ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
-  readonly ruleSetVersion: OfferQualityRuleSetVersion;
   readonly actorWorkspaceMembershipId: string;
   readonly evaluatedAt: string;
   readonly results: readonly OfferQualityResult[];
 }
+export type OfferQualityRun = OfferQualityRunFacts &
+  (
+    | {
+        readonly ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
+        readonly ruleSetVersion: OfferQualityRuleSetVersion;
+      }
+    | {
+        readonly ruleSet: 'OFFER_QUALITY_COMPANY_MODEL';
+        readonly ruleSetVersion: 1;
+      }
+  );
+
 export interface OfferQualitySnapshot {
   readonly belongsToOffer: boolean;
   readonly currency: string;
@@ -315,6 +342,95 @@ export function readOfferQualityResults(value: unknown): OfferQualityResult[] {
         : 'WARNING';
     if (item.status !== 'PASS' && item.status !== failingStatus)
       throw new Error('Invalid stored Offer Quality Check severity.');
+    return { code, status: item.status };
+  });
+}
+
+/** The fixed generated-model rules use frozen approvals, never live availability. */
+export function evaluateModelOfferQuality(input: {
+  instant: Date;
+  validUntil: Date;
+  modelApprovalCoherent: boolean;
+  economicSourceCoherent: boolean;
+  declaredTotalsCoherent: boolean;
+  representationCoherent: boolean;
+  recipientAvailable: boolean;
+  recipientIdentityCurrent: boolean;
+  recipientTaxId: string | null;
+  currency: string;
+  previousTransmittedCurrency: string | null;
+  nonOfficialMarkerPresent: boolean;
+  illustrativeModel: boolean;
+}): OfferQualityResult[] {
+  return [
+    result('MODEL_APPROVAL_COHERENT', input.modelApprovalCoherent, 'ERROR'),
+    result('ECONOMIC_SOURCE_COHERENT', input.economicSourceCoherent, 'ERROR'),
+    result('DECLARED_TOTALS_COHERENT', input.declaredTotalsCoherent, 'ERROR'),
+    result('REPRESENTATION_COHERENT', input.representationCoherent, 'ERROR'),
+    result('VALIDITY_OPEN', input.instant < input.validUntil, 'ERROR'),
+    result('RECIPIENT_AVAILABLE', input.recipientAvailable, 'ERROR'),
+    result(
+      'RECIPIENT_IDENTITY_CURRENT',
+      input.recipientIdentityCurrent,
+      'WARNING',
+    ),
+    result(
+      'RECIPIENT_TAX_ID_RECORDED',
+      input.recipientTaxId !== null && input.recipientTaxId.length > 0,
+      'WARNING',
+    ),
+    result(
+      'CURRENCY_UNCHANGED',
+      input.previousTransmittedCurrency === null ||
+        input.previousTransmittedCurrency === input.currency,
+      'WARNING',
+    ),
+    result(
+      'NON_OFFICIAL_MARKER_PRESENT',
+      input.nonOfficialMarkerPresent,
+      'ERROR',
+    ),
+    result('DECLARED_TAX_UNVERIFIED', false, 'WARNING'),
+    result('NON_OFFICIAL_OFFER', false, 'WARNING'),
+    result('ILLUSTRATIVE_MODEL', !input.illustrativeModel, 'WARNING'),
+  ];
+}
+
+export function readModelOfferQualityResults(
+  value: unknown,
+): OfferQualityResult[] {
+  if (
+    !Array.isArray(value) ||
+    value.length !== MODEL_OFFER_QUALITY_CODES.length
+  )
+    throw new Error('Invalid stored model Offer checks.');
+  return MODEL_OFFER_QUALITY_CODES.map((code, index) => {
+    const item: unknown = value[index];
+    const warning = [
+      'RECIPIENT_IDENTITY_CURRENT',
+      'RECIPIENT_TAX_ID_RECORDED',
+      'CURRENCY_UNCHANGED',
+      'DECLARED_TAX_UNVERIFIED',
+      'NON_OFFICIAL_OFFER',
+      'ILLUSTRATIVE_MODEL',
+    ].includes(code);
+    const always =
+      code === 'DECLARED_TAX_UNVERIFIED' || code === 'NON_OFFICIAL_OFFER';
+    if (
+      typeof item !== 'object' ||
+      item === null ||
+      Array.isArray(item) ||
+      Object.keys(item).length !== 2 ||
+      !('code' in item) ||
+      item.code !== code ||
+      !('status' in item) ||
+      (item.status !== 'PASS' &&
+        item.status !== 'WARNING' &&
+        item.status !== 'ERROR') ||
+      (item.status !== (warning ? 'WARNING' : 'ERROR') &&
+        (always || item.status !== 'PASS'))
+    )
+      throw new Error('Invalid stored model Offer checks.');
     return { code, status: item.status };
   });
 }

@@ -1,3 +1,4 @@
+import { readModelOffer, type ModelOfferView } from './model-offer-response';
 export type OfferSnapshotSummary = {
   id: string;
   currency: string;
@@ -11,7 +12,7 @@ export type OfferView = {
   revision: number;
   version: {
     id: string;
-    qualityRuleSet: OfferQualityRunView['ruleSet'];
+    qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
     qualityRuleSetVersion: OfferQualityRunView['ruleSetVersion'];
     latestQualityRun: OfferQualityRunView | null;
     versionNumber: number;
@@ -94,7 +95,19 @@ export type InternalOfferView = Omit<OfferView, 'version'> & {
         }
     );
 };
-export type OfferReadView = OfferView | InternalOfferView;
+export type OfferReadView = OfferView | InternalOfferView | ModelOfferView;
+export function isModelOffer(offer: OfferReadView): offer is ModelOfferView {
+  return offer.version.provenance === 'COMPANY_MODEL_ESTIMATE';
+}
+export type ExecutableOfferView = OfferView | ModelOfferView;
+export function isExecutableOffer(
+  offer: OfferReadView,
+): offer is ExecutableOfferView {
+  return (
+    offer.version.provenance === 'ILLUSTRATIVE' ||
+    offer.version.provenance === 'COMPANY_MODEL_ESTIMATE'
+  );
+}
 export function isIllustrativeOffer(offer: OfferReadView): offer is OfferView {
   return offer.version.provenance === 'ILLUSTRATIVE';
 }
@@ -159,6 +172,8 @@ export function readOffer(value: unknown): OfferReadView {
   const root = record(value);
   if (record(root.version).provenance === 'APPROVED_ESTIMATE_INTERNAL_DRAFT')
     return readInternalOffer(root);
+  if (record(root.version).provenance === 'COMPANY_MODEL_ESTIMATE')
+    return readModelOffer(root);
   return readIllustrativeOffer(value);
 }
 
@@ -324,6 +339,13 @@ function readIllustrativeOffer(value: unknown): OfferView {
 }
 
 export const offerDifferenceFields = [
+  'modelVersionId',
+  'modelVersionNumber',
+  'modelApprovalDecisionId',
+  'taxAmount',
+  'taxLabel',
+  'declarationBasis',
+  'grossAmount',
   'priceSourceKind',
   'estimateVersionId',
   'estimateVersionNumber',
@@ -348,7 +370,7 @@ export type OfferDifferenceView = {
   current: string | number | null;
   changed: boolean;
 };
-function readOfferDifferences(
+export function readOfferDifferences(
   value: unknown,
   versionNumber: number,
 ): OfferDifferenceView[] {
@@ -433,6 +455,32 @@ export type OfferDecisionView = {
     }
   | { state: 'REJECTED'; reason: string }
 );
+
+export type OfferDecisionState =
+  | { decisionState: 'PENDING'; decision: null }
+  | {
+      decisionState: 'APPROVED';
+      decision: Extract<OfferDecisionView, { state: 'APPROVED' }>;
+    }
+  | {
+      decisionState: 'REJECTED';
+      decision: Extract<OfferDecisionView, { state: 'REJECTED' }>;
+    };
+export function offerDecisionState(
+  decision: OfferDecisionView | null,
+): OfferDecisionState {
+  if (!decision) return { decisionState: 'PENDING', decision: null };
+  switch (decision.state) {
+    case 'APPROVED':
+      return { decisionState: 'APPROVED', decision };
+    case 'REJECTED':
+      return { decisionState: 'REJECTED', decision };
+    default: {
+      const exhaustive: never = decision;
+      return exhaustive;
+    }
+  }
+}
 
 export function readOfferDecision(
   value: unknown,
@@ -561,7 +609,41 @@ export function readOfferTransmission(
   };
 }
 
+export const modelOfferQualityCodes = [
+  'MODEL_APPROVAL_COHERENT',
+  'ECONOMIC_SOURCE_COHERENT',
+  'DECLARED_TOTALS_COHERENT',
+  'REPRESENTATION_COHERENT',
+  'VALIDITY_OPEN',
+  'RECIPIENT_AVAILABLE',
+  'RECIPIENT_IDENTITY_CURRENT',
+  'RECIPIENT_TAX_ID_RECORDED',
+  'CURRENCY_UNCHANGED',
+  'NON_OFFICIAL_MARKER_PRESENT',
+  'DECLARED_TAX_UNVERIFIED',
+  'NON_OFFICIAL_OFFER',
+  'ILLUSTRATIVE_MODEL',
+] as const;
+const legacyOfferQualityCodes = [
+  'PRICING_SNAPSHOT_COHERENT',
+  'CURRENCY_UNCHANGED',
+  'VALIDITY_OPEN',
+  'RECIPIENT_AVAILABLE',
+  'RECIPIENT_IDENTITY_CURRENT',
+  'RECIPIENT_TAX_ID_RECORDED',
+  'PRICING_CLIENT_CONTEXT_COHERENT',
+  'PROVISIONAL_MARKER_PRESENT',
+] as const;
 export const offerQualityLabels = {
+  MODEL_APPROVAL_COHERENT: 'Model approval coherent',
+  ECONOMIC_SOURCE_COHERENT: 'Economic source coherent',
+  DECLARED_TOTALS_COHERENT: 'Declared totals coherent',
+  REPRESENTATION_COHERENT: 'Representation coherent',
+  NON_OFFICIAL_MARKER_PRESENT: 'Non-official marker present',
+  DECLARED_TAX_UNVERIFIED: 'Declared tax unverified',
+  NON_OFFICIAL_OFFER: 'Non-official Offer',
+  ILLUSTRATIVE_MODEL: 'Illustrative model',
+
   PRICING_SNAPSHOT_COHERENT: 'Pricing Snapshot coherent',
   CURRENCY_UNCHANGED: 'Currency unchanged',
   VALIDITY_OPEN: 'Validity open',
@@ -577,11 +659,9 @@ function isOfferBindingVersion(value: unknown): value is OfferBindingVersion {
   return value === 1 || value === 2;
 }
 
-export type OfferQualityRunView = {
+type OfferQualityRunFacts = {
   id: string;
   offerVersionId: string;
-  ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
-  ruleSetVersion: OfferBindingVersion;
   actorWorkspaceMembershipId: string;
   evaluatedAt: string;
   results: Array<{
@@ -590,33 +670,51 @@ export type OfferQualityRunView = {
   }>;
 };
 
+export type OfferQualityRunView = OfferQualityRunFacts &
+  (
+    | {
+        ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
+        ruleSetVersion: OfferBindingVersion;
+      }
+    | { ruleSet: 'OFFER_QUALITY_COMPANY_MODEL'; ruleSetVersion: 1 }
+  );
+
 /**
  * The exact Offer Version a run must belong to and the rule set version bound
  * to that version's Template. A run that names any other value is invalid.
  */
 export type OfferQualityRunBinding = {
+  ruleSet?: 'OFFER_QUALITY_ILLUSTRATIVE' | 'OFFER_QUALITY_COMPANY_MODEL';
   offerVersionId: string;
   ruleSetVersion: OfferBindingVersion;
 };
 
 export function readOfferQualityRun(
   value: unknown,
-  { offerVersionId, ruleSetVersion }: OfferQualityRunBinding,
+  {
+    offerVersionId,
+    ruleSetVersion,
+    ruleSet = 'OFFER_QUALITY_ILLUSTRATIVE',
+  }: OfferQualityRunBinding,
 ): OfferQualityRunView {
   const run = record(value);
   if (
     typeof run.id !== 'string' ||
     run.offerVersionId !== offerVersionId ||
-    run.ruleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' ||
+    run.ruleSet !== ruleSet ||
+    (ruleSet === 'OFFER_QUALITY_COMPANY_MODEL' && ruleSetVersion !== 1) ||
     run.ruleSetVersion !== ruleSetVersion ||
     typeof run.actorWorkspaceMembershipId !== 'string' ||
     typeof run.evaluatedAt !== 'string' ||
     !Number.isFinite(Date.parse(run.evaluatedAt)) ||
     !Array.isArray(run.results) ||
-    run.results.length !== 8
+    run.results.length !== (ruleSet === 'OFFER_QUALITY_COMPANY_MODEL' ? 13 : 8)
   )
     invalid();
-  const expectedCodes = Object.keys(offerQualityLabels);
+  const expectedCodes =
+    ruleSet === 'OFFER_QUALITY_COMPANY_MODEL'
+      ? modelOfferQualityCodes
+      : legacyOfferQualityCodes;
   const results = run.results.map(
     (value: unknown, index): OfferQualityRunView['results'][number] => {
       const item = record(value);
@@ -630,25 +728,44 @@ export function readOfferQualityRun(
       )
         invalid();
       const severity =
-        code === 'PRICING_SNAPSHOT_COHERENT' ||
-        code === 'VALIDITY_OPEN' ||
-        code === 'RECIPIENT_AVAILABLE' ||
-        code === 'PROVISIONAL_MARKER_PRESENT'
-          ? 'ERROR'
-          : 'WARNING';
-      if (item.status !== 'PASS' && item.status !== severity) invalid();
+        ruleSet === 'OFFER_QUALITY_COMPANY_MODEL'
+          ? [
+              'RECIPIENT_IDENTITY_CURRENT',
+              'RECIPIENT_TAX_ID_RECORDED',
+              'CURRENCY_UNCHANGED',
+              'DECLARED_TAX_UNVERIFIED',
+              'NON_OFFICIAL_OFFER',
+              'ILLUSTRATIVE_MODEL',
+            ].includes(code)
+            ? 'WARNING'
+            : 'ERROR'
+          : code === 'PRICING_SNAPSHOT_COHERENT' ||
+              code === 'VALIDITY_OPEN' ||
+              code === 'RECIPIENT_AVAILABLE' ||
+              code === 'PROVISIONAL_MARKER_PRESENT'
+            ? 'ERROR'
+            : 'WARNING';
+      if (
+        (item.status !== 'PASS' && item.status !== severity) ||
+        (ruleSet === 'OFFER_QUALITY_COMPANY_MODEL' &&
+          (code === 'DECLARED_TAX_UNVERIFIED' ||
+            code === 'NON_OFFICIAL_OFFER') &&
+          item.status !== 'WARNING')
+      )
+        invalid();
       return { code, status: item.status };
     },
   );
-  return {
+  const facts = {
     id: run.id,
     offerVersionId,
-    ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
-    ruleSetVersion,
     actorWorkspaceMembershipId: run.actorWorkspaceMembershipId,
     evaluatedAt: run.evaluatedAt,
     results,
   };
+  return ruleSet === 'OFFER_QUALITY_COMPANY_MODEL'
+    ? { ...facts, ruleSet, ruleSetVersion: 1 }
+    : { ...facts, ruleSet, ruleSetVersion };
 }
 
 function isQualityCode(
@@ -971,4 +1088,99 @@ function validOfferInstant(value: unknown): string {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)))
     invalid();
   return value;
+}
+
+// Construct each parent variant in its narrowed branch to retain the required
+// model scope fields and nested Version discriminant without a type assertion.
+export function applyOfferDecision(
+  offer: OfferReadView,
+  decision: OfferDecisionView,
+): OfferReadView {
+  if (!isExecutableOffer(offer)) {
+    if (decision.state !== 'REJECTED') return offer;
+    return {
+      ...offer,
+      revision: decision.offerRevision,
+      version: { ...offer.version, decisionState: 'REJECTED', decision },
+    };
+  }
+  const facts = {
+    ...offerDecisionState(decision),
+    latestQualityRun:
+      decision.state === 'APPROVED'
+        ? decision.qualityRun
+        : offer.version.latestQualityRun,
+  };
+  return isModelOffer(offer)
+    ? {
+        ...offer,
+        revision: decision.offerRevision,
+        version: { ...offer.version, ...facts },
+      }
+    : {
+        ...offer,
+        revision: decision.offerRevision,
+        version: { ...offer.version, ...facts },
+      };
+}
+export function applyOfferQuality(
+  offer: OfferReadView,
+  run: OfferQualityRunView,
+): OfferReadView {
+  if (!isExecutableOffer(offer)) return offer;
+  return isModelOffer(offer)
+    ? { ...offer, version: { ...offer.version, latestQualityRun: run } }
+    : { ...offer, version: { ...offer.version, latestQualityRun: run } };
+}
+export function applyOfferTransmission(
+  offer: OfferReadView,
+  transmission: OfferTransmissionView,
+): OfferReadView {
+  if (!isExecutableOffer(offer)) return offer;
+  const facts = {
+    transmissionState: 'TRANSMITTED',
+    clientResponseState: 'PENDING',
+    clientResponse: null,
+    transmission,
+    latestQualityRun: transmission.qualityRun,
+  } satisfies OfferTransmissionState & {
+    latestQualityRun: OfferQualityRunView;
+  };
+  return isModelOffer(offer)
+    ? {
+        ...offer,
+        revision: transmission.offerRevision,
+        version: { ...offer.version, ...facts },
+      }
+    : {
+        ...offer,
+        revision: transmission.offerRevision,
+        version: { ...offer.version, ...facts },
+      };
+}
+export function applyOfferResponse(
+  offer: OfferReadView,
+  response: OfferClientResponseView,
+): OfferReadView {
+  if (
+    !isExecutableOffer(offer) ||
+    offer.version.transmissionState !== 'TRANSMITTED'
+  )
+    return offer;
+  const facts = {
+    transmissionState: 'TRANSMITTED',
+    transmission: offer.version.transmission,
+    ...offerClientResponseState(response),
+  } satisfies OfferTransmissionState;
+  return isModelOffer(offer)
+    ? {
+        ...offer,
+        revision: response.offerRevision,
+        version: { ...offer.version, ...facts },
+      }
+    : {
+        ...offer,
+        revision: response.offerRevision,
+        version: { ...offer.version, ...facts },
+      };
 }

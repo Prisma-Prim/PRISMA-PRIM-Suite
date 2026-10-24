@@ -53,7 +53,9 @@ export function OfferVersionHistory({
         { companyContextId: companyId, signal: request.signal },
       );
       if (request.signal.aborted) return;
-      if ((await reject(result, request.signal)) || result.status !== 'ok') {
+      const denied = await reject(result, request.signal);
+      if (request.signal.aborted) return;
+      if (denied || result.status !== 'ok') {
         setState('error');
         return;
       }
@@ -85,7 +87,9 @@ export function OfferVersionHistory({
         { companyContextId: companyId, signal: request.signal },
       );
       if (request.signal.aborted) return;
-      if ((await reject(result, request.signal)) || result.status !== 'ok') {
+      const denied = await reject(result, request.signal);
+      if (request.signal.aborted) return;
+      if (denied || result.status !== 'ok') {
         setState('error');
         return;
       }
@@ -105,7 +109,10 @@ export function OfferVersionHistory({
     if (value === null) return copy.absent;
     if (value === '') return copy.emptyText;
     switch (field) {
+      case 'taxAmount':
+      case 'grossAmount':
       case 'amount':
+      case 'modelVersionNumber':
       case 'estimateVersionNumber':
       case 'total':
       case 'validityDays':
@@ -120,6 +127,10 @@ export function OfferVersionHistory({
           : value === 'ILLUSTRATIVE_SNAPSHOT'
             ? copy.fields.pricingSnapshotId
             : copy.absent;
+      case 'modelVersionId':
+      case 'modelApprovalDecisionId':
+      case 'taxLabel':
+      case 'declarationBasis':
       case 'estimateVersionId':
       case 'approvalDecisionId':
       case 'recipientKind':

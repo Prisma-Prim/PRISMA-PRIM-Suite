@@ -97,15 +97,20 @@ export interface ActorContext {
       | 'commercial.offer.read'
       | 'commercial.offer.prepare'
       | 'commercial.offer.estimate.prepare'
+      | 'commercial.offer.model.select'
+      | 'commercial.offer.model_based.prepare'
+      | 'commercial.offer.model_based.approve'
+      | 'commercial.offer.model_based.transmission.record'
+      | 'commercial.offer.model_based.response.record'
       | 'commercial.offer.approve'
       | 'commercial.offer.response.record'
       | 'commercial.offer.transmission.record'
       | 'commercial.pricing.snapshot.read'
     >;
     offerPermissionAssignmentId?: string;
-    offerPermissionSetVersion?: 'v1' | 'v2';
+    offerPermissionSetVersion?: 'v1' | 'v2' | 'v3';
     offerApproverAssignmentId?: string;
-    offerApproverPermissionSetVersion?: 'v1';
+    offerApproverPermissionSetVersion?: 'v1' | 'v2';
     pricingAdjustmentPermissions?: Array<'commercial.pricing.adjustment.apply'>;
     pricingAdjustmentPermissionAssignmentId?: string;
     pricingAdjustmentPermissionSetVersion?: 'v1';

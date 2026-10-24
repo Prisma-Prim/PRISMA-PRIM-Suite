@@ -276,7 +276,7 @@ it.skipIf(!databaseUrl)(
             async (table) =>
               (
                 await query(
-                  `SELECT to_jsonb(row_value)${table === 'offer_versions' ? " - ARRAY['estimate_source_id','estimate_source_version_id','estimate_source_version_number','estimate_source_decision_id','estimate_source_decision_code','estimate_source_approved_at','estimate_source_amount','estimate_source_currency']::text[]" : ''} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
+                  `SELECT to_jsonb(row_value)${table === 'offer_versions' ? " - ARRAY['estimate_source_id','estimate_source_version_id','estimate_source_version_number','estimate_source_decision_id','estimate_source_decision_code','estimate_source_approved_at','estimate_source_amount','estimate_source_currency','model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]" : ''} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
                 )
               ).rows,
           ),

@@ -1,3 +1,4 @@
+import { OfferModelModule } from '../offer-model/offer-model.module.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
@@ -13,6 +14,7 @@ import { EstimateOfferPreparationService } from './offer-estimate-preparation.se
 @Module({
   imports: [
     AccessModule,
+    OfferModelModule,
     AccountabilityModule,
     ClientModule,
     CommercialIntakeModule,

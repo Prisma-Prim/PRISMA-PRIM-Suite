@@ -5634,7 +5634,7 @@ withPostgres('First illustrative Offer REST', () => {
       'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
     );
     try {
-      for (const version of [null, 'v3', 'V1']) {
+      for (const version of [null, 'v99', 'V1']) {
         await pool.query(
           "UPDATE company_role_assignments SET permission_set_version = $1 WHERE company_id = $2 AND bundle = 'company_offer_preparer'",
           [version, fixture.companyId],

@@ -20,6 +20,32 @@ export type OfferDecision = {
   | { readonly state: 'REJECTED'; readonly reason: string }
 );
 
+export type OfferDecisionState =
+  | { readonly decisionState: 'PENDING'; readonly decision: null }
+  | {
+      readonly decisionState: 'APPROVED';
+      readonly decision: Extract<OfferDecision, { state: 'APPROVED' }>;
+    }
+  | {
+      readonly decisionState: 'REJECTED';
+      readonly decision: Extract<OfferDecision, { state: 'REJECTED' }>;
+    };
+export function offerDecisionState(
+  decision: OfferDecision | null,
+): OfferDecisionState {
+  if (!decision) return { decisionState: 'PENDING', decision: null };
+  switch (decision.state) {
+    case 'APPROVED':
+      return { decisionState: 'APPROVED', decision };
+    case 'REJECTED':
+      return { decisionState: 'REJECTED', decision };
+    default: {
+      const exhaustive: never = decision;
+      return exhaustive;
+    }
+  }
+}
+
 export type OfferRecipientSelection =
   | { readonly kind: 'PRIMARY' }
   | { readonly kind: 'ADDITIONAL'; readonly legalEntityId: string };
@@ -116,7 +142,7 @@ export type OfferClientResponse = {
 export type OfferVersionRecord = {
   readonly id: string;
   /** Rule set bound at creation with the representation's Template Version. */
-  readonly qualityRuleSet: OfferQualityRun['ruleSet'];
+  readonly qualityRuleSet: 'OFFER_QUALITY_ILLUSTRATIVE';
   readonly qualityRuleSetVersion: OfferQualityRun['ruleSetVersion'];
   readonly versionNumber: number;
   readonly predecessorVersionId: string | null;
