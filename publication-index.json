@@ -1,0 +1,132 @@
+{
+  "pr": 843,
+  "issue": 842,
+  "source": "5650e5ebab16c865926e4962dfb1267645e49d42",
+  "base": "768c282f370f231194a100226da7b0201d2766d0",
+  "integrationTree": "5da011cf62dee15806318e6a156550ed12661762",
+  "run": 40084994017,
+  "kind": "Reviewed safe summaries/public CI metadata and selected LOCAL actual App/API/PostgreSQL synthetic captures; no raw private diagnostic/original business document or canonical local-family attestation.",
+  "keepThrough": "2026-11-08T10:26:27.561031+00:00",
+  "files": [
+    {
+      "path": "browser/estimate-offer-first-Desktop.png",
+      "bytes": 73820,
+      "sha256": "8de70a2d6d60fccec64868eac13ef3f8c63007db5d808897d99b7481a5b42977"
+    },
+    {
+      "path": "browser/estimate-offer-first-Narrow.png",
+      "bytes": 68811,
+      "sha256": "7ef81d21d78f12a74f8517126cbbab7a81f02f175fe7f45f69b1eb5755c6b0a4"
+    },
+    {
+      "path": "browser/estimate-offer-history-Desktop.png",
+      "bytes": 77636,
+      "sha256": "ecdf7c6c81cc40d35aa116974e88972a7b070acd99eba7516d1fecdd460f54f1"
+    },
+    {
+      "path": "browser/estimate-offer-history-Narrow.png",
+      "bytes": 72693,
+      "sha256": "843a9022e9e90e025d6222d292a1bd4e929a110ce724f88371f5ce7171119e7e"
+    },
+    {
+      "path": "browser/estimate-offer-preparation-Desktop.png",
+      "bytes": 272980,
+      "sha256": "daa3a093835a2b360608d1e806aaf542adae26c5f080ade6d809395e269616bf"
+    },
+    {
+      "path": "browser/estimate-offer-preparation-Narrow.png",
+      "bytes": 228951,
+      "sha256": "be35802b6fd2f5fb82e9f134129e9eb04a049a7eec115f6e7ea30da11f92c722"
+    },
+    {
+      "path": "browser/estimate-offer-price-reader-Desktop.png",
+      "bytes": 210954,
+      "sha256": "1bc42ea2a4fad5d1e89a6042fec6d1df438ef81efc555c94370037322c93b9ba"
+    },
+    {
+      "path": "browser/estimate-offer-price-reader-Narrow.png",
+      "bytes": 171639,
+      "sha256": "88e37b6a1eeea685bbeb331a02e7ad6c718b15a7a98e61a1d8df206cd3251ceb"
+    },
+    {
+      "path": "browser/estimate-offer-rejected-Desktop.png",
+      "bytes": 219040,
+      "sha256": "ad408db4e0da3d088842842b1d404ccfdc1d49e7016dc6b071f4c02d2f1d4b3e"
+    },
+    {
+      "path": "browser/estimate-offer-rejected-Narrow.png",
+      "bytes": 179431,
+      "sha256": "26448408802fb93d877b2b5d14b30f1fa7e5fdc859ad48a46579d5f6ab2555b2"
+    },
+    {
+      "path": "browser/estimate-offer-revoked-Desktop.png",
+      "bytes": 205971,
+      "sha256": "97788cb27030feadca0bf9c73fd73221a58898005e6da698c056d5b2fad2edb4"
+    },
+    {
+      "path": "browser/estimate-offer-revoked-Narrow.png",
+      "bytes": 167442,
+      "sha256": "d6bd26124ff241b270763f18874e1c899c8977ad940551dcf5794221acb7a118"
+    },
+    {
+      "path": "browser/estimate-offer-stale-Desktop.png",
+      "bytes": 40071,
+      "sha256": "5238a04b6b3100d55e43433b2237f5d30d9e87118c185fceb0f8447ad11a1103"
+    },
+    {
+      "path": "browser/estimate-offer-stale-Narrow.png",
+      "bytes": 35541,
+      "sha256": "09a9dcc1c623e0a97a5f26ba61f02da0a2f92115d91f62328c89297719c33e27"
+    },
+    {
+      "path": "ci-artifacts.json",
+      "bytes": 5578,
+      "sha256": "09b5c08ff51742e50181b9495e7bee7efcd38ced018c5a6d7b65c7bb3c5736d4"
+    },
+    {
+      "path": "ci-jobs.json",
+      "bytes": 56945,
+      "sha256": "646b4be1924c8670a9e650b32bd046d93065d81d9e1d3e315f36e12b9ab3d8e5"
+    },
+    {
+      "path": "ci-run.json",
+      "bytes": 15093,
+      "sha256": "4919440e845f4c4411925479d9e9f035dabc6f3005524577f42eecf0a440b109"
+    },
+    {
+      "path": "development-result.json",
+      "bytes": 3308,
+      "sha256": "9d988ad832e76f9228de0489eb684c71d446dd91e057e742a0603a6c017f46fe"
+    },
+    {
+      "path": "final-proof.json",
+      "bytes": 5128,
+      "sha256": "81ac635d1a6880115090101ea36c0342fa96493a8066a671fa61cdc685c28d0c"
+    },
+    {
+      "path": "final-report.md",
+      "bytes": 3721,
+      "sha256": "e7f64ceb87f8b30148ce30bdd02751c299eff6c7a065080f3f171ed2eb5aec6d"
+    },
+    {
+      "path": "final-source-check.json",
+      "bytes": 794,
+      "sha256": "daa35aa17d7d14bbec8a1c7c420cfc0ebbbe6487ecdc8a75c999c934ab826d89"
+    },
+    {
+      "path": "review-disposition.json",
+      "bytes": 2437,
+      "sha256": "e879fc60555f751b47f40f5b245725cd6f32de5b9d7dac73aece41406fee1410"
+    },
+    {
+      "path": "spec-review.md",
+      "bytes": 1074,
+      "sha256": "632e8b9b7cf901472247d12d031bb9dc01a4ab3ae6388df00914c73ad753cd1d"
+    },
+    {
+      "path": "standards-review.md",
+      "bytes": 821,
+      "sha256": "99bb052358847232c8c5403b71c180f1df7a8a9a1e9a822b52edbac7f2133ac5"
+    }
+  ]
+}

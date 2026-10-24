@@ -1,0 +1,125 @@
+{
+  "total_count": 6,
+  "artifacts": [
+    {
+      "id": 12557460195,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1NzQ2MDE5NQ==",
+      "name": "browser-evidence-pr-40084994017",
+      "size_in_bytes": 389573389,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12557460195",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12557460195/zip",
+      "expired": false,
+      "digest": "sha256:100715501932845c5469f4d2846f212ba05cb9df6b455ef26726516b78e1ebd2",
+      "created_at": "2026-10-24T10:24:56Z",
+      "updated_at": "2026-10-24T10:24:56Z",
+      "expires_at": "2026-11-07T10:24:46Z",
+      "workflow_run": {
+        "id": 40084994017,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/842-approved-estimate-offer",
+        "head_sha": "5650e5ebab16c865926e4962dfb1267645e49d42"
+      }
+    },
+    {
+      "id": 12556908108,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1NjkwODEwOA==",
+      "name": "browser-evidence-part-acceptance-1-40084994017",
+      "size_in_bytes": 68308626,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556908108",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556908108/zip",
+      "expired": false,
+      "digest": "sha256:0a3d75b9fb1d3752d8604cf876e2615c4ef29b1a36e970c5ceadbe043dcf9ce6",
+      "created_at": "2026-10-24T10:24:29Z",
+      "updated_at": "2026-10-24T10:24:29Z",
+      "expires_at": "2026-11-07T10:24:26Z",
+      "workflow_run": {
+        "id": 40084994017,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/842-approved-estimate-offer",
+        "head_sha": "5650e5ebab16c865926e4962dfb1267645e49d42"
+      }
+    },
+    {
+      "id": 12556738427,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1NjczODQyNw==",
+      "name": "browser-evidence-part-browser-1-40084994017",
+      "size_in_bytes": 113791542,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556738427",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556738427/zip",
+      "expired": false,
+      "digest": "sha256:cda56426bc2a941dc64b21cbe4aea27bd24830b6afe216d7bff7146f21e69037",
+      "created_at": "2026-10-24T10:20:40Z",
+      "updated_at": "2026-10-24T10:20:40Z",
+      "expires_at": "2026-11-07T10:20:35Z",
+      "workflow_run": {
+        "id": 40084994017,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/842-approved-estimate-offer",
+        "head_sha": "5650e5ebab16c865926e4962dfb1267645e49d42"
+      }
+    },
+    {
+      "id": 12556573516,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1NjU3MzUxNg==",
+      "name": "browser-evidence-part-browser-3-40084994017",
+      "size_in_bytes": 71161776,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556573516",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556573516/zip",
+      "expired": false,
+      "digest": "sha256:948e682e3f74f19a0333605c4d2ae41415dc12cd8da12cc06155c519ea2b0f2b",
+      "created_at": "2026-10-24T10:18:04Z",
+      "updated_at": "2026-10-24T10:18:04Z",
+      "expires_at": "2026-11-07T10:18:02Z",
+      "workflow_run": {
+        "id": 40084994017,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/842-approved-estimate-offer",
+        "head_sha": "5650e5ebab16c865926e4962dfb1267645e49d42"
+      }
+    },
+    {
+      "id": 12556034413,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1NjAzNDQxMw==",
+      "name": "browser-evidence-part-browser-2-40084994017",
+      "size_in_bytes": 77567002,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556034413",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556034413/zip",
+      "expired": false,
+      "digest": "sha256:948d0929c029ea130377af0692fa5f3cae64e5c5380a9911c603031dde87faca",
+      "created_at": "2026-10-24T10:19:00Z",
+      "updated_at": "2026-10-24T10:19:00Z",
+      "expires_at": "2026-11-07T10:18:57Z",
+      "workflow_run": {
+        "id": 40084994017,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/842-approved-estimate-offer",
+        "head_sha": "5650e5ebab16c865926e4962dfb1267645e49d42"
+      }
+    },
+    {
+      "id": 12556029647,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1NjAyOTY0Nw==",
+      "name": "browser-evidence-part-acceptance-2-40084994017",
+      "size_in_bytes": 58744531,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556029647",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12556029647/zip",
+      "expired": false,
+      "digest": "sha256:627fefb71c2c766014e16d080836a3344c6638dc0036608891431cfeed0b838a",
+      "created_at": "2026-10-24T10:23:14Z",
+      "updated_at": "2026-10-24T10:23:14Z",
+      "expires_at": "2026-11-07T10:23:11Z",
+      "workflow_run": {
+        "id": 40084994017,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "feat/842-approved-estimate-offer",
+        "head_sha": "5650e5ebab16c865926e4962dfb1267645e49d42"
+      }
+    }
+  ]
+}
