@@ -172,6 +172,17 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(
         (await f.call(`/project-templates?templateKey=${pilotKey}`)).status,
       ).toBe(403);
+      // Historical bounds protect modifications as well as new links.
+      for (const position of [4, 12])
+        await expect(
+          f.pool.query(
+            'UPDATE project_template_task_copies SET position=$1 WHERE project_id=$2 AND position=3',
+            [position, projectId],
+          ),
+        ).rejects.toMatchObject({ code: '23514' });
+      expect(await read(`/projects/${projectId}/template`)).toEqual(
+        sourceBefore,
+      );
       const fifth = await command(`/projects/${projectId}/tasks`, {
         title: 'Independent fifth ordinary Task DEMO',
       });

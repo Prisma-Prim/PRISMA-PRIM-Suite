@@ -42,7 +42,7 @@ END;
 $$;
 --> statement-breakpoint
 CREATE TRIGGER project_template_task_copy_position
-BEFORE INSERT ON project_template_task_copies
+BEFORE INSERT OR UPDATE ON project_template_task_copies
 FOR EACH ROW EXECUTE FUNCTION guard_project_template_copy_position();
 --> statement-breakpoint
 -- Pilot source/intent and its Task mapping are append-only. Legacy stage
