@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { rootCertificates } from 'node:tls';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
@@ -74,6 +75,7 @@ if (args[0] === 'port') console.log(args.includes('4317/tcp') ? '127.0.0.1:4317'
         PATH: `${directory}:${process.env.PATH}`,
         COMMAND_LOG: log,
         SCENARIO: JSON.stringify(scenario),
+        NODE_EXTRA_CA_CERTS: '',
         ...environment,
       },
       encoding: 'utf8',
@@ -101,6 +103,63 @@ test('packaging recovers one PostgreSQL throttle and completes the smoke journey
     2,
   );
 });
+
+test('packaging forwards a configured CA as a BuildKit secret to both image builds', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'packaging-ca-'));
+  const certificate = join(directory, 'proxy trust.pem');
+  writeFileSync(certificate, rootCertificates[0]);
+  try {
+    const result = smoke({}, { NODE_EXTRA_CA_CERTS: certificate });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const builds = result.commands.filter(
+      ([command, operation]) => command === 'docker' && operation === 'build',
+    );
+    assert.equal(builds.length, 2);
+    for (const build of builds) {
+      const index = build.indexOf('--secret');
+      assert.notEqual(index, -1);
+      assert.equal(build[index + 1], `id=proxy_ca,src=${certificate}`);
+    }
+    assert.equal(
+      result.commands.filter(
+        ([command, operation, ...args]) =>
+          command === 'docker' &&
+          operation === 'run' &&
+          args.some((arg) => arg.includes(certificate)),
+      ).length,
+      0,
+    );
+    requireCleanup(result);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('packaging keeps CA provisioning optional for environments using system trust', () => {
+  const result = smoke({});
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const builds = result.commands.filter(
+    ([command, operation]) => command === 'docker' && operation === 'build',
+  );
+  assert.equal(builds.length, 2);
+  assert.ok(builds.every((build) => !build.includes('--secret')));
+});
+
+for (const kind of ['missing', 'directory']) {
+  test(`packaging rejects a ${kind} CA file before acquiring or building images`, () => {
+    const directory = mkdtempSync(join(tmpdir(), 'packaging-ca-invalid-'));
+    try {
+      const certificate =
+        kind === 'missing' ? join(directory, 'missing.pem') : directory;
+      const result = smoke({}, { NODE_EXTRA_CA_CERTS: certificate });
+      assert.equal(result.status, 1, result.stdout + result.stderr);
+      assert.match(result.stderr, /NODE_EXTRA_CA_CERTS.*readable.*file/);
+      assert.deepEqual(result.commands, [['docker', 'info']]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+}
 
 function acquisitions(result) {
   return result.commands.filter(
