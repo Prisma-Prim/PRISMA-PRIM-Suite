@@ -274,6 +274,20 @@ The [approved-estimate internal Offer preparation contract (§26)](release-3-com
 
 The new handoff requires live v2 plus independent estimate read (Contributor v1 or Director v1), current Opportunity visibility and the ordinary Offer/Client prerequisites. v2 grants none of those independent reads, estimate creation/decision, Offer approval, Contract or cross-Company authority. Existing Snapshot authority and both profitability bundles remain unchanged. Ordinary current Offer readers may read an already frozen internal draft's amount/currency and approved-source stamp, without gaining cost, margin, target, strategic rationale or economic event/history access. Revoking economic read therefore denies new handoffs and mutation replay while preserving independently authorized commercial content reads. §26 owns the complete states and source eligibility; an estimate approval never supplies Offer approval or transmission authority.
 
+The bounded [Company consulting Offer model contract (§27)](release-3-commercial-27-company-offer-model.md#274-independent-authority)
+adds two independent opt-in Company bundles under Dan's 2026-10-24 continuation
+and standing provisional MVP delegation: **Company Offer Model Editor v1** has
+exactly `commercial.offer.model.read` and `commercial.offer.model.version.create`;
+**Company Offer Model Approver v1** has exactly `commercial.offer.model.read`,
+`commercial.offer.model.decide` and `commercial.offer.model.withdraw`. Each uses
+the existing explicit Company assignment administration, active membership/context,
+captured-version and bundle-label-only grant/revoke event convention. Null/unknown
+versions fail closed. There is no backfill or automatic grant; existing Offer,
+Director, pricing, Document and Workspace-owner grants confer neither bundle.
+These grants provide no Company context, commercial/client/price/cost read,
+Activity read, external-use or administration authority. Section 27 owns their
+complete independent model-read/mutation and lifecycle contract.
+
 Dan's 2026-09-30 Product Owner decision for [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488) adds two separate opt-in bundles for the [approved first confirmed-cost profitability journey](release-3-confirmed-cost-profitability-estimate-prd.md):
 
 | Bundle                                   | Captured v1 permissions                                                              | Authorized result                                                                   |

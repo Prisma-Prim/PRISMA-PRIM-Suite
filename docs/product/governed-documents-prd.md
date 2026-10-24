@@ -146,6 +146,13 @@ October controlled sources now include completed questionnaire, editable Offer/C
 
 The [candidate Offer/Contract mapping](commercial-candidate-models-2026-10.md) supplies reusable review skeletons and source-located empty slots. Its conversion comparison supports structural preparation only and records remaining layout/annotation differences; it approves no Template Version, clause or Representation equivalence.
 
+The separately normalized [Commercial Workflow §27](release-3-commercial-27-company-offer-model.md)
+defines one bounded Company consulting Offer model with human-entered content,
+immutable Versions, separately granted human approval and explicit withdrawal from
+new use. It seeds no approved content and does not treat receipt of an example as
+approval. Its first runtime outcome is configuration, not generated Offer bytes,
+price/tax authority, external use or Document Registry designation.
+
 Question source: S03.
 
 ## 15. Technical dependencies

@@ -3557,6 +3557,17 @@ The [October source reconciliation](commercial-source-reconciliation-2026-10.md)
 
 [Commercial Workflow §22](release-3-commercial-22-controlled-evidence-2026-10.md#22-controlled-commercial-evidence-october-2026-493) owns the case-specific acceptance evidence, the unresolved conflict with C1's prior acceptance gate and separate numbering configuration direction. [Governed Documents §14](governed-documents-prd.md#14-evidence-dependencies) owns received-example/approved-Template boundaries. The [confirmed-cost PRD §3](release-3-confirmed-cost-profitability-estimate-prd.md#3-controlled-source-provenance-and-handling) preserves its existing source and historical-calibration limit. No new numbered decision is approved; no interview coverage metric, illustrative history, permission or release boundary changes.
 
+Dan's 2026-10-24 continuation toward a representative end-to-end dossier is
+normalized under the standing provisional Commercial Workflow delegation in
+[#845](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/845).
+[Commercial Workflow §27](release-3-commercial-27-company-offer-model.md) owns
+the first D7 outcome: Company-supplied model content, independent explicit editing
+and approval grants, immutable Versions and withdrawal from new use. This is
+agent product synthesis for a bounded configuration capability, not approval of
+received clauses, source contradictions, prices, fiscal treatment, official
+numbering or actual tenant assignments. Generation remains separately scoped;
+no new numbered decision or Iurie answer is claimed.
+
 ### 34.6 Bounded confirmed-cost first-journey approval — 2026-10-01
 
 Under Dan's 2026-10-01 delegation to complete priority 4, coordinating root product review in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497) approves the existing reversible Draft choices and the bounded version/concurrency conventions needed to make them executable. The [Confirmed-Cost Profitability Estimate PRD §11](release-3-confirmed-cost-profitability-estimate-prd.md#11-decision-provenance-and-implementation-boundary) owns the dated decision provenance; its first-journey contract owns observable behavior. Dan's separate 2026-09-30 Contributor/Director permission decision remains owned by the authorization PRD. The Activity Log owner normalizes internal recording only, with no projection or access expansion.
