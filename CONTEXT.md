@@ -123,7 +123,7 @@ _Avoid_: Mutable estimate, approved estimate when only one version is approved
 ## Commercial documents
 
 **Offer**:
-The commercial proposal made to a named Client Legal Entity, associated with a Client Account, from a confirmed Client Request and a Pricing Snapshot.
+The commercial proposal made to a named Client Legal Entity, associated with a Client Account, from a confirmed Client Request and an immutable price source.
 _Avoid_: Quotation, quote, proposal
 
 **Offer Version**:

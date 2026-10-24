@@ -1601,6 +1601,8 @@ Money follows the fixed-precision and currency rules in section 12. Discounts, o
 
 `Offer` is the durable commercial identity. Each revision is a complete `OfferVersion` snapshot containing recipient legal identity, service scope, pricing snapshot, commercial conditions, validity, referenced documents, template version and generated artefact. An approved or transmitted version is immutable. Negotiation creates a new version and preserves the prior one.
 
+The later [bounded approved-estimate internal preparation contract, Commercial Workflow §26](release-3-commercial-26-estimate-offer-preparation.md), authorized by Dan's D6 continuation in #840 on 2026-10-24, adds an internal-only exact economic price-source variant under the same Offer identity/history. It preserves unspecified tax meaning and independent approvals; existing illustrative Snapshots and their simulated workflow remain unchanged. The capability PRD owns the complete behavior and permission consequences; this is no new Iurie fiscal or operational-content approval.
+
 Three dimensions are recorded separately:
 
 1. internal preparation and approval state;
@@ -3560,6 +3562,8 @@ The [October source reconciliation](commercial-source-reconciliation-2026-10.md)
 Under Dan's 2026-10-01 delegation to complete priority 4, coordinating root product review in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497) approves the existing reversible Draft choices and the bounded version/concurrency conventions needed to make them executable. The [Confirmed-Cost Profitability Estimate PRD §11](release-3-confirmed-cost-profitability-estimate-prd.md#11-decision-provenance-and-implementation-boundary) owns the dated decision provenance; its first-journey contract owns observable behavior. Dan's separate 2026-09-30 Contributor/Director permission decision remains owned by the authorization PRD. The Activity Log owner normalizes internal recording only, with no projection or access expansion.
 
 This is product-contract approval, not source evidence of a rounding/fiscal policy and not implemented runtime. The controlled E08 bytes, confidential-case boundary, existing illustrative history and October dossier evidence remain unchanged. No default target, business range, automatic fiscal/overhead/price formula, Offer authority, new numbered decision or functional MVP gain is asserted.
+
+Dan's later 2026-10-24 D6 continuation, normalized in [#840](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/840), separately approves the provisional [internal Offer handoff in Commercial Workflow §26](release-3-commercial-26-estimate-offer-preparation.md). It preserves each exact Director approval and unspecified tax meaning, defines independent opt-in handoff authority and cost confidentiality, and leaves operational execution deferred. It does not retrospectively expand the October 1 approval or claim new Iurie evidence.
 
 ### 34.7 Bounded Ideas intake and access separation — 2026-10-19
 

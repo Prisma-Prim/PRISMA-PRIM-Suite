@@ -23,6 +23,7 @@ Sections 1–15 are below. Each later section is its own file, with its original
 - [Section 23. Approved provisional Opportunity outcome status (SO-2)](release-3-commercial-23-opportunity-outcome-status.md)
 - [Section 24. Approved provisional configurable Sales Stage (SO-2)](release-3-commercial-24-sales-stages.md)
 - [Section 25. Approved provisional Offer and Contract history in the commercial Activity Log (HI-4)](release-3-commercial-25-offer-contract-history.md)
+- [Section 26. Approved-estimate internal Offer preparation (#840)](release-3-commercial-26-estimate-offer-preparation.md)
 
 ## 1. Authority and purpose
 

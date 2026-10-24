@@ -16,6 +16,8 @@ IDs such as S04-Q11 cite Iurie's answers in the [coverage matrix](iurie-business
 
 ### 18.1 Outcome and inherited boundary
 
+This section owns the original illustrative Pricing Snapshot variant. The separate [approved-estimate internal preparation contract in section 26](release-3-commercial-26-estimate-offer-preparation.md) adds one closed price-source variant under the same Offer identity and Version history. Its explicit internal-only eligibility, authority and missing tax meaning override this section only for that variant; the existing Snapshot, representation, Quality Check and simulated execution contracts below remain unchanged.
+
 An authorized user of the Company responsible for an Opportunity turns one of its Pricing Snapshots into an Offer whose first complete Offer Version names one Client Legal Entity. Deterministic Quality Checks run against that exact version, and an approver approves or rejects it. A preparer records a simulated transmission of the approved version, and an approver records the Client's simulated response. A later change creates a new version and leaves earlier versions unchanged. Every Offer artifact is visibly provisional.
 
 Inherited and not restated (Decided):
