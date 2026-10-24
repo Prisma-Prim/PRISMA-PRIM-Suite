@@ -197,6 +197,171 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     expect(owner.workspacePermissions).toContain('company.assignment.manage');
   });
 
+  it('lists unversioned, single-version and historical captures without changing their records', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Historical Assignment Company');
+    const workspaceMembershipId: unknown = member.workspaceMembershipId;
+    const companyId: unknown = company.id;
+    if (
+      typeof workspaceMembershipId !== 'string' ||
+      typeof companyId !== 'string'
+    )
+      throw new Error('The synthetic assignment target was not created.');
+
+    const assignments = await pool.query<{
+      id: string;
+      bundle: string;
+      permission_set_version: string | null;
+    }>(
+      `INSERT INTO company_role_assignments
+         (workspace_id, workspace_membership_id, company_id, bundle, permission_set_version)
+       VALUES ($1, $2, $3, 'company_context_access', NULL),
+              ($1, $2, $3, 'company_task_manager', 'v1'),
+              ($1, $2, $3, 'company_document_registrar', 'v1')
+       RETURNING id, bundle, permission_set_version`,
+      [WORKSPACE_ID, workspaceMembershipId, companyId],
+    );
+    const response = await fetch(
+      `${origin}/api/company-context-assignments/administration`,
+      { headers: identityHeaders('workspace-owner', 'Owner') },
+    );
+    expect(response.status).toBe(200);
+    const state: unknown = await response.json();
+    expect(state).toMatchObject({
+      assignments: expect.arrayContaining([
+        {
+          id: assignments.rows.find(
+            (row) => row.bundle === 'company_context_access',
+          )?.id,
+          workspaceMembershipId,
+          companyId,
+          bundle: 'Company Context Access',
+          permissionSetVersion: null,
+          active: true,
+        },
+        {
+          id: assignments.rows.find(
+            (row) => row.bundle === 'company_task_manager',
+          )?.id,
+          workspaceMembershipId,
+          companyId,
+          bundle: 'Company Task Manager',
+          permissionSetVersion: 'v1',
+          active: true,
+        },
+        {
+          id: assignments.rows.find(
+            (row) => row.bundle === 'company_document_registrar',
+          )?.id,
+          workspaceMembershipId,
+          companyId,
+          bundle: 'Company Document Registrar',
+          permissionSetVersion: 'v1',
+          active: true,
+        },
+      ]),
+    });
+  });
+
+  it('keeps a historical grant receipt unchanged after an explicit revoke and fresh capture', async () => {
+    await currentActor('workspace-owner', 'Owner');
+    const member = await currentActor('workspace-member', 'Member');
+    const company = await registerCompany('Historical Receipt Company');
+    const workspaceMembershipId: unknown = member.workspaceMembershipId;
+    const companyId: unknown = company.id;
+    if (
+      typeof workspaceMembershipId !== 'string' ||
+      typeof companyId !== 'string'
+    )
+      throw new Error('The synthetic assignment target was not created.');
+    const historicalRecord = {
+      id: '11111111-1111-4111-8111-111111111184',
+      workspaceMembershipId,
+      companyId,
+      bundle: 'Company Document Registrar',
+      permissionSetVersion: 'v1',
+      active: true,
+    };
+    await pool.query(
+      `INSERT INTO company_role_assignments
+         (id, workspace_id, workspace_membership_id, company_id, bundle, permission_set_version)
+       VALUES ($1, $2, $3, $4, 'company_document_registrar', 'v1')`,
+      [historicalRecord.id, WORKSPACE_ID, workspaceMembershipId, companyId],
+    );
+
+    async function command(method: 'POST' | 'DELETE', key: string) {
+      const path = '/api/company-document-registrar-assignments';
+      const target =
+        method === 'DELETE'
+          ? `${path}/${workspaceMembershipId}/${companyId}`
+          : path;
+      const response = await fetch(`${origin}${target}`, {
+        method,
+        headers: {
+          ...identityHeaders('workspace-owner', 'Owner'),
+          'content-type': 'application/json',
+          'idempotency-key': key,
+        },
+        body:
+          method === 'POST'
+            ? JSON.stringify({ workspaceMembershipId, companyId })
+            : undefined,
+      });
+      expect(response.status).toBe(method === 'POST' ? 201 : 200);
+      const record: unknown = await response.json();
+      return record;
+    }
+
+    expect(await command('POST', 'historical-repeat')).toEqual(
+      historicalRecord,
+    );
+    expect(await command('POST', 'historical-second-repeat')).toEqual(
+      historicalRecord,
+    );
+    expect(await command('POST', 'historical-repeat')).toEqual(
+      historicalRecord,
+    );
+    const revokedRecord = { ...historicalRecord, active: false };
+    expect(await command('DELETE', 'historical-revoke')).toEqual(revokedRecord);
+    const freshRecord = await command('POST', 'historical-fresh');
+    expect(freshRecord).toMatchObject({
+      workspaceMembershipId,
+      companyId,
+      bundle: 'Company Document Registrar',
+      permissionSetVersion: 'v3',
+      active: true,
+    });
+    expect(freshRecord).not.toMatchObject({ id: historicalRecord.id });
+    expect(await command('POST', 'historical-repeat')).toEqual(
+      historicalRecord,
+    );
+    expect(await command('DELETE', 'historical-revoke')).toEqual(revokedRecord);
+
+    const administration = await fetch(
+      `${origin}/api/company-context-assignments/administration`,
+      { headers: identityHeaders('workspace-owner', 'Owner') },
+    );
+    expect(administration.status).toBe(200);
+    const state: unknown = await administration.json();
+    expect(state).toMatchObject({ assignments: [freshRecord] });
+    const events = await pool.query<{ action: string; metadata: unknown }>(
+      `SELECT action, metadata FROM activity_log_events
+       WHERE action::text LIKE 'company_document_registrar_assignment.%'
+       ORDER BY occurred_at, id`,
+    );
+    expect(events.rows).toEqual([
+      {
+        action: 'company_document_registrar_assignment.revoked',
+        metadata: { bundle: 'Company Document Registrar' },
+      },
+      {
+        action: 'company_document_registrar_assignment.granted',
+        metadata: { bundle: 'Company Document Registrar' },
+      },
+    ]);
+  });
+
   it('rejects replay results that reference a different assignment target', async () => {
     await currentActor('workspace-owner', 'Owner');
     const member = await currentActor('workspace-member', 'Member');

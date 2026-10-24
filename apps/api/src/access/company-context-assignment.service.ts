@@ -1,10 +1,7 @@
 import {
   COMPANY_IDEAS_READER_BUNDLE,
-  COMPANY_IDEAS_READER_BUNDLE_LABEL,
   COMPANY_IDEAS_RECORDER_BUNDLE,
-  COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
   COMPANY_IDEAS_REVIEWER_BUNDLE,
-  COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL,
 } from './company-permissions.js';
 import {
   BadRequestException,
@@ -36,85 +33,45 @@ import {
 import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
+  COMPANY_ROLE_BUNDLES,
   COMPANY_TASK_MANAGER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
-  COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
-  COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
-  COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-  COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
-  COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
-  COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
-  COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
-  COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
-  COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
-  COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE,
-  COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
-  COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-  COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_INTAKE_BUNDLE,
-  COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
-  isCommercialIntakePermissionSetVersion,
-  isProjectPermissionSetVersion,
-  isOpportunityManagerPermissionSetVersion,
-  type CompanyOpportunityManagerPermissionSetVersion,
-  type CompanyCommercialIntakePermissionSetVersion,
-  type CompanyProjectPermissionSetVersion,
   COMPANY_SERVICE_CATALOGUE_BUNDLE,
-  COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   COMPANY_PRICING_CONFIGURATION_BUNDLE,
-  COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PRICING_USER_BUNDLE,
-  COMPANY_PRICING_USER_BUNDLE_LABEL,
   COMPANY_OFFER_PREPARER_BUNDLE,
   COMPANY_CONTRACT_PREPARER_BUNDLE,
   COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
   COMPANY_CONTRACT_APPROVER_BUNDLE,
   COMPANY_OFFER_APPROVER_BUNDLE,
-  COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
-  COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
-  COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
-  COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
-  COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE,
-  COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
-  COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
-  COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   COMPANY_PROJECT_APPROVER_BUNDLE,
-  COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
-  COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
   COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
-  COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
   COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
-  COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL,
   COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
-  COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL,
   COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
   COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
-  COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL,
-  COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL,
   COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
-  COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
-  COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
-  type CompanyDirectorClientPermissionSetVersion,
-  type DocumentPermissionSetVersion,
-  isDocumentPermissionSetVersion,
 } from './company-permissions.js';
+import { assignmentRecord } from './company-context-assignment-record.js';
 import type {
+  CompanyAssignmentDefinition as BundleDefinition,
   CompanyAccessAdministrationState,
   CompanyContextAssignmentRecord,
   GrantCompanyContextAssignmentCommand,
@@ -127,251 +84,165 @@ type Bundle = typeof companyRoleAssignments.$inferSelect.bundle;
 export const INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION = Symbol(
   'INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION',
 );
-type BundleDefinition = {
-  value: Bundle;
-  label:
-    | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
-    | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
-    | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
-    | typeof COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL
-    | typeof COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL
-    | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
-    | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL
-    | typeof COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL
-    | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
-    | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
-    | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
-    | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
-    | typeof COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL
-    | typeof COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL
-    | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL
-    | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL
-    | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
-    | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
-    | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
-    | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
-    | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
-    | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL
-    | typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL
-    | typeof COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL
-    | typeof COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL
-    | typeof COMPANY_IDEAS_READER_BUNDLE_LABEL
-    | typeof COMPANY_IDEAS_RECORDER_BUNDLE_LABEL
-    | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
-    | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
-    | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
-    | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
-    | typeof COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL
-    | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
-    | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
-    | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL
-    | typeof COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL
-    | typeof COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL;
-  permissionSetVersion:
-    | CompanyDirectorClientPermissionSetVersion
-    | DocumentPermissionSetVersion
-    | CompanyCommercialIntakePermissionSetVersion
-    | CompanyProjectPermissionSetVersion
-    | CompanyOpportunityManagerPermissionSetVersion
-    | null;
-};
-
 const IDEAS_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_IDEAS_READER_BUNDLE,
-  label: COMPANY_IDEAS_READER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const IDEAS_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_IDEAS_RECORDER_BUNDLE,
-  label: COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const IDEAS_REVIEWER_BUNDLE: BundleDefinition = {
   value: COMPANY_IDEAS_REVIEWER_BUNDLE,
-  label: COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const OPERATIONAL_RISK_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_OPERATIONAL_RISK_READER_BUNDLE,
-  label: COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const OPERATIONAL_RISK_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
-  label: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const TASK_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_MANAGER_BUNDLE,
-  label: COMPANY_TASK_MANAGER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const CONTEXT_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTEXT_ACCESS_BUNDLE,
-  label: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: null,
 };
 const DIRECTOR_CLIENT_BUNDLE: BundleDefinition = {
   value: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
-  label: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
 const DOCUMENT_PROJECT_ORGANIZER_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
-  label: COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 // A fresh grant captures v3; existing v1 and v2 assignments keep their
 // captured version until explicitly revoked and granted again.
 const DOCUMENT_REGISTRAR_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
-  label: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
   permissionSetVersion: 'v3',
 };
 // The opt-in Approver exists only as captured v1.
 const DOCUMENT_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_APPROVER_BUNDLE,
-  label: COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 // A fresh grant captures v2; existing v1 assignments keep their captured
 // version until explicitly revoked and granted again.
 const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
-  label: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_RESULT_RECORDER_BUNDLE,
-  label: COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const MISSION_DELIVERABLE_ACCESS_BUNDLE: BundleDefinition = {
   value: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
-  label: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const DOCUMENT_CONTENT_UPLOADER_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
-  label: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PROJECT_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_ACCESS_BUNDLE,
-  label: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
 // A fresh grant captures v4; existing v1, v2 and v3 assignments keep their
 // captured version until explicitly revoked and granted again.
 const COMMERCIAL_INTAKE_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_INTAKE_BUNDLE,
-  label: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
   permissionSetVersion: 'v4',
 };
 const SERVICE_CATALOGUE_BUNDLE: BundleDefinition = {
   value: COMPANY_SERVICE_CATALOGUE_BUNDLE,
-  label: COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PRICING_CONFIGURATION_BUNDLE: BundleDefinition = {
   value: COMPANY_PRICING_CONFIGURATION_BUNDLE,
-  label: COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PRICING_USER_BUNDLE: BundleDefinition = {
   value: COMPANY_PRICING_USER_BUNDLE,
-  label: COMPANY_PRICING_USER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const OFFER_MODEL_BUNDLES = {
   editor: {
     value: COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
-    label: COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL,
     permissionSetVersion: 'v1',
   },
   approver: {
     value: COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
-    label: COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
     permissionSetVersion: 'v1',
   },
 } satisfies Record<'editor' | 'approver', BundleDefinition>;
 const OFFER_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_OFFER_PREPARER_BUNDLE,
-  label: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
 const CONTRACT_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_PREPARER_BUNDLE,
-  label: COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const CONTRACT_EARLY_PREPARATION_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
-  label: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const CONTRACT_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_APPROVER_BUNDLE,
-  label: COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const OFFER_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_OFFER_APPROVER_BUNDLE,
-  label: COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PRICING_ADJUSTMENT_BUNDLE: BundleDefinition = {
   value: COMPANY_PRICING_ADJUSTMENT_BUNDLE,
-  label: COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const COMMERCIAL_ACTIVITY_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE,
-  label: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PROFITABILITY_CONTRIBUTOR_BUNDLE: BundleDefinition = {
   value: COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE,
-  label: COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PROFITABILITY_DIRECTOR_BUNDLE: BundleDefinition = {
   value: COMPANY_PROFITABILITY_DIRECTOR_BUNDLE,
-  label: COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 // A fresh grant captures v2; existing v1 assignments keep their captured
 // version until explicitly revoked and granted again.
 const OPPORTUNITY_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_OPPORTUNITY_MANAGER_BUNDLE,
-  label: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
 // The opt-in Sales Stage configuration bundle exists only as captured v1.
 const SALES_STAGE_CONFIGURATION_BUNDLE: BundleDefinition = {
   value: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
-  label: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 // The opt-in lifecycle approver exists only as captured v1.
 const PROJECT_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_APPROVER_BUNDLE,
-  label: COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PROJECT_TEMPLATE_USER_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
-  label: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
   permissionSetVersion: 'v2',
 };
 const PROJECT_TEMPLATE_CONFIGURATION_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
-  label: COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE,
-  label: COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
@@ -1693,8 +1564,7 @@ export class CompanyContextAssignmentService {
               actor.workspaceId,
               workspaceMembershipId,
               companyId,
-              bundle.value,
-              bundle.permissionSetVersion,
+              bundle,
             )
           : await this.applyRevoke(
               actor.workspaceId,
@@ -1717,7 +1587,7 @@ export class CompanyContextAssignmentService {
             workspaceMembershipId,
             internalUserId: target.internalUserId,
           },
-          metadata: { bundle: bundle.label },
+          metadata: { bundle: COMPANY_ROLE_BUNDLES[bundle.value].label },
           transitionId: reserved.id,
         });
       }
@@ -1761,14 +1631,13 @@ export class CompanyContextAssignmentService {
     workspaceId: string,
     workspaceMembershipId: string,
     companyId: string,
-    bundle: Bundle,
-    permissionSetVersion: BundleDefinition['permissionSetVersion'],
+    definition: BundleDefinition,
   ) {
     const active = await this.findActiveAssignment(
       workspaceId,
       workspaceMembershipId,
       companyId,
-      bundle,
+      definition.value,
     );
     if (active) return { ...active, changed: false };
 
@@ -1778,8 +1647,8 @@ export class CompanyContextAssignmentService {
         workspaceId,
         workspaceMembershipId,
         companyId,
-        bundle,
-        permissionSetVersion,
+        bundle: definition.value,
+        permissionSetVersion: definition.permissionSetVersion,
       })
       .onConflictDoNothing({
         target: [
@@ -1796,7 +1665,7 @@ export class CompanyContextAssignmentService {
       workspaceId,
       workspaceMembershipId,
       companyId,
-      bundle,
+      definition.value,
     );
     if (!raced) throw new Error('The fresh assignment could not be resolved.');
     return { ...raced, changed: false };
@@ -2113,336 +1982,4 @@ function assertSameCommand(
   }
   if (!command.resultAssignmentId)
     throw new Error('The idempotent command is incomplete.');
-}
-
-function assignmentRecord(
-  assignment: Pick<
-    typeof companyRoleAssignments.$inferSelect,
-    | 'id'
-    | 'workspaceMembershipId'
-    | 'companyId'
-    | 'bundle'
-    | 'permissionSetVersion'
-  >,
-  active: boolean,
-): CompanyContextAssignmentRecord {
-  const base = {
-    id: assignment.id,
-    workspaceMembershipId: assignment.workspaceMembershipId,
-    companyId: assignment.companyId,
-    active,
-  };
-  switch (assignment.bundle) {
-    case COMPANY_IDEAS_READER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Ideas Reader version.');
-      return {
-        ...base,
-        bundle: COMPANY_IDEAS_READER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_IDEAS_RECORDER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Ideas Recorder version.');
-      return {
-        ...base,
-        bundle: COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_IDEAS_REVIEWER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Ideas Reviewer version.');
-      return {
-        ...base,
-        bundle: COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_TASK_MANAGER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Task Manager version.');
-      return {
-        ...base,
-        bundle: COMPANY_TASK_MANAGER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Document Project Organizer version.');
-      return {
-        ...base,
-        bundle: COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_DOCUMENT_REGISTRAR_BUNDLE:
-      if (!isDocumentPermissionSetVersion(assignment.permissionSetVersion))
-        throw new Error('Invalid Document Registrar version.');
-      return {
-        ...base,
-        bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE_LABEL,
-        permissionSetVersion: assignment.permissionSetVersion,
-      };
-    case COMPANY_DOCUMENT_CONTENT_READER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Document Content Reader version.');
-      return {
-        ...base,
-        bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_TASK_RESULT_RECORDER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Task Result Recorder version.');
-      return {
-        ...base,
-        bundle: COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Mission Deliverable Access version.');
-      return {
-        ...base,
-        bundle: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Document Content Uploader version.');
-      return {
-        ...base,
-        bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_DOCUMENT_APPROVER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Document Approver version.');
-      return {
-        ...base,
-        bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PROJECT_ACCESS_BUNDLE:
-      if (!isProjectPermissionSetVersion(assignment.permissionSetVersion))
-        throw new Error('Invalid Company Project assignment version.');
-      return {
-        ...base,
-        bundle: COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
-        permissionSetVersion: assignment.permissionSetVersion,
-      };
-
-    case COMPANY_CONTEXT_ACCESS_BUNDLE:
-      return {
-        ...base,
-        bundle: COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL,
-        permissionSetVersion: null,
-      };
-    case COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE:
-      if (
-        assignment.permissionSetVersion !== 'v1' &&
-        assignment.permissionSetVersion !== 'v2'
-      ) {
-        throw new Error(
-          'The Company Director Client assignment version is invalid.',
-        );
-      }
-      return {
-        ...base,
-        bundle: COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
-        permissionSetVersion: assignment.permissionSetVersion,
-      };
-    case COMPANY_COMMERCIAL_INTAKE_BUNDLE:
-      if (
-        !isCommercialIntakePermissionSetVersion(assignment.permissionSetVersion)
-      )
-        throw new Error('Invalid Company Commercial Intake version.');
-      return {
-        ...base,
-        bundle: COMPANY_COMMERCIAL_INTAKE_BUNDLE_LABEL,
-        permissionSetVersion: assignment.permissionSetVersion,
-      };
-    case COMPANY_SERVICE_CATALOGUE_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Service Catalogue version.');
-      return {
-        ...base,
-        bundle: COMPANY_SERVICE_CATALOGUE_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PRICING_CONFIGURATION_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Pricing Configuration version.');
-      return {
-        ...base,
-        bundle: COMPANY_PRICING_CONFIGURATION_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PRICING_USER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Pricing User version.');
-      return {
-        ...base,
-        bundle: COMPANY_PRICING_USER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_OFFER_PREPARER_BUNDLE:
-      if (
-        assignment.permissionSetVersion !== 'v1' &&
-        assignment.permissionSetVersion !== 'v2'
-      )
-        throw new Error('Invalid Company Offer Preparer version.');
-      return {
-        ...base,
-        bundle: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
-        permissionSetVersion: assignment.permissionSetVersion,
-      };
-    case COMPANY_CONTRACT_PREPARER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Contract Preparer version.');
-      return {
-        ...base,
-        bundle: COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_OFFER_MODEL_EDITOR_BUNDLE:
-    case COMPANY_OFFER_MODEL_APPROVER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Offer Model assignment version.');
-      return {
-        ...base,
-        bundle:
-          assignment.bundle === COMPANY_OFFER_MODEL_EDITOR_BUNDLE
-            ? COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
-            : COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Contract Early Preparation version.');
-      return {
-        ...base,
-        bundle: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_CONTRACT_APPROVER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Contract Approver version.');
-      return {
-        ...base,
-        bundle: COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_OFFER_APPROVER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Offer Approver version.');
-      return {
-        ...base,
-        bundle: COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PRICING_ADJUSTMENT_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Pricing Adjustment version.');
-      return {
-        ...base,
-        bundle: COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Commercial Activity Reader version.');
-      return {
-        ...base,
-        bundle: COMPANY_COMMERCIAL_ACTIVITY_READER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_OPERATIONAL_RISK_READER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Operational Risk version.');
-      return {
-        ...base,
-        bundle: COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Operational Risk version.');
-      return {
-        ...base,
-        bundle: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Profitability Contributor version.');
-      return {
-        ...base,
-        bundle: COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PROFITABILITY_DIRECTOR_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Profitability Director version.');
-      return {
-        ...base,
-        bundle: COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_OPPORTUNITY_MANAGER_BUNDLE:
-      if (
-        !isOpportunityManagerPermissionSetVersion(
-          assignment.permissionSetVersion,
-        )
-      )
-        throw new Error('Invalid Company Opportunity Manager version.');
-      return {
-        ...base,
-        bundle: COMPANY_OPPORTUNITY_MANAGER_BUNDLE_LABEL,
-        permissionSetVersion: assignment.permissionSetVersion,
-      };
-    case COMPANY_PROJECT_APPROVER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Project Approver version.');
-      return {
-        ...base,
-        bundle: COMPANY_PROJECT_APPROVER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Sales Stage Configuration version.');
-      return {
-        ...base,
-        bundle: COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error('Invalid Company Project Stage Advancer version.');
-      return {
-        ...base,
-        bundle: COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-    case COMPANY_PROJECT_TEMPLATE_USER_BUNDLE:
-      if (
-        assignment.permissionSetVersion !== 'v1' &&
-        assignment.permissionSetVersion !== 'v2'
-      )
-        throw new Error('Invalid Company Project Template User version.');
-      return {
-        ...base,
-        bundle: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
-        permissionSetVersion: assignment.permissionSetVersion,
-      };
-    case COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
-        throw new Error(
-          'Invalid Company Project Template Configuration version.',
-        );
-      return {
-        ...base,
-        bundle: COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
-      };
-  }
 }
