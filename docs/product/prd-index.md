@@ -58,6 +58,12 @@ mission Versions, preserving originals and independent Task/Document authority.
 It changes no ordinary completion, stage, approval or certification semantics.
 D4 implementation follows its merged contract; #820 retains D3 → D4 → D2 ordering.
 
+The [bounded thirteen-activity pilot plan](release-1-project-task-prd.md#28-approved-bounded-thirteen-activity-pilot-plan-836)
+under #836 preserves one anonymous source Version, thirteen ordinary Task copies
+and their intended results. Explicit captured Template User v2 adds pilot access
+without widening oldv1; the flat plan defines no stage or completion obligation.
+Its runtime child follows the merged contract, after delivered D3/D4 under #820.
+
 ## 4. Cross-cutting PRDs
 
 | PRD                                                                                              | Document status | Primary authority                                                         |
