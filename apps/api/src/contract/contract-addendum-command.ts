@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   ConflictException,
   HttpException,
@@ -65,8 +66,9 @@ export async function createContractAddendum(
   ] as const;
   await authorization.requireContractAccess(input.actor, permissions);
   const key = requireIdempotencyKey(input.idempotencyKey);
-  return database
-    .transaction(async () => {
+  return runClientReferenceTransaction({
+    database: database,
+    work: async () => {
       const { actor } = input;
       const companyId = await authorization.requireContractAccess(
         actor,
@@ -297,14 +299,14 @@ export async function createContractAddendum(
         occurredAt: createdAt,
       });
       return versions.view(actor, contract, version);
-    })
-    .catch((error: unknown) => {
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException({
-        code: 'CONTRACT_CREATION_UNCERTAIN',
-        correlationId: randomUUID(),
-        message:
-          'The Addendum outcome is uncertain. Retry the identical command.',
-      });
+    },
+  }).catch((error: unknown) => {
+    if (error instanceof HttpException) throw error;
+    throw new InternalServerErrorException({
+      code: 'CONTRACT_CREATION_UNCERTAIN',
+      correlationId: randomUUID(),
+      message:
+        'The Addendum outcome is uncertain. Retry the identical command.',
     });
+  });
 }

@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { createHash } from 'node:crypto';
 import {
   BadRequestException,
@@ -124,91 +125,95 @@ export class CommercialIntakeService {
     const command = readCreateCommercialIntakeCommand(value);
     const idempotencyKey = requireIdempotencyKey(key);
     const fingerprint = commandFingerprint(command);
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireCommercialIntakeAccess(
-        actor,
-        'create',
-        true,
-      );
-      await this.lockCommand(actor, companyId, idempotencyKey);
-      const replay = await this.findCommand(actor, companyId, idempotencyKey);
-      if (replay) {
-        if (replay.fingerprint !== fingerprint)
-          throw new ConflictException({
-            code: 'IDEMPOTENCY_CONFLICT',
-            message: 'Idempotency-Key was already used for another Request.',
-          });
-        return this.loadDetail(
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId =
+          await this.authorization.requireCommercialIntakeAccess(
+            actor,
+            'create',
+            true,
+          );
+        await this.lockCommand(actor, companyId, idempotencyKey);
+        const replay = await this.findCommand(actor, companyId, idempotencyKey);
+        if (replay) {
+          if (replay.fingerprint !== fingerprint)
+            throw new ConflictException({
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'Idempotency-Key was already used for another Request.',
+            });
+          return this.loadDetail(
+            actor,
+            companyId,
+            replay.resultClientRequestId,
+            true,
+          );
+        }
+
+        const clientReference = command.clientAccountId
+          ? await this.recordClientReference(actor, command.clientAccountId)
+          : undefined;
+        const [request] = await this.databaseContext.connection
+          .insert(clientRequests)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            clientAccountId: command.clientAccountId,
+            originalText: command.originalText,
+            sourceLabel: command.sourceLabel,
+            reportedReceivedAt: command.reportedReceivedAt,
+            subject: command.subject,
+            capturedByInternalUserId: actor.internalUserId,
+            capturedByWorkspaceMembershipId: actor.workspaceMembershipId,
+          })
+          .returning();
+        if (!request) throw new Error('The Client Request was not recorded.');
+        const [opportunity] = await this.databaseContext.connection
+          .insert(opportunities)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            clientRequestId: request.id,
+            initial: true,
+            title: command.opportunity.title,
+            scope: command.opportunity.scope,
+            nextAction: command.opportunity.nextAction,
+            responsibleInternalUserId: actor.internalUserId,
+            responsibleWorkspaceMembershipId: actor.workspaceMembershipId,
+          })
+          .returning();
+        if (!opportunity)
+          throw new Error('The initial Opportunity was not recorded.');
+        // The creator is the initial responsible actor, and this request already
+        // synchronized that internal user's display name, so the create response
+        // carries the same label the list projection reads back.
+        const responsibleDisplayName = actor.displayName;
+        await this.accountability.recordCommercialIntakeCreated({
           actor,
           companyId,
-          replay.resultClientRequestId,
-          true,
-        );
-      }
-
-      const clientReference = command.clientAccountId
-        ? await this.recordClientReference(actor, command.clientAccountId)
-        : undefined;
-      const [request] = await this.databaseContext.connection
-        .insert(clientRequests)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          clientAccountId: command.clientAccountId,
-          originalText: command.originalText,
-          sourceLabel: command.sourceLabel,
-          reportedReceivedAt: command.reportedReceivedAt,
-          subject: command.subject,
-          capturedByInternalUserId: actor.internalUserId,
-          capturedByWorkspaceMembershipId: actor.workspaceMembershipId,
-        })
-        .returning();
-      if (!request) throw new Error('The Client Request was not recorded.');
-      const [opportunity] = await this.databaseContext.connection
-        .insert(opportunities)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
           clientRequestId: request.id,
-          initial: true,
-          title: command.opportunity.title,
-          scope: command.opportunity.scope,
-          nextAction: command.opportunity.nextAction,
-          responsibleInternalUserId: actor.internalUserId,
-          responsibleWorkspaceMembershipId: actor.workspaceMembershipId,
-        })
-        .returning();
-      if (!opportunity)
-        throw new Error('The initial Opportunity was not recorded.');
-      // The creator is the initial responsible actor, and this request already
-      // synchronized that internal user's display name, so the create response
-      // carries the same label the list projection reads back.
-      const responsibleDisplayName = actor.displayName;
-      await this.accountability.recordCommercialIntakeCreated({
-        actor,
-        companyId,
-        clientRequestId: request.id,
-        opportunityId: opportunity.id,
-      });
-      await this.databaseContext.connection
-        .insert(commercialIntakeCommands)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey,
-          fingerprint,
-          resultClientRequestId: request.id,
+          opportunityId: opportunity.id,
         });
-      return detailView({
-        request,
-        opportunity,
-        responsibleDisplayName,
-        outcomeHistory: { entries: [] },
-        salesStage: null,
-        stageHistory: { entries: [] },
-        client: clientReference,
-      });
+        await this.databaseContext.connection
+          .insert(commercialIntakeCommands)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            idempotencyKey,
+            fingerprint,
+            resultClientRequestId: request.id,
+          });
+        return detailView({
+          request,
+          opportunity,
+          responsibleDisplayName,
+          outcomeHistory: { entries: [] },
+          salesStage: null,
+          stageHistory: { entries: [] },
+          client: clientReference,
+        });
+      },
     });
   }
 

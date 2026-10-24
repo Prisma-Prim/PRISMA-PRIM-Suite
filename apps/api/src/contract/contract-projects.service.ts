@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   ContractProjectLinkStore,
   agreementTarget,
@@ -141,8 +142,9 @@ export class ContractProjectsService {
       LINK_PERMISSIONS,
     );
     const key = requireIdempotencyKey(input.idempotencyKey);
-    return this.database
-      .transaction(async () => {
+    return runClientReferenceTransaction({
+      database: this.database,
+      work: async () => {
         const { actor } = input;
         const companyId = await this.authorization.requireContractAccess(
           actor,
@@ -223,16 +225,16 @@ export class ContractProjectsService {
           key,
           fingerprint,
         });
-      })
-      .catch((error: unknown) => {
-        if (error instanceof HttpException) throw error;
-        throw new InternalServerErrorException({
-          code: 'CONTRACT_PROJECT_LINK_UNCERTAIN',
-          correlationId: randomUUID(),
-          message:
-            'The Contract Project link outcome is uncertain. Retry the identical command.',
-        });
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        code: 'CONTRACT_PROJECT_LINK_UNCERTAIN',
+        correlationId: randomUUID(),
+        message:
+          'The Contract Project link outcome is uncertain. Retry the identical command.',
       });
+    });
   }
 
   async linkedProjects(actor: ActorContext, contract: ContractRow) {

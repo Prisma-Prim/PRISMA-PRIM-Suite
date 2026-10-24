@@ -2,7 +2,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { ClientReferenceStateDrift } from './client-reference-state-drift.js';
+import { ClientReferenceStateDrift } from '../client/client-reference-state-drift.js';
 import { DatabaseContext } from './database-context.js';
 import {
   createIsolatedPostgresTestDatabase,
@@ -12,7 +12,7 @@ import {
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const withPostgres = databaseUrl ? describe : describe.skip;
 
-withPostgres('Client reference transaction recovery', () => {
+withPostgres('DatabaseContext transactions', () => {
   let database: IsolatedPostgresTestDatabase | undefined;
   let context: DatabaseContext;
 
@@ -26,7 +26,7 @@ withPostgres('Client reference transaction recovery', () => {
     if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
     database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
-      namePrefix: 'client_reference_retry',
+      namePrefix: 'database_context',
     });
     context = new DatabaseContext(drizzle(database.targetPool));
     await database.targetPool.query(`CREATE TABLE reference_retry_probe (
@@ -45,91 +45,50 @@ withPostgres('Client reference transaction recovery', () => {
     await database?.close();
   });
 
-  it('releases old locks and rolls back effects before each fresh whole attempt', async () => {
-    const transactionIds = new Set<string>();
-    let attempts = 0;
-    const result = await context.transaction(async () => {
-      attempts += 1;
-      // An independent connection can take the row only after the preceding
-      // attempt has rolled back. It also sees none of that attempt's writes.
-      const previous = await requiredDatabase().targetPool.query<{
-        value: number;
-      }>(
-        'SELECT value FROM reference_retry_probe WHERE id = 1 FOR UPDATE NOWAIT',
-      );
-      expect(previous.rows).toEqual([{ value: 0 }]);
-      const identity = await context.connection.execute<{ id: string }>(
-        sql`SELECT txid_current()::text AS id`,
-      );
-      transactionIds.add(requiredRow(identity.rows).id);
-      await context.connection.execute(
-        sql`UPDATE reference_retry_probe SET value = value + 1 WHERE id = 1`,
-      );
-      if (attempts < 3) throw new ClientReferenceStateDrift();
-      return 'committed';
-    });
+  it('preserves transaction configuration and restores the connection after commit', async () => {
+    const connection = context.connection;
+    const result = await context.transaction(
+      async () => {
+        expect(context.connection).not.toBe(connection);
+        const settings = await context.connection.execute<{
+          isolation: string;
+          readOnly: string;
+        }>(sql`SELECT current_setting('transaction_isolation') AS isolation,
+          current_setting('transaction_read_only') AS "readOnly"`);
+        expect(settings.rows).toEqual([
+          { isolation: 'repeatable read', readOnly: 'on' },
+        ]);
+        return 'committed';
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
 
     expect(result).toBe('committed');
-    expect(attempts).toBe(3);
-    expect(transactionIds.size).toBe(3);
-    expect(
-      (
-        await requiredDatabase().targetPool.query(
-          'SELECT value FROM reference_retry_probe',
-        )
-      ).rows,
-    ).toEqual([{ value: 1 }]);
+    expect(context.connection).toBe(connection);
   });
 
-  it('stops after three drifting transactions with the original opaque refusal and no effects', async () => {
-    const transactionIds = new Set<string>();
+  it('runs ordinary transactions once and propagates Client drift unchanged after rollback', async () => {
+    const error = new ClientReferenceStateDrift();
+    const connection = context.connection;
     let attempts = 0;
     const operation = context.transaction(async () => {
       attempts += 1;
-      const identity = await context.connection.execute<{ id: string }>(
-        sql`SELECT txid_current()::text AS id`,
-      );
-      transactionIds.add(requiredRow(identity.rows).id);
       await context.connection.execute(
         sql`UPDATE reference_retry_probe SET value = value + 1 WHERE id = 1`,
       );
-      throw new ClientReferenceStateDrift();
-    });
-    await expect(operation).rejects.toBeInstanceOf(NotFoundException);
-    await expect(operation).rejects.toMatchObject({
-      status: 404,
-      response: new NotFoundException().getResponse(),
+      throw error;
     });
 
-    expect(attempts).toBe(3);
-    expect(transactionIds.size).toBe(3);
+    await expect(operation).rejects.toBe(error);
+    expect(attempts).toBe(1);
+    expect(context.connection).toBe(connection);
     expect(
       (
         await requiredDatabase().targetPool.query(
-          'SELECT value FROM reference_retry_probe',
+          'SELECT value FROM reference_retry_probe WHERE id = 1 FOR UPDATE NOWAIT',
         )
       ).rows,
     ).toEqual([{ value: 0 }]);
-  });
-
-  it('rechecks live authority in the new transaction and stops on its denial', async () => {
-    let attempts = 0;
-    const denial = new ForbiddenException();
-    await expect(
-      context.transaction(async () => {
-        attempts += 1;
-        const authority = await context.connection.execute<{
-          allowed: boolean;
-        }>(sql`SELECT allowed FROM reference_retry_probe WHERE id = 1`);
-        if (!requiredRow(authority.rows).allowed) throw denial;
-        await requiredDatabase().targetPool.query(
-          'UPDATE reference_retry_probe SET allowed = false WHERE id = 1',
-        );
-        throw new ClientReferenceStateDrift();
-      }),
-    ).rejects.toBe(denial);
-
-    expect(attempts).toBe(2);
   });
 
   it.each([
@@ -173,9 +132,3 @@ withPostgres('Client reference transaction recovery', () => {
     expect(attempts).toBe(1);
   });
 });
-
-function requiredRow<Row extends object>(rows: readonly Row[]): Row {
-  const [row] = rows;
-  if (!row) throw new Error('The PostgreSQL fixture did not return its row.');
-  return row;
-}
