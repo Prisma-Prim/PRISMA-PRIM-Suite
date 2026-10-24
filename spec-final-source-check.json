@@ -1,0 +1,25 @@
+{
+  "issue": 840,
+  "pr": 841,
+  "source": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a",
+  "base": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+  "tree": "cb0e126ab98cba494f5d15fbc1b011060b3e43a5",
+  "clean": true,
+  "orderedReviewPassed": true,
+  "reviewKind": "root ordered Standards then Spec documentation preparation; supplemental automatic opening review completed with zero findings on same source",
+  "unresolvedReviewThreads": 0,
+  "reviewSubmissions": 0,
+  "inlineComments": 0,
+  "inProgressReactions": 0,
+  "supplementalAutomaticReview": {
+    "source": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a",
+    "status": "completed",
+    "hasFindings": false,
+    "summaryCommentId": 6381030030,
+    "summaryUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/841#issuecomment-6381030030",
+    "newRequest": false
+  },
+  "checkedAt": "2026-10-24T06:59:37.388Z",
+  "CI": 40071398537
+}
+

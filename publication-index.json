@@ -1,0 +1,47 @@
+{
+  "issue": 840,
+  "pr": 841,
+  "source": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a",
+  "base": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+  "integrationTree": "cb0e126ab98cba494f5d15fbc1b011060b3e43a5",
+  "run": 40071398537,
+  "keepThrough": "2026-11-08T07:00:09.352780+00:00",
+  "selection": "Reviewed technical contract/result summaries and already-public CI metadata only; no uploaded business originals, screenshots, credentials or raw private logs.",
+  "files": [
+    {
+      "path": "spec-ci-artifacts.json",
+      "bytes": 5573,
+      "sha256": "cf0453aa3318b802a6b5c05980b1b0d2cd92afdc6584afec6d2c5e87a7a0b15c"
+    },
+    {
+      "path": "spec-ci-jobs.json",
+      "bytes": 56930,
+      "sha256": "2d7562b4b369c9047e9fbaf36e72033ed0a06f0d9efae4565c2d504714ce18a3"
+    },
+    {
+      "path": "spec-ci-run.json",
+      "bytes": 15100,
+      "sha256": "c263a44efcc927f27d766d06adcd09cd7d782d0d15f267444743922a59096c2d"
+    },
+    {
+      "path": "spec-final-proof.json",
+      "bytes": 3090,
+      "sha256": "66d9e0aefc45e796bf27dc4452dcfc8339331da0d844c8edae2794845bf3e007"
+    },
+    {
+      "path": "spec-final-report.md",
+      "bytes": 2536,
+      "sha256": "67411da2576be9132054ef5f97d354555965b35c394116eb506d828ffa8d66d5"
+    },
+    {
+      "path": "spec-final-source-check.json",
+      "bytes": 893,
+      "sha256": "861a23fdf6a9ae50a7eb827e141f0aeade2bbf2c3f82c1eae4b1cceecd6ac1f1"
+    },
+    {
+      "path": "spec-review-preparation.md",
+      "bytes": 5265,
+      "sha256": "788465f76ecb6018b84cb5ee0b3b324137995e1a7064612a283f65fd3f462434"
+    }
+  ]
+}

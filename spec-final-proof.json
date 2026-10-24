@@ -1,0 +1,67 @@
+{
+  "issue": 840,
+  "pr": 841,
+  "status": "passed",
+  "source": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a",
+  "base": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+  "tree": "cb0e126ab98cba494f5d15fbc1b011060b3e43a5",
+  "run": 40071398537,
+  "runUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40071398537",
+  "verifiedJobs": 16,
+  "verifiedTestSteps": 10,
+  "review": "Root ordered Standards then Spec documentation preparation; no separate independent runtime reviewer or runtime implementation claimed",
+  "kind": "Complete independent public GitHub CI under explicit owner747 queue route; not a canonical local-gate or docs-only attestation",
+  "artifactInspection": "Actual provider identities/digests plus successful five uploads and quality retrieval/aggregate; complete raw archive bytes not locally verified",
+  "artifacts": [
+    {
+      "id": 12552130468,
+      "name": "browser-evidence-pr-40071398537",
+      "bytes": 387413143,
+      "digest": "sha256:ba675800be3c56027c3f6ac03fd036f30f55bda23677e8e6ca3a295c585ecc4a"
+    },
+    {
+      "id": 12551725890,
+      "name": "browser-evidence-part-browser-3-40071398537",
+      "bytes": 70843436,
+      "digest": "sha256:b6140d3b07388c140d25da03a1824928c1e8931c04b19ee262d3bffc97df3837"
+    },
+    {
+      "id": 12551587527,
+      "name": "browser-evidence-part-browser-2-40071398537",
+      "bytes": 77297204,
+      "digest": "sha256:ba21f9a77c685e202319ed5e41d99775c6157bb24697fc69a421cc7cc7470079"
+    },
+    {
+      "id": 12551119669,
+      "name": "browser-evidence-part-acceptance-2-40071398537",
+      "bytes": 57833450,
+      "digest": "sha256:fbdb27b6b06ed765f7f473a21184d3ce48be98eec9d46ad3078155285d9a0bd6"
+    },
+    {
+      "id": 12551063307,
+      "name": "browser-evidence-part-acceptance-1-40071398537",
+      "bytes": 67293272,
+      "digest": "sha256:3c19770bac7b852af983165eb35390ce9cd6061982c8e5cbd533f12688f1662c"
+    },
+    {
+      "id": 12550798788,
+      "name": "browser-evidence-part-browser-1-40071398537",
+      "bytes": 114145869,
+      "digest": "sha256:d4840c7c3459ea7aa88bb146cba23fe71a75f6409b72fbc2c71a59365e100879"
+    }
+  ],
+  "localPreflight": {
+    "status": "failed_before_any_family_executed",
+    "refusal": "Railway dependencies require the separate preparation: pnpm --dir .railway install --frozen-lockfile. No installation was performed by the verifier.",
+    "scope": {
+      "kind": "complete",
+      "reason": "Complete verification required: documentation-only eligibility was not proven by scripts/ci-change-scope.mjs (#730)."
+    },
+    "source": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a",
+    "base": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+    "tree": "cb0e126ab98cba494f5d15fbc1b011060b3e43a5"
+  },
+  "targetedLocal": "Doctor six applicable checks, repository formatting, diff check, repository references and96 local fragments passed; not complete local-gate evidence",
+  "runtime": "Documentation contract only. CI validates existing code/integration; it does not prove the future D6 behavior.",
+  "keepThrough": "2026-11-08T07:00:09.352780+00:00"
+}

@@ -1,0 +1,126 @@
+{
+  "total_count": 6,
+  "artifacts": [
+    {
+      "id": 12552130468,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MjEzMDQ2OA==",
+      "name": "browser-evidence-pr-40071398537",
+      "size_in_bytes": 387413143,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12552130468",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12552130468/zip",
+      "expired": false,
+      "digest": "sha256:ba675800be3c56027c3f6ac03fd036f30f55bda23677e8e6ca3a295c585ecc4a",
+      "created_at": "2026-10-24T06:58:01Z",
+      "updated_at": "2026-10-24T06:58:01Z",
+      "expires_at": "2026-11-07T06:57:46Z",
+      "workflow_run": {
+        "id": 40071398537,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "docs/d6-economic-offer-contract",
+        "head_sha": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a"
+      }
+    },
+    {
+      "id": 12551725890,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTcyNTg5MA==",
+      "name": "browser-evidence-part-browser-3-40071398537",
+      "size_in_bytes": 70843436,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551725890",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551725890/zip",
+      "expired": false,
+      "digest": "sha256:b6140d3b07388c140d25da03a1824928c1e8931c04b19ee262d3bffc97df3837",
+      "created_at": "2026-10-24T06:50:26Z",
+      "updated_at": "2026-10-24T06:50:26Z",
+      "expires_at": "2026-11-07T06:50:24Z",
+      "workflow_run": {
+        "id": 40071398537,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "docs/d6-economic-offer-contract",
+        "head_sha": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a"
+      }
+    },
+    {
+      "id": 12551587527,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTU4NzUyNw==",
+      "name": "browser-evidence-part-browser-2-40071398537",
+      "size_in_bytes": 77297204,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551587527",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551587527/zip",
+      "expired": false,
+      "digest": "sha256:ba21f9a77c685e202319ed5e41d99775c6157bb24697fc69a421cc7cc7470079",
+      "created_at": "2026-10-24T06:51:28Z",
+      "updated_at": "2026-10-24T06:51:28Z",
+      "expires_at": "2026-11-07T06:51:25Z",
+      "workflow_run": {
+        "id": 40071398537,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "docs/d6-economic-offer-contract",
+        "head_sha": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a"
+      }
+    },
+    {
+      "id": 12551119669,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTExOTY2OQ==",
+      "name": "browser-evidence-part-acceptance-2-40071398537",
+      "size_in_bytes": 57833450,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551119669",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551119669/zip",
+      "expired": false,
+      "digest": "sha256:fbdb27b6b06ed765f7f473a21184d3ce48be98eec9d46ad3078155285d9a0bd6",
+      "created_at": "2026-10-24T06:55:59Z",
+      "updated_at": "2026-10-24T06:55:59Z",
+      "expires_at": "2026-11-07T06:55:56Z",
+      "workflow_run": {
+        "id": 40071398537,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "docs/d6-economic-offer-contract",
+        "head_sha": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a"
+      }
+    },
+    {
+      "id": 12551063307,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTA2MzMwNw==",
+      "name": "browser-evidence-part-acceptance-1-40071398537",
+      "size_in_bytes": 67293272,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551063307",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12551063307/zip",
+      "expired": false,
+      "digest": "sha256:3c19770bac7b852af983165eb35390ce9cd6061982c8e5cbd533f12688f1662c",
+      "created_at": "2026-10-24T06:54:48Z",
+      "updated_at": "2026-10-24T06:54:48Z",
+      "expires_at": "2026-11-07T06:54:45Z",
+      "workflow_run": {
+        "id": 40071398537,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "docs/d6-economic-offer-contract",
+        "head_sha": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a"
+      }
+    },
+    {
+      "id": 12550798788,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MDc5ODc4OA==",
+      "name": "browser-evidence-part-browser-1-40071398537",
+      "size_in_bytes": 114145869,
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12550798788",
+      "archive_download_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/artifacts/12550798788/zip",
+      "expired": false,
+      "digest": "sha256:d4840c7c3459ea7aa88bb146cba23fe71a75f6409b72fbc2c71a59365e100879",
+      "created_at": "2026-10-24T06:50:47Z",
+      "updated_at": "2026-10-24T06:50:47Z",
+      "expires_at": "2026-11-07T06:50:44Z",
+      "workflow_run": {
+        "id": 40071398537,
+        "repository_id": 1327039315,
+        "head_repository_id": 1327039315,
+        "head_branch": "docs/d6-economic-offer-contract",
+        "head_sha": "e00b45fcf7d6be2d6ad70a4f9562a7b3d9b2f98a"
+      }
+    }
+  ]
+}
+
