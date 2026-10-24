@@ -1,0 +1,21 @@
+diff --git a/apps/web/e2e/prisme-dossier.spec.ts b/apps/web/e2e/prisme-dossier.spec.ts
+index c12dd27..fe4ca8e 100644
+--- a/apps/web/e2e/prisme-dossier.spec.ts
++++ b/apps/web/e2e/prisme-dossier.spec.ts
+@@ -587,12 +587,15 @@ for (const outcome of [
+   }) => {
+     const state = await installDossierFixture(page);
+     let release: (() => Promise<void>) | undefined;
+-    state.read = (route) => {
++    state.read = async (route) => {
++      // [DEBUG-dossier-arrival] Simulate asynchronous route delivery.
++      await new Promise<void>((resolve) => setTimeout(resolve, 250));
+       release = () => route.fulfill({ status: outcome.status, json: {} });
+     };
+     await page.goto('/?frame=prisme#clients');
+     await page.getByRole('button', { name: 'Open dossier' }).click();
+     await expect(page.getByText('Loading Client dossier…')).toBeVisible();
++    await expect.poll(() => release !== undefined).toBe(true);
+     if (!release) throw new Error('Expected a dossier read');
+     if (outcome.status === 403) state.actorStatus = 403;
+     await release();

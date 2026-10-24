@@ -1,0 +1,190 @@
+{
+  "base": "12ba34bacc4f9067831729f11ff27b25b8cb7f0c",
+  "decisionScope": "Only exactlistedsource/base/tree; no actualnewfailure; no futurewaiver",
+  "externalEvidenceDependencies": [
+    {
+      "allRetrievedSha256SizeAndRefTreeVerified": true,
+      "bytes": 3891931,
+      "commit": "d05cb42a25e57785e002c2860047269910672ee3",
+      "files": 45,
+      "indexSha256": "458deb49ccaa6f7ff0f148011e46aa3c304a27f14c3f07f96d6aa7503c79569e",
+      "indexUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/d05cb42a25e57785e002c2860047269910672ee3/INDEX.json",
+      "scope": "Priorfailed6first15pass,separatelaterpackagingpass,syntheticdesktop/narrowandprobeproof; originalfailedstatusretained"
+    }
+  ],
+  "files": [
+    {
+      "bytes": 28705,
+      "original": {
+        "bytes": 28705,
+        "path": "/workspace/work/typescript-quality-pilot/decision-report.md",
+        "sha256": "7a0a1ae555edf5be0e56d0f975cff8f180e7f4e5b0bc49a41bad94008465f47c"
+      },
+      "path": "DECISION-REPORT.md",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "7a0a1ae555edf5be0e56d0f975cff8f180e7f4e5b0bc49a41bad94008465f47c",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 13008,
+      "original": {
+        "bytes": 13008,
+        "path": "/workspace/work/typescript-quality-pilot/owner-qualified-integration-bdcface.json",
+        "sha256": "c7ecc2f1eee36d57bd912f6029788be59af1b32303c3693b719ce7a2f0188a18"
+      },
+      "path": "OWNER-QUALIFICATION.json",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "c7ecc2f1eee36d57bd912f6029788be59af1b32303c3693b719ce7a2f0188a18",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 4650,
+      "original": {
+        "bytes": 4650,
+        "path": "/workspace/work/typescript-quality-pilot/owner-reuse-readiness-bdcface.json",
+        "sha256": "39d45976443e9815796158377c50accaf4c28bc12c1ce8b575027a4e96d36479"
+      },
+      "path": "CURRENT-READINESS.json",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "39d45976443e9815796158377c50accaf4c28bc12c1ce8b575027a4e96d36479",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1315,
+      "original": {
+        "bytes": 1315,
+        "path": "/workspace/work/typescript-quality-pilot/runtime-provenance-gate7.json",
+        "sha256": "9c5dffa623d37f45f257496fcd1ad2c44fdf79257748bf11a0e86f7c0d2f4db9"
+      },
+      "path": "runtime-provenance.json",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "9c5dffa623d37f45f257496fcd1ad2c44fdf79257748bf11a0e86f7c0d2f4db9",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 3634,
+      "original": {
+        "bytes": 3634,
+        "path": "/tmp/prisma-quality-integration-bdcface-7/report.md",
+        "sha256": "a4aa2727bd4d8572564a9f7131b005cd9d3e609af8ff66b69b2cf5254d3fb31c"
+      },
+      "path": "current-interrupted/report.md",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "a4aa2727bd4d8572564a9f7131b005cd9d3e609af8ff66b69b2cf5254d3fb31c",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 275135,
+      "original": {
+        "bytes": 275135,
+        "path": "/tmp/prisma-quality-integration-bdcface-7/manifest.json",
+        "sha256": "71e50ad08f4444830a2f066beb7bcfe32a72fcad36e903db7a206eca1700aad5"
+      },
+      "path": "current-interrupted/manifest.json",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "71e50ad08f4444830a2f066beb7bcfe32a72fcad36e903db7a206eca1700aad5",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 2000,
+      "original": {
+        "bytes": 2000,
+        "path": "/workspace/work/typescript-quality-pilot/dossier-diagnostic/experiment.json",
+        "sha256": "938dae359b5572158b21b5ccda8da2fa91674ec2654065da697244149ca650f6"
+      },
+      "path": "supplement/dossier-experiment.json",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "938dae359b5572158b21b5ccda8da2fa91674ec2654065da697244149ca650f6",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1064,
+      "original": {
+        "bytes": 1064,
+        "path": "/workspace/work/publication-failed-gate5/diagnosis/baseline-delay-and-wait.patch",
+        "sha256": "9493c5d6123c5cc867bc15726f58f9ffeafbb160d47f8b98b33a4f09c46c0973"
+      },
+      "path": "supplement/baseline-delay-and-wait.patch",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "9493c5d6123c5cc867bc15726f58f9ffeafbb160d47f8b98b33a4f09c46c0973",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 706,
+      "original": {
+        "bytes": 706,
+        "path": "/workspace/work/publication-failed-gate5/diagnosis/baseline-delay-only.patch",
+        "sha256": "26ebfdf225f5b5d1d90fbaca2b89f47c8954c596ca21b288fc6a4b777561caee"
+      },
+      "path": "supplement/baseline-delay-only.patch",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Current owner qualification or explicitly historical diagnostic supplement; no canonical pass fabricated",
+      "sha256": "26ebfdf225f5b5d1d90fbaca2b89f47c8954c596ca21b288fc6a4b777561caee",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 21657,
+      "original": {
+        "bytes": 21657,
+        "path": "/workspace/work/typescript-quality-pilot/owner-reuse-facts-audit.json",
+        "sha256": "aa78b2016a1edd20e7b77e017055599a1358af525d35542d584c8d2ea09d2bf5"
+      },
+      "path": "FACTS-AUDIT.json",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Bounded publication-facts audit; not a second code review/runner attestation/merge authorization",
+      "sha256": "aa78b2016a1edd20e7b77e017055599a1358af525d35542d584c8d2ea09d2bf5",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 3916,
+      "original": null,
+      "path": "README.md",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Premerge factual/provenance/privacy statement; not independent attestation",
+      "sha256": "3941da6e2340ddba00999904bcf3736bbdc2f305072ba7baad65a6ecce8d9b8a",
+      "transformation": "Operator-authored selected-evidence scope/review"
+    },
+    {
+      "bytes": 2860,
+      "original": null,
+      "path": "ROOT-REVIEW.md",
+      "review": "Root bounded final selection reviewed; see ROOT-REVIEW.md",
+      "scope": "Premerge factual/provenance/privacy statement; not independent attestation",
+      "sha256": "9a778f9259cabf845c2682b0ceb18eadc33253d7f223fa43d93c3a9c0a4df0c8",
+      "transformation": "Operator-authored selected-evidence scope/review"
+    }
+  ],
+  "independentRunnerAttestation": false,
+  "limits": {
+    "blobBytes": 5242880,
+    "runBytes": 20971520
+  },
+  "originalGate6Status": "failed",
+  "originalGate7Status": "failed; controlledoperatorinterruption",
+  "originalsModified": false,
+  "ownerAnswer": "Autoriser cette r\u00e9utilisation limit\u00e9e (recommand\u00e9)",
+  "preparedAt": "2026-10-24T08:14:41.144447+00:00",
+  "publicationReady": true,
+  "publicationRef": "refs/heads/local-evidence/pr-829/bdcface-owner-qualified-v1",
+  "qualification": "Explicit owner-authorized bounded reuse of16successfulfamilies across namedruns; NOTcanonicalcurrentheadcompletepass",
+  "rawProductLogsIncluded": false,
+  "requiredRemainingSteps": [
+    "Publish/retrieveverifyalllistedbytes",
+    "Freshlivebase/PRhead/exacttreeguard",
+    "Guardedsquashmerge",
+    "Verifydeliveredtree/issueclosure/ownedbranchcleanup"
+  ],
+  "retention": "Currentownerqualifiedset plusprecedingfailed6;compactrecords/linkedproof14daysafteractualmerge andwhile neededbyopenreview",
+  "schema": "prisma-prim-owner-qualified-delivery-evidence/v1",
+  "selfHashPolicy": "Index excludes itself; actualcommit/blobURLs and externalindexdigest belong to verifiedpublicationreceipt/PR to avoid circularself-reference",
+  "source": "bdcface0696cd47003e4750a0f906da9d0197557",
+  "tree": "f62e7021e0623d4afca40b1964463b79b8a53d50"
+}

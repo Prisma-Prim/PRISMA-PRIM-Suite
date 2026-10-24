@@ -1,0 +1,129 @@
+{
+  "recordedAt": "2026-10-24T08:06:54.337643+00:00",
+  "source": "bdcface0696cd47003e4750a0f906da9d0197557",
+  "base": "12ba34bacc4f9067831729f11ff27b25b8cb7f0c",
+  "tree": "f62e7021e0623d4afca40b1964463b79b8a53d50",
+  "ownerDecision": "Explicit user answer: Autoriser cette r\u00e9utilisation limit\u00e9e (recommand\u00e9).",
+  "decisionScope": "Reuse gate6 first15successful families plus separately corrected canonicalpackaging for exactcurrentbdcface only, after documentation-onlycomposition,currentlightchecks and no newfailure. Originalfailedgate6 must remainfailed. No broad policychange or futurewaiver.",
+  "sourceBytesProof": "Git diffquiet against820ff40 excludingonlyCONTEXT.md anddocs/** succeeds;allnon-docGitbytes/modesidentical.",
+  "currentFirstSix": [
+    {
+      "id": "doctor",
+      "command": "node",
+      "args": [
+        "scripts/agent-doctor.mjs",
+        "--profile",
+        "web-postgres"
+      ],
+      "timeoutMilliseconds": 2700000,
+      "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+      "required": true,
+      "status": "passed",
+      "reason": null,
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-10-24T07:42:35.056Z",
+      "finishedAt": "2026-10-24T07:42:38.271Z"
+    },
+    {
+      "id": "format",
+      "command": "pnpm",
+      "args": [
+        "format:check"
+      ],
+      "timeoutMilliseconds": 2700000,
+      "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+      "required": true,
+      "status": "passed",
+      "reason": null,
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-10-24T07:42:39.894Z",
+      "finishedAt": "2026-10-24T07:43:13.219Z"
+    },
+    {
+      "id": "lint",
+      "command": "pnpm",
+      "args": [
+        "lint"
+      ],
+      "timeoutMilliseconds": 2700000,
+      "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+      "required": true,
+      "status": "passed",
+      "reason": null,
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-10-24T07:43:14.008Z",
+      "finishedAt": "2026-10-24T07:43:41.183Z"
+    },
+    {
+      "id": "types",
+      "command": "pnpm",
+      "args": [
+        "typecheck"
+      ],
+      "timeoutMilliseconds": 2700000,
+      "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+      "required": true,
+      "status": "passed",
+      "reason": null,
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-10-24T07:43:42.826Z",
+      "finishedAt": "2026-10-24T07:44:09.582Z"
+    },
+    {
+      "id": "scripts",
+      "command": "pnpm",
+      "args": [
+        "test:scripts"
+      ],
+      "timeoutMilliseconds": 2700000,
+      "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+      "required": true,
+      "status": "passed",
+      "reason": null,
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-10-24T07:44:11.280Z",
+      "finishedAt": "2026-10-24T07:44:54.070Z"
+    },
+    {
+      "id": "documentation",
+      "command": "pnpm",
+      "args": [
+        "--filter",
+        "@prisma-prim/api",
+        "exec",
+        "vitest",
+        "run",
+        "src/demonstration"
+      ],
+      "timeoutMilliseconds": 2700000,
+      "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+      "required": true,
+      "status": "passed",
+      "reason": null,
+      "exitCode": 0,
+      "signal": null,
+      "startedAt": "2026-10-24T07:44:56.424Z",
+      "finishedAt": "2026-10-24T07:50:09.141Z"
+    }
+  ],
+  "newFailureMarkers": 0,
+  "partialApiCompletedFiles": 6,
+  "partialApiResults": [
+    " \u2713 src/demonstration/demonstration-runner.rest.test.ts (27 tests) 244700ms",
+    " \u2713 src/contract/contract.rest.test.ts (193 tests) 332492ms",
+    " \u2713 src/recovery/synthetic-recovery.rest.test.ts (47 tests) 146634ms",
+    " \u2713 src/offer/offer.rest.test.ts (139 tests) 106415ms",
+    " \u2713 src/task/task.rest.test.ts (111 tests) 94066ms",
+    " \u2713 src/commercial-intake/commercial-intake.rest.test.ts (52 tests) 36366ms"
+  ],
+  "remoteMain": "12ba34bacc4f9067831729f11ff27b25b8cb7f0c",
+  "originalGate7ManifestSnapshotSha256": "d543b4b3d514ba5bc83015cad9f0e85e898a8f26173b4302f94cb05208fadafc",
+  "stopReason": "Owner approved bounded evidence reuse; avoid redundant continuation. Operator interruption is not a product test failure and is not a full current-tree pass.",
+  "interruptedRunnerPid": 1007064,
+  "processMatch": "Exact primaryNodeargv1=verify-local.mjs argv2=run,source/outputmatch; managedPostgresparentexcluded."
+}

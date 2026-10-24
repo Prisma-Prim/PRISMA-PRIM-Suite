@@ -1,0 +1,534 @@
+{
+  "allListedChecksVerified": true,
+  "canonicalFailedReportValidationRun": false,
+  "checks": [
+    {
+      "check": "gate6_original_terminal_disposition",
+      "details": {
+        "manifest": {
+          "path": "/tmp/prisma-quality-integration-820ff40-6/manifest.json",
+          "sha256": "2444c536287962bccf2d36c435b302e5efdd09643ee1ffeb0583ca89ce40a691"
+        },
+        "originalLogBindings": [
+          {
+            "bytes": 749,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/doctor.log",
+            "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9"
+          },
+          {
+            "bytes": 87,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/format.log",
+            "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+          },
+          {
+            "bytes": 11,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/lint.log",
+            "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+          },
+          {
+            "bytes": 187,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/types.log",
+            "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+          },
+          {
+            "bytes": 44824,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/scripts.log",
+            "sha256": "cb43f212168d8a5d7320751c38412ecf346d1f983c55b316ab15de9dfdf31f39"
+          },
+          {
+            "bytes": 7328,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/documentation.log",
+            "sha256": "6c7b45f76fe5dcd40f417f278a42e41274aad94d582e9153533609a9024d5a8f"
+          },
+          {
+            "bytes": 525047,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/api-parallel.log",
+            "sha256": "755159546231d6fe7aa3706c1498679563fbc63dd8000420b8ffdfa8e06765cc"
+          },
+          {
+            "bytes": 58031,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/api-serial.log",
+            "sha256": "b27387aa00a9621e74ca7c586a414901c7ed4d0b30987215890100f9994c7aab"
+          },
+          {
+            "bytes": 95881,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/web-unit.log",
+            "sha256": "2a649ecc6a44290f7b677bfcc7a101ffb101c44c106bfc648f0410461200f228"
+          },
+          {
+            "bytes": 0,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/browser.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "bytes": 0,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/acceptance.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "bytes": 118,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/acceptance-evidence.log",
+            "sha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577"
+          },
+          {
+            "bytes": 1480,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/build.log",
+            "sha256": "b44eb910ba25908f47a6406ad849a5021315325918bfcd03fca8dbe67bedf8ea"
+          },
+          {
+            "bytes": 180,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/railway-types.log",
+            "sha256": "404cfb0156938ff9df285cf2692fc99da30f7702d15231bf42ff64a65e74f88f"
+          },
+          {
+            "bytes": 238,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/railway-tests.log",
+            "sha256": "f00e88c94beb6a8361a1145c2bce0f70d649feae4fab563d9b116b118f233e0f"
+          },
+          {
+            "bytes": 8178,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-820ff40-6/logs/packaging.log",
+            "sha256": "fa6e3a095c32c88448dafdb8a9aa080f66e5879814203a7d157ee658edd928e4"
+          }
+        ],
+        "packaging": {
+          "exitCode": 1,
+          "status": "failed"
+        },
+        "passedFamilies": [
+          "doctor",
+          "format",
+          "lint",
+          "types",
+          "scripts",
+          "documentation",
+          "api-parallel",
+          "api-serial",
+          "web-unit",
+          "browser",
+          "acceptance",
+          "acceptance-evidence",
+          "build",
+          "railway-types",
+          "railway-tests"
+        ]
+      },
+      "verified": true
+    },
+    {
+      "check": "gate6_original_log_hashes",
+      "details": {
+        "checked": 16
+      },
+      "verified": true
+    },
+    {
+      "check": "gate7_exact_identity",
+      "details": {
+        "base": "12ba34bacc4f9067831729f11ff27b25b8cb7f0c",
+        "manifest": {
+          "path": "/tmp/prisma-quality-integration-bdcface-7/manifest.json",
+          "sha256": "71e50ad08f4444830a2f066beb7bcfe32a72fcad36e903db7a206eca1700aad5"
+        },
+        "source": "bdcface0696cd47003e4750a0f906da9d0197557",
+        "tree": "f62e7021e0623d4afca40b1964463b79b8a53d50"
+      },
+      "verified": true
+    },
+    {
+      "check": "gate7_current_first_six",
+      "details": {
+        "families": [
+          "doctor",
+          "format",
+          "lint",
+          "types",
+          "scripts",
+          "documentation"
+        ],
+        "finalLogBindings": [
+          {
+            "bytes": 749,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-bdcface-7/logs/doctor.log",
+            "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9"
+          },
+          {
+            "bytes": 87,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-bdcface-7/logs/format.log",
+            "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+          },
+          {
+            "bytes": 11,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-bdcface-7/logs/lint.log",
+            "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+          },
+          {
+            "bytes": 187,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-bdcface-7/logs/types.log",
+            "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+          },
+          {
+            "bytes": 44807,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-bdcface-7/logs/scripts.log",
+            "sha256": "df89f0ec97a19e57dedd87f32c8ce758bdae71fae0d7a468e8c3d28b45d7f304"
+          },
+          {
+            "bytes": 7332,
+            "matchesFinalManifest": true,
+            "path": "/tmp/prisma-quality-integration-bdcface-7/logs/documentation.log",
+            "sha256": "e629e84bdd77b82d707093d609ff410237699eaf43f3eec68de7e715e458d617"
+          }
+        ]
+      },
+      "verified": true
+    },
+    {
+      "check": "gate7_interruption_not_completed_family",
+      "details": {
+        "apiExitCode": null,
+        "apiFamily": "api-parallel",
+        "apiSignal": "SIGTERM",
+        "apiStatus": "interrupted",
+        "finishedAt": "2026-10-24T08:07:13.676Z",
+        "laterUnexecuted": [
+          "api-serial",
+          "web-unit",
+          "browser",
+          "acceptance",
+          "acceptance-evidence",
+          "build",
+          "railway-types",
+          "railway-tests",
+          "packaging"
+        ],
+        "overall": "failed"
+      },
+      "verified": true
+    },
+    {
+      "check": "gate7_partial_api_is_only_partial",
+      "details": {
+        "completedCases": 622,
+        "completedFileRecords": [
+          {
+            "cases": 27,
+            "originalLine": 8,
+            "path": "src/demonstration/demonstration-runner.rest.test.ts"
+          },
+          {
+            "cases": 193,
+            "originalLine": 36,
+            "path": "src/contract/contract.rest.test.ts"
+          },
+          {
+            "cases": 47,
+            "originalLine": 230,
+            "path": "src/recovery/synthetic-recovery.rest.test.ts"
+          },
+          {
+            "cases": 139,
+            "originalLine": 385,
+            "path": "src/offer/offer.rest.test.ts"
+          },
+          {
+            "cases": 111,
+            "originalLine": 569,
+            "path": "src/task/task.rest.test.ts"
+          },
+          {
+            "cases": 52,
+            "originalLine": 872,
+            "path": "src/commercial-intake/commercial-intake.rest.test.ts"
+          },
+          {
+            "cases": 53,
+            "originalLine": 925,
+            "path": "src/profitability-estimate/profitability-estimate.rest.test.ts"
+          }
+        ],
+        "completedFiles": 7,
+        "familyComplete": false,
+        "originalLog": {
+          "bytes": 131519,
+          "matchesFinalManifest": true,
+          "path": "/tmp/prisma-quality-integration-bdcface-7/logs/api-parallel.log",
+          "sha256": "a54fdb232e220c5a6e20e7fadac536604112bdbe0235307d3a0e8798c7c02856"
+        }
+      },
+      "verified": true
+    },
+    {
+      "check": "no_observed_new_actual_runner_failure",
+      "details": {
+        "boundedScope": "Only immutable final7 first-six logs and interrupted API log; not unexecuted cases. Application Error strings in expected negative tests are not treated as runner failures.",
+        "matches": []
+      },
+      "verified": true
+    },
+    {
+      "check": "separate_canonical_packaging_target",
+      "details": {
+        "exitCode": 0,
+        "metadata": {
+          "bytes": 1243,
+          "path": "/workspace/work/typescript-quality-pilot/packaging-targeted-result-820ff40.json",
+          "sha256": "18f5c10f1fca576edf9088739625a80be6fc35ed229a0d99f67c939a78d2297c"
+        },
+        "originalLog": {
+          "bytes": 6745,
+          "path": "/workspace/work/typescript-quality-pilot/packaging-targeted-mode-restored-820ff40.log",
+          "sha256": "cd2f0a7bd74ec850b457c48133620240e012a74f0f5618a3fa41f39dcb41a224"
+        },
+        "result": "PASS image startup, hosting ports, health, direct SPA navigation, production identity rejection and repeatable migrations.",
+        "resultLine": 149,
+        "scope": "Separate later canonical final-family check on source820ff40; original gate6 remains failed."
+      },
+      "verified": true
+    },
+    {
+      "check": "exact_documentation_only_git_delta",
+      "details": {
+        "changedFiles": [
+          {
+            "newBlob": "5b242d74bd177991dba69ba573162893bbd35954",
+            "newMode": "100644",
+            "oldBlob": "022b5e5d2d799ac48bb750cbf7e6eb27e63d43d9",
+            "oldMode": "100644",
+            "path": "CONTEXT.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "b14cf4fdbcd09dcc27d7eb3c17826caf251fc6ab",
+            "newMode": "100644",
+            "oldBlob": "bd881690926e0ddbc0951fc75aa9134dfe3a2a1a",
+            "oldMode": "100644",
+            "path": "docs/product/activity-log-accountability-prd.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "8719ee209651ee675d2a8ed205885e564f818a97",
+            "newMode": "100644",
+            "oldBlob": "5c959e8ae0595ddd6d6ebf805c8e7728c12f9c46",
+            "oldMode": "100644",
+            "path": "docs/product/consolidated-product-decision-record.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "65b39aa060361f70c86545bcb38b02c06dcc6c4b",
+            "newMode": "100644",
+            "oldBlob": "9abfbfb24ceb04f319a56db21da567182322005f",
+            "oldMode": "100644",
+            "path": "docs/product/prd-index.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "fdd391e1e2ed2b4eba77a1bdd8ad766dabb29699",
+            "newMode": "100644",
+            "oldBlob": "96f64192c85cef40300e9af7db48f53ee14c4c61",
+            "oldMode": "100644",
+            "path": "docs/product/release-3-commercial-18-offers.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "c30db6a213847eadc2eb11fa854f690af2464027",
+            "newMode": "100644",
+            "oldBlob": "5a6b456567dba4ab848bc4b71789c3818de210c5",
+            "oldMode": "100644",
+            "path": "docs/product/release-3-commercial-25-offer-contract-history.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "5d0e8cf40244dbacfb52863abb1afc892620f009",
+            "newMode": "100644",
+            "oldBlob": "0000000000000000000000000000000000000000",
+            "oldMode": "000000",
+            "path": "docs/product/release-3-commercial-26-estimate-offer-preparation.md",
+            "status": "A"
+          },
+          {
+            "newBlob": "03c7193e604de7f281266405da86ac00ed740f11",
+            "newMode": "100644",
+            "oldBlob": "a229fe8121a8a3c845db150bcb056e9dd3d65023",
+            "oldMode": "100644",
+            "path": "docs/product/release-3-commercial-workflow-prd.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "e7492e04eea125694dc3fa24903d0ca6d8cee84e",
+            "newMode": "100644",
+            "oldBlob": "8df495275a4b931b7637bc2b4977e6fed65eefcb",
+            "oldMode": "100644",
+            "path": "docs/product/release-3-confirmed-cost-profitability-estimate-prd.md",
+            "status": "M"
+          },
+          {
+            "newBlob": "1a560f6271b3db6d5ad513c8090dc09e1f6ba9b3",
+            "newMode": "100644",
+            "oldBlob": "02a55294b0b382b5233459039c49e786b87515d2",
+            "oldMode": "100644",
+            "path": "docs/product/tenant-company-client-authorization-prd.md",
+            "status": "M"
+          }
+        ],
+        "newNonDocumentationTreeInventorySha256": "f5418fd95730fdd25ae4f652f2c6f06005ebc42fe9667c3501562cf5f83eafa9",
+        "newSource": "bdcface0696cd47003e4750a0f906da9d0197557",
+        "nonDocumentationTrackedEntries": 1393,
+        "oldNonDocumentationTreeInventorySha256": "f5418fd95730fdd25ae4f652f2c6f06005ebc42fe9667c3501562cf5f83eafa9",
+        "oldSource": "820ff40f70740d94ca678fb0216cff1094561ae2",
+        "rawDiffSha256": "be96c7902e8d8b977f3d85ce803f4aafd65a5a3bc1a8ad4cf77e7439234070fd"
+      },
+      "verified": true
+    },
+    {
+      "check": "declared_current_tree_matches_git",
+      "details": {
+        "tree": "f62e7021e0623d4afca40b1964463b79b8a53d50"
+      },
+      "verified": true
+    },
+    {
+      "check": "tracked_worktree_has_no_edits",
+      "details": {
+        "trackedStatusLineCount": 0
+      },
+      "verified": true
+    },
+    {
+      "check": "two_public_hosting_files_current_0644_unchanged",
+      "details": [
+        {
+          "bytes": 398,
+          "matchesCurrent7Input": true,
+          "matchesCurrentGitBlobBytes": true,
+          "matchesOriginal6Input": true,
+          "mode": "0o644",
+          "path": "/workspace/PRISMA-PRIM-Suite/deploy/railway/web-start.sh",
+          "sha256": "5b7735b84a7b97a898a4e2bc1c701962c33eea40eda9bd45d0a51956616e0964"
+        },
+        {
+          "bytes": 733,
+          "matchesCurrent7Input": true,
+          "matchesCurrentGitBlobBytes": true,
+          "matchesOriginal6Input": true,
+          "mode": "0o644",
+          "path": "/workspace/PRISMA-PRIM-Suite/deploy/railway/nginx.conf.template",
+          "sha256": "2708e6c2acefb0ea2aa3862c69af72c411dad4f1acae51d7079bbde2aa70aef1"
+        }
+      ],
+      "verified": true
+    },
+    {
+      "check": "exact_three_runtime_sources_frozen_identically",
+      "details": {
+        "frozen6": {
+          "bytes": 1150,
+          "path": "/workspace/work/typescript-quality-pilot/runtime-provenance-gate6.json",
+          "sha256": "bfdd43327a9fd7b5344be683dc32b723b5cde7405e9fbcf9133d39cab0018cf8"
+        },
+        "frozen7": {
+          "bytes": 1315,
+          "path": "/workspace/work/typescript-quality-pilot/runtime-provenance-gate7.json",
+          "sha256": "9c5dffa623d37f45f257496fcd1ad2c44fdf79257748bf11a0e86f7c0d2f4db9"
+        },
+        "runtimeSources": [
+          {
+            "bytes": 2953,
+            "matchesFrozen6": true,
+            "matchesFrozen7": true,
+            "path": "/workspace/work/typescript-quality-pilot/managed-docker-trust.py",
+            "sha256": "afe5ae58b5b9cf26dcee370f988e3b8aeaea9961ed52b2cb7d87375af95f1a99"
+          },
+          {
+            "bytes": 121,
+            "matchesFrozen6": true,
+            "matchesFrozen7": true,
+            "path": "/workspace/work/typescript-quality-pilot/runtime-bin-stable/docker",
+            "sha256": "9371dbddc4ff9f5c7bcb77ce9ab4ecc766ad9b56befb39ee67f4e70bc6f9b512"
+          },
+          {
+            "bytes": 343,
+            "matchesFrozen6": true,
+            "matchesFrozen7": true,
+            "path": "/workspace/work/typescript-quality-pilot/runtime-bin-stable/pnpm",
+            "sha256": "db93c6daa587fe41c1d145a65d6710e28d5044067af92ae237965f825b7b4ca8"
+          }
+        ]
+      },
+      "verified": true
+    },
+    {
+      "check": "owner_readiness_scope_and_identity",
+      "details": {
+        "ownerDecision": "Explicit user answer: Autoriser cette r\u00e9utilisation limit\u00e9e (recommand\u00e9).",
+        "record": {
+          "bytes": 4650,
+          "path": "/workspace/work/typescript-quality-pilot/owner-reuse-readiness-bdcface.json",
+          "sha256": "39d45976443e9815796158377c50accaf4c28bc12c1ce8b575027a4e96d36479"
+        },
+        "scope": "Reuse gate6 first15successful families plus separately corrected canonicalpackaging for exactcurrentbdcface only, after documentation-onlycomposition,currentlightchecks and no newfailure. Originalfailedgate6 must remainfailed. No broad policychange or futurewaiver.",
+        "stopReason": "Owner approved bounded evidence reuse; avoid redundant continuation. Operator interruption is not a product test failure and is not a full current-tree pass."
+      },
+      "verified": true
+    }
+  ],
+  "identity": {
+    "base": "12ba34bacc4f9067831729f11ff27b25b8cb7f0c",
+    "source": "bdcface0696cd47003e4750a0f906da9d0197557",
+    "tree": "f62e7021e0623d4afca40b1964463b79b8a53d50"
+  },
+  "mergeAuthorizationGrantedByAudit": false,
+  "originalsModified": false,
+  "recommendedStatusWording": "The owner-authorized bounded reuse combines original gate6 fifteen completed passing families with its separately successful canonical packaging check and current run7 first-six completed checks for this exact documentation-only integration. Run7 was deliberately stopped after approval: operator-reported SIGINT to the primary runner led to SIGTERM interruption of its API child. Its original manifest remains failed, with six passed families, API-parallel interrupted after seven completed files/622 cases, and nine unexecuted families. No new actual test failure was observed in completed/partial current logs; this is not a canonical complete current-tree pass.",
+  "recordedAt": "2026-10-24T08:12:07.270252+00:00",
+  "schema": "owner-bounded-reuse-facts-audit/v1",
+  "scope": "Read-only verification of listed immutable execution/publication facts; no code review, new tests, process polling, original rewrite or canonical-current-complete-pass claim.",
+  "uncertaintiesAndLimits": [
+    {
+      "facts": {
+        "finalCompletedCases": 622,
+        "finalCompletedFiles": 7,
+        "finalManifestSha256": "71e50ad08f4444830a2f066beb7bcfe32a72fcad36e903db7a206eca1700aad5",
+        "readinessRecordedAt": "2026-10-24T08:06:54.337643+00:00",
+        "recordedSnapshotSha256": "d543b4b3d514ba5bc83015cad9f0e85e898a8f26173b4302f94cb05208fadafc",
+        "snapshotCompletedCases": 569,
+        "snapshotCompletedFiles": 6
+      },
+      "item": "Pre-stop readiness snapshot is not the final7 manifest.",
+      "limit": "Snapshot bytes were not supplied for independent reconstruction; six snapshot files/569 cases and seven terminal files/622 cases are different times, not a family completion."
+    },
+    {
+      "basis": "Root explicitly reports SIGINT to primary runner PID1007064. The final manifest independently records the API child interrupted by SIGTERM; it does not encode the parent signal.",
+      "item": "Top-level SIGINT evidence",
+      "limit": "Do not describe SIGTERM as an application/test failure or claim the top-level signal is independently attested by this manifest."
+    },
+    {
+      "basis": "Its historical reason says no exception authorized; the later owner-readiness record and parent instruction explicitly grant only this exact bounded reuse. Neither original is rewritten.",
+      "item": "Frozen7 runtime note predates owner approval"
+    },
+    {
+      "item": "Authorization and merge eligibility",
+      "limit": "This audit confirms listed factual prerequisites only. It does not canonical-validate a failed report, authorize a broader waiver/future reuse, or independently establish all final publication/merge conditions."
+    }
+  ]
+}

@@ -1,0 +1,388 @@
+{
+  "schema": "prisma-prim-owner-authorized-bounded-reuse/v1",
+  "recordedAt": "2026-10-24T08:10:05.173487+00:00",
+  "qualification": "Owner-authorized combined proof; NOT a canonical current-head complete pass",
+  "ownerDecision": {
+    "answer": "Autoriser cette r\u00e9utilisation limit\u00e9e (recommand\u00e9)",
+    "source": "Explicit in-session answer to the bounded-reuse question after reviewed evidence publication",
+    "scope": "This exact version only; reuse initial15passedfamilies plus correctedseparatepackaging; no newactualfailure; preserve initialfailedstatus",
+    "policyInstructionOverriddenForThisDeliveryOnly": "A new base or head requires testing the new integration.",
+    "policySource": "docs/agents/issue-execution.md#complete-local-integration-evidence"
+  },
+  "source": "bdcface0696cd47003e4750a0f906da9d0197557",
+  "base": "12ba34bacc4f9067831729f11ff27b25b8cb7f0c",
+  "tree": "f62e7021e0623d4afca40b1964463b79b8a53d50",
+  "allCurrentTrackedInputHashesAndGitModesMatch": 1462,
+  "allOriginalGate6ArtifactHashesVerified": 2352,
+  "allOriginalGate7ArtifactHashesVerified": 7,
+  "onlyCompositionChanges": [
+    "CONTEXT.md",
+    "docs/product/activity-log-accountability-prd.md",
+    "docs/product/consolidated-product-decision-record.md",
+    "docs/product/prd-index.md",
+    "docs/product/release-3-commercial-18-offers.md",
+    "docs/product/release-3-commercial-25-offer-contract-history.md",
+    "docs/product/release-3-commercial-26-estimate-offer-preparation.md",
+    "docs/product/release-3-commercial-workflow-prd.md",
+    "docs/product/release-3-confirmed-cost-profitability-estimate-prd.md",
+    "docs/product/tenant-company-client-authorization-prd.md"
+  ],
+  "allNonDocumentationGitBytesAndModesIdentical": true,
+  "originalSevenFilePatchSha256": "3a7f3b7cf763abba44af771824312788290527e991b26878b160e08a110beff3",
+  "pilotChangedFiles": [
+    "apps/web/e2e/client-response-contract.spec.ts",
+    "apps/web/e2e/prisme-dossier.spec.ts",
+    "apps/web/src/client/ClientDirectory.tsx",
+    "apps/web/src/client/ClientWorkspace.response-contract.test.tsx",
+    "apps/web/src/client/ClientWorkspace.tsx",
+    "apps/web/src/client/client-account-response.ts",
+    "docs/agents/typescript-discipline.md",
+    "scripts/typescript-discipline-contract.test.mjs"
+  ],
+  "runtimeWrapperHashesUnchanged": true,
+  "publicReadModeRestoration": "Exactly2publicdeploymentfiles600to644; unchangedbytes/Gitexecutablemodes; targetedcanonicalpackagingpass",
+  "familyEvidence": [
+    {
+      "id": "doctor",
+      "evidenceRun": "currentgate7",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "format",
+      "evidenceRun": "currentgate7",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "lint",
+      "evidenceRun": "currentgate7",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "types",
+      "evidenceRun": "currentgate7",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "scripts",
+      "evidenceRun": "currentgate7",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "documentation",
+      "evidenceRun": "currentgate7",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "api-parallel",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "api-serial",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "web-unit",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "browser",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "acceptance",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "acceptance-evidence",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "build",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "railway-types",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "railway-tests",
+      "evidenceRun": "frozengate6",
+      "status": "passed",
+      "exitCode": 0
+    },
+    {
+      "id": "packaging",
+      "evidenceRun": "separatecanonicaltargetaftermodecorrection",
+      "status": "passed",
+      "exitCode": 0,
+      "record": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/d05cb42a25e57785e002c2860047269910672ee3/later-diagnosis/packaging-targeted-result-820ff40.json"
+    }
+  ],
+  "originalGate6": {
+    "status": "failed",
+    "source": "820ff40f70740d94ca678fb0216cff1094561ae2",
+    "base": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+    "tree": "7e37116ce6d6ae56bfec63b20d6f4d058576db12",
+    "manifestSha256": "2444c536287962bccf2d36c435b302e5efdd09643ee1ffeb0583ca89ce40a691",
+    "immutablePublication": "d05cb42a25e57785e002c2860047269910672ee3"
+  },
+  "currentGate7": {
+    "status": "failed",
+    "meaning": "Controlled operator interruption after explicitownerreuseapproval; APIchildSIGTERM; no actualcasefailure",
+    "manifestSha256": "71e50ad08f4444830a2f066beb7bcfe32a72fcad36e903db7a206eca1700aad5",
+    "first6Families": "passed/exit0",
+    "partialAPI": "7completedfiles/622passedcases; not a completed APIfamily",
+    "later9Families": "unexecuted; earlier unchanged-code proof is explicitly reused"
+  },
+  "currentLightResults": [
+    {
+      "family": {
+        "id": "doctor",
+        "command": "node",
+        "args": [
+          "scripts/agent-doctor.mjs",
+          "--profile",
+          "web-postgres"
+        ],
+        "timeoutMilliseconds": 2700000,
+        "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+        "required": true,
+        "status": "passed",
+        "reason": null,
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-10-24T07:42:35.056Z",
+        "finishedAt": "2026-10-24T07:42:38.271Z"
+      },
+      "originalLog": {
+        "path": "logs/doctor.log",
+        "bytes": 749,
+        "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9"
+      },
+      "selectedResultLines": [],
+      "omission": "Every unselected original line omitted; complete log retained locally."
+    },
+    {
+      "family": {
+        "id": "format",
+        "command": "pnpm",
+        "args": [
+          "format:check"
+        ],
+        "timeoutMilliseconds": 2700000,
+        "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+        "required": true,
+        "status": "passed",
+        "reason": null,
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-10-24T07:42:39.894Z",
+        "finishedAt": "2026-10-24T07:43:13.219Z"
+      },
+      "originalLog": {
+        "path": "logs/format.log",
+        "bytes": 87,
+        "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+      },
+      "selectedResultLines": [
+        {
+          "line": 3,
+          "text": "All matched files use Prettier code style!",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        }
+      ],
+      "omission": "Every unselected original line omitted; complete log retained locally."
+    },
+    {
+      "family": {
+        "id": "lint",
+        "command": "pnpm",
+        "args": [
+          "lint"
+        ],
+        "timeoutMilliseconds": 2700000,
+        "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+        "required": true,
+        "status": "passed",
+        "reason": null,
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-10-24T07:43:14.008Z",
+        "finishedAt": "2026-10-24T07:43:41.183Z"
+      },
+      "originalLog": {
+        "path": "logs/lint.log",
+        "bytes": 11,
+        "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+      },
+      "selectedResultLines": [],
+      "omission": "Every unselected original line omitted; complete log retained locally."
+    },
+    {
+      "family": {
+        "id": "types",
+        "command": "pnpm",
+        "args": [
+          "typecheck"
+        ],
+        "timeoutMilliseconds": 2700000,
+        "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+        "required": true,
+        "status": "passed",
+        "reason": null,
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-10-24T07:43:42.826Z",
+        "finishedAt": "2026-10-24T07:44:09.582Z"
+      },
+      "originalLog": {
+        "path": "logs/types.log",
+        "bytes": 187,
+        "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+      },
+      "selectedResultLines": [],
+      "omission": "Every unselected original line omitted; complete log retained locally."
+    },
+    {
+      "family": {
+        "id": "scripts",
+        "command": "pnpm",
+        "args": [
+          "test:scripts"
+        ],
+        "timeoutMilliseconds": 2700000,
+        "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+        "required": true,
+        "status": "passed",
+        "reason": null,
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-10-24T07:44:11.280Z",
+        "finishedAt": "2026-10-24T07:44:54.070Z"
+      },
+      "originalLog": {
+        "path": "logs/scripts.log",
+        "bytes": 44807,
+        "sha256": "df89f0ec97a19e57dedd87f32c8ce758bdae71fae0d7a468e8c3d28b45d7f304"
+      },
+      "selectedResultLines": [
+        {
+          "line": 553,
+          "text": "\u2139 tests 483",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 554,
+          "text": "\u2139 suites 0",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 555,
+          "text": "\u2139 pass 483",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 556,
+          "text": "\u2139 fail 0",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 557,
+          "text": "\u2139 cancelled 0",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 558,
+          "text": "\u2139 skipped 0",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 559,
+          "text": "\u2139 todo 0",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 560,
+          "text": "\u2139 duration_ms 41820.111382",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        }
+      ],
+      "omission": "Every unselected original line omitted; complete log retained locally."
+    },
+    {
+      "family": {
+        "id": "documentation",
+        "command": "pnpm",
+        "args": [
+          "--filter",
+          "@prisma-prim/api",
+          "exec",
+          "vitest",
+          "run",
+          "src/demonstration"
+        ],
+        "timeoutMilliseconds": 2700000,
+        "timeoutBasis": "45 min process safety cap for an unchanged single workflow family",
+        "required": true,
+        "status": "passed",
+        "reason": null,
+        "exitCode": 0,
+        "signal": null,
+        "startedAt": "2026-10-24T07:44:56.424Z",
+        "finishedAt": "2026-10-24T07:50:09.141Z"
+      },
+      "originalLog": {
+        "path": "logs/documentation.log",
+        "bytes": 7332,
+        "sha256": "e629e84bdd77b82d707093d609ff410237699eaf43f3eec68de7e715e458d617"
+      },
+      "selectedResultLines": [
+        {
+          "line": 54,
+          "text": "Test Files  10 passed (10)",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        },
+        {
+          "line": 55,
+          "text": "Tests  83 passed (83)",
+          "transformation": "ANSI removal and surrounding whitespace only"
+        }
+      ],
+      "omission": "Every unselected original line omitted; complete log retained locally."
+    }
+  ],
+  "knownSkips": [
+    "Optional realClamAV1case unconfigured TEST_CLAMAV_HOST/PORT",
+    "Browser1desktopskip for narrow-only navigation"
+  ],
+  "reviewDisposition": "One independent owner-authorizedStandards/Specround on unchangedpilot, no blockers; rootinspectedone-line nonsensitivetestcorrection beforefinalruns; mechanicaldocsonlymergepreservesreview",
+  "limitations": [
+    "Self-reported local execution, not independentGitHubActions",
+    "APIlocaldefault15000ms, no5000msclaim",
+    "No originalmanifest/status rewritten; no forgedsuccessstatus",
+    "No future-policywaiver; anynewsource/base/runtimecodechangeinvalidatesqualifiedversion",
+    "Remote main/source/merge tree must be freshlyguarded immediatelybeforemerge"
+  ]
+}

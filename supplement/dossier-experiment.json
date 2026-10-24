@@ -1,0 +1,49 @@
+{
+  "utc": "2026-10-24T06:04:25.743265+00:00",
+  "base": "2833f0aad168bd002bc3eba1b4d3dcb8dca69cd6",
+  "sourceBeforeCorrection": "e9e1d5430c1d6f99229a87f6b097ac3f5cc1d9fc",
+  "naturalFullFailure": "Original complete gate5 browser706passed1failed1skip; same synchronous guard failed before404feedback",
+  "naturalRepeatedControls": {
+    "branchOriginal": {
+      "runs": 20,
+      "passed": 20,
+      "seconds": 36.6
+    },
+    "mainOriginal": {
+      "runs": 20,
+      "passed": 20,
+      "seconds": 35.0
+    }
+  },
+  "controlledDelayMilliseconds": 250,
+  "controlledMainBeforeWait": {
+    "runs": 5,
+    "failed": 5,
+    "exactError": "Expected a dossier read"
+  },
+  "controlledMainAfterWait": {
+    "runs": 5,
+    "passed": 5,
+    "seconds": 27.8
+  },
+  "onlyControlledTreatment": "Added explicit expect.poll release-readiness assertion; delay and all outcome/assertion code unchanged",
+  "shippingChange": "One readiness wait in shared404/503/403 browsercase; no diagnosticdelay or production change",
+  "specSha256AfterCorrection": "c33bab659f36b12fa12346a5f5a924e8559f89fb09d455be072725f6003830c7",
+  "limits": "Controlled latency establishes unsupported timing assumption on main. Natural isolated controls were green; no natural base failure rate claimed. Original failed evidence remains immutable.",
+  "correctionChecks": {
+    "format": "passed after explicit cache restore",
+    "lint": "passed after explicit cache restore",
+    "types": "passed after explicit cache restore"
+  },
+  "baselineWorktreeCleaned": true,
+  "diagnosticTagAbsentInPrimary": true,
+  "shippingCorrectionCommit": "b2cda4c1dd0a521f565eea465b3038daf8b05a4b",
+  "targetedCorrectedOutcomes": {
+    "cases": 3,
+    "viewports": 2,
+    "repeats": 5,
+    "passed": 30,
+    "seconds": 50.3
+  },
+  "correctionReview": "Existing independently authorized product Standards/Spec round still applies. Root Standards/Spec correction self-review complete; test-only nonsensitive CI correction requires no confirmation round."
+}

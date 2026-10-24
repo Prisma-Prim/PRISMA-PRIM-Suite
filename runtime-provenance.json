@@ -1,0 +1,24 @@
+{
+  "frozenAt": "2026-10-24T07:42:21.309412+00:00",
+  "source": "bdcface0696cd47003e4750a0f906da9d0197557",
+  "base": "12ba34bacc4f9067831729f11ff27b25b8cb7f0c",
+  "integrationTree": "f62e7021e0623d4afca40b1964463b79b8a53d50",
+  "run": "prisma-quality-integration-bdcface-7",
+  "runtimeFiles": {
+    "runtime-bin-stable/pnpm": {
+      "bytes": 343,
+      "sha256": "db93c6daa587fe41c1d145a65d6710e28d5044067af92ae237965f825b7b4ca8"
+    },
+    "runtime-bin-stable/docker": {
+      "bytes": 121,
+      "sha256": "9371dbddc4ff9f5c7bcb77ce9ab4ecc766ad9b56befb39ee67f4e70bc6f9b512"
+    },
+    "managed-docker-trust.py": {
+      "bytes": 2953,
+      "sha256": "afe5ae58b5b9cf26dcee370f988e3b8aeaea9961ed52b2cb7d87375af95f1a99"
+    }
+  },
+  "adaptation": "Existing qualified stable launcher and build-only public CA Docker secret transport; unchanged. Current integration receives fresh full gate; no previous pass relabeling.",
+  "correctionCommit": "b2cda4c1dd0a521f565eea465b3038daf8b05a4b",
+  "reason": "Gate6 first15 familiespassed;packagingfailed on local600publicfilemodes. Causeprovedonunchangedprerequisite;2publicmodesrestored644;unchangedcanonicalpackagingtargetpassedexit0. Docs-onlymain841composed, application/test/dependency/config/schema bytes unchanged. No exception authorized;freshfullgate7required."
+}
