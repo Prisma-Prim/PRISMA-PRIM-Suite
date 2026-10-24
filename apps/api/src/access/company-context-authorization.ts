@@ -33,11 +33,13 @@ import {
   COMPANY_CONTEXT_USE_BUNDLES,
   COMPANY_TASK_MANAGER_BUNDLE,
   taskPermissionsFor,
+  taskResultPermissionsFor,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   missionDeliverablePermissionsFor,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   documentApproverPermissionsFor,
@@ -125,6 +127,29 @@ const DOCUMENT_READ_REGISTRAR_VERSIONS = [
 @Injectable()
 export class CompanyContextAuthorization {
   constructor(private readonly databaseContext: DatabaseContext) {}
+
+  async requireTaskResultRecorder(actor: ActorContext): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company?.taskResultPermissions?.includes('task.result.record') ||
+      company.taskResultRecorderPermissionSetVersion !== 'v1' ||
+      !company.taskResultRecorderAssignmentId
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, company.id, true);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(companyRoleAssignments.id, company.taskResultRecorderAssignmentId),
+        eq(companyRoleAssignments.bundle, COMPANY_TASK_RESULT_RECORDER_BUNDLE),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      true,
+    );
+    return company.id;
+  }
 
   async requireIdeasAccess(
     actor: ActorContext,
@@ -1410,6 +1435,7 @@ export class CompanyContextAuthorization {
         COMPANY_DOCUMENT_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
         COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+        COMPANY_TASK_RESULT_RECORDER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
@@ -1514,6 +1540,16 @@ export class CompanyContextAuthorization {
         company.missionDeliverableAccessAssignmentId = row.assignmentId;
         company.missionDeliverableAccessPermissionSetVersion = 'v1';
       }
+      if (
+        row.bundle === COMPANY_TASK_RESULT_RECORDER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.taskResultPermissions = [
+          ...taskResultPermissionsFor(row.permissionSetVersion),
+        ];
+        company.taskResultRecorderAssignmentId = row.assignmentId;
+        company.taskResultRecorderPermissionSetVersion = 'v1';
+      }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
         if (!isDocumentPermissionSetVersion(row.permissionSetVersion)) continue;
         const permissions = documentPermissionsFor(row.permissionSetVersion);
@@ -1522,6 +1558,7 @@ export class CompanyContextAuthorization {
           ...permissions,
         ];
         company.documentPermissionSetVersion = row.permissionSetVersion;
+        company.documentPermissionAssignmentId = row.assignmentId;
       }
       if (
         row.bundle === COMPANY_PROJECT_ACCESS_BUNDLE &&
@@ -1530,6 +1567,8 @@ export class CompanyContextAuthorization {
         company.projectPermissions = [
           ...projectPermissionsFor(row.permissionSetVersion),
         ];
+        company.projectPermissionAssignmentId = row.assignmentId;
+        company.projectPermissionSetVersion = row.permissionSetVersion;
       }
       if (
         row.bundle === COMPANY_TASK_MANAGER_BUNDLE &&

@@ -24,6 +24,13 @@ const owner: ActorContext = {
 afterEach(() => vi.unstubAllGlobals());
 it.each([
   {
+    role: 'Task result recorder',
+    route: 'task-result-recorder',
+    value: 'task-result-recorder',
+    label: 'Company Task Result Recorder',
+    option: 'Company Task Result Recorder',
+  },
+  {
     role: 'reader',
     route: 'document-content-reader',
     value: 'document-content-reader',
@@ -127,6 +134,7 @@ it.each([
   },
 );
 it.each([
+  'Company Task Result Recorder',
   'Company Document Content Reader',
   'Company Document Content Uploader',
   'Company Mission Deliverable Access',

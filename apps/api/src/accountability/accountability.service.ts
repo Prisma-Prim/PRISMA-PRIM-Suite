@@ -43,6 +43,7 @@ import { alias, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   taskEvents,
+  taskResultEvents,
   tasks,
   projectCreationEvents,
   projectResponsibilityEvents,
@@ -548,6 +549,29 @@ export class AccountabilityService {
     ]);
   }
 
+  /** Restricted result events have no ordinary Task or general Activity projection. */
+  async recordTaskResultEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    taskId: string;
+    resultId: string;
+    revision: number;
+    action: 'task.result.recorded' | 'task.result.corrected';
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(taskResultEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      taskId: input.taskId,
+      resultId: input.resultId,
+      revision: input.revision,
+      action: input.action,
+      actorInternalUserId: input.actor.internalUserId,
+      actorMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      metadata: { revision: input.revision },
+    });
+  }
   async recordTaskEvent(input: {
     actor: ActorContext;
     taskId: string;
@@ -3159,8 +3183,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_approver_assignment.revoked':
     case 'company_document_content_reader_assignment.granted':
     case 'company_mission_deliverable_access_assignment.granted':
+    case 'company_task_result_recorder_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
     case 'company_mission_deliverable_access_assignment.revoked':
+    case 'company_task_result_recorder_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':
     case 'company_document_content_uploader_assignment.revoked':
     case 'company_project_assignment.granted':

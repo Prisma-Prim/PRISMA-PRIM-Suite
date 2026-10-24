@@ -1,4 +1,5 @@
 import { DocumentContentService } from './document-content.service.js';
+import { DocumentTaskResultReferenceService } from './document-task-result-reference.service.js';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
 import { ProjectModule } from '../project/project.module.js';
@@ -25,6 +26,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentReadBoundary,
     DocumentVersionsService,
     DocumentContentService,
+    DocumentTaskResultReferenceService,
     DocumentPdfStorage,
     DocumentMalwareScanner,
   ],
@@ -33,6 +35,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentProjectsService,
     DocumentVersionsService,
     DocumentContentService,
+    DocumentTaskResultReferenceService,
   ],
 })
 export class DocumentsModule {}

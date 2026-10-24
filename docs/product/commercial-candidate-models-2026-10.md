@@ -60,6 +60,12 @@ The CSV preserves three contradictions without choosing a correction: `OF-DATE` 
 
 The Offer's eighteen stages and Contract annex's thirteen rows have separate IDs and source locations. No one-to-one conversion is specified. Proposed result cells are not completed-work evidence; certification and training outcomes require separate verification and approved wording. No price, staged payment shares, penalty rates, notice interval or legal clause from the received case is carried forward.
 
+The separate [Project/Task §28 contract](release-1-project-task-prd.md#28-approved-bounded-thirteen-activity-pilot-plan-836)
+normalizes an anonymous illustrative copy of the thirteen activity, action and intended result rows for planning. It neither approves these commercial skeletons nor
+supplies mandatory obligations, workflow-stage mapping, performed work or
+certification evidence. That canonical owner defines the fixed planning source;
+this preparation retains only its source-location mapping.
+
 ## 4. Preparation delivered; operational work remains separate
 
 The received example remains controlled evidence. These files are candidate review structures. An approved Template Version is a later explicitly governed version, while an immutable historical illustrative output preserves the exact Template/data it originally used. A correcting candidate never rewrites either the received source or the illustrative output.

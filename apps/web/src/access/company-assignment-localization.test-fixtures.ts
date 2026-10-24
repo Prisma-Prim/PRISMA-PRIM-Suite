@@ -516,6 +516,17 @@ export const assignmentBundleCases = [
       en: 'Company Task Manager',
     },
   },
+  {
+    value: 'task-result-recorder',
+    canonical: 'Company Task Result Recorder',
+    version: 'v1',
+    labels: {
+      ro: 'Declarant de rezultate ale sarcinilor companiei',
+      ru: 'Регистратор результатов задач компании',
+      fr: 'Déclarant de résultats de tâche de la société',
+      en: 'Company Task Result Recorder',
+    },
+  },
 ] as const;
 
 export type AssignmentBundleFixture = (typeof assignmentBundleCases)[number];
