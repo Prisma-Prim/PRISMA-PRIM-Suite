@@ -280,7 +280,7 @@ const PRICING_USER_BUNDLE: BundleDefinition = {
 const OFFER_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_OFFER_PREPARER_BUNDLE,
   label: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 const CONTRACT_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_PREPARER_BUNDLE,
@@ -2221,12 +2221,15 @@ function assignmentRecord(
         permissionSetVersion: 'v1',
       };
     case COMPANY_OFFER_PREPARER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
+      if (
+        assignment.permissionSetVersion !== 'v1' &&
+        assignment.permissionSetVersion !== 'v2'
+      )
         throw new Error('Invalid Company Offer Preparer version.');
       return {
         ...base,
         bundle: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
+        permissionSetVersion: assignment.permissionSetVersion,
       };
     case COMPANY_CONTRACT_PREPARER_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')

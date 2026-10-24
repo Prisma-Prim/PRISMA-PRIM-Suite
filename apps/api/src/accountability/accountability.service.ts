@@ -277,7 +277,10 @@ export class AccountabilityService {
           ruleSetVersion: OfferQualityRuleSetVersion;
           acknowledgedWarningCodes: readonly string[];
         }
-      | { state: 'REJECTED' };
+      | {
+          state: 'REJECTED';
+          provenance?: 'ILLUSTRATIVE' | 'APPROVED_ESTIMATE_INTERNAL_DRAFT';
+        };
   }) {
     const { decision } = input;
     await this.databaseContext.connection.insert(offerEvents).values({
@@ -297,7 +300,10 @@ export class AccountabilityService {
         offerVersionId: input.offerVersionId,
         versionNumber: input.versionNumber,
         outcome: decision.state,
-        provenance: 'ILLUSTRATIVE',
+        provenance:
+          decision.state === 'REJECTED'
+            ? (decision.provenance ?? 'ILLUSTRATIVE')
+            : 'ILLUSTRATIVE',
         ...(decision.state === 'APPROVED'
           ? {
               ruleSetVersion: decision.ruleSetVersion,
@@ -547,6 +553,63 @@ export class AccountabilityService {
         },
       },
     ]);
+  }
+
+  /** Only approved source identifiers are recorded; commercial amounts stay out. */
+  async recordInternalOfferPrepared(input: {
+    actor: ActorContext;
+    companyId: string;
+    offerId: string;
+    offerVersionId: string;
+    versionNumber: number;
+    illustrativeReference: number;
+    recipientKind: 'PRIMARY' | 'ADDITIONAL';
+    estimateVersionId: string;
+    estimateVersionNumber: number;
+    approvalDecisionId: string;
+    occurredAt: Date;
+  }): Promise<void> {
+    const envelope = {
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      offerId: input.offerId,
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+    };
+    const events: (typeof offerEvents.$inferInsert)[] = [
+      {
+        ...envelope,
+        action: 'offer_version.created',
+        offerVersionId: input.offerVersionId,
+        metadata: {
+          offerId: input.offerId,
+          offerVersionId: input.offerVersionId,
+          versionNumber: input.versionNumber,
+          ...(input.versionNumber > 1
+            ? { predecessorVersionNumber: input.versionNumber - 1 }
+            : {}),
+          recipientKind: input.recipientKind,
+          provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+          priceSourceKind: 'DIRECTOR_APPROVED_ESTIMATE',
+          estimateVersionId: input.estimateVersionId,
+          estimateVersionNumber: input.estimateVersionNumber,
+          approvalDecisionId: input.approvalDecisionId,
+        },
+      },
+    ];
+    if (input.versionNumber === 1)
+      events.unshift({
+        ...envelope,
+        action: 'offer.created',
+        offerVersionId: null,
+        metadata: {
+          offerId: input.offerId,
+          illustrativeReference: input.illustrativeReference,
+          provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+        },
+      });
+    await this.databaseContext.connection.insert(offerEvents).values(events);
   }
 
   /** Restricted result events have no ordinary Task or general Activity projection. */

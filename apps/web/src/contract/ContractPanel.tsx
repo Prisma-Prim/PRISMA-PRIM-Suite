@@ -155,7 +155,8 @@ export function ContractPanel({
     (context.clientPermissionSetVersion === 'v1' ||
       context.clientPermissionSetVersion === 'v2') &&
     context.offerPermissions?.includes('commercial.offer.read') &&
-    ((context.offerPermissionSetVersion === 'v1' &&
+    (((context.offerPermissionSetVersion === 'v1' ||
+      context.offerPermissionSetVersion === 'v2') &&
       context.offerPermissionAssignmentId) ||
       (context.offerApproverPermissionSetVersion === 'v1' &&
         context.offerApproverAssignmentId)),
@@ -171,7 +172,8 @@ export function ContractPanel({
       context.pricingUserPermissions?.includes(
         'commercial.pricing.snapshot.read',
       )) ||
-      (context.offerPermissionSetVersion === 'v1' &&
+      ((context.offerPermissionSetVersion === 'v1' ||
+        context.offerPermissionSetVersion === 'v2') &&
         context.offerPermissionAssignmentId &&
         context.offerPermissions?.includes(
           'commercial.pricing.snapshot.read',
@@ -703,7 +705,8 @@ export function ContractPanel({
                       context.pricingUserPermissions?.includes(
                         'commercial.pricing.snapshot.read',
                       )) ||
-                    (context?.offerPermissionSetVersion === 'v1' &&
+                    ((context?.offerPermissionSetVersion === 'v1' ||
+                      context?.offerPermissionSetVersion === 'v2') &&
                       context.offerPermissionAssignmentId &&
                       context.offerPermissions?.includes(
                         'commercial.pricing.snapshot.read',

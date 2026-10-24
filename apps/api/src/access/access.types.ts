@@ -90,7 +90,7 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   contractApproverPermissionSetVersion?: 'v1';
   offerPermissions?: CompanyOfferPermission[];
   offerPermissionAssignmentId?: string;
-  offerPermissionSetVersion?: 'v1';
+  offerPermissionSetVersion?: 'v1' | 'v2';
   offerApproverAssignmentId?: string;
   offerApproverPermissionSetVersion?: 'v1';
   pricingAdjustmentPermissions?: CompanyPricingAdjustmentPermission[];

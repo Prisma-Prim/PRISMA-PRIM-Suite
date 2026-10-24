@@ -21,6 +21,7 @@ import type {
   OfferClientResponseView,
   OfferQualityRunView,
   OfferView,
+  OfferReadView,
 } from './offer-response';
 
 const identity = deterministicBrowserIdentity({
@@ -1898,7 +1899,7 @@ it.each(groupedVersionLocales)(
           return response({ offer: historical });
         throw new Error(`Unexpected grouped-history request: ${path}`);
       });
-    const onSelect = vi.fn<(offer: OfferView) => void>();
+    const onSelect = vi.fn<(offer: OfferReadView) => void>();
     const reject = vi.fn(async () => undefined);
     render(
       <InterfaceLocaleProvider>

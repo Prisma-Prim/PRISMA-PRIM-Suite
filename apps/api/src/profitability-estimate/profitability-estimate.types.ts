@@ -53,3 +53,14 @@ export interface ProfitabilityVersionPage {
   readonly latestVersionNumber: number | null;
   readonly nextCursor?: string;
 }
+
+/** Exact approved commercial facts; economic costs/results stay in this owner. */
+export interface ApprovedEstimateCommercialProjection {
+  readonly estimateId: string;
+  readonly estimateVersionId: string;
+  readonly estimateVersionNumber: number;
+  readonly approvalDecisionId: string;
+  readonly approvedAt: string;
+  readonly amount: string;
+  readonly currency: string;
+}

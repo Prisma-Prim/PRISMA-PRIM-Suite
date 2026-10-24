@@ -2579,7 +2579,7 @@ withPostgres('First illustrative Offer REST', () => {
     'refuses simulated transmission for current %s and rolls back every new record',
     async (code) => {
       const { fixture, base } = await approvedTransmissionOffer();
-      let constraint: string | undefined;
+      let constraints: { name: string; definition: string }[] = [];
       if (code === 'PRICING_SNAPSHOT_COHERENT')
         await pool.query(
           'UPDATE pricing_snapshots SET subtotal = subtotal + 1, total = total + 1 WHERE id = $1',
@@ -2593,16 +2593,7 @@ withPostgres('First illustrative Offer REST', () => {
           [fixture.companyId],
         );
       if (code === 'PROVISIONAL_MARKER_PRESENT') {
-        const row = (
-          await pool.query<{ definition: string }>(
-            "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'offer_versions_initial_state_check'",
-          )
-        ).rows[0];
-        if (!row) throw new Error('Expected version constraint');
-        constraint = row.definition;
-        await pool.query(
-          'ALTER TABLE offer_versions DROP CONSTRAINT offer_versions_initial_state_check',
-        );
+        constraints = await removeSyntheticOfferSourceChecks();
         await corruptSyntheticVersion(
           "UPDATE offer_versions SET provenance = 'INVALID_SYNTHETIC'",
         );
@@ -2620,14 +2611,14 @@ withPostgres('First illustrative Offer REST', () => {
         });
         await expectNoTransmissionEffects();
       } finally {
-        if (constraint) {
+        if (constraints.length > 0) {
           await corruptSyntheticVersion(
             "UPDATE offer_versions SET provenance = 'ILLUSTRATIVE'",
           );
-          await pool.query(
-            'ALTER TABLE offer_versions ADD CONSTRAINT offer_versions_initial_state_check ' +
-              constraint,
-          );
+          for (const constraint of constraints)
+            await pool.query(
+              `ALTER TABLE offer_versions ADD CONSTRAINT ${constraint.name} ${constraint.definition}`,
+            );
         }
       }
     },
@@ -2824,7 +2815,7 @@ withPostgres('First illustrative Offer REST', () => {
         'earlier-success',
         fixture.companyId,
       );
-      let constraint: string | undefined;
+      let constraints: { name: string; definition: string }[] = [];
       if (code === 'PRICING_SNAPSHOT_COHERENT')
         await pool.query(
           'UPDATE pricing_snapshots SET subtotal = subtotal + 1, total = total + 1 WHERE id = $1',
@@ -2838,16 +2829,7 @@ withPostgres('First illustrative Offer REST', () => {
           [fixture.companyId],
         );
       if (code === 'PROVISIONAL_MARKER_PRESENT') {
-        const [row] = (
-          await pool.query<{ definition: string }>(
-            "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = 'offer_versions_initial_state_check'",
-          )
-        ).rows;
-        if (!row) throw new Error('Expected version constraint');
-        constraint = row.definition;
-        await pool.query(
-          'ALTER TABLE offer_versions DROP CONSTRAINT offer_versions_initial_state_check',
-        );
+        constraints = await removeSyntheticOfferSourceChecks();
         await corruptSyntheticVersion(
           "UPDATE offer_versions SET provenance = 'INVALID_SYNTHETIC' WHERE company_id = $1",
           [fixture.companyId],
@@ -2889,15 +2871,15 @@ withPostgres('First illustrative Offer REST', () => {
           ).rows,
         ).toEqual([{ count: 2 }]);
       } finally {
-        if (constraint) {
+        if (constraints.length > 0) {
           await corruptSyntheticVersion(
             "UPDATE offer_versions SET provenance = 'ILLUSTRATIVE' WHERE company_id = $1",
             [fixture.companyId],
           );
-          await pool.query(
-            'ALTER TABLE offer_versions ADD CONSTRAINT offer_versions_initial_state_check ' +
-              constraint,
-          );
+          for (const constraint of constraints)
+            await pool.query(
+              `ALTER TABLE offer_versions ADD CONSTRAINT ${constraint.name} ${constraint.definition}`,
+            );
         }
       }
     },
@@ -5652,7 +5634,7 @@ withPostgres('First illustrative Offer REST', () => {
       'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
     );
     try {
-      for (const version of [null, 'v2', 'V1']) {
+      for (const version of [null, 'v3', 'V1']) {
         await pool.query(
           "UPDATE company_role_assignments SET permission_set_version = $1 WHERE company_id = $2 AND bundle = 'company_offer_preparer'",
           [version, fixture.companyId],
@@ -6754,6 +6736,22 @@ withPostgres('First illustrative Offer REST', () => {
 
   // Deliberate corruption of disposable synthetic content, under an exclusive
   // table lock. The production guard is restored before this transaction commits.
+  async function removeSyntheticOfferSourceChecks() {
+    const names = [
+      'offer_versions_initial_state_check',
+      'offer_versions_price_source_check',
+      'offer_versions_template_check',
+    ];
+    const definitions = await pool.query<{ name: string; definition: string }>(
+      'SELECT conname AS name, pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conname = ANY($1::text[])',
+      [names],
+    );
+    expect(definitions.rows).toHaveLength(names.length);
+    for (const name of names)
+      await pool.query(`ALTER TABLE offer_versions DROP CONSTRAINT ${name}`);
+    return definitions.rows;
+  }
+
   async function corruptSyntheticVersion(text: string, values: string[] = []) {
     const client = await pool.connect();
     try {

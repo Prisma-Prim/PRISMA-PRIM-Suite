@@ -47,6 +47,58 @@ export type OfferView = {
   } & OfferTransmissionState;
 };
 
+export type InternalOfferPriceSource = {
+  kind: 'DIRECTOR_APPROVED_ESTIMATE';
+  estimateId: string;
+  estimateVersionId: string;
+  estimateVersionNumber: number;
+  approvalDecisionId: string;
+  approvedAt: string;
+  amount: string;
+  currency: string;
+  taxTreatment: 'UNSPECIFIED';
+};
+type InternalVersionContent = Pick<
+  OfferView['version'],
+  | 'id'
+  | 'versionNumber'
+  | 'predecessorVersionId'
+  | 'supersededByVersionId'
+  | 'supersededAt'
+  | 'differences'
+  | 'recipient'
+  | 'issuingCompanyLabel'
+  | 'validityDays'
+  | 'validityElapsed'
+  | 'validUntil'
+  | 'scopeNote'
+  | 'commercialConditions'
+>;
+export type InternalOfferView = Omit<OfferView, 'version'> & {
+  companyId: string;
+  opportunityId: string;
+  version: InternalVersionContent & {
+    provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT';
+    provisional: true;
+    priceSource: InternalOfferPriceSource;
+    latestQualityRun: null;
+    transmissionState: 'NOT_TRANSMITTED';
+    transmission: null;
+    clientResponseState: 'NONE';
+    clientResponse: null;
+  } & (
+      | { decisionState: 'PENDING'; decision: null }
+      | {
+          decisionState: 'REJECTED';
+          decision: Extract<OfferDecisionView, { state: 'REJECTED' }>;
+        }
+    );
+};
+export type OfferReadView = OfferView | InternalOfferView;
+export function isIllustrativeOffer(offer: OfferReadView): offer is OfferView {
+  return offer.version.provenance === 'ILLUSTRATIVE';
+}
+
 export type OfferTransmissionView = {
   id: string;
   offerVersionId: string;
@@ -98,12 +150,19 @@ export function offerClientResponseState(
   }
 }
 
-export function readOfferDetail(value: unknown): OfferView | null {
+export function readOfferDetail(value: unknown): OfferReadView | null {
   const detail = record(value);
   return detail.offer === null ? null : readOffer(detail.offer);
 }
 
-export function readOffer(value: unknown): OfferView {
+export function readOffer(value: unknown): OfferReadView {
+  const root = record(value);
+  if (record(root.version).provenance === 'APPROVED_ESTIMATE_INTERNAL_DRAFT')
+    return readInternalOffer(root);
+  return readIllustrativeOffer(value);
+}
+
+function readIllustrativeOffer(value: unknown): OfferView {
   const root = record(value);
   const version = record(root.version);
   const recipient = record(version.recipient);
@@ -265,6 +324,11 @@ export function readOffer(value: unknown): OfferView {
 }
 
 export const offerDifferenceFields = [
+  'priceSourceKind',
+  'estimateVersionId',
+  'estimateVersionNumber',
+  'approvalDecisionId',
+  'amount',
   'recipientKind',
   'recipientAdditionalLegalEntityId',
   'recipientLegalName',
@@ -305,6 +369,16 @@ function readOfferDifferences(
         typeof current !== 'number') ||
       typeof item.changed !== 'boolean' ||
       item.changed !== (previous !== current)
+    )
+      invalid();
+    if (
+      field === 'priceSourceKind' &&
+      [previous, current].some(
+        (kind) =>
+          kind !== null &&
+          kind !== 'DIRECTOR_APPROVED_ESTIMATE' &&
+          kind !== 'ILLUSTRATIVE_SNAPSHOT',
+      )
     )
       invalid();
     return { field, previous, current, changed: item.changed };
@@ -362,7 +436,7 @@ export type OfferDecisionView = {
 
 export function readOfferDecision(
   value: unknown,
-  binding: OfferQualityRunBinding,
+  binding: OfferQualityRunBinding | { offerVersionId: string },
 ): OfferDecisionView {
   const { offerVersionId } = binding;
   const row = record(value);
@@ -391,6 +465,7 @@ export function readOfferDecision(
   )
     return { ...base, state: 'REJECTED', reason: row.reason };
   if (
+    !('ruleSetVersion' in binding) ||
     row.state !== 'APPROVED' ||
     !Array.isArray(row.acknowledgedWarningCodes) ||
     typeof row.representationSha256 !== 'string' ||
@@ -732,4 +807,168 @@ export function readOfferClientResponse({
       reason: row.reason,
     };
   return invalid();
+}
+
+function readInternalOffer(root: Record<string, unknown>): InternalOfferView {
+  const version = record(root.version);
+  const recipient = record(version.recipient);
+  if (
+    typeof root.id !== 'string' ||
+    typeof root.companyId !== 'string' ||
+    !root.companyId ||
+    typeof root.opportunityId !== 'string' ||
+    !root.opportunityId ||
+    !positiveInteger(root.illustrativeReference) ||
+    !positiveInteger(root.revision) ||
+    typeof version.id !== 'string' ||
+    !positiveInteger(version.versionNumber) ||
+    !positiveInteger(version.validityDays) ||
+    version.validityDays > 365 ||
+    typeof version.validityElapsed !== 'boolean' ||
+    typeof version.issuingCompanyLabel !== 'string' ||
+    typeof recipient.legalName !== 'string' ||
+    (recipient.kind !== 'PRIMARY' && recipient.kind !== 'ADDITIONAL') ||
+    version.provisional !== true ||
+    version.latestQualityRun !== null ||
+    version.transmissionState !== 'NOT_TRANSMITTED' ||
+    version.transmission !== null ||
+    version.clientResponseState !== 'NONE' ||
+    version.clientResponse !== null ||
+    [
+      'pricingSnapshotId',
+      'pricingSnapshot',
+      'representation',
+      'qualityRuleSet',
+      'qualityRuleSetVersion',
+      'templateCode',
+      'templateVersion',
+      'taxTotal',
+      'total',
+      'executorCost',
+      'fiscalCost',
+      'results',
+      'inputs',
+    ].some((key) => Object.hasOwn(version, key))
+  )
+    invalid();
+  const predecessorVersionId = optionalText(version.predecessorVersionId);
+  const supersededByVersionId = optionalText(version.supersededByVersionId);
+  const supersededAt = optionalText(version.supersededAt);
+  const validUntil = validOfferInstant(version.validUntil);
+  if (
+    (version.versionNumber === 1) !== (predecessorVersionId === null) ||
+    (supersededByVersionId === null) !== (supersededAt === null) ||
+    (supersededAt !== null && !Number.isFinite(Date.parse(supersededAt)))
+  )
+    invalid();
+  const additionalLegalEntityId = optionalText(
+    recipient.additionalLegalEntityId ?? null,
+  );
+  if ((recipient.kind === 'ADDITIONAL') !== (additionalLegalEntityId !== null))
+    invalid();
+  const source = record(version.priceSource);
+  const sourceFields = [
+    'kind',
+    'estimateId',
+    'estimateVersionId',
+    'estimateVersionNumber',
+    'approvalDecisionId',
+    'approvedAt',
+    'amount',
+    'currency',
+    'taxTreatment',
+  ];
+  if (
+    Object.keys(source).length !== sourceFields.length ||
+    Object.keys(source).some((key) => !sourceFields.includes(key)) ||
+    source.kind !== 'DIRECTOR_APPROVED_ESTIMATE' ||
+    source.taxTreatment !== 'UNSPECIFIED' ||
+    !positiveInteger(source.estimateVersionNumber) ||
+    typeof source.amount !== 'string' ||
+    !/^(0|[1-9][0-9]*)\.[0-9]{2}$/u.test(source.amount) ||
+    BigInt(source.amount.replace('.', '')) <= 0n ||
+    typeof source.currency !== 'string' ||
+    !Intl.supportedValuesOf('currency').includes(source.currency)
+  )
+    invalid();
+  const priceSource: InternalOfferPriceSource = {
+    kind: 'DIRECTOR_APPROVED_ESTIMATE',
+    estimateId: offerSourceId(source.estimateId),
+    estimateVersionId: offerSourceId(source.estimateVersionId),
+    estimateVersionNumber: source.estimateVersionNumber,
+    approvalDecisionId: offerSourceId(source.approvalDecisionId),
+    approvedAt: validOfferInstant(source.approvedAt),
+    amount: source.amount,
+    currency: source.currency,
+    taxTreatment: 'UNSPECIFIED',
+  };
+  const content = {
+    id: version.id,
+    versionNumber: version.versionNumber,
+    predecessorVersionId,
+    supersededByVersionId,
+    supersededAt,
+    differences: readOfferDifferences(
+      version.differences,
+      version.versionNumber,
+    ),
+    recipient: {
+      kind: recipient.kind,
+      legalName: recipient.legalName,
+      taxId: optionalText(recipient.taxId),
+      legalAddress: optionalText(recipient.legalAddress),
+      additionalLegalEntityId,
+    },
+    issuingCompanyLabel: version.issuingCompanyLabel,
+    validityDays: version.validityDays,
+    validityElapsed: version.validityElapsed,
+    validUntil,
+    scopeNote: optionalText(version.scopeNote),
+    commercialConditions: optionalText(version.commercialConditions),
+    provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+    provisional: true,
+    priceSource,
+    latestQualityRun: null,
+    transmissionState: 'NOT_TRANSMITTED',
+    transmission: null,
+    clientResponseState: 'NONE',
+    clientResponse: null,
+  } satisfies Omit<InternalOfferView['version'], 'decisionState' | 'decision'>;
+  const base = {
+    id: root.id,
+    companyId: root.companyId,
+    opportunityId: root.opportunityId,
+    illustrativeReference: root.illustrativeReference,
+    revision: root.revision,
+  };
+  if (version.decisionState === 'PENDING' && version.decision === null)
+    return {
+      ...base,
+      version: { ...content, decisionState: 'PENDING', decision: null },
+    };
+  if (version.decisionState !== 'REJECTED') invalid();
+  const decision = readOfferDecision(version.decision, {
+    offerVersionId: version.id,
+  });
+  if (decision.state !== 'REJECTED' || decision.offerRevision > root.revision)
+    invalid();
+  return {
+    ...base,
+    version: { ...content, decisionState: 'REJECTED', decision },
+  };
+}
+function offerSourceId(value: unknown): string {
+  if (
+    typeof value !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      value,
+    )
+  )
+    invalid();
+  return value;
+}
+function validOfferInstant(value: unknown): string {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value)))
+    invalid();
+  return value;
 }

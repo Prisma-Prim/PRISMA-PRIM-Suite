@@ -14,9 +14,15 @@ import { clientLegalEntities } from './client-legal-entity.js';
 import { clientRequests, opportunities } from './commercial-intake.js';
 import { clientAccounts, companies, workspaceMemberships } from './core.js';
 import { pricingSnapshots } from './pricing-configuration.js';
+import {
+  profitabilityEstimateDecisions,
+  profitabilityEstimateVersions,
+} from './profitability-estimate.js';
 
 export const OFFER_PROVENANCE = 'ILLUSTRATIVE' as const;
 export const OFFER_TEMPLATE_CODE = 'OFFER_ILLUSTRATIVE' as const;
+export const INTERNAL_ESTIMATE_OFFER_PROVENANCE =
+  'APPROVED_ESTIMATE_INTERNAL_DRAFT';
 
 /** The durable commercial identity. O1 permits exactly one per Opportunity. */
 export const offers = pgTable(
@@ -135,7 +141,19 @@ export const offerVersions = pgTable(
     predecessorVersionId: uuid('predecessor_version_id'),
     supersededByVersionId: uuid('superseded_by_version_id'),
     supersededAt: timestamp('superseded_at', { withTimezone: true }),
-    pricingSnapshotId: uuid('pricing_snapshot_id').notNull(),
+    pricingSnapshotId: uuid('pricing_snapshot_id'),
+    estimateSourceId: uuid('estimate_source_id'),
+    estimateSourceVersionId: uuid('estimate_source_version_id'),
+    estimateSourceVersionNumber: integer('estimate_source_version_number'),
+    estimateSourceDecisionId: uuid('estimate_source_decision_id'),
+    estimateSourceDecisionCode: text('estimate_source_decision_code', {
+      enum: ['APPROVE'],
+    }),
+    estimateSourceApprovedAt: timestamp('estimate_source_approved_at', {
+      withTimezone: true,
+    }),
+    estimateSourceAmount: text('estimate_source_amount'),
+    estimateSourceCurrency: text('estimate_source_currency'),
     recipientClientAccountId: uuid('recipient_client_account_id').notNull(),
     recipientKind: text('recipient_kind', {
       enum: ['PRIMARY', 'ADDITIONAL'],
@@ -153,8 +171,8 @@ export const offerVersions = pgTable(
     commercialConditions: text('commercial_conditions'),
     templateCode: text('template_code', {
       enum: [OFFER_TEMPLATE_CODE],
-    }).notNull(),
-    templateVersion: integer('template_version').notNull(),
+    }),
+    templateVersion: integer('template_version'),
     decisionState: text('decision_state', { enum: ['PENDING'] })
       .default('PENDING')
       .notNull(),
@@ -166,7 +184,9 @@ export const offerVersions = pgTable(
     clientResponseState: text('client_response_state', { enum: ['NONE'] })
       .default('NONE')
       .notNull(),
-    provenance: text('provenance', { enum: [OFFER_PROVENANCE] })
+    provenance: text('provenance', {
+      enum: [OFFER_PROVENANCE, INTERNAL_ESTIMATE_OFFER_PROVENANCE],
+    })
       .default(OFFER_PROVENANCE)
       .notNull(),
     createdByInternalUserId: uuid('created_by_internal_user_id').notNull(),
@@ -264,7 +284,7 @@ export const offerVersions = pgTable(
         AND ${table.decisionState} = 'PENDING'
         AND ${table.transmissionState} = 'NOT_TRANSMITTED'
         AND ${table.clientResponseState} = 'NONE'
-        AND ${table.provenance} = 'ILLUSTRATIVE'`,
+        AND ${table.provenance} IN ('ILLUSTRATIVE', 'APPROVED_ESTIMATE_INTERNAL_DRAFT')`,
     ),
     check(
       'offer_versions_lineage_check',
@@ -323,9 +343,68 @@ export const offerVersions = pgTable(
     ),
     check(
       'offer_versions_template_check',
-      sql`${table.templateCode} = 'OFFER_ILLUSTRATIVE'
-        AND ${table.templateVersion} IN (1, 2)`,
+      sql`(CASE WHEN ${table.provenance} = 'ILLUSTRATIVE' THEN
+        ${table.templateCode} = 'OFFER_ILLUSTRATIVE' AND ${table.templateVersion} IN (1, 2)
+        ELSE ${table.provenance} = 'APPROVED_ESTIMATE_INTERNAL_DRAFT'
+          AND ${table.templateCode} IS NULL AND ${table.templateVersion} IS NULL
+        END) IS TRUE`,
     ),
+    check(
+      'offer_versions_price_source_check',
+      sql`(CASE WHEN ${table.provenance} = 'ILLUSTRATIVE' THEN
+        ${table.pricingSnapshotId} IS NOT NULL
+        AND ${table.estimateSourceId} IS NULL AND ${table.estimateSourceVersionId} IS NULL
+        AND ${table.estimateSourceVersionNumber} IS NULL AND ${table.estimateSourceDecisionId} IS NULL
+        AND ${table.estimateSourceDecisionCode} IS NULL AND ${table.estimateSourceApprovedAt} IS NULL
+        AND ${table.estimateSourceAmount} IS NULL AND ${table.estimateSourceCurrency} IS NULL
+        WHEN ${table.provenance} = 'APPROVED_ESTIMATE_INTERNAL_DRAFT' THEN
+        ${table.pricingSnapshotId} IS NULL
+        AND ${table.estimateSourceId} IS NOT NULL AND ${table.estimateSourceVersionId} IS NOT NULL
+        AND ${table.estimateSourceVersionNumber} IS NOT NULL AND ${table.estimateSourceVersionNumber} > 0
+        AND ${table.estimateSourceDecisionId} IS NOT NULL AND ${table.estimateSourceDecisionCode} = 'APPROVE'
+        AND ${table.estimateSourceApprovedAt} IS NOT NULL
+        AND ${table.estimateSourceAmount} IS NOT NULL AND ${table.estimateSourceAmount} ~ '^(0|[1-9][0-9]*)[.][0-9]{2}$' AND ${table.estimateSourceAmount}::numeric > 0
+        AND ${table.estimateSourceCurrency} IS NOT NULL AND ${table.estimateSourceCurrency} ~ '^[A-Z]{3}$'
+        ELSE false END) IS TRUE`,
+    ),
+    foreignKey({
+      name: 'offer_versions_estimate_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.estimateSourceVersionId,
+      ],
+      foreignColumns: [
+        profitabilityEstimateVersions.workspaceId,
+        profitabilityEstimateVersions.companyId,
+        profitabilityEstimateVersions.id,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_versions_estimate_approval_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.estimateSourceId,
+        table.opportunityId,
+        table.clientRequestId,
+        table.estimateSourceVersionId,
+        table.estimateSourceVersionNumber,
+        table.estimateSourceDecisionCode,
+        table.estimateSourceDecisionId,
+      ],
+      foreignColumns: [
+        profitabilityEstimateDecisions.workspaceId,
+        profitabilityEstimateDecisions.companyId,
+        profitabilityEstimateDecisions.estimateId,
+        profitabilityEstimateDecisions.opportunityId,
+        profitabilityEstimateDecisions.clientRequestId,
+        profitabilityEstimateDecisions.versionId,
+        profitabilityEstimateDecisions.versionNumber,
+        profitabilityEstimateDecisions.code,
+        profitabilityEstimateDecisions.id,
+      ],
+    }),
   ],
 );
 
@@ -449,6 +528,8 @@ export const offerCommands = pgTable(
       enum: [
         'CREATE_OFFER',
         'CREATE_OFFER_VERSION',
+        'CREATE_ESTIMATE_OFFER',
+        'CREATE_ESTIMATE_OFFER_VERSION',
         'RUN_QUALITY_CHECKS',
         'APPROVE',
         'REJECT',
@@ -512,7 +593,9 @@ export const offerCommands = pgTable(
     }),
     check(
       'offer_commands_kind_result_check',
-      sql`((${table.kind} = 'CREATE_OFFER_VERSION' AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} > 1) OR (${table.kind} <> 'CREATE_OFFER_VERSION' AND ${table.resultVersionId} IS NULL AND ${table.resultOfferRevision} IS NULL)) AND ((${table.kind} IN ('CREATE_OFFER', 'CREATE_OFFER_VERSION') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
+      sql`((${table.kind} IN ('CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER_VERSION') AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} > 1)
+      OR (${table.kind} = 'CREATE_ESTIMATE_OFFER' AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} = 1)
+      OR (${table.kind} NOT IN ('CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER', 'CREATE_ESTIMATE_OFFER_VERSION') AND ${table.resultVersionId} IS NULL AND ${table.resultOfferRevision} IS NULL)) AND ((${table.kind} IN ('CREATE_OFFER', 'CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER', 'CREATE_ESTIMATE_OFFER_VERSION') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} IN ('APPROVE','REJECT') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NOT NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} = 'RECORD_TRANSMISSION' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NOT NULL AND ${table.resultClientResponseId} IS NULL)
@@ -653,6 +736,34 @@ export const offerEvents = pgTable(
       'offer_events_metadata_check',
       sql`(CASE
         WHEN jsonb_typeof(${table.metadata}) <> 'object' THEN false
+        WHEN ${table.metadata}->>'provenance' = 'APPROVED_ESTIMATE_INTERNAL_DRAFT' THEN
+          ${table.metadata}->>'offerId' = ${table.offerId}::text AND
+          CASE WHEN ${table.action} = 'offer.created' THEN
+            ${table.metadata} ?& ARRAY['offerId','illustrativeReference','provenance']
+            AND (${table.metadata} - ARRAY['offerId','illustrativeReference','provenance']::text[]) = '{}'::jsonb
+            AND jsonb_typeof(${table.metadata}->'illustrativeReference') = 'number'
+            AND ${table.metadata}->>'illustrativeReference' ~ '^[1-9][0-9]*$'
+          WHEN ${table.action} = 'offer_version.created' THEN
+            ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','recipientKind','provenance','priceSourceKind','estimateVersionId','estimateVersionNumber','approvalDecisionId']
+            AND (${table.metadata} - ARRAY['offerId','offerVersionId','versionNumber','predecessorVersionNumber','recipientKind','provenance','priceSourceKind','estimateVersionId','estimateVersionNumber','approvalDecisionId']::text[]) = '{}'::jsonb
+            AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
+            AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number'
+            AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
+            AND ((${table.metadata}->>'versionNumber' = '1' AND NOT (${table.metadata} ? 'predecessorVersionNumber')) OR ((${table.metadata}->>'versionNumber')::numeric > 1 AND jsonb_typeof(${table.metadata}->'predecessorVersionNumber') = 'number' AND (${table.metadata}->>'predecessorVersionNumber')::numeric = (${table.metadata}->>'versionNumber')::numeric - 1))
+            AND ${table.metadata}->>'recipientKind' IN ('PRIMARY','ADDITIONAL')
+            AND ${table.metadata}->>'priceSourceKind' = 'DIRECTOR_APPROVED_ESTIMATE'
+            AND jsonb_typeof(${table.metadata}->'estimateVersionNumber') = 'number'
+            AND ${table.metadata}->>'estimateVersionNumber' ~ '^[1-9][0-9]*$'
+            AND ${table.metadata}->>'estimateVersionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            AND ${table.metadata}->>'approvalDecisionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          WHEN ${table.action} = 'offer_version.rejected' THEN
+            ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','outcome','provenance']
+            AND (${table.metadata} - ARRAY['offerId','offerVersionId','versionNumber','outcome','provenance']::text[]) = '{}'::jsonb
+            AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
+            AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number'
+            AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
+            AND ${table.metadata}->>'outcome' = 'REJECTED'
+          ELSE false END
         WHEN ${table.action} = 'offer.created' THEN
           ${table.metadata} ?& ARRAY['offerId', 'illustrativeReference', 'provenance']
           AND (${table.metadata} - ARRAY['offerId', 'illustrativeReference', 'provenance']::text[]) = '{}'::jsonb

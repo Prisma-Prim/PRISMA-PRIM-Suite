@@ -21,7 +21,6 @@ import {
   contracts,
   contractVersions,
   offerCommands,
-  offerReferenceCounters,
   offerVersions,
   offers,
   offerQualityRuns,
@@ -29,11 +28,16 @@ import {
   offerTransmissions,
   offerClientResponses,
   OFFER_TEMPLATE_CODE,
+  INTERNAL_ESTIMATE_OFFER_PROVENANCE,
 } from '../database/schema/index.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { commandFingerprint } from '../command/idempotent-command.js';
 import type { PricingSnapshotRecord } from '../pricing-configuration/pricing-snapshot.types.js';
 import { offerClientResponseState } from './offer.types.js';
+import { OfferVersionDifferences } from './offer-version-differences.js';
+import { OfferCommandStore } from './offer-command-store.js';
+import { EstimateOfferView } from './offer-estimate-view.js';
+import type { OfferReadRecord } from './offer-estimate-preparation.types.js';
 import type {
   OfferRecord,
   OfferVersionRecord,
@@ -71,6 +75,9 @@ type OfferCommandRow = typeof offerCommands.$inferSelect;
 
 @Injectable()
 export class OfferService {
+  private readonly commands: OfferCommandStore;
+  private readonly estimateViews: EstimateOfferView;
+
   constructor(
     private readonly databaseContext: DatabaseContext,
     private readonly authorization: CompanyContextAuthorization,
@@ -79,7 +86,15 @@ export class OfferService {
     private readonly intake: CommercialIntakeService,
     private readonly pricing: PricingSnapshotService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
-  ) {}
+  ) {
+    this.commands = new OfferCommandStore(databaseContext);
+    this.estimateViews = new EstimateOfferView({
+      database: databaseContext,
+      intake,
+      clock,
+      pricing,
+    });
+  }
 
   /** Only the immutable source reference bound to a readable Contract. */
   async readContractSourceReference(input: {
@@ -238,7 +253,7 @@ export class OfferService {
       companyId: source.version.companyId,
       originalClientAccountId: source.originalClientAccountId,
       recipient: offerRecipientCopy(source.version),
-      pricingSnapshotId: source.version.pricingSnapshotId,
+      pricingSnapshotId: illustrativeSnapshotId(source.version),
       scopeNote: source.version.scopeNote,
       commercialConditions: source.version.commercialConditions,
     };
@@ -324,7 +339,7 @@ export class OfferService {
       offerVersionId: version.id,
       originalClientAccountId: offer.originalClientAccountId,
       clientRequestId: offer.clientRequestId,
-      pricingSnapshotId: version.pricingSnapshotId,
+      pricingSnapshotId: illustrativeSnapshotId(version),
       recipient: offerRecipientCopy(version),
       scopeNote: version.scopeNote,
       commercialConditions: version.commercialConditions,
@@ -412,7 +427,7 @@ export class OfferService {
       offerVersionId: version.id,
       originalClientAccountId: offer.originalClientAccountId,
       clientRequestId: offer.clientRequestId,
-      pricingSnapshotId: version.pricingSnapshotId,
+      pricingSnapshotId: illustrativeSnapshotId(version),
       recipient: offerRecipientCopy(version),
       scopeNote: version.scopeNote,
       commercialConditions: version.commercialConditions,
@@ -634,6 +649,8 @@ export class OfferService {
           opportunity.id,
         );
         if (!existing) throw new NotFoundException();
+        // All Offer source routes acquire the shared command key before Client fences.
+        await this.lockCommand(actor, companyId, idempotencyKey);
         // Naming a recipient always revalidates the original Client through its owner,
         // including retries. Resolve the write fence before Snapshot projection locks.
         await this.clients.lockOfferRecipient(
@@ -646,7 +663,6 @@ export class OfferService {
           opportunityId: opportunity.id,
           payload: input.payload,
         });
-        await this.lockCommand(actor, companyId, idempotencyKey);
         const receipt = await this.findCommand(
           actor,
           companyId,
@@ -967,33 +983,16 @@ export class OfferService {
     version: OfferVersionRow,
     snapshot: PricingSnapshotRecord,
   ): Promise<OfferVersionDifference[]> {
-    if (!version.predecessorVersionId) return [];
-    const [previous] = await this.databaseContext.connection
-      .select()
-      .from(offerVersions)
-      .where(
-        and(
-          eq(offerVersions.workspaceId, offer.workspaceId),
-          eq(offerVersions.companyId, offer.companyId),
-          eq(offerVersions.offerId, offer.id),
-          eq(offerVersions.id, version.predecessorVersionId),
-        ),
-      );
-    if (!previous) throw new Error('The Offer predecessor is missing.');
-    const previousSnapshot = await this.pricing.resolveOfferVersionSnapshot({
-      actor,
-      companyId: offer.companyId,
-      opportunityId: offer.opportunityId,
-      offerVersionId: previous.id,
-    });
-    return recordedDifferences(previous, previousSnapshot, version, snapshot);
+    return new OfferVersionDifferences(this.databaseContext, this.pricing).read(
+      { actor, version, snapshot },
+    );
   }
 
   async read(
     actor: ActorContext,
     opportunityId: string,
     offerVersionId?: string,
-  ): Promise<OfferRecord | null> {
+  ): Promise<OfferReadRecord | null> {
     await this.authorization.requireOfferAccess(actor, [
       'commercial.offer.read',
     ]);
@@ -1027,6 +1026,12 @@ export class OfferService {
         offer.id,
         offerVersionId,
       );
+      if (stored.version.provenance === INTERNAL_ESTIMATE_OFFER_PROVENANCE)
+        return this.estimateViews.read({
+          actor,
+          offer: stored.offer,
+          version: stored.version,
+        });
       const snapshot = await this.pricing.resolveOfferVersionSnapshot({
         actor,
         companyId,
@@ -1179,11 +1184,12 @@ export class OfferService {
         offerVersionId: target.id,
         headVersionId: head?.id,
       });
+      illustrativeSnapshotId(target);
       const pricing = await this.pricing.inspectOfferQualitySnapshot({
         actor,
         companyId,
         opportunityId: opportunity.id,
-        snapshotId: target.pricingSnapshotId,
+        snapshotId: illustrativeSnapshotId(target),
       });
       const recipient = offerRecipientCopy(target);
       const context = await this.clients.inspectOfferQualityContext({
@@ -1382,11 +1388,12 @@ export class OfferService {
           | undefined;
         let decidedAt: Date;
         if (command.kind === 'APPROVE') {
+          illustrativeSnapshotId(target);
           const pricing = await this.pricing.inspectOfferQualitySnapshot({
             actor,
             companyId,
             opportunityId: offer.opportunityId,
-            snapshotId: target.pricingSnapshotId,
+            snapshotId: illustrativeSnapshotId(target),
           });
           const recipient = offerRecipientCopy(target);
           const context = await this.clients.inspectOfferQualityContext({
@@ -1518,7 +1525,7 @@ export class OfferService {
                 ruleSetVersion: approval.ruleSetVersion,
                 acknowledgedWarningCodes: approval.acknowledgedWarningCodes,
               }
-            : { state: 'REJECTED' },
+            : { state: 'REJECTED', provenance: target.provenance },
         });
         return this.decisionView(decision);
       })
@@ -1583,6 +1590,7 @@ export class OfferService {
             ),
           );
         if (!target) throw new NotFoundException();
+        await this.lockCommand(actor, companyId, idempotencyKey);
         const recipient = offerRecipientCopy(target);
         // The response selects no new entity. Fence recorded references through
         // Client without lending dossier read authority or adding Quality Checks.
@@ -1606,7 +1614,6 @@ export class OfferService {
           offerVersionId: input.offerVersionId,
           payload: input.payload,
         });
-        await this.lockCommand(actor, companyId, idempotencyKey);
         const receipt = await this.findCommand(
           actor,
           companyId,
@@ -1666,6 +1673,7 @@ export class OfferService {
           offerVersionId: target.id,
           headVersionId: head?.id,
         });
+        illustrativeSnapshotId(target);
         const transmission = await this.findTransmission(
           actor.workspaceId,
           companyId,
@@ -1938,6 +1946,7 @@ export class OfferService {
           offerVersionId: target.id,
           headVersionId: head?.id,
         });
+        illustrativeSnapshotId(target);
         const approval = await this.findDecision(
           actor.workspaceId,
           companyId,
@@ -1959,7 +1968,7 @@ export class OfferService {
           actor,
           companyId,
           opportunityId: offer.opportunityId,
-          snapshotId: target.pricingSnapshotId,
+          snapshotId: illustrativeSnapshotId(target),
         });
         const recipient = offerRecipientCopy(target);
         const context = await this.clients.inspectOfferQualityContext({
@@ -2415,61 +2424,27 @@ export class OfferService {
     return { offer, version };
   }
 
-  private async lockCommand(
+  private lockCommand(
     actor: ActorContext,
     companyId: string,
     idempotencyKey: string,
   ): Promise<void> {
-    await this.databaseContext.connection.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(
-        ${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${idempotencyKey}`},
-        0
-      ))`,
-    );
+    return this.commands.lock({ actor, companyId, idempotencyKey });
   }
 
-  private async findCommand(
+  private findCommand(
     actor: ActorContext,
     companyId: string,
     idempotencyKey: string,
   ): Promise<OfferCommandRow | undefined> {
-    const [command] = await this.databaseContext.connection
-      .select()
-      .from(offerCommands)
-      .where(
-        and(
-          eq(offerCommands.workspaceId, actor.workspaceId),
-          eq(offerCommands.companyId, companyId),
-          eq(
-            offerCommands.actorWorkspaceMembershipId,
-            actor.workspaceMembershipId,
-          ),
-          eq(offerCommands.idempotencyKey, idempotencyKey),
-        ),
-      );
-    return command;
+    return this.commands.find({ actor, companyId, idempotencyKey });
   }
 
-  private async allocateReference(
+  private allocateReference(
     workspaceId: string,
     companyId: string,
   ): Promise<number> {
-    const [counter] = await this.databaseContext.connection
-      .insert(offerReferenceCounters)
-      .values({ workspaceId, companyId, currentReference: 1 })
-      .onConflictDoUpdate({
-        target: [
-          offerReferenceCounters.workspaceId,
-          offerReferenceCounters.companyId,
-        ],
-        set: {
-          currentReference: sql`${offerReferenceCounters.currentReference} + 1`,
-        },
-      })
-      .returning({ currentReference: offerReferenceCounters.currentReference });
-    if (!counter || counter.currentReference < 1)
-      throw new Error('The illustrative Offer reference was not allocated.');
-    return counter.currentReference;
+    return this.commands.allocateReference({ workspaceId, companyId });
   }
 }
 
@@ -2497,7 +2472,7 @@ function offerVersionView(
     supersededByVersionId: row.supersededByVersionId,
     supersededAt: row.supersededAt?.toISOString() ?? null,
     differences: [],
-    pricingSnapshotId: row.pricingSnapshotId,
+    pricingSnapshotId: pricingSnapshot.id,
     pricingSnapshot,
     recipient: offerRecipientCopy(row),
     issuingCompanyLabel: row.issuingCompanyLabel,
@@ -2516,8 +2491,8 @@ function offerVersionView(
     createdByWorkspaceMembershipId: row.createdByWorkspaceMembershipId,
     createdAt: row.createdAt.toISOString(),
     representation: renderOfferRepresentation({
-      templateCode: row.templateCode,
-      templateVersion: row.templateVersion,
+      templateCode: OFFER_TEMPLATE_CODE,
+      templateVersion: binding.templateVersion,
       illustrativeReference,
       versionNumber: row.versionNumber,
       issuingCompanyLabel: row.issuingCompanyLabel,
@@ -2539,43 +2514,6 @@ function offerVersionView(
       provenance: 'ILLUSTRATIVE',
     }),
   };
-}
-
-function recordedDifferences(
-  previous: OfferVersionRow,
-  previousSnapshot: PricingSnapshotRecord,
-  current: OfferVersionRow,
-  currentSnapshot: PricingSnapshotRecord,
-): OfferVersionDifference[] {
-  function fields(
-    version: OfferVersionRow,
-    snapshot: PricingSnapshotRecord,
-  ): Record<string, string | number | null> {
-    return {
-      recipientKind: version.recipientKind,
-      recipientAdditionalLegalEntityId:
-        version.recipientAdditionalLegalEntityId,
-      recipientLegalName: version.recipientLegalName,
-      recipientTaxId: version.recipientTaxId,
-      recipientLegalAddress: version.recipientLegalAddress,
-      pricingSnapshotId: snapshot.id,
-      currency: snapshot.currency,
-      total: snapshot.total,
-      validityDays: version.validityDays,
-      validUntil: version.validUntil.toISOString(),
-      scopeNote: version.scopeNote,
-      commercialConditions: version.commercialConditions,
-    };
-  }
-  const before = fields(previous, previousSnapshot);
-  return Object.entries(fields(current, currentSnapshot)).map(
-    ([field, value]) => ({
-      field,
-      previous: before[field] ?? null,
-      current: value,
-      changed: before[field] !== value,
-    }),
-  );
 }
 
 function offerRecipientCopy(row: OfferVersionRow): OfferRecipientCopy {
@@ -2619,4 +2557,15 @@ function qualityRunView(
     evaluatedAt: row.evaluatedAt.toISOString(),
     results: readOfferQualityResults(row.results),
   };
+}
+
+function illustrativeSnapshotId(row: OfferVersionRow): string {
+  if (row.provenance === INTERNAL_ESTIMATE_OFFER_PROVENANCE)
+    throw namedConflict(
+      'OFFER_INTERNAL_DRAFT_ONLY',
+      'This Offer Version is an internal draft only.',
+    );
+  if (row.pricingSnapshotId === null)
+    throw new Error('The stored illustrative Offer price source is invalid.');
+  return row.pricingSnapshotId;
 }

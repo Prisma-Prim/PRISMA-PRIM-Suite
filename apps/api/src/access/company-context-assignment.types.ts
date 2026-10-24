@@ -155,12 +155,15 @@ export type CompanyContextAssignmentRecord =
   | (CompanyContextAssignmentRecordBase & {
       bundle:
         | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
-        | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
         | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
         | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
         | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
         | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
+    })
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL;
+      permissionSetVersion: 'v1' | 'v2';
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL;

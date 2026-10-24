@@ -11,6 +11,7 @@ import {
   offerTransmissionCopy,
   offerClientResponseCopy,
 } from './offer.copy';
+import { useEstimateOfferCopy } from './offer-estimate.copy';
 
 const keys = [
   'title',
@@ -485,6 +486,7 @@ export function useOfferPreparationCopy() {
 export function useOfferVersionCopy() {
   const message = useMessages(offerPreparationMessages);
   const { formatNumber } = useInterfaceLocale();
+  const estimate = useEstimateOfferCopy();
   return {
     prepare: message('versionPrepare'),
     create: message('versionCreate'),
@@ -510,6 +512,11 @@ export function useOfferVersionCopy() {
     historical: message('historical'),
     currentHead: message('currentHead'),
     fields: {
+      priceSourceKind: estimate('priceSource'),
+      estimateVersionId: estimate('source'),
+      estimateVersionNumber: message('version'),
+      approvalDecisionId: estimate('approval'),
+      amount: estimate('amount'),
       recipientKind: message('recipientKind'),
       recipientAdditionalLegalEntityId: message(
         'recipientAdditionalLegalEntityId',

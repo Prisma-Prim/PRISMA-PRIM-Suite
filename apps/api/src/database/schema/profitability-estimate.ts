@@ -208,6 +208,17 @@ export const profitabilityEstimateDecisions = pgTable(
     decidedAt: timestamp('decided_at', { withTimezone: true }).notNull(),
   },
   (table) => [
+    uniqueIndex('profitability_estimate_decisions_offer_source_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.estimateId,
+      table.opportunityId,
+      table.clientRequestId,
+      table.versionId,
+      table.versionNumber,
+      table.code,
+      table.id,
+    ),
     uniqueIndex('profitability_estimate_decisions_version_unique').on(
       table.workspaceId,
       table.companyId,

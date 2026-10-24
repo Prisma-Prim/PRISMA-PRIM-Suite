@@ -115,7 +115,8 @@ export function readOfferActivity(
     !reference ||
     typeof row.offerId !== 'string' ||
     metadata.offerId !== row.offerId ||
-    metadata.provenance !== 'ILLUSTRATIVE'
+    (metadata.provenance !== 'ILLUSTRATIVE' &&
+      metadata.provenance !== 'APPROVED_ESTIMATE_INTERNAL_DRAFT')
   )
     return undefined;
   const target = versionTarget(row, reference);
@@ -135,6 +136,11 @@ export function readOfferActivity(
     row.offerVersionId !== target.offerVersionId ||
     metadata.offerVersionId !== target.offerVersionId ||
     metadata.versionNumber !== target.versionNumber
+  )
+    return undefined;
+  if (
+    metadata.provenance === 'APPROVED_ESTIMATE_INTERNAL_DRAFT' &&
+    !['offer_version.created', 'offer_version.rejected'].includes(action)
   )
     return undefined;
   switch (action) {
@@ -226,9 +232,17 @@ function recordsCreatedVersion(
   metadata: Record<string, unknown>,
   versionNumber: number,
 ): boolean {
+  const internal = metadata.provenance === 'APPROVED_ESTIMATE_INTERNAL_DRAFT';
   const fields = [
     ...VERSION_IDENTITY_FIELDS,
-    'pricingSnapshotId',
+    ...(internal
+      ? [
+          'priceSourceKind',
+          'estimateVersionId',
+          'estimateVersionNumber',
+          'approvalDecisionId',
+        ]
+      : ['pricingSnapshotId']),
     'recipientKind',
   ];
   return (
@@ -236,7 +250,12 @@ function recordsCreatedVersion(
       ? hasExactly(metadata, fields)
       : hasExactly(metadata, [...fields, 'predecessorVersionNumber']) &&
         metadata.predecessorVersionNumber === versionNumber - 1) &&
-    isUuid(metadata.pricingSnapshotId) &&
+    (internal
+      ? metadata.priceSourceKind === 'DIRECTOR_APPROVED_ESTIMATE' &&
+        isUuid(metadata.estimateVersionId) &&
+        isPositiveInteger(metadata.estimateVersionNumber) &&
+        isUuid(metadata.approvalDecisionId)
+      : isUuid(metadata.pricingSnapshotId)) &&
     (metadata.recipientKind === 'PRIMARY' ||
       metadata.recipientKind === 'ADDITIONAL')
   );
