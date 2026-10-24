@@ -37,6 +37,7 @@ import { isClosedProjectStatus } from './project-lifecycle-response';
 import type { ResponsibleMember } from './project-responsible-response';
 import { isProject, type ProjectView } from './project-directory';
 import { useProjectDirectory } from './use-project-directory';
+import type { ProjectNavigationRequest } from './use-project-navigation';
 import './project.css';
 
 type DetailPanel = 'tasks' | 'documents';
@@ -92,30 +93,20 @@ type ProjectRequest =
       requestedTask?: RequestedTask & { projectId: string };
     }
   | { kind: 'register'; command: Registration };
-/** A Task-focus destination is valid only with an exact Task target. */
-export type ProjectOpenTarget = { projectId: string } & (
-  { taskId?: string; focus?: undefined } | { taskId: string; focus: 'task' }
-);
-export type RequestedProject = ProjectOpenTarget & { requestId: number };
-
 export function ProjectWorkspace({
   actor,
   identity,
   onActivityRecorded = () => undefined,
-  clientFilter,
   clientIdentityRevision = 0,
   onOpenClientDossier,
   onOpenDocument,
   onOpenContract,
-  requestedProject,
-  projectOpenRequestId = 0,
-  projectDirectoryRequestId = 0,
+  navigation,
   catalogueRevision = 0,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   onActivityRecorded?: () => void | Promise<void>;
-  clientFilter?: { clientDossierId: string; displayName: string };
   /** Increases when Client identities change, so derived targets are re-read. */
   clientIdentityRevision?: number;
   onOpenClientDossier?: (clientDossierId: string) => void;
@@ -123,14 +114,11 @@ export function ProjectWorkspace({
   onOpenDocument?: (documentId: string) => void;
   onOpenContract?: (clientRequestId: string) => void;
   /**
-   * Opens this Project as choosing its row would, then its optional Task as
-   * choosing that Task's row would; each new request id once.
+   * Directory navigation selects All/open-only with its optional dossier.
+   * Exact navigation preserves the selected view and filter, reading the
+   * Project before its optional Task; each activation is applied once.
    */
-  requestedProject?: RequestedProject;
-  /** Increases whenever another section asks to open Projects. */
-  projectOpenRequestId?: number;
-  /** Home/Client request the directory; an exact Project/Task open does not. */
-  projectDirectoryRequestId?: number;
+  navigation?: ProjectNavigationRequest;
   catalogueRevision?: number;
 }) {
   const copy = useProjectCopy();
@@ -183,8 +171,13 @@ export function ProjectWorkspace({
    * owner mounts or resets was made for an earlier state and never replays.
    */
   const consumedProjectRequest = useRef<number | undefined>(undefined);
-  const latestProjectRequest = useRef(requestedProject);
-  latestProjectRequest.current = requestedProject;
+  // Directory presentation and an exact open waiting on registration have
+  // independent lifetimes. A directory intent must not cancel that queued open.
+  const latestProjectRequest = useRef<
+    Extract<ProjectNavigationRequest, { kind: 'project' }> | undefined
+  >(navigation?.kind === 'project' ? navigation : undefined);
+  if (navigation?.kind === 'project') latestProjectRequest.current = navigation;
+  const appliedNavigation = useRef<number | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
   identityRevision.current = clientIdentityRevision;
   const retry = useRef<Registration | null>(null);
@@ -207,13 +200,6 @@ export function ProjectWorkspace({
     },
   });
   const load = directory.load;
-  useEffect(() => {
-    if (load.view === 'all') setIncludeClosed(false);
-  }, [projectOpenRequestId]);
-  useEffect(() => {
-    setIncludeClosed(false);
-    directory.changeView('all');
-  }, [projectDirectoryRequestId]);
   function deny() {
     directory.deny();
   }
@@ -317,25 +303,41 @@ export function ProjectWorkspace({
     return () => controller.abort();
   }, [staleProjectId, clientIdentityRevision, companyId, identity]);
 
+  // Identity refresh retires only the obsolete dossier restriction. Stable
+  // exact targets, the selected view and independently authorized work survive.
   useEffect(() => {
-    if (!clientFilter) {
-      // The shell retired the navigation intent, so a dossier identity that a
-      // union or reversal superseded stops restricting the loaded rows.
-      setFilter((current) =>
-        current.kind === 'client' ? { kind: 'text', query: '' } : current,
-      );
+    setFilter((current) =>
+      current.kind === 'client' ? { kind: 'text', query: '' } : current,
+    );
+  }, [clientIdentityRevision]);
+  useEffect(() => {
+    if (!navigation || navigation.requestId === appliedNavigation.current)
       return;
+    appliedNavigation.current = navigation.requestId;
+    switch (navigation.kind) {
+      case 'directory':
+        setIncludeClosed(false);
+        directory.changeView('all');
+        setFilter(
+          navigation.client
+            ? { kind: 'client', ...navigation.client }
+            : { kind: 'text', query: '' },
+        );
+        break;
+      case 'project':
+        if (load.view === 'all') setIncludeClosed(false);
+        break;
+      default: {
+        const exhaustive: never = navigation;
+        return exhaustive;
+      }
     }
-    setFilter({
-      kind: 'client',
-      clientDossierId: clientFilter.clientDossierId,
-      displayName: clientFilter.displayName,
-    });
-  }, [clientFilter]);
+  }, [navigation]);
   // A requested open is the same detail read as choosing that Project's row,
   // and supersedes an open still reading. It waits for a pending registration
   // to settle rather than abort it; a denied owner reads nothing.
   useEffect(() => {
+    const requestedProject = latestProjectRequest.current;
     if (
       !requestedProject ||
       requestedProject.requestId === consumedProjectRequest.current
@@ -355,7 +357,7 @@ export function ProjectWorkspace({
           ? undefined
           : { projectId, taskId, requestId, focus },
     });
-  }, [requestedProject, load.kind, pending]);
+  }, [navigation, load.kind, pending]);
 
   /**
    * Re-reads the opened Project after a confirmed lifecycle change or an
