@@ -7,7 +7,11 @@ import {
   useOfferClientResponseCopy,
 } from './offer-transmission-response.copy';
 import { useEstimateOfferCopy } from './offer-estimate.copy';
-import { isIllustrativeOffer, type OfferReadView } from './offer-response';
+import {
+  isIllustrativeOffer,
+  type OfferReadView,
+  type OfferDecisionView,
+} from './offer-response';
 
 export function OfferSummary({ offer }: { offer: OfferReadView }) {
   const copy = useOfferPreparationCopy();
@@ -56,6 +60,9 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
               : copy.stateValue}
           </dd>
         </dl>
+        {offer.version.decision && (
+          <OfferDecisionEvidence decision={offer.version.decision} />
+        )}
         {offer.version.scopeNote && <p>{offer.version.scopeNote}</p>}
         {offer.version.commercialConditions && (
           <p>{offer.version.commercialConditions}</p>
@@ -199,52 +206,7 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
         <p>{responseCopy.pendingElapsed}</p>
       )}
       {version.decision && (
-        <dl>
-          <div>
-            <dt>{decisionCopy.actor}</dt>
-            <dd>
-              <code>{version.decision.actorWorkspaceMembershipId}</code>
-            </dd>
-          </div>
-          <div>
-            <dt>{decisionCopy.decidedAt}</dt>
-            <dd>{formatDateTime(version.decision.decidedAt)}</dd>
-          </div>
-          {version.decision.state === 'REJECTED' && (
-            <div>
-              <dt>{decisionCopy.reason}</dt>
-              <dd>{version.decision.reason}</dd>
-            </div>
-          )}
-          {version.decision.state === 'APPROVED' && (
-            <>
-              <div>
-                <dt>{decisionCopy.decisionRun}</dt>
-                <dd>
-                  <code>{version.decision.qualityRun.id}</code> ·{' '}
-                  {version.decision.qualityRun.ruleSet} v
-                  {version.decision.qualityRun.ruleSetVersion}
-                </dd>
-              </div>
-              <div>
-                <dt>{decisionCopy.acknowledgedWarnings}</dt>
-                <dd>
-                  {version.decision.acknowledgedWarningCodes.length
-                    ? version.decision.acknowledgedWarningCodes
-                        .map((code) => decisionCopy.qualityLabels[code])
-                        .join(', ')
-                    : decisionCopy.noWarnings}
-                </dd>
-              </div>
-              <div>
-                <dt>{decisionCopy.approvedChecksum}</dt>
-                <dd>
-                  <code>{version.decision.representationSha256}</code>
-                </dd>
-              </div>
-            </>
-          )}
-        </dl>
+        <OfferDecisionEvidence decision={version.decision} />
       )}
       <section
         className="offer-representation"
@@ -291,5 +253,58 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
         />
       </section>
     </div>
+  );
+}
+
+function OfferDecisionEvidence({ decision }: { decision: OfferDecisionView }) {
+  const decisionCopy = useOfferDecisionCopy();
+  const { formatDateTime } = useOfferPresentation();
+  return (
+    <dl>
+      <div>
+        <dt>{decisionCopy.actor}</dt>
+        <dd>
+          <code>{decision.actorWorkspaceMembershipId}</code>
+        </dd>
+      </div>
+      <div>
+        <dt>{decisionCopy.decidedAt}</dt>
+        <dd>{formatDateTime(decision.decidedAt)}</dd>
+      </div>
+      {decision.state === 'REJECTED' && (
+        <div>
+          <dt>{decisionCopy.reason}</dt>
+          <dd>{decision.reason}</dd>
+        </div>
+      )}
+      {decision.state === 'APPROVED' && (
+        <>
+          <div>
+            <dt>{decisionCopy.decisionRun}</dt>
+            <dd>
+              <code>{decision.qualityRun.id}</code> ·{' '}
+              {decision.qualityRun.ruleSet} v
+              {decision.qualityRun.ruleSetVersion}
+            </dd>
+          </div>
+          <div>
+            <dt>{decisionCopy.acknowledgedWarnings}</dt>
+            <dd>
+              {decision.acknowledgedWarningCodes.length
+                ? decision.acknowledgedWarningCodes
+                    .map((code) => decisionCopy.qualityLabels[code])
+                    .join(', ')
+                : decisionCopy.noWarnings}
+            </dd>
+          </div>
+          <div>
+            <dt>{decisionCopy.approvedChecksum}</dt>
+            <dd>
+              <code>{decision.representationSha256}</code>
+            </dd>
+          </div>
+        </>
+      )}
+    </dl>
   );
 }

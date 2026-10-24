@@ -153,3 +153,10 @@
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+.offer-existing-version {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

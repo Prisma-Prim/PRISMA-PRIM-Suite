@@ -92,6 +92,7 @@ export function OfferVersionHistory({
       const selected = readOfferDetail(result.value);
       if (!selected || selected.id !== offer.id || selected.version.id !== id)
         throw new Error('Invalid selected Offer Version.');
+      setState('ready');
       onSelect(selected);
     } catch {
       if (!request.signal.aborted) setState('error');

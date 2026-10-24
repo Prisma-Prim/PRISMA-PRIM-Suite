@@ -329,9 +329,53 @@ test('prepares an exact approved-price Offer, retries lost confirmation, version
     .getByLabel('Approved estimate version')
     .selectOption(secondSource);
   await preparation.getByLabel('Scope note').fill('Final internal scope DEMO');
+  const successorAttempts: { body: string | null; key: string | undefined }[] =
+    [];
+  let loseSuccessorConfirmation = true;
+  let successorVersionId: string | undefined;
+  await page.route(
+    `**/api/offers/opportunities/${opportunityId}/versions/from-approved-estimate`,
+    async (route) => {
+      successorAttempts.push({
+        body: route.request().postData(),
+        key: route.request().headers()['idempotency-key'],
+      });
+      const actual = await route.fetch();
+      expect(actual.status()).toBe(201);
+      successorVersionId = text(object(object(await actual.json()).version).id);
+      if (loseSuccessorConfirmation) {
+        loseSuccessorConfirmation = false;
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            message: 'Synthetic lost successor confirmation',
+          }),
+        });
+      } else await route.fulfill({ response: actual });
+    },
+  );
+
   await preparation
     .getByRole('button', { name: 'Create internal draft' })
     .click();
+  await expect(
+    preparation.getByRole('button', { name: 'Retry identical preparation' }),
+  ).toBeVisible();
+  await expect(
+    offer.getByRole('button', { name: 'Prepare a new version', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    offer.getByRole('button', { name: 'Open version 1', exact: true }),
+  ).toBeDisabled();
+  await expect(preparation.getByLabel('Scope note')).toHaveValue(
+    'Final internal scope DEMO',
+  );
+  await preparation
+    .getByRole('button', { name: 'Retry identical preparation' })
+    .click();
+  expect(successorAttempts).toHaveLength(2);
+  expect(successorAttempts[1]).toEqual(successorAttempts[0]);
   await expect(offer.locator('.offer-summary')).toContainText('150.00 EUR');
   await offer
     .getByRole('button', { name: 'Open version 1', exact: true })
@@ -413,6 +457,40 @@ test('prepares an exact approved-price Offer, retries lost confirmation, version
   expect(sourceRequests).toEqual([]);
   await offer.screenshot({
     path: testInfo.outputPath(`estimate-offer-price-reader-${suffix}.png`),
+  });
+
+  if (!successorVersionId)
+    throw new Error('The exact successor was not observed.');
+  await command(
+    `/offers/opportunities/${opportunityId}/versions/${successorVersionId}/reject`,
+    { expectedOfferRevision: 3, reason: 'Correct the scope DEMO' },
+    identities.reader,
+    companyId,
+  );
+  offer = await openCase();
+  await expect(offer.locator('.offer-summary')).toContainText(
+    'Correct the scope DEMO',
+  );
+  await expect(offer.locator('.offer-summary')).toContainText(readerId);
+  await expect(
+    offer.getByText('Decided at', { exact: true }).locator('..'),
+  ).toContainText('2026');
+  await offer
+    .getByRole('button', { name: 'Open version 1', exact: true })
+    .click();
+  await expect(offer.locator('.offer-summary')).not.toContainText(
+    'Correct the scope DEMO',
+  );
+  await offer
+    .getByRole('button', { name: 'Open version 3', exact: true })
+    .click();
+  await expect(offer.locator('.offer-summary')).toContainText(
+    'Correct the scope DEMO',
+  );
+  await expect(offer.locator('.offer-summary')).toContainText(readerId);
+  expect(sourceRequests).toEqual([]);
+  await offer.screenshot({
+    path: testInfo.outputPath(`estimate-offer-rejected-${suffix}.png`),
   });
 });
 async function navigate(page: Page, name: string, narrow: boolean) {

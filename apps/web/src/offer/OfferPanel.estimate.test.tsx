@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ActorContext } from '../access-types';
 import { deterministicBrowserIdentity } from '../access-composition';
@@ -365,3 +371,225 @@ it('reopens price-only content without requesting economic history or source det
     false,
   );
 });
+
+it.each(['Prepare a new version', 'Open version 1'])(
+  'keeps the exact uncertain successor when the sibling %s action is attempted',
+  async (sibling) => {
+    const initial = internalOfferFixture();
+    const head = {
+      ...initial,
+      revision: 2,
+      version: {
+        ...initial.version,
+        id: '00000000-0000-4000-8000-000000000105',
+        versionNumber: 2,
+        predecessorVersionId: initial.version.id,
+      },
+    };
+    const source = initial.version.priceSource;
+    const approved = {
+      ...syntheticVersion(),
+      id: source.estimateVersionId,
+      estimateId: source.estimateId,
+      decision: {
+        id: source.approvalDecisionId,
+        code: 'APPROVE',
+        decidedByWorkspaceMembershipId: 'director-1',
+        decidedAt: source.approvedAt,
+      },
+    };
+    const attempts: { body: unknown; key: string | null }[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = input.toString();
+      if (init?.method === 'POST') {
+        attempts.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        return attempts.length === 1
+          ? response({}, 503)
+          : response(
+              {
+                ...head,
+                revision: 3,
+                version: {
+                  ...head.version,
+                  id: '00000000-0000-4000-8000-000000000106',
+                  versionNumber: 3,
+                  predecessorVersionId: head.version.id,
+                  scopeNote: '  Exact successor  ',
+                },
+              },
+              201,
+            );
+      }
+      if (path.includes('/profitability-estimates'))
+        return response({ items: [approved], latestVersionNumber: 1 });
+      if (path.endsWith('/legal-entities'))
+        return response({ clientVersion: 1, legalEntities: [] });
+      if (path.endsWith('/snapshots?limit=25'))
+        return response({ items: [], nextCursor: null });
+      if (path.endsWith('/versions'))
+        return response({
+          versions: [
+            head.version,
+            {
+              ...initial.version,
+              createdAt: '2026-10-24T09:00:00.000Z',
+              supersededByVersionId: head.version.id,
+            },
+          ].map((v) => ({ ...v, createdAt: '2026-10-24T09:00:00.000Z' })),
+          nextCursor: null,
+        });
+      return response({ offer: head });
+    });
+    render(panel());
+    await screen.findByRole('button', { name: 'Open version 1' });
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Prepare from an approved estimate',
+      }),
+    );
+    fireEvent.change(
+      await screen.findByLabelText('Approved estimate version'),
+      { target: { value: source.estimateVersionId } },
+    );
+    fireEvent.change(screen.getByLabelText('Scope note'), {
+      target: { value: '  Exact successor  ' },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Create internal draft' }),
+    );
+    await screen.findByRole('button', { name: 'Retry identical preparation' });
+    const action = screen.getByRole('button', { name: sibling });
+    expect(action).toBeDisabled();
+    fireEvent.click(action);
+    expect(screen.getByLabelText('Scope note')).toHaveValue(
+      '  Exact successor  ',
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Retry identical preparation' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Retry identical preparation' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Prepare a new version' }),
+      ).toBeEnabled(),
+    );
+  },
+);
+
+it('reopens the recorded internal rejection reason, deciding membership and instant', async () => {
+  const initial = internalOfferFixture();
+  const rejection = {
+    id: '00000000-0000-4000-8000-000000000108',
+    offerVersionId: initial.version.id,
+    offerRevision: 2,
+    state: 'REJECTED',
+    reason: 'Correct the contractual scope',
+    actorWorkspaceMembershipId: '00000000-0000-4000-8000-000000000109',
+    decidedAt: '2026-10-24T09:00:00.000Z',
+  };
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+    input.toString().endsWith('/versions')
+      ? response({ versions: [], nextCursor: null })
+      : response({
+          offer: {
+            ...initial,
+            revision: 2,
+            version: {
+              ...initial.version,
+              decisionState: 'REJECTED',
+              decision: rejection,
+            },
+          },
+        }),
+  );
+  render(panel());
+  await screen.findByText('Correct the contractual scope');
+  expect(
+    screen.getByText(rejection.actorWorkspaceMembershipId),
+  ).toBeInTheDocument();
+  const instant = screen.getByText('Decided at').nextElementSibling;
+  expect(instant?.textContent).toContain('Oct 24, 2026');
+  expect(
+    screen.queryByRole('button', { name: 'Approve this version' }),
+  ).not.toBeInTheDocument();
+});
+
+it.each(['pending', 'uncertain'])(
+  'keeps the literal Snapshot command instead of switching sources while %s',
+  async (state) => {
+    let releaseFirst: ((value: Response) => void) | undefined;
+    const attempts: { body: unknown; key: string | null }[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (init?.method === 'POST') {
+        attempts.push({
+          body: init.body,
+          key: new Headers(init.headers).get('idempotency-key'),
+        });
+        if (attempts.length === 1)
+          return new Promise<Response>((resolve) => {
+            releaseFirst = resolve;
+          });
+        return response({}, 503);
+      }
+      const path = input.toString();
+      if (path.includes('/snapshots'))
+        return response({
+          items: [
+            {
+              id: 'snapshot-1',
+              currency: 'EUR',
+              total: '125.00',
+              committedAt: '2026-10-24T09:00:00.000Z',
+            },
+          ],
+          nextCursor: null,
+        });
+      if (path.endsWith('/legal-entities'))
+        return response({ clientVersion: 1, legalEntities: [] });
+      return response({ offer: null });
+    });
+    render(panel());
+    const submit = await screen.findByRole('button', {
+      name: 'Prepare version 1',
+    });
+    expect(
+      screen.getByRole('button', { name: 'Prepare from an approved estimate' }),
+    ).toBeEnabled();
+    fireEvent.change(screen.getByLabelText('Scope note'), {
+      target: { value: '  Literal Snapshot command  ' },
+    });
+    fireEvent.click(submit);
+    await waitFor(() => expect(releaseFirst).toBeDefined());
+    if (state === 'uncertain')
+      await act(async () => {
+        releaseFirst?.(response({}, 503));
+      });
+    expect(
+      screen.queryByRole('button', {
+        name: 'Prepare from an approved estimate',
+      }),
+    ).not.toBeInTheDocument();
+    if (state === 'pending')
+      await act(async () => {
+        releaseFirst?.(response({}, 503));
+      });
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Retry the same preparation' }),
+    );
+    await waitFor(() => expect(attempts).toHaveLength(2));
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(screen.getByLabelText('Scope note')).toHaveValue(
+      '  Literal Snapshot command  ',
+    );
+    expect(screen.getByLabelText('Scope note')).toBeDisabled();
+  },
+);

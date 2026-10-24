@@ -132,6 +132,7 @@ export function OfferPanel({
   ]);
   const [view, setView] = useState<View>({ kind: 'loading' });
   const [estimateOpen, setEstimateOpen] = useState(false);
+  const estimateOpenRef = useRef(false);
   const [snapshotId, setSnapshotId] = useState('');
   const [recipient, setRecipient] = useState('PRIMARY');
   const [validityDays, setValidityDays] = useState('30');
@@ -276,13 +277,20 @@ export function OfferPanel({
   useEffect(() => {
     attempt.current = undefined;
     setFeedback(undefined);
+    estimateOpenRef.current = false;
     setEstimateOpen(false);
     void load();
     return () => pendingRequest.current?.abort();
   }, [load, authorityStamp]);
 
   async function beginVersion() {
-    if (view.kind !== 'offer' || !companyId || !currentClientId || !mayPrepare)
+    if (
+      estimateOpenRef.current ||
+      view.kind !== 'offer' ||
+      !companyId ||
+      !currentClientId ||
+      !mayPrepare
+    )
       return;
     const offer = view.offer;
     pendingRequest.current?.abort();
@@ -449,6 +457,7 @@ export function OfferPanel({
           view.offer.version.clientResponseState !== 'ACCEPTED')) &&
         companyId &&
         currentClientId &&
+        !contentLocked &&
         mayPrepareEstimateOffer(actor) && (
           <EstimateOfferPreparation
             key={`estimate:${authorityStamp}:${companyId}:${opportunityId}:${view.kind === 'offer' ? view.offer.version.id : 'first'}`}
@@ -459,7 +468,14 @@ export function OfferPanel({
             clientLabel={clientDisplayName ?? copy.clientFallback}
             offer={view.kind === 'offer' ? view.offer : undefined}
             reject={reject}
-            onOpen={setEstimateOpen}
+            onOpen={(open) => {
+              estimateOpenRef.current = open;
+              if (open) {
+                pendingRequest.current?.abort();
+                setPending(false);
+              }
+              setEstimateOpen(open);
+            }}
             onCreated={(offer) => {
               pendingRequest.current?.abort();
               attempt.current = undefined;
@@ -588,7 +604,11 @@ export function OfferPanel({
           </form>
         )}
       {view.kind === 'offer' && (
-        <>
+        <fieldset
+          className="offer-existing-version"
+          disabled={estimateOpen}
+          aria-labelledby="offer-title"
+        >
           <OfferSummary offer={view.offer} />
           {!isIllustrativeOffer(view.offer) && (
             <OfferEstimateSource
@@ -608,6 +628,7 @@ export function OfferPanel({
               offer={view.offer}
               reject={reject}
               onSelect={(offer) => {
+                if (estimateOpenRef.current) return;
                 pendingRequest.current?.abort();
                 setPending(false);
                 attempt.current = undefined;
@@ -649,7 +670,9 @@ export function OfferPanel({
               reject={reject}
               onRun={(run) =>
                 setView((current) =>
-                  current.kind === 'offer' && isIllustrativeOffer(current.offer)
+                  !estimateOpenRef.current &&
+                  current.kind === 'offer' &&
+                  isIllustrativeOffer(current.offer)
                     ? {
                         kind: 'offer',
                         offer: {
@@ -677,7 +700,8 @@ export function OfferPanel({
                 reject={reject}
                 onDecision={(decision) =>
                   setView((current) => {
-                    if (current.kind !== 'offer') return current;
+                    if (estimateOpenRef.current || current.kind !== 'offer')
+                      return current;
                     if (!isIllustrativeOffer(current.offer)) {
                       if (decision.state !== 'REJECTED') return current;
                       return {
@@ -728,6 +752,7 @@ export function OfferPanel({
                 reject={reject}
                 onTransmission={(transmission) =>
                   setView((current) =>
+                    !estimateOpenRef.current &&
                     current.kind === 'offer' &&
                     isIllustrativeOffer(current.offer)
                       ? {
@@ -764,6 +789,7 @@ export function OfferPanel({
                 reject={reject}
                 onResponse={(response) =>
                   setView((current) =>
+                    !estimateOpenRef.current &&
                     current.kind === 'offer' &&
                     current.offer.version.transmission
                       ? {
@@ -784,7 +810,7 @@ export function OfferPanel({
                 }
               />
             )}
-        </>
+        </fieldset>
       )}
     </section>
   );
