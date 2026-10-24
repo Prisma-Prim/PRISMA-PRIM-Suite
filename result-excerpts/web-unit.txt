@@ -1,0 +1,15 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: web-unit
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "--filter", "@prisma-prim/web", "exec", "vitest", "run", "--maxWorkers=2"]
+UTC: 2026-10-24T06:48:24.629Z — 2026-10-24T06:54:56.038Z
+Manifest wall duration seconds: 391.409
+Top-level family log: logs/web-unit.log; bytes 95881; SHA-256 2a649ecc6a44290f7b677bfcc7a101ffb101c44c106bfc648f0410461200f228
+Selected result log: logs/web-unit.log
+Selected result log SHA-256: 2a649ecc6a44290f7b677bfcc7a101ffb101c44c106bfc648f0410461200f228
+Original lines: 713; selected lines: 3
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 709] Test Files  175 passed (175)
+[original line 710] Tests  2993 passed (2993)
+[original line 712] Duration  390.21s (transform 11.77s, setup 37.37s, import 50.69s, tests 499.84s, environment 155.10s)

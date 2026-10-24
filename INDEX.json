@@ -1,0 +1,748 @@
+{
+  "baseAdvanceCaveat": "Later main 12ba34 docs-only advance reported by root; no exception authorized; this is evidence only for the recorded tested tree.",
+  "files": [
+    {
+      "bytes": 3573,
+      "canonicalBinding": null,
+      "category": "canonical report",
+      "original": {
+        "bytes": 3573,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/report.md",
+        "sha256": "5fd829489b68d0d6e627fd3f1717444170bdc22cd33d1d6a19e22bab8e12d7ff"
+      },
+      "path": "report.md",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "5fd829489b68d0d6e627fd3f1717444170bdc22cd33d1d6a19e22bab8e12d7ff",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 854686,
+      "canonicalBinding": null,
+      "category": "canonical manifest",
+      "original": {
+        "bytes": 854686,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/manifest.json",
+        "sha256": "2444c536287962bccf2d36c435b302e5efdd09643ee1ffeb0583ca89ce40a691"
+      },
+      "path": "manifest.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "2444c536287962bccf2d36c435b302e5efdd09643ee1ffeb0583ca89ce40a691",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1016640,
+      "canonicalBinding": {
+        "manifestPath": "local-browser/browser/manifest.json",
+        "sha256": "96d5e6c44d48324849134514e5846933122ab990101b118fba26f9561074cced"
+      },
+      "category": "original startup helper manifest",
+      "original": {
+        "bytes": 1016640,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/local-browser/browser/manifest.json",
+        "sha256": "96d5e6c44d48324849134514e5846933122ab990101b118fba26f9561074cced"
+      },
+      "path": "local-browser/browser/manifest.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "96d5e6c44d48324849134514e5846933122ab990101b118fba26f9561074cced",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1735,
+      "canonicalBinding": {
+        "manifestPath": "local-browser/browser/preview.config.cjs",
+        "sha256": "17a5219e2c7ca9ba3353da177374b68777ea31c125cd07ef6387c9531e6e7a85"
+      },
+      "category": "original startup helper configuration",
+      "original": {
+        "bytes": 1735,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/local-browser/browser/preview.config.cjs",
+        "sha256": "17a5219e2c7ca9ba3353da177374b68777ea31c125cd07ef6387c9531e6e7a85"
+      },
+      "path": "local-browser/browser/preview.config.cjs",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "17a5219e2c7ca9ba3353da177374b68777ea31c125cd07ef6387c9531e6e7a85",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1185679,
+      "canonicalBinding": {
+        "manifestPath": "local-browser/acceptance/manifest.json",
+        "sha256": "817a431a13d7f9c173d3263b5dd1b6fc79228e7d754a72a797c7b3dfe8e8f51f"
+      },
+      "category": "original startup helper manifest",
+      "original": {
+        "bytes": 1185679,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/local-browser/acceptance/manifest.json",
+        "sha256": "817a431a13d7f9c173d3263b5dd1b6fc79228e7d754a72a797c7b3dfe8e8f51f"
+      },
+      "path": "local-browser/acceptance/manifest.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "817a431a13d7f9c173d3263b5dd1b6fc79228e7d754a72a797c7b3dfe8e8f51f",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1834,
+      "canonicalBinding": {
+        "manifestPath": "local-browser/acceptance/preview.config.cjs",
+        "sha256": "5312c478cc70d50aaeb1981127e99c8a6a8dbeac2625d1a22fd6c34c93e8254a"
+      },
+      "category": "original startup helper configuration",
+      "original": {
+        "bytes": 1834,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/local-browser/acceptance/preview.config.cjs",
+        "sha256": "5312c478cc70d50aaeb1981127e99c8a6a8dbeac2625d1a22fd6c34c93e8254a"
+      },
+      "path": "local-browser/acceptance/preview.config.cjs",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "5312c478cc70d50aaeb1981127e99c8a6a8dbeac2625d1a22fd6c34c93e8254a",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 975,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 975,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/doctor.txt",
+        "sha256": "1da2f4534b99ffe41a445dc76866ff59f41ab3caf686ba407e35b16e19b7dc7e"
+      },
+      "path": "result-excerpts/doctor.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "1da2f4534b99ffe41a445dc76866ff59f41ab3caf686ba407e35b16e19b7dc7e",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 691,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 691,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/format.txt",
+        "sha256": "107343a56ae8b945450abb46b9f21ead28414be9926340b60af8a5d88d9412b6"
+      },
+      "path": "result-excerpts/format.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "107343a56ae8b945450abb46b9f21ead28414be9926340b60af8a5d88d9412b6",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 704,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 704,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/lint.txt",
+        "sha256": "2d08d99dac156a19e303072260a0202f5f4b5f4463a1f12704ba7c74756e1b66"
+      },
+      "path": "result-excerpts/lint.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "2d08d99dac156a19e303072260a0202f5f4b5f4463a1f12704ba7c74756e1b66",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 713,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 713,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/types.txt",
+        "sha256": "4e423ce0c735f7fabec045b108a8028775fc227e56960af5daf8199424d95286"
+      },
+      "path": "result-excerpts/types.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "4e423ce0c735f7fabec045b108a8028775fc227e56960af5daf8199424d95286",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 919,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 919,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/scripts.txt",
+        "sha256": "679426c6112e91308424d8040d5c7f5fb03cb3f0ceb83e1b9ecdd7e8d03bbd8c"
+      },
+      "path": "result-excerpts/scripts.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "679426c6112e91308424d8040d5c7f5fb03cb3f0ceb83e1b9ecdd7e8d03bbd8c",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 917,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 917,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/documentation.txt",
+        "sha256": "ea977a66767fab932915b50ebd8da798334a13d3c77f5f0fc94d9faa2abf5b56"
+      },
+      "path": "result-excerpts/documentation.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "ea977a66767fab932915b50ebd8da798334a13d3c77f5f0fc94d9faa2abf5b56",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 971,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 971,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/api-parallel.txt",
+        "sha256": "3ec055657ef3cc6dcbb39f4dc8a1270ad50fee3532746212f9d9d4d247c81866"
+      },
+      "path": "result-excerpts/api-parallel.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "3ec055657ef3cc6dcbb39f4dc8a1270ad50fee3532746212f9d9d4d247c81866",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 911,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 911,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/api-serial.txt",
+        "sha256": "5ba5d87d0c8fe7e8b0fbe79d906a9d6424b493fc2c374867d57602b9f0b096af"
+      },
+      "path": "result-excerpts/api-serial.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "5ba5d87d0c8fe7e8b0fbe79d906a9d6424b493fc2c374867d57602b9f0b096af",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 918,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 918,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/web-unit.txt",
+        "sha256": "38715a753524952eed18c87bb9e0543e6c84eda2ee1bca8925c1d61ce3478639"
+      },
+      "path": "result-excerpts/web-unit.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "38715a753524952eed18c87bb9e0543e6c84eda2ee1bca8925c1d61ce3478639",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 1410,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 1410,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/browser.txt",
+        "sha256": "4650448fa604af3d706c63fbc4b2fa3cf5e83484acd9e64251341d9f96a699ff"
+      },
+      "path": "result-excerpts/browser.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "4650448fa604af3d706c63fbc4b2fa3cf5e83484acd9e64251341d9f96a699ff",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 1379,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 1379,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/acceptance.txt",
+        "sha256": "d21bb2607094f6ed1282c2bc3cb86712145fb5c3816cd1a9424f9a5a81e56abf"
+      },
+      "path": "result-excerpts/acceptance.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "d21bb2607094f6ed1282c2bc3cb86712145fb5c3816cd1a9424f9a5a81e56abf",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 956,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 956,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/acceptance-evidence.txt",
+        "sha256": "4aef9dd8fa009ca18fc4e0e34e8396aa7921f8d1700ed13ce7f40d83812677ef"
+      },
+      "path": "result-excerpts/acceptance-evidence.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "4aef9dd8fa009ca18fc4e0e34e8396aa7921f8d1700ed13ce7f40d83812677ef",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 711,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 711,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/build.txt",
+        "sha256": "17a694daa170b4a500334f1a89606eb6c181253ab3f0583e3ebf696b1b047a53"
+      },
+      "path": "result-excerpts/build.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "17a694daa170b4a500334f1a89606eb6c181253ab3f0583e3ebf696b1b047a53",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 757,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 757,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/railway-types.txt",
+        "sha256": "5c590ce919f641e60d28025fb8866d1913627e8414ac24aa7d763a8533d9e0e7"
+      },
+      "path": "result-excerpts/railway-types.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "5c590ce919f641e60d28025fb8866d1913627e8414ac24aa7d763a8533d9e0e7",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 924,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 924,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/railway-tests.txt",
+        "sha256": "1194aebb06976e63ba5b0209d8e46bd4945fbd2c02b6d1961a8340eb8632c6b2"
+      },
+      "path": "result-excerpts/railway-tests.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "1194aebb06976e63ba5b0209d8e46bd4945fbd2c02b6d1961a8340eb8632c6b2",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 762,
+      "canonicalBinding": null,
+      "category": "strict selected count/result excerpt",
+      "original": {
+        "bytes": 762,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/packaging.txt",
+        "sha256": "07b24a336f7e325c0488d9f7bc036d47ca069be23b454bc0d0c8b7f222b4ae18"
+      },
+      "path": "result-excerpts/packaging.txt",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "07b24a336f7e325c0488d9f7bc036d47ca069be23b454bc0d0c8b7f222b4ae18",
+      "transformation": "unchanged copy of separately derived numeric/result excerpt; source lines and omissions in result-excerpts/INDEX.json"
+    },
+    {
+      "bytes": 31601,
+      "canonicalBinding": null,
+      "category": "derived result selection index",
+      "original": {
+        "bytes": 31601,
+        "path": "/workspace/work/typescript-quality-pilot/failed-gate6-result-excerpts/INDEX.json",
+        "sha256": "3b0628a93b641ed3815d64ed04a52f6c1172b05f03b11f465cbf6a0c1ecceb8b"
+      },
+      "path": "result-excerpts/INDEX.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "3b0628a93b641ed3815d64ed04a52f6c1172b05f03b11f465cbf6a0c1ecceb8b",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 66184,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-malformed-response.png",
+        "sha256": "2ff1267dc3c85e7d0d265f26cb7df84a26870b6142ce0c4a92f618c85ff8fce7"
+      },
+      "category": "fresh same-run Client contract screenshot; visual review pending",
+      "original": {
+        "bytes": 66184,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-malformed-response.png",
+        "sha256": "2ff1267dc3c85e7d0d265f26cb7df84a26870b6142ce0c4a92f618c85ff8fce7"
+      },
+      "path": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-malformed-response.png",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "2ff1267dc3c85e7d0d265f26cb7df84a26870b6142ce0c4a92f618c85ff8fce7",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 73170,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-valid-additive-response.png",
+        "sha256": "e44c0afaa9017b09c6ef1da25a3abe5171df300f774317e635b98f07820492ec"
+      },
+      "category": "fresh same-run Client contract screenshot; visual review pending",
+      "original": {
+        "bytes": 73170,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-valid-additive-response.png",
+        "sha256": "e44c0afaa9017b09c6ef1da25a3abe5171df300f774317e635b98f07820492ec"
+      },
+      "path": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-valid-additive-response.png",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "e44c0afaa9017b09c6ef1da25a3abe5171df300f774317e635b98f07820492ec",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 163181,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-desktop/client-registration-refresh-desktop.png",
+        "sha256": "82e082c669f53d18f7e68c2998c0d2a86f0806a25343439bb35418adb3800bc4"
+      },
+      "category": "same-run real-API registration screenshot; visual review pending",
+      "original": {
+        "bytes": 163181,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-desktop/client-registration-refresh-desktop.png",
+        "sha256": "82e082c669f53d18f7e68c2998c0d2a86f0806a25343439bb35418adb3800bc4"
+      },
+      "path": "browser-evidence/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-desktop/client-registration-refresh-desktop.png",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "82e082c669f53d18f7e68c2998c0d2a86f0806a25343439bb35418adb3800bc4",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 39597,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-malformed-response.png",
+        "sha256": "0e3372207e7483a34dd390f22a95a8c112de9423366f9e93b88eb99ff4bea330"
+      },
+      "category": "fresh same-run Client contract screenshot; visual review pending",
+      "original": {
+        "bytes": 39597,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-malformed-response.png",
+        "sha256": "0e3372207e7483a34dd390f22a95a8c112de9423366f9e93b88eb99ff4bea330"
+      },
+      "path": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-malformed-response.png",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "0e3372207e7483a34dd390f22a95a8c112de9423366f9e93b88eb99ff4bea330",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 44629,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-valid-additive-response.png",
+        "sha256": "3252dd972d95efbc020852568bd7854eb8e77da0c9078e77a25a92e204dd92ce"
+      },
+      "category": "fresh same-run Client contract screenshot; visual review pending",
+      "original": {
+        "bytes": 44629,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-valid-additive-response.png",
+        "sha256": "3252dd972d95efbc020852568bd7854eb8e77da0c9078e77a25a92e204dd92ce"
+      },
+      "path": "browser-evidence/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-valid-additive-response.png",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "3252dd972d95efbc020852568bd7854eb8e77da0c9078e77a25a92e204dd92ce",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 288359,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-narrow/client-registration-refresh-narrow.png",
+        "sha256": "fb7d23b1f5c87b4867b3842b161034f5f2eeb1bc5adc51db0a87ba428f7c37a5"
+      },
+      "category": "same-run real-API registration screenshot; visual review pending",
+      "original": {
+        "bytes": 288359,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-narrow/client-registration-refresh-narrow.png",
+        "sha256": "fb7d23b1f5c87b4867b3842b161034f5f2eeb1bc5adc51db0a87ba428f7c37a5"
+      },
+      "path": "browser-evidence/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-narrow/client-registration-refresh-narrow.png",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "fb7d23b1f5c87b4867b3842b161034f5f2eeb1bc5adc51db0a87ba428f7c37a5",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 82,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/error-context.md",
+        "sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07"
+      },
+      "category": "mandatory deliberate failure-probe artifact; privacy review pending",
+      "original": {
+        "bytes": 82,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/error-context.md",
+        "sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07"
+      },
+      "path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/error-context.md",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 9319,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/test-failed-1.png",
+        "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb"
+      },
+      "category": "mandatory deliberate failure-probe artifact; privacy review pending",
+      "original": {
+        "bytes": 9319,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/test-failed-1.png",
+        "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb"
+      },
+      "path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/test-failed-1.png",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 23538,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/trace.zip",
+        "sha256": "02e8341992dc15acd6ae739421b6d6e85c260793c4502c539d6b541a653a468a"
+      },
+      "category": "mandatory deliberate failure-probe artifact; privacy review pending",
+      "original": {
+        "bytes": 23538,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/trace.zip",
+        "sha256": "02e8341992dc15acd6ae739421b6d6e85c260793c4502c539d6b541a653a468a"
+      },
+      "path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/trace.zip",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "02e8341992dc15acd6ae739421b6d6e85c260793c4502c539d6b541a653a468a",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1402,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/client-registration-timeline.json",
+        "sha256": "e02da7e1aa768764c4a334a15d3f935024e8ba6cf29e59d5b9fed781b292e660"
+      },
+      "category": "mandatory deliberate failure-probe artifact; privacy review pending",
+      "original": {
+        "bytes": 1402,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/client-registration-timeline.json",
+        "sha256": "e02da7e1aa768764c4a334a15d3f935024e8ba6cf29e59d5b9fed781b292e660"
+      },
+      "path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/client-registration-timeline.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "e02da7e1aa768764c4a334a15d3f935024e8ba6cf29e59d5b9fed781b292e660",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 45,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/browser/.last-run.json",
+        "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+      },
+      "category": "literal suite/probe marker; not standalone proof",
+      "original": {
+        "bytes": 45,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/browser/.last-run.json",
+        "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+      },
+      "path": "browser-evidence/browser/.last-run.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 45,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance/.last-run.json",
+        "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+      },
+      "category": "literal suite/probe marker; not standalone proof",
+      "original": {
+        "bytes": 45,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance/.last-run.json",
+        "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903"
+      },
+      "path": "browser-evidence/acceptance/.last-run.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 96,
+      "canonicalBinding": {
+        "manifestPath": "browser-evidence/acceptance-evidence-probe/.last-run.json",
+        "sha256": "ea174290f88c32b1e153286b63c81f46a35b6b2bab7523dca931afa1379ae44e"
+      },
+      "category": "literal suite/probe marker; not standalone proof",
+      "original": {
+        "bytes": 96,
+        "path": "/tmp/prisma-quality-integration-820ff40-6/browser-evidence/acceptance-evidence-probe/.last-run.json",
+        "sha256": "ea174290f88c32b1e153286b63c81f46a35b6b2bab7523dca931afa1379ae44e"
+      },
+      "path": "browser-evidence/acceptance-evidence-probe/.last-run.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "ea174290f88c32b1e153286b63c81f46a35b6b2bab7523dca931afa1379ae44e",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 14039,
+      "canonicalBinding": null,
+      "category": "root complete review of the exact original synthetic probe ZIP",
+      "original": {
+        "bytes": 14039,
+        "path": "/workspace/work/typescript-quality-pilot/gate6-probe-privacy-review.json",
+        "sha256": "60fabf9df9a8b3f1dcac98668b60353d467ada0b1594c93ddbac5d8694d5d7bf"
+      },
+      "path": "review/gate6-probe-privacy-review.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "60fabf9df9a8b3f1dcac98668b60353d467ada0b1594c93ddbac5d8694d5d7bf",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 3233,
+      "canonicalBinding": null,
+      "category": "root Client image visual review record",
+      "original": {
+        "bytes": 3233,
+        "path": "/workspace/work/typescript-quality-pilot/gate6-visual-inspection.json",
+        "sha256": "52e6863dac6e05fa6119b850d2a6deb2dbe284bfde36943a23be739be1bee531"
+      },
+      "path": "review/gate6-visual-inspection.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "52e6863dac6e05fa6119b850d2a6deb2dbe284bfde36943a23be739be1bee531",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1619,
+      "canonicalBinding": null,
+      "category": "root real-API acceptance visual review record",
+      "original": {
+        "bytes": 1619,
+        "path": "/workspace/work/typescript-quality-pilot/gate6-acceptance-visual-inspection.json",
+        "sha256": "f8cddd63ed39a3896c0ff4dc3a12f7b84697076a738e295ddb07bfc820dcbebf"
+      },
+      "path": "review/gate6-acceptance-visual-inspection.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "f8cddd63ed39a3896c0ff4dc3a12f7b84697076a738e295ddb07bfc820dcbebf",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 1145,
+      "canonicalBinding": null,
+      "category": "later focused operator diagnosis; never changes failed gate6",
+      "original": {
+        "bytes": 1145,
+        "path": "/workspace/work/typescript-quality-pilot/packaging-public-mode-restoration.json",
+        "sha256": "1c9d05c30e934d4ff3805abaecf2d868ef559faee474fd505894e2d8a3329b29"
+      },
+      "path": "later-diagnosis/packaging-public-mode-restoration.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "1c9d05c30e934d4ff3805abaecf2d868ef559faee474fd505894e2d8a3329b29",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 3144,
+      "canonicalBinding": null,
+      "category": "later focused operator diagnosis; never changes failed gate6",
+      "original": {
+        "bytes": 3144,
+        "path": "/workspace/work/typescript-quality-pilot/packaging-port-probe-1.json",
+        "sha256": "bacb9c30acedea38ec0e9a48bb9b095d9c0e052fb9f6091e1c05a6a24c80df48"
+      },
+      "path": "later-diagnosis/packaging-port-probe-1.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "bacb9c30acedea38ec0e9a48bb9b095d9c0e052fb9f6091e1c05a6a24c80df48",
+      "transformation": "unchanged byte copy"
+    },
+    {
+      "bytes": 3999,
+      "canonicalBinding": null,
+      "category": "derived selection scope and pending root duties",
+      "original": null,
+      "path": "README.md",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "5b93989c7b5a90702fbd3e6eb0de8411f755b1f48132681b98d9ec4d105da14f",
+      "transformation": "New operator-facing staging instructions, not a runner result or privacy/visual attestation"
+    },
+    {
+      "bytes": 1243,
+      "canonicalBinding": null,
+      "category": "Later separately scoped targeted canonical packaging success; original full gate remainsfailed",
+      "original": {
+        "bytes": 1243,
+        "path": "/workspace/work/typescript-quality-pilot/packaging-targeted-result-820ff40.json",
+        "sha256": "18f5c10f1fca576edf9088739625a80be6fc35ed229a0d99f67c939a78d2297c"
+      },
+      "path": "later-diagnosis/packaging-targeted-result-820ff40.json",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "18f5c10f1fca576edf9088739625a80be6fc35ed229a0d99f67c939a78d2297c",
+      "transformation": "Unchanged operator-authored metadata/selected-marker record; rawlog not selected"
+    },
+    {
+      "bytes": 3754,
+      "canonicalBinding": null,
+      "category": "Root publication selection/privacy/visual review",
+      "original": null,
+      "path": "ROOT-REVIEW.md",
+      "rootReview": "Bounded root selection review complete; see ROOT-REVIEW.md and bound per-artifact review records",
+      "sha256": "9e0262a4b09c6fa8abb731628da23bb10415b3d2a9983097d7a1836c72280312",
+      "transformation": "Operator-authored scoped review; not runner output"
+    }
+  ],
+  "laterDiagnosisRecords": [
+    {
+      "path": "later-diagnosis/packaging-public-mode-restoration.json",
+      "utc": "2026-10-24T07:39:49.549500+00:00"
+    },
+    {
+      "path": "later-diagnosis/packaging-port-probe-1.json",
+      "utc": "2026-10-24T07:38:33.586705+00:00"
+    }
+  ],
+  "limits": {
+    "maximumBlobBytes": 5242880,
+    "maximumRunBytesIncludingIndexAndLaterRootAdditions": 20971520
+  },
+  "mergeAuthorization": false,
+  "originalRoot": "/tmp/prisma-quality-integration-820ff40-6",
+  "originalStatus": "failed",
+  "originalsModified": false,
+  "packagingFailureSelection": {
+    "excerpt": {
+      "bytes": 762,
+      "path": "packaging.txt",
+      "sha256": "07b24a336f7e325c0488d9f7bc036d47ca069be23b454bc0d0c8b7f222b4ae18"
+    },
+    "exitCode": 1,
+    "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+    "helper": null,
+    "id": "packaging",
+    "manifestArgv": [
+      "bash",
+      "scripts/railway-packaging-smoke.sh"
+    ],
+    "omittedOriginalLineRanges": [
+      [
+        1,
+        172
+      ],
+      [
+        174,
+        174
+      ]
+    ],
+    "originalLog": {
+      "bytes": 8178,
+      "lineCount": 174,
+      "path": "logs/packaging.log",
+      "sha256": "fa6e3a095c32c88448dafdb8a9aa080f66e5879814203a7d157ee658edd928e4"
+    },
+    "selected": [
+      {
+        "emitted": "Error: No public port '4318/tcp' published for railway-packaging-991128-web",
+        "kind": "packaging-failure",
+        "originalLine": 173,
+        "transformation": "ANSI/CR removal and surrounding whitespace only; exact known literal error"
+      }
+    ],
+    "status": "failed",
+    "topLevelFamilyLog": {
+      "allLinesOmitted": false,
+      "bytes": 8178,
+      "lineCount": 174,
+      "path": "logs/packaging.log",
+      "role": "Selected original family result log.",
+      "sha256": "fa6e3a095c32c88448dafdb8a9aa080f66e5879814203a7d157ee658edd928e4"
+    }
+  },
+  "payloadBytesExcludingIndex": 3852189,
+  "preparedAt": "2026-10-24T07:43:36.903405+00:00",
+  "priorFailed5Evidence": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/tree/3498ace75026ed4c1645c47f90ff3d083a869e48",
+  "provenance": {
+    "baseHead": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+    "integrationTree": "7e37116ce6d6ae56bfec63b20d6f4d058576db12",
+    "sourceHead": "820ff40f70740d94ca678fb0216cff1094561ae2"
+  },
+  "publicationReady": true,
+  "rawProductLogsIncluded": false,
+  "requiredRootDuties": [
+    "Publish under existing authorization; retrieve/verify every actual blob before claiming publication"
+  ],
+  "rootPrivacyVisualReview": "Complete for listed selected bytes; scope/limits in ROOT-REVIEW.md",
+  "rootReviewedAt": "2026-10-24T07:47:20.383936+00:00",
+  "run": "prisma-quality-integration-820ff40-6",
+  "schema": "prisma-prim-selected-failed-gate6-evidence/v1",
+  "selfHashPolicy": "This index is excluded from files; compute its publication SHA-256 externally after root additions."
+}

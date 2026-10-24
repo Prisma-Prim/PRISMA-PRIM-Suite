@@ -1,0 +1,273 @@
+{
+  "schema": "bounded-synthetic-probe-publication-privacy-review/v1",
+  "reviewedAt": "2026-10-24T07:37:21.777858+00:00",
+  "scope": "Content inspection of this exact synthetic evidence-probe ZIP and its actual-source mapping only; not a code review, test execution, gate attestation, publication or generalized assurance for other traces.",
+  "archive": {
+    "path": "/workspace/PRISMA-PRIM-Suite/apps/web/test-results/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/trace.zip",
+    "bytes": 23538,
+    "sha256": "02e8341992dc15acd6ae739421b6d6e85c260793c4502c539d6b541a653a468a",
+    "memberCount": 17,
+    "allMembersInspected": true,
+    "originalArchiveUnchanged": true
+  },
+  "decision": "No actual credential, real Client data or environment dump identified in any inspected member. No unresolved content candidate. Archive intentionally retains public fake canaries and must not be labeled sanitized.",
+  "sanitizedArchive": false,
+  "intentionalFakeCanaries": {
+    "values": [
+      "evidence-auth-canary",
+      "evidence-cookie-canary",
+      "evidence-header-canary",
+      "evidence-query-canary",
+      "evidence-body-canary",
+      "evidence-error-canary",
+      "evidence-post-body-canary",
+      "evidence-unrelated-canary"
+    ],
+    "origin": "All eight are literal public test data in the byte-matching client-registration-evidence.probe.ts; raw trace streams, network records and resources deliberately retain them.",
+    "syntheticIdentifiers": [
+      "evidence-client",
+      "evidence-company"
+    ]
+  },
+  "separateTimelineProperty": {
+    "archiveMember": "resources/1b91809abe77c6b7a3885c96de57245ac9d3cfa0",
+    "events": 12,
+    "allEightSensitiveCanaryStringsAbsent": true,
+    "retainedFields": "Event kind, request ID, method/status, elapsed timing, synthetic Company context and Client IDs.",
+    "claimLimit": "This derived timeline property does not describe or sanitize the entire ZIP."
+  },
+  "contextFindings": {
+    "networkRequestHosts": [
+      "client-evidence.test"
+    ],
+    "otherTraceOrigins": [
+      "http://127.0.0.1:4173",
+      "about:blank"
+    ],
+    "initialStorage": "Empty cookies; only prisma-prim.interface-locale=en in loopback localStorage.",
+    "environment": "Test launch env is undefined. No process environment, credential store, private certificate or private Docker configuration content present.",
+    "sourceAndStacks": "Two exact actual-source copies, ordinary repository-local file paths, five source-stack entries and synthetic intentional assertion failure.",
+    "visuals": "All three JPEG frames viewed separately plus embedded PNG; blank or synthetic probe heading only. No real person/Client information visible; no EXIF metadata."
+  },
+  "inspectionMethods": {
+    "full_text": "Read the entire UTF-8 member via exact ZipFile.read(member), emitted all bytes as decoded full text without truncation, and manually inspected every event/value/stack/resource. JSON/JSONL parsed completely where applicable; no sampling.",
+    "source": "Full-text method plus exact byte comparison to named actual repository source; verified src@ identifier equals SHA-1 of its absolute source path.",
+    "image": "Extracted only this exact selected member to a new work directory, verified extraction SHA-256, viewed individually with view_image(detail=original), and inspected dimensions/metadata/EXIF and final image terminator without editing image bytes."
+  },
+  "actualSourceMappings": [
+    {
+      "archiveMember": "resources/src@a39b54ba3b2a7b4afb8cfe1b26aef16e1b2b090e.txt",
+      "actualPath": "/workspace/PRISMA-PRIM-Suite/apps/web/e2e/client-registration-diagnostics.ts",
+      "actualBytes": 5023,
+      "actualSha256": "90b61baa61f9c35ed3da427ae949f864920d186dcc02ee9d9093df9fdc40fe1a",
+      "exactByteEquality": true,
+      "sourceResourceNameMatchesSha1OfAbsolutePath": true
+    },
+    {
+      "archiveMember": "resources/src@6fd3f3ab91933939f2417674dc299790e0888b8b.txt",
+      "actualPath": "/workspace/PRISMA-PRIM-Suite/apps/web/e2e/client-registration-evidence.probe.ts",
+      "actualBytes": 2034,
+      "actualSha256": "a04add0dbeb406b503e360b1fe34fb709f049058fb5fc775b6b95b94f1484621",
+      "exactByteEquality": true,
+      "sourceResourceNameMatchesSha1OfAbsolutePath": true
+    }
+  ],
+  "members": [
+    {
+      "member": "resources/src@a39b54ba3b2a7b4afb8cfe1b26aef16e1b2b090e.txt",
+      "bytes": 5023,
+      "sha256": "90b61baa61f9c35ed3da427ae949f864920d186dcc02ee9d9093df9fdc40fe1a",
+      "finding": "Complete 5,023-byte synthetic diagnostics fixture; no credential/environment dump. Exact actual-source byte match and path-hash mapping verified.",
+      "inspectionMethod": "source"
+    },
+    {
+      "member": "resources/src@6fd3f3ab91933939f2417674dc299790e0888b8b.txt",
+      "bytes": 2034,
+      "sha256": "a04add0dbeb406b503e360b1fe34fb709f049058fb5fc775b6b95b94f1484621",
+      "finding": "Complete 2,034-byte intentional-failure probe; defines all eight public fake canaries, synthetic identifiers and mocked .test routes. Exact actual-source byte match and path-hash mapping verified.",
+      "inspectionMethod": "source"
+    },
+    {
+      "member": "resources/1b91809abe77c6b7a3885c96de57245ac9d3cfa0",
+      "bytes": 1402,
+      "sha256": "e02da7e1aa768764c4a334a15d3f935024e8ba6cf29e59d5b9fed781b292e660",
+      "finding": "Complete 12-event derived timeline: only event kinds, synthetic Client/Company identifiers, method/status and timings. All eight sensitive canary strings absent.",
+      "inspectionMethod": "full_text",
+      "contentSha1MatchesResourceReference": true
+    },
+    {
+      "member": "resources/6ee36f937c170191665b28d7d5e99ded61a9bcf5",
+      "bytes": 82,
+      "sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07",
+      "finding": "Complete error-context Markdown contains only the synthetic heading Client evidence probe.",
+      "inspectionMethod": "full_text",
+      "contentSha1MatchesResourceReference": true
+    },
+    {
+      "member": "resources/e3c979a50ba97f90abc0fff956423e40b33c7e61",
+      "bytes": 9319,
+      "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "finding": "Visually inspected complete embedded PNG: white page with Client evidence probe heading only; byte-identical to root-viewed standalone test-failed-1.png. No PNG metadata/EXIF entries.",
+      "inspectionMethod": "image",
+      "visualExtractionPath": "/workspace/work/typescript-quality-pilot/gate6-probe-privacy-selected-images-20261024/e3c979a50ba97f90abc0fff956423e40b33c7e61.png",
+      "image": {
+        "format": "PNG",
+        "width": 1280,
+        "height": 720,
+        "metadataKeys": [],
+        "exifEntries": 0,
+        "normalImageTerminator": true
+      }
+    },
+    {
+      "member": "test.trace",
+      "bytes": 10911,
+      "sha256": "0d5ea607568981d23aaa486e9ed8505e55cf6a702572512b1e6a8e15acb019da",
+      "finding": "All 46 JSONL test events read in full, including errors, stack strings, fixture/context settings, evaluate expression and attachments. env is undefined, not an environment dump. Only known fake query/body canaries and synthetic probe details; repository-local paths retained.",
+      "inspectionMethod": "full_text",
+      "records": 46
+    },
+    {
+      "member": "0-trace.trace",
+      "bytes": 11613,
+      "sha256": "a04909d6f6b4eed90065e5b74bc311cbb5c08f48976a2598efa17b4bcfa7d9f1",
+      "finding": "All 53 JSONL browser events read in full, including all eight DOM snapshots, three image references, console/errors and evaluated code. Intentionally retains fake auth/cookie/header/query/body canaries. Initial cookies empty; local storage only loopback interface-locale=en. No real Client details or credentials identified.",
+      "inspectionMethod": "full_text",
+      "records": 53
+    },
+    {
+      "member": "0-trace.network",
+      "bytes": 9098,
+      "sha256": "a7d352357e801e4379956c9fde31174de1f65611dc923c1727cf69167041b860",
+      "finding": "All six complete network JSONL records read, including headers/cookies/query values, postData and response-resource mappings. Requests only target client-evidence.test. All captured sensitive-shaped values match public fake probe literals.",
+      "inspectionMethod": "full_text",
+      "records": 6
+    },
+    {
+      "member": "resources/page@68317d2bb7dde8199925189866eccceb-1792827153257.jpeg",
+      "bytes": 2459,
+      "sha256": "3a829f9747ec49e0f7fafe05977cf3faa6dc229918ee73b807ec6dbf9d83c73f",
+      "finding": "Viewed this exact JPEG individually at original resolution: blank white frame. JFIF metadata only, no EXIF.",
+      "inspectionMethod": "image",
+      "visualExtractionPath": "/workspace/work/typescript-quality-pilot/gate6-probe-privacy-selected-images-20261024/page@68317d2bb7dde8199925189866eccceb-1792827153257.jpeg",
+      "image": {
+        "format": "JPEG",
+        "width": 800,
+        "height": 450,
+        "metadataKeys": [
+          "jfif",
+          "jfif_version",
+          "jfif_unit",
+          "jfif_density"
+        ],
+        "exifEntries": 0,
+        "normalImageTerminator": true
+      }
+    },
+    {
+      "member": "resources/page@68317d2bb7dde8199925189866eccceb-1792827153278.jpeg",
+      "bytes": 4892,
+      "sha256": "3f4005ba3c1a34e05493c84def48c289110404f4ec2e7c4c70a3ff4df639b36a",
+      "finding": "Viewed this exact JPEG individually at original resolution: Client evidence probe heading on white only. JFIF metadata only, no EXIF.",
+      "inspectionMethod": "image",
+      "visualExtractionPath": "/workspace/work/typescript-quality-pilot/gate6-probe-privacy-selected-images-20261024/page@68317d2bb7dde8199925189866eccceb-1792827153278.jpeg",
+      "image": {
+        "format": "JPEG",
+        "width": 800,
+        "height": 450,
+        "metadataKeys": [
+          "jfif",
+          "jfif_version",
+          "jfif_unit",
+          "jfif_density"
+        ],
+        "exifEntries": 0,
+        "normalImageTerminator": true
+      }
+    },
+    {
+      "member": "resources/page@68317d2bb7dde8199925189866eccceb-1792827158337.jpeg",
+      "bytes": 4892,
+      "sha256": "3f4005ba3c1a34e05493c84def48c289110404f4ec2e7c4c70a3ff4df639b36a",
+      "finding": "Viewed this exact JPEG individually at original resolution: Client evidence probe heading on white only. Byte-identical to preceding frame, still individually viewed; JFIF metadata only, no EXIF.",
+      "inspectionMethod": "image",
+      "visualExtractionPath": "/workspace/work/typescript-quality-pilot/gate6-probe-privacy-selected-images-20261024/page@68317d2bb7dde8199925189866eccceb-1792827158337.jpeg",
+      "image": {
+        "format": "JPEG",
+        "width": 800,
+        "height": 450,
+        "metadataKeys": [
+          "jfif",
+          "jfif_version",
+          "jfif_unit",
+          "jfif_density"
+        ],
+        "exifEntries": 0,
+        "normalImageTerminator": true
+      }
+    },
+    {
+      "member": "resources/48ae1eb31adf32ee69a2599d890745cb9814c8ee.html",
+      "bytes": 43,
+      "sha256": "dd797faf2da0c88dd14c4d7f18d3dde022c1ca42f749be1ca3ec3bd0e30c36e2",
+      "finding": "Complete HTML is only <main><h1>Client evidence probe</h1></main>.",
+      "inspectionMethod": "full_text",
+      "contentSha1MatchesResourceReference": true
+    },
+    {
+      "member": "resources/dd5ef65d63618694b496596c87e96a477baa4e35.json",
+      "bytes": 66,
+      "sha256": "f219320f5827df1edca3c61af8340cd8e1e035d185abe9cc4896f6deae9e6f9c",
+      "finding": "Complete response contains synthetic evidence-client and public fake evidence-body-canary.",
+      "inspectionMethod": "full_text",
+      "contentSha1MatchesResourceReference": true
+    },
+    {
+      "member": "resources/143115d2e178e4c880bb4c9df4499ff9aa7928e8.json",
+      "bytes": 35,
+      "sha256": "2ec150d6728c368bb5bdfd4025a09c91eee08fe1ed3b3db4b36f86667f4679ed",
+      "finding": "Complete response contains public fake evidence-error-canary only.",
+      "inspectionMethod": "full_text",
+      "contentSha1MatchesResourceReference": true
+    },
+    {
+      "member": "resources/08c9f51639fd80a9dc7efc2703d476a2c92d8cba.txt",
+      "bytes": 25,
+      "sha256": "d01ff0c035788874bf9fcfed1a419a8e9a87027f5dbb8aa5950a206f794f33ce",
+      "finding": "Complete POST body is public fake evidence-post-body-canary.",
+      "inspectionMethod": "full_text",
+      "contentSha1MatchesResourceReference": true
+    },
+    {
+      "member": "resources/51b2280e29a85a369f437eee2d566934a456604d.json",
+      "bytes": 24,
+      "sha256": "302b23edbeec8d01e9d24dbd9c646cc2768d4f94c89b90ce50643705016ad73a",
+      "finding": "Complete mutation response contains synthetic id evidence-client only.",
+      "inspectionMethod": "full_text",
+      "contentSha1MatchesResourceReference": true
+    },
+    {
+      "member": "0-trace.stacks",
+      "bytes": 202,
+      "sha256": "2517845c8447dd43401beb3cf9420c2b7382e0d00b00131610445e63aa11cf66",
+      "finding": "Complete compact stack map: one probe source path and five call-to-line mappings (8,39,40,20,54), consistent with actual source/API events; no environment or user data.",
+      "inspectionMethod": "full_text"
+    }
+  ],
+  "extractionPolicy": {
+    "unrestrictedExtractionUsed": false,
+    "selectedMembersOnly": true,
+    "directory": "/workspace/work/typescript-quality-pilot/gate6-probe-privacy-selected-images-20261024",
+    "selection": "Exactly three declared JPEG members and one embedded PNG; all text read directly from named ZIP members without extracting the archive."
+  },
+  "limitations": [
+    "Decision is bound to the listed original ZIP/member digests; a regenerated or changed trace requires a new content inspection.",
+    "Visual and complete textual/metadata inspection found no unresolved privacy candidate; this does not claim secret-removal guarantees for arbitrary artifacts."
+  ],
+  "actionsExcluded": [
+    "No tests or server launched",
+    "No active gate polling",
+    "No source/runtime/proof edits",
+    "No external publication"
+  ]
+}

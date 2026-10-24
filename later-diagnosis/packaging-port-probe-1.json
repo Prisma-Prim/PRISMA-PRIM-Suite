@@ -1,0 +1,94 @@
+{
+  "utc": "2026-10-24T07:38:33.586705+00:00",
+  "scope": "Standalone previously built prerequisite web image, unchanged hosting files; not current integration qualification",
+  "image": "prisma-quality-web-prerequisite:28c31ee",
+  "observations": [
+    {
+      "step": 0,
+      "state": {
+        "exit": 0,
+        "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":2,\"Error\":\"\",\"StartedAt\":\"2026-10-24T07:38:35.661666417Z\",\"FinishedAt\":\"2026-10-24T07:38:35.805404416Z\"}",
+        "stderr": ""
+      },
+      "ports": {
+        "exit": 0,
+        "stdout": "{}",
+        "stderr": ""
+      },
+      "dockerPort": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: No public port '4318/tcp' published for prisma-web-port-probe-20261024"
+      }
+    },
+    {
+      "step": 1,
+      "state": {
+        "exit": 0,
+        "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":2,\"Error\":\"\",\"StartedAt\":\"2026-10-24T07:38:35.661666417Z\",\"FinishedAt\":\"2026-10-24T07:38:35.805404416Z\"}",
+        "stderr": ""
+      },
+      "ports": {
+        "exit": 0,
+        "stdout": "{}",
+        "stderr": ""
+      },
+      "dockerPort": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: No public port '4318/tcp' published for prisma-web-port-probe-20261024"
+      }
+    },
+    {
+      "step": 2,
+      "state": {
+        "exit": 0,
+        "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":2,\"Error\":\"\",\"StartedAt\":\"2026-10-24T07:38:35.661666417Z\",\"FinishedAt\":\"2026-10-24T07:38:35.805404416Z\"}",
+        "stderr": ""
+      },
+      "ports": {
+        "exit": 0,
+        "stdout": "{}",
+        "stderr": ""
+      },
+      "dockerPort": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: No public port '4318/tcp' published for prisma-web-port-probe-20261024"
+      }
+    },
+    {
+      "step": 3,
+      "state": {
+        "exit": 0,
+        "stdout": "{\"Status\":\"exited\",\"Running\":false,\"Paused\":false,\"Restarting\":false,\"OOMKilled\":false,\"Dead\":false,\"Pid\":0,\"ExitCode\":2,\"Error\":\"\",\"StartedAt\":\"2026-10-24T07:38:35.661666417Z\",\"FinishedAt\":\"2026-10-24T07:38:35.805404416Z\"}",
+        "stderr": ""
+      },
+      "ports": {
+        "exit": 0,
+        "stdout": "{}",
+        "stderr": ""
+      },
+      "dockerPort": {
+        "exit": 1,
+        "stdout": "",
+        "stderr": "Error: No public port '4318/tcp' published for prisma-web-port-probe-20261024"
+      }
+    }
+  ],
+  "run": {
+    "exit": 0,
+    "stdout": "0a5e95b63a4005de9ba13149fd15782623c170a157f1debfb19b3791b3d115af",
+    "stderr": ""
+  },
+  "logs": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": "/bin/sh: can't open '/usr/local/bin/prisma-web-start': Permission denied"
+  },
+  "cleanup": {
+    "exit": 0,
+    "stdout": "prisma-web-port-probe-20261024",
+    "stderr": ""
+  }
+}

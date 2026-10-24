@@ -1,0 +1,13 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: build
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "build"]
+UTC: 2026-10-24T07:32:39.359Z — 2026-10-24T07:33:06.676Z
+Manifest wall duration seconds: 27.317
+Top-level family log: logs/build.log; bytes 1480; SHA-256 b44eb910ba25908f47a6406ad849a5021315325918bfcd03fca8dbe67bedf8ea
+Selected result log: logs/build.log
+Selected result log SHA-256: b44eb910ba25908f47a6406ad849a5021315325918bfcd03fca8dbe67bedf8ea
+Original lines: 23; selected lines: 0
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[No allowlisted count/result/duration line exists; manifest outcome is reported above.]

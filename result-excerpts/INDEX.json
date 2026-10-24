@@ -1,0 +1,1009 @@
+{
+  "combinedStagedBytes": 46219,
+  "families": [
+    {
+      "excerpt": {
+        "bytes": 975,
+        "path": "doctor.txt",
+        "sha256": "1da2f4534b99ffe41a445dc76866ff59f41ab3caf686ba407e35b16e19b7dc7e"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "doctor",
+      "manifestArgv": [
+        "node",
+        "scripts/agent-doctor.mjs",
+        "--profile",
+        "web-postgres"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          1
+        ]
+      ],
+      "originalLog": {
+        "bytes": 749,
+        "lineCount": 10,
+        "path": "logs/doctor.log",
+        "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9"
+      },
+      "selected": [
+        {
+          "emitted": "PASS node",
+          "kind": "capability-result",
+          "originalLine": 2,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS pnpm",
+          "kind": "capability-result",
+          "originalLine": 3,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS workspace",
+          "kind": "capability-result",
+          "originalLine": 4,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS lockfile",
+          "kind": "capability-result",
+          "originalLine": 5,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS dependencies",
+          "kind": "capability-result",
+          "originalLine": 6,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS chromium",
+          "kind": "capability-result",
+          "originalLine": 7,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS database-variables",
+          "kind": "capability-result",
+          "originalLine": 8,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS database-safety",
+          "kind": "capability-result",
+          "originalLine": 9,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        },
+        {
+          "emitted": "PASS postgres",
+          "kind": "capability-result",
+          "originalLine": 10,
+          "transformation": "Retain only literal outcome and allowlisted capability; omit all colon details"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 749,
+        "lineCount": 10,
+        "path": "logs/doctor.log",
+        "role": "Selected original family result log.",
+        "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 691,
+        "path": "format.txt",
+        "sha256": "107343a56ae8b945450abb46b9f21ead28414be9926340b60af8a5d88d9412b6"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "format",
+      "manifestArgv": [
+        "pnpm",
+        "format:check"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          2
+        ]
+      ],
+      "originalLog": {
+        "bytes": 87,
+        "lineCount": 3,
+        "path": "logs/format.log",
+        "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+      },
+      "selected": [
+        {
+          "emitted": "All matched files use Prettier code style!",
+          "kind": "format-result",
+          "originalLine": 3,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 87,
+        "lineCount": 3,
+        "path": "logs/format.log",
+        "role": "Selected original family result log.",
+        "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 704,
+        "path": "lint.txt",
+        "sha256": "2d08d99dac156a19e303072260a0202f5f4b5f4463a1f12704ba7c74756e1b66"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "lint",
+      "manifestArgv": [
+        "pnpm",
+        "lint"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          1
+        ]
+      ],
+      "originalLog": {
+        "bytes": 11,
+        "lineCount": 1,
+        "path": "logs/lint.log",
+        "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+      },
+      "selected": [],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 11,
+        "lineCount": 1,
+        "path": "logs/lint.log",
+        "role": "Selected original family result log.",
+        "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 713,
+        "path": "types.txt",
+        "sha256": "4e423ce0c735f7fabec045b108a8028775fc227e56960af5daf8199424d95286"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "types",
+      "manifestArgv": [
+        "pnpm",
+        "typecheck"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          6
+        ]
+      ],
+      "originalLog": {
+        "bytes": 187,
+        "lineCount": 6,
+        "path": "logs/types.log",
+        "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+      },
+      "selected": [],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 187,
+        "lineCount": 6,
+        "path": "logs/types.log",
+        "role": "Selected original family result log.",
+        "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 919,
+        "path": "scripts.txt",
+        "sha256": "679426c6112e91308424d8040d5c7f5fb03cb3f0ceb83e1b9ecdd7e8d03bbd8c"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "scripts",
+      "manifestArgv": [
+        "pnpm",
+        "test:scripts"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          552
+        ]
+      ],
+      "originalLog": {
+        "bytes": 44824,
+        "lineCount": 560,
+        "path": "logs/scripts.log",
+        "sha256": "cb43f212168d8a5d7320751c38412ecf346d1f983c55b316ab15de9dfdf31f39"
+      },
+      "selected": [
+        {
+          "emitted": "ℹ tests 483",
+          "kind": "tests",
+          "originalLine": 553,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ suites 0",
+          "kind": "suites",
+          "originalLine": 554,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ pass 483",
+          "kind": "pass",
+          "originalLine": 555,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ fail 0",
+          "kind": "fail",
+          "originalLine": 556,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ cancelled 0",
+          "kind": "cancelled",
+          "originalLine": 557,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ skipped 0",
+          "kind": "skipped",
+          "originalLine": 558,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ todo 0",
+          "kind": "todo",
+          "originalLine": 559,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ duration_ms 39817.822668",
+          "kind": "duration",
+          "originalLine": 560,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 44824,
+        "lineCount": 560,
+        "path": "logs/scripts.log",
+        "role": "Selected original family result log.",
+        "sha256": "cb43f212168d8a5d7320751c38412ecf346d1f983c55b316ab15de9dfdf31f39"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 917,
+        "path": "documentation.txt",
+        "sha256": "ea977a66767fab932915b50ebd8da798334a13d3c77f5f0fc94d9faa2abf5b56"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "documentation",
+      "manifestArgv": [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/api",
+        "exec",
+        "vitest",
+        "run",
+        "src/demonstration"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          53
+        ],
+        [
+          56,
+          56
+        ],
+        [
+          58,
+          58
+        ]
+      ],
+      "originalLog": {
+        "bytes": 7328,
+        "lineCount": 58,
+        "path": "logs/documentation.log",
+        "sha256": "6c7b45f76fe5dcd40f417f278a42e41274aad94d582e9153533609a9024d5a8f"
+      },
+      "selected": [
+        {
+          "emitted": "Test Files  10 passed (10)",
+          "kind": "test-files",
+          "originalLine": 54,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Tests  83 passed (83)",
+          "kind": "tests",
+          "originalLine": 55,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Duration  246.23s (transform 3.86s, setup 0ms, import 10.82s, tests 281.42s, environment 1ms)",
+          "kind": "duration",
+          "originalLine": 57,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 7328,
+        "lineCount": 58,
+        "path": "logs/documentation.log",
+        "role": "Selected original family result log.",
+        "sha256": "6c7b45f76fe5dcd40f417f278a42e41274aad94d582e9153533609a9024d5a8f"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 971,
+        "path": "api-parallel.txt",
+        "sha256": "3ec055657ef3cc6dcbb39f4dc8a1270ad50fee3532746212f9d9d4d247c81866"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "api-parallel",
+      "manifestArgv": [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/api",
+        "test:parallel",
+        "--maxWorkers=1",
+        "--testTimeout=15000"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          4178
+        ],
+        [
+          4181,
+          4181
+        ],
+        [
+          4183,
+          4183
+        ]
+      ],
+      "originalLog": {
+        "bytes": 525047,
+        "lineCount": 4183,
+        "path": "logs/api-parallel.log",
+        "sha256": "755159546231d6fe7aa3706c1498679563fbc63dd8000420b8ffdfa8e06765cc"
+      },
+      "selected": [
+        {
+          "emitted": "Test Files  150 passed | 1 skipped (151)",
+          "kind": "test-files",
+          "originalLine": 4179,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Tests  2782 passed | 1 skipped (2783)",
+          "kind": "tests",
+          "originalLine": 4180,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Duration  1721.81s (transform 8.49s, setup 0ms, import 107.93s, tests 1589.93s, environment 17ms)",
+          "kind": "duration",
+          "originalLine": 4182,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 525047,
+        "lineCount": 4183,
+        "path": "logs/api-parallel.log",
+        "role": "Selected original family result log.",
+        "sha256": "755159546231d6fe7aa3706c1498679563fbc63dd8000420b8ffdfa8e06765cc"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 911,
+        "path": "api-serial.txt",
+        "sha256": "5ba5d87d0c8fe7e8b0fbe79d906a9d6424b493fc2c374867d57602b9f0b096af"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "api-serial",
+      "manifestArgv": [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/api",
+        "test:postgres:serial",
+        "--testTimeout=15000"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          535
+        ],
+        [
+          538,
+          538
+        ],
+        [
+          540,
+          540
+        ]
+      ],
+      "originalLog": {
+        "bytes": 58031,
+        "lineCount": 540,
+        "path": "logs/api-serial.log",
+        "sha256": "b27387aa00a9621e74ca7c586a414901c7ed4d0b30987215890100f9994c7aab"
+      },
+      "selected": [
+        {
+          "emitted": "Test Files  8 passed (8)",
+          "kind": "test-files",
+          "originalLine": 536,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Tests  102 passed (102)",
+          "kind": "tests",
+          "originalLine": 537,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Duration  71.14s (transform 2.20s, setup 0ms, import 12.11s, tests 57.70s, environment 1ms)",
+          "kind": "duration",
+          "originalLine": 539,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 58031,
+        "lineCount": 540,
+        "path": "logs/api-serial.log",
+        "role": "Selected original family result log.",
+        "sha256": "b27387aa00a9621e74ca7c586a414901c7ed4d0b30987215890100f9994c7aab"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 918,
+        "path": "web-unit.txt",
+        "sha256": "38715a753524952eed18c87bb9e0543e6c84eda2ee1bca8925c1d61ce3478639"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "web-unit",
+      "manifestArgv": [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/web",
+        "exec",
+        "vitest",
+        "run",
+        "--maxWorkers=2"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          708
+        ],
+        [
+          711,
+          711
+        ],
+        [
+          713,
+          713
+        ]
+      ],
+      "originalLog": {
+        "bytes": 95881,
+        "lineCount": 713,
+        "path": "logs/web-unit.log",
+        "sha256": "2a649ecc6a44290f7b677bfcc7a101ffb101c44c106bfc648f0410461200f228"
+      },
+      "selected": [
+        {
+          "emitted": "Test Files  175 passed (175)",
+          "kind": "test-files",
+          "originalLine": 709,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Tests  2993 passed (2993)",
+          "kind": "tests",
+          "originalLine": 710,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "Duration  390.21s (transform 11.77s, setup 37.37s, import 50.69s, tests 499.84s, environment 155.10s)",
+          "kind": "duration",
+          "originalLine": 712,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 95881,
+        "lineCount": 713,
+        "path": "logs/web-unit.log",
+        "role": "Selected original family result log.",
+        "sha256": "2a649ecc6a44290f7b677bfcc7a101ffb101c44c106bfc648f0410461200f228"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 1410,
+        "path": "browser.txt",
+        "sha256": "4650448fa604af3d706c63fbc4b2fa3cf5e83484acd9e64251341d9f96a699ff"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": {
+        "exitCode": 0,
+        "helperArgv": [
+          "pnpm",
+          "exec",
+          "playwright",
+          "test",
+          "--config",
+          "/tmp/prisma-quality-integration-820ff40-6/local-browser/browser/preview.config.cjs",
+          "--workers=2"
+        ],
+        "logDigestFromSubmanifest": {
+          "bytes": 1558,
+          "sha256": "6123b9a2fd4512b8a83125d63d366440f1a1c2ab88a6d0a1f17c013ac27b5598"
+        },
+        "manifest": {
+          "bytes": 1016640,
+          "path": "local-browser/browser/manifest.json",
+          "sha256": "96d5e6c44d48324849134514e5846933122ab990101b118fba26f9561074cced"
+        },
+        "scope": "This gate6 directory only; no diagnostic or other-run substitution.",
+        "status": "passed"
+      },
+      "id": "browser",
+      "manifestArgv": [
+        "node",
+        "scripts/verify-local-browser.mjs",
+        "browser",
+        "--output",
+        "/tmp/prisma-quality-integration-820ff40-6"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          2
+        ],
+        [
+          4,
+          12
+        ]
+      ],
+      "originalLog": {
+        "bytes": 1558,
+        "lineCount": 14,
+        "path": "local-browser/browser/playwright.log",
+        "sha256": "6123b9a2fd4512b8a83125d63d366440f1a1c2ab88a6d0a1f17c013ac27b5598"
+      },
+      "selected": [
+        {
+          "emitted": "Running 708 tests using 2 workers",
+          "kind": "plan-count",
+          "originalLine": 3,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "1 skipped",
+          "kind": "other-result-count",
+          "originalLine": 13,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "707 passed (15.9m)",
+          "kind": "passed",
+          "originalLine": 14,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": true,
+        "bytes": 0,
+        "lineCount": 0,
+        "path": "logs/browser.log",
+        "role": "Family wrapper output; not the selected result log.",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 1379,
+        "path": "acceptance.txt",
+        "sha256": "d21bb2607094f6ed1282c2bc3cb86712145fb5c3816cd1a9424f9a5a81e56abf"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": {
+        "exitCode": 0,
+        "helperArgv": [
+          "pnpm",
+          "exec",
+          "playwright",
+          "test",
+          "--config",
+          "/tmp/prisma-quality-integration-820ff40-6/local-browser/acceptance/preview.config.cjs"
+        ],
+        "logDigestFromSubmanifest": {
+          "bytes": 300,
+          "sha256": "0b6e6edd0f7f046d777b2393fb19335de04e745dddc335f2f3625fd5bc658b56"
+        },
+        "manifest": {
+          "bytes": 1185679,
+          "path": "local-browser/acceptance/manifest.json",
+          "sha256": "817a431a13d7f9c173d3263b5dd1b6fc79228e7d754a72a797c7b3dfe8e8f51f"
+        },
+        "scope": "This gate6 directory only; no diagnostic or other-run substitution.",
+        "status": "passed"
+      },
+      "id": "acceptance",
+      "manifestArgv": [
+        "node",
+        "scripts/verify-local-browser.mjs",
+        "acceptance",
+        "--output",
+        "/tmp/prisma-quality-integration-820ff40-6"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          2
+        ],
+        [
+          4,
+          5
+        ]
+      ],
+      "originalLog": {
+        "bytes": 300,
+        "lineCount": 6,
+        "path": "local-browser/acceptance/playwright.log",
+        "sha256": "0b6e6edd0f7f046d777b2393fb19335de04e745dddc335f2f3625fd5bc658b56"
+      },
+      "selected": [
+        {
+          "emitted": "Running 90 tests using 1 worker",
+          "kind": "plan-count",
+          "originalLine": 3,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "90 passed (20.1m)",
+          "kind": "passed",
+          "originalLine": 6,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": true,
+        "bytes": 0,
+        "lineCount": 0,
+        "path": "logs/acceptance.log",
+        "role": "Family wrapper output; not the selected result log.",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 956,
+        "path": "acceptance-evidence.txt",
+        "sha256": "4aef9dd8fa009ca18fc4e0e34e8396aa7921f8d1700ed13ce7f40d83812677ef"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Only exact positive independent-probe verifier result is selected; intentional probe-child failures are not suite failures.",
+      "helper": null,
+      "id": "acceptance-evidence",
+      "manifestArgv": [
+        "node",
+        "scripts/verify-acceptance-evidence.mjs"
+      ],
+      "omittedOriginalLineRanges": [],
+      "originalLog": {
+        "bytes": 118,
+        "lineCount": 1,
+        "path": "logs/acceptance-evidence.log",
+        "sha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577"
+      },
+      "selected": [
+        {
+          "emitted": "Acceptance evidence verified: intentional failure, context, PNG, trace, exact Client statuses and sanitized timeline.",
+          "kind": "intentional-probe-verifier-result",
+          "originalLine": 1,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 118,
+        "lineCount": 1,
+        "path": "logs/acceptance-evidence.log",
+        "role": "Selected original family result log.",
+        "sha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 711,
+        "path": "build.txt",
+        "sha256": "17a694daa170b4a500334f1a89606eb6c181253ab3f0583e3ebf696b1b047a53"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "build",
+      "manifestArgv": [
+        "pnpm",
+        "build"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          23
+        ]
+      ],
+      "originalLog": {
+        "bytes": 1480,
+        "lineCount": 23,
+        "path": "logs/build.log",
+        "sha256": "b44eb910ba25908f47a6406ad849a5021315325918bfcd03fca8dbe67bedf8ea"
+      },
+      "selected": [],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 1480,
+        "lineCount": 23,
+        "path": "logs/build.log",
+        "role": "Selected original family result log.",
+        "sha256": "b44eb910ba25908f47a6406ad849a5021315325918bfcd03fca8dbe67bedf8ea"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 757,
+        "path": "railway-types.txt",
+        "sha256": "5c590ce919f641e60d28025fb8866d1913627e8414ac24aa7d763a8533d9e0e7"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "railway-types",
+      "manifestArgv": [
+        "pnpm",
+        "--dir",
+        ".railway",
+        "typecheck"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          6
+        ]
+      ],
+      "originalLog": {
+        "bytes": 180,
+        "lineCount": 6,
+        "path": "logs/railway-types.log",
+        "sha256": "404cfb0156938ff9df285cf2692fc99da30f7702d15231bf42ff64a65e74f88f"
+      },
+      "selected": [],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 180,
+        "lineCount": 6,
+        "path": "logs/railway-types.log",
+        "role": "Selected original family result log.",
+        "sha256": "404cfb0156938ff9df285cf2692fc99da30f7702d15231bf42ff64a65e74f88f"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 924,
+        "path": "railway-tests.txt",
+        "sha256": "1194aebb06976e63ba5b0209d8e46bd4945fbd2c02b6d1961a8340eb8632c6b2"
+      },
+      "exitCode": 0,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "railway-tests",
+      "manifestArgv": [
+        "pnpm",
+        "--dir",
+        ".railway",
+        "test"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          2
+        ]
+      ],
+      "originalLog": {
+        "bytes": 238,
+        "lineCount": 10,
+        "path": "logs/railway-tests.log",
+        "sha256": "f00e88c94beb6a8361a1145c2bce0f70d649feae4fab563d9b116b118f233e0f"
+      },
+      "selected": [
+        {
+          "emitted": "ℹ tests 1",
+          "kind": "tests",
+          "originalLine": 3,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ suites 0",
+          "kind": "suites",
+          "originalLine": 4,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ pass 1",
+          "kind": "pass",
+          "originalLine": 5,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ fail 0",
+          "kind": "fail",
+          "originalLine": 6,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ cancelled 0",
+          "kind": "cancelled",
+          "originalLine": 7,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ skipped 0",
+          "kind": "skipped",
+          "originalLine": 8,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ todo 0",
+          "kind": "todo",
+          "originalLine": 9,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        },
+        {
+          "emitted": "ℹ duration_ms 128.35124",
+          "kind": "duration",
+          "originalLine": 10,
+          "transformation": "ANSI/CR removal and surrounding whitespace only"
+        }
+      ],
+      "status": "passed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 238,
+        "lineCount": 10,
+        "path": "logs/railway-tests.log",
+        "role": "Selected original family result log.",
+        "sha256": "f00e88c94beb6a8361a1145c2bce0f70d649feae4fab563d9b116b118f233e0f"
+      }
+    },
+    {
+      "excerpt": {
+        "bytes": 762,
+        "path": "packaging.txt",
+        "sha256": "07b24a336f7e325c0488d9f7bc036d47ca069be23b454bc0d0c8b7f222b4ae18"
+      },
+      "exitCode": 1,
+      "failureScanPolicy": "Scan selected-result source, and separate wrapper log when present, for actual runner failure markers.",
+      "helper": null,
+      "id": "packaging",
+      "manifestArgv": [
+        "bash",
+        "scripts/railway-packaging-smoke.sh"
+      ],
+      "omittedOriginalLineRanges": [
+        [
+          1,
+          172
+        ],
+        [
+          174,
+          174
+        ]
+      ],
+      "originalLog": {
+        "bytes": 8178,
+        "lineCount": 174,
+        "path": "logs/packaging.log",
+        "sha256": "fa6e3a095c32c88448dafdb8a9aa080f66e5879814203a7d157ee658edd928e4"
+      },
+      "selected": [
+        {
+          "emitted": "Error: No public port '4318/tcp' published for railway-packaging-991128-web",
+          "kind": "packaging-failure",
+          "originalLine": 173,
+          "transformation": "ANSI/CR removal and surrounding whitespace only; exact known literal error"
+        }
+      ],
+      "status": "failed",
+      "topLevelFamilyLog": {
+        "allLinesOmitted": false,
+        "bytes": 8178,
+        "lineCount": 174,
+        "path": "logs/packaging.log",
+        "role": "Selected original family result log.",
+        "sha256": "fa6e3a095c32c88448dafdb8a9aa080f66e5879814203a7d157ee658edd928e4"
+      }
+    }
+  ],
+  "finishedAt": "2026-10-24T07:36:45.631Z",
+  "manifestStatus": "failed",
+  "maximumCombinedBytes": 100000,
+  "normalization": "Original line numbers count LF-separated lines; strip ANSI/CR and surrounding whitespace. No line is truncated.",
+  "omissions": "Every original line not explicitly selected is omitted; ranges are recorded per family. Doctor colon details are omitted explicitly.",
+  "originalManifest": {
+    "path": "manifest.json",
+    "sha256": "2444c536287962bccf2d36c435b302e5efdd09643ee1ffeb0583ca89ce40a691"
+  },
+  "originalRoot": "/tmp/prisma-quality-integration-820ff40-6",
+  "provenance": {
+    "baseHead": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+    "integrationTree": "7e37116ce6d6ae56bfec63b20d6f4d058576db12",
+    "sourceHead": "820ff40f70740d94ca678fb0216cff1094561ae2"
+  },
+  "run": "prisma-quality-integration-820ff40-6",
+  "schema": "prisma-prim-derived-failed-result-excerpts/v1",
+  "scope": "Operator-selected historical failed-run results: fifteen passed families and failed packaging; not independent attestation or complete original logs.",
+  "startedAt": "2026-10-24T06:11:48.939Z"
+}

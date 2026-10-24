@@ -1,0 +1,21 @@
+{
+  "run": "prisma-quality-integration-820ff40-6",
+  "source": "820ff40f70740d94ca678fb0216cff1094561ae2",
+  "utc": "2026-10-24T07:30:30.295509+00:00",
+  "inspections": [
+    {
+      "path": "/workspace/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-desktop/client-registration-refresh-desktop.png",
+      "sha256": "82e082c669f53d18f7e68c2998c0d2a86f0806a25343439bb35418adb3800bc4",
+      "bytes": 163181,
+      "view": "desktop",
+      "observed": "Root viewed current actual acceptance output. Synthetic Operational Acceptance Workspace, Ada@example.test, generated fixture Client names/IDs only; successful creation feedback and refreshed Client list visible. Desktop table and narrow cards fit respective viewport; no clipped controls observed. Long narrow screenshot reflects full-page list."
+    },
+    {
+      "path": "/workspace/PRISMA-PRIM-Suite/apps/web/test-results/acceptance/client-registration-refres-1eced-the-real-API-and-PostgreSQL-operational-acceptance-narrow/client-registration-refresh-narrow.png",
+      "sha256": "fb7d23b1f5c87b4867b3842b161034f5f2eeb1bc5adc51db0a87ba428f7c37a5",
+      "bytes": 288359,
+      "view": "narrow",
+      "observed": "Root viewed current actual acceptance output. Synthetic Operational Acceptance Workspace, Ada@example.test, generated fixture Client names/IDs only; successful creation feedback and refreshed Client list visible. Desktop table and narrow cards fit respective viewport; no clipped controls observed. Long narrow screenshot reflects full-page list."
+    }
+  ]
+}

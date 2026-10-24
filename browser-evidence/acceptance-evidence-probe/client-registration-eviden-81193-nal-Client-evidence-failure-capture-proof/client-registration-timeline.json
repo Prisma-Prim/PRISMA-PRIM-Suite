@@ -1,0 +1,76 @@
+[
+  {
+    "kind": "request",
+    "requestId": 1,
+    "method": "GET",
+    "companyContextId": "evidence-company",
+    "elapsedMs": 52.671814999999924
+  },
+  {
+    "kind": "response",
+    "requestId": 1,
+    "status": 200,
+    "elapsedMs": 71.09669299999996
+  },
+  {
+    "kind": "finished",
+    "requestId": 1,
+    "elapsedMs": 72.56148499999995
+  },
+  {
+    "kind": "request",
+    "requestId": 2,
+    "method": "GET",
+    "companyContextId": "evidence-company",
+    "elapsedMs": 76.617571
+  },
+  {
+    "kind": "list",
+    "requestId": 1,
+    "clientIds": [
+      "evidence-client"
+    ],
+    "elapsedMs": 78.61594300000002
+  },
+  {
+    "kind": "response",
+    "requestId": 2,
+    "status": 503,
+    "elapsedMs": 88.63818800000001
+  },
+  {
+    "kind": "finished",
+    "requestId": 2,
+    "elapsedMs": 88.67679699999997
+  },
+  {
+    "kind": "request",
+    "requestId": 3,
+    "method": "POST",
+    "companyContextId": "evidence-company",
+    "elapsedMs": 91.76766699999996
+  },
+  {
+    "kind": "response",
+    "requestId": 3,
+    "status": 201,
+    "elapsedMs": 95.53902699999992
+  },
+  {
+    "kind": "finished",
+    "requestId": 3,
+    "elapsedMs": 95.57390699999996
+  },
+  {
+    "kind": "request",
+    "requestId": 4,
+    "method": "GET",
+    "companyContextId": "evidence-company",
+    "elapsedMs": 96.856267
+  },
+  {
+    "kind": "failed",
+    "requestId": 4,
+    "elapsedMs": 103.37058400000001
+  }
+]

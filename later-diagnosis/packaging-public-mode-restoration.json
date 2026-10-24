@@ -1,0 +1,30 @@
+{
+  "utc": "2026-10-24T07:39:49.549500+00:00",
+  "source": "820ff40f70740d94ca678fb0216cff1094561ae2",
+  "before": [
+    {
+      "path": "deploy/railway/web-start.sh",
+      "mode": "0o600",
+      "sha256": "5b7735b84a7b97a898a4e2bc1c701962c33eea40eda9bd45d0a51956616e0964"
+    },
+    {
+      "path": "deploy/railway/nginx.conf.template",
+      "mode": "0o600",
+      "sha256": "2708e6c2acefb0ea2aa3862c69af72c411dad4f1acae51d7079bbde2aa70aef1"
+    }
+  ],
+  "after": [
+    {
+      "path": "deploy/railway/web-start.sh",
+      "mode": "0o644",
+      "sha256": "5b7735b84a7b97a898a4e2bc1c701962c33eea40eda9bd45d0a51956616e0964"
+    },
+    {
+      "path": "deploy/railway/nginx.conf.template",
+      "mode": "0o644",
+      "sha256": "2708e6c2acefb0ea2aa3862c69af72c411dad4f1acae51d7079bbde2aa70aef1"
+    }
+  ],
+  "gitTrackedBytesExecutableModesUnchanged": true,
+  "scope": "Restore ordinary public readability of exactly two nonsecret checked-in deployment files; no other file, Docker recipe, user, retry, timeout or application behavior change. Host inherited umask0077 caused600. Existing API COPY chown preserves owning runtime-user access."
+}

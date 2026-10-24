@@ -1,0 +1,13 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: packaging
+Manifest result: failed; exit 1
+Exact manifest argv: ["bash", "scripts/railway-packaging-smoke.sh"]
+UTC: 2026-10-24T07:33:13.749Z — 2026-10-24T07:36:44.619Z
+Manifest wall duration seconds: 210.870
+Top-level family log: logs/packaging.log; bytes 8178; SHA-256 fa6e3a095c32c88448dafdb8a9aa080f66e5879814203a7d157ee658edd928e4
+Selected result log: logs/packaging.log
+Selected result log SHA-256: fa6e3a095c32c88448dafdb8a9aa080f66e5879814203a7d157ee658edd928e4
+Original lines: 174; selected lines: 1
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 173] Error: No public port '4318/tcp' published for railway-packaging-991128-web

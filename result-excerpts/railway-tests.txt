@@ -1,0 +1,20 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: railway-tests
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "--dir", ".railway", "test"]
+UTC: 2026-10-24T07:33:11.707Z — 2026-10-24T07:33:12.679Z
+Manifest wall duration seconds: 0.972
+Top-level family log: logs/railway-tests.log; bytes 238; SHA-256 f00e88c94beb6a8361a1145c2bce0f70d649feae4fab563d9b116b118f233e0f
+Selected result log: logs/railway-tests.log
+Selected result log SHA-256: f00e88c94beb6a8361a1145c2bce0f70d649feae4fab563d9b116b118f233e0f
+Original lines: 10; selected lines: 8
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 3] ℹ tests 1
+[original line 4] ℹ suites 0
+[original line 5] ℹ pass 1
+[original line 6] ℹ fail 0
+[original line 7] ℹ cancelled 0
+[original line 8] ℹ skipped 0
+[original line 9] ℹ todo 0
+[original line 10] ℹ duration_ms 128.35124

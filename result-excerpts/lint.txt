@@ -1,0 +1,13 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: lint
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "lint"]
+UTC: 2026-10-24T06:12:38.212Z — 2026-10-24T06:13:08.521Z
+Manifest wall duration seconds: 30.309
+Top-level family log: logs/lint.log; bytes 11; SHA-256 050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1
+Selected result log: logs/lint.log
+Selected result log SHA-256: 050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1
+Original lines: 1; selected lines: 0
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[No allowlisted count/result/duration line exists; manifest outcome is reported above.]

@@ -1,0 +1,13 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: types
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "typecheck"]
+UTC: 2026-10-24T06:13:09.579Z — 2026-10-24T06:13:35.845Z
+Manifest wall duration seconds: 26.266
+Top-level family log: logs/types.log; bytes 187; SHA-256 2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997
+Selected result log: logs/types.log
+Selected result log SHA-256: 2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997
+Original lines: 6; selected lines: 0
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[No allowlisted count/result/duration line exists; manifest outcome is reported above.]

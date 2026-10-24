@@ -1,0 +1,13 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: railway-types
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "--dir", ".railway", "typecheck"]
+UTC: 2026-10-24T07:33:07.839Z — 2026-10-24T07:33:09.964Z
+Manifest wall duration seconds: 2.125
+Top-level family log: logs/railway-types.log; bytes 180; SHA-256 404cfb0156938ff9df285cf2692fc99da30f7702d15231bf42ff64a65e74f88f
+Selected result log: logs/railway-types.log
+Selected result log SHA-256: 404cfb0156938ff9df285cf2692fc99da30f7702d15231bf42ff64a65e74f88f
+Original lines: 6; selected lines: 0
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[No allowlisted count/result/duration line exists; manifest outcome is reported above.]

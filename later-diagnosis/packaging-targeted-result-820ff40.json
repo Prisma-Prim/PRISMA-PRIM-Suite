@@ -1,0 +1,24 @@
+{
+  "recordedAt": "2026-10-24T07:41:58.772058+00:00",
+  "source": "820ff40f70740d94ca678fb0216cff1094561ae2",
+  "base": "634d1b44c5086a1b1277f0c9e79c483b94786184",
+  "tree": "7e37116ce6d6ae56bfec63b20d6f4d058576db12",
+  "command": [
+    "bash",
+    "scripts/railway-packaging-smoke.sh"
+  ],
+  "shellSession": 45391,
+  "exitCode": 0,
+  "originalLog": {
+    "path": "/workspace/work/typescript-quality-pilot/packaging-targeted-mode-restored-820ff40.log",
+    "bytes": 6745,
+    "sha256": "cd2f0a7bd74ec850b457c48133620240e012a74f0f5618a3fa41f39dcb41a224",
+    "lines": 149
+  },
+  "selectedResult": {
+    "lineNumber": 149,
+    "text": "PASS image startup, hosting ports, health, direct SPA navigation, production identity rejection and repeatable migrations.",
+    "transformation": "Retain substring beginning at exact PASS marker on original line149; omit any preceding migration/spinner/ANSI text on that same line. All original lines1to148 omitted; complete rawlog remains local."
+  },
+  "scope": "Focused final-family check after two public runtime files restored600to644. All canonical packaging assertions executed unchanged. Originalcompletegate6 remainsFAILED; this standalonecheck does not manufacture a complete current-base pass."
+}

@@ -1,0 +1,19 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: browser
+Manifest result: passed; exit 0
+Exact manifest argv: ["node", "scripts/verify-local-browser.mjs", "browser", "--output", "/tmp/prisma-quality-integration-820ff40-6"]
+UTC: 2026-10-24T06:54:57.304Z — 2026-10-24T07:11:26.154Z
+Manifest wall duration seconds: 988.850
+Top-level family log: logs/browser.log; bytes 0; SHA-256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+Selected result log: local-browser/browser/playwright.log
+Selected result log SHA-256: 6123b9a2fd4512b8a83125d63d366440f1a1c2ab88a6d0a1f17c013ac27b5598
+Original lines: 14; selected lines: 3
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+Result source: same-run canonical-manifest-bound Playwright helper log; top-level wrapper log is not the result-count source.
+Exact validated helper argv: ["pnpm", "exec", "playwright", "test", "--config", "/tmp/prisma-quality-integration-820ff40-6/local-browser/browser/preview.config.cjs", "--workers=2"]
+Helper submanifest: local-browser/browser/manifest.json; SHA-256 96d5e6c44d48324849134514e5846933122ab990101b118fba26f9561074cced
+Helper logDigest: {"bytes": 1558, "sha256": "6123b9a2fd4512b8a83125d63d366440f1a1c2ab88a6d0a1f17c013ac27b5598"}
+
+[original line 3] Running 708 tests using 2 workers
+[original line 13] 1 skipped
+[original line 14] 707 passed (15.9m)

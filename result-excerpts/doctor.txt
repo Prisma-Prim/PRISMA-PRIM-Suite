@@ -1,0 +1,21 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: doctor
+Manifest result: passed; exit 0
+Exact manifest argv: ["node", "scripts/agent-doctor.mjs", "--profile", "web-postgres"]
+UTC: 2026-10-24T06:11:50.790Z — 2026-10-24T06:11:54.757Z
+Manifest wall duration seconds: 3.967
+Top-level family log: logs/doctor.log; bytes 749; SHA-256 78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9
+Selected result log: logs/doctor.log
+Selected result log SHA-256: 78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9
+Original lines: 10; selected lines: 9
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 2] PASS node
+[original line 3] PASS pnpm
+[original line 4] PASS workspace
+[original line 5] PASS lockfile
+[original line 6] PASS dependencies
+[original line 7] PASS chromium
+[original line 8] PASS database-variables
+[original line 9] PASS database-safety
+[original line 10] PASS postgres

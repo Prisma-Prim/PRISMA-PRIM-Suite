@@ -1,0 +1,15 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: api-serial
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "--filter", "@prisma-prim/api", "test:postgres:serial", "--testTimeout=15000"]
+UTC: 2026-10-24T06:47:11.140Z — 2026-10-24T06:48:23.544Z
+Manifest wall duration seconds: 72.404
+Top-level family log: logs/api-serial.log; bytes 58031; SHA-256 b27387aa00a9621e74ca7c586a414901c7ed4d0b30987215890100f9994c7aab
+Selected result log: logs/api-serial.log
+Selected result log SHA-256: b27387aa00a9621e74ca7c586a414901c7ed4d0b30987215890100f9994c7aab
+Original lines: 540; selected lines: 3
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 536] Test Files  8 passed (8)
+[original line 537] Tests  102 passed (102)
+[original line 539] Duration  71.14s (transform 2.20s, setup 0ms, import 12.11s, tests 57.70s, environment 1ms)

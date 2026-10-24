@@ -1,0 +1,15 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: api-parallel
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "--filter", "@prisma-prim/api", "test:parallel", "--maxWorkers=1", "--testTimeout=15000"]
+UTC: 2026-10-24T06:18:26.745Z — 2026-10-24T06:47:09.983Z
+Manifest wall duration seconds: 1723.238
+Top-level family log: logs/api-parallel.log; bytes 525047; SHA-256 755159546231d6fe7aa3706c1498679563fbc63dd8000420b8ffdfa8e06765cc
+Selected result log: logs/api-parallel.log
+Selected result log SHA-256: 755159546231d6fe7aa3706c1498679563fbc63dd8000420b8ffdfa8e06765cc
+Original lines: 4183; selected lines: 3
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 4179] Test Files  150 passed | 1 skipped (151)
+[original line 4180] Tests  2782 passed | 1 skipped (2783)
+[original line 4182] Duration  1721.81s (transform 8.49s, setup 0ms, import 107.93s, tests 1589.93s, environment 17ms)

@@ -1,0 +1,46 @@
+{
+  "source": "820ff40f70740d94ca678fb0216cff1094561ae2",
+  "run": "prisma-quality-integration-820ff40-6",
+  "inspections": [
+    {
+      "utc": "2026-10-24T07:06:06.375774+00:00",
+      "path": "/workspace/PRISMA-PRIM-Suite/apps/web/test-results/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-malformed-response.png",
+      "sha256": "2ff1267dc3c85e7d0d265f26cb7df84a26870b6142ce0c4a92f618c85ff8fce7",
+      "bytes": 66184,
+      "view": "desktop",
+      "sameBytesAsVisuallyInspectedGate5": true,
+      "method": "Fresh gate6 output compared by SHA256 to root-viewed gate5 image; identical bytes preserve visual assessment",
+      "observed": "Expected synthetic fixture only. Malformed state shows error and no client rows; recovery shows one Literal Client SRL row, availability and dossier control. Readable controls, no clipping observed."
+    },
+    {
+      "utc": "2026-10-24T07:06:06.376101+00:00",
+      "path": "/workspace/PRISMA-PRIM-Suite/apps/web/test-results/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-desktop/client-list-valid-additive-response.png",
+      "sha256": "e44c0afaa9017b09c6ef1da25a3abe5171df300f774317e635b98f07820492ec",
+      "bytes": 73170,
+      "view": "desktop",
+      "sameBytesAsVisuallyInspectedGate5": true,
+      "method": "Fresh gate6 output compared by SHA256 to root-viewed gate5 image; identical bytes preserve visual assessment",
+      "observed": "Expected synthetic fixture only. Malformed state shows error and no client rows; recovery shows one Literal Client SRL row, availability and dossier control. Readable controls, no clipping observed."
+    },
+    {
+      "utc": "2026-10-24T07:06:06.376168+00:00",
+      "path": "/workspace/PRISMA-PRIM-Suite/apps/web/test-results/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-malformed-response.png",
+      "sha256": "0e3372207e7483a34dd390f22a95a8c112de9423366f9e93b88eb99ff4bea330",
+      "bytes": 39597,
+      "view": "narrow",
+      "sameBytesAsVisuallyInspectedGate5": true,
+      "method": "Fresh gate6 output compared by SHA256 to root-viewed gate5 image; identical bytes preserve visual assessment",
+      "observed": "Expected synthetic fixture only. Readable wrapped error with no partial client list; recovery shows one Literal Client SRL card and visible dossier control. Controls fit narrow viewport; no clipping observed."
+    },
+    {
+      "utc": "2026-10-24T07:06:06.376226+00:00",
+      "path": "/workspace/PRISMA-PRIM-Suite/apps/web/test-results/browser/client-response-contract-r-d7e00-vers-on-a-deliberate-reload-narrow/client-list-valid-additive-response.png",
+      "sha256": "3252dd972d95efbc020852568bd7854eb8e77da0c9078e77a25a92e204dd92ce",
+      "bytes": 44629,
+      "view": "narrow",
+      "sameBytesAsVisuallyInspectedGate5": true,
+      "method": "Fresh gate6 output compared by SHA256 to root-viewed gate5 image; identical bytes preserve visual assessment",
+      "observed": "Expected synthetic fixture only. Readable wrapped error with no partial client list; recovery shows one Literal Client SRL card and visible dossier control. Controls fit narrow viewport; no clipping observed."
+    }
+  ]
+}

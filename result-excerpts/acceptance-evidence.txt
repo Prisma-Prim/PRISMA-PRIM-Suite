@@ -1,0 +1,14 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: acceptance-evidence
+Manifest result: passed; exit 0
+Exact manifest argv: ["node", "scripts/verify-acceptance-evidence.mjs"]
+UTC: 2026-10-24T07:32:31.170Z — 2026-10-24T07:32:38.534Z
+Manifest wall duration seconds: 7.364
+Top-level family log: logs/acceptance-evidence.log; bytes 118; SHA-256 a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577
+Selected result log: logs/acceptance-evidence.log
+Selected result log SHA-256: a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577
+Original lines: 1; selected lines: 1
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+Probe interpretation: exact positive verifier result only; intentional probe-child failure is not an ordinary suite failure.
+
+[original line 1] Acceptance evidence verified: intentional failure, context, PNG, trace, exact Client statuses and sanitized timeline.

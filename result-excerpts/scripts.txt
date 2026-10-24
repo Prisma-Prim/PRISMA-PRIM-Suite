@@ -1,0 +1,20 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: scripts
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "test:scripts"]
+UTC: 2026-10-24T06:13:36.949Z — 2026-10-24T06:14:17.353Z
+Manifest wall duration seconds: 40.404
+Top-level family log: logs/scripts.log; bytes 44824; SHA-256 cb43f212168d8a5d7320751c38412ecf346d1f983c55b316ab15de9dfdf31f39
+Selected result log: logs/scripts.log
+Selected result log SHA-256: cb43f212168d8a5d7320751c38412ecf346d1f983c55b316ab15de9dfdf31f39
+Original lines: 560; selected lines: 8
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 553] ℹ tests 483
+[original line 554] ℹ suites 0
+[original line 555] ℹ pass 483
+[original line 556] ℹ fail 0
+[original line 557] ℹ cancelled 0
+[original line 558] ℹ skipped 0
+[original line 559] ℹ todo 0
+[original line 560] ℹ duration_ms 39817.822668

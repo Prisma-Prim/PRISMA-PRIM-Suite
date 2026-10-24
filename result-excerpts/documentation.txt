@@ -1,0 +1,15 @@
+DERIVED LOCAL RESULT EXCERPT — NOT INDEPENDENT ATTESTATION
+Family: documentation
+Manifest result: passed; exit 0
+Exact manifest argv: ["pnpm", "--filter", "@prisma-prim/api", "exec", "vitest", "run", "src/demonstration"]
+UTC: 2026-10-24T06:14:18.308Z — 2026-10-24T06:18:25.665Z
+Manifest wall duration seconds: 247.357
+Top-level family log: logs/documentation.log; bytes 7328; SHA-256 6c7b45f76fe5dcd40f417f278a42e41274aad94d582e9153533609a9024d5a8f
+Selected result log: logs/documentation.log
+Selected result log SHA-256: 6c7b45f76fe5dcd40f417f278a42e41274aad94d582e9153533609a9024d5a8f
+Original lines: 58; selected lines: 3
+All unselected lines are omitted; see INDEX.json for exact ranges and transformations.
+
+[original line 54] Test Files  10 passed (10)
+[original line 55] Tests  83 passed (83)
+[original line 57] Duration  246.23s (transform 3.86s, setup 0ms, import 10.82s, tests 281.42s, environment 1ms)
