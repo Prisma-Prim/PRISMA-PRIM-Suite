@@ -72,6 +72,14 @@ For Workspace invitation consumption, [#163](https://github.com/Prisma-Prim/PRIS
 
 Capability PRDs decide exactly which events are critical.
 
+The bounded [Company consulting Offer model contract §27.7](release-3-commercial-27-company-offer-model.md#277-activity-privacy-and-compatibility)
+owns exact model Version creation, approval, rejection and withdrawal recording.
+Its events are internally recorded with version-only metadata; they are not
+projected through commercial Activity, dashboard, counts or filters in this slice.
+Model-read permission grants no Activity access. Separate model bundle assignment
+events retain the existing Company administration visibility and bundle-label-only
+metadata convention.
+
 ## 7. Authorization and privacy
 
 Activity Log read permission is separate from mutation permissions. Queries enforce Workspace and Company scope before returning events, counts, filters or target labels.
