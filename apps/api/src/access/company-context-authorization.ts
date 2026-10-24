@@ -72,6 +72,8 @@ import {
   pricingUserPermissionsFor,
   type CompanyPricingUserPermission,
   COMPANY_OFFER_PREPARER_BUNDLE,
+  COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
+  COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
   COMPANY_ROLE_BUNDLES,
   COMPANY_OFFER_APPROVER_BUNDLE,
   offerPreparerPermissionsFor,
@@ -110,6 +112,7 @@ import {
   projectIdeasAssignment,
   requireIdeasCapturedGrant,
 } from './ideas-captured-grants.js';
+import { captureOfferModelGrant } from './offer-model-captured-grants.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
   ...COMPANY_CONTEXT_USE_BUNDLES,
@@ -1408,6 +1411,8 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
         COMPANY_OFFER_PREPARER_BUNDLE,
+        COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
+        COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
         COMPANY_CONTRACT_PREPARER_BUNDLE,
         COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
         COMPANY_CONTRACT_APPROVER_BUNDLE,
@@ -1468,6 +1473,12 @@ export class CompanyContextAuthorization {
         clientPermissions: [],
       };
       Object.assign(company, projectIdeasAssignment(row));
+      const modelGrant = captureOfferModelGrant(row);
+      if (modelGrant)
+        company.offerModelGrants = [
+          ...(company.offerModelGrants ?? []),
+          modelGrant,
+        ];
       if (row.bundle === COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE) {
         if (
           row.permissionSetVersion !== 'v1' &&

@@ -1,4 +1,5 @@
 import { companyRoleAssignments } from '../database/schema/index.js';
+import { offerModelEvents } from '../database/schema/offer-model.js';
 import { missionDeliverableAssignment } from '../access/mission-deliverable-access.js';
 import { ideaEvents } from '../database/schema/ideas.js';
 import type { ProjectTemplateVersion } from '../project-template/project-template.definition.js';
@@ -1282,6 +1283,37 @@ export class AccountabilityService {
       .returning({ id: operationalRiskEvents.id });
     if (!recorded)
       throw new Error('The restricted Risk event was not recorded.');
+  }
+
+  /** Restricted configuration attribution; deliberately no public projection. */
+  async recordOfferModelEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    modelId: string;
+    versionId: string;
+    versionNumber: number;
+    revision: number;
+    action: typeof offerModelEvents.$inferInsert.action;
+    recordedAt: Date;
+  }): Promise<void> {
+    const [recorded] = await this.databaseContext.connection
+      .insert(offerModelEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        modelId: input.modelId,
+        versionId: input.versionId,
+        versionNumber: input.versionNumber,
+        revision: input.revision,
+        action: input.action,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorDisplayName: input.actor.displayName,
+        recordedAt: input.recordedAt,
+      })
+      .returning({ id: offerModelEvents.id });
+    if (!recorded)
+      throw new Error('The restricted Offer model event was not recorded.');
   }
 
   // Confidential profitability events have no Activity read projection.
@@ -3268,6 +3300,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_configuration_assignment.revoked':
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
+    case 'company_offer_model_editor_assignment.granted':
+    case 'company_offer_model_approver_assignment.granted':
+    case 'company_offer_model_editor_assignment.revoked':
+    case 'company_offer_model_approver_assignment.revoked':
     case 'company_offer_preparer_assignment.granted':
     case 'company_contract_approver_assignment.granted':
     case 'company_contract_preparer_assignment.granted':

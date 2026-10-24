@@ -1,0 +1,124 @@
+.offer-model-workspace {
+  color: var(--prisme-ink, #15233b);
+  max-width: 75rem;
+}
+
+.offer-model-workspace > header {
+  margin-bottom: 1.5rem;
+}
+
+.offer-model-workspace p {
+  overflow-wrap: anywhere;
+}
+
+.offer-model-company {
+  font-weight: 600;
+}
+
+.offer-model-workspace fieldset {
+  border: 1px solid var(--prisme-border, #dce1eb);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-block: 1rem;
+  min-width: 0;
+}
+.offer-model-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-block: 1rem;
+  font-weight: 600;
+}
+.offer-model-field input,
+.offer-model-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--prisme-border, #dce1eb);
+  border-radius: 0.5rem;
+  padding: 0.65rem;
+  font: inherit;
+  color: inherit;
+  background: white;
+}
+.offer-model-field textarea {
+  resize: vertical;
+}
+.offer-model-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.offer-model-workspace button {
+  max-width: 100%;
+  white-space: normal;
+}
+.offer-model-literal,
+.offer-model-version dd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.offer-model-version {
+  border-top: 1px solid var(--prisme-border, #dce1eb);
+  margin-block: 1.5rem;
+  padding-block: 1rem;
+}
+.offer-model-version dd {
+  margin-inline-start: 1rem;
+  margin-block-end: 1rem;
+}
+.offer-model-provenance {
+  font-weight: 600;
+  color: var(--prisme-accent, #6750a4);
+}
+.offer-model-version li {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 48rem) {
+  .offer-model-framework {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+    gap: 0.75rem;
+  }
+}
+
+.offer-model-workspace button {
+  cursor: pointer;
+  background: #f7f3ff;
+  border: 1px solid #d8c7f5;
+  border-radius: 0.75rem;
+  color: #583491;
+  font: inherit;
+  font-weight: 650;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+}
+.offer-model-workspace button:hover:not(:disabled) {
+  background: #ede3ff;
+}
+.offer-model-workspace button[type='submit'] {
+  color: white;
+  background: #7355da;
+  border-color: #7355da;
+}
+.offer-model-workspace button:disabled,
+.offer-model-workspace fieldset:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.offer-model-workspace :is(button, input, textarea):focus-visible {
+  outline: 3px solid #b49aea;
+  outline-offset: 3px;
+}
+.offer-model-workspace {
+  min-width: 0;
+  line-height: 1.5;
+}
+.offer-model-version,
+.offer-model-history {
+  background: white;
+  padding: 1rem;
+  border: 1px solid #e4dcf5;
+  border-radius: 1rem;
+}

@@ -76,6 +76,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_operational_risk_recorder',
   'company_mission_deliverable_access',
   'company_task_result_recorder',
+  'company_offer_model_editor',
+  'company_offer_model_approver',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -809,6 +811,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'client.corrected',
   'client_legal_entity.registered',
   'client_legal_entity.corrected',
+  'company_offer_model_editor_assignment.granted',
+  'company_offer_model_editor_assignment.revoked',
+  'company_offer_model_approver_assignment.granted',
+  'company_offer_model_approver_assignment.revoked',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
@@ -865,6 +871,8 @@ export const activityLogEvents = pgTable(
               | 'Company Pricing Configuration'
               | 'Company Pricing User'
               | 'Company Offer Preparer'
+              | 'Company Offer Model Editor'
+              | 'Company Offer Model Approver'
               | 'Company Contract Preparer'
               | 'Company Contract Early Preparation'
               | 'Company Contract Approver'
