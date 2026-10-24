@@ -183,8 +183,9 @@ test('Template User grants and actor projection reject unknown captured authorit
     active: true,
   };
   accepts(grant, assignment);
+  accepts(grant, { ...assignment, permissionSetVersion: 'v2' });
   accepts(revoke, { ...assignment, active: false });
-  for (const permissionSetVersion of [null, 'v2', 'unknown'])
+  for (const permissionSetVersion of [null, 'v3', 'unknown'])
     assert.equal(grant({ ...assignment, permissionSetVersion }), false);
   const actor = validator(contract.components.schemas.ActiveCompanyContext);
   const company = {
@@ -201,12 +202,77 @@ test('Template User grants and actor projection reject unknown captured authorit
   accepts(actor, company);
   assert.equal(
     actor({ ...company, projectTemplatePermissionSetVersion: 'v2' }),
-    false,
+    true,
   );
   assert.equal(
     actor({
       ...company,
       projectTemplatePermissions: ['project.stage.transition'],
+    }),
+    false,
+  );
+});
+
+test('Pilot HTTP schemas keep a closed fixed-Version thirteen-activity shape and require complete copied identities', () => {
+  const key = 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE';
+  const pilot = {
+    templateKey: key,
+    version: 1,
+    title: 'Plan pilot pentru o misiune de consultanță SMI',
+    illustrative: true,
+    activities: Array.from({ length: 13 }, (_, index) => ({
+      key: `CT_AN${String(index + 1).padStart(2, '0')}`,
+      title: `Activity ${index + 1}`,
+      activity: 'Preserved action DEMO',
+      intendedResult: 'Expected outcome DEMO',
+    })),
+  };
+  const sourceRead = response(
+    '/api/project-templates/{templateKey}/versions/{version}',
+    'get',
+    '200',
+  );
+  accepts(sourceRead, { template: pilot });
+  for (const changed of [
+    { version: 2 },
+    { templateKey: 'UNKNOWN' },
+    { stages: [] },
+    { activities: pilot.activities.slice(0, 12) },
+    { activities: pilot.activities.map((row) => ({ ...row, required: true })) },
+    {
+      activities: pilot.activities.map((row) => ({
+        key: row.key,
+        title: row.title,
+        intendedResult: row.intendedResult,
+      })),
+    },
+  ])
+    assert.equal(sourceRead({ template: { ...pilot, ...changed } }), false);
+  const copied = response('/api/projects/{projectId}/template', 'get', '200');
+  const plan = {
+    ...pilot,
+    activities: pilot.activities.map((row, index) => ({
+      ...row,
+      taskId: `11111111-1111-4111-8111-${String(index + 1).padStart(12, '0')}`,
+    })),
+  };
+  accepts(copied, { template: plan });
+  assert.equal(copied({ template: pilot }), false);
+  const creation = validator(
+    contract.components.schemas.CreateProjectFromTemplateInput,
+  );
+  accepts(creation, {
+    templateKey: key,
+    templateVersion: 1,
+    title: 'Pilot DEMO',
+    clientAccountId: uuid,
+  });
+  assert.equal(
+    creation({
+      templateKey: key,
+      templateVersion: 2,
+      title: 'Pilot DEMO',
+      clientAccountId: uuid,
     }),
     false,
   );

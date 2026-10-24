@@ -703,7 +703,8 @@ export class AccountabilityService {
     const company = actor.activeCompany;
     if (
       !company?.projectPermissions?.includes('project.read') ||
-      company.projectTemplatePermissionSetVersion !== 'v1' ||
+      (company.projectTemplatePermissionSetVersion !== 'v1' &&
+        company.projectTemplatePermissionSetVersion !== 'v2') ||
       !company.projectTemplatePermissionAssignmentId ||
       !company.projectTemplatePermissions?.includes('project.template.read')
     )
@@ -1993,7 +1994,8 @@ export class AccountabilityService {
     const company = actor.activeCompany;
     if (
       !company?.projectPermissions?.includes('project.read') ||
-      company.projectTemplatePermissionSetVersion !== 'v1' ||
+      (company.projectTemplatePermissionSetVersion !== 'v1' &&
+        company.projectTemplatePermissionSetVersion !== 'v2') ||
       !company.projectTemplatePermissionAssignmentId ||
       !company.projectTemplatePermissions?.includes('project.template.read') ||
       !company.taskPermissions?.includes('task.read') ||

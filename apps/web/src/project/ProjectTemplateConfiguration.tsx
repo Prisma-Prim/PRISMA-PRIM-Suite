@@ -8,11 +8,18 @@ import {
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { formatMessage } from '../localization/messages';
-import { canUseProjectTemplate } from './ProjectTemplate';
+import {
+  canUseProjectTemplate,
+  canUsePilotTemplate,
+  ProjectTemplateSelector,
+  projectTemplateAuthority,
+} from './ProjectTemplate';
 import {
   readTemplateCataloguePage,
   readTemplatePublication,
-  type SelectableTemplateVersion,
+  type LegacyTemplateVersion,
+  type TemplateSelection,
+  legacyTemplateKey,
 } from './project-template-response';
 import { useProjectTemplateVersionCopy } from './project-template-version.copy';
 import './project-template-configuration.css';
@@ -28,7 +35,7 @@ type Props = {
 };
 type Read =
   | { kind: 'loading' | 'error' | 'denied' }
-  | { kind: 'ready'; source: SelectableTemplateVersion; drafts: string[] };
+  | { kind: 'ready'; source: LegacyTemplateVersion; drafts: string[] };
 type Command = { body: string; key: string; sourceVersion: number };
 type Mutation =
   | { kind: 'idle' | 'invalid' | 'stale' | 'keyConflict' }
@@ -62,9 +69,35 @@ export function projectTemplateConfigurationAuthority(actor: ActorContext) {
 /** Dedicated configuration state cannot retire independently mounted Project or Task owners. */
 export function ProjectTemplateConfiguration(props: Props) {
   return (
-    <ConfigurationSection
-      key={projectTemplateConfigurationAuthority(props.actor)}
-      {...props}
+    <>
+      {canUsePilotTemplate(props.actor) && (
+        <PilotTemplateInspector
+          key={projectTemplateAuthority(props.actor)}
+          actor={props.actor}
+          identity={props.identity}
+        />
+      )}
+      <ConfigurationSection
+        key={projectTemplateConfigurationAuthority(props.actor)}
+        {...props}
+      />
+    </>
+  );
+}
+function PilotTemplateInspector({
+  actor,
+  identity,
+}: Pick<Props, 'actor' | 'identity'>) {
+  const [selection, setSelection] = useState<TemplateSelection | null>(null);
+  useEffect(() => setSelection(null), [identity]);
+  return (
+    <ProjectTemplateSelector
+      actor={actor}
+      identity={identity}
+      purpose="inspection"
+      selection={selection}
+      onSelection={setSelection}
+      disabled={false}
     />
   );
 }
@@ -159,7 +192,7 @@ function ConfigurationSection({
       const source = catalogue?.templates.find(
         (template) => template.version === catalogue.headVersion,
       );
-      if (!source) {
+      if (!source || source.templateKey !== legacyTemplateKey) {
         setRead({ kind: 'error' });
         return;
       }

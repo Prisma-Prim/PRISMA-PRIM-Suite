@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { createInput } from '../task/task.validation.js';
-import { CONSULTING_PREPARATION_V1 } from './project-template.definition.js';
+import {
+  CONSULTING_PREPARATION_V1,
+  isProjectTemplateKey,
+} from './project-template.definition.js';
 
 export interface ProjectTemplateVersionCreatedActivityEvent {
   id: string;
@@ -16,7 +19,7 @@ export interface ProjectTemplateVersionCreatedActivityEvent {
 }
 
 export function requireTemplateKey(value: string) {
-  if (value !== CONSULTING_PREPARATION_V1.templateKey)
+  if (!isProjectTemplateKey(value))
     throw new BadRequestException('Select the illustrative Template.');
   return value;
 }

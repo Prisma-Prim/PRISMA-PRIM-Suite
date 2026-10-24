@@ -48,8 +48,13 @@ export class ProjectTemplateController {
   catalogue(
     @Req() request: ActorContextRequest,
     @Query('beforeVersion') beforeVersion?: string,
+    @Query('templateKey') templateKey?: string,
   ) {
-    return this.versions.catalogue(actor(request), beforeVersion);
+    return this.versions.catalogue({
+      actor: actor(request),
+      beforeVersion,
+      templateKey,
+    });
   }
   @Get('project-templates/:templateKey/versions/:version')
   source(

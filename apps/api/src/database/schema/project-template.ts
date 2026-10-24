@@ -70,6 +70,10 @@ export const projectTemplateInstances = pgTable(
       'project_template_instances_snapshot_check',
       sql`jsonb_typeof(${table.snapshot}) = 'object'`,
     ),
+    check(
+      'project_template_instances_pilot_progress_check',
+      sql`${table.snapshot}->>'templateKey' <> 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE' OR (${table.stageRevision} = 0 AND ${table.currentStageKey} IS NULL)`,
+    ),
   ],
 );
 
@@ -120,7 +124,7 @@ export const projectTemplateTaskCopies = pgTable(
     }),
     check(
       'project_template_task_copies_position_check',
-      sql`${table.position} BETWEEN 0 AND 3`,
+      sql`${table.position} BETWEEN 0 AND 12`,
     ),
   ],
 );

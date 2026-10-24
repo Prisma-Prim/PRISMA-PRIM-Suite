@@ -8,25 +8,51 @@ export interface TemplateStage {
   title: string;
   tasks: TemplateTask[];
 }
-export interface TemplateVersion {
-  templateKey: string;
+export const pilotTemplateKey = 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE';
+export const legacyTemplateKey = 'CONSULTING_PREPARATION_ILLUSTRATIVE';
+export interface LegacyTemplateVersion {
+  templateKey: typeof legacyTemplateKey;
   version: number;
   title: string;
   illustrative: true;
   stages: TemplateStage[];
 }
-export interface TemplateSelection {
-  templateKey: 'CONSULTING_PREPARATION_ILLUSTRATIVE';
-  version: number;
+export interface PilotActivity {
+  key: string;
+  title: string;
+  activity: string;
+  intendedResult: string;
 }
-export type SelectableTemplateVersion = TemplateVersion & TemplateSelection;
-export interface CopiedTemplatePlan extends Omit<TemplateVersion, 'stages'> {
+export interface PilotTemplateVersion {
+  templateKey: typeof pilotTemplateKey;
+  version: 1;
+  title: string;
+  illustrative: true;
+  activities: PilotActivity[];
+}
+export type TemplateVersion = LegacyTemplateVersion | PilotTemplateVersion;
+export type TemplateSelection =
+  | { templateKey: typeof legacyTemplateKey; version: number }
+  | { templateKey: typeof pilotTemplateKey; version: 1 };
+export type SelectableTemplateVersion = TemplateVersion;
+export interface CopiedLegacyTemplatePlan extends Omit<
+  LegacyTemplateVersion,
+  'stages'
+> {
   stages: Array<
     Omit<TemplateStage, 'tasks'> & {
       tasks: Array<TemplateTask & { taskId: string }>;
     }
   >;
 }
+export interface CopiedPilotTemplatePlan extends Omit<
+  PilotTemplateVersion,
+  'activities'
+> {
+  activities: Array<PilotActivity & { taskId: string }>;
+}
+export type CopiedTemplatePlan =
+  CopiedLegacyTemplatePlan | CopiedPilotTemplatePlan;
 
 export function readTemplateCatalogue(
   value: unknown,
@@ -44,17 +70,13 @@ export function readTemplateCatalogue(
     const template = readTemplate(entry);
     if (
       !template ||
-      template.templateKey !== 'CONSULTING_PREPARATION_ILLUSTRATIVE' ||
-      !compatibleSource(template) ||
+      (template.templateKey === legacyTemplateKey &&
+        !compatibleSource(template)) ||
       versions.has(`${template.templateKey}:${template.version}`)
     )
       return;
     versions.add(`${template.templateKey}:${template.version}`);
-    templates.push({
-      ...template,
-      templateKey: template.templateKey,
-      version: template.version,
-    });
+    templates.push(template);
   }
   return templates;
 }
@@ -119,7 +141,7 @@ function positiveVersion(value: unknown): value is number {
     value <= 2147483647
   );
 }
-function compatibleSource(template: TemplateVersion) {
+function compatibleSource(template: LegacyTemplateVersion) {
   return (
     positiveVersion(template.version) &&
     template.title === 'Préparation d’une mission de conseil' &&
@@ -138,9 +160,23 @@ export function readCopiedTemplatePlan(
   if (value.template === null) return { template: null };
   const source = value.template;
   const template = readTemplate(source);
-  if (!template || !record(source) || !Array.isArray(source.stages)) return;
+  if (!template || !record(source)) return;
+  if (template.templateKey === pilotTemplateKey) {
+    if (!Array.isArray(source.activities)) return;
+    const rawRows: unknown[] = source.activities;
+    const activities: CopiedPilotTemplatePlan['activities'] = [];
+    const ids = new Set<string>();
+    for (const [index, row] of template.activities.entries()) {
+      const raw = rawRows[index];
+      if (!record(raw) || !uuid(raw.taskId) || ids.has(raw.taskId)) return;
+      ids.add(raw.taskId);
+      activities.push({ ...row, taskId: raw.taskId });
+    }
+    return { template: { ...template, activities } };
+  }
+  if (!Array.isArray(source.stages)) return;
   const stageValues: unknown[] = source.stages;
-  const stages: CopiedTemplatePlan['stages'] = [];
+  const stages: CopiedLegacyTemplatePlan['stages'] = [];
   const taskIds = new Set<string>();
   for (const [stageIndex, stage] of template.stages.entries()) {
     const raw = stageValues[stageIndex];
@@ -159,9 +195,11 @@ export function readCopiedTemplatePlan(
   return { template: { ...template, stages } };
 }
 function readTemplate(value: unknown): TemplateVersion | undefined {
+  if (record(value) && value.templateKey === pilotTemplateKey)
+    return readPilot(value);
   if (
     !record(value) ||
-    !key(value.templateKey) ||
+    value.templateKey !== legacyTemplateKey ||
     typeof value.version !== 'number' ||
     !Number.isSafeInteger(value.version) ||
     value.version < 1 ||
@@ -232,5 +270,53 @@ function uuid(value: unknown): value is string {
     /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(
       value,
     )
+  );
+}
+
+function readPilot(
+  value: Record<string, unknown>,
+): PilotTemplateVersion | undefined {
+  if (
+    value.version !== 1 ||
+    value.title !== 'Plan pilot pentru o misiune de consultanță SMI' ||
+    value.illustrative !== true ||
+    !Array.isArray(value.activities) ||
+    value.activities.length !== 13 ||
+    'stages' in value
+  )
+    return;
+  const rows: unknown[] = value.activities,
+    activities: PilotActivity[] = [];
+  for (const [index, row] of rows.entries()) {
+    if (
+      !record(row) ||
+      row.key !== `CT_AN${String(index + 1).padStart(2, '0')}` ||
+      !title(row.title) ||
+      !paragraph(row.activity) ||
+      !paragraph(row.intendedResult) ||
+      'required' in row
+    )
+      return;
+    activities.push({
+      key: row.key,
+      title: row.title,
+      activity: row.activity,
+      intendedResult: row.intendedResult,
+    });
+  }
+  return {
+    templateKey: pilotTemplateKey,
+    version: 1,
+    title: value.title,
+    illustrative: true,
+    activities,
+  };
+}
+function paragraph(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.trim() === value &&
+    value.length > 0 &&
+    [...value].length <= 2000
   );
 }
