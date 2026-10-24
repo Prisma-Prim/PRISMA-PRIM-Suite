@@ -11,6 +11,15 @@ if ! docker info >/dev/null; then
   exit 1
 fi
 
+build_certificate_args=()
+if [ -n "${NODE_EXTRA_CA_CERTS:-}" ]; then
+  if [ ! -f "$NODE_EXTRA_CA_CERTS" ] || [ ! -r "$NODE_EXTRA_CA_CERTS" ]; then
+    echo 'NODE_EXTRA_CA_CERTS must name a readable CA certificate file.' >&2
+    exit 1
+  fi
+  build_certificate_args=(--secret "id=proxy_ca,src=$NODE_EXTRA_CA_CERTS")
+fi
+
 suffix="railway-packaging-$$"
 network="$suffix"
 postgres="$suffix-postgres"
@@ -75,8 +84,8 @@ fi
 # Only synthetic public settings enter the web build. This key names an
 # example.test FAPI host and cannot authenticate with a live Clerk instance.
 publishable_key='pk_live_Y2xlcmsuZXhhbXBsZS50ZXN0JA=='
-docker build --file "$api_dockerfile" --tag "$api_image" .
-docker build --file "$web_dockerfile" --tag "$web_image" \
+docker build "${build_certificate_args[@]}" --file "$api_dockerfile" --tag "$api_image" .
+docker build "${build_certificate_args[@]}" --file "$web_dockerfile" --tag "$web_image" \
   --build-arg VITE_API_URL=https://api.example.test/api \
   --build-arg VITE_CLERK_PUBLISHABLE_KEY="$publishable_key" .
 
