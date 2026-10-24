@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis; remaining capability Draft\
-**Version:** 0.11\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832 and the bounded thirteen-activity pilot plan (§28) approved by #836; remaining capability Draft\
+**Version:** 0.12\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -1043,3 +1043,229 @@ This bounded D4 contract is ready for one complete vertical implementation after
 merge. D2 copied plans, D5 stage rules, D13 closure obligations, universal evidence
 types, bulk assignment, verification/acceptance/signature, operational certification,
 real grants/data/providers, generation, OCR/AI, exports and deployment remain separate.
+
+## 28. Approved bounded thirteen-activity pilot plan (#836)
+
+### Authority, problem and first outcome
+
+This is bounded agent product synthesis under Dan's explicit D3 → D4 → D2
+authorization in [#820](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/820),
+after D3 #827 / PR #831 and D4 #834 / PR #835. Ordered Standards then Spec
+preparation under delegated documentation review approves this planning contract;
+it is not a new Iurie answer, operational category approval or real mission start.
+
+The existing §24 model copies four preparation Tasks. A user otherwise has to
+re-enter the thirteen activities and intended results of the selected pilot.
+D2 adds one explicitly selected, immutable source Version, one preparatory Project
+and thirteen ordinary Task copies, then reopens their preserved planning context.
+Existing manual registration and the two-stage/four-Task model remain usable.
+
+The controlled [E06 annex](commercial-source-reconciliation-2026-10.md) and
+[CT-AN01–CT-AN13 mapping](commercial-candidate-models-2026-10.md) supply the activity,
+action and result cells. Originals and all Client identities, signatures, dates,
+amounts, clauses and Standard editions remain outside this configuration. Source
+line wrapping is normalized to spaces. The fixed model and copy mechanism below
+are reversible coordinator choices, not evidence that the source prescribed
+software workflow stages or mandatory completion rules.
+
+### Identified Version and literal business content
+
+The sole initial pilot source is `CONSULTING_MISSION_PILOT_ILLUSTRATIVE`, Version 1,
+business title “Plan pilot pentru o misiune de consultanță SMI”, explicitly
+illustrative. It is a code-defined, ordered **flat activity plan**, separate from
+the legacy `CONSULTING_PREPARATION_ILLUSTRATIVE` source and its Company successors.
+The user selects the identified model and exact Version; “current” or a bare
+Version number cannot substitute another model. An unavailable source is not an
+empty plan. Unknown keys, incompatible source shapes and unsupported Versions
+are refused without partial creation or partially trusted rendering.
+
+These Romanian business cells are preserved literally across interface locales.
+Each row maps to one Task; its title is the copied Task's initial title. Action
+and intended result remain source context, independently of later Task edits.
+
+| Stable key | Initial Task title                          | Planned action                                                                        | Intended result                      |
+| ---------- | ------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------ |
+| `CT_AN01`  | Analiza organizației și audit diagnosticare | Analiza sistemului existent și determinarea gradului de conformare la standardele ISO | Plan de implementare (PDCA)          |
+| `CT_AN02`  | Formarea structurii proiectului             | Stabilirea echipelor de lucru și a responsabililor                                    | Ordine interne, structură proiect    |
+| `CT_AN03`  | Elaborarea hărții proceselor                | Identificarea proceselor și stabilirea proprietarilor                                 | Harta proceselor aprobată            |
+| `CT_AN04`  | Stabilirea modelului de proces              | Definirea modelului de documentare și evaluare a riscurilor                           | Model proces și metodologie aprobată |
+| `CT_AN05`  | Formarea echipelor pe procese               | Stabilirea responsabilităților și modului de lucru                                    | Structură echipe și responsabilități |
+| `CT_AN06`  | Instruirea personalului                     | Instruirea în cerințele standardelor și documentare                                   | Personal instruit și testat          |
+| `CT_AN07`  | Elaborarea documentației SMI                | Elaborarea procedurilor, regulamentelor și instrucțiunilor                            | Documentație SMI completă            |
+| `CT_AN08`  | Aprobarea documentației                     | Analiza și aprobarea documentelor de către management                                 | Documente aprobate                   |
+| `CT_AN09`  | Implementarea sistemului                    | Aplicarea documentației în activitatea curentă                                        | Sistem implementat                   |
+| `CT_AN10`  | Instruirea auditorilor interni              | Instruire și testare auditori                                                         | Auditori certificați                 |
+| `CT_AN11`  | Audit intern                                | Planificare, realizare și raportare audit                                             | Raport audit + NC                    |
+| `CT_AN12`  | Acțiuni corective                           | Eliminarea neconformităților                                                          | Plan acțiuni implementat             |
+| `CT_AN13`  | Suport certificare                          | Asistență la audit extern                                                             | Certificare obținută                 |
+
+All result cells are **intended**, including “Auditori certificați” and
+“Certificare obținută”. Copying, editing or completing a Task proves none of them.
+The interface identifies the plan as illustrative and the results as expected;
+§27 alone owns deliberate actual-result declarations, which still imply no
+verification, approval or certification. No result declaration or Document link
+is populated by copying this plan.
+
+The thirteen source rows are not mapped to the Offer's eighteen stages or to
+§24's two software stages. This source has no `required`/optional classification,
+current workflow stage or stage-advance command. A stage-progress read reports
+that no supported progression is configured; an attempted advance is refused
+without a receipt, transition, event or fence. The existing legacy progression
+and its required Task semantics remain unchanged. D5/D13 retain obligation,
+exception, stage and consulting-completion decisions.
+
+### Actors, explicit authority and compatibility
+
+Authorization §8 owns the next immutable **Company Project Template User v2**.
+Its exact permission set is v1's `project.template.read` and
+`project.template.instantiate`, plus `project.template.pilot.read` and
+`project.template.pilot.instantiate`. The two pilot permissions cover only the
+identified pilot model and its copies. Existing captured v1 remains exactly its
+two legacy permissions; null/unknown versions fail closed. Existing v1 holders
+retain legacy catalogue, copy and instantiation behavior and receive no pilot
+access automatically. An administrator with `company.assignment.manage`
+deliberately revokes/regrants through the existing Company assignment commands
+to capture v2. There is no separate assignment type or implicit migration,
+bootstrap, responsibility or Workspace-owner grant.
+
+| Operation                          | Live independent requirements                                                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Pilot catalogue/exact source       | Active Company context, Project read, Template read and pilot read                                                              |
+| Pilot copied-plan read             | Above, Task read and the Project's original Client/Company read boundary                                                        |
+| New pilot Project creation         | Above, Template instantiate and pilot instantiate, Project create, Task manage, active original Client and Company relationship |
+| Edit/assign/complete a copied Task | Existing ordinary Task permissions and state rules; copying grants none                                                         |
+| Declare/read an actual result      | Independent §27 authority; Template access grants none                                                                          |
+
+All operations retain same-Workspace/Company constraints and captured-grant
+validation, including suspension/revocation. Other Companies receive no copies,
+Task identities, receipts, counts or history. The initial anonymous source itself
+contains no Client or Company-specific policy. Copied-plan denial leaves ordinary
+authorized Project/Task and Document work available.
+
+Company Project Template Configuration v1 continues to publish only the four-title
+legacy successors under §24. User v2 grants no publication, stage advancement,
+lifecycle, assignment administration, Client, Project or Task authority. The pilot
+Version has no editor, successor-publication API, withdrawal or approval lifecycle
+in this slice. An approved future content change must introduce another immutable
+Version, preserve Version 1 and all existing copies, and receive its own contract;
+it cannot edit this Version in place.
+
+### User stories and usable path
+
+1. As a Template reader, I can choose the identified pilot model and exact Version
+   and inspect all thirteen actions/intended results before using it.
+2. As an independently authorized creator, I supply the ordinary Project title
+   and active related Client and create the complete plan in one deliberate act.
+3. As a Task reader, I reopen all thirteen source rows and their actual Task
+   identities without deriving progress from editable titles.
+4. As a Task manager, I deliberately assign, date, prioritize, edit, complete,
+   cancel or reopen Tasks under their existing rules, preserving the source copy.
+5. As a collaborator, I distinguish an intended result from an actual §27
+   declaration and can use the ordinary Task detail independently.
+6. As a historical reader, I retain the original plan after Task edits, ordinary
+   Project closure, original Client supersession or later source evolution.
+7. As an administrator, I explicitly activate v2 for a chosen same-Workspace
+   member/Company while existing v1 and other independent grants stay unchanged.
+8. As a creator with an uncertain response, I retry the exact intent/key, recover
+   the one Project and avoid silently copying another model or newer Version.
+9. As a user changing locale, I keep literal source text, entered work and the
+   exact selected Version; changing identity/Company/required authority retires
+   old source drafts and late replies.
+10. As a legacy user, I keep manual Projects, four-Task copies, title successors,
+    stage history and ordinary Tasks without being forced to adopt the pilot.
+
+Each new Task starts `todo`, priority `normal`, unassigned and undated, just as
+§24. The Project remains `preparatory`. An existing authorized user subsequently
+chooses responsibility and dates; source activity order is not scheduling,
+automatic assignment, a dependency graph or a completion obligation. Existing
+§23 closure still rejects open Tasks; cancellation does not assert fulfillment
+of an intended result. Closed Projects remain terminal. No new activation,
+closure or reopening behavior follows from a plan copy.
+
+### Preservation, command contract and atomicity
+
+Creation preserves the model key, exact Version, literal title and every ordered
+stable activity key/title/action/intended result, plus a one-to-one mapping to
+all thirteen Task identifiers. Reads use that immutable source snapshot, not
+today's catalogue or current Task titles. Ordinary extra Tasks do not become
+source rows. No route edits/deletes the copy or changes its original Client,
+Company or source identity. Existing Project and Task histories remain owners of
+their ordinary changes; a copied plan is not an execution history.
+
+The existing actor/Workspace stable idempotency key fingerprints the complete
+normalized creation intent: Company, original Client, Project title and exact
+model key/Version. Caller-provided activities, intended-result overrides, Task
+assignments or stage rules are rejected. Identical retries/concurrent commands
+resolve one Project, thirteen Tasks and the same mapping. Reusing a key for a
+different model, Version, title, Client or Company conflicts, including reuse of
+an ordinary manual Project key. An intentionally new key can create another
+Project; same title is not deduplication.
+
+Live dedicated and independent prerequisites plus original Project visibility
+precede an exact committed receipt. Replay may confirm the preserved Project
+after closure or original Client supersession when current read authority still
+allows it; it does not require the old new-creation state or repeat writes.
+New creation requires the active original Client relationship. No implicit
+rebase, source substitution, duplicate creation or automatic retry follows a
+definite conflict.
+
+Project, thirteen ordinary Tasks, complete snapshot/mapping, durable creation
+identity, one ordinary `project.created` event, thirteen ordinary `task.created`
+events and the original Client operational-use fence commit atomically. One
+failure records none. Reuse the existing Client barrier/lock order and
+caller-owned transaction; no child read opens an independent owning transaction.
+Creation serializes against revocation and suspension: if denial wins, no copy
+is committed; if creation wins, the complete committed copy remains attributable.
+
+### UI, privacy and upgrade proof
+
+Model and Version controls have explicit localized names; source business text
+is never translated by a locale switch. Loading, malformed, unavailable, denied,
+missing source, uncertain receipt and definite intent conflict are distinct.
+No partial thirteen-row plan is rendered as valid. Exact uncertain title/Client/
+source/key/body remain frozen for explicit retry; an intentional change starts
+a new intent. Locale changes issue no source-only reload. Identity, session,
+Company and captured Template authority changes retire old source replies;
+unrelated Task, Document and actual-result owners retain their independent state.
+The model flow does not clear or block the ordinary manual-registration draft.
+
+Use the existing presentation/Select and Project/Task detail owners. Copied rows
+display their initial title, action and expected result and identify the linked
+ordinary Task so the user can work with it. Desktop1440 and narrow390 must expose
+all rows, keyboard selection and readable no-overflow content. The fixed count
+needs no unbounded list or new search/export feature.
+
+Additive migration preserves all old assignments, Projects, four-row copies,
+source Versions, IDs, receipts, stage transitions and D4 declarations/bytes.
+Existingv1 captures retain their exact permissions. New source positions and
+immutable guards must not weaken legacy four-row bounds or allow pilot stage
+progress, foreign links, duplicate mappings, source mutation or deletion.
+There is no backfill model, Task, grant, declaration or source approval.
+
+Prove the owning PostgreSQL REST seam first: exact thirteen rows/Task defaults,
+model/Version qualification, malformed overrides, legacyv1 refusal and deliberate
+v2 grant, all independent denials/unknown versions, foreign Company/Workspace,
+revocation/suspension ordering, concurrent exact/changed-key retry, atomic fault
+rollback, immutable mapping/source, genuine previous-schema upgrade and preserved
+closed/superseded-Client history. Edit an ordinary copied Task and publish a
+legacy successor without changing the preserved pilot copy. A pilot advance
+must be refused while the old compatible stage journey remains usable.
+
+Register the actual App/PostgreSQL journey at both viewports: explicitly grant
+synthetic v2, select Version 1, create/reload all thirteen actions/intended results,
+open/edit an ordinary Task and reopen the unchanged plan. Prove source/authority
+denial and exact uncertain recovery through the public UI; inspect the same
+source-context pattern in every affected selector/copy/history. Deterministic
+provider fixtures are not real Clerk or scanner proof. Current-source review,
+complete integration verification and guarded merge retain their usual owners.
+
+### Exclusions and readiness
+
+This contract is ready for one complete vertical runtime issue after merge.
+Operational category/Template approval, pilot source editing/publication,
+universal workflow/model editors, mandatory/optional obligations, D5 stage rules,
+D13 fulfillment/closure exceptions, bulk assignment, actual-result automation,
+certification/training approval, real source import/grants/providers, commercial
+content/prices/numbering/signatures and deployment remain separate. No unresolved
+real numbering, legal or certification decision blocks this anonymous planning
+mechanism; none is silently decided by it.

@@ -306,6 +306,20 @@ prerequisites owned by that contract. It grants no publishing, stage, lifecycle
 or assignment authority and expands no existing captured permission set. Null or
 unknown versions fail closed; no migration or first-user backfill grants it.
 
+The [bounded thirteen-activity pilot plan](release-1-project-task-prd.md#28-approved-bounded-thirteen-activity-pilot-plan-836)
+adds captured **Company Project Template User v2** through this same assignment
+type. Its exact set is v1's two permissions plus `project.template.pilot.read`
+and `project.template.pilot.instantiate`, covering only the identified pilot
+source and copies. Existingv1 remains legacy-only; it receives no new permission
+or source scope in place. An administrator with `company.assignment.manage`
+explicitly revokes/regrants to capture v2 for an active same-Workspace member and
+Company. Null/unknown versions fail closed; no real assignment is created by
+migration or bootstrap. Pilot reads/creation keep the independent Project,
+Task and original Client/Company requirements in that contract. User v2 grants
+no publishing, stage, lifecycle, assignment, Document or broader business right.
+Configuration v1 still publishes only the legacy four-title model. The existing
+User grant/revoke event names and minimal bundle-label metadata below apply.
+
 Its `company_project_template_user_assignment.granted` and
 `company_project_template_user_assignment.revoked` follow this section's existing
 Company-scoped assignment administration and minimal bundle-label Activity

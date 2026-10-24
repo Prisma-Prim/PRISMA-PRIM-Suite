@@ -140,6 +140,17 @@ actor/time and their existing projections; no stage-completion event is invented
 Failed creation and exact committed replay add no event. The dedicated Company
 Project Template User grant/revocation follows the authorization PRD §8 convention.
 
+For the [bounded thirteen-activity pilot plan](release-1-project-task-prd.md#28-approved-bounded-thirteen-activity-pilot-plan-836),
+one successful creation records one ordinary `project.created` and thirteen
+ordinary `task.created` events atomically with the Project, complete immutable
+source/mapping, Tasks, command identity and original Client fence. Exact replay,
+refusal and rollback add none. Existing Project/Task projection boundaries and
+actor/server-time attribution remain; full actions/intended results stay in the
+gated copied plan, not new broad Activity metadata. Userv2 grant/revocation uses
+the existing Company assignment transition convention. No new event family,
+stage progress, Task completion, actual-result declaration or certification
+fact is inferred by copying.
+
 For [compatible illustrative Template successors](release-1-project-task-prd.md#compatible-immutable-successor-versions-695),
 each committed publication records one `project.template.version.created` event
 targeting the immutable Template Version in its responsible Company. Version
