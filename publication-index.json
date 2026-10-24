@@ -1,0 +1,31 @@
+{
+  "run": "pr848-20261024-run2-passed",
+  "status": "passed",
+  "source": "136b7257d5b47357aab1e884ca7b81e0bf21b195",
+  "base": "1a8a1242958967f9f0431de183bbfcf76e677137",
+  "integrationTree": "754bd7a4ad7b1c6c8b74b9e2e1a4bf9fe5226a1b",
+  "verification": "All 16 required families passed; verify-local validate succeeded against the current source, base, clean integration and full local artifact inventory. Self-reported local execution, not independent GitHub runner attestation.",
+  "selection": "Only the four owner-approved text artifact types: report, manifest and two packaging logs, plus this index. No expanded archive, other logs/configuration artifacts or screenshots are published. Full original evidence remains local. Selected files are original reviewed bytes; no credentials were detected and no redactions were needed.",
+  "files": [
+    {
+      "path": "manifest.json",
+      "bytes": 863580,
+      "sha256": "dee0f71a6dcf9d8a415d680cd727eaefca4d9632fdd2e92bb5d9b0f46d5f83c0"
+    },
+    {
+      "path": "packaging-final.log",
+      "bytes": 6239,
+      "sha256": "21004e84adde3178f6de13d609139f12b12f5de793ffb41ab039e66ca93f46aa"
+    },
+    {
+      "path": "packaging-targeted.log",
+      "bytes": 6271,
+      "sha256": "7f32ac6071e77aa80e681146e4a191876da88aa0cbe8849db64d8acf09581398"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3581,
+      "sha256": "76b08c06ba0ff42500c200125ef2f9e5af97fd1360e7e870e1761f5c46209515"
+    }
+  ]
+}
