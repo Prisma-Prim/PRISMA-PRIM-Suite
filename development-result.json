@@ -1,0 +1,107 @@
+{
+  "kind": "Development evidence; not canonical local integration gate",
+  "source": "86d138e400a8cef580f77ff08aad4ac53de3af5f",
+  "base": "768c282f370f231194a100226da7b0201d2766d0",
+  "tree": "add70f7a8245b49fe794cbbf1622dbfd766eeb24",
+  "currentChecks": {
+    "format": "passed",
+    "lint": "passed",
+    "recursiveTypes": "passed",
+    "D6PublicPostgres": {
+      "files": 3,
+      "testsPassed": 31
+    },
+    "OfferWeb": {
+      "files": 6,
+      "testsPassed": 259
+    },
+    "relatedPublicPostgres": {
+      "files": 6,
+      "testsPassed": 152
+    },
+    "historicalContractBaselines": {
+      "testsPassed": 10
+    },
+    "liveAccessAssignmentSuspension": {
+      "files": 4,
+      "testsPassed": 37
+    },
+    "owningApp": {
+      "journeysPassed": 2,
+      "viewports": [
+        1440,
+        390
+      ],
+      "secondsApprox": 78,
+      "syntheticScreenshots": 12
+    },
+    "schemaGeneration": "no changes"
+  },
+  "broaderVerify": {
+    "attempt1": {
+      "status": "failed",
+      "apiFailures": 17,
+      "cause": "Evolved legacy fixture source columns/constraints and unsupported Preparer2 expectations; corrected and targeted proofs passed."
+    },
+    "attempt2": {
+      "status": "failed",
+      "apiFilesPassed": 152,
+      "apiFilesFailed": 1,
+      "apiFilesSkipped": 1,
+      "apiTestsPassed": 2812,
+      "apiTestsFailed": 1,
+      "apiTestsSkipped": 1,
+      "cause": "Known intermittent Project responsibility actor revocation40P01, issue830; command API serial/web/build not reached.",
+      "qualification": "No full broader/local16-family success claimed"
+    }
+  },
+  "known830Diagnosis": {
+    "unchangedProjectFiles": [
+      "apps/api/src/project/project-responsible.rest.test.ts",
+      "apps/api/src/project/project-responsibility.service.ts"
+    ],
+    "unchangedProjectAuthorityMethodSha256": "10d2a14c355a061be3c14ab6ef2ce858a70ed2830996d72e8fbe0cbdfd0e772f",
+    "currentUntouchedMainStandalone": {
+      "passed": 1,
+      "skipped": 33,
+      "reproducedFailure": false
+    },
+    "priorUnchangedMainReproductionBase": "3277c478f8d164ccc0c995627dc3112d1c2b64e3",
+    "classification": "No changed Project implementation/permission method; final independent CI must still pass."
+  },
+  "webBroader": {
+    "filesPassed": 177,
+    "testsPassed": 3024,
+    "qualification": "Before final internal rejection-copy paragraph correction; current Offer259 and App2 cover correction."
+  },
+  "firstRed": "Public route404 before implementation; actual SQL NULL receipt counterexample before correction",
+  "doctor": "Requested web-postgres, stdout standard; all9 applicable checks passed",
+  "realClientOriginals": false,
+  "finalCorrectedSource": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+  "finalCorrectedTree": "80222dc984def33946921f6de81e00501e34b888",
+  "postReviewCorrection": {
+    "owningOfferUiPassed": 264,
+    "actualAppPassed": 2,
+    "actualAppSeconds": 52.9,
+    "syntheticScreenshots": 14,
+    "formatLintTypes": "passed",
+    "scope": "UI/tests/CSS only",
+    "intermediateFailures": "Missing parent localization hook during extraction and invalid TestingLibrary exact option diagnosed and fixed; not successful runs.",
+    "priorPostgres": "API/schema/authorization unchanged by correction; current final independent CI runs whole integration."
+  },
+  "supersededGreenCI": {
+    "run": 40084994017,
+    "source": "5650e5ebab16c865926e4962dfb1267645e49d42",
+    "jobsSuccessful": 16,
+    "readiness": "Superseded at actual premerge guard due unsolicited reverse-direction finding; no merge."
+  },
+  "finalCIRetry": {
+    "originalJob": 120851516564,
+    "diagnosis": "Unchanged ContractPanel history locale test releases its resolver without awaiting actual request capture; inherited initial-loading/request-start ordering race.",
+    "followUp": 844,
+    "targetedCurrentSource": "1passed/177skipped; no local failure reproduction",
+    "targetedUntouchedMain": "1passed/177skipped; no local failure reproduction",
+    "sourceUnchanged": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+    "action": "Rerun only failed Web job and provider-required dependent quality, not a new full workflow or source correction."
+  }
+}

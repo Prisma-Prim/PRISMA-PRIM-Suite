@@ -1,0 +1,77 @@
+{
+  "status": "complete",
+  "initialSource": "86d138e400a8cef580f77ff08aad4ac53de3af5f",
+  "base": "768c282f370f231194a100226da7b0201d2766d0",
+  "finalSource": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+  "initialStandards": {
+    "reviewer": "fresh independent issue842_standards_review",
+    "hardBreaches": 0,
+    "actionableHeuristics": 0,
+    "fullFowlerBaseline": true,
+    "runtimeChecksRunByReviewer": false
+  },
+  "initialSpec": {
+    "reviewer": "fresh independent issue842_spec_review",
+    "blockingFindings": 2,
+    "runtimeChecksRunByReviewer": false
+  },
+  "provider": {
+    "reviewId": 5637834757,
+    "summaryComment": 6382787882,
+    "source": "86d138e400a8cef580f77ff08aad4ac53de3af5f",
+    "trigger": "PR opened; no additional provider request",
+    "blockingFindings": 2,
+    "duplicatesSpecFindings": true
+  },
+  "correctionCommits": [
+    "ababdf48cc0607120bc39ddee62ef11f5a03e07f"
+  ],
+  "fixed": [
+    "Keep literal uncertain estimate-successor body/key across sibling navigation and previously started callbacks",
+    "Reopen exact persisted rejection reason/actor/instant through shared existing evidence renderer"
+  ],
+  "rootPatternInvestigation": "Existing sibling source/version/history/decision/transmission/response paths guarded while estimate form owns draft; protected context retirement retains existing semantics. Rejection renderer reused for internal/illustrative, preserving legacy approval fields.",
+  "proof": {
+    "owningUiRedFailures": 5,
+    "owningOfferUiPassed": 264,
+    "actualAppPassed": 2,
+    "viewports": [
+      1440,
+      390
+    ],
+    "actualAppSeconds": 52.9,
+    "realSuccessor": "Committed lost confirmation\u2192disabled sibling actions\u2192identical key/body retry\u2192one successor",
+    "realRejection": "Public API reject\u2192App reload\u2192other historical version\u2192exact rejected source with actor/time/reason"
+  },
+  "sensitiveCorrection": false,
+  "confirmationReview": "Not required; UI/tests/CSS only, no authorization/tenancy/migration/Activity owner change",
+  "newReviewRequested": false,
+  "resolvedThreads": [
+    "PRRT_kwDOTxkDU86v3eVy",
+    "PRRT_kwDOTxkDU86v3eV0",
+    "PRRT_kwDOTxkDU86v3knk"
+  ],
+  "remainingBlockingFindings": 0,
+  "followUps": [
+    "Known preexisting Project responsibility/revocation40P01 issue830",
+    "Operational Offer/Contract/numbering/signature candidates in820 remain separately scoped"
+  ],
+  "recordedAt": "2026-10-24T10:15:26.855120+00:00",
+  "automaticCommitUpdate": {
+    "reviewId": 5637882414,
+    "source": "5650e5ebab16c865926e4962dfb1267645e49d42",
+    "requestedByRoot": false,
+    "finding": "Reverse direction of original uncertain-command interruption: pending/uncertain Snapshot\u2192estimate opener",
+    "disposition": "Same focused bidirectional correction completed by amending sole correction commit; no second correction commit or new requested review.",
+    "counterexamples": 2,
+    "premergeGuard": "Stopped before merge; prior readiness report superseded despite green CI."
+  },
+  "finalAutomaticCommitUpdate": {
+    "source": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+    "summaryComment": 6382787882,
+    "status": "completed",
+    "hasAnyFindings": false,
+    "hasUnresolvedFindings": false,
+    "explicitAdditionalTrigger": false
+  }
+}

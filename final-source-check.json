@@ -1,0 +1,42 @@
+{
+  "source": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+  "base": "768c282f370f231194a100226da7b0201d2766d0",
+  "tree": "80222dc984def33946921f6de81e00501e34b888",
+  "initialReviewedSource": "86d138e400a8cef580f77ff08aad4ac53de3af5f",
+  "initialStandardsFindings": 0,
+  "initialSpecFindings": 2,
+  "providerReview": 5637834757,
+  "uniqueBlockingFindings": 3,
+  "oneCorrectionCommit": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+  "unresolvedReviewThreads": 0,
+  "reviewComplete": true,
+  "sensitiveConfirmation": "not required: correction UI/tests/CSS only",
+  "finalGate": "Complete independent manual public GitHub CI under owner747 route; not canonical local16-family attestation",
+  "cleanRequired": true,
+  "clean": true,
+  "reviewDispositionComplete": true,
+  "freshActualThreadGuardBeforeDispatch": true,
+  "finalAutomaticCommitUpdate": {
+    "source": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+    "summaryComment": 6382787882,
+    "status": "completed",
+    "hasAnyFindings": false,
+    "hasUnresolvedFindings": false,
+    "explicitAdditionalTrigger": false
+  },
+  "finalRun": 40086733571,
+  "expectedRunAttempt": 2,
+  "boundedWebRetry": {
+    "originalJob": 120851516564,
+    "diagnosis": "Unchanged ContractPanel history locale test releases its resolver without awaiting actual request capture; inherited initial-loading/request-start ordering race.",
+    "followUp": 844,
+    "targetedCurrentSource": "1passed/177skipped; no local failure reproduction",
+    "targetedUntouchedMain": "1passed/177skipped; no local failure reproduction",
+    "sourceUnchanged": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+    "action": "Rerun only failed Web job and provider-required dependent quality, not a new full workflow or source correction."
+  },
+  "freshActualThreadGuardAtPublication": true,
+  "actualUnresolvedThreadsAtPublication": 0,
+  "actualSourceBaseGuardAtPublication": true,
+  "guardCheckedAt": "2026-10-24T10:57:51.418264+00:00"
+}

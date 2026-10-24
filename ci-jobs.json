@@ -1,0 +1,1661 @@
+{
+  "total_count": 16,
+  "jobs": [
+    {
+      "id": 120853614912,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_RQA",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853614912",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853614912",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:52:06Z",
+      "completed_at": "2026-10-24T10:56:23Z",
+      "name": "web_unit",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:52:07Z",
+          "completed_at": "2026-10-24T10:52:07Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:52:07Z",
+          "completed_at": "2026-10-24T10:52:10Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:52:10Z",
+          "completed_at": "2026-10-24T10:52:21Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:52:21Z",
+          "completed_at": "2026-10-24T10:52:22Z"
+        },
+        {
+          "name": "Test Web unit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:52:22Z",
+          "completed_at": "2026-10-24T10:56:20Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:56:20Z",
+          "completed_at": "2026-10-24T10:56:20Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-24T10:56:20Z",
+          "completed_at": "2026-10-24T10:56:21Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-24T10:56:21Z",
+          "completed_at": "2026-10-24T10:56:21Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853614912",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009387,
+      "runner_name": "GitHub Actions 1000009387",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853615554,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_Twg",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853615554",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853615554",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:38:52Z",
+      "completed_at": "2026-10-24T10:39:01Z",
+      "name": "scope",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:38:53Z",
+          "completed_at": "2026-10-24T10:38:54Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:38:54Z",
+          "completed_at": "2026-10-24T10:38:56Z"
+        },
+        {
+          "name": "Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:38:56Z",
+          "completed_at": "2026-10-24T10:38:57Z"
+        },
+        {
+          "name": "Classify changed files",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:38:57Z",
+          "completed_at": "2026-10-24T10:38:57Z"
+        },
+        {
+          "name": "Find verified reusable CI proof",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:38:57Z",
+          "completed_at": "2026-10-24T10:38:57Z"
+        },
+        {
+          "name": "Post Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:38:57Z",
+          "completed_at": "2026-10-24T10:38:57Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-24T10:38:57Z",
+          "completed_at": "2026-10-24T10:38:58Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-24T10:38:58Z",
+          "completed_at": "2026-10-24T10:38:58Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853615554",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009372,
+      "runner_name": "GitHub Actions 1000009372",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853615816,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_UyA",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853615816",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853615816",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:41:00Z",
+      "completed_at": "2026-10-24T10:46:45Z",
+      "name": "browser (1)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:01Z",
+          "completed_at": "2026-10-24T10:41:02Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:03Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:03Z",
+          "completed_at": "2026-10-24T10:41:20Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:20Z",
+          "completed_at": "2026-10-24T10:41:21Z"
+        },
+        {
+          "name": "Test browser",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:21Z",
+          "completed_at": "2026-10-24T10:46:37Z"
+        },
+        {
+          "name": "Namespace browser run metadata",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-24T10:46:37Z",
+          "completed_at": "2026-10-24T10:46:37Z"
+        },
+        {
+          "name": "Upload browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:46:37Z",
+          "completed_at": "2026-10-24T10:46:43Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-24T10:46:43Z",
+          "completed_at": "2026-10-24T10:46:43Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-24T10:46:43Z",
+          "completed_at": "2026-10-24T10:46:43Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-24T10:46:43Z",
+          "completed_at": "2026-10-24T10:46:43Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853615816",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009374,
+      "runner_name": "GitHub Actions 1000009374",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853615872,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_VAA",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853615872",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853615872",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:41:46Z",
+      "name": "build",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:03Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:03Z",
+          "completed_at": "2026-10-24T10:41:05Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:05Z",
+          "completed_at": "2026-10-24T10:41:18Z"
+        },
+        {
+          "name": "Build",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:18Z",
+          "completed_at": "2026-10-24T10:41:43Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:41:43Z",
+          "completed_at": "2026-10-24T10:41:43Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-24T10:41:43Z",
+          "completed_at": "2026-10-24T10:41:43Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:41:43Z",
+          "completed_at": "2026-10-24T10:41:43Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853615872",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009385,
+      "runner_name": "GitHub Actions 1000009385",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853615891,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_VEw",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853615891",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853615891",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:45:52Z",
+      "name": "browser (2)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:01Z",
+          "completed_at": "2026-10-24T10:41:02Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:03Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:03Z",
+          "completed_at": "2026-10-24T10:41:20Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:20Z",
+          "completed_at": "2026-10-24T10:41:21Z"
+        },
+        {
+          "name": "Test browser",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:21Z",
+          "completed_at": "2026-10-24T10:45:45Z"
+        },
+        {
+          "name": "Namespace browser run metadata",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-24T10:45:45Z",
+          "completed_at": "2026-10-24T10:45:46Z"
+        },
+        {
+          "name": "Upload browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:45:46Z",
+          "completed_at": "2026-10-24T10:45:50Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-24T10:45:50Z",
+          "completed_at": "2026-10-24T10:45:50Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-24T10:45:50Z",
+          "completed_at": "2026-10-24T10:45:50Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-24T10:45:50Z",
+          "completed_at": "2026-10-24T10:45:50Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853615891",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009384,
+      "runner_name": "GitHub Actions 1000009384",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853615917,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_VLQ",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853615917",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853615917",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:48:10Z",
+      "name": "acceptance (2)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:02Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:04Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:04Z",
+          "completed_at": "2026-10-24T10:41:34Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:34Z",
+          "completed_at": "2026-10-24T10:41:35Z"
+        },
+        {
+          "name": "Test acceptance",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:35Z",
+          "completed_at": "2026-10-24T10:48:05Z"
+        },
+        {
+          "name": "Verify acceptance failure evidence",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-24T10:48:05Z",
+          "completed_at": "2026-10-24T10:48:05Z"
+        },
+        {
+          "name": "Namespace acceptance run metadata",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:48:05Z",
+          "completed_at": "2026-10-24T10:48:05Z"
+        },
+        {
+          "name": "Upload acceptance evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-24T10:48:05Z",
+          "completed_at": "2026-10-24T10:48:08Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-24T10:48:08Z",
+          "completed_at": "2026-10-24T10:48:08Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-24T10:48:08Z",
+          "completed_at": "2026-10-24T10:48:08Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-24T10:48:08Z",
+          "completed_at": "2026-10-24T10:48:08Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853615917",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009380,
+      "runner_name": "GitHub Actions 1000009380",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853615998,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_Vfg",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853615998",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853615998",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:45:42Z",
+      "name": "browser (3)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:03Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:03Z",
+          "completed_at": "2026-10-24T10:41:05Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:05Z",
+          "completed_at": "2026-10-24T10:41:26Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:26Z",
+          "completed_at": "2026-10-24T10:41:28Z"
+        },
+        {
+          "name": "Test browser",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:28Z",
+          "completed_at": "2026-10-24T10:45:34Z"
+        },
+        {
+          "name": "Namespace browser run metadata",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-24T10:45:34Z",
+          "completed_at": "2026-10-24T10:45:34Z"
+        },
+        {
+          "name": "Upload browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:45:34Z",
+          "completed_at": "2026-10-24T10:45:39Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-24T10:45:39Z",
+          "completed_at": "2026-10-24T10:45:39Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-24T10:45:39Z",
+          "completed_at": "2026-10-24T10:45:39Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-24T10:45:39Z",
+          "completed_at": "2026-10-24T10:45:39Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853615998",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009382,
+      "runner_name": "GitHub Actions 1000009382",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853616066,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_Vwg",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853616066",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853616066",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:45:51Z",
+      "name": "api (3/3)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:02Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:05Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:05Z",
+          "completed_at": "2026-10-24T10:41:26Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:26Z",
+          "completed_at": "2026-10-24T10:41:27Z"
+        },
+        {
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:27Z",
+          "completed_at": "2026-10-24T10:45:48Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:45:48Z",
+          "completed_at": "2026-10-24T10:45:48Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-24T10:45:48Z",
+          "completed_at": "2026-10-24T10:45:48Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-24T10:45:48Z",
+          "completed_at": "2026-10-24T10:45:48Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853616066",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009378,
+      "runner_name": "GitHub Actions 1000009378",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853616146,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_WEg",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853616146",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853616146",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:03Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:51:09Z",
+      "name": "acceptance (1)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:03Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:03Z",
+          "completed_at": "2026-10-24T10:41:05Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:05Z",
+          "completed_at": "2026-10-24T10:41:39Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:39Z",
+          "completed_at": "2026-10-24T10:41:42Z"
+        },
+        {
+          "name": "Test acceptance",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:42Z",
+          "completed_at": "2026-10-24T10:50:54Z"
+        },
+        {
+          "name": "Verify acceptance failure evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-24T10:50:54Z",
+          "completed_at": "2026-10-24T10:51:01Z"
+        },
+        {
+          "name": "Namespace acceptance run metadata",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:51:01Z",
+          "completed_at": "2026-10-24T10:51:01Z"
+        },
+        {
+          "name": "Upload acceptance evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-24T10:51:01Z",
+          "completed_at": "2026-10-24T10:51:06Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-24T10:51:06Z",
+          "completed_at": "2026-10-24T10:51:06Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-24T10:51:06Z",
+          "completed_at": "2026-10-24T10:51:06Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-24T10:51:06Z",
+          "completed_at": "2026-10-24T10:51:06Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853616146",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009383,
+      "runner_name": "GitHub Actions 1000009383",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853616232,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_WaA",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853616232",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853616232",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:04Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:44:55Z",
+      "name": "api (1/3)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:02Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:04Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:04Z",
+          "completed_at": "2026-10-24T10:41:28Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:28Z",
+          "completed_at": "2026-10-24T10:41:29Z"
+        },
+        {
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:29Z",
+          "completed_at": "2026-10-24T10:44:51Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:44:51Z",
+          "completed_at": "2026-10-24T10:44:52Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-24T10:44:52Z",
+          "completed_at": "2026-10-24T10:44:52Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-24T10:44:52Z",
+          "completed_at": "2026-10-24T10:44:52Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853616232",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009381,
+      "runner_name": "GitHub Actions 1000009381",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853616304,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_WsA",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853616304",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853616304",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:04Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:42:32Z",
+      "name": "packaging",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:01Z",
+          "completed_at": "2026-10-24T10:41:03Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:03Z",
+          "completed_at": "2026-10-24T10:41:05Z"
+        },
+        {
+          "name": "Install pnpm",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:05Z",
+          "completed_at": "2026-10-24T10:41:06Z"
+        },
+        {
+          "name": "Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:06Z",
+          "completed_at": "2026-10-24T10:41:07Z"
+        },
+        {
+          "name": "Validate Railway configuration without credentials",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:07Z",
+          "completed_at": "2026-10-24T10:41:10Z"
+        },
+        {
+          "name": "Restore PostgreSQL image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-24T10:41:10Z",
+          "completed_at": "2026-10-24T10:41:12Z"
+        },
+        {
+          "name": "Restore pinned packaging base images",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:41:12Z",
+          "completed_at": "2026-10-24T10:41:15Z"
+        },
+        {
+          "name": "Acquire pinned packaging base images",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-24T10:41:15Z",
+          "completed_at": "2026-10-24T10:41:15Z"
+        },
+        {
+          "name": "Save pinned packaging base images",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-24T10:41:15Z",
+          "completed_at": "2026-10-24T10:41:15Z"
+        },
+        {
+          "name": "Prove production image packaging",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-24T10:41:15Z",
+          "completed_at": "2026-10-24T10:42:29Z"
+        },
+        {
+          "name": "Post Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-10-24T10:42:29Z",
+          "completed_at": "2026-10-24T10:42:29Z"
+        },
+        {
+          "name": "Post Install pnpm",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-10-24T10:42:29Z",
+          "completed_at": "2026-10-24T10:42:29Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20,
+          "started_at": "2026-10-24T10:42:29Z",
+          "completed_at": "2026-10-24T10:42:29Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-24T10:42:29Z",
+          "completed_at": "2026-10-24T10:42:29Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853616304",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009377,
+      "runner_name": "GitHub Actions 1000009377",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853616353,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_W4Q",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853616353",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853616353",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:04Z",
+      "started_at": "2026-10-24T10:41:01Z",
+      "completed_at": "2026-10-24T10:44:34Z",
+      "name": "api (2/3)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:02Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:04Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:04Z",
+          "completed_at": "2026-10-24T10:41:28Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:28Z",
+          "completed_at": "2026-10-24T10:41:29Z"
+        },
+        {
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:29Z",
+          "completed_at": "2026-10-24T10:44:30Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:44:30Z",
+          "completed_at": "2026-10-24T10:44:30Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-24T10:44:30Z",
+          "completed_at": "2026-10-24T10:44:30Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-24T10:44:30Z",
+          "completed_at": "2026-10-24T10:44:31Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853616353",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009375,
+      "runner_name": "GitHub Actions 1000009375",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853616381,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI2_W_Q",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853616381",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853616381",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:04Z",
+      "started_at": "2026-10-24T10:41:00Z",
+      "completed_at": "2026-10-24T10:42:22Z",
+      "name": "api (serial)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:41:01Z",
+          "completed_at": "2026-10-24T10:41:02Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:41:02Z",
+          "completed_at": "2026-10-24T10:41:03Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:41:03Z",
+          "completed_at": "2026-10-24T10:41:24Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:41:24Z",
+          "completed_at": "2026-10-24T10:41:25Z"
+        },
+        {
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:41:25Z",
+          "completed_at": "2026-10-24T10:42:20Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:42:20Z",
+          "completed_at": "2026-10-24T10:42:20Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-24T10:42:20Z",
+          "completed_at": "2026-10-24T10:42:20Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-24T10:42:20Z",
+          "completed_at": "2026-10-24T10:42:20Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853616381",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009379,
+      "runner_name": "GitHub Actions 1000009379",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853634387,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI3AdUw",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853634387",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853634387",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:09Z",
+      "started_at": "2026-10-24T10:38:51Z",
+      "completed_at": "2026-10-24T10:40:58Z",
+      "name": "checks",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:38:52Z",
+          "completed_at": "2026-10-24T10:38:53Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:38:53Z",
+          "completed_at": "2026-10-24T10:38:54Z"
+        },
+        {
+          "name": "Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:38:54Z",
+          "completed_at": "2026-10-24T10:39:05Z"
+        },
+        {
+          "name": "Verify supported agent environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:39:05Z",
+          "completed_at": "2026-10-24T10:39:06Z"
+        },
+        {
+          "name": "Check formatting",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:39:06Z",
+          "completed_at": "2026-10-24T10:39:37Z"
+        },
+        {
+          "name": "Lint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-24T10:39:37Z",
+          "completed_at": "2026-10-24T10:39:58Z"
+        },
+        {
+          "name": "Type-check",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-24T10:39:58Z",
+          "completed_at": "2026-10-24T10:40:20Z"
+        },
+        {
+          "name": "Test scripts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-24T10:40:20Z",
+          "completed_at": "2026-10-24T10:40:49Z"
+        },
+        {
+          "name": "Test documentation contracts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-24T10:40:49Z",
+          "completed_at": "2026-10-24T10:40:56Z"
+        },
+        {
+          "name": "Post Set up repository verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-24T10:40:56Z",
+          "completed_at": "2026-10-24T10:40:56Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-10-24T10:40:56Z",
+          "completed_at": "2026-10-24T10:40:56Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-10-24T10:40:56Z",
+          "completed_at": "2026-10-24T10:40:56Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853634387",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009371,
+      "runner_name": "GitHub Actions 1000009371",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120853646211,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI3BLgw",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120853646211",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120853646211",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:52:13Z",
+      "started_at": "2026-10-24T10:39:03Z",
+      "completed_at": "2026-10-24T10:39:09Z",
+      "name": "postgres_image",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:39:04Z",
+          "completed_at": "2026-10-24T10:39:05Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:39:05Z",
+          "completed_at": "2026-10-24T10:39:06Z"
+        },
+        {
+          "name": "Resolve PostgreSQL archive key",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:39:06Z",
+          "completed_at": "2026-10-24T10:39:06Z"
+        },
+        {
+          "name": "Look up cached PostgreSQL image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:39:06Z",
+          "completed_at": "2026-10-24T10:39:07Z"
+        },
+        {
+          "name": "Restore compatible legacy PostgreSQL archive",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-24T10:39:07Z",
+          "completed_at": "2026-10-24T10:39:07Z"
+        },
+        {
+          "name": "Acquire PostgreSQL image",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 6,
+          "started_at": "2026-10-24T10:39:07Z",
+          "completed_at": "2026-10-24T10:39:07Z"
+        },
+        {
+          "name": "Save PostgreSQL image",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-24T10:39:07Z",
+          "completed_at": "2026-10-24T10:39:07Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-24T10:39:07Z",
+          "completed_at": "2026-10-24T10:39:07Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-24T10:39:07Z",
+          "completed_at": "2026-10-24T10:39:07Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120853646211",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009373,
+      "runner_name": "GitHub Actions 1000009373",
+      "runner_group_id": null,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 120854408210,
+      "run_id": 40086733571,
+      "workflow_name": "CI",
+      "head_branch": "feat/842-approved-estimate-offer",
+      "run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571",
+      "run_attempt": 2,
+      "node_id": "CR_kwDOTxkDU88AAAAcI3vsEg",
+      "head_sha": "ababdf48cc0607120bc39ddee62ef11f5a03e07f",
+      "url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/actions/jobs/120854408210",
+      "html_url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40086733571/job/120854408210",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-24T10:56:23Z",
+      "started_at": "2026-10-24T10:56:26Z",
+      "completed_at": "2026-10-24T10:56:58Z",
+      "name": "quality",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-24T10:56:27Z",
+          "completed_at": "2026-10-24T10:56:29Z"
+        },
+        {
+          "name": "Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-24T10:56:29Z",
+          "completed_at": "2026-10-24T10:56:31Z"
+        },
+        {
+          "name": "Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-24T10:56:31Z",
+          "completed_at": "2026-10-24T10:56:34Z"
+        },
+        {
+          "name": "Require every verification result",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-24T10:56:34Z",
+          "completed_at": "2026-10-24T10:56:34Z"
+        },
+        {
+          "name": "Download complete browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-24T10:56:34Z",
+          "completed_at": "2026-10-24T10:56:39Z"
+        },
+        {
+          "name": "Upload complete browser evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-24T10:56:39Z",
+          "completed_at": "2026-10-24T10:56:55Z"
+        },
+        {
+          "name": "Post Set up Node.js",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-24T10:56:55Z",
+          "completed_at": "2026-10-24T10:56:56Z"
+        },
+        {
+          "name": "Post Check out repository",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-24T10:56:56Z",
+          "completed_at": "2026-10-24T10:56:56Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-24T10:56:56Z",
+          "completed_at": "2026-10-24T10:56:56Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Prisma-Prim/PRISMA-PRIM-Suite/check-runs/120854408210",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000009388,
+      "runner_name": "GitHub Actions 1000009388",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}
