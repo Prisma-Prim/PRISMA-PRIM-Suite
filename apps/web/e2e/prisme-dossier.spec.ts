@@ -593,6 +593,7 @@ for (const outcome of [
     await page.goto('/?frame=prisme#clients');
     await page.getByRole('button', { name: 'Open dossier' }).click();
     await expect(page.getByText('Loading Client dossier…')).toBeVisible();
+    await expect.poll(() => release !== undefined).toBe(true);
     if (!release) throw new Error('Expected a dossier read');
     if (outcome.status === 403) state.actorStatus = 403;
     await release();
