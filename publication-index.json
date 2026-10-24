@@ -1,0 +1,26 @@
+{
+  "issue": 862,
+  "pr": 863,
+  "source": "94cf89d22a8eb8b01d30cc9210db822c8a93eaad",
+  "base": "9957cf22a4d2c262acf38151da9cb3c3ec0a5968",
+  "tree": "3417667cd7a48753681b78909afdfc0e854a54b7",
+  "keepThrough": "2026-11-08T20:25:11.033000+00:00",
+  "selection": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "files": [
+    {
+      "path": "final-proof.json",
+      "bytes": 1847,
+      "sha256": "3723a6abfd58277a784cd1d0d7b0328adac8585a34747d6b0829092a38347f72"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 290268,
+      "sha256": "562588c2c184cc55f3f38dcd687c7b4bf9dc192275e7458ffe4f93e794aeae07"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3677,
+      "sha256": "5a0e5e27cd19d3a604dd9a95032c6d338e60408f2e418f03ba670be59694e1f3"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "issue": 862,
+  "pr": 863,
+  "source": "94cf89d22a8eb8b01d30cc9210db822c8a93eaad",
+  "base": "9957cf22a4d2c262acf38151da9cb3c3ec0a5968",
+  "tree": "3417667cd7a48753681b78909afdfc0e854a54b7",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1539,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "94cf89d22a8eb8b01d30cc9210db822c8a93eaad",
+    "reviewedBase": "9957cf22a4d2c262acf38151da9cb3c3ec0a5968",
+    "rootOrderedPreparation": "Standards then Product/Spec",
+    "independentStandardsFindings": 0,
+    "independentSpecFindings": 0,
+    "independentStandardsAgent": "issue862_standards_review",
+    "independentSpecAgent": "issue862_spec_review",
+    "independentExecution": "Read-only contract/authority review; no builds/full tests/CI",
+    "automaticOpeningReviewCompletedNoFindings": true,
+    "automaticOpeningSummaryComment": 6389079372,
+    "corrections": 0,
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0,
+    "completedAt": "2026-10-24T20:23:28.330721+00:00"
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation contract only; no runtime, real fiscal/legal values, approved business prose, official numbering, real grants or deployment.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-08T20:25:11.033000+00:00"
+}
