@@ -212,9 +212,12 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
       name: 'Version 1: Consultanță demonstrativă',
     }),
   ).toBeVisible();
-  await expect(workspace.locator('.offer-model-literal').first()).toHaveText(
-    syntheticContent.sections.introduction,
-  );
+  await expect(
+    workspace
+      .getByRole('heading', { name: 'Introduction', exact: true })
+      .locator('..')
+      .locator('p'),
+  ).toHaveText(syntheticContent.sections.introduction);
   await workspace
     .getByLabel('Decision basis', { exact: true })
     .fill('Full synthetic content and editions reviewed DEMO');
@@ -325,7 +328,134 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
     expect(response.status()).toBe(200);
   }
   await workspace
-    .getByRole('button', { name: 'Reload the current model' })
+    .getByRole('button', { name: 'Version history', exact: true })
     .click();
   await expect(page.locator('.offer-model-workspace')).toHaveCount(0);
+});
+
+test('preserves every accepted multiline title and identity when reviewing and copying an exact model', async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000);
+  const narrow = info.project.name.endsWith('narrow');
+  const companyName = `Literal Model DEMO ${narrow ? 'Narrow' : 'Desktop'}`;
+  async function command(path: string, body: unknown, companyId?: string) {
+    const response = await page.request.post(`${apiOrigin}${path}`, {
+      headers: {
+        ...owner,
+        ...(companyId ? { 'x-company-context-id': companyId } : {}),
+        'idempotency-key': randomUUID(),
+      },
+      data: body,
+    });
+    expect(response.status(), path).toBe(201);
+    return record(await response.json());
+  }
+  const companyId = text(
+    (await command('/companies', { displayName: companyName })).id,
+  );
+  const actor = await page.request.get(`${apiOrigin}/access/current-actor`, {
+    headers: owner,
+  });
+  const memberId = text(record(await actor.json()).workspaceMembershipId);
+  for (const bundle of [
+    'company-offer-model-editor',
+    'company-offer-model-approver',
+  ])
+    await command(`/${bundle}-assignments`, {
+      companyId,
+      workspaceMembershipId: memberId,
+    });
+  const content = {
+    ...syntheticContent,
+    serviceTitle: 'Titlu unu\nTitlu doi',
+    issuer: {
+      ...syntheticContent.issuer,
+      legalName: 'Furnizor unu\nFurnizor doi',
+      taxId: 'DEMO unu\nDEMO doi',
+    },
+    frameworks: [
+      { name: 'Cadru unu\nCadru doi', edition: 'Ediție unu\nEdiție doi' },
+    ],
+    stages: syntheticContent.stages.map((stage, index) =>
+      index === 0 ? { ...stage, title: 'Etapă unu\nEtapă doi' } : stage,
+    ),
+  };
+  const created = await command(
+    '/offer-models/consulting-ro/versions',
+    { expectedModelRevision: 0, content },
+    companyId,
+  );
+  const id = text(record(record(created.model).head).id);
+  await command(
+    `/offer-models/consulting-ro/versions/${id}/decision`,
+    {
+      expectedModelRevision: 1,
+      versionNumber: 1,
+      outcome: 'APPROVE',
+      basis: 'Synthetic literal formatting reviewed',
+    },
+    companyId,
+  );
+  await page.route('**/api/**', (route) =>
+    route.continue({ headers: { ...route.request().headers(), ...owner } }),
+  );
+  await page.goto('/');
+  await selectCompany(page, companyName, narrow);
+  await navigate(page, 'Consulting Offer model', narrow);
+  const workspace = page.locator('.offer-model-workspace');
+  const version = workspace.locator('.offer-model-version').first();
+  await expect(version.locator('h3')).toBeVisible();
+  expect(await version.locator('h3').innerText()).toBe(
+    'Version 1: Titlu unu\nTitlu doi',
+  );
+  expect(
+    await version.locator('ol').first().locator('li').first().innerText(),
+  ).toContain('Cadru unu\nCadru doi');
+  expect(
+    await version.locator('ol').first().locator('li').first().innerText(),
+  ).toContain('Ediție unu\nEdiție doi');
+  expect(await version.locator('h5').first().innerText()).toBe(
+    'Etapă unu\nEtapă doi',
+  );
+  expect(
+    await workspace
+      .locator(':scope > p')
+      .filter({ hasText: 'Titlu unu' })
+      .innerText(),
+  ).toContain('Titlu unu\nTitlu doi');
+  await workspace
+    .getByRole('button', { name: 'Version history', exact: true })
+    .click();
+  const historyRow = workspace
+    .locator('.offer-model-history > ol > li')
+    .first();
+  await expect(historyRow).toBeVisible();
+  expect(await historyRow.innerText()).toContain('Titlu unu\nTitlu doi');
+  await workspace
+    .getByRole('button', { name: 'Copy current version into a new draft' })
+    .click();
+  for (const [label, value] of [
+    ['Romanian service title', content.serviceTitle],
+    ['Issuer legal name', content.issuer.legalName],
+    ['Issuer tax identifier', content.issuer.taxId],
+    ['Framework name 1', content.frameworks[0]?.name],
+    ['Framework edition 1', content.frameworks[0]?.edition],
+    ['Stage title 1', content.stages[0]?.title],
+  ]) {
+    if (!label || !value) throw new Error('Missing literal fixture.');
+    await expect(workspace.getByLabel(label, { exact: true })).toHaveValue(
+      value,
+    );
+  }
+  await workspace
+    .getByLabel('Romanian service title', { exact: true })
+    .fill('Titlu editat\nAl doilea rând');
+  await workspace
+    .getByRole('button', { name: 'Submit complete version' })
+    .click();
+  await expect(workspace.getByText('Version 2 saved.')).toBeVisible();
+  expect(
+    await workspace.locator('.offer-model-version h3').first().innerText(),
+  ).toBe('Version 2: Titlu editat\nAl doilea rând');
 });

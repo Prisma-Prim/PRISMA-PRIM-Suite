@@ -22,7 +22,7 @@ export function OfferModelVersionContent({
     });
   return (
     <article className="offer-model-version">
-      <h3>
+      <h3 className="offer-model-literal">
         {formatMessage(copy('version'), {
           number: formatNumber(version.versionNumber),
         })}
@@ -73,7 +73,7 @@ export function OfferModelVersionContent({
       <h4>{copy('frameworks')}</h4>
       <ol>
         {content.frameworks.map((entry, index) => (
-          <li key={index}>
+          <li className="offer-model-literal" key={index}>
             {entry.name} — {entry.edition}
           </li>
         ))}
@@ -87,8 +87,8 @@ export function OfferModelVersionContent({
       <h4>{copy('plannedStages')}</h4>
       <ol>
         {content.stages.map((stage, index) => (
-          <li key={index}>
-            <h5>{stage.title}</h5>
+          <li className="offer-model-literal" key={index}>
+            <h5 className="offer-model-literal">{stage.title}</h5>
             <p className="offer-model-literal">{stage.plannedActivity}</p>
             <p className="offer-model-literal">{stage.intendedResult}</p>
           </li>

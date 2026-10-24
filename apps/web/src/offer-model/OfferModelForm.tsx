@@ -104,19 +104,14 @@ export function OfferModelForm({
       value,
       maxLength: limit,
       required: !optional,
-      onChange: (
-        event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-      ) => change(event.target.value),
+      onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) =>
+        change(event.target.value),
     };
     return (
-      <label className="offer-model-field" htmlFor={props.id} key={id}>
-        <span>{label}</span>
-        {multiline ? (
-          <textarea {...props} rows={3} />
-        ) : (
-          <input {...props} type="text" />
-        )}
-      </label>
+      <div className="offer-model-field" key={id}>
+        <label htmlFor={props.id}>{label}</label>
+        <textarea {...props} rows={multiline ? 3 : 2} />
+      </div>
     );
   }
   return (

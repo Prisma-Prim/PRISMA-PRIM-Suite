@@ -19,6 +19,7 @@ import { OfferModelVersionContent } from './OfferModelVersionContent';
 import { useOfferModelCommand } from './use-offer-model-command';
 import { text } from './offer-model-content';
 import type { OfferModelContent } from './offer-model-content';
+import type { ApiResult } from '../api/authenticated-api-client';
 import './offer-model.css';
 
 export interface OfferModelWorkspaceProps {
@@ -74,64 +75,100 @@ function ScopedOfferModelWorkspace({
     initial: OfferModelContent | null;
   } | null>(null);
   const pending = useRef<AbortController | undefined>(undefined);
+  const accessRevalidation = useRef<AbortController | undefined>(undefined);
   const callbacks = useRef(handlers);
   callbacks.current = handlers;
-  const load = useCallback(
-    () =>
-      runLatestAuthenticatedRequest({
-        pending,
-        identity,
-        execute: (api, signal) =>
-          api.request<unknown>('/offer-models/consulting-ro', {
+  const load = useCallback(() => {
+    epoch.current += 1;
+    accessRevalidation.current?.abort();
+    accessRevalidation.current = undefined;
+    return runLatestAuthenticatedRequest({
+      pending,
+      identity,
+      execute: (api, signal) =>
+        api.request<unknown>('/offer-models/consulting-ro', {
+          companyContextId: authority.companyId,
+          signal,
+        }),
+      onResult: async (result, signal) => {
+        if (result.status === 'ok') {
+          try {
+            const { model } = readOfferModelResponse(result.value);
+            if (
+              model &&
+              (model.companyId !== authority.companyId ||
+                model.workspaceId !== authority.workspaceId)
+            )
+              throw new Error('Unexpected model scope.');
+            setRead({ kind: 'ready', model });
+          } catch {
+            setRead({ kind: 'error' });
+          }
+        } else if (
+          result.status === 'forbidden' ||
+          result.status === 'unauthorized'
+        ) {
+          setDraft(null);
+          setBasis('');
+          setReason('');
+          setRead({ kind: 'denied' });
+          await handleAuthenticatedAccessRejection({
+            result,
+            identity,
             companyContextId: authority.companyId,
             signal,
-          }),
-        onResult: async (result, signal) => {
-          if (result.status === 'ok') {
-            try {
-              const { model } = readOfferModelResponse(result.value);
-              if (
-                model &&
-                (model.companyId !== authority.companyId ||
-                  model.workspaceId !== authority.workspaceId)
-              )
-                throw new Error('Unexpected model scope.');
-              setRead({ kind: 'ready', model });
-            } catch {
-              setRead({ kind: 'error' });
-            }
-          } else if (
-            result.status === 'forbidden' ||
-            result.status === 'unauthorized'
-          ) {
-            setDraft(null);
-            setBasis('');
-            setReason('');
-            setRead({ kind: 'denied' });
-            await handleAuthenticatedAccessRejection({
-              result,
-              identity,
-              companyContextId: authority.companyId,
-              signal,
-              onActorRevalidated: (value) =>
-                callbacks.current.onActorRevalidated?.(value),
-              onCompanyContextRejected: (id) =>
-                callbacks.current.onCompanyContextRejected?.(id),
-              onWorkspaceAccessRejected: () =>
-                callbacks.current.onWorkspaceAccessRejected?.(),
-            });
-          } else setRead({ kind: 'error' });
-        },
-        onError: () => setRead({ kind: 'error' }),
-      }),
-    [identity, authority.companyId, authority.workspaceId],
-  );
+            onActorRevalidated: (value) =>
+              callbacks.current.onActorRevalidated?.(value),
+            onCompanyContextRejected: (id) =>
+              callbacks.current.onCompanyContextRejected?.(id),
+            onWorkspaceAccessRejected: () =>
+              callbacks.current.onWorkspaceAccessRejected?.(),
+          });
+        } else setRead({ kind: 'error' });
+      },
+      onError: () => setRead({ kind: 'error' }),
+    });
+  }, [identity, authority.companyId, authority.workspaceId]);
 
   useEffect(() => {
     setRead({ kind: 'loading' });
     void load();
-    return () => pending.current?.abort();
+    return () => {
+      pending.current?.abort();
+      accessRevalidation.current?.abort();
+    };
   }, [load]);
+
+  // The scoped workspace survives a denied history read; the history child does not.
+  // Its independent controller still retires on session/Company/authority changes.
+  function rejectHistoryAccess(result: ApiResult<unknown>) {
+    epoch.current += 1;
+    pending.current?.abort();
+    accessRevalidation.current?.abort();
+    const controller = new AbortController();
+    accessRevalidation.current = controller;
+    setDraft(null);
+    setBasis('');
+    setReason('');
+    setRead({ kind: 'denied' });
+    void handleAuthenticatedAccessRejection({
+      result,
+      identity,
+      companyContextId: authority.companyId,
+      signal: controller.signal,
+      onActorRevalidated: (actor) =>
+        callbacks.current.onActorRevalidated?.(actor),
+      onCompanyContextRejected: (id) =>
+        callbacks.current.onCompanyContextRejected?.(id),
+      onWorkspaceAccessRejected: () =>
+        callbacks.current.onWorkspaceAccessRejected?.(),
+    })
+      .catch(() => undefined)
+      .finally(() => {
+        if (accessRevalidation.current === controller)
+          accessRevalidation.current = undefined;
+      });
+  }
 
   const command = useOfferModelCommand({
     identity,
@@ -203,7 +240,7 @@ function ScopedOfferModelWorkspace({
               : copy('noActive')}
           </p>
           {read.model.activeVersion && (
-            <p>
+            <p className="offer-model-literal">
               {read.model.activeVersion.serviceTitle} —{' '}
               {copy(read.model.activeVersion.sourceKind)}
             </p>
@@ -211,11 +248,10 @@ function ScopedOfferModelWorkspace({
           {authority.canDecide && read.model.activeVersion && (
             <fieldset disabled={command.blocked || draft !== null}>
               <legend>{copy('withdraw')}</legend>
-              <label
-                className="offer-model-field"
-                htmlFor={`${heading}-withdrawal`}
-              >
-                <span>{copy('withdrawReason')}</span>
+              <div className="offer-model-field">
+                <label htmlFor={`${heading}-withdrawal`}>
+                  {copy('withdrawReason')}
+                </label>
                 <textarea
                   id={`${heading}-withdrawal`}
                   value={reason}
@@ -223,7 +259,7 @@ function ScopedOfferModelWorkspace({
                   required
                   onChange={(event) => setReason(event.target.value)}
                 />
-              </label>
+              </div>
               {invalidDecision && <p role="alert">{copy('invalid')}</p>}
               <button
                 type="button"
@@ -258,8 +294,8 @@ function ScopedOfferModelWorkspace({
           {authority.canDecide && read.model.head.decision === null && (
             <fieldset disabled={command.blocked || draft !== null}>
               <legend>{copy('pending')}</legend>
-              <label className="offer-model-field" htmlFor={`${heading}-basis`}>
-                <span>{copy('basis')}</span>
+              <div className="offer-model-field">
+                <label htmlFor={`${heading}-basis`}>{copy('basis')}</label>
                 <textarea
                   id={`${heading}-basis`}
                   value={basis}
@@ -267,7 +303,7 @@ function ScopedOfferModelWorkspace({
                   required
                   onChange={(event) => setBasis(event.target.value)}
                 />
-              </label>
+              </div>
               {invalidDecision && <p role="alert">{copy('invalid')}</p>}
               <div className="offer-model-actions">
                 {(['APPROVE', 'REJECT'] as const).map((outcome) => (
@@ -311,15 +347,7 @@ function ScopedOfferModelWorkspace({
           model={read.model}
           blocked={command.blocked || draft !== null}
           epoch={epoch}
-          {...handlers}
-          onDenied={() => {
-            epoch.current += 1;
-            pending.current?.abort();
-            setDraft(null);
-            setBasis('');
-            setReason('');
-            setRead({ kind: 'denied' });
-          }}
+          onDenied={rejectHistoryAccess}
         />
       )}
       {authority.canEdit && read.kind === 'ready' && !draft && (

@@ -702,3 +702,192 @@ it.each([
     expect(fetch).not.toHaveBeenCalled();
   },
 );
+
+it.each(['history', 'exact'] as const)(
+  'clears a denied %s read immediately and completes shell actor revalidation after its child unmounts',
+  async (mode) => {
+    let releaseActor: ((response: Response) => void) | undefined;
+    const actorReply = new Promise<Response>((resolve) => {
+      releaseActor = resolve;
+    });
+    const onActorRevalidated = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const path = new URL(input.toString(), window.location.origin).pathname;
+        if (path === '/api/offer-models/consulting-ro')
+          return Response.json({ model: syntheticModel });
+        if (path === '/api/offer-models/consulting-ro/versions')
+          return mode === 'history'
+            ? new Response(null, { status: 403 })
+            : Response.json({
+                versions: [
+                  {
+                    id: syntheticModel.head.id,
+                    versionNumber: 1,
+                    predecessorVersionId: null,
+                    sourceKind: 'ILLUSTRATIVE',
+                    serviceTitle: syntheticContent.serviceTitle,
+                    ...syntheticAttribution,
+                    decision: null,
+                  },
+                ],
+                nextCursor: null,
+              });
+        if (path.endsWith(syntheticModel.head.id))
+          return new Response(null, { status: 403 });
+        if (path === '/api/access/current-actor') return actorReply;
+        throw new Error('Unexpected revalidation route.');
+      }),
+    );
+    render(
+      <OfferModelWorkspace
+        actor={syntheticActor}
+        identity={deterministicBrowserIdentity()}
+        onActorRevalidated={onActorRevalidated}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Version history' }),
+    );
+    if (mode === 'exact')
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Open version 1' }),
+      );
+    await screen.findByText('Model access is no longer available.');
+    expect(screen.queryByText('Furnizor demonstrativ')).toBeNull();
+    await act(async () => {
+      releaseActor?.(
+        Response.json({
+          ...syntheticActor,
+          activeCompany: {
+            ...syntheticActor.activeCompany,
+            offerModelGrants: [],
+          },
+        }),
+      );
+    });
+    await waitFor(() => expect(onActorRevalidated).toHaveBeenCalledOnce());
+  },
+);
+
+it.each(['Company', 'Workspace'] as const)(
+  'completes %s rejection callbacks after a denied model-history child is retired',
+  async (lost) => {
+    let releaseWorkspace: ((response: Response) => void) | undefined;
+    const workspaceReply = new Promise<Response>((resolve) => {
+      releaseWorkspace = resolve;
+    });
+    const onActorRevalidated = vi.fn(),
+      onCompanyContextRejected = vi.fn(),
+      onWorkspaceAccessRejected = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = new URL(input.toString(), window.location.origin).pathname;
+        if (path === '/api/offer-models/consulting-ro')
+          return Response.json({ model: syntheticModel });
+        if (path === '/api/offer-models/consulting-ro/versions')
+          return new Response(null, { status: 403 });
+        if (path === '/api/access/current-actor')
+          return new Headers(init?.headers).has('x-company-context-id')
+            ? new Response(null, { status: 403 })
+            : workspaceReply;
+        throw new Error('Unexpected access callback route.');
+      }),
+    );
+    render(
+      <OfferModelWorkspace
+        actor={syntheticActor}
+        identity={deterministicBrowserIdentity()}
+        onActorRevalidated={onActorRevalidated}
+        onCompanyContextRejected={onCompanyContextRejected}
+        onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Version history' }),
+    );
+    await screen.findByText('Model access is no longer available.');
+    await act(async () => {
+      releaseWorkspace?.(
+        lost === 'Workspace'
+          ? new Response(null, { status: 403 })
+          : Response.json({ ...syntheticActor, activeCompany: undefined }),
+      );
+    });
+    await waitFor(() =>
+      expect(
+        lost === 'Workspace'
+          ? onWorkspaceAccessRejected
+          : onCompanyContextRejected,
+      ).toHaveBeenCalledOnce(),
+    );
+    if (lost === 'Company') {
+      expect(onCompanyContextRejected).toHaveBeenCalledWith(
+        syntheticModel.companyId,
+      );
+      expect(onActorRevalidated).toHaveBeenCalledOnce();
+    }
+    expect(screen.queryByText('Furnizor demonstrativ')).toBeNull();
+  },
+);
+
+it('retires the independent access revalidation when a denied history read is followed by a Company switch', async () => {
+  let releaseActor: ((response: Response) => void) | undefined;
+  const actorReply = new Promise<Response>((resolve) => {
+    releaseActor = resolve;
+  });
+  const onActorRevalidated = vi.fn();
+  const otherCompany = '11000000-0000-4000-8000-000000000847';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(input.toString(), window.location.origin).pathname;
+      if (path === '/api/offer-models/consulting-ro')
+        return Response.json({
+          model:
+            new Headers(init?.headers).get('x-company-context-id') ===
+            otherCompany
+              ? null
+              : syntheticModel,
+        });
+      if (path === '/api/offer-models/consulting-ro/versions')
+        return new Response(null, { status: 403 });
+      if (path === '/api/access/current-actor') return actorReply;
+      throw new Error('Unexpected access retirement route.');
+    }),
+  );
+  const identity = deterministicBrowserIdentity();
+  const view = render(
+    <OfferModelWorkspace
+      actor={syntheticActor}
+      identity={identity}
+      onActorRevalidated={onActorRevalidated}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Version history' }),
+  );
+  await screen.findByText('Model access is no longer available.');
+  view.rerender(
+    <OfferModelWorkspace
+      actor={{
+        ...syntheticActor,
+        activeCompany: {
+          ...syntheticActor.activeCompany,
+          id: otherCompany,
+          displayName: 'Other synthetic Company',
+        },
+      }}
+      identity={identity}
+      onActorRevalidated={onActorRevalidated}
+    />,
+  );
+  await screen.findByText('No consulting Offer model has been configured.');
+  await act(async () => {
+    releaseActor?.(Response.json(syntheticActor));
+  });
+  expect(onActorRevalidated).not.toHaveBeenCalled();
+  expect(screen.queryByText('Furnizor demonstrativ')).toBeNull();
+});

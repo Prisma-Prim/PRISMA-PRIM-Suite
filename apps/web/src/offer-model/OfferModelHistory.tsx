@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
-import {
-  runLatestAuthenticatedRequest,
-  handleAuthenticatedAccessRejection,
-} from '../api/latest-authenticated-request';
+import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
 import { formatMessage } from '../localization/messages';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
@@ -15,7 +12,7 @@ import {
 } from './offer-model-response';
 import { OfferModelVersionContent } from './OfferModelVersionContent';
 import { useOfferModelCopy } from './offer-model.copy';
-import type { OfferModelWorkspaceProps } from './OfferModelWorkspace';
+import type { ApiResult } from '../api/authenticated-api-client';
 
 type Read<T> =
   | { kind: 'closed' | 'loading' | 'error' | 'unavailable' }
@@ -26,18 +23,12 @@ export function OfferModelHistory({
   blocked,
   epoch,
   onDenied,
-  ...handlers
-}: Pick<
-  OfferModelWorkspaceProps,
-  | 'onActorRevalidated'
-  | 'onCompanyContextRejected'
-  | 'onWorkspaceAccessRejected'
-> & {
+}: {
   identity: BrowserIdentity;
   model: OfferModel;
   blocked: boolean;
   epoch: { current: number };
-  onDenied: () => void;
+  onDenied: (result: ApiResult<unknown>) => void;
 }) {
   const copy = useOfferModelCopy();
   const { formatNumber } = useInterfaceLocale();
@@ -47,8 +38,8 @@ export function OfferModelHistory({
   });
   const historyPending = useRef<AbortController | undefined>(undefined);
   const exactPending = useRef<AbortController | undefined>(undefined);
-  const callbacks = useRef({ ...handlers, onDenied });
-  callbacks.current = { ...handlers, onDenied };
+  const denied = useRef(onDenied);
+  denied.current = onDenied;
   useEffect(() => {
     if (blocked) {
       historyPending.current?.abort();
@@ -83,22 +74,10 @@ export function OfferModelHistory({
           companyContextId: model.companyId,
           signal,
         }),
-      onResult: async (result, signal) => {
+      onResult: (result) => {
         if (captured !== epoch.current) return;
         if (result.status === 'unauthorized' || result.status === 'forbidden') {
-          callbacks.current.onDenied();
-          await handleAuthenticatedAccessRejection({
-            result,
-            identity,
-            signal,
-            companyContextId: model.companyId,
-            onActorRevalidated: (actor) =>
-              callbacks.current.onActorRevalidated?.(actor),
-            onCompanyContextRejected: (id) =>
-              callbacks.current.onCompanyContextRejected?.(id),
-            onWorkspaceAccessRejected: () =>
-              callbacks.current.onWorkspaceAccessRejected?.(),
-          });
+          denied.current(result);
           return;
         }
         try {
@@ -166,7 +145,7 @@ export function OfferModelHistory({
         <>
           <ol>
             {history.value.versions.map((row) => (
-              <li key={row.id}>
+              <li className="offer-model-literal" key={row.id}>
                 <button
                   type="button"
                   disabled={blocked || exact.kind === 'loading'}
