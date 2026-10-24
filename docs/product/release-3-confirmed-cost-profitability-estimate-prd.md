@@ -1,6 +1,6 @@
 # PRD — Release 3B Confirmed-Cost Profitability Estimate
 
-- **Status:** Approved — bounded first-journey contract; runtime not delivered
+- **Status:** Approved — bounded first-journey contract; delivery tracked in #498
 - **Version:** 1.0
 - **Owner:** Dan Popescu
 - **Release:** 3, bounded R3B slice
@@ -234,9 +234,9 @@ Grant and revoke events follow the existing Company assignment-administration co
 
 Each estimate version keeps the rule identity/version and any configuration identity/version actually used. The first journey uses an entered target and versioned scale/rounding rule; it introduces no target/threshold configuration. A later configuration change affects only a new estimate version. Reads of history return stored inputs and outputs; they never recompute against current configuration.
 
-Existing `ILLUSTRATIVE` Service Offerings, Tariff Versions, Pricing Rule Versions, Pricing Snapshots and adjustments remain unchanged. No record receives new provenance. No current Offer behaviour changes, including the O1 rule that an Offer references its immutable Pricing Snapshot without repricing it.
+Existing `ILLUSTRATIVE` Service Offerings, Tariff Versions, Pricing Rule Versions, Pricing Snapshots and adjustments remain unchanged. No record receives new provenance. This estimate's first journey changes no Offer behaviour, including the O1 rule that an illustrative Offer references its immutable Pricing Snapshot without repricing it.
 
-This contract defines no handoff from a profitability estimate to an Offer. A later approved compatibility slice must decide whether and how an Offer may reference both records without replacing or mutating either one.
+The separate [approved internal Offer preparation contract, Commercial Workflow §26](release-3-commercial-26-estimate-offer-preparation.md), now owns the bounded handoff from one exact Director-approved Estimate Version. It preserves the amount/currency and source approval without creating a Pricing Snapshot, exposing costs or determining net/gross/tax meaning. It does not expand estimate permissions or change an economic Version or decision. Operational price, external representation and Contract compatibility remain deferred.
 
 ## 8. Activity, privacy and interface consequences
 
@@ -321,6 +321,6 @@ Implementation stays inside existing NestJS, PostgreSQL/Drizzle, authorization, 
 
 ## 12. Readiness and delivery state
 
-The bounded product contract is **Approved** under the dated review above. Runtime is not delivered; documentation approval changes no application behavior or MVP coverage. The vertical implementation child [#498](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/498) remains blocked by #497 until this contract is merged and all ordinary readiness gates pass. It must deliver explicit assignment administration, schema/API/UI, immutable version history, exact Director decisions and the proofs in section 10 as one journey.
+The bounded product contract is **Approved** under the dated review above. Its first runtime journey is tracked by the completed vertical child [#498](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/498), including assignment administration, immutable economic Versions and exact Director decisions. The live tracker owns delivery evidence; this document's approval is not itself runtime proof. The separate §26 Offer compatibility amendment does not reopen or broaden that completed estimate issue.
 
 Readiness requires the published canonical contract and amendments, the reviewed context-free child issue and closed dependencies. No additional Client case, tariff, fiscal opinion, Offer Template or Contract Template blocks this first journey. Broader pricing/fiscal policy, configuration administration, actual-cost tracking, integrations and Offer compatibility need separate approved slices.
