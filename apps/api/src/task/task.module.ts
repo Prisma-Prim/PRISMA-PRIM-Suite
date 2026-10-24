@@ -7,6 +7,8 @@ import { DatabaseModule } from '../database/database.module.js';
 import { ProjectModule } from '../project/project.module.js';
 import { ProjectOpenTaskQuery } from './project-open-task.query.js';
 import { TaskService } from './task.service.js';
+import { TaskResultsService } from './task-results.service.js';
+import { DocumentsModule } from '../documents/documents.module.js';
 @Module({
   imports: [
     AccessModule,
@@ -15,8 +17,9 @@ import { TaskService } from './task.service.js';
     DatabaseModule,
     ProjectModule,
     ServerClockModule,
+    DocumentsModule,
   ],
-  providers: [ProjectOpenTaskQuery, TaskService],
-  exports: [ProjectOpenTaskQuery, TaskService],
+  providers: [ProjectOpenTaskQuery, TaskService, TaskResultsService],
+  exports: [ProjectOpenTaskQuery, TaskService, TaskResultsService],
 })
 export class TaskModule {}

@@ -106,6 +106,48 @@
   align-content: start;
   gap: 1rem;
 }
+.task-results {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e6eaf1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.task-results form {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0;
+  max-width: 44rem;
+}
+.task-results textarea,
+.task-results select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid #9ca8bb;
+  border-radius: 6px;
+  background: #fff;
+  color: #15233b;
+  font: inherit;
+}
+.task-results textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.task-results button:not(:where(.shared-select__trigger)) {
+  margin: 0.35rem 0.5rem 0.35rem 0;
+}
+.task-result-declaration {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.65rem;
+  background: #f7f9fc;
+}
+.task-result-text {
+  white-space: pre-wrap;
+}
 .task-panel > p {
   margin: 0;
 }

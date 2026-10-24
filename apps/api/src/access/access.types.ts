@@ -18,11 +18,13 @@ import type {
   CompanyProfitabilityDirectorPermission,
   CompanyOperationalRiskPermission,
   CompanyProjectPermission,
+  CompanyProjectPermissionSetVersion,
   CompanyProjectApproverPermission,
   CompanySalesStageConfigurationPermission,
   CompanyProjectTemplatePermission,
   CompanyProjectTemplateConfigurationPermission,
   CompanyProjectStagePermission,
+  TaskResultPermission,
 } from './company-permissions.js';
 import type { IdeasActorProjection } from './ideas-captured-grants.js';
 
@@ -45,6 +47,7 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   clientPermissions: CompanyClientPermission[];
   documentPermissions?: DocumentPermission[];
   documentPermissionSetVersion?: DocumentPermissionSetVersion;
+  documentPermissionAssignmentId?: string;
   missionDeliverableAccessAssignmentId?: string;
   missionDeliverableAccessPermissionSetVersion?: 'v1';
   /** The live captured Company Document Approver assignment, if any. */
@@ -54,10 +57,15 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   documentContentReaderPermissionSetVersion?: 'v1';
   documentContentUploaderAssignmentId?: string;
   documentContentUploaderPermissionSetVersion?: 'v1';
+  taskResultPermissions?: TaskResultPermission[];
+  taskResultRecorderAssignmentId?: string;
+  taskResultRecorderPermissionSetVersion?: 'v1';
   taskPermissions?: Array<'task.read' | 'task.manage'>;
   taskPermissionAssignmentId?: string;
   taskPermissionSetVersion?: 'v1';
   projectPermissions?: CompanyProjectPermission[];
+  projectPermissionAssignmentId?: string;
+  projectPermissionSetVersion?: CompanyProjectPermissionSetVersion;
   projectApproverPermissions?: CompanyProjectApproverPermission[];
   projectApproverPermissionAssignmentId?: string;
   projectApproverPermissionSetVersion?: 'v1';

@@ -434,6 +434,76 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/company-task-result-recorder-assignments:
+    post:
+      operationId: grantCompanyDocumentTaskResultRecorderAssignment
+      summary: Grant the opt-in Company Task Result Recorder v1 bundle to an active Workspace Membership
+      description: >-
+        Requires company.assignment.manage. Explicitly grants exactly
+        task.result.record in captured v1, independently of all Task/Project/Client,
+        Document metadata, mission-family and PDF content prerequisites. Existing
+        assignments and migration grant nothing. Actual grant records one minimal
+        bundle-label event; repeated commands and exact replay record none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantCompanyContextAssignmentInput'
+      responses:
+        '201':
+          description: The active canonical Company Task Result Recorder assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentTaskResultRecorderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or a target is not active in the current Workspace.
+  /api/company-task-result-recorder-assignments/{workspaceMembershipId}/{companyId}:
+    delete:
+      operationId: revokeCompanyDocumentTaskResultRecorderAssignment
+      summary: Revoke the Company Task Result Recorder assignment
+      description: >-
+        An actual revocation records one
+        `company_task_result_recorder_assignment.revoked` event whose metadata is
+        limited to the bundle label; a repeat, replay or denial records none.
+      tags:
+        - Access
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: workspaceMembershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The revoked canonical Company Task Result Recorder assignment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDocumentTaskResultRecorderAssignment'
+        '400':
+          description: A target or idempotent command is invalid.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: The actor lacks assignment authority or the assignment is outside the current Workspace.
   /api/company-document-content-reader-assignments:
     post:
       operationId: grantCompanyDocumentContentReaderAssignment
@@ -2057,6 +2127,181 @@ paths:
           description: The edited Task, an unchanged result, or an exact replay.
         '409':
           $ref: '#/components/responses/TaskProjectConflict'
+  /api/tasks/{taskId}/results:
+    parameters:
+      - $ref: '#/components/parameters/RequiredCompanyContextId'
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      operationId: readTaskResult
+      summary: Read the current exact mission Task result
+      description: >-
+        Requires live Task, Project, original Client, Document metadata,
+        mission-family and content-Reader authority. Recorder is not required.
+        An authorized empty stream is revision zero/current null; denied results
+        never disclose existence. Reads use a repeatable-read snapshot. No result
+        facts are projected into ordinary Task DTOs/history or general Activity.
+      tags: [Task]
+      responses:
+        '200':
+          description: Target identity/title, ordinary Task version, result revision, mutability and the exact current declaration or null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultSnapshot'
+        '401': { description: No verified identity. }
+        '403':
+          {
+            description: Invalid Company context or missing ordinary Task authority.,
+          }
+        '404':
+          {
+            description: The combined Task and Document resource is unavailable.,
+          }
+    post:
+      operationId: recordTaskResult
+      summary: Deliberately record the first exact frozen mission Task result
+      description: >-
+        Requires captured Company Task Result Recorder v1, task.manage and every
+        live read prerequisite. New intent requires an open Task/Project, active
+        exact original Client/relationship and a currently associated same-scope
+        mission Version. Documents resolves its current clean frozen PDF. The
+        declaration, restricted revision-only event, receipt and Client fence
+        commit atomically without changing ordinary Task state/version. Authority
+        and recorded endpoints precede committed replay of historical observations.
+      tags: [Task]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskResultRecordInput'
+      responses:
+        '201':
+          description: Immutable minimal receipt, including an exact committed replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultReceipt'
+        '400':
+          {
+            description: Malformed fields,
+            limits,
+            observations or idempotency key.,
+          }
+        '401': { description: No verified identity. }
+        '403':
+          {
+            description: Missing live command authority or invalid Company context.,
+          }
+        '404':
+          { description: Unavailable Task or exact eligible Document Version. }
+        '409':
+          {
+            description: Stale observations,
+            closed Task/Project,
+            existing result or conflicting key reuse.,
+          }
+  /api/tasks/{taskId}/results/corrections:
+    post:
+      operationId: correctTaskResult
+      summary: Append a reasoned successor without rewriting the preceding Task result
+      description: >-
+        Uses the same live authority, new-intent state, exact-reference,
+        serialization and dedicated receipt rules as first recording. Requires
+        the exact observed current result revision. Normalized unchanged text
+        and reference confirm a no-op without declaration/event/revision/fence
+        changes. A material successor preserves its predecessor; exhausted
+        revisions refuse safely. Receipt replay never restores an older current.
+      tags: [Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/TaskId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskResultCorrectionInput'
+      responses:
+        '201':
+          description: Corrected, unchanged or exact replay receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResultReceipt'
+        '400':
+          { description: Malformed declaration, reason, observations or key. }
+        '401': { description: No verified identity. }
+        '403': { description: Missing current command authority. }
+        '404': { description: Unavailable Task or eligible exact Version. }
+        '409':
+          {
+            description: Missing/stale result,
+            closed state,
+            revision exhaustion or conflicting key reuse.,
+          }
+  /api/tasks/{taskId}/results/history:
+    get:
+      operationId: readTaskResultHistory
+      summary: Read immutable newest-first Task result declarations under combined authority
+      description: Same live combined read boundary as current. Privacy gates precede row bounds and lookahead. Completion, closure, unlinking and readable original-Client supersession preserve historical attribution and exact bytes.
+      tags: [Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/TaskId'
+        - in: query
+          name: beforeRevision
+          schema: { type: integer, minimum: 1, maximum: 2147483647 }
+      responses:
+        '200':
+          description: Task identity, at most25 declarations, hasMore and nextBeforeRevision or null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [taskId, declarations, hasMore, nextBeforeRevision]
+                properties:
+                  taskId: { type: string, format: uuid }
+                  declarations:
+                    type: array
+                    maxItems: 25
+                    items:
+                      { $ref: '#/components/schemas/TaskResultDeclaration' }
+                  hasMore: { type: boolean }
+                  nextBeforeRevision: { type: [integer, 'null'], minimum: 1 }
+        '400': { description: Invalid or unexpected query fields. }
+        '401': { description: No verified identity. }
+        '403': { description: Invalid context or ordinary Task authority. }
+        '404': { description: Combined result resource unavailable. }
+  /api/tasks/{taskId}/results/eligible-versions:
+    get:
+      operationId: listEligibleTaskResultVersions
+      summary: Select named exact frozen mission Versions associated with this Task Project
+      description: Same combined read gate, without Recorder. Includes official and deliberately historical superseded Versions with clean preserved PDFs, exact original Client and current Project association. Closed targets return mutable false and an empty selector.
+      tags: [Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Target Task identity, mutability and named frozen Version references.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [taskId, mutable, versions]
+                properties:
+                  taskId: { type: string, format: uuid }
+                  mutable: { type: boolean }
+                  versions:
+                    type: array
+                    items: { $ref: '#/components/schemas/TaskResultReference' }
+        '401': { description: No verified identity. }
+        '403': { description: Invalid context or ordinary Task authority. }
+        '404': { description: Combined result resource unavailable. }
   /api/tasks/{taskId}/status:
     post:
       operationId: changeTaskStatus
@@ -3808,6 +4053,107 @@ components:
         daysOverdue:
           type: integer
           minimum: 1
+    TaskResultRecordInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          expectedTaskVersion,
+          expectedResultRevision,
+          declaration,
+          documentId,
+          versionId,
+        ]
+      properties:
+        expectedTaskVersion: { type: integer, minimum: 1, maximum: 2147483647 }
+        expectedResultRevision:
+          { type: integer, minimum: 0, maximum: 2147483647 }
+        declaration: { type: string, minLength: 1, maxLength: 2000 }
+        documentId: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+    TaskResultCorrectionInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          expectedTaskVersion,
+          expectedResultRevision,
+          declaration,
+          documentId,
+          versionId,
+          reason,
+        ]
+      properties:
+        expectedTaskVersion: { type: integer, minimum: 1, maximum: 2147483647 }
+        expectedResultRevision:
+          { type: integer, minimum: 0, maximum: 2147483647 }
+        declaration: { type: string, minLength: 1, maxLength: 2000 }
+        documentId: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    TaskResultReference:
+      type: object
+      additionalProperties: false
+      required:
+        [documentId, versionId, versionNumber, title, status, representationId]
+      properties:
+        documentId: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+        versionNumber: { type: integer, minimum: 1 }
+        title: { type: string, description: Frozen Version title. }
+        status: { type: string, enum: [official, superseded] }
+        representationId: { type: string, format: uuid }
+    TaskResultDeclaration:
+      type: object
+      additionalProperties: false
+      required: [id, revision, declaration, actor, occurredAt, reference, kind]
+      properties:
+        id: { type: string, format: uuid }
+        revision: { type: integer, minimum: 1, maximum: 2147483647 }
+        declaration: { type: string, minLength: 1, maxLength: 2000 }
+        actor: { $ref: '#/components/schemas/TaskActor' }
+        occurredAt: { type: string, format: date-time }
+        reference: { $ref: '#/components/schemas/TaskResultReference' }
+        kind: { type: string, enum: [recorded, corrected] }
+        predecessorId: { type: string, format: uuid }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+      oneOf:
+        - properties:
+            kind: { const: recorded }
+            revision: { const: 1 }
+          not:
+            anyOf:
+              - required: [predecessorId]
+              - required: [reason]
+        - required: [predecessorId, reason]
+          properties:
+            kind: { const: corrected }
+            revision: { minimum: 2 }
+    TaskResultSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        [taskId, projectId, taskTitle, taskVersion, revision, mutable, current]
+      properties:
+        taskId: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        taskTitle: { type: string }
+        taskVersion: { type: integer, minimum: 1 }
+        revision: { type: integer, minimum: 0, maximum: 2147483647 }
+        mutable: { type: boolean }
+        current:
+          oneOf:
+            - { type: 'null' }
+            - { $ref: '#/components/schemas/TaskResultDeclaration' }
+    TaskResultReceipt:
+      type: object
+      additionalProperties: false
+      required: [action, taskId, resultId, resultRevision]
+      properties:
+        action: { type: string, enum: [recorded, corrected, unchanged] }
+        taskId: { type: string, format: uuid }
+        resultId: { type: string, format: uuid }
+        resultRevision: { type: integer, minimum: 1, maximum: 2147483647 }
     TaskActor:
       type: object
       additionalProperties: false
@@ -3931,6 +4277,8 @@ components:
             - company_context_assignment.revoked
             - company_director_client_assignment.granted
             - company_director_client_assignment.revoked
+            - company_task_result_recorder_assignment.granted
+            - company_task_result_recorder_assignment.revoked
             - company_project_approver_assignment.granted
             - company_project_approver_assignment.revoked
             - company_project_template_configuration_assignment.granted
@@ -4055,6 +4403,7 @@ components:
             - Company Project Template User
             - Company Project Stage Advancer
             - Company Project Template Configuration
+            - Company Task Result Recorder
     ClientCorrectedMetadata:
       type: object
       additionalProperties: false
@@ -4412,6 +4761,7 @@ components:
             - Company Project Template User
             - Company Project Stage Advancer
             - Company Project Template Configuration
+            - Company Task Result Recorder
         permissionSetVersion:
           type:
             - string
@@ -4558,6 +4908,34 @@ components:
         bundle:
           type: string
           const: Company Document Approver
+        permissionSetVersion:
+          type: string
+          const: v1
+        active:
+          type: boolean
+    CompanyTaskResultRecorderAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - bundle
+        - permissionSetVersion
+        - active
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        bundle:
+          type: string
+          const: Company Task Result Recorder
         permissionSetVersion:
           type: string
           const: v1
@@ -6567,6 +6945,15 @@ components:
         taskPermissionSetVersion:
           type: string
           const: v1
+        projectPermissionAssignmentId: { type: string, format: uuid }
+        projectPermissionSetVersion: { type: string, enum: [v1, v2] }
+        documentPermissionAssignmentId: { type: string, format: uuid }
+        taskResultPermissions:
+          type: array
+          uniqueItems: true
+          items: { type: string, const: task.result.record }
+        taskResultRecorderAssignmentId: { type: string, format: uuid }
+        taskResultRecorderPermissionSetVersion: { type: string, const: v1 }
         projectApproverPermissions:
           type: array
           uniqueItems: true

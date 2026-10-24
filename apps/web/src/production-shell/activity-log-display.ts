@@ -1,4 +1,5 @@
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
+import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
 import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { useWorkspaceInvitationsCopy } from '../access/workspace-invitations.copy';
@@ -58,7 +59,9 @@ export function useActivityLogDisplay() {
   >;
   const risk = useOperationalRiskCopy();
   const missionActions = useMissionDeliverableCopy().activityActionLabels;
+  const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
+    ...taskResultActions,
     ...missionActions,
     'company_ideas_reader_assignment.granted': ideas('readerGranted'),
     'company_ideas_reader_assignment.revoked': ideas('readerRevoked'),

@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { TaskResults } from './TaskResults';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
 import {
   conflictCode,
@@ -1123,6 +1124,17 @@ function TaskProject({
         </>
       )}
       {feedback && <p role="status">{copy[feedback]}</p>}
+      {selected && load.kind !== 'denied' && detail?.kind !== 'missing' && (
+        <TaskResults
+          actor={actor}
+          identity={identity}
+          taskId={selected}
+          projectId={projectId}
+          observedTaskVersion={
+            detail?.kind === 'ready' ? detail.task.version : undefined
+          }
+        />
+      )}
       {mutation.kind === 'uncertain' && (
         <button type="button" onClick={() => void run(mutation.command)}>
           {copy.retry}

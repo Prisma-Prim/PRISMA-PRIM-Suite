@@ -305,6 +305,10 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Operational Risk Recorder',
     versions: { v1: ['risk.record'] },
   },
+  company_task_result_recorder: {
+    label: 'Company Task Result Recorder',
+    versions: { v1: ['task.result.record'] },
+  },
   company_mission_deliverable_access: {
     label: 'Company Mission Deliverable Access',
     versions: { v1: ['document.mission_deliverable.access'] },
@@ -736,6 +740,21 @@ export function projectApproverPermissionsFor(
   version: unknown,
 ): readonly CompanyProjectApproverPermission[] {
   return companyRolePermissionsFor(COMPANY_PROJECT_APPROVER_BUNDLE, version);
+}
+
+export const COMPANY_TASK_RESULT_RECORDER_BUNDLE =
+  'company_task_result_recorder' satisfies CompanyRoleBundle;
+export const COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_task_result_recorder.label;
+export type TaskResultPermission =
+  CompanyRolePermission<'company_task_result_recorder'>;
+export function taskResultPermissionsFor(
+  version: unknown,
+): readonly TaskResultPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+    version,
+  );
 }
 
 export const COMPANY_TASK_MANAGER_BUNDLE =

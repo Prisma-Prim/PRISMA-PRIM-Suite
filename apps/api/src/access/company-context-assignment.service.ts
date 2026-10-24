@@ -45,8 +45,10 @@ import {
   COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
+  COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
@@ -130,6 +132,7 @@ type BundleDefinition = {
     | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL
     | typeof COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL
+    | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
     | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
     | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
     | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
@@ -230,6 +233,11 @@ const DOCUMENT_APPROVER_BUNDLE: BundleDefinition = {
 const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
   value: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   label: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
+  permissionSetVersion: 'v1',
+};
+const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
+  value: COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  label: COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   permissionSetVersion: 'v1',
 };
 const MISSION_DELIVERABLE_ACCESS_BUNDLE: BundleDefinition = {
@@ -382,6 +390,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
 ] as const;
 
@@ -1428,6 +1437,32 @@ export class CompanyContextAssignmentService {
       idempotencyKey,
     );
   }
+  grantTaskResultRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      TASK_RESULT_RECORDER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeTaskResultRecorder(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      TASK_RESULT_RECORDER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   grantMissionDeliverableAccess(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -1880,6 +1915,10 @@ function assignmentAction(
       return granted
         ? 'company_document_content_reader_assignment.granted'
         : 'company_document_content_reader_assignment.revoked';
+    case COMPANY_TASK_RESULT_RECORDER_BUNDLE:
+      return granted
+        ? 'company_task_result_recorder_assignment.granted'
+        : 'company_task_result_recorder_assignment.revoked';
     case COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE:
       return granted
         ? 'company_mission_deliverable_access_assignment.granted'
@@ -2084,6 +2123,14 @@ function assignmentRecord(
       return {
         ...base,
         bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_TASK_RESULT_RECORDER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Task Result Recorder version.');
+      return {
+        ...base,
+        bundle: COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE:

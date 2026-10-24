@@ -582,6 +582,16 @@ export class TaskService {
       { isolationLevel: 'repeatable read' },
     );
   }
+  /** Result commands call this after the original Client barrier. */
+  async lockResultTargetWithinTransaction(input: {
+    actor: ActorContext;
+    taskId: string;
+  }) {
+    await this.access.requireActor(input.actor, true, true);
+    const current = await this.row(input.actor, input.taskId, true);
+    await this.projects.read(input.actor, current.projectId);
+    return view(current);
+  }
   async read(actor: ActorContext, taskIdValue: unknown) {
     const taskId = requireUuid(taskIdValue);
     return this.database.transaction(

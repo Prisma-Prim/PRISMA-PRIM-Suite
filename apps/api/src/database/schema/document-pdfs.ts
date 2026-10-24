@@ -41,6 +41,13 @@ export const documentPdfs = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('document_pdfs_content_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.documentId,
+      table.versionId,
+      table.id,
+    ),
     uniqueIndex('document_pdfs_revision_unique').on(
       table.workspaceId,
       table.companyId,
