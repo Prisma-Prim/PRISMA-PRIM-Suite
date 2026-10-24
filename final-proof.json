@@ -1,0 +1,33 @@
+{
+  "issue": 850,
+  "pr": 851,
+  "source": "9374c71858f75a76757cfeb3fd559491316d4066",
+  "base": "3eb8a2cb013f07d55dd40619afec7004c2b0dd8a",
+  "tree": "1662e6271f59ffb45f9e19de257005e8d1b06b85",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1513,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "rootOrderedPreparation": "Standards then Spec",
+    "independentStandardsFindings": 0,
+    "independentSpecFindings": 0,
+    "automaticOpeningReviewCompletedNoFindings": true,
+    "corrections": 0,
+    "unresolvedThreads": 0
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation contract only; no runtime, real fiscal/legal values, approved business prose, official numbering, real grants or deployment.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-08T15:51:57.579000+00:00"
+}
