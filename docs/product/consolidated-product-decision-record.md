@@ -1603,6 +1603,14 @@ Money follows the fixed-precision and currency rules in section 12. Discounts, o
 
 The later [bounded approved-estimate internal preparation contract, Commercial Workflow §26](release-3-commercial-26-estimate-offer-preparation.md), authorized by Dan's D6 continuation in #840 on 2026-10-24, adds an internal-only exact economic price-source variant under the same Offer identity/history. It preserves unspecified tax meaning and independent approvals; existing illustrative Snapshots and their simulated workflow remain unchanged. The capability PRD owns the complete behavior and permission consequences; this is no new Iurie fiscal or operational-content approval.
 
+The separate [Commercial Workflow §28](release-3-commercial-28-model-offer-generation.md),
+normalized under Dan's 2026-10-24 ordered pilot continuation in #850, defines a new
+approved-model/economic Offer variant with explicit human net/tax facts and frozen
+Romanian output. It remains non-official and simulated, preserves old internal
+drafts and captured grants, and supplies no real fiscal, numbering, acceptance or
+legal authority. The capability owner holds the complete contract; this is not new
+Iurie evidence or an automatic upgrade of a received example.
+
 Three dimensions are recorded separately:
 
 1. internal preparation and approval state;

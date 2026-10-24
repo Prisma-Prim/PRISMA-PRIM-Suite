@@ -153,6 +153,14 @@ new use. It seeds no approved content and does not treat receipt of an example a
 approval. Its first runtime outcome is configuration, not generated Offer bytes,
 price/tax authority, external use or Document Registry designation.
 
+The separate [Commercial Workflow §28](release-3-commercial-28-model-offer-generation.md)
+defines one fixed Romanian generated Offer representation from exact approved
+model/economic sources and human-declared commercial facts. It preserves full
+inputs, HTML and digest under the Offer Version, with explicit renderer identity;
+it creates no Document Registry entry, provider Location or official designation.
+Non-official rehearsal output and later numbering retain distinct immutable
+representations/Versions; an approved checksum is never rewritten.
+
 Question source: S03.
 
 ## 15. Technical dependencies

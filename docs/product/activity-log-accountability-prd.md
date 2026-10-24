@@ -80,6 +80,13 @@ Model-read permission grants no Activity access. Separate model bundle assignmen
 events retain the existing Company administration visibility and bundle-label-only
 metadata convention.
 
+The separate [generated Offer compatibility contract §28.9](release-3-commercial-28-model-offer-generation.md#289-activity-storage-and-compatibility)
+reuses the existing Offer event family and transaction guarantees for the new
+closed model/economic source variant. Its source stamps remain frozen Offer
+content; commercial Activity keeps §25's existing target/version projection and
+independent visibility only. No amount, declaration basis, model body or source
+configuration/economic history is added to Activity responses or dashboards.
+
 ## 7. Authorization and privacy
 
 Activity Log read permission is separate from mutation permissions. Queries enforce Workspace and Company scope before returning events, counts, filters or target labels.

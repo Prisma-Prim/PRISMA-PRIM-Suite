@@ -323,4 +323,10 @@ Implementation stays inside existing NestJS, PostgreSQL/Drizzle, authorization, 
 
 The bounded product contract is **Approved** under the dated review above. Its first runtime journey is tracked by the completed vertical child [#498](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/498), including assignment administration, immutable economic Versions and exact Director decisions. The live tracker owns delivery evidence; this document's approval is not itself runtime proof. The separate §26 Offer compatibility amendment does not reopen or broaden that completed estimate issue.
 
+The separate [Commercial §28 generation contract](release-3-commercial-28-model-offer-generation.md)
+reuses the same exact approved commercial projection and independent cost-read
+boundary. The preparer explicitly declares net use and a separate sales-tax
+amount on a new Offer Version; no fiscal-cost input, source decision or existing
+estimate is reinterpreted or changed. This adds no tax engine or historical costs.
+
 Readiness requires the published canonical contract and amendments, the reviewed context-free child issue and closed dependencies. No additional Client case, tariff, fiscal opinion, Offer Template or Contract Template blocks this first journey. Broader pricing/fiscal policy, configuration administration, actual-cost tracking, integrations and Offer compatibility need separate approved slices.
