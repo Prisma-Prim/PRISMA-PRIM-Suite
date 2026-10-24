@@ -1,0 +1,23 @@
+[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/workspace/work/d2-pilot-plan/spec/apps/api[39m
+
+ [32m✓[39m src/demonstration/demonstration-boundary.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 535[2mms[22m[39m
+     [33m[2m✓[22m[39m stays outside the served application import graph [33m 498[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-register.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-runner.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-scenario.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-identity.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-seed.command.test.ts [2m([22m[2m13 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-application.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 244[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-target-guard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [2m[90m↓[39m[22m src/demonstration/demonstration-runner.rest.test.ts [2m([22m[2m27 tests[22m[2m | [22m[33m27 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/demonstration/demonstration-target-concurrency.rest.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+
+[2m Test Files [22m [1m[32m8 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (10)[39m
+[2m      Tests [22m [1m[32m48 passed[39m[22m[2m | [22m[33m35 skipped[39m[90m (83)[39m
+[2m   Start at [22m 04:23:33
+[2m   Duration [22m 4.28s[2m (transform 2.02s, setup 0ms, import 6.39s, tests 892ms, environment 1ms)[22m
+
