@@ -136,6 +136,7 @@ export function ProjectWorkspace({
   const copy = useProjectCopy();
   const documentsCopy = useProjectDocumentsCopy();
   const templateCopy = useProjectTemplateCopy();
+  const planTaskRequestId = useRef(0);
   const taskCopy = useProjectTaskCopy();
   const templateAuthority = projectTemplateAuthority(actor);
   const previousTemplateAuthority = useRef(templateAuthority);
@@ -993,6 +994,19 @@ export function ProjectWorkspace({
                 actor={actor}
                 identity={identity}
                 projectId={selected.project.id}
+                onOpenTask={(taskId) => {
+                  // Local requests use a separate negative sequence from shell navigation.
+                  const requestId = --planTaskRequestId.current;
+                  setDetailPanel('tasks');
+                  setSelected((current) =>
+                    current?.project.id === selected.project.id
+                      ? {
+                          ...current,
+                          requestedTask: { taskId, requestId, focus: 'task' },
+                        }
+                      : current,
+                  );
+                }}
               />
             )}
           {canUseProjectTemplate(actor) &&

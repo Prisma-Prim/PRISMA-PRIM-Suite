@@ -14,7 +14,9 @@ import { TaskService } from '../task/task.service.js';
 import {
   readTemplateSnapshot,
   templateCreationInput,
+  templateTasks,
 } from './project-template.definition.js';
+import { PILOT_TEMPLATE_KEY } from './project-pilot-plan.definition.js';
 
 @Injectable()
 export class ProjectTemplateService {
@@ -33,6 +35,7 @@ export class ProjectTemplateService {
       const companyId = await this.access.requireActor(actor, {
         instantiate: true,
         lock: true,
+        pilot: input.templateKey === PILOT_TEMPLATE_KEY,
       });
       const fingerprint = JSON.stringify({ companyId, ...input });
       const lock = JSON.stringify([
@@ -70,6 +73,7 @@ export class ProjectTemplateService {
         actor,
         companyId,
         version: input.templateVersion,
+        templateKey: input.templateKey,
       });
       const project = await this.projects.createNewWithinTransaction(
         actor,
@@ -82,9 +86,7 @@ export class ProjectTemplateService {
       const copied = await this.tasks.createTemplateCopiesWithinTransaction({
         actor,
         projectId: project.id,
-        titles: source.stages.flatMap((stage) =>
-          stage.tasks.map((task) => task.title),
-        ),
+        titles: templateTasks(source).map((task) => task.title),
       });
       await this.database.connection.insert(projectTemplateInstances).values({
         projectId: project.id,
@@ -134,6 +136,8 @@ export class ProjectTemplateService {
       );
     if (!instance) return { template: null };
     const snapshot = readTemplateSnapshot(instance.snapshot);
+    if (snapshot.templateKey === PILOT_TEMPLATE_KEY)
+      await this.access.requireActor(actor, { copiedPlan: true, pilot: true });
     const copies = await this.database.connection
       .select()
       .from(projectTemplateTaskCopies)
@@ -145,24 +149,34 @@ export class ProjectTemplateService {
         ),
       )
       .orderBy(asc(projectTemplateTaskCopies.position));
-    const expectedCount = snapshot.stages.reduce(
-      (count, stage) => count + stage.tasks.length,
-      0,
-    );
+    const expectedCount = templateTasks(snapshot).length;
     if (copies.length !== expectedCount)
       throw new Error('Incomplete stored Project Template Task copies.');
     let position = 0;
+    function nextTaskId() {
+      const copy = copies[position];
+      if (!copy || copy.position !== position)
+        throw new Error('Invalid stored Project Template Task order.');
+      position += 1;
+      return copy.taskId;
+    }
+    if (snapshot.templateKey === PILOT_TEMPLATE_KEY)
+      return {
+        template: {
+          ...snapshot,
+          activities: snapshot.activities.map((activity) => ({
+            ...activity,
+            taskId: nextTaskId(),
+          })),
+        },
+      };
     return {
       template: {
         ...snapshot,
         stages: snapshot.stages.map((stage) => ({
           ...stage,
           tasks: stage.tasks.map((task) => {
-            const copy = copies[position];
-            if (!copy || copy.position !== position)
-              throw new Error('Invalid stored Project Template Task order.');
-            position += 1;
-            return { ...task, taskId: copy.taskId };
+            return { ...task, taskId: nextTaskId() };
           }),
         })),
       },

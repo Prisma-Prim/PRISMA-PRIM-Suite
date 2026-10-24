@@ -33,7 +33,7 @@ const CAPTURED_VERSIONS = {
   'Company Operational Risk Reader': ['v1'],
   'Company Operational Risk Recorder': ['v1'],
   'Company Sales Stage Configuration': ['v1'],
-  'Company Project Template User': ['v1'],
+  'Company Project Template User': ['v1', 'v2'],
   'Company Project Stage Advancer': ['v1'],
   'Company Project Template Configuration': ['v1'],
 } as const satisfies Record<

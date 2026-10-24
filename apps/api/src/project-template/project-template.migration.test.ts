@@ -181,7 +181,7 @@ it.skipIf(!databaseUrl)(
           `INSERT INTO company_role_assignments (workspace_id, company_id, workspace_membership_id, bundle, permission_set_version, revoked_at) VALUES ($1, $2, $3, 'company_project_template_user', $4, now())`,
           [workspaceId, companyId, membershipId, version],
         );
-      for (const version of [null, 'v2', 'V1'])
+      for (const version of [null, 'v3', 'V1'])
         await expect(insert(version)).rejects.toMatchObject({ code: '23514' });
       await insert('v1');
       await requestInCompany('/company-project-template-user-assignments', {

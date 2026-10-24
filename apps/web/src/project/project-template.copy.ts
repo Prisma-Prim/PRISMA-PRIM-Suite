@@ -19,6 +19,13 @@ const keys = [
   'required',
   'planNotice',
   'planError',
+  'sourcePreview',
+  'chooseSource',
+  'openTask',
+  'pilotWarning',
+  'pilotNotice',
+  'activity',
+  'intendedResult',
   'bundle',
   'prerequisites',
   'granted',
@@ -26,6 +33,16 @@ const keys = [
 ] as const;
 export const projectTemplateMessages = defineMessages(keys, {
   ro: {
+    chooseSource: 'Selectați modelul și Versiunea pentru consultare',
+    sourcePreview: 'Plan sursă selectat',
+    openTask: 'Deschide Sarcina asociată',
+    pilotWarning:
+      'Plan pilot ilustrativ. Creează treisprezece Sarcini fără responsabil sau termen. Nu autorizează începerea unei misiuni reale.',
+    pilotNotice:
+      'Acțiunile și rezultatele așteptate sunt păstrate din sursă. Nu confirmă realizarea, aprobarea sau certificarea și nu definesc etape software.',
+    activity: 'Activitate',
+    intendedResult: 'Rezultat așteptat',
+
     creationMissing:
       'Clientul sau Versiunea de model selectată nu mai este disponibilă. Reîncărcați opțiunile înainte de a crea Proiectul.',
     creationUnavailable:
@@ -40,7 +57,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     revoked: 'a revocat accesul la modelele de Proiect',
     bundle: 'Utilizator modele de Proiect',
     prerequisites:
-      'Acordă numai citirea și instanțierea modelelor. Contextul Companiei, citirea Clientului, crearea Proiectelor și administrarea Sarcinilor se acordă separat. Nu acordă publicarea versiunilor, trecerea etapelor sau aprobarea începerii lucrului.',
+      'Noile drepturi v2 includ modelele existente și pilotul cu treisprezece activități. Drepturile v1 rămân doar pentru modelele existente până la revocarea și reacordarea explicită. Acordă numai citirea și instanțierea modelelor. Contextul Companiei, citirea Clientului, crearea Proiectelor și administrarea Sarcinilor se acordă separat. Nu acordă publicarea versiunilor, trecerea etapelor sau aprobarea începerii lucrului.',
     choose: 'Model de Proiect',
     manual: 'Fără model — pregătire manuală',
     loading: 'Se încarcă modelele…',
@@ -59,6 +76,16 @@ export const projectTemplateMessages = defineMessages(keys, {
     planError: 'Planul original nu a putut fi încărcat.',
   },
   ru: {
+    chooseSource: 'Выберите модель и Версию для просмотра',
+    sourcePreview: 'Выбранный исходный план',
+    openTask: 'Открыть связанную Задачу',
+    pilotWarning:
+      'Иллюстративный пилотный план создаёт тринадцать Задач без исполнителя и срока. Не разрешает начало реального проекта.',
+    pilotNotice:
+      'Исходные действия и ожидаемые результаты сохранены. Они не подтверждают выполнение, утверждение или сертификацию и не задают программные этапы.',
+    activity: 'Действие',
+    intendedResult: 'Ожидаемый результат',
+
     creationMissing:
       'Выбранный Клиент или Версия шаблона больше недоступны. Обновите варианты перед созданием Проекта.',
     creationUnavailable:
@@ -73,7 +100,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     revoked: 'отозвал право доступа к шаблонам Проектов',
     bundle: 'Пользователь шаблонов Проектов',
     prerequisites:
-      'Даёт только чтение шаблонов и создание из них Проекта. Контекст Компании, чтение Клиента, создание Проектов и управление Задачами предоставляются отдельно. Не даёт права публиковать версии, менять этап или разрешать начало работ.',
+      'Новые права v2 включают прежние шаблоны и пилот из тринадцати действий. Права v1 остаются прежними до явного отзыва и повторной выдачи. Даёт только чтение шаблонов и создание из них Проекта. Контекст Компании, чтение Клиента, создание Проектов и управление Задачами предоставляются отдельно. Не даёт права публиковать версии, менять этап или разрешать начало работ.',
     choose: 'Шаблон Проекта',
     manual: 'Без шаблона — ручная подготовка',
     loading: 'Загрузка шаблонов…',
@@ -92,6 +119,16 @@ export const projectTemplateMessages = defineMessages(keys, {
     planError: 'Не удалось загрузить исходный план.',
   },
   fr: {
+    chooseSource: 'Choisir le modèle et la Version à consulter',
+    sourcePreview: 'Plan source sélectionné',
+    openTask: 'Ouvrir la Tâche associée',
+    pilotWarning:
+      'Plan pilote illustratif. Crée treize Tâches sans responsable ni échéance. N’autorise pas le démarrage d’une mission réelle.',
+    pilotNotice:
+      'Les actions et résultats attendus sont préservés depuis la source. Ils ne confirment ni réalisation, ni approbation, ni certification et ne définissent pas d’étapes logicielles.',
+    activity: 'Activité',
+    intendedResult: 'Résultat attendu',
+
     creationMissing:
       'Le Client ou la Version du modèle sélectionné n’est plus disponible. Rechargez les choix avant de créer le Projet.',
     creationUnavailable:
@@ -106,7 +143,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     revoked: 'a révoqué l’accès aux modèles de Projets',
     bundle: 'Utilisateur des modèles de Projets',
     prerequisites:
-      'Accorde uniquement la lecture et l’instanciation des modèles. Le contexte Entreprise, la lecture Client, la création de Projets et la gestion des Tâches sont accordés séparément. N’accorde ni publication de version, ni passage d’étape, ni autorisation de démarrer.',
+      'Les nouveaux droits v2 couvrent les modèles existants et le pilote de treize activités. Les droits v1 restent limités aux modèles existants jusqu’à une révocation et une réattribution explicites. Accorde uniquement la lecture et l’instanciation des modèles. Le contexte Entreprise, la lecture Client, la création de Projets et la gestion des Tâches sont accordés séparément. N’accorde ni publication de version, ni passage d’étape, ni autorisation de démarrer.',
     choose: 'Modèle de Projet',
     manual: 'Sans modèle — préparation manuelle',
     loading: 'Chargement des modèles…',
@@ -125,6 +162,16 @@ export const projectTemplateMessages = defineMessages(keys, {
     planError: 'Le plan d’origine n’a pas pu être chargé.',
   },
   en: {
+    chooseSource: 'Choose model and Version to inspect',
+    sourcePreview: 'Selected source plan',
+    openTask: 'Open linked Task',
+    pilotWarning:
+      'Illustrative pilot plan. Creates thirteen unassigned Tasks without due dates. Does not authorize a real engagement to start.',
+    pilotNotice:
+      'Source actions and intended results are preserved. They do not confirm completion, approval or certification and do not define software stages.',
+    activity: 'Activity',
+    intendedResult: 'Intended result',
+
     creationMissing:
       'The selected Client or Template Version is no longer available. Reload the choices before creating the Project.',
     creationUnavailable:
@@ -139,7 +186,7 @@ export const projectTemplateMessages = defineMessages(keys, {
     revoked: 'revoked Project template access',
     bundle: 'Project template user',
     prerequisites:
-      'Grants template read and instantiation only. Company context, Client read, Project creation and Task management are granted separately. Grants no version publication, stage advancement or authority to start work.',
+      'New grants capture v2 for legacy templates and the thirteen-activity pilot. Existing v1 grants remain legacy-only until explicitly revoked and regranted. Grants template read and instantiation only. Company context, Client read, Project creation and Task management are granted separately. Grants no version publication, stage advancement or authority to start work.',
     choose: 'Project template',
     manual: 'No template — manual preparation',
     loading: 'Loading templates…',

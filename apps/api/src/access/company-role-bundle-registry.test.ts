@@ -28,6 +28,12 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
   },
   company_project_template_user: {
     v1: ['project.template.read', 'project.template.instantiate'],
+    v2: [
+      'project.template.read',
+      'project.template.instantiate',
+      'project.template.pilot.read',
+      'project.template.pilot.instantiate',
+    ],
   },
   company_context_access: {},
   company_director_client_access: {
@@ -330,7 +336,7 @@ describe('Company role permission set version CHECK', () => {
   const bundle = '"company_role_assignments"."bundle"::text';
   const version = '"company_role_assignments"."permission_set_version"';
   const singleVersionBundles =
-    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_deliverable_access'";
+    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_deliverable_access'";
   const versionedBundles =
     "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_deliverable_access'";
   const EXPECTED_CHECK = [
@@ -346,6 +352,8 @@ describe('Company role permission set version CHECK', () => {
     `        (${bundle} = 'company_project_access' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
     '        OR',
     `        (${bundle} = 'company_opportunity_manager' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
+    '        OR',
+    `        (${bundle} = 'company_project_template_user' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
     '        OR',
     `        (${bundle} IN (${singleVersionBundles}) AND ${version} IS NOT NULL AND ${version} = 'v1')`,
     '        OR',

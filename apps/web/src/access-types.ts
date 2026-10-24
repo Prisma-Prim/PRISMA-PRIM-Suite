@@ -125,10 +125,13 @@ export interface ActorContext {
     projectTemplateConfigurationPermissionAssignmentId?: string;
     projectTemplateConfigurationPermissionSetVersion?: 'v1';
     projectTemplatePermissions?: Array<
-      'project.template.read' | 'project.template.instantiate'
+      | 'project.template.read'
+      | 'project.template.instantiate'
+      | 'project.template.pilot.read'
+      | 'project.template.pilot.instantiate'
     >;
     projectTemplatePermissionAssignmentId?: string;
-    projectTemplatePermissionSetVersion?: 'v1';
+    projectTemplatePermissionSetVersion?: 'v1' | 'v2';
     salesStageConfigurationPermissions?: Array<'commercial.sales_stage.configure'>;
     salesStageConfigurationPermissionAssignmentId?: string;
     salesStageConfigurationPermissionSetVersion?: 'v1';

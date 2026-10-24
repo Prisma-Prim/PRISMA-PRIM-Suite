@@ -627,6 +627,8 @@ describe.skipIf(!databaseUrl)(
           projectTemplatePermissions: [
             'project.template.read',
             'project.template.instantiate',
+            'project.template.pilot.read',
+            'project.template.pilot.instantiate',
           ],
         });
         const events = objects((await read('/activity-log')).events).filter(
@@ -686,10 +688,7 @@ describe.skipIf(!databaseUrl)(
               1,
             );
             second = suspend();
-            await observedWaiters(
-              '%from "workspace_memberships"%for update%',
-              1,
-            );
+            await observedWaiters('%from "workspaces"%for update%', 1);
           }
           await barrier.query('COMMIT');
           expect([(await first).status, (await second).status]).toEqual(

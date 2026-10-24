@@ -207,3 +207,185 @@ it('discards the old Company’s late catalogue reply after moving to a Company 
   ).not.toBeInTheDocument();
   expect(props.onSelection).not.toHaveBeenCalled();
 });
+
+it('offers the explicitly captured pilot model and renders thirteen preserved actions with intended outcomes', async () => {
+  const { pilotSourceFixture, pilotCopyFixture } =
+    await import('./project-pilot-plan.test-fixtures');
+  const pilotActor: ActorContext = {
+    ...actor,
+    activeCompany: {
+      ...actor.activeCompany,
+      id: 'company-one',
+      displayName: 'Company',
+      clientPermissions: [],
+      projectPermissions: ['project.read'],
+      projectTemplatePermissionAssignmentId: 'grant-v2',
+      projectTemplatePermissionSetVersion: 'v2',
+      projectTemplatePermissions: [
+        'project.template.read',
+        'project.template.instantiate',
+        'project.template.pilot.read',
+        'project.template.pilot.instantiate',
+      ],
+    },
+  };
+  const choose = vi.fn();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      Response.json(
+        url.endsWith('/template')
+          ? { template: pilotCopyFixture }
+          : {
+              templates: url.includes('templateKey=CONSULTING_MISSION')
+                ? [pilotSourceFixture]
+                : [templateFixture],
+              headVersion: 1,
+              nextBeforeVersion: null,
+            },
+      ),
+    ),
+  );
+  prepareLocale();
+  render(
+    <InterfaceLocaleProvider>
+      <ProjectTemplateSelector
+        actor={pilotActor}
+        identity={identity}
+        selection={null}
+        onSelection={choose}
+        disabled={false}
+      />
+      <ProjectTemplatePlan
+        actor={pilotActor}
+        identity={identity}
+        projectId="pilot-project"
+      />
+    </InterfaceLocaleProvider>,
+  );
+  const selector = await screen.findByRole('combobox', {
+    name: 'Project template',
+  });
+
+  changeValue(selector, 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE:1');
+  expect(choose).toHaveBeenCalledWith({
+    templateKey: 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE',
+    version: 1,
+  });
+  expect(await screen.findByText('Plan de implementare (PDCA)')).toBeVisible();
+  expect(screen.getByText('Asistență la audit extern')).toBeVisible();
+  expect(screen.getByText('Certificare obținută')).toBeVisible();
+  expect(screen.queryByText(/— Required/)).not.toBeInTheDocument();
+});
+
+it('lets a source-only v2 reader inspect the pilot before creation and preserves literal text through all interface locales', async () => {
+  const { ProjectTemplateConfiguration } =
+    await import('./ProjectTemplateConfiguration');
+  const { InterfaceLocaleSelect } =
+    await import('../localization/InterfaceLocaleSelect');
+  const { pilotSourceFixture } =
+    await import('./project-pilot-plan.test-fixtures');
+  const reader: ActorContext = {
+    ...actor,
+    activeCompany: {
+      id: 'company-one',
+      displayName: 'Company',
+      clientPermissions: [],
+      projectPermissions: ['project.read'],
+      projectTemplatePermissionAssignmentId: 'source-v2',
+      projectTemplatePermissionSetVersion: 'v2',
+      projectTemplatePermissions: [
+        'project.template.read',
+        'project.template.instantiate',
+        'project.template.pilot.read',
+        'project.template.pilot.instantiate',
+      ],
+    },
+  };
+  const fetch = vi.fn(async (url: string) =>
+    Response.json({
+      templates: [
+        url.includes('templateKey=') ? pilotSourceFixture : templateFixture,
+      ],
+      headVersion: 1,
+      nextBeforeVersion: null,
+    }),
+  );
+  vi.stubGlobal('fetch', fetch);
+  prepareLocale();
+  const identity = deterministicBrowserIdentity();
+  const view = render(
+    <InterfaceLocaleProvider>
+      <InterfaceLocaleSelect />
+      <ProjectTemplateConfiguration actor={reader} identity={identity} />
+    </InterfaceLocaleProvider>,
+  );
+  const selector = await screen.findByRole('combobox', {
+    name: 'Project template',
+  });
+  changeValue(selector, 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE:1');
+  const preview = await screen.findByRole('region', {
+    name: 'Selected source plan',
+  });
+  expect(preview.querySelectorAll('li')).toHaveLength(13);
+  expect(screen.getByText('Plan de implementare (PDCA)')).toBeVisible();
+  const requests = fetch.mock.calls.length;
+  for (const locale of ['ro', 'ru', 'fr', 'en']) {
+    changeValue(
+      screen.getByRole('combobox', {
+        name: /Interface language|Limba interfeței|Язык интерфейса|Langue de l’interface/,
+      }),
+      locale,
+    );
+    expect(screen.getByText('Certificare obținută')).toBeVisible();
+    expect(
+      screen.getByText(
+        'Analiza sistemului existent și determinarea gradului de conformare la standardele ISO',
+      ),
+    ).toBeVisible();
+  }
+  expect(fetch.mock.calls).toHaveLength(requests);
+  expect(
+    screen.queryByRole('button', { name: /Create Project|Publish successor/ }),
+  ).not.toBeInTheDocument();
+  const replacementIdentity = deterministicBrowserIdentity();
+  view.rerender(
+    <InterfaceLocaleProvider>
+      <InterfaceLocaleSelect />
+      <ProjectTemplateConfiguration
+        actor={reader}
+        identity={replacementIdentity}
+      />
+    </InterfaceLocaleProvider>,
+  );
+  await screen.findByRole('combobox', { name: 'Project template' });
+  expect(screen.queryByText('Certificare obținută')).not.toBeInTheDocument();
+  changeValue(
+    await screen.findByRole('combobox', { name: 'Project template' }),
+    'CONSULTING_MISSION_PILOT_ILLUSTRATIVE:1',
+  );
+  expect(await screen.findByText('Certificare obținută')).toBeVisible();
+  const legacyReader: ActorContext = {
+    ...reader,
+    activeCompany: reader.activeCompany
+      ? {
+          ...reader.activeCompany,
+          projectTemplatePermissionSetVersion: 'v1',
+          projectTemplatePermissions: [
+            'project.template.read',
+            'project.template.instantiate',
+          ],
+        }
+      : undefined,
+  };
+  view.rerender(
+    <InterfaceLocaleProvider>
+      <InterfaceLocaleSelect />
+      <ProjectTemplateConfiguration
+        actor={legacyReader}
+        identity={replacementIdentity}
+      />
+    </InterfaceLocaleProvider>,
+  );
+  expect(screen.queryByText('Certificare obținută')).not.toBeInTheDocument();
+});

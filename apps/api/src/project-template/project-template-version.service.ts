@@ -18,7 +18,12 @@ import {
   CONSULTING_PREPARATION_V1,
   isCompatibleIllustrativeTemplate,
   readTemplateSnapshot,
+  type ProjectTemplateKey,
 } from './project-template.definition.js';
+import {
+  CONSULTING_MISSION_PILOT_V1,
+  PILOT_TEMPLATE_KEY,
+} from './project-pilot-plan.definition.js';
 import {
   publicationInput,
   requireTemplateKey,
@@ -36,12 +41,35 @@ export class ProjectTemplateVersionService {
     private readonly accountability: AccountabilityService,
   ) {}
 
-  async catalogue(actor: ActorContext, before?: string) {
+  async catalogue({
+    actor,
+    beforeVersion: before,
+    templateKey: model,
+  }: {
+    actor: ActorContext;
+    beforeVersion?: string;
+    templateKey?: string;
+  }) {
+    const templateKey =
+      model === undefined
+        ? CONSULTING_PREPARATION_V1.templateKey
+        : requireTemplateKey(model);
     const beforeVersion =
       before === undefined ? undefined : versionParameter(before);
     return this.database.transaction(
       async () => {
-        const companyId = await this.access.requireActor(actor);
+        const companyId = await this.access.requireActor(actor, {
+          pilot: templateKey === PILOT_TEMPLATE_KEY,
+        });
+        if (templateKey === PILOT_TEMPLATE_KEY)
+          return {
+            templates:
+              beforeVersion === undefined || beforeVersion > 1
+                ? [CONSULTING_MISSION_PILOT_V1]
+                : [],
+            headVersion: 1,
+            nextBeforeVersion: null,
+          };
         const head = await this.head({ actor, companyId });
         const rows = await this.database.connection
           .select()
@@ -82,15 +110,18 @@ export class ProjectTemplateVersionService {
   }
 
   async read(actor: ActorContext, templateKey: string, parameter: string) {
-    requireTemplateKey(templateKey);
+    const selectedKey = requireTemplateKey(templateKey);
     const version = versionParameter(parameter);
     return this.database.transaction(
       async () => {
-        const companyId = await this.access.requireActor(actor);
+        const companyId = await this.access.requireActor(actor, {
+          pilot: selectedKey === PILOT_TEMPLATE_KEY,
+        });
         const source = await this.sourceWithinTransaction({
           actor,
           companyId,
           version,
+          templateKey: selectedKey,
         });
         return { template: source };
       },
@@ -103,11 +134,17 @@ export class ProjectTemplateVersionService {
     actor,
     companyId,
     version,
+    templateKey,
   }: {
     actor: ActorContext;
     companyId: string;
     version: number;
+    templateKey: ProjectTemplateKey;
   }) {
+    if (templateKey === PILOT_TEMPLATE_KEY) {
+      if (version !== 1) throw new NotFoundException();
+      return CONSULTING_MISSION_PILOT_V1;
+    }
     if (version === 1) return CONSULTING_PREPARATION_V1;
     const [row] = await this.database.connection
       .select()
@@ -139,6 +176,10 @@ export class ProjectTemplateVersionService {
     key: string | undefined;
   }) {
     requireTemplateKey(templateKey);
+    if (templateKey !== CONSULTING_PREPARATION_V1.templateKey)
+      throw new BadRequestException(
+        'The pilot Version is fixed and cannot be published here.',
+      );
     const input = publicationInput(body);
     const idempotencyKey = requireIdempotencyKey(key);
     return this.database.transaction(async () => {

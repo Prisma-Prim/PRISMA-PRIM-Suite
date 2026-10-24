@@ -274,7 +274,15 @@ export const COMPANY_ROLE_BUNDLES = {
   // Dedicated opt-in creation only; existing Project/Task assignments never expand.
   company_project_template_user: {
     label: 'Company Project Template User',
-    versions: { v1: ['project.template.read', 'project.template.instantiate'] },
+    versions: {
+      v1: ['project.template.read', 'project.template.instantiate'],
+      v2: [
+        'project.template.read',
+        'project.template.instantiate',
+        'project.template.pilot.read',
+        'project.template.pilot.instantiate',
+      ],
+    },
   },
   // Independent opt-in stage command only; all read prerequisites remain separate.
   company_project_stage_advancer: {
