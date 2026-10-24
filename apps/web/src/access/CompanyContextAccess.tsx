@@ -359,6 +359,7 @@ export function CompanyContextAccess({
         result.status === 'ok' &&
         command.bundle !== 'company-context' &&
         command.bundle !== 'project-template-configuration' &&
+        command.bundle !== 'project-template-user' &&
         command.bundle !== 'operational-risk-reader' &&
         command.bundle !== 'operational-risk-recorder' &&
         command.workspaceMembershipId.toLowerCase() ===

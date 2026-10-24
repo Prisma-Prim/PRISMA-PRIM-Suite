@@ -1670,13 +1670,13 @@ export class CompanyContextAuthorization {
       }
       if (
         row.bundle === COMPANY_PROJECT_TEMPLATE_USER_BUNDLE &&
-        row.permissionSetVersion === 'v1'
+        (row.permissionSetVersion === 'v1' || row.permissionSetVersion === 'v2')
       ) {
         company.projectTemplatePermissions = [
           ...projectTemplatePermissionsFor(row.permissionSetVersion),
         ];
         company.projectTemplatePermissionAssignmentId = row.assignmentId;
-        company.projectTemplatePermissionSetVersion = 'v1';
+        company.projectTemplatePermissionSetVersion = row.permissionSetVersion;
       }
       if (
         row.bundle === COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE &&

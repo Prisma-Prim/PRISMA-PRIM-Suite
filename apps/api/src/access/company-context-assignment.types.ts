@@ -108,10 +108,13 @@ export type CompanyContextAssignmentRecord =
         | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
         | typeof COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL
         | typeof COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE_LABEL
-        | typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL
         | typeof COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE_LABEL
         | typeof COMPANY_PROJECT_STAGE_ADVANCER_BUNDLE_LABEL;
       permissionSetVersion: 'v1';
+    })
+  | (CompanyContextAssignmentRecordBase & {
+      bundle: typeof COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL;
+      permissionSetVersion: 'v1' | 'v2';
     })
   | (CompanyContextAssignmentRecordBase & {
       bundle: typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL;

@@ -893,10 +893,7 @@ describe.skipIf(!databaseUrl)(
             first = advance();
             await observedWaiters('%from "client_accounts"%for update%', 1);
             second = suspend();
-            await observedWaiters(
-              '%from "workspace_memberships"%for update%',
-              1,
-            );
+            await observedWaiters('%from "workspaces"%for update%', 1);
           }
           await barrier.query('COMMIT');
           expect([(await first).status, (await second).status]).toEqual(
@@ -1063,6 +1060,8 @@ describe.skipIf(!databaseUrl)(
       expect(actor.projectTemplatePermissions).toEqual([
         'project.template.read',
         'project.template.instantiate',
+        'project.template.pilot.read',
+        'project.template.pilot.instantiate',
       ]);
       expect(actor.projectPermissions).not.toContain('project.stage.advance');
     });
@@ -1365,7 +1364,7 @@ describe.skipIf(!databaseUrl)(
       expect(await body(revoke)).toMatchObject({
         active: false,
         bundle: 'Company Project Template User',
-        permissionSetVersion: 'v1',
+        permissionSetVersion: 'v2',
       });
       expect((await request('/project-templates')).status).toBe(403);
       expect((await request(`/projects/${projectId}/template`)).status).toBe(

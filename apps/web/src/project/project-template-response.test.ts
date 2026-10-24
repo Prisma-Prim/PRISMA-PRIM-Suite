@@ -98,3 +98,51 @@ describe('Project Template HTTP boundary', () => {
     ).toBeUndefined();
   });
 });
+
+it('rejects partial, future or contradictory thirteen-activity sources and incomplete copied identities', async () => {
+  const { pilotSourceFixture, pilotCopyFixture } =
+    await import('./project-pilot-plan.test-fixtures');
+  expect(readTemplateCatalogue({ templates: [pilotSourceFixture] })).toEqual([
+    pilotSourceFixture,
+  ]);
+  expect(readCopiedTemplatePlan({ template: pilotCopyFixture })).toEqual({
+    template: pilotCopyFixture,
+  });
+  for (const changed of [
+    { version: 2 },
+    { templateKey: 'UNKNOWN' },
+    { stages: [] },
+    { activities: pilotSourceFixture.activities.slice(0, 12) },
+    {
+      activities: pilotSourceFixture.activities.map((row) => ({
+        ...row,
+        required: true,
+      })),
+    },
+    {
+      activities: pilotSourceFixture.activities.map((row, index) => ({
+        ...row,
+        key: index === 12 ? 'CT_AN12' : row.key,
+      })),
+    },
+  ])
+    expect(
+      readTemplateCatalogue({
+        templates: [{ ...pilotSourceFixture, ...changed }],
+      }),
+    ).toBeUndefined();
+  expect(
+    readCopiedTemplatePlan({ template: pilotSourceFixture }),
+  ).toBeUndefined();
+  expect(
+    readCopiedTemplatePlan({
+      template: {
+        ...pilotCopyFixture,
+        activities: pilotCopyFixture.activities.map((row) => ({
+          ...row,
+          taskId: pilotCopyFixture.activities[0]?.taskId,
+        })),
+      },
+    }),
+  ).toBeUndefined();
+});

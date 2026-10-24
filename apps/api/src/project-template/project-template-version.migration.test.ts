@@ -104,10 +104,15 @@ it.skipIf(!databaseUrl)(
         '/company-director-client-assignments',
         '/company-project-assignments',
         '/company-task-manager-assignments',
-        '/company-project-template-user-assignments',
         '/company-project-stage-advancer-assignments',
       ])
         await request(path, { workspaceMembershipId: memberId, companyId });
+      // Seed the captured v1 that existed on this historical schema. The
+      // current public grant deliberately captures v2 only after migration 0077.
+      await database.targetPool.query(
+        "INSERT INTO company_role_assignments(workspace_id,company_id,workspace_membership_id,bundle,permission_set_version) VALUES($1,$2,$3,'company_project_template_user','v1')",
+        [workspaceId, companyId, memberId],
+      );
       const clientId = string(
         (await request('/clients', { displayName: 'Preserved 0069 Client' }))
           .id,

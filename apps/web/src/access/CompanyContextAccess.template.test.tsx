@@ -21,7 +21,7 @@ const actor: ActorContext = {
   active: true,
   workspacePermissions: ['company.assignment.manage'],
 };
-function administration(active: boolean, version = 'v1') {
+function administration(active: boolean, version = 'v2') {
   return {
     members: [
       {
@@ -61,7 +61,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-it('requires an administrator’s deliberate grant and revoke of the dedicated captured v1 without supplying other authority', async () => {
+it('requires an administrator’s deliberate grant and revoke of the dedicated captured v2 without supplying other authority', async () => {
   let active = false;
   const writes: Array<{
     method: string;
@@ -92,7 +92,7 @@ it('requires an administrator’s deliberate grant and revoke of the dedicated c
             workspaceMembershipId: memberId,
             companyId,
             bundle: 'Company Project Template User',
-            permissionSetVersion: 'v1',
+            permissionSetVersion: 'v2',
             active,
           },
           { status: active ? 201 : 200 },
@@ -112,7 +112,7 @@ it('requires an administrator’s deliberate grant and revoke of the dedicated c
   );
   expect(
     screen.getByText(
-      'Grants template read and instantiation only. Company context, Client read, Project creation and Task management are granted separately. Grants no version publication, stage advancement or authority to start work.',
+      'New grants capture v2 for legacy templates and the thirteen-activity pilot. Existing v1 grants remain legacy-only until explicitly revoked and regranted. Grants template read and instantiation only. Company context, Client read, Project creation and Task management are granted separately. Grants no version publication, stage advancement or authority to start work.',
     ),
   ).toBeVisible();
   expect(screen.getByText(/Current server state:/)).toHaveTextContent(
@@ -121,7 +121,7 @@ it('requires an administrator’s deliberate grant and revoke of the dedicated c
   fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
   await screen.findByText('Access granted. Server state refreshed.');
   expect(screen.getByText(/Current server state:/)).toHaveTextContent(
-    'Granted — captured version v1',
+    'Granted — captured version v2',
   );
   fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
   await screen.findByText('Access revoked. Server state refreshed.');
@@ -152,7 +152,7 @@ it('assigns and revokes only the independent captured stage-advance bundle throu
     'fetch',
     vi.fn(async (path: string, options?: RequestInit) => {
       if (path === '/api/company-context-assignments/administration') {
-        const base = administration(active);
+        const base = administration(active, 'v1');
         return Response.json({
           ...base,
           assignments: base.assignments.map((assignment) => ({
@@ -216,4 +216,70 @@ it('assigns and revokes only the independent captured stage-advance bundle throu
       body: undefined,
     },
   ]);
+});
+
+it('revalidates self Template authority without retiring independent Client or Project work', async () => {
+  const self: ActorContext = {
+      ...actor,
+      workspaceMembershipId: memberId,
+      activeCompany: {
+        id: companyId,
+        displayName: 'Company',
+        clientPermissions: [],
+      },
+    },
+    refresh = vi.fn(),
+    clientChanged = vi.fn();
+  let active = false;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, options?: RequestInit) => {
+      if (path === '/api/company-context-assignments/administration')
+        return Response.json(administration(active));
+      if (path === '/api/access/current-actor')
+        return Response.json({
+          ...self,
+          activeCompany: {
+            ...self.activeCompany,
+            projectTemplatePermissionSetVersion: 'v2',
+            projectTemplatePermissionAssignmentId: 'new-grant',
+            projectTemplatePermissions: [
+              'project.template.read',
+              'project.template.instantiate',
+              'project.template.pilot.read',
+              'project.template.pilot.instantiate',
+            ],
+          },
+        });
+      if (
+        path === '/api/company-project-template-user-assignments' &&
+        options?.method === 'POST'
+      ) {
+        active = true;
+        return Response.json(administration(true).assignments[0], {
+          status: 201,
+        });
+      }
+      return new Response(null, { status: 404 });
+    }),
+  );
+  localStorage.setItem(interfaceLocaleStorageKey, 'en');
+  render(
+    <InterfaceLocaleProvider>
+      <CompanyContextAccess
+        actor={self}
+        identity={deterministicBrowserIdentity()}
+        onActorRevalidated={refresh}
+        onClientAuthorityChanged={clientChanged}
+      />
+    </InterfaceLocaleProvider>,
+  );
+  await screen.findByLabelText('Workspace member');
+  changeValue(screen.getByLabelText('Workspace member'), memberId);
+  changeValue(screen.getByLabelText('Company'), companyId);
+  changeValue(screen.getByLabelText('Access bundle'), 'project-template-user');
+  fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+  await screen.findByText('Access granted. Server state refreshed.');
+  expect(refresh).toHaveBeenCalledOnce();
+  expect(clientChanged).not.toHaveBeenCalled();
 });

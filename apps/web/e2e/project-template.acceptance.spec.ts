@@ -1322,7 +1322,7 @@ async function grantTemplate(
   const value: unknown = await response.json();
   expect(value).toMatchObject({
     bundle: 'Company Project Template User',
-    permissionSetVersion: 'v1',
+    permissionSetVersion: 'v2',
     active: true,
   });
 }
@@ -1361,3 +1361,173 @@ function identifier(value: unknown) {
     throw new Error('Expected a persisted identifier.');
   return value.id;
 }
+
+test('creates and reopens the thirteen-activity pilot, preserves expected outcomes and independent Task edits', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  const narrow = testInfo.project.name.endsWith('narrow'),
+    suffix = narrow ? 'Narrow' : 'Desktop';
+  const companyId = required('ACCEPTANCE_PRIMARY_COMPANY_ID'),
+    membershipId = required('ACCEPTANCE_PRIMARY_MEMBERSHIP_ID');
+  await grantTemplate(page.request, membershipId, companyId);
+  const client = await page.request.post(`${apiOrigin}/api/clients`, {
+    headers: {
+      ...ada,
+      'x-company-context-id': companyId,
+      'idempotency-key': randomUUID(),
+    },
+    data: { displayName: `Pilot Client DEMO ${suffix}` },
+  });
+  expect(client.status()).toBe(201);
+  const clientId = identifier(await client.json());
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Hello, Ada Ionescu.' }),
+  ).toBeVisible();
+  if (narrow)
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  await selectOption(
+    page.getByRole('combobox', { name: 'Active Company', exact: true }),
+    companyId,
+  );
+  if (narrow)
+    await page.getByRole('button', { name: 'Close navigation' }).click();
+  await navigate(page, 'Projects', narrow);
+  const projects = page.locator('.project-workspace'),
+    title = `Pilot misiune SMI DEMO ${suffix}`,
+    model = 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE';
+  await projects
+    .getByRole('textbox', { name: 'Project title', exact: true })
+    .fill(title);
+  await selectOption(
+    projects.getByRole('combobox', { name: 'Client', exact: true }),
+    clientId,
+  );
+  await selectOption(
+    projects.getByRole('combobox', { name: 'Project template', exact: true }),
+    `${model}:1`,
+  );
+  await expect(
+    projects.getByText(
+      'Illustrative pilot plan. Creates thirteen unassigned Tasks without due dates. Does not authorize a real engagement to start.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  const writes: Array<{ body: string | null; key: string | undefined }> = [];
+  await page.route('**/api/projects/from-template', async (route) => {
+    writes.push({
+      body: route.request().postData(),
+      key: route.request().headers()['idempotency-key'],
+    });
+    if (writes.length === 1) {
+      const committed = await route.fetch();
+      expect(committed.status()).toBe(201);
+      await route.fulfill({ status: 503, body: 'Synthetic lost confirmation' });
+      return;
+    }
+    await route.continue();
+  });
+  await projects
+    .getByRole('button', { name: 'Create Project from template', exact: true })
+    .click();
+  await expect(
+    projects.getByText(
+      'The Project creation could not be confirmed. Retry the same details safely.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await projects
+    .getByRole('button', { name: 'Create Project from template', exact: true })
+    .click();
+  await expect(
+    projects.getByRole('heading', { name: title, exact: true }),
+  ).toBeVisible();
+  expect(writes).toHaveLength(2);
+  expect(writes[1]).toEqual(writes[0]);
+  expect(JSON.parse(writes[0]?.body ?? '{}')).toMatchObject({
+    templateKey: model,
+    templateVersion: 1,
+    title,
+    clientAccountId: clientId,
+  });
+  const plan = projects.getByRole('region', {
+    name: 'Plan copied from template',
+    exact: true,
+  });
+  await expect(plan.getByRole('listitem')).toHaveCount(13);
+  await expect(
+    plan.getByText('Plan de implementare (PDCA)', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    plan.getByText('Asistență la audit extern', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    plan.getByText('Certificare obținută', { exact: true }),
+  ).toBeVisible();
+  await expect(plan.getByText('Intended result:', { exact: true })).toHaveCount(
+    13,
+  );
+  await expect(plan.getByText(/— Required$/u)).toHaveCount(0);
+  await expect(
+    projects
+      .locator('.project-stage')
+      .getByRole('button', { name: 'Advance stage' }),
+  ).toHaveCount(0);
+  const tasks = projects.locator('.project-tasks'),
+    first = 'Analiza organizației și audit diagnosticare';
+  await expect(
+    tasks
+      .getByRole('navigation', { name: 'Tasks', exact: true })
+      .getByRole('listitem'),
+  ).toHaveCount(13);
+  await plan
+    .getByRole('button', { name: 'Open linked Task — CT_AN01', exact: true })
+    .click();
+  await expect(
+    tasks.locator('.task-facts').getByText('Unassigned', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    tasks.locator('.task-facts').getByText('No due date', { exact: true }),
+  ).toBeVisible();
+  await tasks
+    .getByRole('textbox', { name: 'Task title', exact: true })
+    .fill(`Independent execution DEMO ${suffix}`);
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      /^\/api\/tasks\/[^/]+$/u.test(new URL(response.url()).pathname),
+  );
+  await tasks.getByRole('button', { name: 'Save Task', exact: true }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(
+    plan.getByRole('heading', { name: `CT_AN01 — ${first}`, exact: true }),
+  ).toBeVisible();
+  await noOverflow(page);
+  await plan.screenshot({
+    path: testInfo.outputPath(`pilot-${suffix.toLowerCase()}-plan.png`),
+  });
+  await page.reload();
+  await projects
+    .getByRole('list', { name: 'Projects', exact: true })
+    .getByRole('button')
+    .filter({ hasText: title })
+    .click();
+  await expect(plan.getByRole('listitem')).toHaveCount(13);
+  await expect(
+    tasks.getByRole('button', {
+      name: `Independent execution DEMO ${suffix}`,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    plan.getByRole('heading', { name: `CT_AN01 — ${first}`, exact: true }),
+  ).toBeVisible();
+  await expect(
+    plan.getByText('Personal instruit și testat', { exact: true }),
+  ).toBeVisible();
+  await noOverflow(page);
+  await plan.screenshot({
+    path: testInfo.outputPath(`pilot-${suffix.toLowerCase()}-reopened.png`),
+  });
+});

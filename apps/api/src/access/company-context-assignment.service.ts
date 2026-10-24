@@ -344,7 +344,7 @@ const PROJECT_APPROVER_BUNDLE: BundleDefinition = {
 const PROJECT_TEMPLATE_USER_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE,
   label: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 const PROJECT_TEMPLATE_CONFIGURATION_BUNDLE: BundleDefinition = {
   value: COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE,
@@ -2345,12 +2345,15 @@ function assignmentRecord(
         permissionSetVersion: 'v1',
       };
     case COMPANY_PROJECT_TEMPLATE_USER_BUNDLE:
-      if (assignment.permissionSetVersion !== 'v1')
+      if (
+        assignment.permissionSetVersion !== 'v1' &&
+        assignment.permissionSetVersion !== 'v2'
+      )
         throw new Error('Invalid Company Project Template User version.');
       return {
         ...base,
         bundle: COMPANY_PROJECT_TEMPLATE_USER_BUNDLE_LABEL,
-        permissionSetVersion: 'v1',
+        permissionSetVersion: assignment.permissionSetVersion,
       };
     case COMPANY_PROJECT_TEMPLATE_CONFIGURATION_BUNDLE:
       if (assignment.permissionSetVersion !== 'v1')

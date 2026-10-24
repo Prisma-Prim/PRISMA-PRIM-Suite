@@ -120,7 +120,7 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   projectTemplateConfigurationPermissionSetVersion?: 'v1';
   projectTemplatePermissions?: CompanyProjectTemplatePermission[];
   projectTemplatePermissionAssignmentId?: string;
-  projectTemplatePermissionSetVersion?: 'v1';
+  projectTemplatePermissionSetVersion?: 'v1' | 'v2';
   salesStageConfigurationPermissions?: CompanySalesStageConfigurationPermission[];
   salesStageConfigurationPermissionAssignmentId?: string;
   salesStageConfigurationPermissionSetVersion?: 'v1';

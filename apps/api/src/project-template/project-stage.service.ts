@@ -21,6 +21,7 @@ import { isOpenProjectStatus } from '../project/project-status.js';
 import { TaskService } from '../task/task.service.js';
 import { ProjectTemplateService } from './project-template.service.js';
 import { isCompatibleIllustrativeTemplate } from './project-template.definition.js';
+import { PILOT_TEMPLATE_KEY } from './project-pilot-plan.definition.js';
 import {
   readStageTaskProof,
   stageCommand,
@@ -51,7 +52,8 @@ export class ProjectStageService {
           actor,
           projectId,
         );
-        if (!template) return { progress: null };
+        if (!template || template.templateKey === PILOT_TEMPLATE_KEY)
+          return { progress: null };
         const instance = await this.instance({ actor, companyId, projectId });
         const project = await this.projects.read(actor, projectId);
         const client = await this.clients.readReferenceClient(
@@ -195,6 +197,8 @@ export class ProjectStageService {
         projectId,
         lock: true,
       });
+      if (template.templateKey === PILOT_TEMPLATE_KEY)
+        throw conflict('project_stage_conflict');
       const from = template.stages[0];
       const to = template.stages[1];
       if (
