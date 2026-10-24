@@ -10,6 +10,7 @@ export * from './project.js';
 export * from './project-lifecycle.js';
 
 export * from './task.js';
+export * from './task-results.js';
 
 export * from './sales-stage.js';
 export * from './commercial-intake.js';

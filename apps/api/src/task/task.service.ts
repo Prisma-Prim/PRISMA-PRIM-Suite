@@ -582,25 +582,38 @@ export class TaskService {
       { isolationLevel: 'repeatable read' },
     );
   }
+  /** Result commands call this after the original Client barrier. */
+  async lockResultTargetWithinTransaction(input: {
+    actor: ActorContext;
+    taskId: string;
+  }) {
+    await this.access.requireActor(input.actor, true, true);
+    const current = await this.row(input.actor, input.taskId, true);
+    await this.projects.read(input.actor, current.projectId);
+    return view(current);
+  }
   async read(actor: ActorContext, taskIdValue: unknown) {
     const taskId = requireUuid(taskIdValue);
     return this.database.transaction(
-      async () => {
-        await this.access.requireActor(actor);
-        const task = await this.visibleRow(actor, taskId);
-        const project = await this.projects.read(actor, task.projectId);
-        const client = await this.clients.readReferenceClient(
-          actor,
-          task.clientAccountId,
-        );
-        return {
-          mutable:
-            client.status === 'active' && isOpenProjectStatus(project.status),
-          task: view(task),
-        };
-      },
+      () => this.readWithinTransaction({ actor, taskId }),
       { isolationLevel: 'repeatable read' },
     );
+  }
+  /** Caller owns the transaction; preserve the ordinary Task read gates. */
+  async readWithinTransaction(input: { actor: ActorContext; taskId: string }) {
+    const { actor, taskId } = input;
+    await this.access.requireActor(actor);
+    const task = await this.visibleRow(actor, taskId);
+    const project = await this.projects.read(actor, task.projectId);
+    const client = await this.clients.readReferenceClient(
+      actor,
+      task.clientAccountId,
+    );
+    return {
+      mutable:
+        client.status === 'active' && isOpenProjectStatus(project.status),
+      task: view(task),
+    };
   }
   async history(actor: ActorContext, taskIdValue: unknown) {
     const taskId = requireUuid(taskIdValue);

@@ -18,9 +18,14 @@ export interface ActorContext {
     taskPermissions?: Array<'task.read' | 'task.manage'>;
     taskPermissionAssignmentId?: string;
     taskPermissionSetVersion?: 'v1';
+    taskResultPermissions?: Array<'task.result.record'>;
+    taskResultRecorderAssignmentId?: string;
+    taskResultRecorderPermissionSetVersion?: 'v1';
     projectPermissions?: Array<
       'project.read' | 'project.create' | 'project.update'
     >;
+    projectPermissionAssignmentId?: string;
+    projectPermissionSetVersion?: 'v1' | 'v2';
     projectApproverPermissions?: Array<
       'project.lifecycle.transition' | 'project.close'
     >;
@@ -157,6 +162,7 @@ export interface ActorContext {
     missionDeliverableAccessAssignmentId?: string;
     missionDeliverableAccessPermissionSetVersion?: 'v1';
     documentPermissionSetVersion?: 'v1' | 'v2' | 'v3';
+    documentPermissionAssignmentId?: string;
     /** The live Company Document Approver assignment, if any. */
     documentContentReaderAssignmentId?: string;
     documentContentReaderPermissionSetVersion?: 'v1';

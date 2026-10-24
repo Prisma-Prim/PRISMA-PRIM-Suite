@@ -116,6 +116,13 @@ export async function createMissionDocumentFixture(
         ACCESS_BOOTSTRAP_EXTERNAL_SUBJECT: 'mission-owner',
         ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Mission Documents DEMO',
+        ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+          {
+            provider: 'deterministic-test',
+            subject: 'mission-collaborator',
+            workspaceId: WORKSPACE_ID,
+          },
+        ]),
         DOCUMENT_MALWARE_SCANNER_HOST: '127.0.0.1',
         DOCUMENT_MALWARE_SCANNER_PORT: String(scannerAddress.port),
       },
@@ -137,6 +144,7 @@ export async function createMissionDocumentFixture(
       body?: unknown;
       company?: string | null;
       key?: string;
+      identity?: { subject: string; displayName: string; email: string };
     } = {},
   ): Promise<Response> {
     const company = options.company === undefined ? companyId : options.company;
@@ -144,9 +152,10 @@ export async function createMissionDocumentFixture(
       method: options.method ?? 'GET',
       headers: {
         'x-test-external-provider': 'deterministic-test',
-        'x-test-external-subject': 'mission-owner',
-        'x-test-display-name': 'Mission Owner DEMO',
-        'x-test-email': 'mission-owner@example.test',
+        'x-test-external-subject': options.identity?.subject ?? 'mission-owner',
+        'x-test-display-name':
+          options.identity?.displayName ?? 'Mission Owner DEMO',
+        'x-test-email': options.identity?.email ?? 'mission-owner@example.test',
         ...(company ? { 'x-company-context-id': company } : {}),
         'content-type': 'application/json',
         'idempotency-key': options.key ?? randomUUID(),

@@ -1,4 +1,5 @@
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
+import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
 import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
 import { useProjectStageCopy } from '../project/project-stage.copy';
@@ -36,6 +37,7 @@ import './access-administration.css';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
+  | 'task-result-recorder'
   | 'task-manager'
   | 'company-context'
   | 'director-client'
@@ -73,6 +75,7 @@ type AssignmentBundle =
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'task-result-recorder': '/company-task-result-recorder-assignments',
   'ideas-reader': '/company-ideas-reader-assignments',
   'ideas-recorder': '/company-ideas-recorder-assignments',
   'ideas-reviewer': '/company-ideas-reviewer-assignments',
@@ -261,6 +264,7 @@ export function CompanyContextAccess({
 
   const pdfCopy = useDocumentPdfCopy();
   const missionCopy = useMissionDeliverableCopy();
+  const taskResultCopy = useTaskResultCopy();
   if (!canManageAssignments) return null;
 
   async function submit(event: FormEvent, submission: Submission) {
@@ -627,6 +631,10 @@ export function CompanyContextAccess({
                 label: copy('projectApproverBundle'),
               },
               { value: 'task-manager', label: copy('taskManagerBundle') },
+              {
+                value: 'task-result-recorder',
+                label: taskResultCopy.t('bundle'),
+              },
             ]}
             onValueChange={(value) => {
               resetCommand();
@@ -639,6 +647,7 @@ export function CompanyContextAccess({
                 value === 'operational-risk-reader' ||
                 value === 'operational-risk-recorder' ||
                 value === 'task-manager' ||
+                value === 'task-result-recorder' ||
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
                 value === 'pricing-configuration' ||
@@ -684,6 +693,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'task-manager' && (
             <p>{copy('taskManagerPrerequisites')}</p>
+          )}
+          {bundle === 'task-result-recorder' && (
+            <p>{taskResultCopy.t('prerequisites')}</p>
           )}
           {bundle === 'commercial-activity-reader' && (
             <p>{copy('commercialActivityReaderPrerequisites')}</p>
@@ -847,6 +859,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'project-template-configuration': 'Company Project Template Configuration',
     'project-stage-advancer': 'Company Project Stage Advancer',
     'task-manager': 'Company Task Manager',
+    'task-result-recorder': 'Company Task Result Recorder',
     'document-project-organizer': 'Company Document Project Organizer',
     'document-registrar': 'Company Document Registrar',
     'mission-deliverable-access': 'Company Mission Deliverable Access',
