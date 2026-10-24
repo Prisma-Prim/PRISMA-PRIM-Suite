@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   ConflictException,
   Inject,
@@ -444,38 +445,82 @@ export class OfferService {
       'commercial.offer.prepare',
     ]);
     const idempotencyKey = requireIdempotencyKey(key);
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireOfferAccess(
-        actor,
-        ['commercial.offer.prepare'],
-        true,
-      );
-      const opportunity = await this.intake.requireReadableOfferOpportunity(
-        actor,
-        opportunityId,
-        true,
-      );
-      const fingerprint = commandFingerprint({
-        opportunityId: opportunity.id,
-        payload: value,
-      });
-      await this.lockCommand(actor, companyId, idempotencyKey);
-      const receipt = await this.findCommand(actor, companyId, idempotencyKey);
-      if (receipt) {
-        if (
-          receipt.kind !== 'CREATE_OFFER' ||
-          receipt.opportunityId !== opportunity.id ||
-          receipt.fingerprint !== fingerprint
-        )
-          throw namedConflict(
-            'IDEMPOTENCY_CONFLICT',
-            'Idempotency-Key was already used for another Offer command.',
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId = await this.authorization.requireOfferAccess(
+          actor,
+          ['commercial.offer.prepare'],
+          true,
+        );
+        const opportunity = await this.intake.requireReadableOfferOpportunity(
+          actor,
+          opportunityId,
+          true,
+        );
+        const fingerprint = commandFingerprint({
+          opportunityId: opportunity.id,
+          payload: value,
+        });
+        await this.lockCommand(actor, companyId, idempotencyKey);
+        const receipt = await this.findCommand(
+          actor,
+          companyId,
+          idempotencyKey,
+        );
+        if (receipt) {
+          if (
+            receipt.kind !== 'CREATE_OFFER' ||
+            receipt.opportunityId !== opportunity.id ||
+            receipt.fingerprint !== fingerprint
+          )
+            throw namedConflict(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency-Key was already used for another Offer command.',
+            );
+          // A committed creation proves the association; it is never removed.
+          if (!opportunity.originalClientAccountId)
+            throw new Error('Missing Client of a recorded Offer creation.');
+          const command = readCreateOfferCommand(value);
+          await this.clients.lockOfferRecipient(
+            actor,
+            opportunity.originalClientAccountId,
+            command.recipient,
           );
-        // A committed creation proves the association; it is never removed.
-        if (!opportunity.originalClientAccountId)
-          throw new Error('Missing Client of a recorded Offer creation.');
+          const snapshot = await this.pricing.resolveOfferSnapshot({
+            actor,
+            companyId,
+            opportunityId: opportunity.id,
+            snapshotId: command.pricingSnapshotId,
+          });
+          const stored = await this.requireOfferById(
+            actor,
+            companyId,
+            receipt.resultOfferId,
+            1,
+          );
+          return this.offerView(actor, stored.offer, stored.version, snapshot);
+        }
+        // Only a new creation needs an open Opportunity: the exact replay above
+        // returns an Offer committed before a later outcome change. The status
+        // decides before any other creation prerequisite (section 23.5).
+        if (opportunity.status !== 'OPEN') {
+          throw namedConflict(
+            'OPPORTUNITY_NOT_OPEN',
+            'The Opportunity is not open.',
+          );
+        }
+        if (!opportunity.originalClientAccountId) {
+          throw namedConflict(
+            'OFFER_CLIENT_REQUIRED',
+            'The Request must have a readable Client before creating an Offer.',
+          );
+        }
         const command = readCreateOfferCommand(value);
-        await this.clients.lockOfferRecipient(
+        // Snapshot's live Client projection takes a share lock. Acquire the
+        // recipient write fence first so distinct Opportunities for one Client
+        // cannot deadlock by upgrading two existing share locks.
+        const recipient = await this.clients.lockOfferRecipient(
           actor,
           opportunity.originalClientAccountId,
           command.recipient,
@@ -486,137 +531,100 @@ export class OfferService {
           opportunityId: opportunity.id,
           snapshotId: command.pricingSnapshotId,
         });
-        const stored = await this.requireOfferById(
+        const existing = await this.findOffer(
+          actor.workspaceId,
+          companyId,
+          opportunity.id,
+        );
+        if (existing)
+          throw namedConflict(
+            'OFFER_ALREADY_EXISTS',
+            'An Offer already exists for this Opportunity.',
+          );
+
+        const createdAt = this.clock.now();
+        const illustrativeReference = await this.allocateReference(
+          actor.workspaceId,
+          companyId,
+        );
+        const [offer] = await this.databaseContext.connection
+          .insert(offers)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            opportunityId: opportunity.id,
+            clientRequestId: opportunity.clientRequestId,
+            originalClientAccountId: opportunity.originalClientAccountId,
+            illustrativeReference,
+            createdByInternalUserId: actor.internalUserId,
+            createdByWorkspaceMembershipId: actor.workspaceMembershipId,
+            createdAt,
+          })
+          .returning();
+        if (!offer) throw new Error('The Offer was not recorded.');
+        const validUntil = new Date(
+          createdAt.getTime() + command.validityDays * 86_400_000,
+        );
+        const [version] = await this.databaseContext.connection
+          .insert(offerVersions)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerId: offer.id,
+            opportunityId: opportunity.id,
+            clientRequestId: opportunity.clientRequestId,
+            originalClientAccountId: opportunity.originalClientAccountId,
+            pricingSnapshotId: snapshot.id,
+            recipientClientAccountId: recipient.currentClientAccountId,
+            recipientKind: recipient.recipient.kind,
+            recipientAdditionalLegalEntityId:
+              recipient.recipient.kind === 'ADDITIONAL'
+                ? recipient.recipient.additionalLegalEntityId
+                : null,
+            recipientLegalName: recipient.recipient.legalName,
+            recipientTaxId: recipient.recipient.taxId,
+            recipientLegalAddress: recipient.recipient.legalAddress,
+            issuingCompanyLabel: actor.activeCompany?.displayName ?? '',
+            validityDays: command.validityDays,
+            validUntil,
+            scopeNote: command.scopeNote,
+            commercialConditions: command.commercialConditions,
+            templateCode: OFFER_TEMPLATE_CODE,
+            templateVersion: offerBindingForSnapshot(snapshot).templateVersion,
+            createdByInternalUserId: actor.internalUserId,
+            createdByWorkspaceMembershipId: actor.workspaceMembershipId,
+            createdAt,
+          })
+          .returning();
+        if (!version) throw new Error('Offer Version 1 was not recorded.');
+        await this.clients.recordLockedReferenceUse(actor, recipient);
+        const [recordedCommand] = await this.databaseContext.connection
+          .insert(offerCommands)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            idempotencyKey,
+            fingerprint,
+            opportunityId: opportunity.id,
+            resultOfferId: offer.id,
+            createdAt,
+          })
+          .returning({ id: offerCommands.id });
+        if (!recordedCommand)
+          throw new Error('The Create Offer receipt was not recorded.');
+        await this.accountability.recordOfferCreated({
           actor,
           companyId,
-          receipt.resultOfferId,
-          1,
-        );
-        return this.offerView(actor, stored.offer, stored.version, snapshot);
-      }
-      // Only a new creation needs an open Opportunity: the exact replay above
-      // returns an Offer committed before a later outcome change. The status
-      // decides before any other creation prerequisite (section 23.5).
-      if (opportunity.status !== 'OPEN') {
-        throw namedConflict(
-          'OPPORTUNITY_NOT_OPEN',
-          'The Opportunity is not open.',
-        );
-      }
-      if (!opportunity.originalClientAccountId) {
-        throw namedConflict(
-          'OFFER_CLIENT_REQUIRED',
-          'The Request must have a readable Client before creating an Offer.',
-        );
-      }
-      const command = readCreateOfferCommand(value);
-      // Snapshot's live Client projection takes a share lock. Acquire the
-      // recipient write fence first so distinct Opportunities for one Client
-      // cannot deadlock by upgrading two existing share locks.
-      const recipient = await this.clients.lockOfferRecipient(
-        actor,
-        opportunity.originalClientAccountId,
-        command.recipient,
-      );
-      const snapshot = await this.pricing.resolveOfferSnapshot({
-        actor,
-        companyId,
-        opportunityId: opportunity.id,
-        snapshotId: command.pricingSnapshotId,
-      });
-      const existing = await this.findOffer(
-        actor.workspaceId,
-        companyId,
-        opportunity.id,
-      );
-      if (existing)
-        throw namedConflict(
-          'OFFER_ALREADY_EXISTS',
-          'An Offer already exists for this Opportunity.',
-        );
-
-      const createdAt = this.clock.now();
-      const illustrativeReference = await this.allocateReference(
-        actor.workspaceId,
-        companyId,
-      );
-      const [offer] = await this.databaseContext.connection
-        .insert(offers)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          opportunityId: opportunity.id,
-          clientRequestId: opportunity.clientRequestId,
-          originalClientAccountId: opportunity.originalClientAccountId,
-          illustrativeReference,
-          createdByInternalUserId: actor.internalUserId,
-          createdByWorkspaceMembershipId: actor.workspaceMembershipId,
-          createdAt,
-        })
-        .returning();
-      if (!offer) throw new Error('The Offer was not recorded.');
-      const validUntil = new Date(
-        createdAt.getTime() + command.validityDays * 86_400_000,
-      );
-      const [version] = await this.databaseContext.connection
-        .insert(offerVersions)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
           offerId: offer.id,
-          opportunityId: opportunity.id,
-          clientRequestId: opportunity.clientRequestId,
-          originalClientAccountId: opportunity.originalClientAccountId,
+          offerVersionId: version.id,
+          illustrativeReference,
           pricingSnapshotId: snapshot.id,
-          recipientClientAccountId: recipient.currentClientAccountId,
           recipientKind: recipient.recipient.kind,
-          recipientAdditionalLegalEntityId:
-            recipient.recipient.kind === 'ADDITIONAL'
-              ? recipient.recipient.additionalLegalEntityId
-              : null,
-          recipientLegalName: recipient.recipient.legalName,
-          recipientTaxId: recipient.recipient.taxId,
-          recipientLegalAddress: recipient.recipient.legalAddress,
-          issuingCompanyLabel: actor.activeCompany?.displayName ?? '',
-          validityDays: command.validityDays,
-          validUntil,
-          scopeNote: command.scopeNote,
-          commercialConditions: command.commercialConditions,
-          templateCode: OFFER_TEMPLATE_CODE,
-          templateVersion: offerBindingForSnapshot(snapshot).templateVersion,
-          createdByInternalUserId: actor.internalUserId,
-          createdByWorkspaceMembershipId: actor.workspaceMembershipId,
-          createdAt,
-        })
-        .returning();
-      if (!version) throw new Error('Offer Version 1 was not recorded.');
-      await this.clients.recordLockedReferenceUse(actor, recipient);
-      const [recordedCommand] = await this.databaseContext.connection
-        .insert(offerCommands)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey,
-          fingerprint,
-          opportunityId: opportunity.id,
-          resultOfferId: offer.id,
-          createdAt,
-        })
-        .returning({ id: offerCommands.id });
-      if (!recordedCommand)
-        throw new Error('The Create Offer receipt was not recorded.');
-      await this.accountability.recordOfferCreated({
-        actor,
-        companyId,
-        offerId: offer.id,
-        offerVersionId: version.id,
-        illustrativeReference,
-        pricingSnapshotId: snapshot.id,
-        recipientKind: recipient.recipient.kind,
-        occurredAt: createdAt,
-      });
-      return this.offerView(actor, offer, version, snapshot);
+          occurredAt: createdAt,
+        });
+        return this.offerView(actor, offer, version, snapshot);
+      },
     });
   }
 
@@ -631,8 +639,9 @@ export class OfferService {
       'commercial.offer.prepare',
     ]);
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
-    return this.databaseContext
-      .transaction(async () => {
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
         const companyId = await this.authorization.requireOfferAccess(
           actor,
           ['commercial.offer.prepare'],
@@ -836,16 +845,16 @@ export class OfferService {
           version,
           snapshot,
         );
-      })
-      .catch((error: unknown) => {
-        if (error instanceof HttpException) throw error;
-        throw new InternalServerErrorException({
-          code: 'OFFER_VERSION_UNCERTAIN',
-          correlationId: randomUUID(),
-          message:
-            'The version outcome is uncertain. Retry the identical command.',
-        });
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        code: 'OFFER_VERSION_UNCERTAIN',
+        correlationId: randomUUID(),
+        message:
+          'The version outcome is uncertain. Retry the identical command.',
       });
+    });
   }
 
   async listVersions(input: {
@@ -1048,8 +1057,12 @@ export class OfferService {
     // never continue an aborted transaction or retry a mutation here.
     for (let attempt = 1; ; attempt += 1) {
       try {
-        return await this.databaseContext.transaction(read, {
-          isolationLevel: 'repeatable read',
+        return await runClientReferenceTransaction({
+          database: this.databaseContext,
+          work: read,
+          config: {
+            isolationLevel: 'repeatable read',
+          },
         });
       } catch (error) {
         const cause = error instanceof DrizzleQueryError ? error.cause : error;
@@ -1080,181 +1093,189 @@ export class OfferService {
     const { actor } = input;
     await this.authorization.requireOfferQualityAccess(actor);
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireOfferQualityAccess(
-        actor,
-        true,
-      );
-      const opportunity = await this.intake.requireReadableOfferOpportunity(
-        actor,
-        input.opportunityId,
-        true,
-      );
-      if (
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-          input.offerVersionId,
-        )
-      )
-        throw new NotFoundException();
-      const offer = await this.findOffer(
-        actor.workspaceId,
-        companyId,
-        opportunity.id,
-      );
-      if (!offer) throw new NotFoundException();
-      const [target] = await this.databaseContext.connection
-        .select()
-        .from(offerVersions)
-        .where(
-          and(
-            eq(offerVersions.workspaceId, actor.workspaceId),
-            eq(offerVersions.companyId, companyId),
-            eq(offerVersions.offerId, offer.id),
-            eq(offerVersions.id, input.offerVersionId),
-          ),
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId = await this.authorization.requireOfferQualityAccess(
+          actor,
+          true,
         );
-      if (!target) throw new NotFoundException();
-      const fingerprint = commandFingerprint({
-        kind: 'RUN_QUALITY_CHECKS',
-        opportunityId: opportunity.id,
-        offerVersionId: input.offerVersionId,
-        payload: input.payload,
-      });
-      await this.lockCommand(actor, companyId, idempotencyKey);
-      const receipt = await this.findCommand(actor, companyId, idempotencyKey);
-      if (receipt) {
+        const opportunity = await this.intake.requireReadableOfferOpportunity(
+          actor,
+          input.opportunityId,
+          true,
+        );
         if (
-          receipt.kind !== 'RUN_QUALITY_CHECKS' ||
-          receipt.fingerprint !== fingerprint ||
-          receipt.resultOfferId !== offer.id ||
-          !receipt.resultQualityRunId
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+            input.offerVersionId,
+          )
         )
-          throw namedConflict(
-            'IDEMPOTENCY_CONFLICT',
-            'Idempotency-Key was already used for another Offer command.',
-          );
-        const [run] = await this.databaseContext.connection
+          throw new NotFoundException();
+        const offer = await this.findOffer(
+          actor.workspaceId,
+          companyId,
+          opportunity.id,
+        );
+        if (!offer) throw new NotFoundException();
+        const [target] = await this.databaseContext.connection
           .select()
-          .from(offerQualityRuns)
+          .from(offerVersions)
           .where(
             and(
-              eq(offerQualityRuns.workspaceId, actor.workspaceId),
-              eq(offerQualityRuns.companyId, companyId),
-              eq(offerQualityRuns.offerVersionId, target.id),
-              eq(offerQualityRuns.id, receipt.resultQualityRunId),
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, offer.id),
+              eq(offerVersions.id, input.offerVersionId),
             ),
           );
-        if (!run) throw new Error('The recorded Quality Check run is missing.');
-        return qualityRunView(run);
-      }
-      if (
-        typeof input.payload !== 'object' ||
-        input.payload === null ||
-        Array.isArray(input.payload) ||
-        Object.keys(input.payload).length !== 0
-      )
-        throw new BadRequestException({
-          fields: { command: 'Quality Checks accept an empty command only.' },
+        if (!target) throw new NotFoundException();
+        const fingerprint = commandFingerprint({
+          kind: 'RUN_QUALITY_CHECKS',
+          opportunityId: opportunity.id,
+          offerVersionId: input.offerVersionId,
+          payload: input.payload,
         });
-      // Serialize with all Offer commands; this command never changes revision.
-      await this.databaseContext.connection
-        .select({ id: offers.id })
-        .from(offers)
-        .where(
-          and(
-            eq(offers.workspaceId, actor.workspaceId),
-            eq(offers.companyId, companyId),
-            eq(offers.id, offer.id),
-          ),
-        )
-        .for('update');
-      const [head] = await this.databaseContext.connection
-        .select({ id: offerVersions.id })
-        .from(offerVersions)
-        .where(
-          and(
-            eq(offerVersions.workspaceId, actor.workspaceId),
-            eq(offerVersions.companyId, companyId),
-            eq(offerVersions.offerId, offer.id),
-          ),
-        )
-        .orderBy(desc(offerVersions.versionNumber))
-        .limit(1);
-      requireHeadOfferVersion({
-        offerVersionId: target.id,
-        headVersionId: head?.id,
-      });
-      illustrativeSnapshotId(target);
-      const pricing = await this.pricing.inspectOfferQualitySnapshot({
-        actor,
-        companyId,
-        opportunityId: opportunity.id,
-        snapshotId: illustrativeSnapshotId(target),
-      });
-      const recipient = offerRecipientCopy(target);
-      const context = await this.clients.inspectOfferQualityContext({
-        actor,
-        companyId,
-        originalClientAccountId: offer.originalClientAccountId,
-        snapshotOriginalClientAccountId: pricing.originalClientAccountId,
-        recipient:
-          recipient.kind === 'PRIMARY'
-            ? { kind: 'PRIMARY' }
-            : {
-                kind: 'ADDITIONAL',
-                legalEntityId: recipient.additionalLegalEntityId,
-              },
-        recordedIdentity: recipient,
-      });
-      const { ruleSetVersion } = storedOfferBinding(target);
-      const evaluatedAt = this.clock.now();
-      const results = evaluateOfferQuality({
-        ruleSetVersion,
-        instant: evaluatedAt,
-        validUntil: target.validUntil,
-        snapshot: {
-          ...pricing.snapshot,
-          belongsToOffer:
-            pricing.snapshot.opportunityId === offer.opportunityId,
-        },
-        previousTransmittedCurrency: await this.previousTransmittedCurrency(
+        await this.lockCommand(actor, companyId, idempotencyKey);
+        const receipt = await this.findCommand(
           actor,
-          offer,
-          target,
-        ),
-        ...context,
-        recipientTaxId: target.recipientTaxId,
-        provenance: target.provenance,
-        provisional: target.provenance === 'ILLUSTRATIVE',
-      });
-      const [run] = await this.databaseContext.connection
-        .insert(offerQualityRuns)
-        .values({
+          companyId,
+          idempotencyKey,
+        );
+        if (receipt) {
+          if (
+            receipt.kind !== 'RUN_QUALITY_CHECKS' ||
+            receipt.fingerprint !== fingerprint ||
+            receipt.resultOfferId !== offer.id ||
+            !receipt.resultQualityRunId
+          )
+            throw namedConflict(
+              'IDEMPOTENCY_CONFLICT',
+              'Idempotency-Key was already used for another Offer command.',
+            );
+          const [run] = await this.databaseContext.connection
+            .select()
+            .from(offerQualityRuns)
+            .where(
+              and(
+                eq(offerQualityRuns.workspaceId, actor.workspaceId),
+                eq(offerQualityRuns.companyId, companyId),
+                eq(offerQualityRuns.offerVersionId, target.id),
+                eq(offerQualityRuns.id, receipt.resultQualityRunId),
+              ),
+            );
+          if (!run)
+            throw new Error('The recorded Quality Check run is missing.');
+          return qualityRunView(run);
+        }
+        if (
+          typeof input.payload !== 'object' ||
+          input.payload === null ||
+          Array.isArray(input.payload) ||
+          Object.keys(input.payload).length !== 0
+        )
+          throw new BadRequestException({
+            fields: { command: 'Quality Checks accept an empty command only.' },
+          });
+        // Serialize with all Offer commands; this command never changes revision.
+        await this.databaseContext.connection
+          .select({ id: offers.id })
+          .from(offers)
+          .where(
+            and(
+              eq(offers.workspaceId, actor.workspaceId),
+              eq(offers.companyId, companyId),
+              eq(offers.id, offer.id),
+            ),
+          )
+          .for('update');
+        const [head] = await this.databaseContext.connection
+          .select({ id: offerVersions.id })
+          .from(offerVersions)
+          .where(
+            and(
+              eq(offerVersions.workspaceId, actor.workspaceId),
+              eq(offerVersions.companyId, companyId),
+              eq(offerVersions.offerId, offer.id),
+            ),
+          )
+          .orderBy(desc(offerVersions.versionNumber))
+          .limit(1);
+        requireHeadOfferVersion({
+          offerVersionId: target.id,
+          headVersionId: head?.id,
+        });
+        illustrativeSnapshotId(target);
+        const pricing = await this.pricing.inspectOfferQualitySnapshot({
+          actor,
+          companyId,
+          opportunityId: opportunity.id,
+          snapshotId: illustrativeSnapshotId(target),
+        });
+        const recipient = offerRecipientCopy(target);
+        const context = await this.clients.inspectOfferQualityContext({
+          actor,
+          companyId,
+          originalClientAccountId: offer.originalClientAccountId,
+          snapshotOriginalClientAccountId: pricing.originalClientAccountId,
+          recipient:
+            recipient.kind === 'PRIMARY'
+              ? { kind: 'PRIMARY' }
+              : {
+                  kind: 'ADDITIONAL',
+                  legalEntityId: recipient.additionalLegalEntityId,
+                },
+          recordedIdentity: recipient,
+        });
+        const { ruleSetVersion } = storedOfferBinding(target);
+        const evaluatedAt = this.clock.now();
+        const results = evaluateOfferQuality({
+          ruleSetVersion,
+          instant: evaluatedAt,
+          validUntil: target.validUntil,
+          snapshot: {
+            ...pricing.snapshot,
+            belongsToOffer:
+              pricing.snapshot.opportunityId === offer.opportunityId,
+          },
+          previousTransmittedCurrency: await this.previousTransmittedCurrency(
+            actor,
+            offer,
+            target,
+          ),
+          ...context,
+          recipientTaxId: target.recipientTaxId,
+          provenance: target.provenance,
+          provisional: target.provenance === 'ILLUSTRATIVE',
+        });
+        const [run] = await this.databaseContext.connection
+          .insert(offerQualityRuns)
+          .values({
+            workspaceId: actor.workspaceId,
+            companyId,
+            offerId: offer.id,
+            offerVersionId: target.id,
+            actorInternalUserId: actor.internalUserId,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            ruleSetVersion,
+            evaluatedAt,
+            results,
+          })
+          .returning();
+        if (!run) throw new Error('The Quality Check run was not recorded.');
+        await this.databaseContext.connection.insert(offerCommands).values({
           workspaceId: actor.workspaceId,
           companyId,
-          offerId: offer.id,
-          offerVersionId: target.id,
-          actorInternalUserId: actor.internalUserId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          ruleSetVersion,
-          evaluatedAt,
-          results,
-        })
-        .returning();
-      if (!run) throw new Error('The Quality Check run was not recorded.');
-      await this.databaseContext.connection.insert(offerCommands).values({
-        workspaceId: actor.workspaceId,
-        companyId,
-        actorWorkspaceMembershipId: actor.workspaceMembershipId,
-        idempotencyKey,
-        fingerprint,
-        opportunityId: opportunity.id,
-        resultOfferId: offer.id,
-        kind: 'RUN_QUALITY_CHECKS',
-        resultQualityRunId: run.id,
-        createdAt: evaluatedAt,
-      });
-      return qualityRunView(run);
+          idempotencyKey,
+          fingerprint,
+          opportunityId: opportunity.id,
+          resultOfferId: offer.id,
+          kind: 'RUN_QUALITY_CHECKS',
+          resultQualityRunId: run.id,
+          createdAt: evaluatedAt,
+        });
+        return qualityRunView(run);
+      },
     });
   }
 
@@ -1271,8 +1292,9 @@ export class OfferService {
       'commercial.offer.approve',
     ]);
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
-    return this.databaseContext
-      .transaction(async () => {
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
         const companyId = await this.authorization.requireOfferAccess(
           actor,
           ['commercial.offer.approve'],
@@ -1528,18 +1550,18 @@ export class OfferService {
             : { state: 'REJECTED', provenance: target.provenance },
         });
         return this.decisionView(decision);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof HttpException) throw error;
-        // Never pass SQL parameters (including rejection reasons) to Nest's
-        // default exception logger. Commit uncertainty requires an explicit retry.
-        throw new InternalServerErrorException({
-          code: 'OFFER_DECISION_UNCERTAIN',
-          correlationId: randomUUID(),
-          message:
-            'The decision outcome is uncertain. Retry the identical command.',
-        });
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof HttpException) throw error;
+      // Never pass SQL parameters (including rejection reasons) to Nest's
+      // default exception logger. Commit uncertainty requires an explicit retry.
+      throw new InternalServerErrorException({
+        code: 'OFFER_DECISION_UNCERTAIN',
+        correlationId: randomUUID(),
+        message:
+          'The decision outcome is uncertain. Retry the identical command.',
       });
+    });
   }
 
   async recordClientResponse(input: {
@@ -1844,8 +1866,9 @@ export class OfferService {
       'commercial.offer.transmission.record',
     ]);
     const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
-    return this.databaseContext
-      .transaction(async () => {
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
         const companyId = await this.authorization.requireOfferAccess(
           actor,
           ['commercial.offer.transmission.record'],
@@ -2107,17 +2130,17 @@ export class OfferService {
           acknowledgedWarningCodes: command.acknowledgedWarningCodes,
         });
         return this.transmissionView(transmission);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof HttpException) throw error;
-        // SQL parameters can include the private note. Expose only safe diagnostics.
-        throw new InternalServerErrorException({
-          code: 'OFFER_TRANSMISSION_UNCERTAIN',
-          correlationId: randomUUID(),
-          message:
-            'The transmission outcome is uncertain. Retry the identical command.',
-        });
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof HttpException) throw error;
+      // SQL parameters can include the private note. Expose only safe diagnostics.
+      throw new InternalServerErrorException({
+        code: 'OFFER_TRANSMISSION_UNCERTAIN',
+        correlationId: randomUUID(),
+        message:
+          'The transmission outcome is uncertain. Retry the identical command.',
       });
+    });
   }
 
   private async previousTransmittedCurrency(

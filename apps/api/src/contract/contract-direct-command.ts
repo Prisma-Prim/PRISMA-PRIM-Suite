@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   ConflictException,
   HttpException,
@@ -60,8 +61,9 @@ export async function createDirectContract(
     'commercial.contract.prepare',
   ]);
   const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
-  return dependencies.databaseContext
-    .transaction(async () => {
+  return runClientReferenceTransaction({
+    database: dependencies.databaseContext,
+    work: async () => {
       const { actor } = input;
       const companyId = await dependencies.authorization.requireContractAccess(
         actor,
@@ -297,16 +299,16 @@ export async function createDirectContract(
         occurredAt: createdAt,
       });
       return dependencies.versions.view(actor, contract, version);
-    })
-    .catch((error: unknown) => {
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException({
-        code: 'CONTRACT_CREATION_UNCERTAIN',
-        correlationId: randomUUID(),
-        message:
-          'The Contract outcome is uncertain. Retry the identical command.',
-      });
+    },
+  }).catch((error: unknown) => {
+    if (error instanceof HttpException) throw error;
+    throw new InternalServerErrorException({
+      code: 'CONTRACT_CREATION_UNCERTAIN',
+      correlationId: randomUUID(),
+      message:
+        'The Contract outcome is uncertain. Retry the identical command.',
     });
+  });
 }
 
 function conflict(code: string, message: string) {

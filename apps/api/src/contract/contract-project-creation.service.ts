@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   BadRequestException,
   HttpException,
@@ -51,8 +52,9 @@ export class ContractProjectCreationService {
   }) {
     await this.authorization.requireContractAccess(input.actor, PERMISSIONS);
     const key = requireIdempotencyKey(input.idempotencyKey);
-    return this.database
-      .transaction(async () => {
+    return runClientReferenceTransaction({
+      database: this.database,
+      work: async () => {
         const { actor } = input;
         const companyId = await this.authorization.requireContractAccess(
           actor,
@@ -156,16 +158,16 @@ export class ContractProjectCreationService {
           fingerprint,
         });
         return { project: createdProjectResult(project), link };
-      })
-      .catch((error: unknown) => {
-        if (error instanceof HttpException) throw error;
-        throw new InternalServerErrorException({
-          code: 'CONTRACT_PROJECT_CREATE_UNCERTAIN',
-          correlationId: randomUUID(),
-          message:
-            'The Contract Project creation outcome is uncertain. Retry the identical command.',
-        });
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        code: 'CONTRACT_PROJECT_CREATE_UNCERTAIN',
+        correlationId: randomUUID(),
+        message:
+          'The Contract Project creation outcome is uncertain. Retry the identical command.',
       });
+    });
   }
 }
 

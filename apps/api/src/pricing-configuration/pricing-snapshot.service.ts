@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { randomUUID } from 'node:crypto';
 import {
   ConflictException,
@@ -157,274 +158,277 @@ export class PricingSnapshotService {
     value: unknown,
     key: string | undefined,
   ): Promise<PricingSnapshotRecord> {
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requirePricingUserAccess(
-        actor,
-        ['commercial.pricing.calculate'],
-        true,
-      );
-      if (requestsPricingAdjustment(value))
-        await this.authorization.requirePricingAdjustmentAccess(
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId = await this.authorization.requirePricingUserAccess(
           actor,
-          ['commercial.pricing.adjustment.apply'],
+          ['commercial.pricing.calculate'],
           true,
         );
-      const opportunity = await this.intake.requireReadablePricingOpportunity(
-        actor,
-        opportunityIdInput,
-      );
-      const idempotencyKey = requireIdempotencyKey(key);
-      const fingerprint = commandFingerprint({
-        companyId,
-        opportunityId: opportunity.id,
-        payload: value,
-      });
-      const idempotency = { actor, companyId, idempotencyKey };
-      await lockPublicationCommand(
-        this.databaseContext.connection,
-        idempotency,
-      );
-      const receipt = await findPublicationReceipt(
-        this.databaseContext.connection,
-        idempotency,
-      );
-      if (receipt) {
-        if (
-          receipt.command !== 'pricing_snapshot.calculate' ||
-          receipt.fingerprint !== fingerprint
-        )
-          throw idempotencyConflict();
-        return this.requireSnapshot({
+        if (requestsPricingAdjustment(value))
+          await this.authorization.requirePricingAdjustmentAccess(
+            actor,
+            ['commercial.pricing.adjustment.apply'],
+            true,
+          );
+        const opportunity = await this.intake.requireReadablePricingOpportunity(
           actor,
+          opportunityIdInput,
+        );
+        const idempotencyKey = requireIdempotencyKey(key);
+        const fingerprint = commandFingerprint({
           companyId,
           opportunityId: opportunity.id,
-          snapshotId: receipt.snapshotId,
+          payload: value,
         });
-      }
-
-      const command = readPricingSnapshotCommand(value);
-      const adjustmentCount = command.lines.filter(
-        (line) => line.adjustment !== undefined,
-      ).length;
-      const offerings = await this.catalogue.readPricingOfferings(
-        actor,
-        command.lines.map(({ offeringId }) => offeringId),
-      );
-      for (const [index, line] of command.lines.entries())
-        if (!offerings.has(line.offeringId))
-          invalid(
-            `lines[${index}].offeringId`,
-            'Choose an offering from the active Company.',
-          );
-
-      await lockPublicationScope(
-        this.databaseContext.connection,
-        { kind: 'rule', workspaceId: actor.workspaceId, companyId },
-        'shared',
-      );
-      for (const offeringId of [...offerings.keys()].sort())
-        await lockPublicationScope(
+        const idempotency = { actor, companyId, idempotencyKey };
+        await lockPublicationCommand(
           this.databaseContext.connection,
-          {
-            kind: 'tariff',
-            workspaceId: actor.workspaceId,
-            companyId,
-            offeringId,
-          },
-          'shared',
+          idempotency,
         );
-
-      const calculatedAt = this.clock.now();
-      const rule = await this.requireRule(
-        actor,
-        companyId,
-        command.pricingRuleVersionNumber,
-        calculatedAt,
-      );
-      const selectedLines: SelectedLine[] = [];
-      for (const [index, line] of command.lines.entries()) {
-        const offering = offerings.get(line.offeringId);
-        if (!offering)
-          throw new Error('The validated offering trace is unavailable.');
-        selectedLines.push({
-          command: line,
-          offering,
-          tariff: await this.requireTariff({
+        const receipt = await findPublicationReceipt(
+          this.databaseContext.connection,
+          idempotency,
+        );
+        if (receipt) {
+          if (
+            receipt.command !== 'pricing_snapshot.calculate' ||
+            receipt.fingerprint !== fingerprint
+          )
+            throw idempotencyConflict();
+          return this.requireSnapshot({
             actor,
             companyId,
-            offeringId: line.offeringId,
-            versionNumber: line.tariffVersionNumber,
-            linePosition: index + 1,
-            calculatedAt,
-          }),
-        });
-      }
-      const currencies = new Set(
-        selectedLines.map(({ tariff }) => tariff.currency),
-      );
-      if (currencies.size !== 1) throw mixedCurrency();
-      const currency = selectedLines[0]?.tariff.currency;
-      if (!currency)
-        throw new Error('The validated Pricing Snapshot has no currency.');
+            opportunityId: opportunity.id,
+            snapshotId: receipt.snapshotId,
+          });
+        }
 
-      const calculation = calculatePricingLines(
-        selectedLines.map(({ command: line, tariff }) => ({
-          unitAmount: tariff.unitAmount,
-          quantity: line.quantity,
-          taxRatePercent: tariff.taxRatePercent,
-        })),
-      );
-      for (const [index, line] of command.lines.entries()) {
-        const calculated = calculation.lines[index];
-        if (!calculated)
-          throw new Error('The Pricing Snapshot line was not calculated.');
-        if (
-          line.adjustment &&
-          scaledDecimal(line.adjustment.netReduction, 2) >
-            scaledDecimal(calculated.lineNet, 2)
-        )
-          invalid(
-            `lines[${index}].adjustment.netReduction`,
-            'Enter a net reduction no greater than the original line net.',
+        const command = readPricingSnapshotCommand(value);
+        const adjustmentCount = command.lines.filter(
+          (line) => line.adjustment !== undefined,
+        ).length;
+        const offerings = await this.catalogue.readPricingOfferings(
+          actor,
+          command.lines.map(({ offeringId }) => offeringId),
+        );
+        for (const [index, line] of command.lines.entries())
+          if (!offerings.has(line.offeringId))
+            invalid(
+              `lines[${index}].offeringId`,
+              'Choose an offering from the active Company.',
+            );
+
+        await lockPublicationScope(
+          this.databaseContext.connection,
+          { kind: 'rule', workspaceId: actor.workspaceId, companyId },
+          'shared',
+        );
+        for (const offeringId of [...offerings.keys()].sort())
+          await lockPublicationScope(
+            this.databaseContext.connection,
+            {
+              kind: 'tariff',
+              workspaceId: actor.workspaceId,
+              companyId,
+              offeringId,
+            },
+            'shared',
           );
-      }
-      const adjustedCalculation = applyPricingAdjustments(
-        selectedLines.map(({ command: line, tariff }, index) => {
-          const calculated = calculation.lines[index];
-          if (!calculated)
-            throw new Error('The Pricing Snapshot line was not calculated.');
-          return {
-            lineNet: calculated.lineNet,
-            lineTax: calculated.lineTax,
+
+        const calculatedAt = this.clock.now();
+        const rule = await this.requireRule(
+          actor,
+          companyId,
+          command.pricingRuleVersionNumber,
+          calculatedAt,
+        );
+        const selectedLines: SelectedLine[] = [];
+        for (const [index, line] of command.lines.entries()) {
+          const offering = offerings.get(line.offeringId);
+          if (!offering)
+            throw new Error('The validated offering trace is unavailable.');
+          selectedLines.push({
+            command: line,
+            offering,
+            tariff: await this.requireTariff({
+              actor,
+              companyId,
+              offeringId: line.offeringId,
+              versionNumber: line.tariffVersionNumber,
+              linePosition: index + 1,
+              calculatedAt,
+            }),
+          });
+        }
+        const currencies = new Set(
+          selectedLines.map(({ tariff }) => tariff.currency),
+        );
+        if (currencies.size !== 1) throw mixedCurrency();
+        const currency = selectedLines[0]?.tariff.currency;
+        if (!currency)
+          throw new Error('The validated Pricing Snapshot has no currency.');
+
+        const calculation = calculatePricingLines(
+          selectedLines.map(({ command: line, tariff }) => ({
+            unitAmount: tariff.unitAmount,
+            quantity: line.quantity,
             taxRatePercent: tariff.taxRatePercent,
-            adjustment: line.adjustment
-              ? {
-                  netReduction: line.adjustment.netReduction,
-                  reason: line.adjustment.reason,
-                }
-              : null,
-          };
-        }),
-      );
-      const committedAt = this.clock.now();
-      const snapshotId = randomUUID();
-      await this.databaseContext.connection.insert(pricingSnapshots).values({
-        id: snapshotId,
-        workspaceId: actor.workspaceId,
-        companyId,
-        opportunityId: opportunity.id,
-        clientRequestId: opportunity.clientRequestId,
-        originalClientAccountId: opportunity.originalClientAccountId,
-        pricingRuleVersionId: rule.id,
-        pricingRuleVersionNumber: rule.versionNumber,
-        ruleShape: rule.ruleShape,
-        roundingMode: rule.roundingMode,
-        roundingScale: rule.roundingScale,
-        taxApplication: rule.taxApplication,
-        currency,
-        subtotal: adjustedCalculation.subtotal,
-        taxTotal: adjustedCalculation.taxTotal,
-        total: adjustedCalculation.total,
-        calculatedByInternalUserId: actor.internalUserId,
-        calculatedByWorkspaceMembershipId: actor.workspaceMembershipId,
-        calculatedAt,
-        committedAt,
-      });
-      const storedLines = selectedLines.map(
-        ({ command: line, offering, tariff }, index) => {
+          })),
+        );
+        for (const [index, line] of command.lines.entries()) {
           const calculated = calculation.lines[index];
           if (!calculated)
             throw new Error('The Pricing Snapshot line was not calculated.');
-          return {
+          if (
+            line.adjustment &&
+            scaledDecimal(line.adjustment.netReduction, 2) >
+              scaledDecimal(calculated.lineNet, 2)
+          )
+            invalid(
+              `lines[${index}].adjustment.netReduction`,
+              'Enter a net reduction no greater than the original line net.',
+            );
+        }
+        const adjustedCalculation = applyPricingAdjustments(
+          selectedLines.map(({ command: line, tariff }, index) => {
+            const calculated = calculation.lines[index];
+            if (!calculated)
+              throw new Error('The Pricing Snapshot line was not calculated.');
+            return {
+              lineNet: calculated.lineNet,
+              lineTax: calculated.lineTax,
+              taxRatePercent: tariff.taxRatePercent,
+              adjustment: line.adjustment
+                ? {
+                    netReduction: line.adjustment.netReduction,
+                    reason: line.adjustment.reason,
+                  }
+                : null,
+            };
+          }),
+        );
+        const committedAt = this.clock.now();
+        const snapshotId = randomUUID();
+        await this.databaseContext.connection.insert(pricingSnapshots).values({
+          id: snapshotId,
+          workspaceId: actor.workspaceId,
+          companyId,
+          opportunityId: opportunity.id,
+          clientRequestId: opportunity.clientRequestId,
+          originalClientAccountId: opportunity.originalClientAccountId,
+          pricingRuleVersionId: rule.id,
+          pricingRuleVersionNumber: rule.versionNumber,
+          ruleShape: rule.ruleShape,
+          roundingMode: rule.roundingMode,
+          roundingScale: rule.roundingScale,
+          taxApplication: rule.taxApplication,
+          currency,
+          subtotal: adjustedCalculation.subtotal,
+          taxTotal: adjustedCalculation.taxTotal,
+          total: adjustedCalculation.total,
+          calculatedByInternalUserId: actor.internalUserId,
+          calculatedByWorkspaceMembershipId: actor.workspaceMembershipId,
+          calculatedAt,
+          committedAt,
+        });
+        const storedLines = selectedLines.map(
+          ({ command: line, offering, tariff }, index) => {
+            const calculated = calculation.lines[index];
+            if (!calculated)
+              throw new Error('The Pricing Snapshot line was not calculated.');
+            return {
+              id: randomUUID(),
+              workspaceId: actor.workspaceId,
+              companyId,
+              snapshotId,
+              lineNumber: index + 1,
+              serviceDefinitionId: offering.serviceDefinitionId,
+              serviceCode: offering.serviceDefinition.code,
+              serviceName: offering.serviceDefinition.name,
+              offeringId: offering.id,
+              commercialLabel: offering.commercialLabel,
+              tariffVersionId: tariff.id,
+              tariffVersionNumber: tariff.versionNumber,
+              unit: tariff.unit,
+              unitAmount: tariff.unitAmount,
+              currency: tariff.currency,
+              taxRatePercent: tariff.taxRatePercent,
+              taxLabel: tariff.taxLabel,
+              quantity: line.quantity,
+              quantityInput: line.quantity,
+              ruleShape: rule.ruleShape,
+              rawLineAmount: calculated.rawLineAmount,
+              lineNet: calculated.lineNet,
+              rawLineTax: calculated.rawLineTax,
+              lineTax: calculated.lineTax,
+            };
+          },
+        );
+        await this.databaseContext.connection
+          .insert(pricingSnapshotLines)
+          .values(storedLines);
+        const storedAdjustments: Array<
+          typeof pricingSnapshotAdjustments.$inferInsert
+        > = [];
+        for (const [index, selected] of selectedLines.entries()) {
+          if (!selected.command.adjustment) continue;
+          const storedLine = storedLines[index];
+          const adjusted = adjustedCalculation.lines[index];
+          if (!storedLine || !adjusted || !adjusted.adjustment)
+            throw new Error(
+              'The Pricing Snapshot adjustment was not calculated.',
+            );
+          storedAdjustments.push({
             id: randomUUID(),
             workspaceId: actor.workspaceId,
             companyId,
             snapshotId,
-            lineNumber: index + 1,
-            serviceDefinitionId: offering.serviceDefinitionId,
-            serviceCode: offering.serviceDefinition.code,
-            serviceName: offering.serviceDefinition.name,
-            offeringId: offering.id,
-            commercialLabel: offering.commercialLabel,
-            tariffVersionId: tariff.id,
-            tariffVersionNumber: tariff.versionNumber,
-            unit: tariff.unit,
-            unitAmount: tariff.unitAmount,
-            currency: tariff.currency,
-            taxRatePercent: tariff.taxRatePercent,
-            taxLabel: tariff.taxLabel,
-            quantity: line.quantity,
-            quantityInput: line.quantity,
-            ruleShape: rule.ruleShape,
-            rawLineAmount: calculated.rawLineAmount,
-            lineNet: calculated.lineNet,
-            rawLineTax: calculated.rawLineTax,
-            lineTax: calculated.lineTax,
-          };
-        },
-      );
-      await this.databaseContext.connection
-        .insert(pricingSnapshotLines)
-        .values(storedLines);
-      const storedAdjustments: Array<
-        typeof pricingSnapshotAdjustments.$inferInsert
-      > = [];
-      for (const [index, selected] of selectedLines.entries()) {
-        if (!selected.command.adjustment) continue;
-        const storedLine = storedLines[index];
-        const adjusted = adjustedCalculation.lines[index];
-        if (!storedLine || !adjusted || !adjusted.adjustment)
-          throw new Error(
-            'The Pricing Snapshot adjustment was not calculated.',
-          );
-        storedAdjustments.push({
-          id: randomUUID(),
-          workspaceId: actor.workspaceId,
+            snapshotLineId: storedLine.id,
+            type: adjusted.adjustment.type,
+            netReduction: adjusted.netReduction,
+            reason: adjusted.adjustment.reason,
+            originalLineNet: storedLine.lineNet,
+            originalRawLineTax: storedLine.rawLineTax,
+            originalLineTax: storedLine.lineTax,
+            taxRatePercent: storedLine.taxRatePercent,
+            adjustedLineNet: adjusted.adjustedLineNet,
+            adjustedRawLineTax: adjusted.adjustedRawLineTax,
+            adjustedLineTax: adjusted.adjustedLineTax,
+            taxReduction: adjusted.taxReduction,
+            appliedByInternalUserId: actor.internalUserId,
+            appliedByWorkspaceMembershipId: actor.workspaceMembershipId,
+            appliedAt: calculatedAt,
+          });
+        }
+        if (storedAdjustments.length > 0)
+          await this.databaseContext.connection
+            .insert(pricingSnapshotAdjustments)
+            .values(storedAdjustments);
+        await this.accountability.recordPricingSnapshotCreated({
+          actor,
           companyId,
-          snapshotId,
-          snapshotLineId: storedLine.id,
-          type: adjusted.adjustment.type,
-          netReduction: adjusted.netReduction,
-          reason: adjusted.adjustment.reason,
-          originalLineNet: storedLine.lineNet,
-          originalRawLineTax: storedLine.rawLineTax,
-          originalLineTax: storedLine.lineTax,
-          taxRatePercent: storedLine.taxRatePercent,
-          adjustedLineNet: adjusted.adjustedLineNet,
-          adjustedRawLineTax: adjusted.adjustedRawLineTax,
-          adjustedLineTax: adjusted.adjustedLineTax,
-          taxReduction: adjusted.taxReduction,
-          appliedByInternalUserId: actor.internalUserId,
-          appliedByWorkspaceMembershipId: actor.workspaceMembershipId,
-          appliedAt: calculatedAt,
+          pricingSnapshotId: snapshotId,
+          opportunityId: opportunity.id,
+          lineCount: selectedLines.length,
+          adjustmentCount,
+          currency,
+          occurredAt: committedAt,
         });
-      }
-      if (storedAdjustments.length > 0)
-        await this.databaseContext.connection
-          .insert(pricingSnapshotAdjustments)
-          .values(storedAdjustments);
-      await this.accountability.recordPricingSnapshotCreated({
-        actor,
-        companyId,
-        pricingSnapshotId: snapshotId,
-        opportunityId: opportunity.id,
-        lineCount: selectedLines.length,
-        adjustmentCount,
-        currency,
-        occurredAt: committedAt,
-      });
-      await recordPricingSnapshotReceipt(this.databaseContext.connection, {
-        ...idempotency,
-        fingerprint,
-        snapshotId,
-        createdAt: committedAt,
-      });
-      return this.requireSnapshot({
-        actor,
-        companyId,
-        opportunityId: opportunity.id,
-        snapshotId,
-      });
+        await recordPricingSnapshotReceipt(this.databaseContext.connection, {
+          ...idempotency,
+          fingerprint,
+          snapshotId,
+          createdAt: committedAt,
+        });
+        return this.requireSnapshot({
+          actor,
+          companyId,
+          opportunityId: opportunity.id,
+          snapshotId,
+        });
+      },
     });
   }
 
@@ -434,47 +438,56 @@ export class PricingSnapshotService {
     cursorInput: unknown,
     limitInput: unknown,
   ): Promise<PricingSnapshotPage> {
-    return this.databaseContext.transaction(async () => {
-      const companyId =
-        await this.authorization.requirePricingSnapshotReadAccess(actor, true);
-      const opportunity = await this.intake.requireReadablePricingOpportunity(
-        actor,
-        opportunityId,
-      );
-      const limit = readPricingSnapshotLimit(limitInput);
-      const cursor = readPricingSnapshotCursor(cursorInput);
-      const rows = await this.databaseContext.connection
-        .select()
-        .from(pricingSnapshots)
-        .where(
-          and(
-            eq(pricingSnapshots.workspaceId, actor.workspaceId),
-            eq(pricingSnapshots.companyId, companyId),
-            eq(pricingSnapshots.opportunityId, opportunity.id),
-            cursor
-              ? sql<boolean>`(${pricingSnapshots.calculatedAt}, ${pricingSnapshots.id})
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId =
+          await this.authorization.requirePricingSnapshotReadAccess(
+            actor,
+            true,
+          );
+        const opportunity = await this.intake.requireReadablePricingOpportunity(
+          actor,
+          opportunityId,
+        );
+        const limit = readPricingSnapshotLimit(limitInput);
+        const cursor = readPricingSnapshotCursor(cursorInput);
+        const rows = await this.databaseContext.connection
+          .select()
+          .from(pricingSnapshots)
+          .where(
+            and(
+              eq(pricingSnapshots.workspaceId, actor.workspaceId),
+              eq(pricingSnapshots.companyId, companyId),
+              eq(pricingSnapshots.opportunityId, opportunity.id),
+              cursor
+                ? sql<boolean>`(${pricingSnapshots.calculatedAt}, ${pricingSnapshots.id})
                   < (${cursor.calculatedAt}::timestamptz, ${cursor.id}::uuid)`
-              : undefined,
-          ),
-        )
-        .orderBy(desc(pricingSnapshots.calculatedAt), desc(pricingSnapshots.id))
-        .limit(limit + 1);
-      const pageRows = rows.slice(0, limit);
-      const items: PricingSnapshotRecord[] = [];
-      for (const row of pageRows)
-        items.push(await this.snapshotView(actor, row));
-      const last = pageRows.at(-1);
-      return {
-        items,
-        ...(rows.length > limit && last
-          ? {
-              nextCursor: pricingSnapshotCursor({
-                calculatedAt: last.calculatedAt.toISOString(),
-                id: last.id,
-              }),
-            }
-          : {}),
-      };
+                : undefined,
+            ),
+          )
+          .orderBy(
+            desc(pricingSnapshots.calculatedAt),
+            desc(pricingSnapshots.id),
+          )
+          .limit(limit + 1);
+        const pageRows = rows.slice(0, limit);
+        const items: PricingSnapshotRecord[] = [];
+        for (const row of pageRows)
+          items.push(await this.snapshotView(actor, row));
+        const last = pageRows.at(-1);
+        return {
+          items,
+          ...(rows.length > limit && last
+            ? {
+                nextCursor: pricingSnapshotCursor({
+                  calculatedAt: last.calculatedAt.toISOString(),
+                  id: last.id,
+                }),
+              }
+            : {}),
+        };
+      },
     });
   }
 
@@ -487,20 +500,26 @@ export class PricingSnapshotService {
     opportunityId: string;
     snapshotId: string;
   }): Promise<PricingSnapshotRecord> {
-    return this.databaseContext.transaction(async () => {
-      const companyId =
-        await this.authorization.requirePricingSnapshotReadAccess(actor, true);
-      const opportunity = await this.intake.requireReadablePricingOpportunity(
-        actor,
-        opportunityId,
-      );
-      if (!UUID_GRAMMAR.test(snapshotId)) throw new NotFoundException();
-      return this.requireSnapshot({
-        actor,
-        companyId,
-        opportunityId: opportunity.id,
-        snapshotId: snapshotId.toLowerCase(),
-      });
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId =
+          await this.authorization.requirePricingSnapshotReadAccess(
+            actor,
+            true,
+          );
+        const opportunity = await this.intake.requireReadablePricingOpportunity(
+          actor,
+          opportunityId,
+        );
+        if (!UUID_GRAMMAR.test(snapshotId)) throw new NotFoundException();
+        return this.requireSnapshot({
+          actor,
+          companyId,
+          opportunityId: opportunity.id,
+          snapshotId: snapshotId.toLowerCase(),
+        });
+      },
     });
   }
 
