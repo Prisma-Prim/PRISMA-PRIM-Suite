@@ -161,6 +161,14 @@ it creates no Document Registry entry, provider Location or official designation
 Non-official rehearsal output and later numbering retain distinct immutable
 representations/Versions; an approved checksum is never rewritten.
 
+The bounded [Commercial Workflow §29](release-3-commercial-29-company-contract-model.md)
+defines complete Company ordinary consulting Contract model configuration,
+including sectionsI–IX, party/signature areas and thirteen intended-activity rows,
+with independently granted human decisions and withdrawal. It seeds no actual
+clause or approval. Configuration creates no Contract, representation, Registry
+entry, official number or signature; matching generation and exact evidence
+receive separate contracts. Received candidate originals remain unchanged.
+
 Question source: S03.
 
 ## 15. Technical dependencies
