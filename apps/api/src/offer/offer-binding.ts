@@ -23,8 +23,8 @@ export function offerBindingForSnapshot(snapshot: {
 
 /** Persisted binding columns fail closed for any unknown Template Version. */
 export function storedOfferBinding(row: {
-  readonly templateCode: string;
-  readonly templateVersion: number;
+  readonly templateCode: unknown;
+  readonly templateVersion: unknown;
 }): OfferBinding {
   if (row.templateCode === 'OFFER_ILLUSTRATIVE') {
     if (row.templateVersion === 1) return UNADJUSTED;

@@ -547,6 +547,13 @@
       "when": 1792817011237,
       "tag": "0077_pilot_activity_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1792827521312,
+      "tag": "0078_approved_estimate_offer",
+      "breakpoints": true
     }
   ]
 }

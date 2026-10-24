@@ -101,7 +101,7 @@ const assignmentContracts = {
   },
   'company-offer-preparer': {
     label: 'Company Offer Preparer',
-    versions: ['v1'],
+    versions: ['v1', 'v2'],
   },
   'company-offer-approver': {
     label: 'Company Offer Approver',

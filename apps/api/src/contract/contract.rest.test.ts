@@ -10383,6 +10383,23 @@ withPostgres('First illustrative Contract REST', () => {
         await pool.query(
           'ALTER TABLE opportunities ADD COLUMN sales_stage_id uuid',
         );
+        // The current ORM returns the additive 0078 fields even for a legacy
+        // Snapshot Version. Temporarily expose only nullable slots for fixture
+        // creation, then remove every slot before the genuine baseline upgrade.
+        const estimateSourceColumns = [
+          ['estimate_source_id', 'uuid'],
+          ['estimate_source_version_id', 'uuid'],
+          ['estimate_source_version_number', 'integer'],
+          ['estimate_source_decision_id', 'uuid'],
+          ['estimate_source_decision_code', 'text'],
+          ['estimate_source_approved_at', 'timestamptz'],
+          ['estimate_source_amount', 'text'],
+          ['estimate_source_currency', 'text'],
+        ];
+        for (const [column, type] of estimateSourceColumns)
+          await pool.query(
+            `ALTER TABLE offer_versions ADD COLUMN ${column} ${type}`,
+          );
         const fixture = await acceptedOffer();
         await grantContract(fixture, 'historic-grant');
         const payload = {
@@ -10762,7 +10779,21 @@ withPostgres('First illustrative Contract REST', () => {
               index >= 60,
             ],
           );
-        // Restore the baseline before upgrading it: no stage column, and v3.
+        // Restore the exact baseline: no later stage/source columns, captured
+        // Intake v3 and Offer Preparer v1, before inspecting or upgrading it.
+        for (const [column] of estimateSourceColumns) {
+          expect(
+            (
+              await pool.query(
+                `SELECT id FROM offer_versions WHERE ${column} IS NOT NULL`,
+              )
+            ).rowCount,
+          ).toBe(0);
+          await pool.query(`ALTER TABLE offer_versions DROP COLUMN ${column}`);
+        }
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle='company_offer_preparer' AND permission_set_version='v2'",
+        );
         await pool.query(
           'ALTER TABLE opportunities DROP COLUMN sales_stage_id',
         );

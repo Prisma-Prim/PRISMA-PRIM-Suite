@@ -1,3 +1,4 @@
+import { useEstimateOfferCopy } from './offer-estimate.copy';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -7,7 +8,7 @@ import { useOfferPresentation } from './offer-presentation';
 import {
   readOfferDetail,
   readOfferVersionPage,
-  type OfferView,
+  type OfferReadView,
   type OfferVersionPage,
   type OfferDifferenceView,
 } from './offer-response';
@@ -23,14 +24,15 @@ export function OfferVersionHistory({
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  offer: OfferView;
+  offer: OfferReadView;
   reject: (
     result: Parameters<typeof handleAuthenticatedAccessRejection>[0]['result'],
     signal: AbortSignal,
   ) => ReturnType<typeof handleAuthenticatedAccessRejection>;
-  onSelect: (offer: OfferView) => void;
+  onSelect: (offer: OfferReadView) => void;
 }) {
   const copy = useOfferVersionCopy();
+  const estimate = useEstimateOfferCopy();
   const { formatDateTime, formatDecimal } = useOfferPresentation();
   const [page, setPage] = useState<OfferVersionPage>({
     versions: [],
@@ -90,6 +92,7 @@ export function OfferVersionHistory({
       const selected = readOfferDetail(result.value);
       if (!selected || selected.id !== offer.id || selected.version.id !== id)
         throw new Error('Invalid selected Offer Version.');
+      setState('ready');
       onSelect(selected);
     } catch {
       if (!request.signal.aborted) setState('error');
@@ -102,6 +105,8 @@ export function OfferVersionHistory({
     if (value === null) return copy.absent;
     if (value === '') return copy.emptyText;
     switch (field) {
+      case 'amount':
+      case 'estimateVersionNumber':
       case 'total':
       case 'validityDays':
         return formatDecimal(String(value));
@@ -109,6 +114,14 @@ export function OfferVersionHistory({
         return typeof value === 'string' && Number.isFinite(Date.parse(value))
           ? formatDateTime(value)
           : String(value);
+      case 'priceSourceKind':
+        return value === 'DIRECTOR_APPROVED_ESTIMATE'
+          ? estimate('sourceType')
+          : value === 'ILLUSTRATIVE_SNAPSHOT'
+            ? copy.fields.pricingSnapshotId
+            : copy.absent;
+      case 'estimateVersionId':
+      case 'approvalDecisionId':
       case 'recipientKind':
       case 'recipientAdditionalLegalEntityId':
       case 'recipientLegalName':

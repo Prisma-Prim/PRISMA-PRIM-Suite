@@ -8,7 +8,8 @@ import {
 import { useOfferDecisionCopy } from './offer-quality-decision.copy';
 import {
   readOfferDecision,
-  type OfferView,
+  type OfferReadView,
+  isIllustrativeOffer,
   type OfferDecisionView,
   type OfferQualityRunView,
 } from './offer-response';
@@ -39,7 +40,7 @@ export function OfferDecisionPanel({
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  offer: OfferView;
+  offer: OfferReadView;
   onDecision: (decision: OfferDecisionView) => void;
   reject: (
     result: ApiResult<unknown>,
@@ -68,7 +69,12 @@ export function OfferDecisionPanel({
     ) ?? [];
   const locked = state === 'running' || state === 'uncertain';
   async function execute(kind: 'approve' | 'reject') {
-    if (state === 'running' || offer.version.decision) return;
+    if (
+      state === 'running' ||
+      offer.version.decision ||
+      (kind === 'approve' && !isIllustrativeOffer(offer))
+    )
+      return;
     if (
       !attempt.current &&
       kind === 'reject' &&
@@ -119,7 +125,9 @@ export function OfferDecisionPanel({
       } else if (result.status === 'ok') {
         const decision = readOfferDecision(result.value, {
           offerVersionId: offer.version.id,
-          ruleSetVersion: offer.version.qualityRuleSetVersion,
+          ...(isIllustrativeOffer(offer)
+            ? { ruleSetVersion: offer.version.qualityRuleSetVersion }
+            : {}),
         });
         attempt.current = undefined;
         setState('idle');
@@ -157,7 +165,7 @@ export function OfferDecisionPanel({
   return (
     <section className="offer-decision" aria-labelledby="offer-decision-title">
       <h5 id="offer-decision-title">{copy.title}</h5>
-      <p>{copy.explanation}</p>
+      {isIllustrativeOffer(offer) && <p>{copy.explanation}</p>}
       {state !== 'idle' && (
         <p role={state === 'running' ? 'status' : 'alert'}>{copy[state]}</p>
       )}
@@ -185,13 +193,15 @@ export function OfferDecisionPanel({
               ))}
             </fieldset>
           )}
-          <button
-            type="button"
-            disabled={locked}
-            onClick={() => void execute('approve')}
-          >
-            {copy.approve}
-          </button>
+          {isIllustrativeOffer(offer) && (
+            <button
+              type="button"
+              disabled={locked}
+              onClick={() => void execute('approve')}
+            >
+              {copy.approve}
+            </button>
+          )}
           <label>
             {copy.reason}
             <textarea

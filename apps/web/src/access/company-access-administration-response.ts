@@ -19,7 +19,7 @@ const CAPTURED_VERSIONS = {
   'Company Service Catalogue': ['v1'],
   'Company Pricing Configuration': ['v1'],
   'Company Pricing User': ['v1'],
-  'Company Offer Preparer': ['v1'],
+  'Company Offer Preparer': ['v1', 'v2'],
   'Company Contract Preparer': ['v1'],
   'Company Contract Early Preparation': ['v1'],
   'Company Contract Approver': ['v1'],

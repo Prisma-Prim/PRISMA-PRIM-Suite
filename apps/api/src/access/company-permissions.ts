@@ -176,6 +176,13 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.offer.transmission.record',
         'commercial.pricing.snapshot.read',
       ],
+      v2: [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+        'commercial.offer.transmission.record',
+        'commercial.pricing.snapshot.read',
+        'commercial.offer.estimate.prepare',
+      ],
     },
   },
   company_contract_preparer: {
@@ -618,6 +625,8 @@ export const COMPANY_OFFER_PREPARER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_offer_preparer.label;
 export const COMPANY_OFFER_PREPARER_V1_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_offer_preparer.versions.v1;
+export const COMPANY_OFFER_PREPARER_V2_PERMISSIONS =
+  COMPANY_ROLE_BUNDLES.company_offer_preparer.versions.v2;
 export type CompanyOfferPreparerPermission =
   CompanyRolePermission<'company_offer_preparer'>;
 export function offerPreparerPermissionsFor(

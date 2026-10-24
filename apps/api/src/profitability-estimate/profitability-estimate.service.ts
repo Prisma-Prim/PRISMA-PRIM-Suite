@@ -33,6 +33,7 @@ import {
   encodeProfitabilityCursor,
 } from './profitability-estimate.persistence.js';
 import type {
+  ApprovedEstimateCommercialProjection,
   ProfitabilityVersionRecord,
   ProfitabilityVersionPage,
 } from './profitability-estimate.types.js';
@@ -331,35 +332,81 @@ export class ProfitabilityEstimateService {
     opportunityId: string;
     versionId: string;
   }): Promise<ProfitabilityVersionRecord> {
-    return this.protectedTransaction(async () => {
-      const companyId =
-        await this.authorization.requireProfitabilityEstimateAccess(
-          actor,
-          'read',
-          true,
-        );
-      const target = await this.intake.requireReadableProfitabilityOpportunity(
+    return this.protectedTransaction(() =>
+      this.readWithinTransaction({ actor, opportunityId, versionId }),
+    );
+  }
+
+  /** Borrow the caller's protected transaction; never open a nested read. */
+  private async readWithinTransaction({
+    actor,
+    opportunityId,
+    versionId,
+  }: {
+    actor: ActorContext;
+    opportunityId: string;
+    versionId: string;
+  }): Promise<ProfitabilityVersionRecord> {
+    const companyId =
+      await this.authorization.requireProfitabilityEstimateAccess(
         actor,
-        opportunityId,
+        'read',
+        true,
       );
-      const version = await this.version(
-        actor,
-        companyId,
-        target.id,
-        versionId,
+    const target = await this.intake.requireReadableProfitabilityOpportunity(
+      actor,
+      opportunityId,
+    );
+    const version = await this.version(actor, companyId, target.id, versionId);
+    const [decision] = await this.database.connection
+      .select()
+      .from(profitabilityEstimateDecisions)
+      .where(
+        and(
+          eq(profitabilityEstimateDecisions.workspaceId, actor.workspaceId),
+          eq(profitabilityEstimateDecisions.companyId, companyId),
+          eq(profitabilityEstimateDecisions.versionId, version.id),
+        ),
       );
-      const [decision] = await this.database.connection
-        .select()
-        .from(profitabilityEstimateDecisions)
-        .where(
-          and(
-            eq(profitabilityEstimateDecisions.workspaceId, actor.workspaceId),
-            eq(profitabilityEstimateDecisions.companyId, companyId),
-            eq(profitabilityEstimateDecisions.versionId, version.id),
-          ),
-        );
-      return readProfitabilityVersion(version, decision ?? null);
+    return readProfitabilityVersion(version, decision ?? null);
+  }
+
+  /** Current source authority is required even for a handoff receipt replay. */
+  async readApprovedOfferPriceWithinTransaction({
+    actor,
+    opportunityId,
+    versionId,
+    versionNumber,
+  }: {
+    actor: ActorContext;
+    opportunityId: string;
+    versionId: string;
+    versionNumber: number;
+  }): Promise<ApprovedEstimateCommercialProjection> {
+    const version = await this.readWithinTransaction({
+      actor,
+      opportunityId,
+      versionId,
     });
+    if (version.versionNumber !== versionNumber)
+      throw new ConflictException({
+        code: 'PROFITABILITY_VERSION_MISMATCH',
+        message: 'The selected economic Version does not match.',
+      });
+    if (version.decision?.code !== 'APPROVE')
+      throw new ConflictException({
+        code: 'PROFITABILITY_VERSION_NOT_APPROVED',
+        message: 'The selected economic Version is not approved.',
+      });
+    return {
+      estimateId: version.estimateId,
+      estimateVersionId: version.id,
+      estimateVersionNumber: version.versionNumber,
+      approvalDecisionId: version.decision.id,
+      approvedAt: version.decision.decidedAt,
+      amount: version.inputs.proposedPrice,
+      currency: version.inputs.currency,
+    };
   }
 
   list({

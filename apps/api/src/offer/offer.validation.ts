@@ -134,6 +134,13 @@ const UUID_GRAMMAR =
 export function readCreateOfferCommand(value: unknown): CreateOfferCommand {
   const input = record(value, 'body');
   const pricingSnapshotId = uuid(input.pricingSnapshotId, 'pricingSnapshotId');
+  return {
+    pricingSnapshotId: pricingSnapshotId.toLowerCase(),
+    ...readOfferContent(input),
+  };
+}
+
+function readOfferContent(input: Record<string, unknown>) {
   const recipient = readRecipient(input.recipient);
   const validityDays = optionalInteger(input, 'validityDays', 30, 1, 365);
   const scopeNote = optionalText(input, 'scopeNote', 2_000);
@@ -143,11 +150,71 @@ export function readCreateOfferCommand(value: unknown): CreateOfferCommand {
     4_000,
   );
   return {
-    pricingSnapshotId: pricingSnapshotId.toLowerCase(),
     recipient,
     validityDays: validityDays.value,
     scopeNote: scopeNote.value,
     commercialConditions: commercialConditions.value,
+  };
+}
+
+const ESTIMATE_CONTENT_FIELDS = [
+  'estimateVersionId',
+  'estimateVersionNumber',
+  'recipient',
+  'validityDays',
+  'scopeNote',
+  'commercialConditions',
+];
+
+export function readCreateEstimateOfferCommand(value: unknown) {
+  const input = record(value, 'body');
+  for (const key of Object.keys(input))
+    if (!ESTIMATE_CONTENT_FIELDS.includes(key)) throw invalid(key);
+  return readEstimateOfferContent(input);
+}
+
+export function readCreateEstimateOfferVersionCommand(value: unknown) {
+  const input = record(value, 'body');
+  for (const key of Object.keys(input))
+    if (
+      key !== 'expectedOfferRevision' &&
+      !ESTIMATE_CONTENT_FIELDS.includes(key)
+    )
+      throw invalid(key);
+  const revision = input.expectedOfferRevision;
+  if (
+    typeof revision !== 'number' ||
+    !Number.isSafeInteger(revision) ||
+    revision < 1
+  )
+    throw invalid('expectedOfferRevision');
+  return {
+    ...readEstimateOfferContent(input),
+    expectedOfferRevision: revision,
+  };
+}
+
+function readEstimateOfferContent(input: Record<string, unknown>) {
+  const estimateVersionId = uuid(input.estimateVersionId, 'estimateVersionId');
+  const estimateVersionNumber = input.estimateVersionNumber;
+  if (
+    typeof estimateVersionNumber !== 'number' ||
+    !Number.isSafeInteger(estimateVersionNumber) ||
+    estimateVersionNumber < 1
+  )
+    throw invalid('estimateVersionNumber');
+  const recipient = record(input.recipient, 'recipient');
+  for (const key of Object.keys(recipient))
+    if (
+      !(
+        recipient.kind === 'PRIMARY' ? ['kind'] : ['kind', 'legalEntityId']
+      ).includes(key)
+    )
+      throw invalid('recipient.' + key);
+  return {
+    estimateVersionId: estimateVersionId.toLowerCase(),
+    estimateVersionNumber,
+    ...readOfferContent(input),
   };
 }
 

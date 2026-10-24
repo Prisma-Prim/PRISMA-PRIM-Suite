@@ -1,3 +1,4 @@
+import { OfferSummary } from './OfferSummary';
 import {
   useCallback,
   useEffect,
@@ -22,26 +23,27 @@ import {
   useOfferVersionCopy,
 } from './offer-preparation.copy';
 import { useOfferPresentation } from './offer-presentation';
-import { useOfferBindingCopy } from './offer-binding.copy';
 import {
   readOffer,
   readOfferDetail,
   readOfferSnapshotPage,
   offerClientResponseState,
   type OfferSnapshotSummary,
-  type OfferView,
+  type OfferReadView,
+  isIllustrativeOffer,
 } from './offer-response';
 import './offer.css';
+import {
+  EstimateOfferPreparation,
+  mayPrepareEstimateOffer,
+} from './EstimateOfferPreparation';
+import { OfferEstimateSource } from './OfferEstimateSource';
+import { useEstimateOfferCopy } from './offer-estimate.copy';
 import { OfferQualityPanel } from './OfferQualityPanel';
 import { OfferDecisionPanel } from './OfferDecisionPanel';
-import { useOfferDecisionCopy } from './offer-quality-decision.copy';
 import { OfferTransmissionPanel } from './OfferTransmissionPanel';
 import { OfferClientResponsePanel } from './OfferClientResponsePanel';
 import { OfferVersionHistory } from './OfferVersionHistory';
-import {
-  useOfferTransmissionCopy,
-  useOfferClientResponseCopy,
-} from './offer-transmission-response.copy';
 
 type Ready = {
   kind: 'empty';
@@ -53,11 +55,11 @@ type View =
   | Ready
   | {
       kind: 'version';
-      offer: OfferView;
+      offer: OfferReadView;
       snapshots: OfferSnapshotSummary[];
       legalEntities: ClientLegalEntity[];
     }
-  | { kind: 'offer'; offer: OfferView };
+  | { kind: 'offer'; offer: OfferReadView };
 type Attempt = { body: string; idempotencyKey: string };
 const ignoreActor = (): void => undefined;
 const ignoreWorkspace = (): void => undefined;
@@ -88,6 +90,7 @@ export function OfferPanel({
   onWorkspaceAccessRejected?: () => Promise<void> | void;
 }) {
   const copy = useOfferPreparationCopy();
+  const estimateCopy = useEstimateOfferCopy();
   const offerVersionCopy = useOfferVersionCopy();
   const { formatDateTime, formatDecimal } = useOfferPresentation();
   const companyId = actor.activeCompany?.id;
@@ -119,8 +122,17 @@ export function OfferPanel({
     permissions,
     actor.activeCompany?.commercialIntakePermissions,
     actor.activeCompany?.clientPermissions,
+    actor.activeCompany?.offerPermissionSetVersion,
+    actor.activeCompany?.profitabilityContributorPermissionAssignmentId,
+    actor.activeCompany?.profitabilityContributorPermissionSetVersion,
+    actor.activeCompany?.profitabilityContributorPermissions,
+    actor.activeCompany?.profitabilityDirectorPermissionAssignmentId,
+    actor.activeCompany?.profitabilityDirectorPermissionSetVersion,
+    actor.activeCompany?.profitabilityDirectorPermissions,
   ]);
   const [view, setView] = useState<View>({ kind: 'loading' });
+  const [estimateOpen, setEstimateOpen] = useState(false);
+  const estimateOpenRef = useRef(false);
   const [snapshotId, setSnapshotId] = useState('');
   const [recipient, setRecipient] = useState('PRIMARY');
   const [validityDays, setValidityDays] = useState('30');
@@ -195,6 +207,12 @@ export function OfferPanel({
         return;
       }
       const offer = readOfferDetail(offerResult.value);
+      if (
+        offer &&
+        !isIllustrativeOffer(offer) &&
+        (offer.companyId !== companyId || offer.opportunityId !== opportunityId)
+      )
+        throw new Error('Unavailable Offer scope.');
       if (requestedVersionId !== undefined) {
         // A requested version is shown only as exactly that version.
         setView(
@@ -259,12 +277,20 @@ export function OfferPanel({
   useEffect(() => {
     attempt.current = undefined;
     setFeedback(undefined);
+    estimateOpenRef.current = false;
+    setEstimateOpen(false);
     void load();
     return () => pendingRequest.current?.abort();
   }, [load, authorityStamp]);
 
   async function beginVersion() {
-    if (view.kind !== 'offer' || !companyId || !currentClientId || !mayPrepare)
+    if (
+      estimateOpenRef.current ||
+      view.kind !== 'offer' ||
+      !companyId ||
+      !currentClientId ||
+      !mayPrepare
+    )
       return;
     const offer = view.offer;
     pendingRequest.current?.abort();
@@ -296,7 +322,11 @@ export function OfferPanel({
         setFeedback('targetUnavailable');
         return;
       }
-      setSnapshotId(offer.version.pricingSnapshotId);
+      setSnapshotId(
+        isIllustrativeOffer(offer)
+          ? offer.version.pricingSnapshotId
+          : (readOfferSnapshotPage(snapshots.value)[0]?.id ?? ''),
+      );
       setRecipient(
         offer.version.recipient.additionalLegalEntityId ?? 'PRIMARY',
       );
@@ -399,8 +429,18 @@ export function OfferPanel({
 
   return (
     <section className="offer-panel" aria-labelledby="offer-title">
-      <h4 id="offer-title">{copy.title}</h4>
-      <p>{copy.explanation}</p>
+      <h4 id="offer-title">
+        {estimateOpen ||
+        (view.kind === 'offer' && !isIllustrativeOffer(view.offer))
+          ? estimateCopy('internal')
+          : copy.title}
+      </h4>
+      <p>
+        {estimateOpen ||
+        (view.kind === 'offer' && !isIllustrativeOffer(view.offer))
+          ? estimateCopy('notice')
+          : copy.explanation}
+      </p>
       {view.kind === 'loading' && <p role="status">{copy.loading}</p>}
       {view.kind === 'denied' && <p role="status">{copy.denied}</p>}
       {view.kind === 'error' && (
@@ -411,15 +451,50 @@ export function OfferPanel({
           </button>
         </div>
       )}
+      {(view.kind === 'empty' ||
+        (view.kind === 'offer' &&
+          !view.offer.version.supersededByVersionId &&
+          view.offer.version.clientResponseState !== 'ACCEPTED')) &&
+        companyId &&
+        currentClientId &&
+        !contentLocked &&
+        mayPrepareEstimateOffer(actor) && (
+          <EstimateOfferPreparation
+            key={`estimate:${authorityStamp}:${companyId}:${opportunityId}:${view.kind === 'offer' ? view.offer.version.id : 'first'}`}
+            actor={actor}
+            identity={identity}
+            opportunityId={opportunityId}
+            clientId={currentClientId}
+            clientLabel={clientDisplayName ?? copy.clientFallback}
+            offer={view.kind === 'offer' ? view.offer : undefined}
+            reject={reject}
+            onOpen={(open) => {
+              estimateOpenRef.current = open;
+              if (open) {
+                pendingRequest.current?.abort();
+                setPending(false);
+              }
+              setEstimateOpen(open);
+            }}
+            onCreated={(offer) => {
+              pendingRequest.current?.abort();
+              attempt.current = undefined;
+              setFeedback(undefined);
+              setView({ kind: 'offer', offer });
+            }}
+          />
+        )}
       {view.kind === 'empty' && !mayPrepare && <p>{copy.noOffer}</p>}
       {view.kind === 'empty' && mayPrepare && !currentClientId && (
         <p>{copy.noClient}</p>
       )}
       {(view.kind === 'empty' || view.kind === 'version') &&
+        !estimateOpen &&
         mayPrepare &&
         currentClientId &&
         view.snapshots.length === 0 && <p>{copy.noSnapshot}</p>}
       {(view.kind === 'empty' || view.kind === 'version') &&
+        !estimateOpen &&
         mayPrepare &&
         currentClientId &&
         view.snapshots.length > 0 && (
@@ -529,8 +604,21 @@ export function OfferPanel({
           </form>
         )}
       {view.kind === 'offer' && (
-        <>
+        <fieldset
+          className="offer-existing-version"
+          disabled={estimateOpen}
+          aria-labelledby="offer-title"
+        >
           <OfferSummary offer={view.offer} />
+          {!isIllustrativeOffer(view.offer) && (
+            <OfferEstimateSource
+              actor={actor}
+              identity={identity}
+              opportunityId={opportunityId}
+              source={view.offer.version.priceSource}
+              reject={reject}
+            />
+          )}
           {companyId && (
             <OfferVersionHistory
               key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.id}:${view.offer.version.id}`}
@@ -540,6 +628,7 @@ export function OfferPanel({
               offer={view.offer}
               reject={reject}
               onSelect={(offer) => {
+                if (estimateOpenRef.current) return;
                 pendingRequest.current?.abort();
                 setPending(false);
                 attempt.current = undefined;
@@ -565,7 +654,7 @@ export function OfferPanel({
               {copy[feedback]}
             </p>
           )}
-          {companyId && (
+          {companyId && isIllustrativeOffer(view.offer) && (
             <OfferQualityPanel
               key={`${authorityStamp}:${companyId}:${opportunityId}:${view.offer.version.id}`}
               identity={identity}
@@ -581,7 +670,9 @@ export function OfferPanel({
               reject={reject}
               onRun={(run) =>
                 setView((current) =>
-                  current.kind === 'offer'
+                  !estimateOpenRef.current &&
+                  current.kind === 'offer' &&
+                  isIllustrativeOffer(current.offer)
                     ? {
                         kind: 'offer',
                         offer: {
@@ -608,30 +699,46 @@ export function OfferPanel({
                 offer={view.offer}
                 reject={reject}
                 onDecision={(decision) =>
-                  setView((current) =>
-                    current.kind === 'offer'
-                      ? {
-                          kind: 'offer',
-                          offer: {
-                            ...current.offer,
-                            revision: decision.offerRevision,
-                            version: {
-                              ...current.offer.version,
-                              decision,
-                              decisionState: decision.state,
-                              latestQualityRun:
-                                decision.state === 'APPROVED'
-                                  ? decision.qualityRun
-                                  : current.offer.version.latestQualityRun,
-                            },
+                  setView((current) => {
+                    if (estimateOpenRef.current || current.kind !== 'offer')
+                      return current;
+                    if (!isIllustrativeOffer(current.offer)) {
+                      if (decision.state !== 'REJECTED') return current;
+                      return {
+                        kind: 'offer',
+                        offer: {
+                          ...current.offer,
+                          revision: decision.offerRevision,
+                          version: {
+                            ...current.offer.version,
+                            decisionState: 'REJECTED',
+                            decision,
                           },
-                        }
-                      : current,
-                  )
+                        },
+                      };
+                    }
+                    return {
+                      kind: 'offer',
+                      offer: {
+                        ...current.offer,
+                        revision: decision.offerRevision,
+                        version: {
+                          ...current.offer.version,
+                          decisionState: decision.state,
+                          decision,
+                          latestQualityRun:
+                            decision.state === 'APPROVED'
+                              ? decision.qualityRun
+                              : current.offer.version.latestQualityRun,
+                        },
+                      },
+                    };
+                  })
                 }
               />
             )}
           {companyId &&
+            isIllustrativeOffer(view.offer) &&
             mayTransmit &&
             !view.offer.version.supersededByVersionId &&
             view.offer.version.decisionState === 'APPROVED' &&
@@ -645,7 +752,9 @@ export function OfferPanel({
                 reject={reject}
                 onTransmission={(transmission) =>
                   setView((current) =>
-                    current.kind === 'offer'
+                    !estimateOpenRef.current &&
+                    current.kind === 'offer' &&
+                    isIllustrativeOffer(current.offer)
                       ? {
                           kind: 'offer',
                           offer: {
@@ -667,6 +776,7 @@ export function OfferPanel({
               />
             )}
           {companyId &&
+            isIllustrativeOffer(view.offer) &&
             mayRespond &&
             !view.offer.version.supersededByVersionId &&
             view.offer.version.clientResponseState === 'PENDING' && (
@@ -679,6 +789,7 @@ export function OfferPanel({
                 reject={reject}
                 onResponse={(response) =>
                   setView((current) =>
+                    !estimateOpenRef.current &&
                     current.kind === 'offer' &&
                     current.offer.version.transmission
                       ? {
@@ -699,248 +810,8 @@ export function OfferPanel({
                 }
               />
             )}
-        </>
+        </fieldset>
       )}
     </section>
-  );
-}
-
-function OfferSummary({ offer }: { offer: OfferView }) {
-  const copy = useOfferPreparationCopy();
-  const decisionCopy = useOfferDecisionCopy();
-  const transmissionCopy = useOfferTransmissionCopy();
-  const responseCopy = useOfferClientResponseCopy();
-  const { formatDateTime, formatDecimal, formatNumber } =
-    useOfferPresentation();
-  const version = offer.version;
-  const bindingCopy = useOfferBindingCopy();
-  return (
-    <div className="offer-summary">
-      <strong>{copy.provisional}</strong>
-      <dl>
-        <div>
-          <dt>{copy.reference}</dt>
-          <dd>{formatNumber(offer.illustrativeReference)}</dd>
-        </div>
-        <div>
-          <dt>{copy.version}</dt>
-          <dd>{formatNumber(version.versionNumber)}</dd>
-        </div>
-        <div>
-          <dt>{copy.issuingCompany}</dt>
-          <dd>{version.issuingCompanyLabel}</dd>
-        </div>
-        <div>
-          <dt>{copy.recipient}</dt>
-          <dd>{version.recipient.legalName}</dd>
-        </div>
-        <div>
-          <dt>{copy.validUntil}</dt>
-          <dd>{formatDateTime(version.validUntil)}</dd>
-        </div>
-        <div>
-          <dt>{copy.states}</dt>
-          <dd>
-            {version.clientResponse
-              ? copy.responseStates[version.clientResponse.outcome]
-              : version.transmissionState === 'TRANSMITTED'
-                ? copy.transmittedState
-                : version.decisionState === 'PENDING'
-                  ? copy.stateValue
-                  : version.decisionState === 'APPROVED'
-                    ? copy.approvedState
-                    : copy.rejectedState}
-          </dd>
-        </div>
-        <div>
-          <dt>{copy.snapshotTotal}</dt>
-          <dd>
-            {formatDecimal(version.pricingSnapshot.total)}{' '}
-            {version.pricingSnapshot.currency}
-          </dd>
-        </div>
-      </dl>
-      {version.scopeNote && <p>{version.scopeNote}</p>}
-      {version.commercialConditions && <p>{version.commercialConditions}</p>}
-      {version.transmission && (
-        <section
-          className="offer-transmission-evidence"
-          aria-labelledby="offer-transmission-evidence-title"
-        >
-          <h5 id="offer-transmission-evidence-title">
-            {transmissionCopy.title}
-          </h5>
-          <p>{transmissionCopy.explanation}</p>
-          <dl>
-            <div>
-              <dt>{transmissionCopy.actor}</dt>
-              <dd>
-                <code>{version.transmission.actorWorkspaceMembershipId}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>{transmissionCopy.transmittedAt}</dt>
-              <dd>{formatDateTime(version.transmission.transmittedAt)}</dd>
-            </div>
-            <div>
-              <dt>{transmissionCopy.note}</dt>
-              <dd>{version.transmission.note ?? transmissionCopy.noNote}</dd>
-            </div>
-            <div>
-              <dt>{transmissionCopy.run}</dt>
-              <dd>
-                <code>{version.transmission.qualityRun.id}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>{transmissionCopy.warnings}</dt>
-              <dd>
-                {version.transmission.acknowledgedWarningCodes.length
-                  ? version.transmission.acknowledgedWarningCodes
-                      .map((code) => decisionCopy.qualityLabels[code])
-                      .join(', ')
-                  : decisionCopy.noWarnings}
-              </dd>
-            </div>
-            <div>
-              <dt>{transmissionCopy.checksum}</dt>
-              <dd>
-                <code>{version.transmission.representationSha256}</code>
-              </dd>
-            </div>
-          </dl>
-        </section>
-      )}
-      {version.clientResponse && (
-        <section
-          className="offer-client-response-evidence"
-          aria-labelledby="offer-client-response-evidence-title"
-        >
-          <h5 id="offer-client-response-evidence-title">
-            {responseCopy.title}
-          </h5>
-          <p>{responseCopy.explanation}</p>
-          <dl>
-            <div>
-              <dt>{responseCopy.actor}</dt>
-              <dd>
-                <code>{version.clientResponse.actorWorkspaceMembershipId}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>{responseCopy.decidedAt}</dt>
-              <dd>{formatDateTime(version.clientResponse.decidedAt)}</dd>
-            </div>
-            {version.clientResponse.outcome !== 'EXPIRED' && (
-              <div>
-                <dt>{responseCopy.recordedReceivedAt}</dt>
-                <dd>{formatDateTime(version.clientResponse.receivedAt)}</dd>
-              </div>
-            )}
-            {version.clientResponse.outcome === 'REJECTED' && (
-              <div>
-                <dt>{responseCopy.reason}</dt>
-                <dd>{version.clientResponse.reason}</dd>
-              </div>
-            )}
-          </dl>
-        </section>
-      )}
-      {version.clientResponseState === 'PENDING' && version.validityElapsed && (
-        <p>{responseCopy.pendingElapsed}</p>
-      )}
-      {version.decision && (
-        <dl>
-          <div>
-            <dt>{decisionCopy.actor}</dt>
-            <dd>
-              <code>{version.decision.actorWorkspaceMembershipId}</code>
-            </dd>
-          </div>
-          <div>
-            <dt>{decisionCopy.decidedAt}</dt>
-            <dd>{formatDateTime(version.decision.decidedAt)}</dd>
-          </div>
-          {version.decision.state === 'REJECTED' && (
-            <div>
-              <dt>{decisionCopy.reason}</dt>
-              <dd>{version.decision.reason}</dd>
-            </div>
-          )}
-          {version.decision.state === 'APPROVED' && (
-            <>
-              <div>
-                <dt>{decisionCopy.decisionRun}</dt>
-                <dd>
-                  <code>{version.decision.qualityRun.id}</code> ·{' '}
-                  {version.decision.qualityRun.ruleSet} v
-                  {version.decision.qualityRun.ruleSetVersion}
-                </dd>
-              </div>
-              <div>
-                <dt>{decisionCopy.acknowledgedWarnings}</dt>
-                <dd>
-                  {version.decision.acknowledgedWarningCodes.length
-                    ? version.decision.acknowledgedWarningCodes
-                        .map((code) => decisionCopy.qualityLabels[code])
-                        .join(', ')
-                    : decisionCopy.noWarnings}
-                </dd>
-              </div>
-              <div>
-                <dt>{decisionCopy.approvedChecksum}</dt>
-                <dd>
-                  <code>{version.decision.representationSha256}</code>
-                </dd>
-              </div>
-            </>
-          )}
-        </dl>
-      )}
-      <section
-        className="offer-representation"
-        aria-labelledby="offer-representation-title"
-      >
-        <h5 id="offer-representation-title">{copy.representation}</h5>
-        <p>
-          <strong>
-            {version.decisionState === 'PENDING'
-              ? copy.draftState
-              : version.decisionState === 'APPROVED'
-                ? copy.approvedViewer
-                : copy.rejectedViewer}
-          </strong>
-        </p>
-        <dl>
-          <div>
-            <dt>{copy.templateVersion}</dt>
-            <dd>
-              {version.representation.templateCode} v
-              {version.representation.templateVersion}
-            </dd>
-          </div>
-          <div>
-            <dt>{bindingCopy('ruleSet')}</dt>
-            <dd>
-              {version.qualityRuleSet} v{version.qualityRuleSetVersion}
-            </dd>
-          </div>
-          <div>
-            <dt>{copy.checksum}</dt>
-            <dd>
-              <code>{version.representation.sha256}</code>
-            </dd>
-          </div>
-        </dl>
-        {version.representation.templateVersion === 2 && (
-          <p>{bindingCopy('adjustedSnapshot')}</p>
-        )}
-        <iframe
-          title={copy.representationFrame}
-          sandbox=""
-          srcDoc={version.representation.html}
-        />
-      </section>
-    </div>
   );
 }
