@@ -80,6 +80,13 @@ Model-read permission grants no Activity access. Separate model bundle assignmen
 events retain the existing Company administration visibility and bundle-label-only
 metadata convention.
 
+The bounded [Company consulting Contract model contract §29.7](release-3-commercial-29-company-contract-model.md#297-activity-privacy-and-compatibility)
+owns its model Version creation/approval/rejection/withdrawal events and exact
+minimal metadata. They remain internal and are not projected through commercial
+Activity, dashboards, counts or filters. Clause, party/requisites, source and
+decision text never enter those events; model read grants no Activity access.
+Assignment events retain ordinary Company visibility and bundle-label metadata.
+
 The separate [generated Offer compatibility contract §28.9](release-3-commercial-28-model-offer-generation.md#289-activity-storage-and-compatibility)
 reuses the existing Offer event family and transaction guarantees for the new
 closed model/economic source variant. Its source stamps remain frozen Offer

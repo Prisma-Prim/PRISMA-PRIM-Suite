@@ -26,6 +26,7 @@ Sections 1–15 are below. Each later section is its own file, with its original
 - [Section 26. Approved-estimate internal Offer preparation (#840)](release-3-commercial-26-estimate-offer-preparation.md)
 - [Section 27. Company consulting Offer model (#845)](release-3-commercial-27-company-offer-model.md)
 - [Section 28. Approved-model Offer generation (#850)](release-3-commercial-28-model-offer-generation.md)
+- [Section 29. Company consulting Contract model (#862)](release-3-commercial-29-company-contract-model.md)
 
 ## 1. Authority and purpose
 

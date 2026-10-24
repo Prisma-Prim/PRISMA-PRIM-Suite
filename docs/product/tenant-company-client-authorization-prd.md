@@ -288,6 +288,19 @@ These grants provide no Company context, commercial/client/price/cost read,
 Activity read, external-use or administration authority. Section 27 owns their
 complete independent model-read/mutation and lifecycle contract.
 
+The bounded [Company consulting Contract model contract (§29.4)](release-3-commercial-29-company-contract-model.md#294-independent-company-authority)
+adds independent opt-in **Company Contract Model Editor v1**, with exactly
+`commercial.contract.model.read` and `commercial.contract.model.version.create`,
+and **Company Contract Model Approver v1**, with exactly
+`commercial.contract.model.read`, `commercial.contract.model.decide` and
+`commercial.contract.model.withdraw`. Existing Company assignment administration,
+active membership/context and captured-version refusal apply. No old grant,
+Offer model role, Director/Workspace ownership or ordinary Contract capability
+substitutes; neither bundle grants those independent business reads/actions,
+Activity read or administration. No seed/backfill/automatic assignment occurs.
+Section29 owns the exact configuration lifecycle and replay authority; future
+Contract model selection requires its own opt-in contract.
+
 The separate [approved-model Offer generation contract (§28.5)](release-3-commercial-28-model-offer-generation.md#285-independent-authority-and-selected-model-projection)
 adds **Company Offer Preparer v3**, preserving v2 and adding exactly
 `commercial.offer.model.select`, `commercial.offer.model_based.prepare` and
