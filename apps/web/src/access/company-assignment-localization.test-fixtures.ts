@@ -286,6 +286,28 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'offer-model-editor',
+    canonical: 'Company Offer Model Editor',
+    version: 'v1',
+    labels: {
+      ro: 'Editor al modelelor de ofertă ale companiei',
+      ru: 'Редактор шаблонов предложений компании',
+      fr: 'Éditeur des modèles d’offre de la société',
+      en: 'Company Offer Model Editor',
+    },
+  },
+  {
+    value: 'offer-model-approver',
+    canonical: 'Company Offer Model Approver',
+    version: 'v1',
+    labels: {
+      ro: 'Aprobator al modelelor de ofertă ale companiei',
+      ru: 'Утверждающий шаблоны предложений компании',
+      fr: 'Approbateur des modèles d’offre de la société',
+      en: 'Company Offer Model Approver',
+    },
+  },
+  {
     value: 'contract-preparer',
     canonical: 'Company Contract Preparer',
     version: 'v1',

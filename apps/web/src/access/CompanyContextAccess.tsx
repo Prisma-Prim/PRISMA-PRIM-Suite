@@ -1,6 +1,7 @@
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
+import { useOfferModelCopy } from '../offer-model/offer-model.copy';
 import { useProjectTemplateVersionCopy } from '../project/project-template-version.copy';
 import { useProjectStageCopy } from '../project/project-stage.copy';
 import { useDocumentPdfCopy } from '../documents/document-pdf.copy';
@@ -37,6 +38,8 @@ import './access-administration.css';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
+  | 'offer-model-editor'
+  | 'offer-model-approver'
   | 'task-result-recorder'
   | 'task-manager'
   | 'company-context'
@@ -75,6 +78,8 @@ type AssignmentBundle =
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'offer-model-editor': '/company-offer-model-editor-assignments',
+  'offer-model-approver': '/company-offer-model-approver-assignments',
   'task-result-recorder': '/company-task-result-recorder-assignments',
   'ideas-reader': '/company-ideas-reader-assignments',
   'ideas-recorder': '/company-ideas-recorder-assignments',
@@ -147,6 +152,7 @@ export function CompanyContextAccess({
 }) {
   const copy = useCompanyAssignmentCopy();
   const ideasCopy = useIdeasCopy();
+  const modelCopy = useOfferModelCopy();
   const profitabilityCopy = useProfitabilityCopy();
   const riskCopy = useOperationalRiskCopy();
   const decisionCopy = useContractDecisionCopy();
@@ -566,6 +572,11 @@ export function CompanyContextAccess({
               },
               { value: 'pricing-user', label: copy('pricingUserBundle') },
               { value: 'offer-preparer', label: copy('offerPreparerBundle') },
+              { value: 'offer-model-editor', label: modelCopy('editorBundle') },
+              {
+                value: 'offer-model-approver',
+                label: modelCopy('approverBundle'),
+              },
               {
                 value: 'contract-preparer',
                 label: copy('contractPreparerBundle'),
@@ -654,6 +665,8 @@ export function CompanyContextAccess({
                 value === 'pricing-configuration' ||
                 value === 'pricing-user' ||
                 value === 'offer-preparer' ||
+                value === 'offer-model-editor' ||
+                value === 'offer-model-approver' ||
                 value === 'contract-preparer' ||
                 value === 'contract-early-preparation' ||
                 value === 'contract-approver' ||
@@ -733,6 +746,12 @@ export function CompanyContextAccess({
           )}
           {bundle === 'offer-preparer' && (
             <p>{copy('offerPreparerPrerequisites')}</p>
+          )}
+          {bundle === 'offer-model-editor' && (
+            <p>{modelCopy('editorPrerequisites')}</p>
+          )}
+          {bundle === 'offer-model-approver' && (
+            <p>{modelCopy('approverPrerequisites')}</p>
           )}
           {bundle === 'offer-approver' && (
             <p>{copy('offerApproverPrerequisites')}</p>
@@ -836,6 +855,8 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
+    'offer-model-editor': 'Company Offer Model Editor',
+    'offer-model-approver': 'Company Offer Model Approver',
     'ideas-reader': 'Company Ideas Reader',
     'ideas-recorder': 'Company Ideas Recorder',
     'ideas-reviewer': 'Company Ideas Reviewer',

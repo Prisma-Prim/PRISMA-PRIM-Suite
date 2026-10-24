@@ -27,6 +27,7 @@ import type {
   TaskResultPermission,
 } from './company-permissions.js';
 import type { IdeasActorProjection } from './ideas-captured-grants.js';
+import type { OfferModelActorProjection } from './offer-model-captured-grants.js';
 
 export interface ExternalPrincipal {
   provider: string;
@@ -41,7 +42,8 @@ export type WorkspacePermission =
   | 'client.manage'
   | 'member.invite';
 
-export interface ActiveCompanyContext extends IdeasActorProjection {
+export interface ActiveCompanyContext
+  extends IdeasActorProjection, OfferModelActorProjection {
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];

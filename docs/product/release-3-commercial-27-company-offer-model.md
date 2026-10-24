@@ -1,6 +1,7 @@
 # PRD — Release 3 Commercial Workflow, section 27: Company consulting Offer model
 
-**Status:** Approved provisional product contract — runtime not delivered  
+**Status:** Approved provisional product contract — model configuration runtime delivered ([#847](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/847))
+
 **Owner:** Dan Popescu  
 **Contract issue:** [#845](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/845)
 
@@ -238,8 +239,8 @@ Synthetic models alone are used in repository fixtures and evidence.
 
 ## 27.9 Readiness and deferred work
 
-After this contract merges, one narrow vertical runtime child can deliver the
-configuration/approval outcome above. No new dossier or actual legal approval is
+The narrow configuration/approval runtime is delivered by
+[#847](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/847). No new dossier or actual legal approval is
 needed to implement and demonstrate it safely. Real configured content and its
 human approval remain explicit deployment/user actions, not installation effects.
 

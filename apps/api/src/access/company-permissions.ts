@@ -328,6 +328,25 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Mission Deliverable Access',
     versions: { v1: ['document.mission_deliverable.access'] },
   },
+  company_offer_model_editor: {
+    label: 'Company Offer Model Editor',
+    versions: {
+      v1: [
+        'commercial.offer.model.read',
+        'commercial.offer.model.version.create',
+      ],
+    },
+  },
+  company_offer_model_approver: {
+    label: 'Company Offer Model Approver',
+    versions: {
+      v1: [
+        'commercial.offer.model.read',
+        'commercial.offer.model.decide',
+        'commercial.offer.model.withdraw',
+      ],
+    },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -414,6 +433,14 @@ export function companyRoleVersionsWith<Bundle extends CompanyRoleBundle>(
 // owning modules import; none of them adds a permission or a version.
 export const COMPANY_CONTEXT_ACCESS_BUNDLE =
   'company_context_access' satisfies CompanyRoleBundle;
+export const COMPANY_OFFER_MODEL_EDITOR_BUNDLE =
+  'company_offer_model_editor' satisfies CompanyRoleBundle;
+export const COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_offer_model_editor.label;
+export const COMPANY_OFFER_MODEL_APPROVER_BUNDLE =
+  'company_offer_model_approver' satisfies CompanyRoleBundle;
+export const COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_offer_model_approver.label;
 export const COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_context_access.label;
 export const COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE =

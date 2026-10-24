@@ -198,3 +198,16 @@ The registered `personal-attention.acceptance.spec.ts` exercises the actual page
 exact Task completion/reload, four locales and styled controls at 1440px and 390px.
 Original viewport screenshots use `testInfo.outputPath` at the Home entry, page
 header/controls and exact Task; generated evidence remains outside Git.
+
+## Company consulting Offer model — issue #847
+
+`#offer-models` admits only a currently captured Company Offer Model Editor or
+Approver, independently of pricing and commercial intake. The bounded Romanian
+model owner supplies full plain-text entry, exact review, attributed decisions,
+current selection, withdrawal and historical content under
+[Commercial §27](../../../../../docs/product/release-3-commercial-27-company-offer-model.md).
+It reuses shared Select and the Prisme violet controls; stored text keeps its
+original language when the interface locale changes. The registered
+`offer-model.acceptance.spec.ts` uses the real App, isolated PostgreSQL and
+synthetic content at 1440/390. Screenshots remain in ignored test output. No
+configuration is installed or approved automatically.

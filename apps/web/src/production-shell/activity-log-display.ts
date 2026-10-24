@@ -1,6 +1,7 @@
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
+import { useOfferModelCopy } from '../offer-model/offer-model.copy';
 import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { useWorkspaceInvitationsCopy } from '../access/workspace-invitations.copy';
 import { useOpportunityOutcomeCopy } from '../commercial-intake/opportunity-outcome.copy';
@@ -35,6 +36,7 @@ const stageOperationKeys = {
 export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
   const ideas = useIdeasCopy();
+  const model = useOfferModelCopy();
   const invitationActions = useWorkspaceInvitationsCopy().activityActionLabels;
   const pdfActions = useDocumentPdfCopy().activityActionLabels;
   const stage = useSalesStageCopy();
@@ -181,6 +183,10 @@ export function useActivityLogDisplay() {
     'company_offer_preparer_assignment.granted': message(
       'company_offer_preparer_assignment.granted',
     ),
+    'company_offer_model_editor_assignment.granted': model('editorGranted'),
+    'company_offer_model_editor_assignment.revoked': model('editorRevoked'),
+    'company_offer_model_approver_assignment.granted': model('approverGranted'),
+    'company_offer_model_approver_assignment.revoked': model('approverRevoked'),
     'company_offer_preparer_assignment.revoked': message(
       'company_offer_preparer_assignment.revoked',
     ),
