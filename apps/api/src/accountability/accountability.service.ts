@@ -1862,6 +1862,14 @@ export class AccountabilityService {
         ),
       )
       .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
+        ),
+      )
+      .innerJoin(
         internalUsers,
         eq(internalUsers.id, projectCreationEvents.actorInternalUserId),
       )
@@ -1931,6 +1939,14 @@ export class AccountabilityService {
           eq(projects.workspaceId, projectResponsibilityEvents.workspaceId),
           eq(projects.companyId, projectResponsibilityEvents.companyId),
           eq(projects.id, projectResponsibilityEvents.projectId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
         ),
       )
       .innerJoin(
@@ -2012,6 +2028,14 @@ export class AccountabilityService {
           eq(projects.workspaceId, projectLifecycleTransitions.workspaceId),
           eq(projects.companyId, projectLifecycleTransitions.companyId),
           eq(projects.id, projectLifecycleTransitions.projectId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
         ),
       )
       .innerJoin(
