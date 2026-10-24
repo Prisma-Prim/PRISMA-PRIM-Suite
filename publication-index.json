@@ -1,0 +1,28 @@
+{
+  "issue": 847,
+  "pr": 849,
+  "source": "c477bcee12f8068fe7117c794044149093a29f86",
+  "base": "1a8a1242958967f9f0431de183bbfcf76e677137",
+  "tree": "c7a6ab48d2c6aabc798f4eb9825615bd9c67ebaa",
+  "ciHead": "c477bcee12f8068fe7117c794044149093a29f86",
+  "run": 40105884747,
+  "keepThrough": "2026-11-08T15:12:04.570507+00:00",
+  "selection": "Compact public technical proof/report and job/step metadata only, fully reviewed before upload. Complete local raw development results remain private; complete independent CI artifacts remain at the linked run. No model/customer content or binary payload selected.",
+  "files": [
+    {
+      "path": "ci-job-results.json",
+      "bytes": 7303,
+      "sha256": "d424966723827285a2b67b2644762dd69c176cb63806f3638afa5e1f34a4bcbb"
+    },
+    {
+      "path": "final-proof.json",
+      "bytes": 6300,
+      "sha256": "05ffbd22cd06315fbd26e2e2ea1dc36eb751553029a6e6d862022e7ba0380ad9"
+    },
+    {
+      "path": "report.md",
+      "bytes": 1289,
+      "sha256": "2405759af63262cce9777cd1992f3a8365c9461dd89cb9c1dae4baf8a5edf497"
+    }
+  ]
+}

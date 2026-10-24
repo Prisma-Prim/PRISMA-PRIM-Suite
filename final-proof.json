@@ -1,0 +1,138 @@
+{
+  "issue": 847,
+  "pr": 849,
+  "source": "c477bcee12f8068fe7117c794044149093a29f86",
+  "base": "1a8a1242958967f9f0431de183bbfcf76e677137",
+  "tree": "c7a6ab48d2c6aabc798f4eb9825615bd9c67ebaa",
+  "ciHead": "c477bcee12f8068fe7117c794044149093a29f86",
+  "independentCI": {
+    "run": 40105884747,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40105884747",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "jobsPassed": 16,
+    "actualTestStepsPassed": 10,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalPassed": true,
+    "packagingPassed": true,
+    "failureProbePassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "localDevelopment": {
+    "selfReported": true,
+    "canonicalCompleteLocalGateExecuted": false,
+    "kind": "Targeted development and broader checks; independent complete CI is the owner-authorized queue integration gate",
+    "checks": {
+      "format": "passed",
+      "wholeRepositoryLint": "passed",
+      "strictApiAndWebTypes": "passed",
+      "schemaGeneration": "no drift",
+      "focusedPostgres": {
+        "passed": 51
+      },
+      "focusedWeb": {
+        "passed": 25
+      },
+      "registeredActualApp": {
+        "passed": 4,
+        "viewports": [
+          1440,
+          390
+        ],
+        "kind": "Real API and isolated PostgreSQL; complete workflow plus multiline review/copy/edit and history-denial shell retirement"
+      },
+      "broadVerify": {
+        "command": "pnpm_config_verify_deps_before_run=false node scripts/managed-postgres.mjs -- pnpm verify",
+        "attempt": 2,
+        "exitCode": 0,
+        "scriptTestsPassed": 483,
+        "parallelApiPassed": 2870,
+        "parallelApiSkipped": 1,
+        "serialPostgresPassed": 102,
+        "webTestsPassed": 3054,
+        "apiAndWebBuild": "passed",
+        "firstInvocation": "One obsolete pinned registry CHECK fixture failed; both fixed literal role lists were corrected and115 tests passed before this complete second invocation. The first invocation is not relabelled as successful."
+      },
+      "screenshots": "Four synthetic desktop/narrow approved/history screenshots inspected; raw local development screenshots/traces/logs are not selected for publication.",
+      "evidenceSource": "Broader verify and owned model tests passed on18ad901; runtime unchanged in amended source. Only expected test fixture differs.",
+      "ciFixtureCorrection": {
+        "source": "c477bcee12f8068fe7117c794044149093a29f86",
+        "changedFiles": [
+          "apps/web/src/access/company-assignment-localization.test-fixtures.ts"
+        ],
+        "browserPassed": 26,
+        "unitPassed": 73,
+        "formatLintStrictWebTypes": "passed",
+        "priorFailedCI": 40104740981,
+        "cause": "Independent exact role-option expectations omitted the two new roles; all4 locale labels added without weakening assertions"
+      }
+    }
+  },
+  "review": {
+    "rootOrderedPreparation": "Standards, structural checkpoint, then Spec",
+    "initialSource": "f0ca29bcbc55c26b7e75c930778b238146a67c3b",
+    "independentStandardsFindings": 0,
+    "independentSpecBlockingFindings": 1,
+    "openingAutomaticBlockingFindings": 1,
+    "correctionCommits": 1,
+    "reviewedRuntimeCorrectionSource": "18ad9011337849d8080c854f4c9cd755e0c44209",
+    "finalAmendedCorrectionSource": "c477bcee12f8068fe7117c794044149093a29f86",
+    "finalTestOnlyDelta": "Two new captured-v1 roles added to independent exact access-option expectations in four locales; runtime byte-identical to reviewed18ad901. Root Standards/Spec delta preparation,26browser+73unit and format/lint/types passed; no new review requested",
+    "bothInitialFindingsCorrected": true,
+    "automaticSensitiveConfirmation": "Completed with no findings on reviewed18ad901 runtime; unchanged runtime review reused after test-only amendment; no duplicate review requested",
+    "unresolvedThreads": 0,
+    "latestAutomaticActivityOnFinalHead": {
+      "commit_sha": "c477bcee12f8068fe7117c794044149093a29f86",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed"
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12565395354,
+      "name": "browser-evidence-part-acceptance-2-40105884747",
+      "size_in_bytes": 58890178,
+      "digest": "sha256:9b85f71b3dea36e173d3090c275626874838e4470fa11b88a62b19e2595d379f",
+      "expires_at": "2026-11-07T15:22:59Z"
+    },
+    {
+      "id": 12565285086,
+      "name": "browser-evidence-part-browser-3-40105884747",
+      "size_in_bytes": 71162129,
+      "digest": "sha256:d0c67ec42d66bae4ccb25c9b4221558c6328081a35dfe282bca38e9dfa74990c",
+      "expires_at": "2026-11-07T15:18:13Z"
+    },
+    {
+      "id": 12564906031,
+      "name": "browser-evidence-part-browser-2-40105884747",
+      "size_in_bytes": 77526307,
+      "digest": "sha256:2149c39e86f56fa4d8c7ade0765926238aa6058e8fb8dc6ee5b9378864aea05e",
+      "expires_at": "2026-11-07T15:18:31Z"
+    },
+    {
+      "id": 12564728639,
+      "name": "browser-evidence-pr-40105884747",
+      "size_in_bytes": 389860891,
+      "digest": "sha256:e5ac4d0796c4f026a9a189f46af82ac810260872629e83c16627fe760bf5210c",
+      "expires_at": "2026-11-07T15:24:21Z"
+    },
+    {
+      "id": 12564614278,
+      "name": "browser-evidence-part-acceptance-1-40105884747",
+      "size_in_bytes": 68486954,
+      "digest": "sha256:3fdebbaa9722b8ddde4f61e32e1b237e6e1e1922559f646bc6ceaa84d8d28d15",
+      "expires_at": "2026-11-07T15:23:59Z"
+    },
+    {
+      "id": 12564464324,
+      "name": "browser-evidence-part-browser-1-40105884747",
+      "size_in_bytes": 113795411,
+      "digest": "sha256:9e8e8c61a3c9826106502212755364002b3859df962f19ded2159d32f128df53",
+      "expires_at": "2026-11-07T15:19:21Z"
+    }
+  ],
+  "scope": "One Company Romanian consulting Offer model configuration/approval only. No real customer source, legal approval, production grant, Offer generation, numbering, Contract extension or deployment is included.",
+  "publication": "Only fully reviewed public technical result metadata and compact report. No raw logs, archives, screenshots, traces, source dossier or customer prose selected. Canonical local full-gate execution is not claimed. Complete CI artifacts remain linked at GitHub.",
+  "keepThrough": "2026-11-08T15:12:04.570507+00:00"
+}
