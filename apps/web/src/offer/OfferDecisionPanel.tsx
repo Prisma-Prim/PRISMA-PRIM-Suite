@@ -1,3 +1,4 @@
+import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -30,6 +31,7 @@ type State =
 type Attempt = { kind: 'approve' | 'reject'; body: string; key: string };
 
 export function OfferDecisionPanel({
+  onCommandLockChange,
   identity,
   companyId,
   opportunityId,
@@ -37,6 +39,7 @@ export function OfferDecisionPanel({
   onDecision,
   reject,
 }: {
+  onCommandLockChange?: (locked: boolean) => void;
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
@@ -68,6 +71,7 @@ export function OfferDecisionPanel({
       (result) => result.status === 'WARNING',
     ) ?? [];
   const locked = state === 'running' || state === 'uncertain';
+  useOfferCommandLock(locked, onCommandLockChange);
   async function execute(kind: 'approve' | 'reject') {
     if (
       state === 'running' ||

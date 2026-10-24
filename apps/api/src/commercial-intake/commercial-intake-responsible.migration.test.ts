@@ -346,6 +346,12 @@ it.skipIf(!databaseUrl)(
       await migrate(connection, { migrationsFolder: resolve('drizzle') });
       expect(await snapshot()).toEqual(beforeLatest);
       await insertAssignment('company_commercial_intake', 'v3');
+      // 0080 independently introduces Offer Preparer v3; old captures stay
+      // unchanged and an unknown successor still fails closed.
+      await insertAssignment('company_offer_preparer', 'v3');
+      await expect(
+        insertAssignment('company_offer_preparer', 'v4'),
+      ).rejects.toMatchObject({ code: CHECK_VIOLATION });
       for (const version of [null, 'v0', 'V3', 'v5'])
         await expect(
           insertAssignment('company_commercial_intake', version),
@@ -361,7 +367,6 @@ it.skipIf(!databaseUrl)(
         'company_pricing_configuration',
         'company_pricing_user',
         'company_pricing_adjustment',
-        'company_offer_preparer',
         'company_commercial_activity_reader',
         'company_opportunity_manager',
         'company_project_approver',

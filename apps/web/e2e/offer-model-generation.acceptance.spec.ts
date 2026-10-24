@@ -352,12 +352,51 @@ test('generates a complete Romanian Offer, retries committed uncertainty, indepe
   expect(await readFile(downloadPath, 'utf8')).toBe(firstHtml);
   currentIdentity = identities.preparer;
   offer = await openCase();
+  const transmissionAttempts: {
+    body: string | null;
+    key: string | undefined;
+  }[] = [];
+  await page.route(
+    `**/api/offers/opportunities/${opportunityId}/versions/*/transmission`,
+    async (route) => {
+      transmissionAttempts.push({
+        body: route.request().postData(),
+        key: route.request().headers()['idempotency-key'],
+      });
+      const actual = await route.fetch();
+      expect(actual.status()).toBe(201);
+      if (transmissionAttempts.length === 1)
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{}',
+        });
+      else await route.fulfill({ response: actual });
+    },
+  );
   await offer
     .getByRole('button', { name: 'Record simulated transmission', exact: true })
     .click();
+  const retryTransmission = offer.getByRole('button', {
+    name: 'Retry the same transmission',
+    exact: true,
+  });
+  await expect(retryTransmission).toBeEnabled();
+  for (const name of [
+    'Prepare full Offer from approved model',
+    'Prepare from an approved estimate',
+    'Prepare a new version',
+    'Run Quality Checks',
+  ])
+    await expect(
+      offer.getByRole('button', { name, exact: true }),
+    ).toBeDisabled();
+  await retryTransmission.click();
   await expect(offer.locator('.offer-transmission-evidence')).toContainText(
     firstSha ?? '',
   );
+  expect(transmissionAttempts).toHaveLength(2);
+  expect(transmissionAttempts[0]).toEqual(transmissionAttempts[1]);
   const successor = await fillPreparation(offer, '9007199254740993.00');
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();

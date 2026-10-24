@@ -1,3 +1,4 @@
+import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -21,6 +22,7 @@ type CommandState =
   | 'conflict'
   | 'invalid';
 export function OfferQualityPanel({
+  onCommandLockChange,
   identity,
   companyId,
   opportunityId,
@@ -32,6 +34,7 @@ export function OfferQualityPanel({
   reject,
   onRun,
 }: {
+  onCommandLockChange?: (locked: boolean) => void;
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
@@ -53,6 +56,10 @@ export function OfferQualityPanel({
   const attempt = useRef<{ body: string; key: string } | undefined>(undefined);
   useEffect(() => () => pending.current?.abort(), []);
   useEffect(() => setRun(initialRun), [initialRun]);
+  useOfferCommandLock(
+    state === 'running' || state === 'uncertain',
+    onCommandLockChange,
+  );
   async function execute() {
     if (!mayRun || state === 'running') return;
     const command = attempt.current ?? { body: '{}', key: crypto.randomUUID() };
