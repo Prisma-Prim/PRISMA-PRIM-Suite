@@ -1,0 +1,27 @@
+{
+  "issue": 845,
+  "pr": 846,
+  "source": "cda5c65f4fb7d00c1f1cb969e328a47645a1f3ff",
+  "base": "27e2ee733d974b6ad2e0f95c608309604f9dcfc7",
+  "tree": "02a115a6fbf95bdf468b1edea5fbfe1fbf54593d",
+  "run": 40089689497,
+  "keepThrough": "2026-11-08T11:37:17.973161+00:00",
+  "selection": "Only canonical technical manifest/report and compact result metadata. All tracked input names are already public, values are git modes and SHA256 hashes. All other manifest/report fields fully reviewed. Complete raw local execution evidence retained privately.",
+  "files": [
+    {
+      "path": "final-proof.json",
+      "bytes": 2748,
+      "sha256": "9b170f89223b30bcf5f8deeeb4de052bfb6aee788889e1de716946dc4846d970"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 279954,
+      "sha256": "46e63d663426a58149036b5a1f9af50e3eb01deab0400ab1171248c8888207a8"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3671,
+      "sha256": "4568be85cde3bf8c30362b3a607294f93b8b7b28f77a8285faad0ea58331c795"
+    }
+  ]
+}

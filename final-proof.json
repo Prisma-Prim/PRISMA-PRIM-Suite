@@ -1,0 +1,71 @@
+{
+  "issue": 845,
+  "pr": 846,
+  "source": "cda5c65f4fb7d00c1f1cb969e328a47645a1f3ff",
+  "base": "27e2ee733d974b6ad2e0f95c608309604f9dcfc7",
+  "tree": "02a115a6fbf95bdf468b1edea5fbfe1fbf54593d",
+  "local": {
+    "kind": "Canonical complete docs-only gate, freshly validated",
+    "requiredPassed": 6,
+    "heavyNotRequired": 10,
+    "selfReported": true
+  },
+  "independentCI": {
+    "run": 40089689497,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40089689497",
+    "attempt": 1,
+    "jobsPassed": 16,
+    "actualTestStepsPassed": 10,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "artifacts": [
+    {
+      "id": 12559085256,
+      "name": "browser-evidence-part-browser-3-40089689497",
+      "bytes": 71144987,
+      "digest": "sha256:f9fa8c2446eaf94678b99b7d98aa1c5d581a6bf672aef4d1f7e77ae4b0531ffc"
+    },
+    {
+      "id": 12558956547,
+      "name": "browser-evidence-part-acceptance-1-40089689497",
+      "bytes": 68121178,
+      "digest": "sha256:b2364f2d559443129ad2667a5d44c0154efcb934c4ef187d331bc1361f3ee7d5"
+    },
+    {
+      "id": 12558777358,
+      "name": "browser-evidence-pr-40089689497",
+      "bytes": 389388484,
+      "digest": "sha256:7e29663ecc311e7efc9cc3048ec1fba3e8029b30c0611daf51d7e0a6dcb937dc"
+    },
+    {
+      "id": 12558533203,
+      "name": "browser-evidence-part-acceptance-2-40089689497",
+      "bytes": 58820021,
+      "digest": "sha256:bb977130a04d5cb5f4ed68013fc47107b779878d8fc1dc1ccf7b09009f383da7"
+    },
+    {
+      "id": 12558209668,
+      "name": "browser-evidence-part-browser-1-40089689497",
+      "bytes": 113740134,
+      "digest": "sha256:ba60e2ed6abad45db7a210517e57339d43fb6acc1b9cbc92665c7d267a9969a1"
+    },
+    {
+      "id": 12557724479,
+      "name": "browser-evidence-part-browser-2-40089689497",
+      "bytes": 77562252,
+      "digest": "sha256:a7789056a980fe57bcba1a48ff925deec88a15953113c057919aa11e2a4348d1"
+    }
+  ],
+  "review": {
+    "rootOrderedPreparation": "Standards then Spec PASS",
+    "independentStandardsFindings": 0,
+    "independentSpecFindings": 0,
+    "automaticOpeningReview": "Completed without findings on exact source; no duplicate request",
+    "unresolvedThreads": 0
+  },
+  "scope": "Documentation contract only; no model runtime, actual legal content approval, tenant grant or business source publication.",
+  "publication": "Release-asset upload was authorized after narrowing/full review but failed401; release collection and failed release id show no retained release. Repository fallback publishes only this proof and canonical manifest/report, never raw logs, archives, screenshots or traces.",
+  "keepThrough": "2026-11-08T11:37:17.973161+00:00"
+}
