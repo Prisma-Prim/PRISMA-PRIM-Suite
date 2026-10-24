@@ -70,7 +70,10 @@ export class TaskResultsService {
     const taskId = requireUuid(input.taskId);
     return this.database.transaction(
       async () => {
-        const target = await this.tasks.read(actor, taskId);
+        const target = await this.tasks.readWithinTransaction({
+          actor,
+          taskId,
+        });
         await this.references.requireRead({
           actor,
           context: target.task,
@@ -99,7 +102,10 @@ export class TaskResultsService {
     const beforeRevision = historyQuery(input.query);
     return this.database.transaction(
       async () => {
-        const { task } = await this.tasks.read(actor, taskId);
+        const { task } = await this.tasks.readWithinTransaction({
+          actor,
+          taskId,
+        });
         // Every immutable declaration has this same original-Client mission scope.
         // The combined live read gate precedes all row bounds and lookahead.
         await this.references.requireRead({
@@ -141,7 +147,10 @@ export class TaskResultsService {
     const taskId = requireUuid(input.taskId);
     return this.database.transaction(
       async () => {
-        const target = await this.tasks.read(actor, taskId);
+        const target = await this.tasks.readWithinTransaction({
+          actor,
+          taskId,
+        });
         await this.references.requireRead({
           actor,
           context: target.task,
@@ -196,7 +205,10 @@ export class TaskResultsService {
     return this.database.transaction(async () => {
       const companyId = await this.access.requireActor(actor, true, true);
       await this.authorization.requireTaskResultRecorder(actor);
-      const { task: visible } = await this.tasks.read(actor, taskId);
+      const { task: visible } = await this.tasks.readWithinTransaction({
+        actor,
+        taskId,
+      });
       await this.references.requireRead({
         actor,
         context: visible,

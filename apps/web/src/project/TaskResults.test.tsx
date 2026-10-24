@@ -235,6 +235,62 @@ function receipt() {
   );
 }
 
+function workspaceClientManager(): ActorContext {
+  if (!actor.activeCompany) throw new Error('Missing test Company');
+  return {
+    ...actor,
+    workspacePermissions: ['client.manage'],
+    activeCompany: {
+      ...actor.activeCompany,
+      clientPermissions: [],
+      clientPermissionAssignmentId: undefined,
+      clientPermissionSetVersion: undefined,
+    },
+  };
+}
+it('preserves the existing Workspace Client manager read alternative without adding a Director assignment before recording', async () => {
+  let recorded = false;
+  installTransport({
+    current: () =>
+      recorded ? { ...snapshot, revision: 1, current: declaration } : snapshot,
+    post: () => {
+      recorded = true;
+      return receipt();
+    },
+  });
+  render(show({ actor: workspaceClientManager() }));
+  await recordResult();
+  await screen.findByText('Result confirmed.');
+  await screen.findByText('Prepared mission output DEMO');
+});
+
+it('retires a Workspace-authorized pending result when that Client authority is withdrawn and ignores its late success', async () => {
+  let resolve: ((response: Response) => void) | undefined;
+  const manager = workspaceClientManager();
+  installTransport({
+    post: () =>
+      new Promise<Response>((done) => {
+        resolve = done;
+      }),
+  });
+  const view = render(show({ actor: manager }));
+  await recordResult();
+  await screen.findByText('Recording result…');
+  view.rerender(show({ actor: { ...manager, workspacePermissions: [] } }));
+  await screen.findByText(
+    'Task result access is unavailable. Ordinary Task work remains separate.',
+  );
+  if (!resolve) throw new Error('Missing pending result command');
+  resolve(receipt());
+  await waitFor(() =>
+    expect(screen.queryByText('Recording result…')).not.toBeInTheDocument(),
+  );
+  expect(screen.queryByText('Result confirmed.')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Retry exact result command' }),
+  ).not.toBeInTheDocument();
+});
+
 it('preserves exact uncertain body/key/observations through an ordinary Task close and confirms the historical retry without making it current', async () => {
   const commands: RequestInit[] = [];
   let closed = false;

@@ -322,6 +322,7 @@ function TaskProjects(props: Props) {
       <TaskProject
         {...props}
         projectId={projectId}
+        active={props.projectId === projectId}
         projectStatus={statuses.get(projectId) ?? null}
         requestedTask={
           props.projectId === projectId ? requestedTask : undefined
@@ -343,7 +344,8 @@ function TaskProject({
   onProjectChanged,
   onActivityRecorded,
   requestedTask,
-}: Props & { projectId: string }) {
+  active,
+}: Props & { projectId: string; active: boolean }) {
   const copy = useProjectTaskCopy();
   const { locale } = useInterfaceLocale();
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
@@ -1124,17 +1126,21 @@ function TaskProject({
         </>
       )}
       {feedback && <p role="status">{copy[feedback]}</p>}
-      {selected && load.kind !== 'denied' && detail?.kind !== 'missing' && (
-        <TaskResults
-          actor={actor}
-          identity={identity}
-          taskId={selected}
-          projectId={projectId}
-          observedTaskVersion={
-            detail?.kind === 'ready' ? detail.task.version : undefined
-          }
-        />
-      )}
+      {active &&
+        selected &&
+        load.kind !== 'denied' &&
+        detail?.kind !== 'missing' && (
+          <TaskResults
+            actor={actor}
+            identity={identity}
+            taskId={selected}
+            projectId={projectId}
+            observedProjectStatus={projectStatus}
+            observedTaskVersion={
+              detail?.kind === 'ready' ? detail.task.version : undefined
+            }
+          />
+        )}
       {mutation.kind === 'uncertain' && (
         <button type="button" onClick={() => void run(mutation.command)}>
           {copy.retry}

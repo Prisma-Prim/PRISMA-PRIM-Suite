@@ -147,6 +147,30 @@ withPostgres('D4 independent Task result authority REST', () => {
     expect((await submit()).status).toBe(403);
   });
 
+  it('preserves Workspace client.manage as the existing original-Client read alternative without a Director Client assignment', async () => {
+    await fixture.grant('/company-director-client-assignments');
+    expect((await revoke('/company-director-client-assignments')).status).toBe(
+      200,
+    );
+    const actor = await json(await fixture.call('/access/current-actor'));
+    expect(actor.workspacePermissions).toContain('client.manage');
+    expect(
+      record(actor.activeCompany).clientPermissionAssignmentId,
+    ).toBeUndefined();
+    expect((await fixture.call(`/tasks/${context.taskId}`)).status).toBe(200);
+    for (const path of routes())
+      expect((await fixture.call(path)).status).toBe(200);
+    expect((await submit()).status).toBe(403);
+    await fixture.grant('/company-task-result-recorder-assignments');
+    expect((await submit()).status).toBe(201);
+    expect(
+      await json(await fixture.call(`/tasks/${context.taskId}/results`)),
+    ).toMatchObject({
+      revision: 1,
+      current: { declaration: input().declaration },
+    });
+  });
+
   it('denies current/history/selector/new commands and committed replay after public Workspace suspension without rewriting the original result', async () => {
     const identity = {
       subject: 'mission-collaborator',

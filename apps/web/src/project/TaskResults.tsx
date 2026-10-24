@@ -8,6 +8,7 @@ import {
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
 import { companyAuthorityWithoutProjectTemplate } from './project-authority';
+import type { ProjectStatus } from './project-lifecycle-response';
 import { useTaskResultCopy } from './task-results.copy';
 import {
   readTaskResultSnapshot,
@@ -26,6 +27,7 @@ interface Props {
   taskId: string;
   projectId: string;
   observedTaskVersion?: number;
+  observedProjectStatus?: ProjectStatus | null;
 }
 type ReadState =
   | { kind: 'loading' | 'unavailable' | 'malformed' | 'denied' }
@@ -70,6 +72,7 @@ export function TaskResults(props: Props) {
     props.actor.workspaceId,
     props.actor.workspaceMembershipId,
     props.actor.active,
+    props.actor.workspacePermissions,
     companyAuthorityWithoutProjectTemplate(props.actor.activeCompany),
   ]);
   return <TaskResultOwner key={key} {...props} />;
@@ -80,12 +83,21 @@ function TaskResultOwner({
   taskId,
   projectId,
   observedTaskVersion,
+  observedProjectStatus,
 }: Props) {
   const copy = useTaskResultCopy();
   const locale = useInterfaceLocale();
   const id = useId();
   const company = actor.activeCompany;
   const companyId = company?.id ?? '';
+  const canReadClient =
+    actor.workspacePermissions.includes('client.manage') ||
+    Boolean(
+      company?.clientPermissions?.includes('client.read') &&
+      company.clientPermissionAssignmentId &&
+      (company.clientPermissionSetVersion === 'v1' ||
+        company.clientPermissionSetVersion === 'v2'),
+    );
   const canRead = Boolean(
     company?.taskPermissions?.includes('task.read') &&
     company.taskPermissionAssignmentId &&
@@ -94,10 +106,7 @@ function TaskResultOwner({
     company.projectPermissionAssignmentId &&
     (company.projectPermissionSetVersion === 'v1' ||
       company.projectPermissionSetVersion === 'v2') &&
-    company.clientPermissions?.includes('client.read') &&
-    company.clientPermissionAssignmentId &&
-    (company.clientPermissionSetVersion === 'v1' ||
-      company.clientPermissionSetVersion === 'v2') &&
+    canReadClient &&
     company.documentPermissions?.includes('document.read') &&
     company.documentPermissionSetVersion &&
     company.documentPermissionAssignmentId &&
@@ -152,9 +161,9 @@ function TaskResultOwner({
   }, []);
   useEffect(() => {
     if (canRead) void reload();
-    // An ordinary Task revision refreshes availability without discarding an uncertain command.
+    // Task or Project lifecycle changes refresh availability without discarding an uncertain command.
     // Authority and identity are owned by the keyed lifetime above.
-  }, [observedTaskVersion]);
+  }, [observedTaskVersion, observedProjectStatus]);
 
   function deny() {
     activeRead.current?.abort();

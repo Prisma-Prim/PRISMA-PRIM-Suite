@@ -460,7 +460,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CompanyDocumentTaskResultRecorderAssignment'
+                $ref: '#/components/schemas/CompanyTaskResultRecorderAssignment'
         '400':
           description: A target or idempotent command is invalid.
         '401':
@@ -497,7 +497,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CompanyDocumentTaskResultRecorderAssignment'
+                $ref: '#/components/schemas/CompanyTaskResultRecorderAssignment'
         '400':
           description: A target or idempotent command is invalid.
         '401':
@@ -2185,11 +2185,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/TaskResultReceipt'
         '400':
-          {
-            description: Malformed fields,
-            limits,
-            observations or idempotency key.,
-          }
+          description: Malformed fields, limits, observations or idempotency key.
         '401': { description: No verified identity. }
         '403':
           {
@@ -2198,11 +2194,7 @@ paths:
         '404':
           { description: Unavailable Task or exact eligible Document Version. }
         '409':
-          {
-            description: Stale observations,
-            closed Task/Project,
-            existing result or conflicting key reuse.,
-          }
+          description: Stale observations, closed Task/Project, existing result or conflicting key reuse.
   /api/tasks/{taskId}/results/corrections:
     post:
       operationId: correctTaskResult
@@ -2233,16 +2225,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/TaskResultReceipt'
         '400':
-          { description: Malformed declaration, reason, observations or key. }
+          description: Malformed declaration, reason, observations or key.
         '401': { description: No verified identity. }
         '403': { description: Missing current command authority. }
         '404': { description: Unavailable Task or eligible exact Version. }
         '409':
-          {
-            description: Missing/stale result,
-            closed state,
-            revision exhaustion or conflicting key reuse.,
-          }
+          description: Missing/stale result, closed state, revision exhaustion or conflicting key reuse.
   /api/tasks/{taskId}/results/history:
     get:
       operationId: readTaskResultHistory

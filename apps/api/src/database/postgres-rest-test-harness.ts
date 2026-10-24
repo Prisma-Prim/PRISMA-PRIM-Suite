@@ -34,6 +34,11 @@ export interface CreatePostgresRestTestHarnessOptions {
   readonly environment: Readonly<Record<string, string>>;
   readonly listenPort?: number;
   readonly migrationsFolder?: string;
+  /** Real pool capacity/deadline for public resource-exhaustion proof; no owning service is mocked. */
+  readonly applicationPoolConfiguration?: {
+    max: number;
+    connectionTimeoutMillis: number;
+  };
 }
 
 class ApplicationQueryCounter implements Logger {
@@ -64,13 +69,17 @@ export async function createPostgresRestTestHarness({
   migrationsFolder = './drizzle',
   sessionRevoker,
   serverClock,
+  applicationPoolConfiguration,
 }: CreatePostgresRestTestHarnessOptions): Promise<PostgresRestTestHarness> {
   assertLocalTestDatabaseUrl(databaseUrl);
   Object.assign(process.env, environment, { DATABASE_URL: databaseUrl });
 
   const ownedResources: OwnedResource[] = [];
   try {
-    const applicationPool = new Pool({ connectionString: databaseUrl });
+    const applicationPool = new Pool({
+      connectionString: databaseUrl,
+      ...applicationPoolConfiguration,
+    });
     ownedResources.push({
       name: 'application PostgreSQL pool',
       cleanup: () => applicationPool.end(),
