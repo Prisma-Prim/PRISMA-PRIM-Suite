@@ -253,6 +253,15 @@ page bounds/counts/labels. No filename, checksum, bytes, external content, title
 purpose or hidden Project identity is added to event metadata. Captured family
 assignment grant/revoke events follow the existing Company assignment convention.
 
+The [received Contract PDF family](release-1-document-registry-24-received-contract-pdfs.md)
+likewise reuses the existing atomic Document events and minimal metadata, with
+live family/ordinary target visibility before page bounds, counts or labels.
+Registration records the Document, not a new Contract event or execution fact;
+its declared relation/source/receipt date and Contract identifiers do not enter
+event metadata. Project association retains both endpoint reads. Family assignment
+events use the existing bundle-label-only convention. No upload, designation,
+denial, rollback or replay silently records signing, acceptance or Task completion.
+
 For the approved [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306),
 one committed material update creates exactly one
 `opportunity.next_action.updated` event in the same transaction as the new

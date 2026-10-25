@@ -206,6 +206,20 @@ Its attributable transitions are
 `company_mission_deliverable_access_assignment.granted` and `.revoked`, following
 the existing Company assignment event/metadata convention with no real grants.
 
+The [received Contract PDF family](release-1-document-registry-24-received-contract-pdfs.md)
+adds separate opt-in **Company Received Contract Access v1**, containing exactly
+`document.received_contract.access`. Existing Company assignment administration
+explicitly grants/revokes captured `v1` for an active same-Workspace membership
+and active Company under current `company.assignment.manage`; null/unknown
+captures fail closed. Existing grants, repeated grants, migration and bootstrap
+never add it implicitly. Its events are
+`company_received_contract_access_assignment.granted` and `.revoked`, with the
+existing bundle-label-only metadata. This gate grants no ordinary metadata,
+content, registration, Version, Approver, Contract/Opportunity, Project or
+administration permission. Section 24 owns the additional family and independent
+two-end relation-read consequences, including live revocation before replay and
+after scanning. No real assignments are created.
+
 The [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306)
 adds `commercial.opportunity.next_action.update` only through captured
 **Company Commercial Intake v2**. Intake v1 remains exactly the four read and

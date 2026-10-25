@@ -52,6 +52,13 @@ requires no placeholder URL and grants no implicit evidence, Task completion or
 operational authority. #820 owns D3/D4/D2 sequencing; runtime delivery follows a
 separate implementation child after the contract is merged.
 
+The [received Contract PDF contract](release-1-document-registry-24-received-contract-pdfs.md)
+under #870 owns D9's separately gated reference-free family, exact declared
+Contract-Version relation and source attribution, reusing immutable PDF/Version
+storage. Related Contract details and content retain independent read authority.
+Runtime follows the merged contract; signing/case acceptance remains D10 and
+neither upload nor designation completes the end-to-end dossier.
+
 The [bounded exact mission Task result contract](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
 under #832 links attributable result declarations/corrections to frozen readable
 mission Versions, preserving originals and independent Task/Document authority.
