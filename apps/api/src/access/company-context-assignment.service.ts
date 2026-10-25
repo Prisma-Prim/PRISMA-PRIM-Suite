@@ -1610,6 +1610,19 @@ export class CompanyContextAssignmentService {
         );
         return this.commandResult(replay, bundle);
       }
+      // Preserve administration's per-target serialization independently of
+      // the shared eligibility locks consumed by business commands. In
+      // particular, a revoke cannot remove a conflicting grant between its
+      // INSERT and the active-assignment resolution below.
+      const targetLock = JSON.stringify([
+        'company.assignment.target',
+        actor.workspaceId,
+        workspaceMembershipId,
+        companyId,
+      ]);
+      await this.databaseContext.connection.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${targetLock}, 0))`,
+      );
       const target = await this.requireActiveTargets(
         actor.workspaceId,
         workspaceMembershipId,
@@ -1707,8 +1720,7 @@ export class CompanyContextAssignmentService {
       // These rows are eligibility, not mutation targets. Shared locks still
       // block suspension/deactivation without deadlocking an authorized
       // command that already holds its assignment and then locks membership.
-      // Assignment writes and their uniqueness constraints serialize grants
-      // and revocations independently.
+      // The administration target lock above serializes grants and revokes.
       .for('share')
       .limit(1);
     if (!target) throw new ForbiddenException();
