@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import type { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -564,17 +565,126 @@ describeWithPostgres('Company Context Access assignments REST API', () => {
     }
   });
 
+  it.each(['grant', 'revoke'])(
+    'serializes a distinct %s behind a pending grant for the same target',
+    async (operation) => {
+      await currentActor('workspace-owner', 'Owner');
+      const member = await currentActor('workspace-member', 'Member');
+      const company = await registerCompany('Serialized Assignments');
+      const control = await pool.connect();
+      const pending: Promise<Response>[] = [];
+      const advisoryLock = 90_867_531;
+      await pool.query(`
+        CREATE FUNCTION pause_first_assignment_command() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.idempotency_key = 'serialize-first-grant' THEN
+            PERFORM pg_advisory_xact_lock(${advisoryLock});
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        CREATE TRIGGER pause_first_assignment_command
+        BEFORE INSERT ON company_context_assignment_commands
+        FOR EACH ROW EXECUTE FUNCTION pause_first_assignment_command();
+      `);
+      const grant = (key: string) =>
+        fetch(`${origin}/api/company-context-assignments`, {
+          method: 'POST',
+          headers: {
+            ...identityHeaders('workspace-owner', 'Owner'),
+            'content-type': 'application/json',
+            'idempotency-key': key,
+          },
+          body: JSON.stringify({
+            workspaceMembershipId: member.workspaceMembershipId,
+            companyId: company.id,
+          }),
+        });
+      try {
+        await control.query('BEGIN');
+        await control.query('SELECT pg_advisory_xact_lock($1)', [advisoryLock]);
+        const first = grant('serialize-first-grant');
+        pending.push(first);
+        const firstPid = await waitForBlockedAssignmentInsert();
+        let secondSettled = false;
+        const second = (
+          operation === 'grant'
+            ? grant('serialize-second-grant')
+            : fetch(
+                `${origin}/api/company-context-assignments/${member.workspaceMembershipId}/${company.id}`,
+                {
+                  method: 'DELETE',
+                  headers: {
+                    ...identityHeaders('workspace-owner', 'Owner'),
+                    'idempotency-key': 'serialize-second-revoke',
+                  },
+                },
+              )
+        ).finally(() => {
+          secondSettled = true;
+        });
+        pending.push(second);
+        let serialized = false;
+        for (let attempt = 0; attempt < 100 && !secondSettled; attempt += 1) {
+          const result = await pool.query<{ blocked: boolean }>(
+            `SELECT EXISTS (
+               SELECT 1 FROM pg_stat_activity
+               WHERE datname=current_database() AND wait_event_type='Lock'
+                 AND $1 = ANY(pg_blocking_pids(pid))
+             ) AS blocked`,
+            [firstPid],
+          );
+          if (result.rows[0]?.blocked) {
+            serialized = true;
+            break;
+          }
+          await delay(10);
+        }
+        expect(serialized).toBe(true);
+        await control.query('COMMIT');
+        const responses = await Promise.all([first, second]);
+        expect(responses.map((response) => response.status)).toEqual([
+          201,
+          operation === 'grant' ? 201 : 200,
+        ]);
+        expect(
+          await activeAssignmentCount(member.workspaceMembershipId, company.id),
+        ).toBe(operation === 'grant' ? '1' : '0');
+        const events = await pool.query<{ action: string }>(
+          `SELECT action FROM activity_log_events
+           WHERE action::text LIKE 'company_context_assignment.%'
+           ORDER BY occurred_at, id`,
+        );
+        expect(events.rows.map((event) => event.action)).toEqual(
+          operation === 'grant'
+            ? ['company_context_assignment.granted']
+            : [
+                'company_context_assignment.granted',
+                'company_context_assignment.revoked',
+              ],
+        );
+      } finally {
+        await control.query('ROLLBACK');
+        control.release();
+        await Promise.allSettled(pending);
+        await pool.query(
+          'DROP TRIGGER pause_first_assignment_command ON company_context_assignment_commands',
+        );
+        await pool.query('DROP FUNCTION pause_first_assignment_command()');
+      }
+    },
+  );
+
   async function waitForBlockedAssignmentInsert() {
     for (let attempt = 0; attempt < 100; attempt += 1) {
-      const blocked = await pool.query<{ blocked: boolean }>(`
-        SELECT EXISTS (
-          SELECT 1 FROM pg_stat_activity
-          WHERE datname = current_database()
-            AND wait_event = 'advisory'
-            AND query ILIKE '%company_context_assignment_commands%'
-        ) AS blocked
+      const blocked = await pool.query<{ pid: number }>(`
+        SELECT pid FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND wait_event = 'advisory'
+          AND query ILIKE '%company_context_assignment_commands%'
       `);
-      if (blocked.rows[0]?.blocked) return;
+      const [row] = blocked.rows;
+      if (blocked.rows.length === 1 && row) return row.pid;
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
     throw new Error('The assignment command did not reach the lock barrier.');

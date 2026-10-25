@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createIsolatedPostgresTestDatabase,
@@ -1325,6 +1326,110 @@ describe.skipIf(!databaseUrl)(
         revision: 2,
       });
     });
+
+    it.each(['membership-contention', 'revocation-first', 'mutation-first'])(
+      'serializes queued Project authority changes with %s',
+      async (order) => {
+        const ion = await member('ion', true);
+        const key = randomUUID();
+        const before = await clientVersions();
+        const control = await harness.pool.connect();
+        const pending: Promise<Response>[] = [];
+        const blockedBy = async ({
+          pids,
+          excluded = [],
+        }: {
+          pids: readonly number[];
+          excluded?: readonly number[];
+        }) => {
+          const deadline = performance.now() + 2000;
+          while (performance.now() < deadline) {
+            const result = await harness.pool.query<{ pid: number }>(
+              `SELECT pid FROM pg_stat_activity
+               WHERE datname=current_database() AND wait_event_type='Lock'
+                 AND pg_blocking_pids(pid) && $1::integer[]
+                 AND NOT (pid = ANY($2::integer[]))`,
+              [pids, excluded],
+            );
+            const [blocked] = result.rows;
+            if (result.rows.length === 1 && blocked) return blocked.pid;
+            await delay(10);
+          }
+          throw new Error(
+            'Expected the public command to reach its lock barrier.',
+          );
+        };
+        try {
+          await control.query('BEGIN');
+          const result = await control.query<{ pid: number }>(
+            'SELECT pg_backend_pid() AS pid',
+          );
+          const controller = result.rows[0];
+          if (!controller) throw new Error('Missing control connection.');
+          await control.query(
+            order === 'membership-contention'
+              ? 'SELECT id FROM workspace_memberships WHERE id=$1 FOR UPDATE'
+              : order === 'revocation-first'
+                ? `SELECT id FROM company_role_assignments
+                   WHERE workspace_membership_id=$1 AND bundle='company_project_access'
+                   FOR UPDATE`
+                : 'SELECT id FROM projects WHERE id=$1 FOR UPDATE',
+            [order === 'mutation-first' ? projectId : ion],
+          );
+          const mutate = () =>
+            change(0, ownerMembershipId, { key, subject: 'ion' });
+          const revokeAccess = () =>
+            request(`${assignments.project}/${ion}/${companyId}`, {
+              method: 'DELETE',
+            });
+          const first = order === 'mutation-first' ? mutate() : revokeAccess();
+          pending.push(first);
+          const firstPid = await blockedBy({ pids: [controller.pid] });
+          const second = order === 'mutation-first' ? revokeAccess() : mutate();
+          pending.push(second);
+          await blockedBy({
+            pids:
+              order === 'mutation-first'
+                ? [firstPid]
+                : [controller.pid, firstPid],
+            excluded: [firstPid],
+          });
+          await control.query('COMMIT');
+          const [firstResponse, secondResponse] = await Promise.all([
+            first,
+            second,
+          ]);
+          const mutation =
+            order === 'mutation-first' ? firstResponse : secondResponse;
+          const revoked =
+            order === 'mutation-first' ? secondResponse : firstResponse;
+          expect(revoked.status).toBe(200);
+          if (order === 'membership-contention')
+            expect([200, 403]).toContain(mutation.status);
+          else
+            expect(mutation.status).toBe(
+              order === 'revocation-first' ? 403 : 200,
+            );
+          const committed = mutation.status === 200;
+          expect(await responsibility()).toMatchObject({
+            revision: committed ? 1 : 0,
+          });
+          expect(await responsibleEvents()).toHaveLength(committed ? 1 : 0);
+          const [after] = await clientVersions();
+          expect(after?.version).toBe(
+            (before[0]?.version ?? 0) + (committed ? 1 : 0),
+          );
+          expect(
+            (await change(0, ownerMembershipId, { key, subject: 'ion' }))
+              .status,
+          ).toBe(403);
+        } finally {
+          await control.query('ROLLBACK');
+          control.release();
+          await Promise.allSettled(pending);
+        }
+      },
+    );
 
     it.each(['revocation', 'suspension'])(
       'serializes a change against actor %s and denies all later replay',
