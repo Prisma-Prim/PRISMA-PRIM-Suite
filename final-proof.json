@@ -1,0 +1,198 @@
+{
+  "issue": 853,
+  "pr": 857,
+  "source": "65639c5890f9adfbd91a844c5644d27a034456c0",
+  "base": "0b1338cd5b7345913a4b6d257bc59b307d05e1dc",
+  "tree": "4a14b4d1284d1754cdef2afbcec78eeaf2ab59a4",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40239592780,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40239592780",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 853,
+    "pr": 857,
+    "source": "65639c5890f9adfbd91a844c5644d27a034456c0",
+    "base": "0b1338cd5b7345913a4b6d257bc59b307d05e1dc",
+    "tree": "4a14b4d1284d1754cdef2afbcec78eeaf2ab59a4",
+    "selfReportedLocalOnly": true,
+    "doctor": {
+      "selectedFeatureProfile": "postgres",
+      "printedReadinessProfile": "standard",
+      "requiredPassed": 8,
+      "postgresVersion": "17.11",
+      "beforeIntegration": true,
+      "frozenInstall": true
+    },
+    "completeDevelopmentPnpmVerify": {
+      "exit": 0,
+      "command": "node scripts/managed-postgres.mjs -- pnpm verify",
+      "source": "65639c5890f9adfbd91a844c5644d27a034456c0",
+      "tree": "4a14b4d1284d1754cdef2afbcec78eeaf2ab59a4",
+      "workerConfiguration": "unchanged repository default",
+      "testTimeout": "unchanged canonical five seconds",
+      "format": "PASS",
+      "lint": "PASS",
+      "apiWebTypes": "PASS",
+      "scriptsPassed": 483,
+      "apiParallelPassed": 3216,
+      "apiSerialPassed": 106,
+      "webPassed": 3131,
+      "totalPassed": 6936,
+      "optionalSkipped": 1,
+      "skipReason": "Optional real ClamAV test needs configured TEST_CLAMAV_HOST/PORT; scanner boundary behavior is covered separately.",
+      "productionBuilds": "PASS",
+      "privateLogBytes": 379110,
+      "privateLogSha256": "b6202f7cc2c98ef2da5c4b3b78ae90c54981c187e2051e2010d5520dadb5937b"
+    },
+    "freshRegression": {
+      "base": "0b1338cd5b7345913a4b6d257bc59b307d05e1dc",
+      "seam": "Authenticated public Project detail and Activity GETs with established persisted invalidation fixture.",
+      "red": "Project detail404 while Activity still contained the three recorded Project event families; exact leaked-event assertion failed.",
+      "controlCleanup": "Only the known66-line test transplant was reverted; main control checkout clean.",
+      "greenFiles": 13,
+      "greenPassed": 229,
+      "defaultBudgetSeconds": 5,
+      "covers": "Active/archive/restored/superseded original and archived relationship; hidden Project/event identifiers/title; exact immutable event restoration; current rights and scope/page bounds."
+    },
+    "unchangedPreparedPatch": {
+      "originalSource": "b38a28fa7c991184781a7c98eff8f7fc7e530541",
+      "originalBase": "d91354a9e2eaa05d1ab0b2fc29ce4acc67cce448",
+      "stablePatchId": "2f2e28bf2e911f4a411e0897b9e66db9b3925059",
+      "productionLinesAdded": 24,
+      "testLinesAdded": 66,
+      "changedFiles": 2,
+      "integration": "Conflict-free mechanical main integration; original focused commit retained."
+    },
+    "priorEvidenceNotRelabeled": [
+      {
+        "source": "b38a28fa7c991184781a7c98eff8f7fc7e530541",
+        "focusedPassed": 225,
+        "focusedLimitSeconds": 15,
+        "canonicalFiveSecondPassEstablished": false,
+        "broader": "FAILED; scripts483/staticpassed, API2870passed/1failed/1optional skip, existing830actorrevocation40P01; later serial/Web/build unexecuted."
+      },
+      {
+        "source": "eabebd4a16506493be0089a5caedc1aae1810a2f",
+        "base": "eb97dfb3c47f0bec364e2e5ac5697797bb84e7d5",
+        "focusedCanonicalPassed": 225,
+        "focusedCanonicalFailed": 1,
+        "cause": "Existing830actorrevocation40P01, not this read projection; paused for isolated830 repair."
+      }
+    ],
+    "actualVerificationDependency": {
+      "issue": 830,
+      "pr": 876,
+      "merged": "0b1338cd5b7345913a4b6d257bc59b307d05e1dc",
+      "separateDelivery": true,
+      "includedInCurrentBase": true,
+      "scopeNotFoldedIntoThisPatch": true
+    },
+    "rootOrderedStandardsSpec": "PASS; original-Client owner parity, same-pattern additional gates, rights/scope and pre-pagination checks.",
+    "canonicalCompleteLocalIntegrationGateClaimed": false,
+    "independentFinalCI": {
+      "run": 40239592780,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40239592780",
+      "source": "65639c5890f9adfbd91a844c5644d27a034456c0",
+      "conclusion": "success",
+      "all16JobsAnd10ActualTestStepsPassed": true
+    }
+  },
+  "review": {
+    "issue": 853,
+    "pr": 857,
+    "complete": true,
+    "source": "65639c5890f9adfbd91a844c5644d27a034456c0",
+    "base": "0b1338cd5b7345913a4b6d257bc59b307d05e1dc",
+    "tree": "4a14b4d1284d1754cdef2afbcec78eeaf2ab59a4",
+    "rootPreparation": [
+      "Standards",
+      "Spec"
+    ],
+    "independentReview": {
+      "source": "65639c5890f9adfbd91a844c5644d27a034456c0",
+      "base": "0b1338cd5b7345913a4b6d257bc59b307d05e1dc",
+      "tree": "4a14b4d1284d1754cdef2afbcec78eeaf2ab59a4",
+      "standards": {
+        "blockers": 0,
+        "followUps": 0
+      },
+      "spec": {
+        "blockers": 0,
+        "followUps": 0
+      }
+    },
+    "blockingFindingsRemaining": 0,
+    "correction": null,
+    "sensitiveConfirmation": "Not required; no blocking correction.",
+    "roundApplicability": "Finishes the original prepared draft PR pending product-review disposition. Original Standards/Spec preparation retained; unchanged stable patch, no base-advance/post-CI review round requested.",
+    "automaticOpeningReview": {
+      "commentId": 6403930506,
+      "source": "65639c5890f9adfbd91a844c5644d27a034456c0",
+      "status": "running",
+      "hasAnyFindings": null,
+      "hasUnresolvedFindings": null,
+      "claim": "Not claimed completed. Sole ready-transition automation; no duplicate manual trigger."
+    },
+    "finalIntegration": "Complete independent CI40239592780 PASS16jobs/10actualTeststeps after completed applicable independent review and full development verification; exact source/currentbase/tree checked. Additional automated summary stillrunning and not claimedcomplete. No duplicate/postgreen review requested.",
+    "applicableReview": "Owner-authorized independent Standards and Spec on exact656/current0b/tree4a14, both completed0. This fulfills the applicable bounded review; the additional automatic summary is followed honestly and no new trigger is requested.",
+    "unresolvedThreads": 0,
+    "reviewSubmissions": 0
+  },
+  "artifacts": [
+    {
+      "id": 12617120128,
+      "name": "browser-evidence-part-browser-2-40239592780",
+      "size_in_bytes": 77574006,
+      "digest": "sha256:494015d1802d769e8d8c19bda6ec689c6a2cce2d6f64775fa38114fa20d7ea8a",
+      "expires_at": "2026-11-08T22:24:22Z"
+    },
+    {
+      "id": 12617056584,
+      "name": "browser-evidence-pr-40239592780",
+      "size_in_bytes": 393439915,
+      "digest": "sha256:b9c4ff2fada653ff7206aece693040079ff7d5c68eda8c68457038de8ad120f5",
+      "expires_at": "2026-11-08T22:29:33Z"
+    },
+    {
+      "id": 12616906369,
+      "name": "browser-evidence-part-browser-3-40239592780",
+      "size_in_bytes": 71162530,
+      "digest": "sha256:e2ef4f7f2aa7a5635365ef3813387441c2b36d0ae664655fbb0a931d7ad8e5da",
+      "expires_at": "2026-11-08T22:24:33Z"
+    },
+    {
+      "id": 12616837186,
+      "name": "browser-evidence-part-acceptance-2-40239592780",
+      "size_in_bytes": 60618226,
+      "digest": "sha256:3d0dc634aa17d2686237768cd9124c57531f625ad24b9c68d247adabe0186e0c",
+      "expires_at": "2026-11-08T22:29:16Z"
+    },
+    {
+      "id": 12616722489,
+      "name": "browser-evidence-part-acceptance-1-40239592780",
+      "size_in_bytes": 70291683,
+      "digest": "sha256:b7d257aa89de5a5244d6ac9ba8f70d11c5fb6cb3d2ebd065c7b4d7f099926656",
+      "expires_at": "2026-11-08T22:29:00Z"
+    },
+    {
+      "id": 12616367510,
+      "name": "browser-evidence-part-browser-1-40239592780",
+      "size_in_bytes": 113793558,
+      "digest": "sha256:5ed07a18c17c0d3e1d319bdb0c0fe7565bd37a9ac83c8306772456781aca3080",
+      "expires_at": "2026-11-08T22:26:12Z"
+    }
+  ],
+  "scope": "Read-only original-Client status gates for Project creation, responsibility and lifecycle Activity. Preserve active/superseded visibility, immutable events, Company/Workspace/permission/relationship restrictions and pre-pagination filtering. Exactly original24production+66testline patch; no archive command, role, schema, UI or broader refactor.830 was delivered separately. D10runtime and whole representative dossier remain pending.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-11T00:00:00Z"
+}
