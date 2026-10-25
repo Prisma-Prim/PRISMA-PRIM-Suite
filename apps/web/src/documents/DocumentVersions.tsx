@@ -1,3 +1,6 @@
+import { hasReceivedContractAccess } from './received-contract-access';
+import { documentFamilyCaptureKey } from './document-family-access';
+import { useReceivedContractCopy } from './received-contract.copy';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { DocumentPdfContent } from './DocumentPdfContent';
@@ -125,7 +128,9 @@ export function DocumentVersions({
     !company ||
     !permissions.includes('document.read') ||
     (documentType === 'mission-deliverable' &&
-      !hasMissionDeliverableAccess(company))
+      !hasMissionDeliverableAccess(company)) ||
+    (documentType === 'received-contract' &&
+      !hasReceivedContractAccess(company))
   )
     return null;
   const canReadReference = permissions.includes('document.reference.read');
@@ -137,9 +142,19 @@ export function DocumentVersions({
         company.id,
         documentId,
         documentType,
-        company.missionDeliverableAccessAssignmentId,
-        company.missionDeliverableAccessPermissionSetVersion,
-        [...permissions].sort(),
+        documentFamilyCaptureKey(company, documentType),
+        permissions
+          .filter((permission) =>
+            [
+              'document.read',
+              'document.reference.read',
+              'document.version.manage',
+              'document.version.designate_official',
+              'document.content.read',
+              'document.content.upload',
+            ].includes(permission),
+          )
+          .sort(),
         company.documentPermissionSetVersion ?? null,
         company.documentApproverAssignmentId ?? null,
         company.documentContentReaderAssignmentId ?? null,
@@ -686,6 +701,7 @@ function Designation({
 }) {
   const copy = useDocumentVersionsCopy();
   const missionCopy = useMissionDeliverableCopy();
+  const receivedCopy = useReceivedContractCopy();
   switch (version.status) {
     case 'draft':
       return null;
@@ -712,9 +728,11 @@ function Designation({
             />
           ) : (
             <p className="working-document-version-notice">
-              {documentType === 'mission-deliverable'
-                ? missionCopy.t('warning')
-                : copy.frozenNotice}
+              {documentType === 'received-contract'
+                ? receivedCopy.t('warning')
+                : documentType === 'mission-deliverable'
+                  ? missionCopy.t('warning')
+                  : copy.frozenNotice}
             </p>
           )}
         </>

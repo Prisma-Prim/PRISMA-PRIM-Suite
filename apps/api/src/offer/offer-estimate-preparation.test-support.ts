@@ -17,6 +17,10 @@ export const ESTIMATE_OFFER_READER = memberHeaders('estimate-offer-reader');
 export async function openEstimateOfferFixture(
   options: {
     migrationsFolder?: string;
+    scannerEnvironment?: {
+      DOCUMENT_MALWARE_SCANNER_HOST: string;
+      DOCUMENT_MALWARE_SCANNER_PORT: string;
+    };
     legacyPreparer?: boolean;
     historicalOfferCaptures?: { preparer: 'v1' | 'v2'; approver: 'v1' };
     serverClock?: ServerClock;
@@ -36,6 +40,7 @@ export async function openEstimateOfferFixture(
         now: () => new Date('2026-10-24T09:00:00.000Z'),
       },
       environment: {
+        ...options.scannerEnvironment,
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',

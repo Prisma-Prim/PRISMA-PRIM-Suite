@@ -43,6 +43,8 @@ import type {
   WorkingDocument,
   WorkingDocumentDetail,
 } from './documents.types.js';
+import { readReceivedContractRegistration } from './received-contract.js';
+import { ReceivedContractRelationsService } from './received-contract-relations.service.js';
 
 const CORRECTION_HISTORY_PAGE_SIZE = 20;
 const MAXIMUM_REVISION = 2147483647;
@@ -57,6 +59,7 @@ export class DocumentsService {
     private readonly projects: ProjectService,
     private readonly boundary: DocumentReadBoundary,
     private readonly versions: DocumentVersionsService,
+    private readonly receivedContracts: ReceivedContractRelationsService,
   ) {}
   async register(
     actor: ActorContext,
@@ -88,6 +91,15 @@ export class DocumentsService {
         }))
       )
         throw new ForbiddenException();
+      if (command.type === 'received-contract') {
+        if (
+          !(await this.authorization.hasReceivedContractAccess(actor, {
+            lockAssignment: true,
+          }))
+        )
+          throw new ForbiddenException();
+        await this.receivedContracts.requireReadAuthority(actor);
+      }
       // Serialize retries before looking up the actor-owned command. A failed
       // mutation rolls back the identity, content, Client fence and history.
       await this.database.connection.execute(
@@ -113,15 +125,27 @@ export class DocumentsService {
           );
         return this.readDetail(actor, existing.id);
       }
+      const binding =
+        command.type === 'received-contract'
+          ? {
+              kind: 'contract-version' as const,
+              command,
+              reference: await this.receivedContracts.qualify(actor, command),
+            }
+          : { kind: 'client' as const, clientId: command.clientId };
+      const clientId =
+        binding.kind === 'contract-version'
+          ? binding.reference.originalClientAccountId
+          : binding.clientId;
       if (command.type === 'mission-deliverable')
-        await this.clients.lockActiveReferenceClient(actor, command.clientId);
-      await this.clients.recordReferenceUse(actor, command.clientId);
+        await this.clients.lockActiveReferenceClient(actor, clientId);
+      await this.clients.recordReferenceUse(actor, clientId);
       const [document] = await this.database.connection
         .insert(workingDocuments)
         .values({
           workspaceId: actor.workspaceId,
           companyId,
-          clientId: command.clientId,
+          clientId,
           title: command.title,
           purpose: command.purpose,
           type: command.type,
@@ -146,6 +170,13 @@ export class DocumentsService {
         })
         .returning();
       if (!version) throw new Error('Version was not created.');
+      if (binding.kind === 'contract-version')
+        await this.receivedContracts.attach({
+          actor,
+          document,
+          command: binding.command,
+          reference: binding.reference,
+        });
       if (command.type === 'questionnaire')
         await this.database.connection.insert(documentRepresentations).values({
           workspaceId: actor.workspaceId,
@@ -163,11 +194,27 @@ export class DocumentsService {
       return this.readDetail(actor, document.id);
     });
   }
+  async receivedContractSources(actor: ActorContext, query: unknown) {
+    requireDocumentPermission(actor, 'document.register');
+    requireDocumentPermission(actor, 'document.read');
+    return this.database.transaction(
+      async () => {
+        await this.authorization.requireDocumentAccess(actor);
+        if (!(await this.authorization.hasReceivedContractAccess(actor)))
+          throw new ForbiddenException();
+        return this.receivedContracts.selectableVersions(actor, query);
+      },
+      { isolationLevel: 'repeatable read' },
+    );
+  }
+
   async list(actor: ActorContext): Promise<WorkingDocument[]> {
     const companyId = requireDocumentPermission(actor, 'document.read');
     await this.authorization.requireDocumentAccess(actor);
     const familyAllowed =
       await this.authorization.hasMissionDeliverableAccess(actor);
+    const receivedAllowed =
+      await this.authorization.hasReceivedContractAccess(actor);
     const rows = await this.database.connection
       .select({
         id: workingDocuments.id,
@@ -201,12 +248,11 @@ export class DocumentsService {
         and(
           eq(workingDocuments.workspaceId, actor.workspaceId),
           eq(workingDocuments.companyId, companyId),
-          familyAllowed
-            ? inArray(workingDocuments.type, [
-                'questionnaire',
-                'mission-deliverable',
-              ])
-            : eq(workingDocuments.type, 'questionnaire'),
+          inArray(workingDocuments.type, [
+            'questionnaire',
+            ...(familyAllowed ? ['mission-deliverable' as const] : []),
+            ...(receivedAllowed ? ['received-contract' as const] : []),
+          ]),
         ),
       )
       .orderBy(desc(workingDocuments.createdAt), desc(workingDocuments.id));
@@ -345,33 +391,43 @@ export class DocumentsService {
     };
     const identity = { id: working.id, status: working.status };
     const document: WorkingDocument =
-      working.documentType === 'mission-deliverable'
+      working.documentType === 'received-contract'
         ? {
             ...base,
-            type: 'mission-deliverable',
+            type: 'received-contract',
             version: { ...identity, representation: null },
+            receivedContractRelation: await this.receivedContracts.read(
+              actor,
+              row,
+            ),
           }
-        : {
-            ...base,
-            type: 'questionnaire',
-            version: {
-              ...identity,
-              representation: canReadReference(actor)
-                ? {
-                    id: working.representation.id,
-                    kind: 'external-reference',
-                    verification: 'unverified',
-                    access: 'granted',
-                    url: working.representation.url,
-                  }
-                : {
-                    id: working.representation.id,
-                    kind: 'external-reference',
-                    verification: 'unverified',
-                    access: 'denied',
-                  },
-            },
-          };
+        : working.documentType === 'mission-deliverable'
+          ? {
+              ...base,
+              type: 'mission-deliverable',
+              version: { ...identity, representation: null },
+            }
+          : {
+              ...base,
+              type: 'questionnaire',
+              version: {
+                ...identity,
+                representation: canReadReference(actor)
+                  ? {
+                      id: working.representation.id,
+                      kind: 'external-reference',
+                      verification: 'unverified',
+                      access: 'granted',
+                      url: working.representation.url,
+                    }
+                  : {
+                      id: working.representation.id,
+                      kind: 'external-reference',
+                      verification: 'unverified',
+                      access: 'denied',
+                    },
+              },
+            };
     return { document, projectId: row.projectId };
   }
   /**
@@ -515,9 +571,9 @@ export class DocumentsService {
           lockFamily: true,
         })
       ).document;
-      if (visible.type === 'mission-deliverable' && command.url !== undefined)
+      if (visible.type !== 'questionnaire' && command.url !== undefined)
         throw new BadRequestException(
-          'Mission deliverables do not accept external references.',
+          'This Document family does not accept external references.',
         );
       const fingerprint = createHash('sha256')
         .update(JSON.stringify({ companyId, documentId, ...command }))
@@ -670,6 +726,8 @@ function registration(value: unknown) {
   const row: Record<string, unknown> = Object.fromEntries(
     Object.entries(value),
   );
+  if (row.type === 'received-contract')
+    return readReceivedContractRegistration(row);
   const clientId = requireUuid(row.clientId);
   const title = requiredText(row.title, 200);
   const purpose = requiredText(row.purpose, 2000);
@@ -737,7 +795,12 @@ function referenceUrl(value: unknown): string {
   return url.href;
 }
 function requiredText(value: unknown, max: number): string {
-  if (typeof value !== 'string' || !value.trim() || value.trim().length > max)
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    value.trim().length > max ||
+    /[\0\uD800-\uDFFF]/u.test(value)
+  )
     throw new BadRequestException('Document fields are missing or too long.');
   return value.trim();
 }

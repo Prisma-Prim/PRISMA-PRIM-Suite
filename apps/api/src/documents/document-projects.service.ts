@@ -59,6 +59,8 @@ export class DocumentProjectsService {
         }
         const familyAllowed =
           await this.authorization.hasMissionDeliverableAccess(actor);
+        const receivedAllowed =
+          await this.authorization.hasReceivedContractAccess(actor);
         const rows = await this.database.connection
           .select({
             id: workingDocuments.id,
@@ -70,12 +72,11 @@ export class DocumentProjectsService {
               eq(workingDocuments.workspaceId, actor.workspaceId),
               eq(workingDocuments.companyId, project.companyId),
               eq(workingDocuments.clientId, project.clientAccountId),
-              familyAllowed
-                ? inArray(workingDocuments.type, [
-                    'questionnaire',
-                    'mission-deliverable',
-                  ])
-                : eq(workingDocuments.type, 'questionnaire'),
+              inArray(workingDocuments.type, [
+                'questionnaire',
+                ...(familyAllowed ? ['mission-deliverable' as const] : []),
+                ...(receivedAllowed ? ['received-contract' as const] : []),
+              ]),
               eligible
                 ? isNull(workingDocuments.projectId)
                 : eq(workingDocuments.projectId, projectId),

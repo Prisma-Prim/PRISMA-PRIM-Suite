@@ -1,9 +1,10 @@
 # PRD — Document Registry, section 24: received Contract PDFs
 
-**Status:** Approved provisional product contract — runtime not yet delivered
+**Status:** Approved provisional product contract
 
 **Owner:** Dan Popescu\
 **Contract issue:** [#870](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/870)\
+**Runtime issue:** [#872](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/872)\
 **Parent:** [#820](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/820), D9
 
 This is the bounded synthesis of the owner's representative-dossier continuation,

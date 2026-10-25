@@ -1,6 +1,26 @@
+import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import {
+  hasReceivedContractAccess,
+  canReadReceivedContractRelation,
+  receivedContractSourceAuthority,
+} from './received-contract-access';
+import { useReceivedContractCopy } from './received-contract.copy';
+import { ReceivedContractRegistration } from './ReceivedContractRegistration';
+import { ReceivedContractRelation } from './ReceivedContractRelation';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
-import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import {
+  documentFamilyCaptureKey,
+  hasDocumentFamilyAccess,
+} from './document-family-access';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -10,6 +30,7 @@ import {
   readDocumentDetail,
   readDocuments,
   type DocumentProjectAssociation,
+  type DocumentFamily,
   type WorkingDocument,
   type WorkingDocumentDetail,
 } from './document-response';
@@ -64,9 +85,8 @@ export function DocumentWorkspace(
         props.actor.workspaceId,
         props.actor.workspaceMembershipId,
         company?.id,
-        hasMissionDeliverableAccess(company),
-        company?.missionDeliverableAccessAssignmentId,
-        company?.missionDeliverableAccessPermissionSetVersion,
+        company?.documentPermissionAssignmentId,
+        company?.documentPermissionSetVersion,
       ])}
       {...props}
     />
@@ -108,6 +128,8 @@ function DocumentSession({
 }) {
   const copy = useDocumentsCopy();
   const missionCopy = useMissionDeliverableCopy();
+  const receivedCopy = useReceivedContractCopy();
+  const [receivedBusy, setReceivedBusy] = useState(false);
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
   const [filter, setFilter] = useState<DocumentFilter>({
@@ -120,9 +142,7 @@ function DocumentSession({
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('');
   const [url, setUrl] = useState('');
-  const [family, setFamily] = useState<'questionnaire' | 'mission-deliverable'>(
-    'questionnaire',
-  );
+  const [family, setFamily] = useState<DocumentFamily>('questionnaire');
   /** `registered`: a confirmed registration that did not replace the view. */
   const [mutation, setMutation] = useState<
     'idle' | 'pending' | 'error' | 'registered'
@@ -163,15 +183,18 @@ function DocumentSession({
         : undefined,
     );
   }
-  const correctionActive =
-    editing || correction === 'pending' || correction === 'uncertain';
-  const correctionInProgress = useRef(correctionActive);
-  correctionInProgress.current = correctionActive;
+  const protectedWorkActive =
+    editing ||
+    correction === 'pending' ||
+    correction === 'uncertain' ||
+    receivedBusy;
+  const protectedWorkInProgress = useRef(protectedWorkActive);
+  protectedWorkInProgress.current = protectedWorkActive;
   /**
-   * A dossier restriction arrived while a protected correction was open; the
+   * A dossier restriction arrived while a protected command was open; the
    * detail it would have retired is reconciled once that correction ends.
    */
-  const restrictionAwaitsCorrection = useRef(false);
+  const restrictionAwaitsProtectedWork = useRef(false);
   /**
    * The registration attempt in flight. A requested Document waits for it, so
    * that command, its key and its draft are never aborted or replaced.
@@ -180,7 +203,7 @@ function DocumentSession({
     useState<AbortController>();
   /**
    * A requested Document not yet opened. It waits for a registration in flight
-   * or a protected correction, and a newer request replaces it.
+   * or a protected draft, and a newer request replaces it.
    */
   const [heldRequest, setHeldRequest] = useState<RequestedDocument>();
   /** A request this workspace was mounted with counts as already accepted. */
@@ -217,6 +240,9 @@ function DocumentSession({
       { document: WorkingDocument; listSequenceAtConfirmation: number }
     >(),
   );
+  const receivedRegistrationOrigin = useRef<
+    { filter: DocumentFilter; identityRevision: number } | undefined
+  >(undefined);
   const retry = useRef<{ payload: string; key: string } | undefined>(undefined);
   const correctionRetry = useRef<
     { documentId: string; payload: string; key: string } | undefined
@@ -234,16 +260,99 @@ function DocumentSession({
     actor.activeCompany?.documentPermissions?.includes('document.read') ===
     true;
   const canUseMission = hasMissionDeliverableAccess(actor.activeCompany);
-  function readVisibleDocuments(value: unknown): WorkingDocument[] {
-    return readDocuments(value).filter(
-      (document) => document.type === 'questionnaire' || canUseMission,
+  const canUseReceived = hasReceivedContractAccess(actor.activeCompany);
+  const missionCapture = documentFamilyCaptureKey(
+    actor.activeCompany,
+    'mission-deliverable',
+  );
+  const receivedCapture = documentFamilyCaptureKey(
+    actor.activeCompany,
+    'received-contract',
+  );
+  const familyCaptures = {
+    questionnaire: 'questionnaire',
+    'mission-deliverable': missionCapture,
+    'received-contract': receivedCapture,
+  };
+  const currentFamilyCaptures = useRef(familyCaptures);
+  currentFamilyCaptures.current = familyCaptures;
+  const previousFamilyCaptures = useRef(familyCaptures);
+  useLayoutEffect(() => {
+    const previous = previousFamilyCaptures.current;
+    previousFamilyCaptures.current = familyCaptures;
+    const retired = (type: DocumentFamily) =>
+      previous[type] !== familyCaptures[type];
+    if (!retired('mission-deliverable') && !retired('received-contract'))
+      return;
+    // Retire cached rows/read replies before paint, without unmounting an unrelated PDF owner.
+    for (const [id, entry] of confirmedRegistrations.current)
+      if (retired(entry.document.type))
+        confirmedRegistrations.current.delete(id);
+    setState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            documents: current.documents.filter(
+              (document) => !retired(document.type),
+            ),
+          }
+        : current,
     );
+    const detailRetired = detail !== undefined && retired(detail.type);
+    const registrationRetired = detail === undefined && retired(family);
+    if (!detailRetired && !registrationRetired) return;
+    setEditing(false);
+    setCorrection('idle');
+    setStaleDossier(undefined);
+    setMutation('idle');
+    setTitle('');
+    setPurpose('');
+    setUrl('');
+    setClientId('');
+    correctionRetry.current = undefined;
+    correctionRevision.current = undefined;
+    if (detailRetired) {
+      pending.current?.abort();
+      versionRefresh.current?.abort();
+      dossierRefresh.current?.abort();
+      setDetail(undefined);
+    }
+    if (registrationRetired) {
+      registrationInFlight?.abort();
+      setRegistrationInFlight(undefined);
+      retry.current = undefined;
+      setFamily('questionnaire');
+    }
+  }, [missionCapture, receivedCapture, detail, family]);
+  const canSelectReceived =
+    canUseReceived && canReadReceivedContractRelation(actor.activeCompany);
+  // The relation has its own keyed reader. Metadata/list owners retain no protected source fields.
+  function metadataOnly(
+    document: WorkingDocumentDetail,
+  ): WorkingDocumentDetail {
+    return document.type === 'received-contract'
+      ? { ...document, receivedContractRelation: { access: 'denied' } }
+      : document;
+  }
+  function readVisibleDocuments(value: unknown): WorkingDocument[] {
+    return readDocuments(value)
+      .filter(
+        (document) =>
+          familyCaptures[document.type] ===
+            currentFamilyCaptures.current[document.type] &&
+          hasDocumentFamilyAccess(actor.activeCompany, document.type),
+      )
+      .map(metadataOnly);
   }
   function readVisibleDetail(value: unknown): WorkingDocumentDetail {
     const document = readDocumentDetail(value);
-    if (document.type === 'mission-deliverable' && !canUseMission)
+    if (
+      familyCaptures[document.type] !==
+        currentFamilyCaptures.current[document.type] ||
+      !hasDocumentFamilyAccess(actor.activeCompany, document.type)
+    )
       throw new Error('Unavailable Document family');
-    return document;
+    return metadataOnly(document);
   }
 
   const canRegister =
@@ -369,7 +478,7 @@ function DocumentSession({
     setEditing(false);
     setCorrection('idle');
     setStaleDossier(undefined);
-    restrictionAwaitsCorrection.current = false;
+    restrictionAwaitsProtectedWork.current = false;
     setRegistrationInFlight(undefined);
     setHeldRequest(undefined);
     retry.current = undefined;
@@ -471,13 +580,15 @@ function DocumentSession({
     actor.workspaceMembershipId,
     revision,
     clientIdentityRevision,
+    missionCapture,
+    receivedCapture,
   ]);
   // The opened Document owes the same derived refresh. An open correction
   // draft and its retryable command keep the exact Document they started from,
   // so the catch-up read waits for that correction to end instead of being
   // skipped and forgotten.
   useEffect(() => {
-    if (staleDossier === undefined || correctionActive) return;
+    if (staleDossier === undefined || protectedWorkActive) return;
     const { documentId, revision } = staleDossier;
     if (!companyId || !canRead || detail?.id !== documentId) {
       setStaleDossier(undefined);
@@ -517,7 +628,7 @@ function DocumentSession({
     return () => request.abort();
   }, [
     staleDossier,
-    correctionActive,
+    protectedWorkActive,
     detail?.id,
     companyId,
     canRead,
@@ -539,7 +650,7 @@ function DocumentSession({
     if (!clientFilter) {
       // The shell retired the navigation intent, so a dossier identity that a
       // union or reversal superseded stops restricting the loaded rows.
-      restrictionAwaitsCorrection.current = false;
+      restrictionAwaitsProtectedWork.current = false;
       setFilter((current) =>
         current.kind === 'client' ? { kind: 'text', query: '' } : current,
       );
@@ -551,8 +662,8 @@ function DocumentSession({
     setHeldRequest(undefined);
     // Show the restricted references, but never discard an open correction
     // draft or a retryable correction command owned by this module.
-    if (correctionInProgress.current) {
-      restrictionAwaitsCorrection.current = true;
+    if (protectedWorkInProgress.current) {
+      restrictionAwaitsProtectedWork.current = true;
       return;
     }
     retireDetailBehindRestriction();
@@ -561,10 +672,10 @@ function DocumentSession({
   // it ends; a correction ending under an unchanged restriction keeps its
   // Document and outcome visible.
   useEffect(() => {
-    if (correctionActive || !restrictionAwaitsCorrection.current) return;
-    restrictionAwaitsCorrection.current = false;
+    if (protectedWorkActive || !restrictionAwaitsProtectedWork.current) return;
+    restrictionAwaitsProtectedWork.current = false;
     retireDetailBehindRestriction();
-  }, [correctionActive]);
+  }, [protectedWorkActive]);
   // Each new request is accepted once. The shell retiring it also retires the
   // request still held here.
   useEffect(() => {
@@ -580,10 +691,10 @@ function DocumentSession({
   // command in flight or a protected correction keeps its body, key and draft.
   // Opening is choosing that Document's row, with one fresh detail read.
   useEffect(() => {
-    if (!heldRequest || registrationInFlight || correctionActive) return;
+    if (!heldRequest || registrationInFlight || protectedWorkActive) return;
     setHeldRequest(undefined);
     if (companyId && canRead) void open(heldRequest.documentId);
-  }, [heldRequest, registrationInFlight, correctionActive]);
+  }, [heldRequest, registrationInFlight, protectedWorkActive]);
   async function open(id: string) {
     pending.current?.abort();
     const request = new AbortController();
@@ -814,6 +925,55 @@ function DocumentSession({
       }
     }
   }
+  function publishRegistration({
+    saved,
+    origin,
+  }: {
+    saved: WorkingDocumentDetail;
+    origin: { filter: DocumentFilter; identityRevision: number };
+  }) {
+    const startedUnderRevision = origin.identityRevision;
+    const submittedFrom = origin.filter;
+    saved = metadataOnly(saved);
+    // A registration confirmed after a Client identity change cannot vouch
+    // for its derived dossier target. Until a current read replaces it, the
+    // confirmed Document offers no dossier navigation and matches no dossier
+    // restriction, like any Document without a derived dossier identity.
+    const confirmed =
+      identityRevision.current === startedUnderRevision
+        ? saved
+        : { ...saved, clientDossierId: undefined };
+    // The confirmed Document opens only in the unchanged view it was
+    // submitted from and within its active dossier restriction. A view the
+    // member has since moved to is kept, and the confirmation is reported
+    // there instead; the confirmed row stays listed either way.
+    const view = activeFilter.current;
+    if (
+      view === submittedFrom &&
+      (view.kind !== 'client' ||
+        confirmed.clientDossierId === view.clientDossierId)
+    ) {
+      setDetail(confirmed);
+      settleDetailRead(confirmed, startedUnderRevision);
+      setMutation('idle');
+    } else setMutation('registered');
+    // A confirmed row must survive a list read that began before the POST,
+    // without making that read stale: it may carry newer Client projections
+    // for every existing row. A list started after confirmation retires this
+    // overlay and becomes authoritative for the new row as well.
+    confirmedRegistrations.current.set(confirmed.id, {
+      document: confirmed,
+      listSequenceAtConfirmation: startedListWrites.current,
+    });
+    setState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            documents: includeConfirmedRegistrations(current.documents),
+          }
+        : current,
+    );
+  }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (
@@ -866,14 +1026,6 @@ function DocumentSession({
       }
       if (result.status !== 'ok') throw new Error('Registration failed');
       const saved = readVisibleDetail(result.value);
-      // A registration confirmed after a Client identity change cannot vouch
-      // for its derived dossier target. Until a current read replaces it, the
-      // confirmed Document offers no dossier navigation and matches no dossier
-      // restriction, like any Document without a derived dossier identity.
-      const confirmed =
-        identityRevision.current === startedUnderRevision
-          ? saved
-          : { ...saved, clientDossierId: undefined };
       retry.current = undefined;
       // The confirmed command retires the draft it was submitted from, so an
       // unchanged resubmission cannot register it again. A draft the member
@@ -884,36 +1036,13 @@ function DocumentSession({
         setPurpose('');
         setUrl('');
       }
-      // The confirmed Document opens only in the unchanged view it was
-      // submitted from and within its active dossier restriction. A view the
-      // member has since moved to is kept, and the confirmation is reported
-      // there instead; the confirmed row stays listed either way.
-      const view = activeFilter.current;
-      if (
-        view === submittedFrom &&
-        (view.kind !== 'client' ||
-          confirmed.clientDossierId === view.clientDossierId)
-      ) {
-        setDetail(confirmed);
-        settleDetailRead(confirmed, startedUnderRevision);
-        setMutation('idle');
-      } else setMutation('registered');
-      // A confirmed row must survive a list read that began before the POST,
-      // without making that read stale: it may carry newer Client projections
-      // for every existing row. A list started after confirmation retires this
-      // overlay and becomes authoritative for the new row as well.
-      confirmedRegistrations.current.set(confirmed.id, {
-        document: confirmed,
-        listSequenceAtConfirmation: startedListWrites.current,
+      publishRegistration({
+        saved,
+        origin: {
+          filter: submittedFrom,
+          identityRevision: startedUnderRevision,
+        },
       });
-      setState((current) =>
-        current.status === 'ready'
-          ? {
-              ...current,
-              documents: includeConfirmedRegistrations(current.documents),
-            }
-          : current,
-      );
       settleRegistration();
       await onActivityRecorded();
     } catch {
@@ -947,9 +1076,15 @@ function DocumentSession({
     state.refreshFailedUnder === clientIdentityRevision;
   const normalizedFilterQuery =
     filter.kind === 'text' ? documentFilterText(filter.query.trim()) : '';
+  const visibleDocuments =
+    state.status === 'ready'
+      ? state.documents.filter((document) =>
+          hasDocumentFamilyAccess(actor.activeCompany, document.type),
+        )
+      : [];
   const filteredDocuments =
     state.status === 'ready' && !restrictionAwaitsRead
-      ? state.documents.filter((document) =>
+      ? visibleDocuments.filter((document) =>
           filter.kind === 'client'
             ? document.clientDossierId === filter.clientDossierId
             : normalizedFilterQuery.length === 0 ||
@@ -981,12 +1116,15 @@ function DocumentSession({
         </>
       )}
       <p className={isPrisme ? 'working-documents-warning' : undefined}>
-        {detail?.type === 'mission-deliverable' ||
-        (!detail && family === 'mission-deliverable')
-          ? missionCopy.t('warning')
-          : detail?.version.status === 'official'
-            ? copy.officialWarning
-            : copy.warning}
+        {detail?.type === 'received-contract' ||
+        (!detail && family === 'received-contract')
+          ? receivedCopy.t('warning')
+          : detail?.type === 'mission-deliverable' ||
+              (!detail && family === 'mission-deliverable')
+            ? missionCopy.t('warning')
+            : detail?.version.status === 'official'
+              ? copy.officialWarning
+              : copy.warning}
       </p>
       {state.status === 'loading' && <p role="status">{copy.loading}</p>}
       {state.status === 'denied' && <p role="alert">{copy.denied}</p>}
@@ -998,11 +1136,12 @@ function DocumentSession({
       )}
       {state.status === 'ready' && (
         <>
-          {state.documents.length > 0 && (
+          {visibleDocuments.length > 0 && (
             <label className={isPrisme ? 'working-document-filter' : undefined}>
               {copy.filterLabel}
               <input
                 type="search"
+                disabled={receivedBusy}
                 value={
                   filter.kind === 'client' ? filter.displayName : filter.query
                 }
@@ -1086,9 +1225,11 @@ function DocumentSession({
                 <>
                   <h3>{detail.title}</h3>
                   <p>
-                    {detail.type === 'mission-deliverable'
-                      ? missionCopy.t(detail.version.status)
-                      : workingVersionLabel(detail.version.status, copy)}
+                    {detail.type === 'received-contract'
+                      ? receivedCopy.t(detail.version.status)
+                      : detail.type === 'mission-deliverable'
+                        ? missionCopy.t(detail.version.status)
+                        : workingVersionLabel(detail.version.status, copy)}
                   </p>
                   <p>{detail.clientDisplayName}</p>
                   {detail.clientDossierId &&
@@ -1103,6 +1244,16 @@ function DocumentSession({
                 </>
               )}
               <RegistrationTime registeredAt={detail.createdAt} />
+              {detail.type === 'received-contract' && (
+                <ReceivedContractRelation
+                  actor={actor}
+                  identity={identity}
+                  documentId={detail.id}
+                  onActorRevalidated={onActorRevalidated}
+                  onCompanyContextRejected={onCompanyContextRejected}
+                  onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+                />
+              )}
               {canReadProjects && detail.projectAssociation && (
                 <ProjectAssociation
                   association={detail.projectAssociation}
@@ -1125,7 +1276,7 @@ function DocumentSession({
                 canCorrect &&
                 correction !== 'conflict' &&
                 detail.correction === 'allowed' &&
-                (detail.type === 'mission-deliverable' ||
+                (detail.type !== 'questionnaire' ||
                   detail.version.representation.access === 'granted') && (
                   <button
                     className={isPrisme ? 'prisme-primary-action' : undefined}
@@ -1178,7 +1329,7 @@ function DocumentSession({
                   </button>
                 </>
               )}
-              {heldRequest && correctionActive && (
+              {heldRequest && protectedWorkActive && (
                 <p role="status">{copy.requestedDocumentHeld}</p>
               )}
               <DocumentVersions
@@ -1199,6 +1350,7 @@ function DocumentSession({
                 actor={actor}
                 identity={identity}
                 documentId={detail.id}
+                documentType={detail.type}
                 workingRevision={detail.workingRevision}
               />
             </article>
@@ -1209,7 +1361,7 @@ function DocumentSession({
               ) : restrictionAwaitsRead ? (
                 <p role="status">{copy.loading}</p>
               ) : (
-                state.documents.length > 0 &&
+                visibleDocuments.length > 0 &&
                 filteredDocuments.length === 0 && (
                   <p role="status">{copy.noMatches}</p>
                 )
@@ -1219,7 +1371,7 @@ function DocumentSession({
                   <li key={document.id}>
                     <button
                       onClick={() => void open(document.id)}
-                      disabled={mutation === 'pending'}
+                      disabled={mutation === 'pending' || receivedBusy}
                     >
                       {document.title}
                     </button>{' '}
@@ -1228,17 +1380,12 @@ function DocumentSession({
                   </li>
                 ))}
               </ul>
-              {state.documents.length === 0 && !restrictionAwaitsRead && (
+              {visibleDocuments.length === 0 && !restrictionAwaitsRead && (
                 <p>{copy.empty}</p>
               )}
               {canRegister && (
-                <form
-                  className={
-                    isPrisme ? 'working-document-registration' : undefined
-                  }
-                  onSubmit={(event) => void submit(event)}
-                >
-                  {canUseMission && (
+                <>
+                  {(canUseMission || canUseReceived) && (
                     <>
                       <label htmlFor="document-family">
                         {missionCopy.t('family')}
@@ -1246,74 +1393,145 @@ function DocumentSession({
                       <Select
                         id="document-family"
                         value={family}
+                        disabled={receivedBusy || mutation === 'pending'}
                         options={[
                           {
                             value: 'questionnaire',
                             label: missionCopy.t('questionnaire'),
                           },
-                          {
-                            value: 'mission-deliverable',
-                            label: missionCopy.t('mission'),
-                          },
+                          ...(canUseMission
+                            ? [
+                                {
+                                  value: 'mission-deliverable',
+                                  label: missionCopy.t('mission'),
+                                },
+                              ]
+                            : []),
+                          ...(canUseReceived
+                            ? [
+                                {
+                                  value: 'received-contract',
+                                  label: receivedCopy.t('family'),
+                                },
+                              ]
+                            : []),
                         ]}
                         onValueChange={(value) => {
                           if (
-                            value === 'questionnaire' ||
-                            value === 'mission-deliverable'
+                            !receivedBusy &&
+                            (value === 'questionnaire' ||
+                              value === 'mission-deliverable' ||
+                              value === 'received-contract')
                           )
                             setFamily(value);
                         }}
                       />
                     </>
                   )}
-                  <label htmlFor="document-client">{copy.client}</label>
-                  <Select
-                    id="document-client"
-                    required
-                    value={clientId}
-                    placeholder={copy.selectClient}
-                    options={state.clients.map((client) => ({
-                      value: client.id,
-                      label: client.displayName,
-                    }))}
-                    onValueChange={setClientId}
-                  />
-                  <label>
-                    {copy.titleLabel}
-                    <input
-                      required
-                      maxLength={200}
-                      value={title}
-                      onChange={(event) => setTitle(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    {copy.purpose}
-                    <textarea
-                      required
-                      maxLength={2000}
-                      value={purpose}
-                      onChange={(event) => setPurpose(event.target.value)}
-                    />
-                  </label>
-                  {family === 'questionnaire' && (
-                    <label>
-                      {copy.url}
-                      <input
-                        required
-                        type="url"
-                        value={url}
-                        onChange={(event) => setUrl(event.target.value)}
+                  {family === 'received-contract' ? (
+                    canSelectReceived && companyId ? (
+                      <ReceivedContractRegistration
+                        key={JSON.stringify([
+                          receivedCapture,
+                          receivedContractSourceAuthority(actor.activeCompany),
+                        ])}
+                        identity={identity}
+                        companyId={companyId}
+                        onBusyChange={setReceivedBusy}
+                        onAccessRejected={async (signal) => {
+                          await handleAuthenticatedAccessRejection({
+                            result: { status: 'forbidden' },
+                            identity,
+                            companyContextId: companyId,
+                            signal,
+                            onActorRevalidated:
+                              onActorRevalidated ?? (() => undefined),
+                            onCompanyContextRejected:
+                              onCompanyContextRejected ?? (() => undefined),
+                            onWorkspaceAccessRejected:
+                              onWorkspaceAccessRejected ?? (() => undefined),
+                          });
+                        }}
+                        onStarted={() => {
+                          receivedRegistrationOrigin.current = {
+                            filter: activeFilter.current,
+                            identityRevision: identityRevision.current,
+                          };
+                        }}
+                        onRegistered={(saved) => {
+                          const origin = receivedRegistrationOrigin.current;
+                          if (!origin)
+                            throw new Error(
+                              'Missing received registration origin',
+                            );
+                          publishRegistration({ saved, origin });
+                          void Promise.resolve()
+                            .then(onActivityRecorded)
+                            .catch(() => undefined);
+                        }}
                       />
-                    </label>
+                    ) : (
+                      <p>{receivedCopy.t('sourceDenied')}</p>
+                    )
+                  ) : (
+                    <form
+                      className={
+                        isPrisme ? 'working-document-registration' : undefined
+                      }
+                      onSubmit={(event) => void submit(event)}
+                    >
+                      <label htmlFor="document-client">{copy.client}</label>
+                      <Select
+                        id="document-client"
+                        required
+                        value={clientId}
+                        placeholder={copy.selectClient}
+                        options={state.clients.map((client) => ({
+                          value: client.id,
+                          label: client.displayName,
+                        }))}
+                        onValueChange={setClientId}
+                      />
+                      <label>
+                        {copy.titleLabel}
+                        <input
+                          required
+                          maxLength={200}
+                          value={title}
+                          onChange={(event) => setTitle(event.target.value)}
+                        />
+                      </label>
+                      <label>
+                        {copy.purpose}
+                        <textarea
+                          required
+                          maxLength={2000}
+                          value={purpose}
+                          onChange={(event) => setPurpose(event.target.value)}
+                        />
+                      </label>
+                      {family === 'questionnaire' && (
+                        <label>
+                          {copy.url}
+                          <input
+                            required
+                            type="url"
+                            value={url}
+                            onChange={(event) => setUrl(event.target.value)}
+                          />
+                        </label>
+                      )}
+                      <button
+                        className={
+                          isPrisme ? 'prisme-primary-action' : undefined
+                        }
+                        disabled={mutation === 'pending' || receivedBusy}
+                      >
+                        {copy.register}
+                      </button>
+                    </form>
                   )}
-                  <button
-                    className={isPrisme ? 'prisme-primary-action' : undefined}
-                    disabled={mutation === 'pending'}
-                  >
-                    {copy.register}
-                  </button>
-                </form>
+                </>
               )}
             </>
           )}

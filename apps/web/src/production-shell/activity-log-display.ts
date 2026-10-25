@@ -1,3 +1,4 @@
+import { useReceivedContractCopy } from '../documents/received-contract.copy';
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
@@ -63,10 +64,12 @@ export function useActivityLogDisplay() {
   >;
   const risk = useOperationalRiskCopy();
   const missionActions = useMissionDeliverableCopy().activityActionLabels;
+  const receivedActions = useReceivedContractCopy().activityActionLabels;
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
     ...taskResultActions,
     ...missionActions,
+    ...receivedActions,
     'company_ideas_reader_assignment.granted': ideas('readerGranted'),
     'company_ideas_reader_assignment.revoked': ideas('readerRevoked'),
     'company_ideas_recorder_assignment.granted': ideas('recorderGranted'),
