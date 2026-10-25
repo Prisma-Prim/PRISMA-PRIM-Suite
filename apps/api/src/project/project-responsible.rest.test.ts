@@ -750,6 +750,72 @@ describe.skipIf(!databaseUrl)(
       expect(await directory()).toEqual([]);
     });
 
+    it('hides Project Activity when its original Client becomes unreadable', async () => {
+      await set(0, ownerMembershipId);
+      await command('/company-project-approver-assignments', {
+        workspaceMembershipId: ownerMembershipId,
+        companyId,
+      });
+      await transitionProject({
+        projectId,
+        value: {
+          action: 'cancel',
+          expectedLifecycleRevision: 0,
+          reason: 'Synthetic cancellation.',
+        },
+      });
+      const projectActivity = async () =>
+        objects((await read('/activity-log')).events).filter(
+          (event) => object(event.target).projectId === projectId,
+        );
+      const recorded = await projectActivity();
+      expect(recorded.map((event) => event.action).sort()).toEqual([
+        'project.created',
+        'project.lifecycle.changed',
+        'project.responsible.changed',
+      ]);
+      expect(await read(`/projects/${projectId}`)).toMatchObject({
+        id: projectId,
+        status: 'cancelled',
+      });
+
+      // Existing invalidation fixture; the relationship deliberately stays active.
+      await harness.pool.query(
+        "UPDATE client_accounts SET status='archived' WHERE id=$1",
+        [clientId],
+      );
+      expect((await request(`/projects/${projectId}`)).status).toBe(404);
+      const hiddenActivity = await read('/activity-log');
+      expect(objects(hiddenActivity.events)).not.toEqual(
+        expect.arrayContaining(recorded),
+      );
+      expect(JSON.stringify(hiddenActivity)).not.toContain(projectId);
+      expect(JSON.stringify(hiddenActivity)).not.toContain(project.title);
+      for (const event of recorded)
+        expect(JSON.stringify(hiddenActivity)).not.toContain(event.id);
+
+      await harness.pool.query(
+        "UPDATE client_accounts SET status='active' WHERE id=$1",
+        [clientId],
+      );
+      expect((await request(`/projects/${projectId}`)).status).toBe(200);
+      expect(await projectActivity()).toEqual(recorded);
+
+      await unionSetup(true);
+      expect(await read(`/projects/${projectId}`)).toMatchObject({
+        id: projectId,
+        clientAccountId: clientId,
+      });
+      expect(await projectActivity()).toEqual(recorded);
+
+      await harness.pool.query(
+        "UPDATE client_company_relationships SET status='archived' WHERE company_id=$1 AND client_account_id=$2",
+        [companyId, clientId],
+      );
+      expect((await request(`/projects/${projectId}`)).status).toBe(404);
+      expect(await projectActivity()).toEqual([]);
+    });
+
     it('denies an inactive Internal User or Company instead of returning an empty successful self directory', async () => {
       const ion = await member('ion', true);
       await set(0, ion);
