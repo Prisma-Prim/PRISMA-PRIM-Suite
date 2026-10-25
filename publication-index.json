@@ -1,0 +1,27 @@
+{
+  "issue": 872,
+  "pr": 873,
+  "source": "de2cff482f93536549948506fb31a1b122cf498a",
+  "base": "d78d145a831ad7f8f1089bc13dc472965cdcade8",
+  "tree": "16ba3f51850e7d1aa0e77d4b9616c1ee2ee753bf",
+  "run": 40223766528,
+  "keepThrough": "2026-11-10T18:40:42.530497+00:00",
+  "selection": "Fully reviewed compact public technical metadata/report only. Private development evidence remains outside Git; complete independent CI artifacts remain linked at the run.",
+  "files": [
+    {
+      "path": "ci-job-results.json",
+      "bytes": 7276,
+      "sha256": "35381c71209ccf41c55311bc04a2a8d1b0b4182dfd9544a95fee5ef11ba8b4a3"
+    },
+    {
+      "path": "final-proof.json",
+      "bytes": 12012,
+      "sha256": "1ded6e6e1cd586cd78be71744369996a6c9b3d74be5a8a900ca9701cea2d1647"
+    },
+    {
+      "path": "report.md",
+      "bytes": 1386,
+      "sha256": "9b744b7a1e0bb28edfad86dce3fccdec4f8e2d571f13893fa7a540a6f3ab6014"
+    }
+  ]
+}

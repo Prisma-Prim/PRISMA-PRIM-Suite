@@ -1,0 +1,265 @@
+{
+  "issue": 872,
+  "pr": 873,
+  "source": "de2cff482f93536549948506fb31a1b122cf498a",
+  "base": "d78d145a831ad7f8f1089bc13dc472965cdcade8",
+  "tree": "16ba3f51850e7d1aa0e77d4b9616c1ee2ee753bf",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40223766528,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40223766528",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 872,
+    "pr": 873,
+    "source": "de2cff482f93536549948506fb31a1b122cf498a",
+    "base": "d78d145a831ad7f8f1089bc13dc472965cdcade8",
+    "tree": "16ba3f51850e7d1aa0e77d4b9616c1ee2ee753bf",
+    "selfReportedLocalOnly": true,
+    "doctor": {
+      "profile": "web-postgres",
+      "requiredPassed": 9,
+      "postgresVersion": "17.11",
+      "chromiumMajor": 139
+    },
+    "completeDevelopmentPnpmVerify": {
+      "run": 2,
+      "exit": 0,
+      "format": "PASS",
+      "lint": "PASS",
+      "apiWebTypes": "PASS",
+      "scriptsPassed": 483,
+      "apiParallelPassed": 3212,
+      "apiSerialPassed": 104,
+      "webPassed": 3130,
+      "totalPassed": 6929,
+      "optionalSkipped": 1,
+      "skipReason": "Real ClamAV integration requires TEST_CLAMAV_HOST/PORT; not configured. Application scanner behavior is covered through a deterministic true wire-boundary fixture.",
+      "productionBuilds": "PASS",
+      "source": "a1e8f33868398d129a991c73f40ef106ef66f06d",
+      "tree": "6351f2853ea78ffd7cdd6294855875bed74aa76b"
+    },
+    "priorDevelopmentFailure": {
+      "run": 1,
+      "apiParallelPassed": 3211,
+      "apiSerialPassed": 104,
+      "webPassed": 3120,
+      "webFailed": 4,
+      "scriptsPassed": 483,
+      "cause": "Four locale tests expected122 action labels instead of124 after the two new family assignment actions. Exact count assertion updated; no business assertion removed.",
+      "productionBuilds": "Not run because Web stage failed."
+    },
+    "boundedReviewCorrection": {
+      "commit": "de2cff482f93536549948506fb31a1b122cf498a",
+      "familyRetirementRed": "Four whole-Workspace unrelated-family cases failed; two own-family retirement cases passed.",
+      "familyRetirementGreen": 6,
+      "invalidUnicodeHttpPostgresRed": "Correction returned200 instead of400.",
+      "invalidUnicodeGreen": "All six malformed title/purpose corrections refused with400 and no conserved changes; valid replacement character and emoji persisted.",
+      "apiAffectedPassed": 42,
+      "webAffectedRuns": [
+        37,
+        12
+      ],
+      "webRunsOverlap": true,
+      "originalCommit": "a1e8f33868398d129a991c73f40ef106ef66f06d"
+    },
+    "localActualApp": {
+      "passed": 8,
+      "viewports": [
+        1440,
+        390
+      ],
+      "synthetic": true,
+      "screenshotsInspected": true,
+      "exactFinalSource": false,
+      "scope": "Received registration/PDF/official-successor/history/correction/locale/frame, actual source and unrelated-family capture retirement preserving exact uncertain PDF retry; legacy questionnaire and mission journeys.",
+      "limitation": "Local received/legacy8-case captures precede the isolated11-line administration test-fixture amendment; all production/acceptance inputs are unchanged. Final CI must bind the new complete source."
+    },
+    "genuinePreviousSchemaUpgrade": "0082 preserved old facts, bytes, digests, grants, receipts, associations/results and model Contracts; repeat safe and no new grant backfill.",
+    "recordedSourceInputFilesMatch": 1636,
+    "canonicalCompleteLocalIntegrationGateClaimed": false,
+    "independentFinalCIPendingAfterReview": false,
+    "ciFixtureCompatibilityAmendment": {
+      "file": "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+      "insertions": 11,
+      "deletions": 0,
+      "cause": "Independent expected bundle list omitted new received-contract-access entry, causing four narrow-locale cases; sibling desktop shard cancelled through matrix fail-fast.",
+      "affectedWebTestsPassed": 87,
+      "affectedActualAppBrowserPassed": 26,
+      "viewports": [
+        1440,
+        390
+      ],
+      "interceptedAppHttpBoundary": true,
+      "productionCodeChanged": false,
+      "assertionsPreserved": true,
+      "typesBuildFormatLint": "PASS",
+      "rootOrderedStandardsSpecDelta": "PASS; literal fixture entry matches capturedv1 and approved four-locale labels; no behavior or authority change."
+    },
+    "priorFailedIndependentCI": {
+      "run": 40222550632,
+      "source": "a1e8f33868398d129a991c73f40ef106ef66f06d",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40222550632",
+      "conclusion": "failure",
+      "passedJobs": 13,
+      "failedJobs": [
+        "browser (2)",
+        "quality"
+      ],
+      "cancelledJobs": [
+        "browser (1)"
+      ],
+      "cause": "Expected bundle fixture omitted the newly added received-contract-access entry; four narrow locale cases failed. Sibling browser shard cancelled by matrix fail-fast. All API, Web, acceptance, build/packaging jobs passed. Eleven-line fixture-only amendment verified by87affected web tests and26actualAppbrowsercases; no production code or assertion changed.",
+      "relabelledAsPassing": false
+    },
+    "independentFinalCIResult": {
+      "run": 40223766528,
+      "conclusion": "success",
+      "source": "de2cff482f93536549948506fb31a1b122cf498a",
+      "base": "d78d145a831ad7f8f1089bc13dc472965cdcade8",
+      "tree": "16ba3f51850e7d1aa0e77d4b9616c1ee2ee753bf",
+      "all16JobsPassed": true,
+      "authority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799"
+    }
+  },
+  "review": {
+    "complete": true,
+    "independentReview": {
+      "source": "654afdd657a2e15e51eb48db011ffad99381f093",
+      "base": "d78d145a831ad7f8f1089bc13dc472965cdcade8",
+      "tree": "61176bf60fc2aa1189dbe7ca0503db3fa3dd66bb",
+      "standards": {
+        "blockers": 0,
+        "documentedFollowUps": 2,
+        "heuristicFollowUps": 2
+      },
+      "spec": {
+        "blockers": 2,
+        "disposition": "Both fixed together; family-specific command retirement and invalid-Unicode correction refusal with RED/GREEN tests."
+      }
+    },
+    "rootPreparation": [
+      "Standards",
+      "Spec",
+      "structural checkpoint"
+    ],
+    "blockingFindingsRemaining": 0,
+    "correction": "de2cff482f93536549948506fb31a1b122cf498a",
+    "automaticConfirmation": {
+      "commentId": 6401601868,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/873#issuecomment-6401601868",
+      "code_review": {
+        "commit_sha": "a1e8f33868398d129a991c73f40ef106ef66f06d",
+        "has_any_findings": false,
+        "has_unresolved_findings": false,
+        "status": "completed"
+      },
+      "security_review": {
+        "commit_sha": null,
+        "has_any_findings": null,
+        "has_unresolved_findings": null,
+        "status": null
+      },
+      "confirmedAt": "2026-10-25T18:42:05Z"
+    },
+    "sensitiveDevelopmentVerification": "PASS",
+    "issue": 872,
+    "pr": 873,
+    "source": "de2cff482f93536549948506fb31a1b122cf498a",
+    "base": "d78d145a831ad7f8f1089bc13dc472965cdcade8",
+    "tree": "16ba3f51850e7d1aa0e77d4b9616c1ee2ee753bf",
+    "unresolvedThreads": 0,
+    "applicableReview": "Owner-authorized independent Standards/Spec axes; one bounded correction; automatic opening sensitive confirmation completed0.",
+    "correctionOriginalCommit": "a1e8f33868398d129a991c73f40ef106ef66f06d",
+    "ciFixtureCompatibilityAmendment": {
+      "file": "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+      "insertions": 11,
+      "deletions": 0,
+      "cause": "Independent expected bundle list omitted new received-contract-access entry, causing four narrow-locale cases; sibling desktop shard cancelled through matrix fail-fast.",
+      "affectedWebTestsPassed": 87,
+      "affectedActualAppBrowserPassed": 26,
+      "viewports": [
+        1440,
+        390
+      ],
+      "interceptedAppHttpBoundary": true,
+      "productionCodeChanged": false,
+      "assertionsPreserved": true,
+      "typesBuildFormatLint": "PASS",
+      "rootOrderedStandardsSpecDelta": "PASS; literal fixture entry matches capturedv1 and approved four-locale labels; no behavior or authority change."
+    },
+    "confirmationApplicability": "Automatic confirmation completed0 on original correctiona1e8; current amendment changes only11-line expected test-fixture entry. All production and acceptance code remains byte-identical; no new confirmation or review trigger required.",
+    "automaticFinalUpdate": {
+      "commentId": 6401601868,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/873#issuecomment-6401601868",
+      "code_review": {
+        "commit_sha": "de2cff482f93536549948506fb31a1b122cf498a",
+        "has_any_findings": false,
+        "has_unresolved_findings": false,
+        "status": "completed"
+      },
+      "security_review": {
+        "commit_sha": null,
+        "has_any_findings": null,
+        "has_unresolved_findings": null,
+        "status": null
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12610836708,
+      "name": "browser-evidence-part-acceptance-1-40223766528",
+      "size_in_bytes": 70357768,
+      "digest": "sha256:78d1b5c5204d1820644c00a0f5beaf11d1c28a1ea00200d322da8ebf2858e3d1",
+      "expires_at": "2026-11-08T19:10:32Z"
+    },
+    {
+      "id": 12610686933,
+      "name": "browser-evidence-part-browser-1-40223766528",
+      "size_in_bytes": 113819847,
+      "digest": "sha256:91bde91dc0f1c45a50029336de33898a7eae649985532cee687359ae45e7241f",
+      "expires_at": "2026-11-08T19:06:53Z"
+    },
+    {
+      "id": 12610512734,
+      "name": "browser-evidence-part-acceptance-2-40223766528",
+      "size_in_bytes": 60618190,
+      "digest": "sha256:f5d092214e1192bb762d6db623b47632990f7024becef32d0ad831835928ed77",
+      "expires_at": "2026-11-08T19:10:44Z"
+    },
+    {
+      "id": 12610437864,
+      "name": "browser-evidence-pr-40223766528",
+      "size_in_bytes": 393524388,
+      "digest": "sha256:55461e0ee0858e7c941a84356357320889b5021e2eda33657c79a09f3d51fccc",
+      "expires_at": "2026-11-08T19:11:01Z"
+    },
+    {
+      "id": 12610304113,
+      "name": "browser-evidence-part-browser-3-40223766528",
+      "size_in_bytes": 71160860,
+      "digest": "sha256:cbe620e14996bc99fc573dcd5e5bd8bc82f12e760c05cd1a006662b19054be8f",
+      "expires_at": "2026-11-08T19:06:09Z"
+    },
+    {
+      "id": 12610277595,
+      "name": "browser-evidence-part-browser-2-40223766528",
+      "size_in_bytes": 77567811,
+      "digest": "sha256:189c42af82609c9f57e28a0ad5b3b2747792f34a218d059b96ad99403014e639",
+      "expires_at": "2026-11-08T19:04:51Z"
+    }
+  ],
+  "scope": "Received-contract Document family with exact immutable declared ordinary model-based Contract Version relation and source attribution; opt-in v1 family authority, independent source/metadata/content rights, existing private clean PDF/Version/designation/successor/correction/Project organization, additive83 and old capture/receipt compatibility. One verified bounded correction: unrelated family retries survive; invalid Unicode corrections refuse. D10 signing/case acceptance, Project continuation and whole-case completion remain separate; no real grants/deployment/official numbering.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-10T18:40:42.530497+00:00"
+}
