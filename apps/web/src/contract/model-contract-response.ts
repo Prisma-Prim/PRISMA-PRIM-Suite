@@ -283,8 +283,8 @@ function readRecipient(value: unknown) {
   const r = record(value),
     identity = {
       legalName: text(r.legalName, 200),
-      taxId: r.taxId === null ? null : text(r.taxId, 100),
-      legalAddress: r.legalAddress === null ? null : text(r.legalAddress, 1000),
+      taxId: r.taxId === null ? null : text(r.taxId, 500),
+      legalAddress: r.legalAddress === null ? null : text(r.legalAddress, 2000),
     };
   if (
     r.kind === 'PRIMARY' &&

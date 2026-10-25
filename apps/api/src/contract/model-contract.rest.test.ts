@@ -76,6 +76,37 @@ withPostgres('Corresponding full Contract public REST', () => {
       clientResponse: null,
     });
   });
+  it('preserves the Client owner maximum tax id and address through first preparation, receipt and restarted exact reads', async () => {
+    const identity = { taxId: 'T'.repeat(500), legalAddress: 'A'.repeat(2000) };
+    const ready = await prepareModelContractSource(fixture, {
+      clientTaxId: identity.taxId,
+      clientAddress: identity.legalAddress,
+    });
+    const created = responseRecord(
+      await ready.invoke(ready.path + '/from-approved-model', ready.intent),
+    );
+    const version = responseRecord(created.version);
+    expect(version.recipient).toMatchObject(identity);
+    expect(
+      responseRecord(responseRecord(version.modelGeneration).offerSource)
+        .recipient,
+    ).toMatchObject(identity);
+    expect(responseRecord(version.representation).html).toContain(
+      identity.legalAddress,
+    );
+    await fixture.restart();
+    const reopened = responseRecord(
+      responseRecord(
+        await fixture.read({
+          path: ready.path + '/versions/' + responseString(version, 'id'),
+          companyId: ready.source.companyId,
+          headers: ESTIMATE_OFFER_PREPARER,
+        }),
+      ).contract,
+    );
+    expect(reopened.version).toEqual(version);
+  });
+
   it('checks and internally approves the exact Contract while the source Offer response remains pending', async () => {
     const { flow, source, path, intent, invoke } =
       await prepareModelContractSource(fixture);

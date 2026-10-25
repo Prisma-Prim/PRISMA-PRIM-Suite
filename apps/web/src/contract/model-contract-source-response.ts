@@ -153,8 +153,8 @@ export function readModelContractOfferSource(value: unknown) {
   );
   const identity = {
     legalName: text(r.legalName, 200),
-    taxId: nullableText(r.taxId, 100),
-    legalAddress: nullableText(r.legalAddress, 1000),
+    taxId: nullableText(r.taxId, 500),
+    legalAddress: nullableText(r.legalAddress, 2000),
   };
   const recipient =
     r.kind === 'PRIMARY' && !Object.hasOwn(r, 'additionalLegalEntityId')

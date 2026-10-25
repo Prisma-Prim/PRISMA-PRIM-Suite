@@ -49,6 +49,7 @@ export async function prepareModelContractSource(
   fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
   options: {
     clientTaxId?: string;
+    clientAddress?: string;
     offerStage?: 'PENDING' | 'APPROVED' | 'TRANSMITTED';
   } = {},
 ) {

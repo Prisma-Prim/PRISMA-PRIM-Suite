@@ -13,6 +13,46 @@ import {
 import { readModelOffer } from '../offer/model-offer-response';
 import { readSelectedContractModel } from './model-contract-source-response';
 describe('Complete model Contract HTTP boundary', () => {
+  it.each(['PRIMARY', 'ADDITIONAL'] as const)(
+    'preserves supported maximum %s Client identity fields and refuses over-bound copies',
+    (kind) => {
+      const source = modelContractFixture();
+      const recipient = {
+        ...source.version.recipient,
+        kind,
+        ...(kind === 'ADDITIONAL'
+          ? { additionalLegalEntityId: '10000000-0000-4000-8000-000000000999' }
+          : {}),
+        taxId: 'T'.repeat(500),
+        legalAddress: 'A'.repeat(2000),
+      };
+      const copy = (identity: typeof recipient) => ({
+        ...source,
+        version: {
+          ...source.version,
+          recipient: identity,
+          modelGeneration: {
+            ...source.version.modelGeneration,
+            offerSource: {
+              ...source.version.modelGeneration.offerSource,
+              recipient: identity,
+            },
+          },
+        },
+      });
+      expect(readModelContract(copy(recipient)).version.recipient).toEqual(
+        recipient,
+      );
+      expect(() =>
+        readModelContract(copy({ ...recipient, taxId: 'T'.repeat(501) })),
+      ).toThrow();
+      expect(() =>
+        readModelContract(
+          copy({ ...recipient, legalAddress: 'A'.repeat(2001) }),
+        ),
+      ).toThrow();
+    },
+  );
   it('confirms only the selected complete copies and attributed original command', () => {
     const source = modelContractFixture(),
       expected = {
