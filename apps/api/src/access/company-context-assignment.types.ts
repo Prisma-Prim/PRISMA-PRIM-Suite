@@ -5,6 +5,8 @@ import {
 } from './company-permissions.js';
 import type {
   COMPANY_TASK_MANAGER_BUNDLE_LABEL,
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
   COMPANY_PROJECT_ACCESS_BUNDLE_LABEL,
@@ -50,6 +52,8 @@ import type {
 } from './company-permissions.js';
 
 export type CompanyAssignmentBundleLabel =
+  | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+  | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
   | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
   | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
   | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
@@ -98,6 +102,8 @@ interface CompanyContextAssignmentRecordBase {
 export type CompanyContextAssignmentRecord =
   | (CompanyContextAssignmentRecordBase & {
       bundle:
+        | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+        | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
         | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
         | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
         | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL

@@ -24,6 +24,8 @@ import {
   COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
   operationalRiskReaderPermissionsFor,
   operationalRiskRecorderPermissionsFor,
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
   companyRolePermissionsFor,
@@ -40,6 +42,9 @@ export interface MemberAuthority {
   taskManage: boolean;
   operationalRiskReader: boolean;
   operationalRiskRecorder: boolean;
+  contractModelReader: boolean;
+  contractModelEditor: boolean;
+  contractModelApprover: boolean;
   offerModelReader: boolean;
   offerModelEditor: boolean;
   offerModelApprover: boolean;
@@ -127,6 +132,8 @@ export async function readMemberAuthority(
     taskManage = false,
     riskRead = false,
     riskRecord = false;
+  let contractEditor = false,
+    contractApprover = false;
   let modelEditor = false,
     modelApprover = false;
   for (const assignment of assignments) {
@@ -198,6 +205,22 @@ export async function readMemberAuthority(
             assignment.version,
           ).includes('commercial.offer.model.decide');
         break;
+      case COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE:
+        contractEditor =
+          assignment.version === 'v1' &&
+          companyRolePermissionsFor(
+            assignment.bundle,
+            assignment.version,
+          ).includes('commercial.contract.model.version.create');
+        break;
+      case COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE:
+        contractApprover =
+          assignment.version === 'v1' &&
+          companyRolePermissionsFor(
+            assignment.bundle,
+            assignment.version,
+          ).includes('commercial.contract.model.decide');
+        break;
     }
   }
   return {
@@ -209,6 +232,9 @@ export async function readMemberAuthority(
     taskManage,
     operationalRiskReader: context && riskRead,
     operationalRiskRecorder: context && riskRead && riskRecord,
+    contractModelReader: context && (contractEditor || contractApprover),
+    contractModelEditor: context && contractEditor,
+    contractModelApprover: context && contractApprover,
     offerModelReader: context && (modelEditor || modelApprover),
     offerModelEditor: context && modelEditor,
     offerModelApprover: context && modelApprover,

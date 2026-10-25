@@ -1,6 +1,8 @@
 // The captured versions the server may report for each administrable bundle.
 // An unlisted label or version fails closed; the screen never infers one.
 const CAPTURED_VERSIONS = {
+  'Company Contract Model Editor': ['v1'],
+  'Company Contract Model Approver': ['v1'],
   'Company Offer Model Editor': ['v1'],
   'Company Offer Model Approver': ['v1'],
   'Company Ideas Reader': ['v1'],

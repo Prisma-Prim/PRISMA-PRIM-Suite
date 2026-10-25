@@ -37,7 +37,11 @@ import { requireWorkspacePermission } from './access-policy.js';
 import type { ActorContext } from './access.types.js';
 import {
   COMPANY_TASK_MANAGER_BUNDLE,
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
@@ -130,6 +134,8 @@ export const INCLUDE_REVOKED_ASSIGNMENTS_IN_ADMINISTRATION = Symbol(
 type BundleDefinition = {
   value: Bundle;
   label:
+    | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+    | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
     | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
     | typeof COMPANY_TASK_MANAGER_BUNDLE_LABEL
@@ -295,6 +301,18 @@ const OFFER_MODEL_BUNDLES = {
     permissionSetVersion: 'v1',
   },
 } satisfies Record<'editor' | 'approver', BundleDefinition>;
+const CONTRACT_MODEL_BUNDLES = {
+  editor: {
+    value: COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
+    label: COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL,
+    permissionSetVersion: 'v1',
+  },
+  approver: {
+    value: COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
+    label: COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL,
+    permissionSetVersion: 'v1',
+  },
+} satisfies Record<'editor' | 'approver', BundleDefinition>;
 const OFFER_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_OFFER_PREPARER_BUNDLE,
   label: COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
@@ -375,6 +393,8 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
   COMPANY_IDEAS_READER_BUNDLE,
@@ -727,6 +747,42 @@ export class CompanyContextAssignmentService {
     return this.mutate(
       actor,
       OFFER_MODEL_BUNDLES[role],
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async grantContractModel({
+    actor,
+    role,
+    ...command
+  }: GrantCompanyContextAssignmentCommand & {
+    actor: ActorContext;
+    role: keyof typeof CONTRACT_MODEL_BUNDLES;
+  }): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CONTRACT_MODEL_BUNDLES[role],
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+
+  async revokeContractModel({
+    actor,
+    role,
+    ...command
+  }: GrantCompanyContextAssignmentCommand & {
+    actor: ActorContext;
+    role: keyof typeof CONTRACT_MODEL_BUNDLES;
+  }): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CONTRACT_MODEL_BUNDLES[role],
       'revoke',
       command.workspaceMembershipId,
       command.companyId,
@@ -2023,6 +2079,14 @@ function assignmentAction(
       return granted
         ? 'company_offer_model_approver_assignment.granted'
         : 'company_offer_model_approver_assignment.revoked';
+    case COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE:
+      return granted
+        ? 'company_contract_model_editor_assignment.granted'
+        : 'company_contract_model_editor_assignment.revoked';
+    case COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE:
+      return granted
+        ? 'company_contract_model_approver_assignment.granted'
+        : 'company_contract_model_approver_assignment.revoked';
     case COMPANY_CONTRACT_PREPARER_BUNDLE:
       return granted
         ? 'company_contract_preparer_assignment.granted'
@@ -2314,6 +2378,18 @@ function assignmentRecord(
           assignment.bundle === COMPANY_OFFER_MODEL_EDITOR_BUNDLE
             ? COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
             : COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
+        permissionSetVersion: 'v1',
+      };
+    case COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE:
+    case COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE:
+      if (assignment.permissionSetVersion !== 'v1')
+        throw new Error('Invalid Company Contract Model assignment version.');
+      return {
+        ...base,
+        bundle:
+          assignment.bundle === COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE
+            ? COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+            : COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL,
         permissionSetVersion: 'v1',
       };
     case COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE:
