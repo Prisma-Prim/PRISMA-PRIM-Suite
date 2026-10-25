@@ -262,6 +262,18 @@ event metadata. Project association retains both endpoint reads. Family assignme
 events use the existing bundle-label-only convention. No upload, designation,
 denial, rollback or replay silently records signing, acceptance or Task completion.
 
+The separate [reported signing/case-acceptance contract (§31.7)](release-3-commercial-31-reported-signing-case-acceptance.md#317-existing-project-continuation-and-events)
+adds one atomic `contract_version.signing_declared` event under current Contract target
+visibility and the existing commercial Version discovery boundary. It reports
+the human statement, not verified signing or an Offer Client Response change.
+Only the closed minimal Contract/Version discovery and declared/unverified
+evidence-marker variant owned by §31 is allowed; no
+signatory/mandate/basis/date prose, Document/PDF identifiers, filename/hash/bytes or
+payment. No Offer-accepted event is produced. The new Declarer assignment's
+grant/revoke follows the existing bundle-label-only convention. Refusal, rollback,
+replay and unchanged assignment state add no event. Section31 owns the outcome;
+[Commercial§25](release-3-commercial-25-offer-contract-history.md) owns navigation.
+
 For the approved [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306),
 one committed material update creates exactly one
 `opportunity.next_action.updated` event in the same transaction as the new

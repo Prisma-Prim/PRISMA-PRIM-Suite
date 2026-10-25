@@ -20,6 +20,12 @@ An authorized user of the Company responsible for an Accepted Offer turns it int
 
 The approved [pending-Offer preparation contract](release-3-commercial-22-controlled-evidence-2026-10.md#224-bounded-pending-offer-contract-preparation-821) adds the explicitly gated `OFFER_PREPARATION` origin for an ordinary illustrative Contract. Its immutable Versions capture their own exact source Offer Version and can be revised against an eligible successor. Preparing one never records Client acceptance; its fresh v3 checks block approval/signature until the exact source is accepted. The existing accepted/direct/Precontract/Addendum contracts below remain unchanged.
 
+The separate [reported signing/case-acceptance contract (§31)](release-3-commercial-31-reported-signing-case-acceptance.md)
+extends only the ordinary Company-model mode introduced by §30. Its exact
+human declaration remains unverified, preserves old SIMULATED records and
+qualifies the existing Project continuation without changing the legacy paths
+below. Upload, designation and internal approval do not provide that statement.
+
 Inherited and not restated (Decided):
 
 - sections 3, 7, 9, 10 and 18 of this PRD, in particular the Accepted Offer of section 18.8;
@@ -219,6 +225,11 @@ The MVP's only post-signature instrument is the Addendum (PC15). It is a Contrac
 Decided: activation of a Contract either creates a Project or links an existing authorized Project, after the system searches and presents possible matches; it never creates a duplicate blindly. Contract and Project stay distinct, and one Contract need not equal one Project (DR §14.10, DEC-117). A Project may precede a Contract (DEC-026) and a linked Contract uses the Project's Company (Project/Task PRD section 7). Iurie asks that the Project start from the signed Contract with its data taken over ([#81 session 103](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5313726306) item 516; MASTER §8) and that the start dossier include the Contract or Precontract ([#81 session 104](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5313749302) item 521).
 
 **When (PC16).** Linking and creation require an executed `CONTRACT` or `PRECONTRACT`. An Addendum is never linked (`CONTRACT_KIND_NOT_LINKABLE`); its parent's links apply.
+
+For the Company-model ordinary Contract, [§31](release-3-commercial-31-reported-signing-case-acceptance.md#317-existing-project-continuation-and-events)
+owns its qualifying stored declaration and execution evidence. The candidates,
+permissions, explicit links/create-and-link and read filters below are reused;
+this does not make Declarer or PDF access an extra Project permission.
 
 **Candidates.** A candidate is a Project of the Contract's Company whose original Client, as the Client owner currently resolves it, is the Contract's Client Account, and that the actor can read. Projects that the Project/Task PRD later marks completed or cancelled are not candidates. The candidate read returns at most 50, newest first, each with its title, status, creation instant, whether it is already linked to this Contract, and the other Contracts linked to it that the actor can read, so a Project started under the Precontract appears first for the main Contract.
 
