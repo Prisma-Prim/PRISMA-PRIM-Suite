@@ -1,0 +1,186 @@
+{
+  "issue": 854,
+  "pr": 858,
+  "source": "b366c975c6c095ce53f79829f15a0d83bc1171bf",
+  "base": "21c5f2fa236362808066723465061a60e9e11e1b",
+  "tree": "6d2003fa901955d06bc673fe3fa07c4f7fc2b0a0",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40184514556,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40184514556",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 854,
+    "pr": 858,
+    "source": "b366c975c6c095ce53f79829f15a0d83bc1171bf",
+    "base": "21c5f2fa236362808066723465061a60e9e11e1b",
+    "tree": "6d2003fa901955d06bc673fe3fa07c4f7fc2b0a0",
+    "selfReportedLocalOnly": true,
+    "doctor": {
+      "requiredPassed": 8,
+      "profile": "postgres",
+      "postgresVersion": "17.11",
+      "chromiumNotRequired": true
+    },
+    "baselinePublicREST": {
+      "passed": 11,
+      "productionRef": "21c5f2fa236362808066723465061a60e9e11e1b"
+    },
+    "focusedUnit": {
+      "files": 3,
+      "passed": 210
+    },
+    "targetedPostgres": {
+      "files": 23,
+      "passed": 624,
+      "skipped": 0
+    },
+    "completeDevelopmentPnpmVerify": {
+      "exit": 0,
+      "format": "PASS",
+      "lint": "PASS",
+      "strictAPITypes": "PASS",
+      "strictWebTypes": "PASS",
+      "scriptsPassed": 483,
+      "apiParallelPassed": 3084,
+      "apiSerialPassed": 104,
+      "webPassed": 3101,
+      "totalPassed": 6772,
+      "optionalSkipped": 1,
+      "skipReason": "Unchanged real ClamAV integration needs TEST_CLAMAV_HOST/PORT; not configured.",
+      "productionBuilds": "PASS"
+    },
+    "preservation": {
+      "freshDefinitions": 39,
+      "freshLabelsMatchExistingRegistry": 39,
+      "retainedMethodNames": 83,
+      "unchangedPublicEntryPoints": 75,
+      "unchangedActionsAndReplayTarget": true,
+      "privateDelta": [
+        "mutate derives label and forwards a correlated definition",
+        "applyGrant receives that definition instead of independent bundle/version"
+      ]
+    },
+    "testedInputHashesMatchCommittedFiles": true,
+    "sourcePublicationPending": false,
+    "canonicalCompleteLocalIntegrationGateClaimed": false,
+    "independentFinalCIPendingAfterReview": false,
+    "sourcePublished": "b366c975c6c095ce53f79829f15a0d83bc1171bf",
+    "independentReviewPending": false,
+    "applicableReviewCompleteBeforeFinalCI": true,
+    "independentFinalCIResult": "Complete CI40184514556 passed after review; provider proof recorded separately, local results remain self-reported."
+  },
+  "review": {
+    "issue": 854,
+    "pr": 858,
+    "reviewedSource": "b366c975c6c095ce53f79829f15a0d83bc1171bf",
+    "base": "21c5f2fa236362808066723465061a60e9e11e1b",
+    "tree": "6d2003fa901955d06bc673fe3fa07c4f7fc2b0a0",
+    "rootOrderedPreparation": [
+      "Standards",
+      "structural checkpoint",
+      "Spec"
+    ],
+    "standards": {
+      "materialViolations": 0,
+      "blockingFindings": 0,
+      "nonblocking": [
+        {
+          "kind": "possible Duplicated Code",
+          "file": "apps/api/src/access/company-context-assignment.rest.test.ts",
+          "lines": [
+            201,
+            268
+          ],
+          "description": "Both characterization tests repeat member/Company creation and identifier validation.",
+          "disposition": "Low-priority test-fixture extraction follow-up; not a standard breach or defect, no scope expansion."
+        }
+      ]
+    },
+    "spec": {
+      "missingOrPartial": 0,
+      "scopeCreep": 0,
+      "incorrectBehavior": 0,
+      "findings": 0,
+      "reviewerReadOnlyExecution": {
+        "bundles": 39,
+        "supportedCaptures": 51,
+        "supportedActiveRevokedCases": 102,
+        "additionalCaptureCases": 1248,
+        "recordOrAcceptanceDifferences": 0,
+        "freshChoicesAdministrationOrderUnchanged": true,
+        "interpretation": "Independent reviewer execution in the same managed harness, not independent CI/runner attestation."
+      }
+    },
+    "automation": {
+      "commentId": 6396394677,
+      "source": "b366c975c6c095ce53f79829f15a0d83bc1171bf",
+      "status": "completed",
+      "findings": 0,
+      "unresolvedFindings": 0,
+      "completedAt": "2026-10-25T10:17:23Z",
+      "trigger": "Single ready transition, no duplicate request"
+    },
+    "correctionBatch": null,
+    "sensitiveConfirmationRequired": false,
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0
+  },
+  "artifacts": [
+    {
+      "id": 12596410094,
+      "name": "browser-evidence-part-browser-1-40184514556",
+      "size_in_bytes": 113774052,
+      "digest": "sha256:2af78dff6064f78f88d57ff337f05d40f20d1ed7e3029848fce376371940f925",
+      "expires_at": "2026-11-08T10:29:55Z"
+    },
+    {
+      "id": 12596335169,
+      "name": "browser-evidence-part-browser-3-40184514556",
+      "size_in_bytes": 71163753,
+      "digest": "sha256:5ee5a20bb4c0f0a790a01b6768521be15aa748ad16fd3e79cd9e93888a1fd6f9",
+      "expires_at": "2026-11-08T10:27:58Z"
+    },
+    {
+      "id": 12596136290,
+      "name": "browser-evidence-pr-40184514556",
+      "size_in_bytes": 390718419,
+      "digest": "sha256:b7f80bb9383190504ec1959bb9c3c19233987c44b818f28aadef99341e7a5710",
+      "expires_at": "2026-11-08T10:33:09Z"
+    },
+    {
+      "id": 12596100805,
+      "name": "browser-evidence-part-browser-2-40184514556",
+      "size_in_bytes": 77523980,
+      "digest": "sha256:ded2806024c189aadcde810029f0a176a3393f9e478694571fa4b9e007ce77d9",
+      "expires_at": "2026-11-08T10:29:11Z"
+    },
+    {
+      "id": 12595658943,
+      "name": "browser-evidence-part-acceptance-1-40184514556",
+      "size_in_bytes": 68912762,
+      "digest": "sha256:11cae4b13414a9e249eda9c82ff014a00d60402192615b59d190831078e9c660",
+      "expires_at": "2026-11-08T10:32:49Z"
+    },
+    {
+      "id": 12595502560,
+      "name": "browser-evidence-part-acceptance-2-40184514556",
+      "size_in_bytes": 59343960,
+      "digest": "sha256:130288d4c1acb78bf414fd4e412c97d9157da66f9beeff443a019a4323cb7e83",
+      "expires_at": "2026-11-08T10:31:52Z"
+    }
+  ],
+  "scope": "Behavior-preserving Company assignment metadata refactor only: registry-owned labels/historical-version validation and correlated internal types; preserve all39fresh captures,75named public methods, old receipts, actions and transactions. No new grant, endpoint, UI, migration, permission expansion, unrelated architecture or full-dossier completion.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-09"
+}
