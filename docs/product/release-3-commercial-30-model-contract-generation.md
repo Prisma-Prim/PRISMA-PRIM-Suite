@@ -343,8 +343,10 @@ own reproducible synthetic proof; the linked delivery PR owns its exact review,
 source/base/tree and final integration evidence. Installation creates no models,
 approvals or production assignments. This delivery leaves execution pending.
 
-D9 next owns a separate received-Contract PDF family/relation and independent
-content access; preservation alone declares no equivalence or signing. D10 then
+D9's separate [Document Registry§24 contract](release-1-document-registry-24-received-contract-pdfs.md)
+owns the received-Contract PDF family/relation and independent content access;
+its runtime follows that merged contract. Preservation alone declares no
+equivalence or signing. D10 then
 owns attributed exact Offer/Contract/PDF-version signing and case-acceptance
 declarations, their current authority/concordance/conservation and compatibility
 with existing Project linking. Those contracts may extend this explicitly
