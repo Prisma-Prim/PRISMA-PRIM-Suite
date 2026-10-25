@@ -276,8 +276,9 @@ is merged. Its child owns the complete schema/API/UI/public proof; D10 is not a
 prerequisite of preservation. No repeated source request, official numbering rule,
 new provider or production assignment is needed for anonymous acceptance.
 
-D10 separately specifies deliberate signing/concordance/mandate and case-acceptance
-declarations against exact Offer/Contract/Document-Version/PDF facts, their authority,
+The separate [D10 Commercial§31 contract](release-3-commercial-31-reported-signing-case-acceptance.md)
+owns deliberate signing/concordance/mandate and case-acceptance declarations
+against exact Offer/Contract/Document-Version/PDF facts, their authority,
 conservation and compatibility with existing Project linking. D9 changes none of
 those states. Final whole-case acceptance then uses the delivered thirteen ordinary
 Tasks, result/PDF references and ordinary closure. D11/D12 official numbering and

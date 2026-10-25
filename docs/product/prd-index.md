@@ -59,6 +59,13 @@ storage. Related Contract details and content retain independent read authority.
 Runtime follows the merged contract; signing/case acceptance remains D10 and
 neither upload nor designation completes the end-to-end dossier.
 
+The [reported signing/case-acceptance contract](release-3-commercial-31-reported-signing-case-acceptance.md)
+under #874 owns D10's exact human statement, independent captured authority,
+unverified/unknown facts, immutable evidence and existing Project continuation.
+It preserves old SIMULATED records and the owning Offer Client Response. Runtime
+follows separate readiness after canonical publication; final thirteen-Task/result/
+PDF/ordinary-closure acceptance still follows that delivery.
+
 The [bounded exact mission Task result contract](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
 under #832 links attributable result declarations/corrections to frozen readable
 mission Versions, preserving originals and independent Task/Document authority.

@@ -328,6 +328,19 @@ authority without granting source catalogues or costs. Internal approval while
 this distinct source is pending never supplies signing or Offer acceptance;
 Early Preparation v1 and its existing accepted-source execution gate stay intact.
 
+The separate [reported-signing declaration contract (§31.5)](release-3-commercial-31-reported-signing-case-acceptance.md#315-independent-authority-and-safe-reads)
+adds opt-in **Company Contract Signature Declarer v1**, containing exactly
+`commercial.contract.signature.declare_external`. Existing Company assignment
+administration explicitly grants/revokes capturedv1; null/unknown/revoked captures
+fail closed. No old assignment, repeated grant, migration/bootstrap or other role
+expands. Its attributable transitions are
+`company_contract_signature_declarer_assignment.granted` / `.revoked`, following
+the existing Company bundle-label-only convention. It grants no ordinary
+Contract/signature/source/Client/Document/content/Project/Activity/context or
+administration rights. Section31 owns the complete independent mutation/read
+matrix; a stored declaration does not require this write grant or PDF access for
+subsequent independently authorized Project linking. No real grant is authorized.
+
 The separate [approved-model Offer generation contract (§28.5)](release-3-commercial-28-model-offer-generation.md#285-independent-authority-and-selected-model-projection)
 adds **Company Offer Preparer v3**, preserving v2 and adding exactly
 `commercial.offer.model.select`, `commercial.offer.model_based.prepare` and

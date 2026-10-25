@@ -222,14 +222,18 @@ and retains all old content, sources, checks and decisions. An old-model choice
 is never silently reused; every new binding meets §30.3. History explains source,
 model, case and financial differences without leaking costs.
 
-Execution remains `NOT_EXECUTED` in this slice. Existing simulated-signature,
-Addendum and Project-link/create commands explicitly refuse this new provenance
-with `CONTRACT_EXECUTION_MODE_UNSUPPORTED`; no receipt or state change results.
-Internal approval writes nothing to Offer response. D10 must separately decide
-exact-Version external declaration and existing Project-link eligibility; neither
-upload nor preparation nor a synthetic approval supplies those facts. No delete,
-in-place edit, operational/legal lifecycle or withdrawal of a Contract decision
-is introduced.
+This generation/decision slice creates only `NOT_EXECUTED` Versions. Legacy
+simulated-signature and Addendum commands continue to refuse this provenance
+with `CONTRACT_EXECUTION_MODE_UNSUPPORTED`. Project-link/create remains
+ineligible until the separate §31 qualifying declaration exists; preparation or
+internal approval alone creates no execution receipt/state.
+Internal approval writes nothing to Offer response. The separate
+[reported signing/case-acceptance contract (§31)](release-3-commercial-31-reported-signing-case-acceptance.md)
+owns the exact-Version human declaration and existing Project-link eligibility;
+neither upload nor preparation nor a synthetic approval supplies those facts.
+That extension preserves this slice's original unexecuted creation receipts and
+old SIMULATED records. No delete, in-place edit, operational/legal lifecycle or
+withdrawal of a Contract decision is introduced.
 
 ## 30.7 Exact representation, events and integrity
 
@@ -346,11 +350,12 @@ approvals or production assignments. This delivery leaves execution pending.
 D9's separate [Document Registry§24 contract](release-1-document-registry-24-received-contract-pdfs.md)
 owns the received-Contract PDF family/relation and independent content access;
 its runtime follows that merged contract. Preservation alone declares no
-equivalence or signing. D10 then
+equivalence or signing. [D10's separate §31 contract](release-3-commercial-31-reported-signing-case-acceptance.md)
 owns attributed exact Offer/Contract/PDF-version signing and case-acceptance
 declarations, their current authority/concordance/conservation and compatibility
-with existing Project linking. Those contracts may extend this explicitly
-unexecuted mode without promoting old SIMULATED evidence into actual verification.
+with existing Project linking. Its separately gated runtime may extend this
+explicitly unexecuted mode without promoting old SIMULATED evidence into actual
+verification or rewriting the Offer Client Response.
 Final anonymous acceptance uses existing thirteen ordinary Tasks, exact result/PDF
 links and ordinary closure. D11/D12 await final official numbering policy;
 D5/D13's generalized obligations/stages are not invented as prerequisites.
