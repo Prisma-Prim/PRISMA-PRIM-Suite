@@ -227,3 +227,82 @@
     content: none;
   }
 }
+
+.model-contract-panel {
+  min-width: 0;
+}
+.model-contract-panel fieldset {
+  min-width: 0;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid var(--border-color, #e6eaf1);
+  border-radius: 0.75rem;
+}
+.model-contract-panel textarea,
+.model-contract-panel input[type='date'] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.model-contract-panel textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+.model-contract-panel .contract-field {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+.model-contract-panel dd,
+.model-contract-panel li,
+.model-contract-panel p,
+.model-contract-panel code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.model-contract-panel dl {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+  gap: 0.5rem 1rem;
+}
+.model-contract-panel dl > div {
+  grid-column: 1/-1;
+}
+.model-contract-panel dd {
+  margin: 0;
+  min-width: 0;
+}
+.model-contract-panel dt {
+  font-weight: 600;
+}
+.model-contract-panel button {
+  max-width: 100%;
+  white-space: normal;
+  margin: 0.25rem 0.4rem 0.25rem 0;
+}
+.model-contract-panel label:has(input[type='checkbox']) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+.model-contract-panel input[type='checkbox'] {
+  width: auto;
+  height: auto;
+  padding: 0;
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+.model-contract-panel .contract-representation iframe {
+  width: 100%;
+  min-height: 34rem;
+  background: white;
+}
+@media (max-width: 30rem) {
+  .model-contract-panel dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .model-contract-panel fieldset {
+    padding: 0.75rem;
+  }
+}

@@ -1,6 +1,6 @@
 # PRD — Release 3 Commercial Workflow, section 30: corresponding model-based Contract
 
-**Status:** Approved provisional product contract — runtime follows separately
+**Status:** Approved provisional product contract — non-official generation and internal-decision runtime delivered ([#868](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/868))
 
 **Owner:** Dan Popescu\
 **Contract issue:** [#866](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/866)
@@ -332,11 +332,16 @@ they prove neither actual business wording nor independent provider behavior.
 
 This fixed complete generation/decision outcome uses delivered Offer/model owners
 and existing Contract/history/quality/preview seams. It requires no official
-numbering policy, PDF provider, actual content or repeated source request. The
-runtime issue is published only after this contract merges and a fresh review of
-all twelve ticket gates confirms one-context fit; schema/API/UI/tests form one
-vertical outcome. Do not replace required integrity or compatibility proof with
-horizontal layer tickets.
+numbering policy, PDF provider, actual content or repeated source request.
+[#868](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/868) delivers the
+named Contract preparation, exact copied reads, bounded history, checks and
+internal decisions in one schema/API/UI outcome. The
+[public PostgreSQL REST tests](../../apps/api/src/contract/model-contract.rest.test.ts),
+[genuine pre-slice upgrade](../../apps/api/src/contract/model-contract.migration.test.ts)
+and [registered actual App journey](../../apps/web/e2e/model-contract.acceptance.spec.ts)
+own reproducible synthetic proof; the linked delivery PR owns its exact review,
+source/base/tree and final integration evidence. Installation creates no models,
+approvals or production assignments. This delivery leaves execution pending.
 
 D9 next owns a separate received-Contract PDF family/relation and independent
 content access; preservation alone declares no equivalence or signing. D10 then

@@ -165,6 +165,15 @@ export const contractModelDecisions = pgTable(
     ...attribution(),
   },
   (t) => [
+    uniqueIndex('contract_model_decisions_approval_identity_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.modelId,
+      t.versionId,
+      t.versionNumber,
+      t.outcome,
+      t.id,
+    ),
     uniqueIndex('contract_model_decisions_version_unique').on(
       t.workspaceId,
       t.companyId,

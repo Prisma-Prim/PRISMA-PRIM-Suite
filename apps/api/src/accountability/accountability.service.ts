@@ -342,7 +342,10 @@ export class AccountabilityService {
     const metadata = {
       contractId: input.contractId,
       ...contractEventMetadata(input.source),
-      provenance: 'ILLUSTRATIVE',
+      provenance:
+        input.source.kind === 'COMPANY_MODEL_OFFER'
+          ? 'COMPANY_MODEL_OFFER'
+          : 'ILLUSTRATIVE',
     };
     await this.databaseContext.connection.insert(contractEvents).values([
       {
@@ -396,7 +399,10 @@ export class AccountabilityService {
         versionNumber: input.versionNumber,
         predecessorVersionNumber: input.predecessorVersionNumber,
         ...contractEventMetadata(input.source),
-        provenance: 'ILLUSTRATIVE',
+        provenance:
+          input.source.kind === 'COMPANY_MODEL_OFFER'
+            ? 'COMPANY_MODEL_OFFER'
+            : 'ILLUSTRATIVE',
         ...(input.pricingSnapshotId === null
           ? {}
           : { pricingSnapshotId: input.pricingSnapshotId }),
@@ -439,7 +445,10 @@ export class AccountabilityService {
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
         ...contractEventMetadata(input.source),
-        provenance: 'ILLUSTRATIVE',
+        provenance:
+          input.source.kind === 'COMPANY_MODEL_OFFER'
+            ? 'COMPANY_MODEL_OFFER'
+            : 'ILLUSTRATIVE',
         ...(input.pricingSnapshotId === null
           ? {}
           : { pricingSnapshotId: input.pricingSnapshotId }),
@@ -1735,7 +1744,11 @@ export class AccountabilityService {
           origin: contracts.origin,
           sourceOfferVersionId: sql<
             string | null
-          >`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+          >`CASE WHEN ${contracts.origin} IN ('OFFER_PREPARATION','COMPANY_MODEL_OFFER') THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+          modelSourceVersionId: contractVersions.modelSourceVersionId,
+          modelSourceVersionNumber: contractVersions.modelSourceVersionNumber,
+          modelSourceDecisionId: contractVersions.modelSourceDecisionId,
+          createdContractRevision: contractVersions.createdContractRevision,
           parentContractId: contracts.parentContractId,
           addendumOrdinal: contracts.addendumOrdinal,
           illustrativeReference: contracts.illustrativeReference,
@@ -3664,6 +3677,17 @@ function contractEventMetadata(
         kind: source.contractKind,
         origin: source.kind,
         offerVersionId: source.offerVersionId,
+      };
+    case 'COMPANY_MODEL_OFFER':
+      return {
+        kind: 'CONTRACT',
+        origin: source.kind,
+        offerVersionId: source.offerVersionId,
+        modelVersionId: source.modelVersionId,
+        modelVersionNumber: source.modelVersionNumber,
+        modelApprovalDecisionId: source.modelApprovalDecisionId,
+        rendererVersion: source.rendererVersion,
+        contractRevision: source.contractRevision,
       };
     case 'ADDENDUM':
       return {

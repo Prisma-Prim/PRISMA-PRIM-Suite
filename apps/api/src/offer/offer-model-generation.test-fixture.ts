@@ -39,7 +39,7 @@ export const generatedOfferModelContent = {
 
 export async function prepareGeneratedOfferSource(
   fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
-  options: { clientTaxId?: string } = {},
+  options: { clientTaxId?: string; clientAddress?: string } = {},
 ) {
   const source = await fixture.prepare(options);
   await fixture.grant({
@@ -121,8 +121,9 @@ export function generatedOfferIntent(source: {
 export async function prepareGeneratedOfferWorkflow(
   fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
   stage: 'PENDING' | 'APPROVED' | 'TRANSMITTED',
+  options: { clientTaxId?: string; clientAddress?: string } = {},
 ) {
-  const source = await prepareGeneratedOfferSource(fixture);
+  const source = await prepareGeneratedOfferSource(fixture, options);
   const path = `/offers/opportunities/${source.opportunityId}`;
   const created = responseRecord(
     await fixture.command({

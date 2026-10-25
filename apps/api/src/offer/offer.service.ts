@@ -157,7 +157,7 @@ export class OfferService {
         and(
           eq(
             offerVersions.id,
-            sql`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+            sql`CASE WHEN ${contracts.origin} IN ('OFFER_PREPARATION','COMPANY_MODEL_OFFER') THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
           ),
           eq(offerVersions.offerId, offers.id),
           eq(offerVersions.workspaceId, contracts.workspaceId),
@@ -239,7 +239,7 @@ export class OfferService {
           eq(offerVersions.offerId, contracts.sourceOfferId),
           eq(
             offerVersions.id,
-            sql`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+            sql`CASE WHEN ${contracts.origin} IN ('OFFER_PREPARATION','COMPANY_MODEL_OFFER') THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
           ),
         ),
       )
@@ -303,6 +303,118 @@ export class OfferService {
       .limit(1);
     return accepted !== undefined;
   }
+  /** Full-model source only. Caller orders Opportunity and Client before this Offer fence. */
+  async resolveModelContractSource(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    requireEligible: boolean;
+  }) {
+    const companyId = await this.authorization.requireOfferAccess(
+      input.actor,
+      ['commercial.offer.read'],
+      true,
+    );
+    const opportunity = await this.intake.requireReadableOfferOpportunity(
+      input.actor,
+      input.opportunityId,
+      false,
+    );
+    const [offer] = await this.databaseContext.connection
+      .select()
+      .from(offers)
+      .where(
+        and(
+          eq(offers.workspaceId, input.actor.workspaceId),
+          eq(offers.companyId, companyId),
+          eq(offers.opportunityId, input.opportunityId),
+        ),
+      )
+      .for('update');
+    if (!offer) throw new NotFoundException();
+    const { version } = await this.requireOfferById(
+      input.actor,
+      companyId,
+      offer.id,
+      input.offerVersionId,
+    );
+    if (version.provenance !== 'COMPANY_MODEL_ESTIMATE')
+      throw namedConflict(
+        'OFFER_MODEL_CONTRACT_SOURCE_REQUIRED',
+        'Select a full model-based Offer.',
+      );
+    const snapshot = storedModelOfferSnapshot(
+      version,
+      offer.illustrativeReference,
+    );
+    const decision = await this.findDecision(
+      input.actor.workspaceId,
+      companyId,
+      version.id,
+    );
+    const transmission = await this.findTransmission(
+      input.actor.workspaceId,
+      companyId,
+      version.id,
+    );
+    const response = await this.findClientResponse({
+      workspaceId: input.actor.workspaceId,
+      companyId,
+      offerVersionId: version.id,
+    });
+    const ready =
+      opportunity.status === 'OPEN' &&
+      !version.supersededByVersionId &&
+      decision?.state === 'APPROVED' &&
+      !!transmission &&
+      this.clock.now() < version.validUntil &&
+      (!response || response.outcome === 'ACCEPTED');
+    if (input.requireEligible && !ready)
+      throw namedConflict(
+        'OFFER_NOT_PREPARABLE',
+        'Select a current approved and transmitted non-official Offer.',
+      );
+    const financials = snapshot.financialDeclaration;
+    return {
+      ready,
+      validUntil: version.validUntil,
+      copy: {
+        workspaceId: offer.workspaceId,
+        companyId,
+        opportunityId: offer.opportunityId,
+        originalClientAccountId: offer.originalClientAccountId,
+        clientRequestId: offer.clientRequestId,
+        offerId: offer.id,
+        offerVersionId: version.id,
+        offerVersionNumber: version.versionNumber,
+        illustrativeReference: offer.illustrativeReference,
+        representationSha256: snapshot.representation.sha256,
+        recipient: offerRecipientCopy(version),
+        scopeNote: version.scopeNote,
+        commercialConditions: version.commercialConditions,
+        model: {
+          modelId: snapshot.modelSource.modelId,
+          versionId: snapshot.modelSource.versionId,
+          versionNumber: snapshot.modelSource.versionNumber,
+          approvalDecisionId: snapshot.modelSource.approvalDecisionId,
+          approvedAt: snapshot.modelSource.approvedAt,
+          approvedBy: snapshot.modelSource.approvedBy,
+          issuer: snapshot.modelSource.content.issuer,
+          serviceTitle: snapshot.modelSource.content.serviceTitle,
+          frameworks: snapshot.modelSource.content.frameworks,
+        },
+        priceSource: snapshot.priceSource,
+        financials: {
+          netAmount: financials.netAmount,
+          taxAmount: financials.taxAmount,
+          grossAmount: financials.grossAmount,
+          taxLabel: financials.taxLabel,
+          currency: financials.currency,
+        },
+      },
+    };
+  }
+
   /** Recorded accepted source only; no pricing or live-Client projection locks. */
   async resolveAcceptedContractSource(input: {
     actor: ActorContext;

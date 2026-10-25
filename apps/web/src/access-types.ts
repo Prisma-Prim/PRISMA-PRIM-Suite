@@ -70,6 +70,9 @@ export interface ActorContext {
     pricingUserPermissionSetVersion?: 'v1';
     contractPermissions?: Array<
       | 'commercial.contract.read'
+      | 'commercial.contract.model.select'
+      | 'commercial.contract.model_based.prepare'
+      | 'commercial.contract.model_based.approve'
       | 'commercial.contract.prepare_pending_offer'
       | 'commercial.contract.prepare'
       | 'commercial.contract.project.link'
@@ -79,9 +82,9 @@ export interface ActorContext {
     contractEarlyPreparationAssignmentId?: string;
     contractEarlyPreparationPermissionSetVersion?: 'v1';
     contractPermissionAssignmentId?: string;
-    contractPermissionSetVersion?: 'v1';
+    contractPermissionSetVersion?: 'v1' | 'v2';
     contractApproverAssignmentId?: string;
-    contractApproverPermissionSetVersion?: 'v1';
+    contractApproverPermissionSetVersion?: 'v1' | 'v2';
     profitabilityContributorPermissions?: Array<
       | 'commercial.profitability_estimate.read'
       | 'commercial.profitability_estimate.create'

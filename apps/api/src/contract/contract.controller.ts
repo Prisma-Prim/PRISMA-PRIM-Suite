@@ -1,3 +1,5 @@
+import { ModelContractService } from './model-contract.service.js';
+import { ContractModelService } from '../contract-model/contract-model.service.js';
 import {
   Body,
   Controller,
@@ -22,6 +24,8 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
 export class ContractController {
   constructor(
     private readonly contracts: ContractService,
+    private readonly modelContracts: ModelContractService,
+    private readonly models: ContractModelService,
     private readonly projects: ContractProjectsService,
     private readonly projectCreation: ContractProjectCreationService,
   ) {}
@@ -67,6 +71,35 @@ export class ContractController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     return this.contracts.createDirect({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
+  @Get('model-selection') modelSelection(@Req() request: ActorContextRequest) {
+    return this.models.selectableForContract({ actor: actorFrom(request) });
+  }
+  @Post('from-approved-model') prepareModel(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.modelContracts.prepare({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
+  @Post('versions/from-approved-model') prepareModelVersion(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.modelContracts.createVersion({
       actor: actorFrom(request),
       opportunityId,
       payload,

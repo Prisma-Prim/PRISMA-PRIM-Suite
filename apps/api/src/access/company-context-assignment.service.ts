@@ -198,7 +198,7 @@ const OFFER_PREPARER_BUNDLE: BundleDefinition = {
 };
 const CONTRACT_PREPARER_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_PREPARER_BUNDLE,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 const CONTRACT_EARLY_PREPARATION_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
@@ -206,7 +206,7 @@ const CONTRACT_EARLY_PREPARATION_BUNDLE: BundleDefinition = {
 };
 const CONTRACT_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_CONTRACT_APPROVER_BUNDLE,
-  permissionSetVersion: 'v1',
+  permissionSetVersion: 'v2',
 };
 const OFFER_APPROVER_BUNDLE: BundleDefinition = {
   value: COMPANY_OFFER_APPROVER_BUNDLE,

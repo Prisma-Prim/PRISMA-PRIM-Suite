@@ -1,3 +1,5 @@
+import { ModelContractService } from './model-contract.service.js';
+import { ContractModelModule } from '../contract-model/contract-model.module.js';
 import { ContractVersionReader } from './contract-version-reader.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
@@ -16,6 +18,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
 @Module({
   imports: [
     AccessModule,
+    ContractModelModule,
     ProjectModule,
     AccountabilityModule,
     ClientModule,
@@ -27,12 +30,14 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
   ],
   providers: [
     ContractVersionReader,
+    ModelContractService,
     ContractService,
     ContractProjectsService,
     ContractProjectLinkStore,
     ContractProjectCreationService,
   ],
   exports: [
+    ModelContractService,
     ContractService,
     ContractProjectsService,
     ContractProjectCreationService,

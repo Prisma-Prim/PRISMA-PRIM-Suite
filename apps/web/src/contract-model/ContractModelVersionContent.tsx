@@ -61,7 +61,7 @@ export function ContractModelVersionContent({
 }
 
 /** Shared literal approved-model body without configuration decisions or notes. */
-function ContractModelBody({
+export function ContractModelBody({
   content,
 }: {
   content: ContractModelVersion['content'];

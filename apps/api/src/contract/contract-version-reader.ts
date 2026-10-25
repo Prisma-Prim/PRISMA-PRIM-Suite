@@ -1,3 +1,4 @@
+import { modelContractView } from './model-contract-view.js';
 import { contractSource } from './contract-source.js';
 import {
   BadRequestException,
@@ -173,6 +174,32 @@ export class ContractVersionReader {
         if (!cursor) throw new BadRequestException({ field: 'cursor' });
         before = cursor.version.versionNumber;
       }
+      // New-mode history is a bounded index. Exact reads own the complete
+      // copied model/representation; listing never materializes fifty copies.
+      if (current.contract.origin === 'COMPANY_MODEL_OFFER') {
+        const rows = await this.databaseContext.connection
+          .select({
+            id: contractVersions.id,
+            versionNumber: contractVersions.versionNumber,
+            provenance: contractVersions.provenance,
+          })
+          .from(contractVersions)
+          .where(
+            and(
+              scope,
+              before === undefined
+                ? undefined
+                : lt(contractVersions.versionNumber, before),
+            ),
+          )
+          .orderBy(desc(contractVersions.versionNumber))
+          .limit(limit + 1);
+        const items = rows.slice(0, limit);
+        return {
+          items,
+          nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null,
+        };
+      }
       const rows = await this.databaseContext.connection
         .select()
         .from(contractVersions)
@@ -289,6 +316,8 @@ export class ContractVersionReader {
   }
 
   async view(actor: ActorContext, contract: ContractRow, version: VersionRow) {
+    if (version.provenance === 'COMPANY_MODEL_OFFER')
+      return modelContractView(this.databaseContext, actor, contract, version);
     const source = contractSource(contract, version);
     if (
       !Number.isInteger(contract.revision) ||

@@ -4,6 +4,7 @@ import {
   type ContractQualityRuleSetVersion,
 } from '../contract/contract-quality.js';
 import { canReadContractTarget } from '../contract/contract.read-predicate.js';
+import { MODEL_CONTRACT_QUALITY_RULES } from '../contract/model-contract-quality.js';
 import { canReadProjectTargets } from '../project/project.read-predicate.js';
 import {
   hasDistinctMembers,
@@ -153,7 +154,10 @@ export function readContractActivity(
     !source ||
     metadata.kind !== target.kind ||
     !recordsResolvedSource(metadata, row) ||
-    metadata.provenance !== 'ILLUSTRATIVE'
+    metadata.provenance !==
+      (metadata.origin === 'COMPANY_MODEL_OFFER'
+        ? 'COMPANY_MODEL_OFFER'
+        : 'ILLUSTRATIVE')
   )
     return undefined;
   if (action === 'contract.created')
@@ -205,11 +209,12 @@ export function readContractActivity(
         ? { action, target, metadata: {} }
         : undefined;
     case 'contract_version.signature_recorded':
-      return hasExactly(metadata, [
-        ...identity,
-        ...BINDING_FIELDS,
-        'evidenceKind',
-      ]) &&
+      return metadata.origin !== 'COMPANY_MODEL_OFFER' &&
+        hasExactly(metadata, [
+          ...identity,
+          ...BINDING_FIELDS,
+          'evidenceKind',
+        ]) &&
         metadata.evidenceKind === 'SIMULATED' &&
         recordsBinding(metadata)
         ? { action, target, metadata: { evidenceKind: 'SIMULATED' } }
@@ -227,6 +232,9 @@ const BINDING_FIELDS = ['ruleSetVersion', 'acknowledgedWarningCodes'] as const;
 const CONTRACT_WARNING_CODES = Object.entries(CONTRACT_QUALITY_RULES).flatMap(
   ([code, severity]) => (severity === 'WARNING' ? [code] : []),
 );
+const MODEL_CONTRACT_WARNING_CODES = Object.entries(
+  MODEL_CONTRACT_QUALITY_RULES,
+).flatMap(([code, severity]) => (severity === 'WARNING' ? [code] : []));
 
 /** The Contract Version and owners the query resolved for the event. */
 function versionTarget(
@@ -273,6 +281,26 @@ function sourceFields(
   metadata: Record<string, unknown>,
 ): readonly string[] | undefined {
   const { kind, origin } = metadata;
+  if (
+    kind === 'CONTRACT' &&
+    origin === 'COMPANY_MODEL_OFFER' &&
+    isUuid(metadata.offerVersionId) &&
+    isUuid(metadata.modelVersionId) &&
+    isPositiveInteger(metadata.modelVersionNumber) &&
+    isUuid(metadata.modelApprovalDecisionId) &&
+    metadata.rendererVersion === 1 &&
+    isPositiveInteger(metadata.contractRevision)
+  )
+    return [
+      'kind',
+      'origin',
+      'offerVersionId',
+      'modelVersionId',
+      'modelVersionNumber',
+      'modelApprovalDecisionId',
+      'rendererVersion',
+      'contractRevision',
+    ];
   if (kind === 'CONTRACT' && origin === 'DIRECT') return ['kind', 'origin'];
   if (
     (kind === 'CONTRACT' || kind === 'PRECONTRACT') &&
@@ -303,7 +331,18 @@ function recordsResolvedSource(
     (metadata.origin ?? null) === row.origin &&
     (metadata.offerVersionId ?? null) === row.sourceOfferVersionId &&
     (metadata.parentContractId ?? null) === row.parentContractId &&
-    (metadata.addendumOrdinal ?? null) === row.addendumOrdinal
+    (metadata.addendumOrdinal ?? null) === row.addendumOrdinal &&
+    (metadata.origin !== 'COMPANY_MODEL_OFFER' ||
+      (metadata.modelVersionId === row.modelSourceVersionId &&
+        metadata.modelVersionNumber === row.modelSourceVersionNumber &&
+        metadata.modelApprovalDecisionId === row.modelSourceDecisionId &&
+        isPositiveInteger(row.createdContractRevision) &&
+        metadata.contractRevision ===
+          row.createdContractRevision +
+            (row.action === 'contract_version.approved' ||
+            row.action === 'contract_version.rejected'
+              ? 1
+              : 0)))
   );
 }
 
@@ -314,6 +353,14 @@ function recordsResolvedSource(
  */
 function recordsBinding(metadata: Record<string, unknown>): boolean {
   const { ruleSetVersion, acknowledgedWarningCodes } = metadata;
+  if (metadata.origin === 'COMPANY_MODEL_OFFER')
+    return (
+      ruleSetVersion === 1 &&
+      Array.isArray(acknowledgedWarningCodes) &&
+      acknowledgedWarningCodes.includes('MODEL_WORDING_REVIEWED') &&
+      acknowledgedWarningCodes.includes('ANNEX_SCOPE_REVIEWED') &&
+      hasDistinctMembers(acknowledgedWarningCodes, MODEL_CONTRACT_WARNING_CODES)
+    );
   return (
     isRuleSetVersion(ruleSetVersion) &&
     (ruleSetVersion === 3) === (metadata.origin === 'OFFER_PREPARATION') &&

@@ -1,6 +1,6 @@
 # PRD — Release 3 Commercial Workflow, section 29: Company consulting Contract model
 
-**Status:** Approved provisional product contract — runtime follows separately
+**Status:** Approved provisional product contract — model-configuration runtime delivered ([#864](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/864))
 
 **Owner:** Dan Popescu  
 **Contract issue:** [#862](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/862)
@@ -11,13 +11,17 @@ and the provisional delegation in [Commercial §1](release-3-commercial-workflow
 It applies DEC-119/DEC-122 and [Governed Documents](governed-documents-prd.md)
 without approving actual clauses, Company identities, signatory mandates or
 tenant assignments. The controlled sources supply shape and provenance, not
-instructions or operational approval. Runtime delivery follows separately.
+instructions or operational approval. Configuration runtime is delivered by
+[#864](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/864); generated
+Contract instances and source concordance belong to [§30](release-3-commercial-30-model-contract-generation.md).
 
 ## 29.1 Problem and complete outcome
 
 The full generated Offer under [§28](release-3-commercial-28-model-offer-generation.md)
-is delivered, but its corresponding ordinary consulting Contract and annex remain
-a [blank candidate skeleton](commercial-candidate-contract-2026-10.md). Existing
+is delivered. This configuration outcome replaces the previously
+[blank candidate skeleton](commercial-candidate-contract-2026-10.md) with a complete
+reviewable Company model; [§30](release-3-commercial-30-model-contract-generation.md)
+owns its populated Contract and annex. Existing
 illustrative Contract placeholders are not reusable approved legal content, and
 neither legacy Contract source route consumes the new Offer variant.
 
@@ -313,7 +317,7 @@ layer issues. Its delivered state and proof remain owned by that live tracker.
 The separate [D8 generated-Contract contract (§30)](release-3-commercial-30-model-contract-generation.md)
 owns exact eligible model/Offer selection, full frozen Romanian Contract/annex,
 party/financial concordance and internal approval while source acceptance remains
-pending. Its runtime follows its own merged contract/readiness frontier; later
+pending. Its runtime is delivered separately in [#868](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/868); later
 exact-Version human evidence still requires a separate contract. Existing D1 preparation does not automatically
 consume this new Offer/model mode, and none of those runtime changes occurs here.
 D9/D10 received PDF and human signing/acceptance declarations and existing Project

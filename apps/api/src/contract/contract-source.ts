@@ -11,11 +11,42 @@ export type ContractEventSource =
       contractKind: 'CONTRACT';
       offerVersionId: string;
     }
+  | {
+      kind: 'COMPANY_MODEL_OFFER';
+      contractKind: 'CONTRACT';
+      offerVersionId: string;
+      modelVersionId: string;
+      modelVersionNumber: number;
+      modelApprovalDecisionId: string;
+      rendererVersion: 1;
+      contractRevision: number;
+    }
   | { kind: 'ADDENDUM'; parentContractId: string; addendumOrdinal: number };
 export function contractSource(
   contract: typeof contracts.$inferSelect,
   version?: typeof contractVersions.$inferSelect,
 ): ContractEventSource {
+  if (
+    contract.kind === 'CONTRACT' &&
+    contract.origin === 'COMPANY_MODEL_OFFER' &&
+    contract.sourceOfferId &&
+    version?.sourceOfferVersionId &&
+    version.provenance === 'COMPANY_MODEL_OFFER' &&
+    version.modelSourceVersionId &&
+    version.modelSourceVersionNumber &&
+    version.modelSourceDecisionId
+  ) {
+    return {
+      kind: 'COMPANY_MODEL_OFFER',
+      contractKind: 'CONTRACT',
+      offerVersionId: version.sourceOfferVersionId,
+      modelVersionId: version.modelSourceVersionId,
+      modelVersionNumber: version.modelSourceVersionNumber,
+      modelApprovalDecisionId: version.modelSourceDecisionId,
+      rendererVersion: 1,
+      contractRevision: contract.revision,
+    };
+  }
   if (
     (contract.kind === 'CONTRACT' || contract.kind === 'PRECONTRACT') &&
     contract.parentContractId === null &&

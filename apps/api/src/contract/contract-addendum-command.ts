@@ -85,6 +85,11 @@ export async function createContractAddendum(
         contractId: input.parentContractId,
       });
       if (!parent) throw new NotFoundException();
+      if (parent.version.provenance === 'COMPANY_MODEL_OFFER')
+        throw new ConflictException({
+          code: 'CONTRACT_EXECUTION_MODE_UNSUPPORTED',
+          message: 'This Contract mode does not support Addenda.',
+        });
       await database.connection.execute(
         sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${key}`},0))`,
       );

@@ -109,7 +109,7 @@ const assignmentContracts = {
   },
   'company-contract-preparer': {
     label: 'Company Contract Preparer',
-    versions: ['v1'],
+    versions: ['v1', 'v2'],
   },
   'company-contract-early-preparation': {
     label: 'Company Contract Early Preparation',
@@ -117,7 +117,7 @@ const assignmentContracts = {
   },
   'company-contract-approver': {
     label: 'Company Contract Approver',
-    versions: ['v1'],
+    versions: ['v1', 'v2'],
   },
   'company-project': {
     label: 'Company Project Access',

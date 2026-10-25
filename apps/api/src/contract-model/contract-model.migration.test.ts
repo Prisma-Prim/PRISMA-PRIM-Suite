@@ -352,7 +352,12 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       await fixture.applyCurrentMigrations();
       await fixture.restart();
       for (const table of tables) {
-        const projection = 'to_jsonb(t)';
+        const projection =
+          table === 'contract_versions'
+            ? "to_jsonb(t)-ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']"
+            : table === 'contract_decisions'
+              ? "to_jsonb(t)-ARRAY['review_basis']"
+              : 'to_jsonb(t)';
         expect(
           (
             await fixture.pool.query(
