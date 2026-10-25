@@ -300,7 +300,7 @@ An accepted rehearsal remains immutable/final like other accepted Offers.
 
 Both accepted-source and pending-Offer legacy Contract preparations explicitly
 refuse this variant with safe `OFFER_MODEL_CONTRACT_UNSUPPORTED`; direct origin
-must not substitute a fake Snapshot. D8 will define the matching Contract
+must not substitute a fake Snapshot. The separate [D8 contract (§30)](release-3-commercial-30-model-contract-generation.md) defines the matching Contract
 compatibility. Existing internal-only drafts retain their §26 refusals.
 
 ## 28.9 Activity, storage and compatibility

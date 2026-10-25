@@ -310,10 +310,11 @@ create one context-free runtime child only when all twelve ticket-readiness gate
 and one-fresh-context fit pass. Schema/API/UI/tests are one outcome, not separate
 layer issues. Its delivered state and proof remain owned by that live tracker.
 
-Only after the relevant frontier merges, qualify the separate complete D8
-generated-Contract contract: exact eligible model/Offer selection, full frozen
-Romanian Contract/annex, party/financial concordance, pending acceptance and later
-exact-Version human evidence. Existing D1 preparation does not automatically
+The separate [D8 generated-Contract contract (§30)](release-3-commercial-30-model-contract-generation.md)
+owns exact eligible model/Offer selection, full frozen Romanian Contract/annex,
+party/financial concordance and internal approval while source acceptance remains
+pending. Its runtime follows its own merged contract/readiness frontier; later
+exact-Version human evidence still requires a separate contract. Existing D1 preparation does not automatically
 consume this new Offer/model mode, and none of those runtime changes occurs here.
 D9/D10 received PDF and human signing/acceptance declarations and existing Project
 linking follow their own contracts. D11/D12 await separately final official

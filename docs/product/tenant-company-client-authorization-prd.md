@@ -298,8 +298,21 @@ active membership/context and captured-version refusal apply. No old grant,
 Offer model role, Director/Workspace ownership or ordinary Contract capability
 substitutes; neither bundle grants those independent business reads/actions,
 Activity read or administration. No seed/backfill/automatic assignment occurs.
-Section29 owns the exact configuration lifecycle and replay authority; future
-Contract model selection requires its own opt-in contract.
+Section29 owns the exact configuration lifecycle and replay authority.
+The separate [generated Contract contract (§30.5)](release-3-commercial-30-model-contract-generation.md#305-independent-authority-and-selected-model-projection)
+adds Company Contract Preparer v2 (preserves v1; adds exactly
+`commercial.contract.model.select` and `commercial.contract.model_based.prepare`)
+and Company Contract Approver v2 (preserves v1; adds exactly
+`commercial.contract.model_based.approve`). Fresh grants capture v2; old active v1,
+repeated grants and historical receipts remain v1 until explicit revoke/fresh
+grant. Null/unknown versions fail closed. No seed/backfill/automatic assignment.
+Selection exposes only the currently approved complete same-Company model/stamp,
+not configuration history or private decision notes. New preparation/decisions
+require the ordinary and additional permissions plus independent current source
+reads defined by §30. Copied Contract reads retain ordinary Contract/Opportunity
+authority without granting source catalogues or costs. Internal approval while
+this distinct source is pending never supplies signing or Offer acceptance;
+Early Preparation v1 and its existing accepted-source execution gate stay intact.
 
 The separate [approved-model Offer generation contract (§28.5)](release-3-commercial-28-model-offer-generation.md#285-independent-authority-and-selected-model-projection)
 adds **Company Offer Preparer v3**, preserving v2 and adding exactly
