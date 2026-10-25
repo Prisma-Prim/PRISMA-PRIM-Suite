@@ -1,4 +1,5 @@
 import { hasReceivedContractAccess } from './received-contract-access';
+import { documentFamilyCaptureKey } from './document-family-access';
 import { useReceivedContractCopy } from './received-contract.copy';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
@@ -141,11 +142,19 @@ export function DocumentVersions({
         company.id,
         documentId,
         documentType,
-        company.receivedContractAccessAssignmentId,
-        company.receivedContractAccessPermissionSetVersion,
-        company.missionDeliverableAccessAssignmentId,
-        company.missionDeliverableAccessPermissionSetVersion,
-        [...permissions].sort(),
+        documentFamilyCaptureKey(company, documentType),
+        permissions
+          .filter((permission) =>
+            [
+              'document.read',
+              'document.reference.read',
+              'document.version.manage',
+              'document.version.designate_official',
+              'document.content.read',
+              'document.content.upload',
+            ].includes(permission),
+          )
+          .sort(),
         company.documentPermissionSetVersion ?? null,
         company.documentApproverAssignmentId ?? null,
         company.documentContentReaderAssignmentId ?? null,

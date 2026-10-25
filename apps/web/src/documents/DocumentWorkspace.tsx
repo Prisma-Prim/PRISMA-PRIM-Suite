@@ -9,7 +9,18 @@ import { ReceivedContractRegistration } from './ReceivedContractRegistration';
 import { ReceivedContractRelation } from './ReceivedContractRelation';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
-import { useContext, useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
+import {
+  documentFamilyCaptureKey,
+  hasDocumentFamilyAccess,
+} from './document-family-access';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -74,12 +85,8 @@ export function DocumentWorkspace(
         props.actor.workspaceId,
         props.actor.workspaceMembershipId,
         company?.id,
-        hasMissionDeliverableAccess(company),
-        hasReceivedContractAccess(company),
-        company?.receivedContractAccessAssignmentId,
-        company?.receivedContractAccessPermissionSetVersion,
-        company?.missionDeliverableAccessAssignmentId,
-        company?.missionDeliverableAccessPermissionSetVersion,
+        company?.documentPermissionAssignmentId,
+        company?.documentPermissionSetVersion,
       ])}
       {...props}
     />
@@ -254,6 +261,69 @@ function DocumentSession({
     true;
   const canUseMission = hasMissionDeliverableAccess(actor.activeCompany);
   const canUseReceived = hasReceivedContractAccess(actor.activeCompany);
+  const missionCapture = documentFamilyCaptureKey(
+    actor.activeCompany,
+    'mission-deliverable',
+  );
+  const receivedCapture = documentFamilyCaptureKey(
+    actor.activeCompany,
+    'received-contract',
+  );
+  const familyCaptures = {
+    questionnaire: 'questionnaire',
+    'mission-deliverable': missionCapture,
+    'received-contract': receivedCapture,
+  };
+  const currentFamilyCaptures = useRef(familyCaptures);
+  currentFamilyCaptures.current = familyCaptures;
+  const previousFamilyCaptures = useRef(familyCaptures);
+  useLayoutEffect(() => {
+    const previous = previousFamilyCaptures.current;
+    previousFamilyCaptures.current = familyCaptures;
+    const retired = (type: DocumentFamily) =>
+      previous[type] !== familyCaptures[type];
+    if (!retired('mission-deliverable') && !retired('received-contract'))
+      return;
+    // Retire cached rows/read replies before paint, without unmounting an unrelated PDF owner.
+    for (const [id, entry] of confirmedRegistrations.current)
+      if (retired(entry.document.type))
+        confirmedRegistrations.current.delete(id);
+    setState((current) =>
+      current.status === 'ready'
+        ? {
+            ...current,
+            documents: current.documents.filter(
+              (document) => !retired(document.type),
+            ),
+          }
+        : current,
+    );
+    const detailRetired = detail !== undefined && retired(detail.type);
+    const registrationRetired = detail === undefined && retired(family);
+    if (!detailRetired && !registrationRetired) return;
+    setEditing(false);
+    setCorrection('idle');
+    setStaleDossier(undefined);
+    setMutation('idle');
+    setTitle('');
+    setPurpose('');
+    setUrl('');
+    setClientId('');
+    correctionRetry.current = undefined;
+    correctionRevision.current = undefined;
+    if (detailRetired) {
+      pending.current?.abort();
+      versionRefresh.current?.abort();
+      dossierRefresh.current?.abort();
+      setDetail(undefined);
+    }
+    if (registrationRetired) {
+      registrationInFlight?.abort();
+      setRegistrationInFlight(undefined);
+      retry.current = undefined;
+      setFamily('questionnaire');
+    }
+  }, [missionCapture, receivedCapture, detail, family]);
   const canSelectReceived =
     canUseReceived && canReadReceivedContractRelation(actor.activeCompany);
   // The relation has its own keyed reader. Metadata/list owners retain no protected source fields.
@@ -268,18 +338,18 @@ function DocumentSession({
     return readDocuments(value)
       .filter(
         (document) =>
-          document.type === 'questionnaire' ||
-          (document.type === 'mission-deliverable'
-            ? canUseMission
-            : canUseReceived),
+          familyCaptures[document.type] ===
+            currentFamilyCaptures.current[document.type] &&
+          hasDocumentFamilyAccess(actor.activeCompany, document.type),
       )
       .map(metadataOnly);
   }
   function readVisibleDetail(value: unknown): WorkingDocumentDetail {
     const document = readDocumentDetail(value);
     if (
-      (document.type === 'mission-deliverable' && !canUseMission) ||
-      (document.type === 'received-contract' && !canUseReceived)
+      familyCaptures[document.type] !==
+        currentFamilyCaptures.current[document.type] ||
+      !hasDocumentFamilyAccess(actor.activeCompany, document.type)
     )
       throw new Error('Unavailable Document family');
     return metadataOnly(document);
@@ -510,6 +580,8 @@ function DocumentSession({
     actor.workspaceMembershipId,
     revision,
     clientIdentityRevision,
+    missionCapture,
+    receivedCapture,
   ]);
   // The opened Document owes the same derived refresh. An open correction
   // draft and its retryable command keep the exact Document they started from,
@@ -1004,9 +1076,15 @@ function DocumentSession({
     state.refreshFailedUnder === clientIdentityRevision;
   const normalizedFilterQuery =
     filter.kind === 'text' ? documentFilterText(filter.query.trim()) : '';
+  const visibleDocuments =
+    state.status === 'ready'
+      ? state.documents.filter((document) =>
+          hasDocumentFamilyAccess(actor.activeCompany, document.type),
+        )
+      : [];
   const filteredDocuments =
     state.status === 'ready' && !restrictionAwaitsRead
-      ? state.documents.filter((document) =>
+      ? visibleDocuments.filter((document) =>
           filter.kind === 'client'
             ? document.clientDossierId === filter.clientDossierId
             : normalizedFilterQuery.length === 0 ||
@@ -1058,7 +1136,7 @@ function DocumentSession({
       )}
       {state.status === 'ready' && (
         <>
-          {state.documents.length > 0 && (
+          {visibleDocuments.length > 0 && (
             <label className={isPrisme ? 'working-document-filter' : undefined}>
               {copy.filterLabel}
               <input
@@ -1272,6 +1350,7 @@ function DocumentSession({
                 actor={actor}
                 identity={identity}
                 documentId={detail.id}
+                documentType={detail.type}
                 workingRevision={detail.workingRevision}
               />
             </article>
@@ -1282,7 +1361,7 @@ function DocumentSession({
               ) : restrictionAwaitsRead ? (
                 <p role="status">{copy.loading}</p>
               ) : (
-                state.documents.length > 0 &&
+                visibleDocuments.length > 0 &&
                 filteredDocuments.length === 0 && (
                   <p role="status">{copy.noMatches}</p>
                 )
@@ -1301,7 +1380,7 @@ function DocumentSession({
                   </li>
                 ))}
               </ul>
-              {state.documents.length === 0 && !restrictionAwaitsRead && (
+              {visibleDocuments.length === 0 && !restrictionAwaitsRead && (
                 <p>{copy.empty}</p>
               )}
               {canRegister && (
@@ -1352,9 +1431,10 @@ function DocumentSession({
                   {family === 'received-contract' ? (
                     canSelectReceived && companyId ? (
                       <ReceivedContractRegistration
-                        key={receivedContractSourceAuthority(
-                          actor.activeCompany,
-                        )}
+                        key={JSON.stringify([
+                          receivedCapture,
+                          receivedContractSourceAuthority(actor.activeCompany),
+                        ])}
                         identity={identity}
                         companyId={companyId}
                         onBusyChange={setReceivedBusy}

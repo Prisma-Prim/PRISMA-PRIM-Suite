@@ -484,6 +484,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'received-contract-access',
+    canonical: 'Company Received Contract Access',
+    version: 'v1',
+    labels: {
+      en: 'Company Received Contract Access',
+      fr: 'Accès aux contrats reçus de la société',
+      ro: 'Acces la contractele primite ale companiei',
+      ru: 'Доступ к полученным договорам компании',
+    },
+  },
+  {
     value: 'mission-deliverable-access',
     canonical: 'Company Mission Deliverable Access',
     version: 'v1',

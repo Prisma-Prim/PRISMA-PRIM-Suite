@@ -308,6 +308,10 @@ test('keeps an identical uncertain PDF retry through actual Contract read retire
     companyId: ready.companyId,
     workspaceMembershipId: ready.preparerId,
   });
+  await ready.command('/company-mission-deliverable-access-assignments', {
+    companyId: ready.companyId,
+    workspaceMembershipId: ready.preparerId,
+  });
   const title = 'Received independent PDF work DEMO ' + suffix,
     source = 'Protected declared email source ' + suffix;
   const saved = await ready.command(
@@ -390,6 +394,7 @@ test('keeps an identical uncertain PDF retry through actual Contract read retire
       })
       .click();
     await expect.poll(() => Boolean(releaseEarlier)).toBe(true);
+    await ready.revoke('company-mission-deliverable-access');
     await ready.revoke('company-contract-preparer');
     await documents
       .getByRole('button', {

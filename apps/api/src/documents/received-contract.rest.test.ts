@@ -1,6 +1,7 @@
 import {
   prepareReceivedContractSource,
   registerReceivedContract,
+  receivedContractEffects,
 } from './received-contract.test-support.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -38,6 +39,36 @@ withPostgres('Received Contract PDF family public REST', () => {
 
   const source = () => prepareReceivedContractSource(fixture);
   const received = () => registerReceivedContract(fixture);
+
+  it('refuses invalid Unicode in received draft corrections without changing any conserved fact', async () => {
+    const f = await received(),
+      before = await receivedContractEffects(fixture.pool);
+    for (const field of ['title', 'purpose'])
+      for (const value of ['bad\uD800', 'bad\uDC00', 'bad\u0000']) {
+        const response = await f.mutate(
+          '',
+          { expectedRevision: 1, [field]: value },
+          'PATCH',
+        );
+        expect({ field, value, status: response.status }).toMatchObject({
+          status: 400,
+        });
+        expect(await receivedContractEffects(fixture.pool)).toEqual(before);
+      }
+    expect(
+      (
+        await f.mutate(
+          '',
+          { expectedRevision: 1, title: 'Literal � and 😀' },
+          'PATCH',
+        )
+      ).status,
+    ).toBe(200);
+    expect(await (await f.call('')).json()).toMatchObject({
+      title: 'Literal � and 😀',
+      workingRevision: 2,
+    });
+  });
 
   it('independently prevents changing the original Client behind a conserved relation', async () => {
     const f = await received();

@@ -795,7 +795,12 @@ function referenceUrl(value: unknown): string {
   return url.href;
 }
 function requiredText(value: unknown, max: number): string {
-  if (typeof value !== 'string' || !value.trim() || value.trim().length > max)
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    value.trim().length > max ||
+    /[\0\uD800-\uDFFF]/u.test(value)
+  )
     throw new BadRequestException('Document fields are missing or too long.');
   return value.trim();
 }
