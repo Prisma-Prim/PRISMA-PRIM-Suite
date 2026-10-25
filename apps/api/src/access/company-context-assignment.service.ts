@@ -1704,7 +1704,12 @@ export class CompanyContextAssignmentService {
           eq(companies.status, 'active'),
         ),
       )
-      .for('update')
+      // These rows are eligibility, not mutation targets. Shared locks still
+      // block suspension/deactivation without deadlocking an authorized
+      // command that already holds its assignment and then locks membership.
+      // Assignment writes and their uniqueness constraints serialize grants
+      // and revocations independently.
+      .for('share')
       .limit(1);
     if (!target) throw new ForbiddenException();
     return target;
