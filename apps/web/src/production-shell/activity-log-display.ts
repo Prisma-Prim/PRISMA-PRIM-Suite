@@ -1,6 +1,7 @@
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
+import { useContractModelCopy } from '../contract-model/contract-model.copy';
 import { useOfferModelCopy } from '../offer-model/offer-model.copy';
 import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { useWorkspaceInvitationsCopy } from '../access/workspace-invitations.copy';
@@ -37,6 +38,7 @@ export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
   const ideas = useIdeasCopy();
   const model = useOfferModelCopy();
+  const contractModel = useContractModelCopy();
   const invitationActions = useWorkspaceInvitationsCopy().activityActionLabels;
   const pdfActions = useDocumentPdfCopy().activityActionLabels;
   const stage = useSalesStageCopy();
@@ -184,9 +186,17 @@ export function useActivityLogDisplay() {
       'company_offer_preparer_assignment.granted',
     ),
     'company_offer_model_editor_assignment.granted': model('editorGranted'),
+    'company_contract_model_editor_assignment.granted':
+      contractModel('editorGranted'),
     'company_offer_model_editor_assignment.revoked': model('editorRevoked'),
+    'company_contract_model_editor_assignment.revoked':
+      contractModel('editorRevoked'),
     'company_offer_model_approver_assignment.granted': model('approverGranted'),
+    'company_contract_model_approver_assignment.granted':
+      contractModel('approverGranted'),
     'company_offer_model_approver_assignment.revoked': model('approverRevoked'),
+    'company_contract_model_approver_assignment.revoked':
+      contractModel('approverRevoked'),
     'company_offer_preparer_assignment.revoked': message(
       'company_offer_preparer_assignment.revoked',
     ),

@@ -308,6 +308,28 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'contract-model-editor',
+    canonical: 'Company Contract Model Editor',
+    version: 'v1',
+    labels: {
+      ro: 'Editor al modelelor de contract ale companiei',
+      ru: 'Редактор шаблонов договоров компании',
+      fr: 'Éditeur des modèles de contrat de la société',
+      en: 'Company Contract Model Editor',
+    },
+  },
+  {
+    value: 'contract-model-approver',
+    canonical: 'Company Contract Model Approver',
+    version: 'v1',
+    labels: {
+      ro: 'Aprobator al modelelor de contract ale companiei',
+      ru: 'Утверждающий шаблоны договоров компании',
+      fr: 'Approbateur des modèles de contrat de la société',
+      en: 'Company Contract Model Approver',
+    },
+  },
+  {
     value: 'contract-preparer',
     canonical: 'Company Contract Preparer',
     version: 'v1',

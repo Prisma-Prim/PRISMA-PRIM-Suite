@@ -33,6 +33,8 @@ import type {
   COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
   COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
   COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
@@ -199,14 +201,18 @@ export type CanonicalActivityEvent =
         | 'company_pricing_user_assignment.granted'
         | 'company_pricing_user_assignment.revoked'
         | 'company_offer_model_editor_assignment.granted'
+        | 'company_contract_model_editor_assignment.granted'
         | 'company_offer_model_approver_assignment.granted'
+        | 'company_contract_model_approver_assignment.granted'
         | 'company_offer_preparer_assignment.granted'
         | 'company_contract_preparer_assignment.granted'
         | 'company_contract_early_preparation_assignment.granted'
         | 'company_contract_approver_assignment.granted'
         | 'company_offer_approver_assignment.granted'
         | 'company_offer_model_editor_assignment.revoked'
+        | 'company_contract_model_editor_assignment.revoked'
         | 'company_offer_model_approver_assignment.revoked'
+        | 'company_contract_model_approver_assignment.revoked'
         | 'company_offer_preparer_assignment.revoked'
         | 'company_contract_preparer_assignment.revoked'
         | 'company_contract_early_preparation_assignment.revoked'
@@ -268,6 +274,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
@@ -390,14 +398,18 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_user_assignment.granted'
     | 'company_pricing_user_assignment.revoked'
     | 'company_offer_model_editor_assignment.granted'
+    | 'company_contract_model_editor_assignment.granted'
     | 'company_offer_model_approver_assignment.granted'
+    | 'company_contract_model_approver_assignment.granted'
     | 'company_offer_preparer_assignment.granted'
     | 'company_contract_preparer_assignment.granted'
     | 'company_contract_early_preparation_assignment.granted'
     | 'company_contract_approver_assignment.granted'
     | 'company_offer_approver_assignment.granted'
     | 'company_offer_model_editor_assignment.revoked'
+    | 'company_contract_model_editor_assignment.revoked'
     | 'company_offer_model_approver_assignment.revoked'
+    | 'company_contract_model_approver_assignment.revoked'
     | 'company_offer_preparer_assignment.revoked'
     | 'company_contract_preparer_assignment.revoked'
     | 'company_contract_early_preparation_assignment.revoked'
@@ -506,6 +518,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL

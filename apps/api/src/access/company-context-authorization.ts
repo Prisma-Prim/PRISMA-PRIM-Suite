@@ -72,6 +72,8 @@ import {
   pricingUserPermissionsFor,
   type CompanyPricingUserPermission,
   COMPANY_OFFER_PREPARER_BUNDLE,
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
   COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
   COMPANY_ROLE_BUNDLES,
@@ -111,6 +113,7 @@ import {
   projectIdeasAssignment,
   requireIdeasCapturedGrant,
 } from './ideas-captured-grants.js';
+import { captureContractModelGrant } from './contract-model-captured-grants.js';
 import { captureOfferModelGrant } from './offer-model-captured-grants.js';
 
 const COMPANY_CONTEXT_AUTHORIZING_BUNDLES = [
@@ -1444,6 +1447,8 @@ export class CompanyContextAuthorization {
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
         COMPANY_OFFER_PREPARER_BUNDLE,
+        COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
+        COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
         COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
         COMPANY_OFFER_MODEL_APPROVER_BUNDLE,
         COMPANY_CONTRACT_PREPARER_BUNDLE,
@@ -1511,6 +1516,12 @@ export class CompanyContextAuthorization {
         company.offerModelGrants = [
           ...(company.offerModelGrants ?? []),
           modelGrant,
+        ];
+      const contractModelGrant = captureContractModelGrant(row);
+      if (contractModelGrant)
+        company.contractModelGrants = [
+          ...(company.contractModelGrants ?? []),
+          contractModelGrant,
         ];
       if (row.bundle === COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE) {
         if (

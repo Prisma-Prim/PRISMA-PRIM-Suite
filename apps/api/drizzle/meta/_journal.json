@@ -568,6 +568,13 @@
       "when": 1792859209352,
       "tag": "0080_model_offer_generation",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1792875644021,
+      "tag": "0081_company_contract_model",
+      "breakpoints": true
     }
   ]
 }

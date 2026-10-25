@@ -32,6 +32,12 @@ import {
   CompanyOfferModelEditorAssignmentController,
   CompanyOfferModelApproverAssignmentController,
 } from './access/company-offer-model-assignment.controller.js';
+import { ContractModelController } from './contract-model/contract-model.controller.js';
+import { ContractModelModule } from './contract-model/contract-model.module.js';
+import {
+  CompanyContractModelEditorAssignmentController,
+  CompanyContractModelApproverAssignmentController,
+} from './access/company-contract-model-assignment.controller.js';
 import { CompanyContractPreparerAssignmentController } from './access/company-contract-preparer-assignment.controller.js';
 import { TaskModule } from './task/task.module.js';
 import { TaskController } from './task/task.controller.js';
@@ -119,6 +125,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    ContractModelModule,
     OfferModelModule,
     IdeasModule,
     OperationalRiskModule,
@@ -142,6 +149,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    ContractModelController,
     OfferModelController,
     CompanyIdeasReaderAssignmentController,
     CompanyIdeasRecorderAssignmentController,
@@ -204,6 +212,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyOfferPreparerAssignmentController,
     CompanyContractPreparerAssignmentController,
     CompanyContractEarlyPreparationAssignmentController,
+    CompanyContractModelEditorAssignmentController,
+    CompanyContractModelApproverAssignmentController,
     CompanyOfferModelEditorAssignmentController,
     CompanyOfferModelApproverAssignmentController,
     CompanyContractApproverAssignmentController,

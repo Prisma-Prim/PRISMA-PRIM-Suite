@@ -364,6 +364,25 @@ export const COMPANY_ROLE_BUNDLES = {
       ],
     },
   },
+  company_contract_model_editor: {
+    label: 'Company Contract Model Editor',
+    versions: {
+      v1: [
+        'commercial.contract.model.read',
+        'commercial.contract.model.version.create',
+      ],
+    },
+  },
+  company_contract_model_approver: {
+    label: 'Company Contract Model Approver',
+    versions: {
+      v1: [
+        'commercial.contract.model.read',
+        'commercial.contract.model.decide',
+        'commercial.contract.model.withdraw',
+      ],
+    },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -458,6 +477,14 @@ export const COMPANY_OFFER_MODEL_APPROVER_BUNDLE =
   'company_offer_model_approver' satisfies CompanyRoleBundle;
 export const COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_offer_model_approver.label;
+export const COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE =
+  'company_contract_model_editor' satisfies CompanyRoleBundle;
+export const COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_contract_model_editor.label;
+export const COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE =
+  'company_contract_model_approver' satisfies CompanyRoleBundle;
+export const COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_contract_model_approver.label;
 export const COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_context_access.label;
 export const COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE =

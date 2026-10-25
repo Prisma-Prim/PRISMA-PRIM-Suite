@@ -351,6 +351,30 @@ export const activityEventsByAction = {
     action: 'company_offer_model_approver_assignment.revoked',
     target: targets.company_role_assignment,
   },
+  'company_contract_model_editor_assignment.granted': {
+    ...ordinary,
+    id: 'event-contract-model-editor-granted',
+    action: 'company_contract_model_editor_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_model_editor_assignment.revoked': {
+    ...ordinary,
+    id: 'event-contract-model-editor-revoked',
+    action: 'company_contract_model_editor_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_model_approver_assignment.granted': {
+    ...ordinary,
+    id: 'event-contract-model-approver-granted',
+    action: 'company_contract_model_approver_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_model_approver_assignment.revoked': {
+    ...ordinary,
+    id: 'event-contract-model-approver-revoked',
+    action: 'company_contract_model_approver_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_offer_approver_assignment.granted': {
     ...ordinary,
     id: 'event-company_offer_approver_assignment.granted',
