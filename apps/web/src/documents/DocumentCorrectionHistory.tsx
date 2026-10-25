@@ -50,6 +50,8 @@ export function DocumentCorrectionHistory({
         actor.workspaceMembershipId,
         company.id,
         documentId,
+        company.receivedContractAccessAssignmentId,
+        company.receivedContractAccessPermissionSetVersion,
         company.missionDeliverableAccessAssignmentId,
         company.missionDeliverableAccessPermissionSetVersion,
         canReadReference,

@@ -209,3 +209,8 @@
     padding: 1rem;
   }
 }
+
+.working-document-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

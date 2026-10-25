@@ -1,3 +1,4 @@
+import { receivedContractAssignment } from './received-contract-access.js';
 import { missionDeliverableAssignment } from './mission-deliverable-access.js';
 import {
   COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE,
@@ -37,6 +38,8 @@ import {
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
+  receivedContractPermissionsFor,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   missionDeliverablePermissionsFor,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
@@ -456,6 +459,22 @@ export class CompanyContextAuthorization {
     options: { lockAssignment: boolean } = { lockAssignment: false },
   ): Promise<boolean> {
     const condition = missionDeliverableAssignment(actor);
+    if (!condition) return false;
+    const query = this.databaseContext.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(condition);
+    const [assignment] = options.lockAssignment
+      ? await query.for('share')
+      : await query;
+    return assignment !== undefined;
+  }
+
+  async hasReceivedContractAccess(
+    actor: ActorContext,
+    options: { lockAssignment: boolean } = { lockAssignment: false },
+  ): Promise<boolean> {
+    const condition = receivedContractAssignment(actor);
     if (!condition) return false;
     const query = this.databaseContext.connection
       .select({ id: companyRoleAssignments.id })
@@ -1496,6 +1515,7 @@ export class CompanyContextAuthorization {
         COMPANY_DOCUMENT_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
         COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+        COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
         COMPANY_TASK_RESULT_RECORDER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       ]),
@@ -1612,6 +1632,17 @@ export class CompanyContextAuthorization {
         ];
         company.missionDeliverableAccessAssignmentId = row.assignmentId;
         company.missionDeliverableAccessPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.documentPermissions = [
+          ...(company.documentPermissions ?? []),
+          ...receivedContractPermissionsFor(row.permissionSetVersion),
+        ];
+        company.receivedContractAccessAssignmentId = row.assignmentId;
+        company.receivedContractAccessPermissionSetVersion = 'v1';
       }
       if (
         row.bundle === COMPANY_TASK_RESULT_RECORDER_BUNDLE &&

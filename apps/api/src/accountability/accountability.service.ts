@@ -1,3 +1,4 @@
+import { receivedContractAssignment } from '../access/received-contract-access.js';
 import { CONTRACT_MODEL_CODE } from '../contract-model/contract-model.content.js';
 import { contractModelEvents } from '../database/schema/contract-model.js';
 import { companyRoleAssignments } from '../database/schema/index.js';
@@ -2384,7 +2385,16 @@ export class AccountabilityService {
             .where(grant),
         )
       : sql`false`;
-    return sql`(${eq(workingDocuments.type, 'questionnaire')} OR (${eq(workingDocuments.type, 'mission-deliverable')} AND ${mission}))`;
+    const receivedGrant = receivedContractAssignment(actor);
+    const received = receivedGrant
+      ? exists(
+          this.databaseContext.connection
+            .select({ id: companyRoleAssignments.id })
+            .from(companyRoleAssignments)
+            .where(receivedGrant),
+        )
+      : sql`false`;
+    return sql`(${eq(workingDocuments.type, 'questionnaire')} OR (${eq(workingDocuments.type, 'mission-deliverable')} AND ${mission}) OR (${eq(workingDocuments.type, 'received-contract')} AND ${received}))`;
   }
 
   async documentEvents(
@@ -3347,9 +3357,11 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_approver_assignment.revoked':
     case 'company_document_content_reader_assignment.granted':
     case 'company_mission_deliverable_access_assignment.granted':
+    case 'company_received_contract_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
     case 'company_mission_deliverable_access_assignment.revoked':
+    case 'company_received_contract_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':
     case 'company_document_content_uploader_assignment.revoked':

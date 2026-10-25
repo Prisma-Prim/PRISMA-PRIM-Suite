@@ -7,6 +7,7 @@ export * from './client-legal-entity.js';
 export * from './workspace-invitation.js';
 export * from './workspace-invitation-acceptance.js';
 export * from './documents.js';
+export * from './received-contract-documents.js';
 
 export * from './project.js';
 export * from './project-lifecycle.js';

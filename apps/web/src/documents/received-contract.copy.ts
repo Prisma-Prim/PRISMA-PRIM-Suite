@@ -1,0 +1,195 @@
+import {
+  defineMessages,
+  formatMessage,
+  useMessages,
+} from '../localization/messages';
+
+const keys = [
+  'family',
+  'bundle',
+  'prerequisites',
+  'warning',
+  'draft',
+  'official',
+  'exactVersion',
+  'selectVersion',
+  'declaredSource',
+  'receivedOn',
+  'unknownDate',
+  'sourceUnavailable',
+  'sourceDenied',
+  'relationDenied',
+  'loadFailed',
+  'loading',
+  'loadNext',
+  'retryLoad',
+  'register',
+  'retry',
+  'uncertain',
+  'invalid',
+  'confirmed',
+  'relation',
+  'reloadRelation',
+  'versionLabel',
+  'registeredAt',
+  'granted',
+  'revoked',
+] as const;
+export const receivedContractMessages = defineMessages(keys, {
+  en: {
+    family: 'Received Contract PDF',
+    bundle: 'Company Received Contract Access',
+    prerequisites:
+      'Allows access to received Contract PDFs. Document, Client, content, Version and Project rights remain separate. Selecting or reading the declared relation also requires Contract and Opportunity read.',
+    warning:
+      'This PDF preserves an externally received file. Its declared relation and internal designation do not prove signing, equivalence, mandate or business acceptance.',
+    draft: 'Received Contract draft · Company-confidential',
+    official: 'Official received Contract · Company-confidential',
+    exactVersion: 'Exact Contract Version',
+    selectVersion: 'Select a Contract Version',
+    declaredSource: 'Declared source',
+    receivedOn: 'Received on (optional)',
+    unknownDate: 'Receipt date unknown',
+    sourceUnavailable: 'No selectable Contract Version is available.',
+    sourceDenied:
+      'Contract and Opportunity read are required to select a source.',
+    relationDenied:
+      'The declared Contract relation is unavailable under your current access.',
+    loadFailed: 'The Contract sources could not be loaded.',
+    loading: 'Loading Contract sources…',
+    loadNext: 'Next Contract Versions',
+    retryLoad: 'Reload Contract sources',
+    register: 'Register received Contract PDF',
+    retry: 'Retry identical registration',
+    uncertain: 'The result is uncertain. Retry the identical registration.',
+    invalid:
+      'The registration was refused. Check the selected source and entered fields.',
+    confirmed: 'The received Document was registered.',
+    reloadRelation: 'Reload declared Contract relation',
+    relation: 'Declared Contract relation',
+    versionLabel: 'Contract {reference} · Version {version}',
+    registeredAt: 'Registered at',
+    granted: 'granted Company Received Contract Access',
+    revoked: 'revoked Company Received Contract Access',
+  },
+  fr: {
+    family: 'PDF de contrat reçu',
+    bundle: 'Accès aux contrats reçus de la société',
+    prerequisites:
+      'Permet l’accès aux PDF de contrats reçus. Les droits Document, Client, contenu, Version et Projet restent distincts. La sélection et la lecture de la relation exigent aussi la lecture du Contrat et de l’Opportunité.',
+    warning:
+      'Ce PDF conserve un fichier reçu de l’extérieur. Sa relation déclarée et sa désignation interne ne prouvent ni signature, ni concordance, ni mandat, ni acceptation métier.',
+    draft: 'Contrat reçu en brouillon · Confidentiel société',
+    official: 'Contrat reçu officiel · Confidentiel société',
+    exactVersion: 'Version exacte du contrat',
+    selectVersion: 'Sélectionner une version du contrat',
+    declaredSource: 'Source déclarée',
+    receivedOn: 'Reçu le (facultatif)',
+    unknownDate: 'Date de réception inconnue',
+    sourceUnavailable: 'Aucune version de contrat sélectionnable.',
+    sourceDenied:
+      'La lecture du Contrat et de l’Opportunité est nécessaire pour sélectionner une source.',
+    relationDenied:
+      'La relation déclarée au contrat est indisponible avec vos droits actuels.',
+    loadFailed: 'Les sources de contrat n’ont pas pu être chargées.',
+    loading: 'Chargement des sources de contrat…',
+    loadNext: 'Versions de contrat suivantes',
+    retryLoad: 'Recharger les sources de contrat',
+    register: 'Enregistrer le PDF de contrat reçu',
+    retry: 'Réessayer le même enregistrement',
+    uncertain: 'Le résultat est incertain. Réessayez le même enregistrement.',
+    invalid:
+      'L’enregistrement a été refusé. Vérifiez la source sélectionnée et les champs saisis.',
+    confirmed: 'Le document reçu a été enregistré.',
+    reloadRelation: 'Recharger la relation déclarée au contrat',
+    relation: 'Relation déclarée au contrat',
+    versionLabel: 'Contrat {reference} · Version {version}',
+    registeredAt: 'Enregistré le',
+    granted: 'a accordé l’accès aux contrats reçus de la société',
+    revoked: 'a révoqué l’accès aux contrats reçus de la société',
+  },
+  ro: {
+    family: 'PDF de contract primit',
+    bundle: 'Acces la contractele primite ale companiei',
+    prerequisites:
+      'Permite accesul la PDF-urile contractelor primite. Drepturile Document, Client, conținut, Versiune și Proiect rămân separate. Selectarea și citirea relației necesită și citirea Contractului și Oportunității.',
+    warning:
+      'Acest PDF păstrează un fișier primit din exterior. Relația declarată și desemnarea internă nu dovedesc semnarea, concordanța, mandatul sau acceptarea comercială.',
+    draft: 'Contract primit în ciornă · Confidențial companiei',
+    official: 'Contract primit oficial · Confidențial companiei',
+    exactVersion: 'Versiunea exactă a contractului',
+    selectVersion: 'Selectați o versiune a contractului',
+    declaredSource: 'Sursa declarată',
+    receivedOn: 'Primit la (opțional)',
+    unknownDate: 'Data primirii este necunoscută',
+    sourceUnavailable: 'Nu există versiuni de contract selectabile.',
+    sourceDenied:
+      'Citirea Contractului și Oportunității este necesară pentru a selecta sursa.',
+    relationDenied:
+      'Relația declarată cu Contractul nu este disponibilă cu accesul actual.',
+    loadFailed: 'Sursele contractului nu au putut fi încărcate.',
+    loading: 'Se încarcă sursele contractului…',
+    loadNext: 'Următoarele versiuni de contract',
+    retryLoad: 'Reîncărcați sursele contractului',
+    register: 'Înregistrați PDF-ul contractului primit',
+    retry: 'Reîncercați aceeași înregistrare',
+    uncertain: 'Rezultatul este incert. Reîncercați aceeași înregistrare.',
+    invalid:
+      'Înregistrarea a fost refuzată. Verificați sursa selectată și câmpurile introduse.',
+    confirmed: 'Documentul primit a fost înregistrat.',
+    reloadRelation: 'Reîncărcați relația declarată cu Contractul',
+    relation: 'Relația declarată cu Contractul',
+    versionLabel: 'Contract {reference} · Versiunea {version}',
+    registeredAt: 'Înregistrat la',
+    granted: 'a acordat accesul la contractele primite ale companiei',
+    revoked: 'a revocat accesul la contractele primite ale companiei',
+  },
+  ru: {
+    family: 'PDF полученного договора',
+    bundle: 'Доступ к полученным договорам компании',
+    prerequisites:
+      'Открывает доступ к PDF полученных договоров. Права на Документ, Клиента, содержимое, Версию и Проект требуются отдельно. Выбор и чтение связи также требуют чтения Договора и Возможности.',
+    warning:
+      'Этот PDF сохраняет полученный извне файл. Заявленная связь и внутреннее назначение не доказывают подписание, соответствие, полномочия или коммерческое принятие.',
+    draft: 'Черновик полученного договора · Конфиденциально компании',
+    official: 'Официальный полученный договор · Конфиденциально компании',
+    exactVersion: 'Точная версия договора',
+    selectVersion: 'Выберите версию договора',
+    declaredSource: 'Заявленный источник',
+    receivedOn: 'Дата получения (необязательно)',
+    unknownDate: 'Дата получения неизвестна',
+    sourceUnavailable: 'Нет доступных для выбора версий договора.',
+    sourceDenied:
+      'Для выбора источника требуется чтение Договора и Возможности.',
+    relationDenied:
+      'Заявленная связь с Договором недоступна при текущих правах.',
+    loadFailed: 'Не удалось загрузить источники договора.',
+    loading: 'Загрузка источников договора…',
+    loadNext: 'Следующие версии договора',
+    retryLoad: 'Обновить источники договора',
+    register: 'Зарегистрировать PDF полученного договора',
+    retry: 'Повторить ту же регистрацию',
+    uncertain: 'Результат неизвестен. Повторите ту же регистрацию.',
+    invalid:
+      'Регистрация отклонена. Проверьте выбранный источник и введённые поля.',
+    confirmed: 'Полученный документ зарегистрирован.',
+    reloadRelation: 'Обновить заявленную связь с Договором',
+    relation: 'Заявленная связь с Договором',
+    versionLabel: 'Договор {reference} · Версия {version}',
+    registeredAt: 'Зарегистрировано',
+    granted: 'предоставил доступ к полученным договорам компании',
+    revoked: 'отозвал доступ к полученным договорам компании',
+  },
+});
+export function useReceivedContractCopy() {
+  const t = useMessages(receivedContractMessages);
+  return {
+    t,
+    versionLabel: (reference: number, version: number) =>
+      formatMessage(t('versionLabel'), { reference, version }),
+    activityActionLabels: {
+      'company_received_contract_access_assignment.granted': t('granted'),
+      'company_received_contract_access_assignment.revoked': t('revoked'),
+    },
+  };
+}

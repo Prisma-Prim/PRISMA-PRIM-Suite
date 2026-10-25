@@ -1,3 +1,5 @@
+import { hasReceivedContractAccess } from './received-contract-access';
+import { useReceivedContractCopy } from './received-contract.copy';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { DocumentPdfContent } from './DocumentPdfContent';
@@ -125,7 +127,9 @@ export function DocumentVersions({
     !company ||
     !permissions.includes('document.read') ||
     (documentType === 'mission-deliverable' &&
-      !hasMissionDeliverableAccess(company))
+      !hasMissionDeliverableAccess(company)) ||
+    (documentType === 'received-contract' &&
+      !hasReceivedContractAccess(company))
   )
     return null;
   const canReadReference = permissions.includes('document.reference.read');
@@ -137,6 +141,8 @@ export function DocumentVersions({
         company.id,
         documentId,
         documentType,
+        company.receivedContractAccessAssignmentId,
+        company.receivedContractAccessPermissionSetVersion,
         company.missionDeliverableAccessAssignmentId,
         company.missionDeliverableAccessPermissionSetVersion,
         [...permissions].sort(),
@@ -686,6 +692,7 @@ function Designation({
 }) {
   const copy = useDocumentVersionsCopy();
   const missionCopy = useMissionDeliverableCopy();
+  const receivedCopy = useReceivedContractCopy();
   switch (version.status) {
     case 'draft':
       return null;
@@ -712,9 +719,11 @@ function Designation({
             />
           ) : (
             <p className="working-document-version-notice">
-              {documentType === 'mission-deliverable'
-                ? missionCopy.t('warning')
-                : copy.frozenNotice}
+              {documentType === 'received-contract'
+                ? receivedCopy.t('warning')
+                : documentType === 'mission-deliverable'
+                  ? missionCopy.t('warning')
+                  : copy.frozenNotice}
             </p>
           )}
         </>

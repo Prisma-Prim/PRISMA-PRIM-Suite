@@ -24,6 +24,13 @@ const owner: ActorContext = {
 afterEach(() => vi.unstubAllGlobals());
 it.each([
   {
+    role: 'received Contract family',
+    route: 'received-contract-access',
+    value: 'received-contract-access',
+    label: 'Company Received Contract Access',
+    option: 'Company Received Contract Access',
+  },
+  {
     role: 'Task result recorder',
     route: 'task-result-recorder',
     value: 'task-result-recorder',
@@ -138,6 +145,7 @@ it.each([
   'Company Document Content Reader',
   'Company Document Content Uploader',
   'Company Mission Deliverable Access',
+  'Company Received Contract Access',
 ])('fails closed on unknown captured version for %s', async (bundle) => {
   vi.stubGlobal(
     'fetch',

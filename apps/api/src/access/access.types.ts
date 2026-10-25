@@ -58,6 +58,8 @@ export interface ActiveCompanyContext
   documentPermissionAssignmentId?: string;
   missionDeliverableAccessAssignmentId?: string;
   missionDeliverableAccessPermissionSetVersion?: 'v1';
+  receivedContractAccessAssignmentId?: string;
+  receivedContractAccessPermissionSetVersion?: 'v1';
   /** The live captured Company Document Approver assignment, if any. */
   documentApproverAssignmentId?: string;
   documentApproverPermissionSetVersion?: 'v1';

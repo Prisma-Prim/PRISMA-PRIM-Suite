@@ -44,6 +44,7 @@ import {
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
@@ -144,6 +145,10 @@ const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
 };
 const MISSION_DELIVERABLE_ACCESS_BUNDLE: BundleDefinition = {
   value: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const RECEIVED_CONTRACT_ACCESS_BUNDLE: BundleDefinition = {
+  value: COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   permissionSetVersion: 'v1',
 };
 const DOCUMENT_CONTENT_UPLOADER_BUNDLE: BundleDefinition = {
@@ -294,6 +299,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
 ] as const;
@@ -1467,6 +1473,34 @@ export class CompanyContextAssignmentService {
       idempotencyKey,
     );
   }
+  grantReceivedContractAccess(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      RECEIVED_CONTRACT_ACCESS_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeReceivedContractAccess(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      RECEIVED_CONTRACT_ACCESS_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
   grantDocumentContentUploader(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -1897,6 +1931,10 @@ function assignmentAction(
       return granted
         ? 'company_mission_deliverable_access_assignment.granted'
         : 'company_mission_deliverable_access_assignment.revoked';
+    case COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE:
+      return granted
+        ? 'company_received_contract_access_assignment.granted'
+        : 'company_received_contract_access_assignment.revoked';
     case COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE:
       return granted
         ? 'company_document_content_uploader_assignment.granted'

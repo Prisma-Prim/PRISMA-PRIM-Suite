@@ -1,3 +1,5 @@
+import type { ReceivedContractRelationView } from './received-contract.js';
+
 interface WorkingDocumentBase {
   id: string;
   workspaceId: string;
@@ -37,6 +39,11 @@ export type WorkingDocument = WorkingDocumentBase &
     | {
         type: 'mission-deliverable';
         version: WorkingVersionIdentity & { representation: null };
+      }
+    | {
+        type: 'received-contract';
+        version: WorkingVersionIdentity & { representation: null };
+        receivedContractRelation: ReceivedContractRelationView;
       }
   );
 
