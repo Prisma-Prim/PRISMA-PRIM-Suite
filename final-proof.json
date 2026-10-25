@@ -1,0 +1,50 @@
+{
+  "issue": 866,
+  "pr": 867,
+  "source": "1adac9f5a6f89481f933cb6c9b0c9dd47eb4d418",
+  "base": "012511172de15bb701b397f464aa73b571a4abc7",
+  "tree": "1b034c3c6572d5e7e9a125772f97212a1dddee99",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1572,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "issue": 866,
+    "pr": 867,
+    "source": "1adac9f5a6f89481f933cb6c9b0c9dd47eb4d418",
+    "reviewedBase": "012511172de15bb701b397f464aa73b571a4abc7",
+    "rootPreparation": [
+      "Standards",
+      "Spec"
+    ],
+    "independentStandards": {
+      "materialViolations": 0,
+      "smellFindings": 0,
+      "blockingFindings": 0
+    },
+    "independentSpec": {
+      "missingPartial": 0,
+      "scopeCreep": 0,
+      "incorrectBehavior": 0,
+      "blockingFindings": 0
+    },
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "correction": null,
+    "runtimeExecuted": false
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation contract only; no runtime, real fiscal/legal values, approved business prose, official numbering, real grants or deployment.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-09T10:53:25.307000+00:00"
+}
