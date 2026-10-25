@@ -1,0 +1,68 @@
+{
+  "issue": 870,
+  "pr": 871,
+  "source": "68ed15d31b987976f82e71529ea8f8b7f5b82da0",
+  "base": "9d5879614ef422b2f9d2e060a0512d9376e0d848",
+  "tree": "4d99f37fecfb936bd8d32e89edad05e805b14b49",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1609,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "issue": 870,
+    "pr": 871,
+    "source": "68ed15d31b987976f82e71529ea8f8b7f5b82da0",
+    "reviewedBase": "9d5879614ef422b2f9d2e060a0512d9376e0d848",
+    "tree": "4d99f37fecfb936bd8d32e89edad05e805b14b49",
+    "orderedPreparation": [
+      "Standards",
+      "Spec"
+    ],
+    "standards": {
+      "materialFindings": 0,
+      "disposition": "One canonical Registry24, seven local owner/entrypoint consequences, existing adapter and permission owners, no source dossier/runtime/schema/grants or new handbook."
+    },
+    "spec": {
+      "blockingFindings": 0,
+      "missingCriteria": 0,
+      "scopeCreep": 0,
+      "disposition": "All issue870 outcomes mapped to complete14stories/source/authority/lifecycle/receipt/event/migration/UI/public-proof sections; preservation never declares signing/acceptance and runtime readiness remains separate."
+    },
+    "automaticOpening": {
+      "commentId": 6399707134,
+      "source": "68ed15d31b987976f82e71529ea8f8b7f5b82da0",
+      "status": "completed",
+      "findings": 0,
+      "unresolvedFindings": 0,
+      "completedAt": "2026-10-25T15:47:08.571503Z",
+      "manuallyRequested": false
+    },
+    "targeted": {
+      "doctorRequiredPassed": 5,
+      "format": "PASS",
+      "scriptsPassed": 483,
+      "documentationPassed": 48,
+      "profileSpecificDocumentationSkipped": 35,
+      "localReferences": "PASS"
+    },
+    "correctionBatch": null,
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "independentGitHubCIExecuted": false,
+    "reason": "Applicable ordered Standards/Spec preparation suffices for docs/PRD work under AGENTS; automatic opening review was consumed, no duplicate trigger or full runtime CI."
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation contract only; no runtime, real fiscal/legal values, approved business prose, official numbering, real grants or deployment.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-09T15:47:26.037000+00:00"
+}
