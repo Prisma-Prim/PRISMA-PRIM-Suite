@@ -1,0 +1,249 @@
+{
+  "issue": 868,
+  "pr": 869,
+  "source": "0995c707db88f013b23d71ffad37e44435734718",
+  "base": "e25833a11caca460a6d63adefac0d9bc7824e80d",
+  "tree": "f30a18d5e2df4d9d33151ba5ab61c4c338a11680",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40205389157,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40205389157",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 868,
+    "pr": 869,
+    "source": "0995c707db88f013b23d71ffad37e44435734718",
+    "base": "e25833a11caca460a6d63adefac0d9bc7824e80d",
+    "tree": "f30a18d5e2df4d9d33151ba5ab61c4c338a11680",
+    "selfReportedLocalOnly": true,
+    "doctor": {
+      "profile": "web-postgres",
+      "requiredPassed": 9,
+      "postgresVersion": "17.11",
+      "chromiumMajor": 139
+    },
+    "completeDevelopmentPnpmVerify": {
+      "exit": 0,
+      "run": 2,
+      "format": "PASS",
+      "lint": "PASS",
+      "apiWebTypes": "PASS",
+      "scriptsPassed": 483,
+      "apiParallelPassed": 3167,
+      "apiSerialPassed": 104,
+      "webPassed": 3117,
+      "totalPassed": 6871,
+      "optionalSkipped": 1,
+      "skipReason": "Unchanged real ClamAV integration needs TEST_CLAMAV_HOST/PORT; not configured.",
+      "productionBuilds": "PASS",
+      "source": "a9aa6493e289a77ebce572c6c0173ecafde06902",
+      "tree": "19adc617eef82e187f32023629d41b2c1b2ebdfe"
+    },
+    "priorFailure": {
+      "run": 1,
+      "apiPassed": 3270,
+      "webPassed": 3113,
+      "webFailed": 2,
+      "cause": "Tests retained the replaced router loading-region DOM node; scoped waits now reacquire the current accessible Contract region, preserving all business/async assertions.",
+      "targetedCorrectionPassed": 21
+    },
+    "boundedReviewCorrection": {
+      "commit": "a9aa6493e289a77ebce572c6c0173ecafde06902",
+      "apiRed": "Eligible maximum Client identity preparation500 reproduced",
+      "webRed": "PRIMARY/ADDITIONAL maximum identity decoder failures reproduced",
+      "apiGreen": 6,
+      "webGreen": 16,
+      "types": "PASS",
+      "lint": "PASS"
+    },
+    "localActualApp": {
+      "passed": 2,
+      "viewports": [
+        1440,
+        390
+      ],
+      "evidenceDirectory": "/workspace/work/d8-contract-generation/browser3",
+      "synthetic": true,
+      "screenshotsInspected": true,
+      "exactFinalSource": false,
+      "limitation": "Local journey preceded small authority/loading and decoder-bound deltas; affected tests verified those deltas. The final complete CI now passed on the exact final source; this local capture remains earlier."
+    },
+    "testedTrackedInputBytesMatchCommittedFiles": false,
+    "canonicalCompleteLocalIntegrationGateClaimed": false,
+    "independentFinalCIPendingAfterReview": false,
+    "unchangedProductionAndUnitInputsStillMatch": true,
+    "subsequentChange": {
+      "testFixtureOnly": true,
+      "file": "apps/web/e2e/commercial-journey.acceptance.spec.ts",
+      "description": "Preservev1 and support fresh ContractPreparer/Approverv2 in existing receipt decoder allowlist. No assertion relaxed or production file changed.",
+      "targetedActualAppCasesPassed": 4,
+      "viewports": [
+        1440,
+        390
+      ],
+      "format": "PASS",
+      "lint": "PASS"
+    },
+    "priorFailedIndependentCI": {
+      "run": 40203909049,
+      "source": "a9aa6493e289a77ebce572c6c0173ecafde06902",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40203909049",
+      "conclusion": "failure",
+      "passedJobs": 13,
+      "failedJobs": [
+        "acceptance (1)",
+        "acceptance (2)",
+        "quality"
+      ],
+      "cause": "Two existing commercial journeys perviewport refused fresh Contractv2 during fixture setup. Complete rootcause identified and test compatibility fixed before another full run.",
+      "artifactsRetained": 6,
+      "relabelledAsPassing": false
+    },
+    "independentFinalCIResult": {
+      "run": 40205389157,
+      "conclusion": "success",
+      "source": "0995c707db88f013b23d71ffad37e44435734718",
+      "base": "e25833a11caca460a6d63adefac0d9bc7824e80d",
+      "tree": "f30a18d5e2df4d9d33151ba5ab61c4c338a11680",
+      "all16JobsPassed": true,
+      "authority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799"
+    }
+  },
+  "review": {
+    "issue": 868,
+    "pr": 869,
+    "reviewedSource": "a236a01856a32d5cf0b3ebd82d25186183275a2f",
+    "base": "e25833a11caca460a6d63adefac0d9bc7824e80d",
+    "tree": "f30a18d5e2df4d9d33151ba5ab61c4c338a11680",
+    "rootOrderedPreparation": [
+      "Standards",
+      "structural checkpoint",
+      "Spec"
+    ],
+    "standards": {
+      "materialViolations": 0,
+      "actionableBaselineSmells": 0,
+      "blockingFindings": 0
+    },
+    "spec": {
+      "missingOrPartial": 0,
+      "scopeCreep": 0,
+      "blockingFindings": 0,
+      "nonblocking": [
+        {
+          "file": "apps/web/src/contract/use-model-contract-journey.ts",
+          "line": 93,
+          "description": "UI preparation predicate accepts Workspace client.manage without Company client.read; the existing API recipient owner correctly refuses with403.",
+          "disposition": "Nonblocking eligibility presentation follow-up. Existing server authorization remains fail-closed; record without changing branch under bounded review policy."
+        }
+      ]
+    },
+    "automation": {
+      "commentId": 6398748909,
+      "reviewId": 5643639788,
+      "source": "a236a01856a32d5cf0b3ebd82d25186183275a2f",
+      "status": "completed",
+      "findings": 1,
+      "unresolvedFindings": 0,
+      "trigger": "PR opened; no duplicate request",
+      "findingId": 4371149054,
+      "threadId": "PRRT_kwDOTxkDU86wB_rK",
+      "threadResolved": true,
+      "finalSource": "0995c707db88f013b23d71ffad37e44435734718",
+      "finalUpdateStatus": "completed",
+      "finalUpdateFindings": 0,
+      "finalUpdateUnresolved": 0,
+      "finalUpdateCompletedAt": "2026-10-25T15:09:39.239091Z"
+    },
+    "applicableReview": "Owner-authorized independent Standards and Spec reviewer subagents; same managed harness, not CI/provider attestation.",
+    "correctionBatch": {
+      "source": "0995c707db88f013b23d71ffad37e44435734718",
+      "files": 9,
+      "scope": "Three recipient decoder bounds500/2000 plus public API/Web regression tests and fixture options; no permission/tenancy/migration/Activity changes.",
+      "tests": {
+        "apiPublicRest": 6,
+        "web": 16,
+        "apiWebTypes": "PASS",
+        "affectedLint": "PASS",
+        "redReproduced": true
+      },
+      "broadDevelopmentVerification": "PASS",
+      "originalCommit": "a9aa6493e289a77ebce572c6c0173ecafde06902",
+      "ciCompatibilityAmendment": {
+        "file": "apps/web/e2e/commercial-journey.acceptance.spec.ts",
+        "insertions": 2,
+        "deletions": 2,
+        "reason": "Test-only supported capture table omitted legitimate fresh Contractv2.",
+        "identifiedInRun": 40203909049,
+        "targetedActualAppCasesPassed": 4,
+        "viewports": [
+          1440,
+          390
+        ],
+        "assertionsPreserved": true,
+        "productionBehaviorChanged": false
+      }
+    },
+    "sensitiveConfirmationRequired": false,
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0,
+    "source": "0995c707db88f013b23d71ffad37e44435734718"
+  },
+  "artifacts": [
+    {
+      "id": 12603917056,
+      "name": "browser-evidence-part-browser-1-40205389157",
+      "size_in_bytes": 113753894,
+      "digest": "sha256:6cabb439d187ee186bbbf1a3c79f32c99826e28f700a25b5c188713b1dbfa78e",
+      "expires_at": "2026-11-08T15:13:23Z"
+    },
+    {
+      "id": 12603718085,
+      "name": "browser-evidence-part-acceptance-1-40205389157",
+      "size_in_bytes": 70097466,
+      "digest": "sha256:d10b58e7f1fe496d7b941e299414f070c11f49ef65a6557818e2e9c047d4ae27",
+      "expires_at": "2026-11-08T15:17:12Z"
+    },
+    {
+      "id": 12603468883,
+      "name": "browser-evidence-pr-40205389157",
+      "size_in_bytes": 392898128,
+      "digest": "sha256:1ad9a77651bce93129cf96265abcd50af87e89ffc2f791b8fc906ba861a86ed5",
+      "expires_at": "2026-11-08T15:18:18Z"
+    },
+    {
+      "id": 12603353299,
+      "name": "browser-evidence-part-browser-3-40205389157",
+      "size_in_bytes": 71165491,
+      "digest": "sha256:c359ff2fb87ea9ac50aa84af8106b2aa1594af5b79c282d3c1f68fe1aba14038",
+      "expires_at": "2026-11-08T15:12:58Z"
+    },
+    {
+      "id": 12603208760,
+      "name": "browser-evidence-part-browser-2-40205389157",
+      "size_in_bytes": 77524146,
+      "digest": "sha256:ecc77d6f4f4777d6d130cba737e68c23c65481d5ab0b49b437cab109c9fcb18d",
+      "expires_at": "2026-11-08T15:14:06Z"
+    },
+    {
+      "id": 12602814984,
+      "name": "browser-evidence-part-acceptance-2-40205389157",
+      "size_in_bytes": 60357219,
+      "digest": "sha256:6f6f56f60752574076bd7b680812e3b9d538a4dbe1afa0f7ce507d28f74f89bf",
+      "expires_at": "2026-11-08T15:17:58Z"
+    }
+  ],
+  "scope": "Complete non-official COMPANY_MODEL_OFFER Contract and thirteen-row annex from exact approved model/Offer sources; frozen copies, strict scoped explicit v2 authority, full checks/decisions/history, additive82 and compatible old captures/receipts. One verified decoder-bound correction. D9 received PDF, D10 signing/case acceptance, Project continuation and whole-dossier completion remain separate; no real grants/deployment/official numbering.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-09"
+}
