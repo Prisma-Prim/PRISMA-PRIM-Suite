@@ -61,7 +61,7 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   const companyId = text(
     (await command('/companies', { displayName: companyName })).id,
   );
-  const otherCompanyName = `Other Model Scope DEMO ${suffix}`;
+  const otherCompanyName = `Other Contract Model Scope DEMO ${suffix}`;
   const otherCompanyId = text(
     (await command('/companies', { displayName: otherCompanyName })).id,
   );
@@ -335,6 +335,22 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   await expect(
     workspace.getByText('Awaiting model approval', { exact: true }).first(),
   ).toBeVisible();
+  const beforeWithdrawal = await page.request.get(
+    `${apiOrigin}/contract-models/consulting-ro`,
+    {
+      headers: { ...modeller, 'x-company-context-id': companyId },
+    },
+  );
+  expect(beforeWithdrawal.status()).toBe(200);
+  const olderVersionId = text(
+    record(record(record(await beforeWithdrawal.json()).model).activeVersion)
+      .id,
+  );
+  const unavailableHistory = `**/api/contract-models/consulting-ro/versions/${olderVersionId}`;
+  await page.route(unavailableHistory, (route) =>
+    route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }),
+  );
+  failConfirmedRefresh = true;
   await workspace
     .getByLabel('Withdrawal reason', { exact: true })
     .fill('Older active model deliberately withdrawn DEMO');
@@ -344,6 +360,16 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   await expect(
     workspace.getByText('Withdrawal of version 1 recorded.'),
   ).toBeVisible();
+  await expect(
+    workspace.getByText('The model could not be loaded. Try again.'),
+  ).toBeVisible();
+  await expect(
+    workspace.getByRole('button', { name: 'Retry identical command' }),
+  ).toHaveCount(0);
+  await workspace
+    .getByRole('button', { name: 'Reload the current model', exact: true })
+    .click();
+  await page.unroute(unavailableHistory);
   await expect(
     workspace.getByText(
       'No approved version is currently available for new use.',
@@ -394,9 +420,30 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
   await expect(
     workspace.getByText('Available approved version: 2', { exact: true }),
   ).toBeVisible();
+  const originalBeforeCopy = await page.request.get(
+    `${apiOrigin}/contract-models/consulting-ro/versions/${olderVersionId}`,
+    { headers: { ...modeller, 'x-company-context-id': companyId } },
+  );
+  expect(originalBeforeCopy.status()).toBe(200);
+  const preservedOriginal = record(await originalBeforeCopy.json()).version;
   await workspace
-    .getByRole('button', { name: 'Copy current version into a new draft' })
+    .getByRole('button', { name: 'Version history', exact: true })
     .click();
+  await workspace
+    .getByRole('button', { name: 'Open version 1', exact: true })
+    .click();
+  await history
+    .getByRole('button', {
+      name: 'Copy this version into a new draft',
+      exact: true,
+    })
+    .click();
+  await expect(
+    workspace.getByLabel('Romanian service title', { exact: true }),
+  ).toHaveValue(syntheticContent.serviceTitle);
+  await expect(
+    workspace.getByLabel('Activity title 13', { exact: true }),
+  ).toHaveValue('Activitate demonstrativă 13');
   await workspace
     .getByLabel('Romanian service title', { exact: true })
     .fill('Synthetic replacement Contract model');
@@ -404,6 +451,23 @@ test('administers, configures, approves, versions, withdraws and reopens an exac
     .getByRole('button', { name: 'Submit complete version' })
     .click();
   await expect(workspace.getByText('Version 3 saved.')).toBeVisible();
+  const copiedBody = attempts.at(-1)?.body;
+  if (!copiedBody) throw new Error('Missing historical-copy command.');
+  expect(record(JSON.parse(copiedBody))).toEqual({
+    expectedModelRevision: 5,
+    content: {
+      ...syntheticContent,
+      serviceTitle: 'Synthetic replacement Contract model',
+    },
+  });
+  const originalAfterCopy = await page.request.get(
+    `${apiOrigin}/contract-models/consulting-ro/versions/${olderVersionId}`,
+    { headers: { ...modeller, 'x-company-context-id': companyId } },
+  );
+  expect(originalAfterCopy.status()).toBe(200);
+  expect(record(await originalAfterCopy.json()).version).toEqual(
+    preservedOriginal,
+  );
   await expect(
     workspace.getByText('Available approved version: 2', { exact: true }),
   ).toBeVisible();
@@ -585,4 +649,192 @@ test('preserves every accepted multiline title and identity when reviewing and c
   expect(
     await workspace.locator('.contract-model-version h3').first().innerText(),
   ).toBe('Version 2: Titlu editat\nAl doilea rând');
+});
+
+test('keeps the exact uncertain decision through App navigation and an earlier delayed history response', async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000);
+  const narrow = info.project.name.endsWith('narrow');
+  const suffix = narrow ? 'Narrow' : 'Desktop';
+  const companyName = `Late Contract Owner DEMO ${suffix}`;
+  async function command({
+    path,
+    body,
+    companyId,
+    actor = owner,
+  }: {
+    path: string;
+    body: unknown;
+    companyId?: string;
+    actor?: ReturnType<typeof identity>;
+  }) {
+    const response = await page.request.post(`${apiOrigin}${path}`, {
+      headers: {
+        ...actor,
+        ...(companyId ? { 'x-company-context-id': companyId } : {}),
+        'idempotency-key': randomUUID(),
+      },
+      data: body,
+    });
+    expect(response.status(), path).toBe(201);
+    return record(await response.json());
+  }
+  const companyId = text(
+    (await command({ path: '/companies', body: { displayName: companyName } }))
+      .id,
+  );
+  const actor = await page.request.get(`${apiOrigin}/access/current-actor`, {
+    headers: modeller,
+  });
+  expect(actor.status()).toBe(200);
+  const workspaceMembershipId = text(
+    record(await actor.json()).workspaceMembershipId,
+  );
+  for (const path of [
+    '/company-context-assignments',
+    '/company-contract-model-editor-assignments',
+    '/company-contract-model-approver-assignments',
+  ])
+    await command({ path, body: { companyId, workspaceMembershipId } });
+  const created = await command({
+    path: '/contract-models/consulting-ro/versions',
+    companyId,
+    actor: modeller,
+    body: { expectedModelRevision: 0, content: syntheticContent },
+  });
+  const versionId = text(record(record(created.model).head).id);
+  await page.route('**/api/**', (route) =>
+    route.continue({ headers: { ...route.request().headers(), ...modeller } }),
+  );
+  await page.goto('/');
+  await selectCompany(page, companyName, narrow);
+  await navigate(page, 'Consulting Contract model', narrow);
+  const workspace = page.locator('.contract-model-workspace');
+  await expect(
+    workspace.getByRole('button', {
+      name: 'Approve this exact version',
+      exact: true,
+    }),
+  ).toBeVisible();
+  let releaseHistory: (() => void) | undefined;
+  const heldHistory = new Promise<void>((resolve) => {
+    releaseHistory = resolve;
+  });
+  let historyHeld = false;
+  let historyDelivered = false;
+  await page.route(
+    '**/api/contract-models/consulting-ro/versions',
+    async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      const response = await route.fetch({
+        headers: { ...route.request().headers(), ...modeller },
+      });
+      expect(response.status()).toBe(200);
+      historyHeld = true;
+      await heldHistory;
+      await route.fulfill({ response });
+      historyDelivered = true;
+    },
+  );
+  const attempts: { body: string | null; key: string | undefined }[] = [];
+  await page.route(
+    `**/api/contract-models/consulting-ro/versions/${versionId}/decision`,
+    async (route) => {
+      attempts.push({
+        body: route.request().postData(),
+        key: route.request().headers()['idempotency-key'],
+      });
+      const response = await route.fetch({
+        headers: { ...route.request().headers(), ...modeller },
+      });
+      expect(response.status()).toBe(201);
+      if (attempts.length === 1)
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{}',
+        });
+      else await route.fulfill({ response });
+    },
+  );
+  try {
+    await workspace
+      .getByRole('button', { name: 'Version history', exact: true })
+      .click();
+    await expect.poll(() => historyHeld).toBe(true);
+    await workspace
+      .getByLabel('Decision basis', { exact: true })
+      .fill(' Literal synthetic review retained through delayed navigation ');
+    await workspace
+      .getByRole('button', { name: 'Approve this exact version', exact: true })
+      .click();
+    await expect(
+      workspace.getByRole('button', {
+        name: 'Retry identical command',
+        exact: true,
+      }),
+    ).toBeVisible();
+    for (const name of [
+      'Approve this exact version',
+      'Reject this exact version',
+      'New model version',
+      'Copy current version into a new draft',
+      'Version history',
+      'Reload the current model',
+    ])
+      await expect(
+        workspace.getByRole('button', { name, exact: true }),
+      ).toBeDisabled();
+    await expect(
+      workspace.getByLabel('Decision basis', { exact: true }),
+    ).toBeDisabled();
+    await navigate(page, 'Activity Log', narrow);
+    await navigate(page, 'Consulting Contract model', narrow);
+    await expect(
+      workspace.getByRole('button', {
+        name: 'Retry identical command',
+        exact: true,
+      }),
+    ).toBeVisible();
+    if (!releaseHistory) throw new Error('Missing delayed history barrier.');
+    releaseHistory();
+    await expect.poll(() => historyDelivered).toBe(true);
+    await expect(
+      workspace.getByRole('button', { name: 'Open version 1', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      workspace.getByRole('button', { name: 'Version history', exact: true }),
+    ).toBeDisabled();
+    await expect(
+      workspace.getByLabel('Decision basis', { exact: true }),
+    ).toHaveValue(
+      ' Literal synthetic review retained through delayed navigation ',
+    );
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: info.outputPath(`contract-model-late-owner-${suffix}.png`),
+    });
+    await workspace
+      .getByRole('button', { name: 'Retry identical command', exact: true })
+      .click();
+    await expect(
+      workspace.getByText('Decision for version 1 recorded.'),
+    ).toBeVisible();
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toEqual(attempts[0]);
+    expect(attempts[0]?.key).toBeTruthy();
+    await page.reload();
+    await expect(
+      workspace.getByText('Available approved version: 1', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      workspace.getByText(
+        ' Literal synthetic review retained through delayed navigation ',
+        { exact: true },
+      ),
+    ).toBeVisible();
+  } finally {
+    releaseHistory?.();
+  }
 });

@@ -366,6 +366,14 @@ function ScopedContractModelWorkspace({
           blocked={command.blocked || draft !== null}
           epoch={epoch}
           onDenied={rejectHistoryAccess}
+          onCopy={
+            authority.canEdit
+              ? (content) => {
+                  if (!command.blocked && !draft)
+                    setDraft({ initial: content });
+                }
+              : undefined
+          }
         />
       )}
       {authority.canEdit && read.kind === 'ready' && !draft && (

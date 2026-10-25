@@ -209,192 +209,288 @@ it.each(['APPROVE', 'REJECT'] as const)(
   },
 );
 
-it('withdraws the exact older active approval while preserving a pending successor and historical decision', async () => {
-  const approved = {
-    ...syntheticModel.head,
-    decision: {
-      id: '70000000-0000-4000-8000-000000000864',
-      outcome: 'APPROVE',
-      basis: 'Reviewed original content',
-      ...syntheticAttribution,
-    },
-  };
-  const pending = {
-    ...syntheticModel,
-    revision: 3,
-    head: {
+it.each([false, true])(
+  'withdraws the exact older active approval and preserves confirmation when later reads fail (%s)',
+  async (refreshFailure) => {
+    const approved = {
       ...syntheticModel.head,
-      id: '61000000-0000-4000-8000-000000000864',
-      versionNumber: 2,
-      predecessorVersionId: syntheticModel.head.id,
-    },
-    activeVersion: {
-      id: approved.id,
-      versionNumber: 1,
-      sourceKind: 'ILLUSTRATIVE',
-      serviceTitle: syntheticContent.serviceTitle,
-    },
-  };
-  const reason = ' Exact older version withdrawn ';
-  let withdrawn = false;
-  const commands: { path: string; init: RequestInit }[] = [];
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const path = new URL(input.toString(), window.location.origin).pathname;
-      if (path.endsWith('/withdrawal') && init?.method === 'POST') {
-        commands.push({ path, init });
-        withdrawn = true;
-        return Response.json(
-          { model: { ...pending, revision: 4, activeVersion: null } },
-          { status: 201 },
-        );
-      }
-      if (path === `/api/contract-models/consulting-ro/versions/${approved.id}`)
-        return Response.json({
-          version: {
-            ...approved,
-            withdrawal: withdrawn
-              ? {
-                  id: '71000000-0000-4000-8000-000000000864',
-                  reason,
-                  ...syntheticAttribution,
-                }
-              : null,
-          },
-          currentSelection: { activeVersionId: withdrawn ? null : approved.id },
-        });
-      if (path === '/api/contract-models/consulting-ro')
-        return Response.json({
-          model: withdrawn
-            ? { ...pending, revision: 4, activeVersion: null }
-            : pending,
-        });
-      if (path === '/api/contract-models/consulting-ro/versions')
-        return Response.json({ versions: [], nextCursor: null });
-      throw new Error('Unexpected route.');
-    }),
-  );
-  render(
-    <ContractModelWorkspace
-      actor={syntheticApprover}
-      identity={deterministicBrowserIdentity()}
-    />,
-  );
-  fireEvent.change(await screen.findByLabelText('Withdrawal reason'), {
-    target: { value: reason },
-  });
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Withdraw the active version' }),
-  );
-  expect(
-    await screen.findByText('Withdrawal of version 1 recorded.'),
-  ).toBeVisible();
-  expect(
-    await screen.findByText(
-      'No approved version is currently available for new use.',
-    ),
-  ).toBeVisible();
-  expect(
-    screen.getByRole('heading', {
-      name: 'Version 2: Serviciu sintetic de consultanță',
-    }),
-  ).toBeVisible();
-  expect(commands).toHaveLength(1);
-  expect(commands[0]?.path).toBe(
-    `/api/contract-models/consulting-ro/versions/${approved.id}/withdrawal`,
-  );
-  expect(commands[0]?.init.body).toBe(
-    JSON.stringify({ expectedModelRevision: 3, versionNumber: 1, reason }),
-  );
-});
-
-it('opens exact historical content and its original approval separately from current selection', async () => {
-  const current = {
-    ...syntheticModel,
-    revision: 3,
-    head: {
-      ...syntheticModel.head,
-      id: '61000000-0000-4000-8000-000000000864',
-      versionNumber: 2,
-      predecessorVersionId: syntheticModel.head.id,
-      content: { ...syntheticContent, serviceTitle: 'Succesor demonstrativ' },
-    },
-    activeVersion: {
-      id: syntheticModel.head.id,
-      versionNumber: 1,
-      sourceKind: 'ILLUSTRATIVE',
-      serviceTitle: syntheticContent.serviceTitle,
-    },
-  };
-  const original = {
-    ...syntheticModel.head,
-    decision: {
-      id: '70000000-0000-4000-8000-000000000864',
-      outcome: 'APPROVE',
-      basis: ' Original independent review basis ',
-      ...syntheticAttribution,
-    },
-  };
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
-      const path = new URL(input.toString(), window.location.origin).pathname;
-      if (path === '/api/contract-models/consulting-ro')
-        return Response.json({ model: current });
-      if (path === '/api/contract-models/consulting-ro/versions')
-        return Response.json({
-          versions: [
-            {
-              id: original.id,
-              versionNumber: 1,
-              predecessorVersionId: null,
-              sourceKind: 'ILLUSTRATIVE',
-              serviceTitle: syntheticContent.serviceTitle,
-              ...syntheticAttribution,
-              decision: {
-                outcome: 'APPROVE',
-                recordedAt: syntheticAttribution.recordedAt,
-              },
+      decision: {
+        id: '70000000-0000-4000-8000-000000000864',
+        outcome: 'APPROVE',
+        basis: 'Reviewed original content',
+        ...syntheticAttribution,
+      },
+    };
+    const pending = {
+      ...syntheticModel,
+      revision: 3,
+      head: {
+        ...syntheticModel.head,
+        id: '61000000-0000-4000-8000-000000000864',
+        versionNumber: 2,
+        predecessorVersionId: syntheticModel.head.id,
+      },
+      activeVersion: {
+        id: approved.id,
+        versionNumber: 1,
+        sourceKind: 'ILLUSTRATIVE',
+        serviceTitle: syntheticContent.serviceTitle,
+      },
+    };
+    const reason = ' Exact older version withdrawn ';
+    let withdrawn = false;
+    const commands: { path: string; init: RequestInit }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = new URL(input.toString(), window.location.origin).pathname;
+        if (path.endsWith('/withdrawal') && init?.method === 'POST') {
+          commands.push({ path, init });
+          withdrawn = true;
+          return Response.json(
+            { model: { ...pending, revision: 4, activeVersion: null } },
+            { status: 201 },
+          );
+        }
+        if (
+          path === `/api/contract-models/consulting-ro/versions/${approved.id}`
+        ) {
+          if (refreshFailure) return new Response(null, { status: 503 });
+          return Response.json({
+            version: {
+              ...approved,
+              withdrawal: withdrawn
+                ? {
+                    id: '71000000-0000-4000-8000-000000000864',
+                    reason,
+                    ...syntheticAttribution,
+                  }
+                : null,
             },
-          ],
-          nextCursor: null,
-        });
-      if (path === `/api/contract-models/consulting-ro/versions/${original.id}`)
-        return Response.json({
-          version: original,
-          currentSelection: { activeVersionId: original.id },
-        });
-      throw new Error('Unexpected history route.');
-    }),
-  );
-  render(
-    <ContractModelWorkspace
-      actor={syntheticActor}
-      identity={deterministicBrowserIdentity()}
-    />,
-  );
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Version history' }),
-  );
-  fireEvent.click(
-    await screen.findByRole('button', { name: 'Open version 1' }),
-  );
-  expect(
-    await screen.findByRole('heading', {
-      name: 'Version 1: Serviciu sintetic de consultanță',
-    }),
-  ).toBeVisible();
-  expect(screen.getByText('Original independent review basis')).toBeVisible();
-  expect(
-    screen.getByText(
-      'Historical content; availability is shown in the current model above.',
-    ),
-  ).toBeVisible();
-  expect(
-    screen.getByRole('heading', { name: 'Version 2: Succesor demonstrativ' }),
-  ).toBeVisible();
-});
+            currentSelection: {
+              activeVersionId: withdrawn ? null : approved.id,
+            },
+          });
+        }
+        if (path === '/api/contract-models/consulting-ro') {
+          if (withdrawn && refreshFailure)
+            return new Response(null, { status: 503 });
+          return Response.json({
+            model: withdrawn
+              ? { ...pending, revision: 4, activeVersion: null }
+              : pending,
+          });
+        }
+        if (path === '/api/contract-models/consulting-ro/versions')
+          return Response.json({ versions: [], nextCursor: null });
+        throw new Error('Unexpected route.');
+      }),
+    );
+    render(
+      <ContractModelWorkspace
+        actor={syntheticApprover}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    fireEvent.change(await screen.findByLabelText('Withdrawal reason'), {
+      target: { value: reason },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Withdraw the active version' }),
+    );
+    expect(
+      await screen.findByText('Withdrawal of version 1 recorded.'),
+    ).toBeVisible();
+    if (refreshFailure) {
+      expect(
+        await screen.findByText('The model could not be loaded. Try again.'),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('button', { name: 'Retry identical command' }),
+      ).toBeNull();
+    } else {
+      expect(
+        await screen.findByText(
+          'No approved version is currently available for new use.',
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByRole('heading', {
+          name: 'Version 2: Serviciu sintetic de consultanță',
+        }),
+      ).toBeVisible();
+    }
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.path).toBe(
+      `/api/contract-models/consulting-ro/versions/${approved.id}/withdrawal`,
+    );
+    expect(commands[0]?.init.body).toBe(
+      JSON.stringify({ expectedModelRevision: 3, versionNumber: 1, reason }),
+    );
+  },
+);
+
+it.each([true, false])(
+  'opens exact history and only an editor copies it against the current root revision (%s)',
+  async (canEdit) => {
+    let created = false;
+    const commands: RequestInit[] = [];
+    const current = {
+      ...syntheticModel,
+      revision: 3,
+      head: {
+        ...syntheticModel.head,
+        id: '61000000-0000-4000-8000-000000000864',
+        versionNumber: 2,
+        predecessorVersionId: syntheticModel.head.id,
+        content: {
+          ...syntheticContent,
+          serviceTitle: 'Succesor demonstrativ',
+          sections: { ...syntheticContent.sections, subject: 'Clauză nouă' },
+          annex: {
+            ...syntheticContent.annex,
+            activities: syntheticContent.annex.activities.map((activity) => ({
+              ...activity,
+              title: `Succesor ${activity.title}`,
+            })),
+          },
+        },
+      },
+      activeVersion: {
+        id: syntheticModel.head.id,
+        versionNumber: 1,
+        sourceKind: 'ILLUSTRATIVE',
+        serviceTitle: syntheticContent.serviceTitle,
+      },
+    };
+    const original = {
+      ...syntheticModel.head,
+      decision: {
+        id: '70000000-0000-4000-8000-000000000864',
+        outcome: 'APPROVE',
+        basis: ' Original independent review basis ',
+        ...syntheticAttribution,
+      },
+    };
+    const successor = {
+      ...current,
+      revision: 4,
+      head: {
+        ...current.head,
+        id: '62000000-0000-4000-8000-000000000864',
+        versionNumber: 3,
+        predecessorVersionId: current.head.id,
+        content: original.content,
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = new URL(input.toString(), window.location.origin).pathname;
+        if (
+          path === '/api/contract-models/consulting-ro/versions' &&
+          init?.method === 'POST'
+        ) {
+          commands.push(init);
+          created = true;
+          return Response.json({ model: successor }, { status: 201 });
+        }
+        if (path === '/api/contract-models/consulting-ro')
+          return Response.json({ model: created ? successor : current });
+        if (path === '/api/contract-models/consulting-ro/versions')
+          return Response.json({
+            versions: [
+              {
+                id: original.id,
+                versionNumber: 1,
+                predecessorVersionId: null,
+                sourceKind: 'ILLUSTRATIVE',
+                serviceTitle: syntheticContent.serviceTitle,
+                ...syntheticAttribution,
+                decision: {
+                  outcome: 'APPROVE',
+                  recordedAt: syntheticAttribution.recordedAt,
+                },
+              },
+            ],
+            nextCursor: null,
+          });
+        if (
+          path === `/api/contract-models/consulting-ro/versions/${original.id}`
+        )
+          return Response.json({
+            version: original,
+            currentSelection: { activeVersionId: original.id },
+          });
+        throw new Error('Unexpected history route.');
+      }),
+    );
+    render(
+      <ContractModelWorkspace
+        actor={canEdit ? syntheticActor : syntheticApprover}
+        identity={deterministicBrowserIdentity()}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Version history' }),
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open version 1' }),
+    );
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Version 1: Serviciu sintetic de consultanță',
+      }),
+    ).toBeVisible();
+    expect(screen.getByText('Original independent review basis')).toBeVisible();
+    expect(
+      screen.getByText(
+        'Historical content; availability is shown in the current model above.',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('heading', { name: 'Version 2: Succesor demonstrativ' }),
+    ).toBeVisible();
+    if (!canEdit) {
+      expect(
+        screen.queryByRole('button', {
+          name: 'Copy this version into a new draft',
+        }),
+      ).toBeNull();
+      return;
+    }
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Copy this version into a new draft',
+      }),
+    );
+    expect(
+      screen.getByLabelText('Romanian service title', { exact: true }),
+    ).toHaveValue(original.content.serviceTitle);
+    expect(screen.getByLabelText('I. Subject', { exact: true })).toHaveValue(
+      original.content.sections.subject,
+    );
+    for (let number = 1; number <= 13; number++)
+      expect(
+        screen.getByLabelText(`Activity title ${number}`, { exact: true }),
+      ).toHaveValue(`Activitate demonstrativă ${number}`);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Submit complete version' }),
+    );
+    expect(await screen.findByText('Version 3 saved.')).toBeVisible();
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.body).toBe(
+      JSON.stringify({ expectedModelRevision: 3, content: original.content }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Version history' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open version 1' }),
+    );
+    expect(
+      await screen.findByText('Original independent review basis'),
+    ).toBeVisible();
+  },
+);
 
 it('retries a malformed successful decision reply literally and then rereads current selection instead of displaying the historical receipt as current', async () => {
   const decision = {

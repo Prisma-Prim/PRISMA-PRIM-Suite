@@ -10,7 +10,6 @@ import type { contractModelAuthority } from './contract-model-authority';
 import type { ContractModelContent } from './contract-model-content';
 import {
   readContractModelResponse,
-  readExactModelVersion,
   type ContractModel,
 } from './contract-model-response';
 
@@ -189,7 +188,11 @@ export function useContractModelCommand({
           throw new Error('Unexpected decision receipt.');
       }
       if (command.kind === 'WITHDRAW') {
+        const selected = command.previous.activeVersion;
         if (
+          !selected ||
+          command.target.id !== selected.id ||
+          command.target.versionNumber !== selected.versionNumber ||
           model.activeVersion ||
           JSON.stringify({
             ...model.head,
@@ -197,36 +200,19 @@ export function useContractModelCommand({
           }) !== JSON.stringify(command.previous.head)
         )
           throw new Error('Unexpected withdrawal receipt.');
-        let version = model.head;
-        if (command.target.id !== model.head.id) {
-          const confirmation = await api.request<unknown>(
-            `/contract-models/consulting-ro/versions/${command.target.id}`,
-            {
-              companyContextId: authority.companyId,
-              signal: controller.signal,
-            },
-          );
-          if (controller.signal.aborted) return;
+        // The successful exact command confirms an older active selection's
+        // removal. Its historical detail is independently readable afterwards;
+        // a later read failure cannot turn that committed result uncertain.
+        if (command.target.id === model.head.id) {
+          const version = model.head;
           if (
-            confirmation.status === 'forbidden' ||
-            confirmation.status === 'unauthorized'
-          ) {
-            setState({ kind: 'idle', notice: null, error: null });
-            await reject(confirmation, controller.signal);
-            return;
-          }
-          if (confirmation.status !== 'ok')
-            throw new Error('Withdrawal confirmation unavailable.');
-          version = readExactModelVersion(confirmation.value).version;
+            version.versionNumber !== command.target.versionNumber ||
+            !version.withdrawal ||
+            version.withdrawal.reason !== command.reason ||
+            !sameActor(version.withdrawal.actor)
+          )
+            throw new Error('Unexpected withdrawal attribution.');
         }
-        if (
-          version.id !== command.target.id ||
-          version.versionNumber !== command.target.versionNumber ||
-          !version.withdrawal ||
-          version.withdrawal.reason !== command.reason ||
-          !sameActor(version.withdrawal.actor)
-        )
-          throw new Error('Unexpected withdrawal attribution.');
       }
       setState({
         kind: 'idle',

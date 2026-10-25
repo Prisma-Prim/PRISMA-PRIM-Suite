@@ -23,12 +23,14 @@ export function ContractModelHistory({
   blocked,
   epoch,
   onDenied,
+  onCopy,
 }: {
   identity: BrowserIdentity;
   model: ContractModel;
   blocked: boolean;
   epoch: { current: number };
   onDenied: (result: ApiResult<unknown>) => void;
+  onCopy?: (content: ContractModelVersion['content']) => void;
 }) {
   const copy = useContractModelCopy();
   const { formatNumber } = useInterfaceLocale();
@@ -192,6 +194,17 @@ export function ContractModelHistory({
         <>
           <p>{copy('historical')}</p>
           <ContractModelVersionContent version={exact.value} />
+          {onCopy && (
+            <button
+              type="button"
+              disabled={blocked}
+              onClick={() => {
+                if (!blocked) onCopy(exact.value.content);
+              }}
+            >
+              {copy('copyVersion')}
+            </button>
+          )}
           <button
             type="button"
             disabled={blocked}
