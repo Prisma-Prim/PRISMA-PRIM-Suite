@@ -1,0 +1,238 @@
+{
+  "issue": 830,
+  "pr": 876,
+  "source": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+  "base": "eb97dfb3c47f0bec364e2e5ac5697797bb84e7d5",
+  "tree": "815c2f725844394e368c292b060d2ac0dddf6a4e",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40235490998,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40235490998",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 830,
+    "pr": 876,
+    "source": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+    "base": "eb97dfb3c47f0bec364e2e5ac5697797bb84e7d5",
+    "tree": "815c2f725844394e368c292b060d2ac0dddf6a4e",
+    "selfReportedLocalOnly": true,
+    "doctor": {
+      "selectedFeatureProfile": "postgres",
+      "printedReadinessProfile": "standard",
+      "requiredPassed": 8,
+      "postgresVersion": "17.11",
+      "beforeEdits": true
+    },
+    "completeDevelopmentPnpmVerify": {
+      "attempt": 4,
+      "exit": 0,
+      "command": "node scripts/managed-postgres.mjs -- pnpm verify",
+      "source": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+      "tree": "815c2f725844394e368c292b060d2ac0dddf6a4e",
+      "workerConfiguration": "unchanged repository default",
+      "testTimeout": "unchanged canonical five seconds",
+      "format": "PASS",
+      "lint": "PASS",
+      "apiWebTypes": "PASS",
+      "scriptsPassed": 483,
+      "apiParallelPassed": 3215,
+      "apiSerialPassed": 106,
+      "webPassed": 3131,
+      "totalPassed": 6935,
+      "optionalSkipped": 1,
+      "skipReason": "Optional real ClamAV test requires configured TEST_CLAMAV_HOST/PORT; application scanner boundary is covered separately.",
+      "productionBuilds": "PASS",
+      "privateLogBytes": 379896,
+      "privateLogSha256": "bb06a8218f66554b5c7bf478d1a2eee89212215698e1a26c5f667eb5afdbbbea"
+    },
+    "focusedPostgres": {
+      "firstCorrectedSource": "515cfc867eeab5dced9913aa7c252091de0d2b5c",
+      "firstCorrectedFiles": 4,
+      "firstCorrectedPassed": 63,
+      "testObserverAmendmentFiles": 4,
+      "testObserverAmendmentPassed": 100,
+      "proofLimit": "Original four focused inputs/runtime stayed byte-identical through the later four-file test-only amendment; final broad attempt binds the complete current source."
+    },
+    "regressionEvidence": {
+      "originalRed": "Unchanged base production: membership-contention500/40P01 failed legal200/403, other two strict serial orders passed.",
+      "reviewCorrectionRed": "Both distinct grant/revoke administration serialization cases failed first reviewed proposal.",
+      "green": "All original/new concurrency barriers are included in passing targeted and final broader runs."
+    },
+    "priorIncompleteAttempts": [
+      {
+        "attempt": 1,
+        "reason": "Interrupted after independent review confirmed a real grant-conflict/fallback regression; one bounded correction followed."
+      },
+      {
+        "attempt": 2,
+        "reason": "Obsolete membershipFORUPDATE observers failed after revocation correctly moved to assignmentUPDATE; pending HTTP cleanup caused a teardown cascade. Four related observers/cleanup fixed without changing statuses/effects/timeouts."
+      },
+      {
+        "attempt": 3,
+        "reason": "Received-PDF migration test reached5012ms while detached workers from interrupted prior run still consumed resources. Native outer exit130 did not stop detached workers; explicitly verified owned groups/resources cleaned. Later failures following intentional database removal are cleanup consequences."
+      }
+    ],
+    "interruptionEvidenceLimit": "Those interrupted attempts are incomplete and some detached descendants outlived outer exit130; no completed/mixed-source API/Web/build result is claimed.",
+    "matchedMigrationControls": {
+      "limitSeconds": 5,
+      "freshMain": {
+        "source": "eb97dfb3c47f0bec364e2e5ac5697797bb84e7d5",
+        "passed": 1,
+        "testSeconds": 3.53,
+        "doctorRequiredPassed": 8,
+        "frozenInstall": true
+      },
+      "candidateAfterQuiescence": {
+        "source": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+        "passed": 1,
+        "testSeconds": 3.41
+      },
+      "earlierCandidateUnderRemainingOldLoad": {
+        "passed": 1,
+        "testSeconds": 4.66
+      },
+      "failedControlSetup": "Reused docs checkout had stale dependency layout and noTTY purge; no test executed. Replaced by fresh actual-main checkout."
+    },
+    "testOnlyAmendment": {
+      "comparedWithConfirmedSource": "515cfc867eeab5dced9913aa7c252091de0d2b5c",
+      "allProductionInputsEqual": true,
+      "changedInputs": [
+        "apps/api/src/commercial-intake/commercial-intake-responsible.rest.test.ts",
+        "apps/api/src/project-template/project-pilot-plan.rest.test.ts",
+        "apps/api/src/project-template/project-template-version.rest.test.ts",
+        "apps/api/src/project-template/project-template.rest.test.ts"
+      ],
+      "rootOrderedStandardsSpecDelta": "PASS",
+      "expectedStatusesEffectsDeadlinesPreserved": true
+    },
+    "canonicalCompleteLocalIntegrationGateClaimed": false,
+    "independentFinalCI": {
+      "run": 40235490998,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40235490998",
+      "source": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+      "conclusion": "success",
+      "all16JobsAnd10ActualTestStepsPassed": true
+    }
+  },
+  "review": {
+    "issue": 830,
+    "pr": 876,
+    "complete": true,
+    "source": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+    "base": "eb97dfb3c47f0bec364e2e5ac5697797bb84e7d5",
+    "tree": "815c2f725844394e368c292b060d2ac0dddf6a4e",
+    "rootPreparation": [
+      "Standards",
+      "Spec"
+    ],
+    "independentReview": {
+      "source": "843b41e56207cae559509bbabff5f15799d87da5",
+      "base": "eb97dfb3c47f0bec364e2e5ac5697797bb84e7d5",
+      "tree": "ed38059995a28377656bf511293cd31486b4c17b",
+      "standards": {
+        "blockers": 0,
+        "followUps": 0
+      },
+      "spec": {
+        "blockers": 1,
+        "followUps": 0,
+        "finding": "Shared eligibility alone removed assignment administration serialization and allowed a grant-conflict/revoke/fallback absence leading to HTTP500.",
+        "diagnosticLimit": "Independent real PostgreSQL SQL schedule, not a complete HTTP reproduction."
+      }
+    },
+    "correction": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+    "correctionDisposition": "One bounded batch adds scoped transaction advisory administration serialization plus two public deterministic RED/GREEN regressions. Root Standards/Spec delta inspected.",
+    "sensitiveConfirmation": {
+      "source": "515cfc867eeab5dced9913aa7c252091de0d2b5c",
+      "blockingFindingResolved": true,
+      "newBlockers": 0,
+      "followUps": 0
+    },
+    "blockingFindingsRemaining": 0,
+    "automaticOpeningReview": {
+      "commentId": 6402856828,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/876#issuecomment-6402856828",
+      "source": "515cfc867eeab5dced9913aa7c252091de0d2b5c",
+      "status": "completed",
+      "hasAnyFindings": false,
+      "hasUnresolvedFindings": false
+    },
+    "finalIntegration": "Complete independent CI40235490998 passed all16jobs/10actualTeststeps after review/correction; exact source/base/tree verified, no post-green review requested.",
+    "correctionOriginalCommit": "515cfc867eeab5dced9913aa7c252091de0d2b5c",
+    "testObserverAmendment": {
+      "changedFiles": 4,
+      "productionSourceChanged": false,
+      "unchangedProductionBlob": "ac538e1a60f4986559aa3578f439efd2a0bb08f1",
+      "rootOrderedStandardsSpecDelta": "PASS; observe Role Assignment UPDATE for revocation; retain membership UPDATE for suspension; await owned pending HTTP requests in Opportunity test cleanup. Expected statuses/effects/timeouts unchanged.",
+      "affectedPostgresFilesPassed": 4,
+      "affectedPostgresTestsPassed": 100,
+      "formatLintApiTypes": "PASS"
+    },
+    "confirmationApplicability": "Production and original regression inputs are byte-identical to confirmed515. Only four related existing test observers/cleanup changed. No third review requested; initial review plus one sensitive confirmation apply to unchanged runtime, root reviewed the test-only amendment.",
+    "automaticFinalUpdate": {
+      "commentId": 6402856828,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/876#issuecomment-6402856828",
+      "source": "5b9e1a9260e5de1fcae1550578ccd80caf709118",
+      "status": "completed",
+      "hasAnyFindings": false,
+      "hasUnresolvedFindings": false
+    },
+    "unresolvedThreads": 0
+  },
+  "artifacts": [
+    {
+      "id": 12615550658,
+      "name": "browser-evidence-part-acceptance-2-40235490998",
+      "size_in_bytes": 60573407,
+      "digest": "sha256:1c824d8dc57f3a54f43b38664814b49c4facf2c99a628cdd31fd2fa1320bd417",
+      "expires_at": "2026-11-08T21:38:22Z"
+    },
+    {
+      "id": 12615230635,
+      "name": "browser-evidence-part-browser-3-40235490998",
+      "size_in_bytes": 71158477,
+      "digest": "sha256:56358312b87889c627c3af9633167706e499d875e8c23c7ad21d1f796051543c",
+      "expires_at": "2026-11-08T21:32:15Z"
+    },
+    {
+      "id": 12615076894,
+      "name": "browser-evidence-pr-40235490998",
+      "size_in_bytes": 393725643,
+      "digest": "sha256:ec77876e23212cf5af8e29cfd71b7e71f7a6691197086a633017b00796b5b141",
+      "expires_at": "2026-11-08T21:39:45Z"
+    },
+    {
+      "id": 12614881852,
+      "name": "browser-evidence-part-browser-1-40235490998",
+      "size_in_bytes": 113805719,
+      "digest": "sha256:2580b44dbdcf79ba2b38528a211e847fa277190ae989131f140d73e50baa1e81",
+      "expires_at": "2026-11-08T21:33:13Z"
+    },
+    {
+      "id": 12614757609,
+      "name": "browser-evidence-part-acceptance-1-40235490998",
+      "size_in_bytes": 70620201,
+      "digest": "sha256:53cf01ed56250825c9499277344fe7867cd27c3e5010664d2b86e2e977b722a8",
+      "expires_at": "2026-11-08T21:39:27Z"
+    },
+    {
+      "id": 12614359847,
+      "name": "browser-evidence-part-browser-2-40235490998",
+      "size_in_bytes": 77567927,
+      "digest": "sha256:ea6ffc870c9ca236b20e682118402b96c88ffb0597e173e2da9b025109443109",
+      "expires_at": "2026-11-08T21:32:12Z"
+    }
+  ],
+  "scope": "Fix Project responsibility/access revocation deadlocks using shared live eligibility and separately scoped assignment-administration serialization. Public deterministic concurrency barriers preserve legal serial outcomes, authority before replay and atomic effects; no permissions, schema, business rules, retry, deadlines, provider or deployment changes. D10 runtime and whole-dossier acceptance remain separate.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-11T00:00:00Z"
+}
