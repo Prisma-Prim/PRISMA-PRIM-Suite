@@ -1,0 +1,334 @@
+{
+  "issue": 864,
+  "pr": 865,
+  "source": "bf8f377277e44fe05a8e5fe66883e7fd258106ff",
+  "base": "94f295a2449c892b2f7d04a848386a84a4fb7345",
+  "tree": "a048eeef4622dc332efe1dd6db2c96202f80ca82",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40179763619,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40179763619",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 864,
+    "source": "bf8f377277e44fe05a8e5fe66883e7fd258106ff",
+    "base": "94f295a2449c892b2f7d04a848386a84a4fb7345",
+    "tree": "a048eeef4622dc332efe1dd6db2c96202f80ca82",
+    "selfReportedLocalOnly": true,
+    "doctor": {
+      "passed": 9,
+      "requirements": "web-postgres",
+      "actualPostgresMajor": 17
+    },
+    "format": "PASS",
+    "lint": "PASS",
+    "types": "PASS",
+    "productionBuilds": "PASS",
+    "targetedPostgres": {
+      "passed": 71,
+      "files": 2,
+      "meaning": "70 Contract model REST and one genuine0080upgrade"
+    },
+    "earlierBroadAPI": {
+      "passed": 3096,
+      "optionalSkipped": 1,
+      "skipReason": "Unchanged real ClamAV provider integration requires TEST_CLAMAV_HOST/PORT; not configured or changed by this slice.",
+      "productionCodeUnchangedAfterPass": true,
+      "laterTwoAddedAPITestsCoveredByTargetedRun": true
+    },
+    "scripts": {
+      "passed": 483
+    },
+    "currentFullWebUnit": {
+      "passed": 3101,
+      "files": 186
+    },
+    "actualAppAcceptance": {
+      "passed": 6,
+      "viewports": [
+        1440,
+        390
+      ],
+      "isolatedPostgres": true,
+      "screenshotsInspected": 6,
+      "completeAvailableOutputRetainedPrivately": true,
+      "composedWithOfferModel": {
+        "passed": 10,
+        "offerModelPassed": 4,
+        "retainedFilesBytesAndSHA256Verified": 11,
+        "actualTestExit": 0,
+        "retainingProcessExit": 0
+      }
+    },
+    "diagnosedBroaderFailures": [
+      "TestingLibrary unsupported exact option in new test calls corrected",
+      "New full-content assertion corrected for combined framework/edition display",
+      "Existing exhaustive Activity count118 updated to122 for four new assignment actions"
+    ],
+    "affectedDiagnosisRerun": {
+      "passed": 46,
+      "files": 3
+    },
+    "literalCompletePnpmVerifyGreenClaimed": false,
+    "canonicalCompleteLocalRuntimeGateClaimed": false,
+    "developmentRedRawEvidenceLimitation": "Initial UI missing-option RED textual log retained; original raw screenshot/trace overwritten by Playwright reset, not claimed retained.",
+    "initialPreparedSource": "92ee05e510525167f71c6aa3c50c4527a67c506b",
+    "initialPreparedTree": "0866ac8012b31c691cab8fdd2607dc95b28ea310",
+    "unchangedAPIAndScriptEvidenceSource": "92ee05e510525167f71c6aa3c50c4527a67c506b",
+    "affectedCorrectionChecks": "Current format/lint/API+web types/fullWeb/productionWeb/6actualApp tests PASS; no API/schema/grant/Activity source changed by correction",
+    "correctionRed": {
+      "failed": 1,
+      "passed": 1,
+      "meaning": "Older-active withdrawal confirmed status lost on later503 before fix"
+    },
+    "correctionFocusedGreen": {
+      "passed": 25,
+      "files": 1
+    },
+    "previousCorrectionSource": "2f8f0858c8fdef9a25def287cce87dde98c68a68",
+    "ciCompatibility": {
+      "failedRun": 40176967992,
+      "failedSource": "dfd2397e98a7e0292b3224b60f0f7ddedca83529",
+      "cause": "New Contract secondary Company fixture label collided with old Offer fixture in the shared persisted acceptance Workspace; both shards each51pass/1fail.",
+      "fix": "One Contract test literal namespaced; production unchanged from dfd2397.",
+      "composedActualAppTestsPassed": 10,
+      "actualTestExitCaptured": 0,
+      "playwrightLastRunStatus": "passed",
+      "retainedFilesBytesAndSHA256Verified": 11,
+      "relevantScreenshotsInspected": 5,
+      "retainingShellReportedExit": 1,
+      "retainingShellNotRelabeledGreen": true
+    },
+    "latestCorrection": "Current complete format/lint/API+Web types/fullWeb3101/productionWebbuild/composed10App tests PASS; original API/schema/grants/Activity unchanged since92ee05e.",
+    "historicalCopyRegressionRed": {
+      "failed": 1,
+      "passed": 1
+    },
+    "historicalCopyFocusedGreen": 25,
+    "secondCI": {
+      "run": 40178074268,
+      "source": "2f8f0858c8fdef9a25def287cce87dde98c68a68",
+      "conclusion": "cancelled",
+      "reason": "Stop superseded verification on valid late automatic history-copy finding, before implementing focused correction."
+    },
+    "priorWithdrawalFocusedGreen": {
+      "passed": 24,
+      "files": 1
+    }
+  },
+  "review": {
+    "issue": 864,
+    "pr": 865,
+    "reviewedSource": "92ee05e510525167f71c6aa3c50c4527a67c506b",
+    "base": "94f295a2449c892b2f7d04a848386a84a4fb7345",
+    "initialRoundComplete": true,
+    "standards": {
+      "blockingFindings": 0,
+      "materialViolations": 0,
+      "nonblocking": [
+        {
+          "kind": "possible Duplicated Code",
+          "file": "apps/api/src/contract-model/contract-model.content.ts",
+          "line": 8,
+          "peer": "apps/web/src/contract-model/contract-model-content.ts",
+          "disposition": "Current exact decoders conform; shared contract/parity coverage remains separately scoped, no schema package introduced."
+        }
+      ]
+    },
+    "spec": {
+      "findings": [
+        {
+          "severity": "P2",
+          "criterion": "29.8 line254",
+          "problem": "Successful older-active withdrawal became uncertain solely when an additional historical GET failed.",
+          "disposition": "Resolved in current bounded correction bf8f377277e44fe05a8e5fe66883e7fd258106ff; original withdrawal/delayed-owner fix unchanged from prior correction dfd2397."
+        },
+        {
+          "severity": "P2",
+          "criterion": "29.9 lines292-296",
+          "problem": "Actual App did not hold an earlier history response across an uncertain command and navigation.",
+          "disposition": "Resolved in current bounded correction bf8f377277e44fe05a8e5fe66883e7fd258106ff; original withdrawal/delayed-owner fix unchanged from prior correction dfd2397."
+        }
+      ]
+    },
+    "openingAutomation": {
+      "commentId": 6395190557,
+      "source": "92ee05e510525167f71c6aa3c50c4527a67c506b",
+      "status": "completed",
+      "findings": 0,
+      "unresolvedThreads": 0,
+      "trigger": "PR opened; no duplicate request"
+    },
+    "correctionBatch": {
+      "status": "One focused correction commit: original2P2 plus missed historical-copy P2 and CI-only fixture compatibility; six Web paths, no new mutation protocol",
+      "files": [
+        "apps/web/src/contract-model/use-contract-model-command.ts",
+        "apps/web/src/contract-model/ContractModelHistory.tsx",
+        "apps/web/src/contract-model/ContractModelWorkspace.tsx",
+        "apps/web/src/contract-model/contract-model.copy.ts",
+        "apps/web/src/contract-model/ContractModelWorkspace.test.tsx",
+        "apps/web/e2e/contract-model.acceptance.spec.ts"
+      ],
+      "sensitiveBackendOrGrantSchemaActivityChanged": false,
+      "regressionRed": "One failed and one passed older-withdrawal case; missing confirmed notice reproduced with late503",
+      "focusedGreen": {
+        "tests": 25,
+        "files": 1
+      },
+      "source": "bf8f377277e44fe05a8e5fe66883e7fd258106ff",
+      "confirmationReviewRequired": false,
+      "format": "PASS",
+      "lint": "PASS",
+      "apiAndWebTypes": "PASS",
+      "webProductionBuild": "PASS",
+      "fullWeb": {
+        "files": 186,
+        "passed": 3101
+      },
+      "actualApp": {
+        "passed": 6,
+        "viewports": [
+          1440,
+          390
+        ],
+        "screenshotsInspected": 6,
+        "completeAvailableOutputRetainedPrivately": true
+      },
+      "samePatternAudit": "All changed Contract-model command kinds examined. Existing Offer-model older-active withdrawal has the analogous later-read pattern outside issue864; separately qualify rather than expand this correction."
+    },
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "correctedSource": "bf8f377277e44fe05a8e5fe66883e7fd258106ff",
+    "correctedTree": "a048eeef4622dc332efe1dd6db2c96202f80ca82",
+    "automaticCorrectionPushReview": {
+      "commentId": 6395190557,
+      "source": "dfd2397e98a7e0292b3224b60f0f7ddedca83529",
+      "completedAt": "2026-10-25T08:32:27.176260Z",
+      "findings": 0,
+      "unresolvedThreads": 0,
+      "trigger": "Automatic new commits; no manual review request"
+    },
+    "ciCompatibilityCorrection": {
+      "failedRun": 40176967992,
+      "failedSource": "dfd2397e98a7e0292b3224b60f0f7ddedca83529",
+      "rootCause": "New Contract-model test reused the existing Offer-model secondary Company name; shared persisted acceptance Workspace made the later Offer Select ambiguous in both viewports.",
+      "observed": "Each acceptance shard51passed/1failed; all remaining actual Test families, statics, builds, packaging and failure-evidence probe passed.",
+      "fix": "Namespace only new Contract secondary Company displayName; all four new Contract Company fixture names inspected across existing E2E for collisions.",
+      "scope": "One literal in the already corrected acceptance file; production code/contracts unchanged.",
+      "disposition": "Resolved: composed10actualApp tests PASS, literal fixture name only; existing single correction commit amended, no second review round.",
+      "source": "2f8f0858c8fdef9a25def287cce87dde98c68a68",
+      "affectedActualAppPassed": 10,
+      "format": "PASS",
+      "retainedFilesSHA256Verified": 11,
+      "screenshotsInspectedOnComposedProof": 5,
+      "transportLimitation": "Managed test process exit0 and Playwright last-run passed/failedTests[]; enclosing retention shell was reported exit1 by process tool, not claimed green as a whole."
+    },
+    "previousCorrectionSource": "2f8f0858c8fdef9a25def287cce87dde98c68a68",
+    "automaticLatestPushFinding": {
+      "source": "2f8f0858c8fdef9a25def287cce87dde98c68a68",
+      "thread": "PRRT_kwDOTxkDU86v_xh9",
+      "comment": 4370223483,
+      "priority": "P2",
+      "criterion": "Commercial29.2 story6",
+      "problem": "Copy only uses current head; no editor action copies an opened readable historical Version into a complete successor draft.",
+      "triage": "Valid in unchanged original scope; root initial preparation and independent Spec round missed this requirement.",
+      "reviewPolicy": "Unrequested automatic new-commit finding, not a requested sensitive confirmation or new review request. Resolve by a focused UI-only addition folded into the existing single correction commit; no new review round. If it exceeds that bounded correction, stop/re-scope under repository policy.",
+      "status": "Fixed, affected targeted/fullWeb/actualApp proof passed, published reply and inline thread resolved",
+      "correctionSource": "bf8f377277e44fe05a8e5fe66883e7fd258106ff",
+      "regressionRed": {
+        "failed": 1,
+        "passed": 1
+      },
+      "focusedGreen": 25,
+      "completeWeb": {
+        "files": 186,
+        "passed": 3101
+      },
+      "actualApp": {
+        "composedPassed": 10,
+        "contractModelPassed": 6,
+        "offerModelPassed": 4,
+        "viewports": [
+          1440,
+          390
+        ],
+        "exactPostRevision": 5,
+        "oldVersionBeforeAfterUnchanged": true
+      },
+      "retainedFilesSHA256Verified": 11,
+      "syntheticScreenshotsInspected": 6,
+      "format": "PASS",
+      "lint": "PASS",
+      "apiAndWebTypes": "PASS",
+      "webProductionBuild": "PASS",
+      "actualAppExit": 0,
+      "retainingProcessExit": 0,
+      "noAuthorizationPredicateGrantTenancyMigrationOrActivityChange": true,
+      "scopeAudit": "Historical detail copied via existing protected draft state only when existing live Editor authority; copy blocked during mutation/draft, and backend CREATE authority/revision/receipt remain unchanged. Content only is copied: old decision/withdrawal/source survive, new Version stays pending. Existing Offer-model history-copy policy is outside864 and separately qualified, not bundled.",
+      "resolved": true
+    },
+    "automaticAdditionalUpdate": {
+      "source": "bf8f377277e44fe05a8e5fe66883e7fd258106ff",
+      "status": "running; not claimed completed",
+      "mandatoryNewReviewRound": false,
+      "explanation": "Applicable fresh independent Standards/Spec round and bounded focused correction disposition are complete. Repo policy permits affected-check verification without a new review for this UI-only correction; no new review was requested. Additional automatic new-commit service is not claimed completed and will still be monitored for actual blocking findings before merge.",
+      "lastObservedAt": "2026-10-25T09:29:17.266455+00:00"
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12594471358,
+      "name": "browser-evidence-part-browser-3-40179763619",
+      "size_in_bytes": 71172030,
+      "digest": "sha256:6698c8a307a1adda5746bdbbc183e13bee1dbf628aafb288318abb5841d90dad",
+      "expires_at": "2026-11-08T09:20:35Z"
+    },
+    {
+      "id": 12594272636,
+      "name": "browser-evidence-part-acceptance-2-40179763619",
+      "size_in_bytes": 59367951,
+      "digest": "sha256:d4bc0e76b6460046a47d31dd3c39d77f192660f254cd02da835b5931d1152701",
+      "expires_at": "2026-11-08T09:25:33Z"
+    },
+    {
+      "id": 12594051376,
+      "name": "browser-evidence-part-browser-1-40179763619",
+      "size_in_bytes": 113771756,
+      "digest": "sha256:c802474b3faa12149da87fded0a29ece148a5d86f71b183b1545700ec7bd26a7",
+      "expires_at": "2026-11-08T09:21:35Z"
+    },
+    {
+      "id": 12594027876,
+      "name": "browser-evidence-part-acceptance-1-40179763619",
+      "size_in_bytes": 69141874,
+      "digest": "sha256:727676c0a481210a10eb2280602c81a23225675753102fd389157baf9611e857",
+      "expires_at": "2026-11-08T09:26:29Z"
+    },
+    {
+      "id": 12593792457,
+      "name": "browser-evidence-part-browser-2-40179763619",
+      "size_in_bytes": 77573078,
+      "digest": "sha256:2d26d0a8343c0df73bf0a5d3ea0fbafb16765282e003797e31d0c656c3f8045f",
+      "expires_at": "2026-11-08T09:19:46Z"
+    },
+    {
+      "id": 12593443758,
+      "name": "browser-evidence-pr-40179763619",
+      "size_in_bytes": 391026601,
+      "digest": "sha256:936ced5eab88f39b970d540b00ab71dd89d2a617fb129038987dbf87db20676f",
+      "expires_at": "2026-11-08T09:27:07Z"
+    }
+  ],
+  "scope": "Complete literal Company consulting Contract model configuration, independent opt-in editor/approver captures, immutable versions/decisions/withdrawal/history and actual App only; no generated Contract, Offer consumption, signature/acceptance/payment, official numbering, production grant/deployment or full-dossier completion.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-09"
+}
