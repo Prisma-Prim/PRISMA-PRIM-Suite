@@ -1,0 +1,79 @@
+{
+  "issue": 874,
+  "pr": 875,
+  "source": "831f33d568894216decc41e74b9b98f420087ffb",
+  "base": "37df85fd8619c3123861836296ea530db27f7995",
+  "tree": "de456fba8928bc1243b310b42f1b97dcd55aeeaa",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1638,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "issue": 874,
+    "source": "831f33d568894216decc41e74b9b98f420087ffb",
+    "tree": "de456fba8928bc1243b310b42f1b97dcd55aeeaa",
+    "reviewedBase": "37df85fd8619c3123861836296ea530db27f7995",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "rootOrderedPreparation": [
+      "Standards",
+      "Spec",
+      "product disposition",
+      "structural/context-fit checkpoint"
+    ],
+    "productDisposition": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/874#issuecomment-6402295804",
+    "independentStandards": {
+      "blockers": 0,
+      "documentedViolations": 0,
+      "heuristicFindings": 0
+    },
+    "independentSpec": {
+      "blockers": 0,
+      "missingPartial": 0,
+      "incorrect": 0,
+      "scopeCreep": 0,
+      "followUps": 0
+    },
+    "correction": null,
+    "runtimeDeliveryClaimed": false,
+    "canonicalFinalGatePending": false,
+    "pr": 875,
+    "canonicalFinalGate": {
+      "status": "passed",
+      "scope": "docs_only",
+      "requiredPassed": 6,
+      "validated": true
+    },
+    "automaticOpeningReview": {
+      "commentId": 6402332040,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/875#issuecomment-6402332040",
+      "code_review": {
+        "commit_sha": "831f33d568894216decc41e74b9b98f420087ffb",
+        "has_any_findings": false,
+        "has_unresolved_findings": false,
+        "status": "completed"
+      },
+      "security_review": {
+        "commit_sha": null,
+        "has_any_findings": null,
+        "has_unresolved_findings": null,
+        "status": null
+      }
+    },
+    "unresolvedThreads": 0
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation contract only; no runtime, real fiscal/legal values, approved business prose, official numbering, real grants or deployment.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-09T19:48:45.754000+00:00"
+}
