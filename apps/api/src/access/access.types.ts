@@ -93,9 +93,9 @@ export interface ActiveCompanyContext
   contractEarlyPreparationAssignmentId?: string;
   contractEarlyPreparationPermissionSetVersion?: 'v1';
   contractPermissionAssignmentId?: string;
-  contractPermissionSetVersion?: 'v1';
+  contractPermissionSetVersion?: 'v1' | 'v2';
   contractApproverAssignmentId?: string;
-  contractApproverPermissionSetVersion?: 'v1';
+  contractApproverPermissionSetVersion?: 'v1' | 'v2';
   offerPermissions?: CompanyOfferPermission[];
   offerPermissionAssignmentId?: string;
   offerPermissionSetVersion?: CompanyOfferPreparerPermissionSetVersion;

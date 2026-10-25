@@ -60,7 +60,7 @@ export const contractDecisionMessages = defineMessages(keys, {
     success: 'Decision recorded.',
     bundle: 'Company Contract Approver',
     prerequisites:
-      'Requires separate Company context and Opportunity read. Grants no preparation, Client, Offer, pricing or administration access.',
+      'Fresh grants capture v2, preserving v1 permissions and adding model-based approval. Existing v1 captures stay unchanged until explicit revoke and fresh grant. Model-based checks and decisions additionally require separate Offer read. Requires separate Company context and Opportunity read. Grants no preparation, Client, Offer, pricing or administration access.',
   },
   ro: {
     title: 'Decizia contractului',
@@ -94,7 +94,7 @@ export const contractDecisionMessages = defineMessages(keys, {
     success: 'Decizia a fost înregistrată.',
     bundle: 'Aprobator de contracte al companiei',
     prerequisites:
-      'Necesită separat contextul companiei și citirea oportunității. Nu acordă acces la pregătire, clienți, oferte, prețuri sau administrare.',
+      'Atribuirile noi păstrează v2, cu drepturile v1 și aprobarea Contractului din model. Atribuirile v1 rămân neschimbate până la revocare și atribuire nouă. Verificările și deciziile din model necesită suplimentar citirea separată a Ofertei. Necesită separat contextul companiei și citirea oportunității. Nu acordă acces la pregătire, clienți, oferte, prețuri sau administrare.',
   },
   fr: {
     title: 'Décision du contrat',
@@ -128,7 +128,7 @@ export const contractDecisionMessages = defineMessages(keys, {
     success: 'Décision enregistrée.',
     bundle: 'Approbateur de contrats de la société',
     prerequisites:
-      'Nécessite séparément le contexte de société et la lecture de l’opportunité. N’accorde aucun accès à la préparation, aux clients, offres, prix ou à l’administration.',
+      'Les nouvelles attributions capturent la v2, avec les droits v1 et l’approbation du contrat depuis un modèle. Les attributions v1 restent inchangées jusqu’à révocation puis nouvelle attribution. Les contrôles et décisions depuis un modèle exigent aussi une lecture distincte de l’offre. Nécessite séparément le contexte de société et la lecture de l’opportunité. N’accorde aucun accès à la préparation, aux clients, offres, prix ou à l’administration.',
   },
   ru: {
     title: 'Решение по договору',
@@ -161,7 +161,7 @@ export const contractDecisionMessages = defineMessages(keys, {
     success: 'Решение записано.',
     bundle: 'Согласующий договоры компании',
     prerequisites:
-      'Требуются отдельный контекст компании и чтение возможности. Не даёт доступа к подготовке, клиентам, предложениям, ценам или администрированию.',
+      'Новые назначения фиксируют v2, сохраняя права v1 и добавляя утверждение договора по модели. Назначения v1 остаются неизменными до явного отзыва и нового назначения. Проверки и решения по модели также требуют отдельного чтения предложения. Требуются отдельный контекст компании и чтение возможности. Не даёт доступа к подготовке, клиентам, предложениям, ценам или администрированию.',
   },
 });
 export const useContractDecisionCopy = () =>

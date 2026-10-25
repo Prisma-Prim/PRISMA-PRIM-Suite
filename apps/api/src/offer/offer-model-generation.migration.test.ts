@@ -268,7 +268,11 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         const projection =
           table === 'offer_versions'
             ? "to_jsonb(t) - ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]"
-            : 'to_jsonb(t)';
+            : table === 'contract_versions'
+              ? "to_jsonb(t)-ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']"
+              : table === 'contract_decisions'
+                ? "to_jsonb(t)-ARRAY['review_basis']"
+                : 'to_jsonb(t)';
         expect(
           (
             await fixture.pool.query(

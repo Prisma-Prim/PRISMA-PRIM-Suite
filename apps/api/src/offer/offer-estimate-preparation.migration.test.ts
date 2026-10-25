@@ -238,7 +238,11 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         const query =
           table === 'offer_versions'
             ? `SELECT to_jsonb(t) - ARRAY['estimate_source_id','estimate_source_version_id','estimate_source_version_number','estimate_source_decision_id','estimate_source_decision_code','estimate_source_approved_at','estimate_source_amount','estimate_source_currency','model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[] AS row FROM offer_versions t ORDER BY id`
-            : `SELECT to_jsonb(t) AS row FROM ${table} t ORDER BY id`;
+            : table === 'contract_versions'
+              ? `SELECT to_jsonb(t)-ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot'] AS row FROM ${table} t ORDER BY id`
+              : table === 'contract_decisions'
+                ? `SELECT to_jsonb(t)-ARRAY['review_basis'] AS row FROM ${table} t ORDER BY id`
+                : `SELECT to_jsonb(t) AS row FROM ${table} t ORDER BY id`;
         expect((await fixture.pool.query(query)).rows, table).toEqual(
           before.get(table),
         );

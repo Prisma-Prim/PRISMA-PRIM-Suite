@@ -13,6 +13,7 @@ import {
   requireIdempotencyKey,
   requireUuid,
 } from '../access/access-command-validation.js';
+import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import type { ActorContext } from '../access/access.types.js';
 import { ContractModelAccessService } from '../access/contract-model-access.service.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
@@ -41,6 +42,7 @@ import { readContractModelReceipt } from './contract-model.receipt.js';
 import { readContractModelHistory } from './contract-model.history.js';
 import {
   invalidStoredModel,
+  storedContent,
   ContractModelView,
   type ModelRow,
   type ModelVersionRow,
@@ -66,6 +68,7 @@ export class ContractModelService {
   constructor(
     private readonly database: DatabaseContext,
     private readonly access: ContractModelAccessService,
+    private readonly authorization: CompanyContextAuthorization,
     private readonly accountability: AccountabilityService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {
@@ -80,6 +83,93 @@ export class ContractModelService {
   }
   withdraw(input: CommandInput & { versionId: string }) {
     return this.command({ ...input, kind: 'WITHDRAW' });
+  }
+
+  selectableForContract({ actor }: { actor: ActorContext }) {
+    return this.database
+      .transaction(async () => ({
+        selection: await this.contractSelection({ actor, lock: 'share' }),
+      }))
+      .catch(safeFailure);
+  }
+
+  /** Join the Contract caller's transaction and retain the selection fence. */
+  async requireSelectedForContractWithinTransaction(input: {
+    actor: ActorContext;
+    versionId: string;
+    versionNumber: number;
+    approvalDecisionId: string;
+  }) {
+    const selection = await this.contractSelection({
+      actor: input.actor,
+      lock: 'update',
+    });
+    if (
+      !selection ||
+      selection.versionId !== input.versionId ||
+      selection.versionNumber !== input.versionNumber ||
+      selection.approvalDecisionId !== input.approvalDecisionId
+    )
+      throw conflict(
+        'CONTRACT_MODEL_SELECTION_UNAVAILABLE',
+        'The selected Contract model is unavailable for new use.',
+      );
+    return selection;
+  }
+
+  private async contractSelection({
+    actor,
+    lock,
+  }: {
+    actor: ActorContext;
+    lock: 'share' | 'update';
+  }) {
+    const companyId = await this.authorization.requireContractAccess(
+      actor,
+      ['commercial.contract.prepare', 'commercial.contract.model.select'],
+      true,
+    );
+    const model = await this.root({ actor, companyId, lock });
+    if (!model?.activeVersionId) return null;
+    const version = await this.exactVersion({
+      model,
+      versionId: model.activeVersionId,
+    });
+    const [decision] = await this.database.connection
+      .select()
+      .from(contractModelDecisions)
+      .where(
+        and(
+          eq(contractModelDecisions.workspaceId, actor.workspaceId),
+          eq(contractModelDecisions.companyId, companyId),
+          eq(contractModelDecisions.modelId, model.id),
+          eq(contractModelDecisions.versionId, version.id),
+        ),
+      );
+    if (
+      !decision ||
+      decision.outcome !== 'APPROVE' ||
+      decision.versionNumber !== version.versionNumber
+    )
+      throw invalidStoredModel();
+    return {
+      kind: 'APPROVED_COMPANY_CONTRACT_MODEL',
+      modelId: model.id,
+      code: CONTRACT_MODEL_CODE,
+      language: CONTRACT_MODEL_LANGUAGE,
+      versionId: version.id,
+      versionNumber: version.versionNumber,
+      approvalDecisionId: decision.id,
+      approvedAt: decision.recordedAt.toISOString(),
+      approvedBy: {
+        workspaceMembershipId: decision.actorMembershipId,
+        internalUserId: decision.actorInternalUserId,
+      },
+      content: storedContent(version.content),
+    } satisfies { kind: 'APPROVED_COMPANY_CONTRACT_MODEL' } & Record<
+      string,
+      unknown
+    >;
   }
 
   read({ actor }: { actor: ActorContext }) {

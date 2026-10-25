@@ -575,6 +575,13 @@
       "when": 1792875644021,
       "tag": "0081_company_contract_model",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1792926985230,
+      "tag": "0082_model_contract_generation",
+      "breakpoints": true
     }
   ]
 }

@@ -203,6 +203,13 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.contract.prepare',
         'commercial.contract.project.link',
       ],
+      v2: [
+        'commercial.contract.read',
+        'commercial.contract.prepare',
+        'commercial.contract.project.link',
+        'commercial.contract.model.select',
+        'commercial.contract.model_based.prepare',
+      ],
     },
   },
   company_contract_early_preparation: {
@@ -216,6 +223,12 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.contract.read',
         'commercial.contract.approve',
         'commercial.contract.signature.record',
+      ],
+      v2: [
+        'commercial.contract.read',
+        'commercial.contract.approve',
+        'commercial.contract.signature.record',
+        'commercial.contract.model_based.approve',
       ],
     },
   },

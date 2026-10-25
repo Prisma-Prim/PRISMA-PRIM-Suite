@@ -77,6 +77,8 @@ export class ContractProjectLinkStore {
   requireExecuted(
     current: Awaited<ReturnType<ContractProjectLinkStore['find']>>,
   ) {
+    if (current.contract.origin === 'COMPANY_MODEL_OFFER')
+      throw projectLinkConflict('CONTRACT_EXECUTION_MODE_UNSUPPORTED');
     if (
       current.contract.kind !== 'CONTRACT' &&
       current.contract.kind !== 'PRECONTRACT'
