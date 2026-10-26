@@ -1,0 +1,35 @@
+.client-document-overview {
+  min-width: 0;
+  margin-block: 24px;
+  padding-block: 20px;
+  border-block: 1px solid var(--shell-line, #e6eaf1);
+  overflow-wrap: anywhere;
+}
+.client-document-overview h4,
+.client-document-overview h5 {
+  margin: 0;
+}
+.client-document-overview ul {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+}
+.client-document-overview li {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--shell-line, #e6eaf1);
+  border-radius: 8px;
+}
+.client-document-overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.client-document-overview button {
+  max-width: 100%;
+  white-space: normal;
+  text-align: start;
+}

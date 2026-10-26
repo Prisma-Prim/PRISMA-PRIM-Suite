@@ -10,6 +10,7 @@ import {
   type PreservedDocumentPdf,
 } from './document-pdf-response';
 import { useDocumentPdfCopy } from './document-pdf.copy';
+import { useDocumentNavigationProtection } from './document-navigation-protection';
 
 interface UploadCommand {
   file: File;
@@ -41,6 +42,7 @@ export function DocumentPdfContent({
   onConfirmed,
   onReload,
   onDenied,
+  onProtectedWorkChange,
 }: {
   identity: BrowserIdentity;
   companyId: string;
@@ -53,12 +55,17 @@ export function DocumentPdfContent({
   onConfirmed: () => void;
   onReload: () => void;
   onDenied: () => Promise<void>;
+  onProtectedWorkChange?: (protectedWork: boolean) => void;
 }) {
   const copy = useDocumentPdfCopy();
   const locale = useInterfaceLocale();
   const id = useId();
   const [file, setFile] = useState<File>();
   const [upload, setUpload] = useState<UploadState>({ status: 'idle' });
+  useDocumentNavigationProtection(
+    upload.status === 'pending' || upload.status === 'uncertain',
+    onProtectedWorkChange,
+  );
   const [download, setDownload] = useState<
     'idle' | 'pending' | 'error' | 'denied'
   >('idle');

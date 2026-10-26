@@ -76,6 +76,7 @@ export function ClientWorkspace({
   onOpenRequests,
   renderCommercialWork,
   renderMissionWork,
+  renderDocumentWork,
   onClientIdentityChanged,
   requestedClientDossierRequest,
 }: {
@@ -90,6 +91,7 @@ export function ClientWorkspace({
   onOpenRequests?: (client: { id: string; displayName: string }) => void;
   renderCommercialWork?: (clientDossierId: string) => ReactNode;
   renderMissionWork?: (clientDossierId: string) => ReactNode;
+  renderDocumentWork?: (clientDossierId: string) => ReactNode;
   /** Reported when a union or reversal changes the current Client identities. */
   onClientIdentityChanged?: () => void;
   requestedClientDossierRequest?: {
@@ -878,6 +880,7 @@ export function ClientWorkspace({
           onOpenRequests={onOpenRequests}
           renderCommercialWork={renderCommercialWork}
           renderMissionWork={renderMissionWork}
+          renderDocumentWork={renderDocumentWork}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}
