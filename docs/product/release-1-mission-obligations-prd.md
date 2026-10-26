@@ -1,6 +1,6 @@
-# Consulting mission obligations, exceptions and closure — D5/D13 proposal
+# Consulting mission obligations, exceptions and closure — D5/D13
 
-**Status:** Draft — ready for product review; decisions A–C pending.
+**Status:** Approved bounded readiness contract in §13; established directions below authorized by Dan on 2026-10-26. Full certification-closure policy remains unresolved in §12.
 
 **Owner:** Dan Popescu; source-backed preparation under [#879](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/879).
 
@@ -8,11 +8,7 @@
 
 **Baseline:** main `d90cf4a28291259da08fde65f3b5ec7dceed1bd9`.
 
-This document owns a proposed bounded extension. It approves no rule, permission,
-operational model or real assignment. Project/Task §§23,27,28 remain authoritative
-for delivered behavior. Approval of A–C, normalization into the affected owners
-and a separate ready implementation issue precede runtime work. Publishing this
-Draft is not that approval.
+Dan explicitly authorized applying the established rules after the source reassessment. This approval is a bounded product decision, not a new Iurie answer or proof of historical work. §13 fully specifies the first independently usable runtime outcome. Existing Project/Task §§23,27,28 retain delivered behavior; subsequent mutation outcomes require their own complete approved vertical contracts. No real assignment, operational model, certification policy or deployment is approved here.
 
 ## 1. Problem, value and current evidence
 
@@ -54,35 +50,23 @@ or capabilities already proved by that example. The received handover provisions
 also warrant an explicit human delivery/acceptance basis; no automatic tacit
 acceptance timer is justified here.
 
-## 2. The three decisions requested
+## 2. Established directions and the residual evidence boundary
 
-Everything below is a recommendation until these decisions are approved.
+Dan authorized applying the established subset on 2026-10-26. The following directions incorporate the source reassessment; §12 alone owns the still-open business question. The first complete implementation contract is §13. Do not ask Dan to reconstruct unfamiliar case practice or blanket-approve the previous A–C proposal.
 
 ### A. Required work, evidence and progress
 
-**Recommend:** for a deliberately adopted thirteen-activity mission profile,
-every included activity is required initially. A required activity needs its same
-copied Task done and a current declared result referencing an exact frozen,
-independently readable mission PDF. A done Task without that result remains a
-missing obligation; a cancelled required Task remains unfulfilled.
-A single exact PDF Version may support several activities when each Task's
-declaration explains its result; thirteen distinct Documents are not required.
+Use the included Contract/plan activities as the initial case obligation set, with their preserved expected results as acceptance criteria. A done or cancelled Task does not establish fulfillment. Each required result needs appropriate attributable evidence; no business rule requires a separate PDF per activity. One exact artifact may substantiate several explicit declarations. The existing §27 PDF-backed result is one supported technical mechanism; evidence recorded elsewhere is unassessed, not automatically missing or invalid.
 
-Show all thirteen activities and their gaps. Permit parallel work and an explicit
-next action chosen by the responsible actor; activity order is presentation,
-not a new enforced dependency graph. This deliberately narrows D5's first outcome
-to activity/obligation progress. Generalized stage transitions wait for their own
-approved mapping; the existing pilot stage-advance refusal is unchanged.
+Respect the agreed case plan and actual dependencies. E06§1.3 permits adjustment by agreement, while E05 describes both dependencies and some parallel work. Infer neither an arbitrary thirteen-stage gate nor unrestricted parallel execution. The first outcome shows activity/evidence gaps and preserves the existing pilot stage-advance refusal; generalized stages need their own approved mapping.
 
-**Consequence to approve:** the adopted profile is stricter than ordinary Task
-completion. No new standalone-Task or unenrolled-Project rule follows.
+This direction applies to the selected case/source, not every Project category. It does not silently enroll existing Projects or change ordinary Task completion.
 
 ### B. Non-applicability and exceptions
 
-**Recommend:** a coordinator may propose that one activity is not applicable,
+A coordinator may propose that one activity is not applicable,
 but only the explicitly authorized mission approver may accept it. Record the
-activity, concrete reason, scope/agreement basis, proposing actor, approving
-actor and time. A pending/rejected request changes no obligation. Approval is a
+activity, concrete reason, scope/agreement basis, proposing actor, approving actor, exact Version and server time. A contractual scope change additionally preserves the actual agreement of the parties; internal approval alone cannot erase an undertaking. A pending/rejected request changes no obligation. Approval is a
 visible exclusion, never fulfilled work or an implicit Contract amendment.
 
 An activity that is still due stays required/blocked, with a responsible person,
@@ -93,14 +77,14 @@ No general waiver allowing completion with still-unfulfilled required work is
 proposed. Contractual scope changes need their own valid recorded authority;
 this UI cannot manufacture agreement by the parties.
 
-**Consequence to approve:** the first-tenant approver is Iurie through explicit
+The known first-tenant principal approver is Iurie through explicit
 application assignments; technical access and Project responsibility are not
 delegation. No real grant is created by this decision.
 
 ### C. Completion of consulting, delivery and certification
 
-**Recommend:** a governed mission completes when its included consulting work
-and delivery are reviewed by the authorized closer: all required activities have
+Evidence-aware completion requires review of the included consulting work
+and delivery by the authorized closer: all required activities have
 their declared result evidence, every exclusion is approved, no ordinary Task is
 open, and a literal completion/handover basis identifies what was delivered and
 how the Client's receipt/acceptance was established or reported.
@@ -110,23 +94,24 @@ thirteen additional approval clicks are not required. This is an attributed huma
 acceptance of the consulting outcome, not automated verification of PDF content,
 signatures, payment, certification or legal effect. A contradictory or uncertain
 delivery/acceptance basis blocks that completion; it is not converted to acceptance
-by elapsed time. An existing frozen result PDF may substantiate handover when
-appropriate; a new financial Document family is not introduced here.
+by elapsed time. E06/E07§2.3 identify the handover Act and the parties' reported signatures; §2.4 describes a case-specific alternative whose actual transmission, calendar and objection facts have not been established here. Preserve the actual handover instrument and reported receipt/acceptance basis. An internal done flag or generic note does not replace agreed handover. No automatic tacit-acceptance timer or new financial Document family is introduced.
 
-External certification is a separately evidenced outcome. A support-only mission
-may complete after the agreed support and handover without claiming a certificate
-was obtained. An explicit engagement to obtain certification remains unresolved
+E08§13 expressly separates consulting from the certification decision. That separation does not waive this case's conditional commitment in E05 or intended certification outcome in the Contract annex. A genuinely support-only scope can be treated as such only when established; it is not inferred from payment or a done support Task. An explicit engagement to obtain certification remains unresolved
 until its required outcome or a separately justified scope decision is recorded.
 The annex's intended certification result is retained visibly; payment provisions
 alone do not decide its fulfillment. Pending clarification stays blocked rather
 than being classified automatically as support-only.
 
-**Consequence to approve:** operational consulting completion and external
+Operational consulting completion and external
 certification are distinct, with exact recorded scope and evidence. Broader
 financial settlement, assurance and legal-acceptance policy remains outside this
 bounded completion record.
 
 ## 3. Proposed actors, scope and authority
+
+Sections 3–9 retain a non-executable mutation blueprint for later qualification.
+Only §13 is the complete approved runtime contract. In particular, the proposed
+completion examples cannot resolve or bypass `MISSION-CLOSE-01`.
 
 All data remains inside one Workspace, Company, Project and its original
 Client–Company relationship. Shared Client identity, canonical union, technical
@@ -328,7 +313,7 @@ The approved implementation contract must prove at least:
     acceptance or source Contract amendment follows from this mission record.
 
 Full verification and bounded review follow the repository execution policy after
-approved vertical issues exist. This Draft requires documentation verification;
+approved vertical issues exist. This contract update requires documentation verification;
 runtime tests listed here are future requirements, not executed proof.
 
 ## 10. Exclusions and deliberately separate decisions
@@ -346,28 +331,162 @@ runtime tests listed here are future requirements, not executed proof.
   Company/Client identity or retargeting stored result sources.
 - A general exception permitting completed status despite remaining required work.
 
-## 11. Readiness and proposed continuation
+## 11. Readiness and ordered continuation
 
-There is no missing dossier request or technical question for Iurie. The archive,
-email clarifications and interview answers are already available; their known
-facts are reused. **A–C are the only human product arbitration in this proposal.**
-Their approval may come from Dan as Product Owner; uncertainty about actual
-tenant practice can be referred narrowly to Iurie. Approval records must identify
-the chosen rule, scope and any departure from the recommendations, not claim a
-new Iurie answer. Disagreement keeps the affected policy Draft and unenforced.
+The supplied dossier, email clarifications and existing Sarcina transcriptions are reused. No repeated questionnaire or upload is required. Known source facts, reasoned product synthesis and actual unproved outcomes remain distinct. The broader 105-page Sarcina is used through its existing controlled transcription, not claimed freshly reread; E08 is the different pricing specification.
 
-After approval, normalize the exact obligation/closure behavior, terminology,
-authorization and Activity consequences in their owning PRDs. Then qualify narrow
-complete tracer bullets, provisionally:
+The immediate runtime frontier is §13's read-only readiness view. It needs no certification-policy answer or new permission, schema, grant or provider. After delivery, qualify the next complete vertical contract for attributable evidence review and guarded opt-in completion, then scoped applicability history; these mutation directions cannot be implemented from incomplete blueprint text alone. No unsupported result format or unreviewed declaration becomes accepted work. The pending certification policy never silently becomes permissive.
 
-1. Strict, explicitly adopted mission completion on the existing thirteen-Task
-   Project, including visible progress/blockers, exact review and the completion
-   guard across all routes. The all-required/no-exclusion case is usable alone.
-2. Justified applicability proposal/approval/restoration with historical scope
-   basis and the same completion guard. No blanket waiver or source-row deletion.
+The owner's request to keep outstanding questions durably for one eventual email is recorded in §12. Another agent follows that register, retains its state and reminds Dan when assembling the consolidated request. There is no individual-answer prompt or scheduled email. The completed anonymous ordinary-lifecycle milestone remains delivered.
 
-Next-action coordination may be its own vertical outcome if sizing warrants it;
-generalized stages require an approved mapping first. These are candidate outcomes,
-not created or ready implementation tickets. Recheck dependency closure, current
-code, complete observable contract and fresh-context fit before assigning one.
-The previously completed anonymous milestone is not reopened by this Draft.
+## 12. Open business questions for one consolidated email
+
+**Owner:** Iurie supplies the first-tenant business answer; Dan forwards one
+consolidated email. This register owns the questions for this capability. Other
+tracker/index entries link here instead of duplicating their current status.
+
+Dan explicitly requested durable recording on 2026-10-26 so another agent can
+recover the pending questions and remind him to transmit them together. Keep
+unresolved entries across session handoffs. Do not repeatedly prompt him for
+individual answers, infer an answer from silence, or send any external message
+without his explicit instruction. A reminder is not a scheduled notification;
+this request creates no email/calendar/background job.
+
+### MISSION-CLOSE-01 — Consulting completion before certification
+
+- **State:** awaiting business answer; not answered by Dan's request to retain it.
+- **Business owner:** Iurie; **forwarding owner:** Dan.
+- **Why open:** consulting and certification decisions are distinct, while the
+  example also contains a certification-related intended outcome/conditional
+  commitment. Payment or a completed support Task does not resolve that meaning.
+- **Blocks:** authorizing full mission fulfillment without the certificate or
+  the exact alternative evidence. It does not block read-only activity readiness,
+  recording appropriate evidence, traceable exceptions or guarding known gaps.
+- **Interim behavior:** retain the included outcome as unconfirmed; never invent
+  certification, acceptance, waiver or a permissive completion policy.
+- **Ready-to-forward question in Romanian:**
+
+  > Pentru o misiune de consultanță precum exemplul ELECTRO SERVICE GRUP, putem
+  > închide misiunea după predarea și acceptarea serviciilor de consultanță dacă
+  > certificatul nu a fost încă obținut, sau trebuie să așteptăm certificatul?
+  > Ce document/dovadă trebuie să justifice închiderea în acest caz?
+
+- **Answer/provenance:** none yet. Preserve the actual reply, source/date,
+  examples and exceptions when it arrives. Then normalize only its approved
+  bounded consequence before changing runtime; do not report an inferred answer
+  as Iurie's statement.
+
+Before preparing the eventual email, gather every still-open entry from this
+capability register and the linked owners of any other genuinely blocking
+questions. Exclude already answered or separately deferred questions; do not
+repeat the supplied dossier request or official-numbering questionnaire merely
+to complete this bounded work.
+
+## 13. Approved first vertical — inspect mission activity/result readiness
+
+### Outcome and fixed boundary
+
+An authorized reader opens the existing thirteen-activity Project and sees every
+preserved expected result, its actual ordinary Task state and whether a §27
+result is recorded and independently readable. The view exposes gaps without
+declaring performed work, acceptance, policy adoption or certification. It writes
+nothing and is useful before any later mission-governance mutation exists.
+
+Use only `CONSULTING_MISSION_PILOT_ILLUSTRATIVE` Version 1 and its complete frozen
+copy/mapping from §28. The view neither creates another Project/Task nor edits
+the copy, source, Contract, result, stage, lifecycle, receipt or Activity Log.
+Existing manual and legacy two-stage/four-Task Projects return no assessment and
+retain their current behavior. Unknown/corrupt source or incomplete mapping is
+an error, not a valid empty assessment or an inferred current source.
+
+### Scope, authority and public read
+
+Project/Template owns `GET /projects/:projectId/mission-readiness`. Its caller
+has live same-Workspace/Company context, Project/original Client read, Task read,
+copied-plan access and captured Template User v2 pilot-read authority. It reuses
+the owning Project, copied-plan and Task interfaces inside one repeatable-read,
+read-only snapshot. There is no new grant or authority implied by responsibility.
+
+Task/Document owns the independent §27 result read. Missing Document metadata,
+mission-family or Content Reader authority yields an unavailable result projection
+for that row without declaration text, actor/time, identifiers, title or PDF
+details. A known authorized empty result stream alone means no result recorded
+in the application. It never means no work/evidence exists in the real world.
+Non-permission failures remain errors; do not swallow corruption or provider/server
+failure into unavailable or empty success. Project/Task read cannot borrow result
+or content authority; private storage rows/bytes are never queried by this owner.
+
+### Closed response and derivation
+
+Return `assessment: null` for a legitimately unsupported/no copied plan. For the
+recognized plan return an explicitly `DIAGNOSTIC_ONLY` assessment containing
+Project identity/status, exact source key/Version/business title and thirteen
+ordered activity rows. Each preserves stable activity key, planned title/action/
+expected result and mapped Task identity. Read current Task title/status/version
+through Task; its Project identity must equal the requested original Project.
+No title-based join, latest-template lookup, subset or duplicate Task is allowed.
+
+Each row has one result projection: unavailable, available with no declaration,
+or available with the exact current §27 declaration/reference. Derive exactly one
+display state, in this precedence:
+
+1. `WORK_OPEN` when the Task is todo/in_progress/blocked.
+2. `WORK_CANCELLED` when the Task is cancelled; this does not assert fulfillment.
+3. `EVIDENCE_UNAVAILABLE` when done and its result read is independently denied.
+4. `RESULT_NOT_RECORDED` when done and the authorized result stream is empty.
+5. `RECORDED_RESULT_NOT_REVIEWED` when done with a readable current declaration.
+
+Do not generate `fulfilled`, `approved`, `verified` or `canComplete` from these
+states. The last row's result does not attest an external certification. The
+assessment separately and always carries `BUSINESS_CLARIFICATION_PENDING` with
+question ID `MISSION-CLOSE-01`; this is the documented residual policy state,
+not proof that no certificate exists. No blocked business response is assumed.
+
+Counts, if shown, refer only to thirteen displayed diagnostic states, not accepted
+work. If any result read is unavailable, an overall recorded-result total is
+unknown rather than a guessed zero. Protected fields are not echoed into messages,
+counts, exception detail, navigation or logging after authority loss.
+
+### Interface and lifetime
+
+The existing Project detail shows a localized Mission readiness region for the
+pilot plan, with expected outcomes, current Task states, result availability and
+the explicit declared/unreviewed and certification-pending distinctions. Reuse
+existing exact Task opening to inspect/record results and download their PDF
+under its own authority; add no new direct content URL or signing service.
+There is an explicit reload after ordinary Task/result changes; a later read
+reflects the conserved source and current independently authorized facts.
+
+Use the accepted existing frame and shared four-locale copy. Preserve literal
+source/result text and exact selections across locale/frame changes. Loading,
+no assessment, denied, unavailable, malformed/unavailable-server, ready and closed
+history are distinct. No mutation control, inferred sequential stage or misleading
+completion action is added. Existing Project closure is unaffected in this read
+slice; later opt-in mutation work owns enforcing the approved completion guards.
+
+Scope/identity/Project or consumed captured authority changes retire held reads
+and immediately hide the affected protected projection. Doc-only access loss
+does not retire the independently authorized Task/Project/source owners. A held
+old response cannot restore protected fields after revoke/regrant. Unknown grant
+versions fail closed. Reload, locale/frame and sibling navigation cannot add or
+duplicate business facts. Keep the new owner narrow instead of extending the
+Project workspace's orchestration logic.
+
+### Acceptance and verification
+
+The public PostgreSQL REST seam proves exact thirteen-source/Task mapping,
+open/done/cancelled and readable-empty/readable-result/unavailable distinctions,
+the mandatory pending-certification marker, reload after Task/result changes,
+source immutability, legitimate legacy/no-plan null, malformed identifiers,
+Company/Workspace and captured-authority refusal, no side effects and history
+after closure/original Client supersession under current read rules. A later
+official designation preserves the exact recorded Version/PDF; no evidence is
+silently retargeted. Existing §27 tests own PDF byte/qualification behavior.
+
+Actual App at 1440×900/390×844 proves the pilot region, all five diagnostic states,
+unavailable/private metadata, explicit reload and exact Task navigation/result
+view, shared copy/literal text and source/identity/capture changes including held
+old replies. Required existing Project/Template/Task/result and ordinary closure
+regressions pass. No new migration/native SQL or runtime mutation test is invented
+for this read-only slice. Targeted local checks, bounded independent review and
+the final exact-source/base/tree integration gate remain mandatory before merge.
