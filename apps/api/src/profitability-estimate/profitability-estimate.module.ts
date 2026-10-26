@@ -4,6 +4,7 @@ import { AccountabilityModule } from '../accountability/accountability.module.js
 import { ServerClockModule } from '../clock/server-clock.js';
 import { CommercialIntakeModule } from '../commercial-intake/commercial-intake.module.js';
 import { DatabaseModule } from '../database/database.module.js';
+import { ProfitabilityDecisionQueueService } from './profitability-decision-queue.service.js';
 import { ProfitabilityEstimateService } from './profitability-estimate.service.js';
 
 @Module({
@@ -14,7 +15,7 @@ import { ProfitabilityEstimateService } from './profitability-estimate.service.j
     CommercialIntakeModule,
     DatabaseModule,
   ],
-  providers: [ProfitabilityEstimateService],
-  exports: [ProfitabilityEstimateService],
+  providers: [ProfitabilityEstimateService, ProfitabilityDecisionQueueService],
+  exports: [ProfitabilityEstimateService, ProfitabilityDecisionQueueService],
 })
 export class ProfitabilityEstimateModule {}

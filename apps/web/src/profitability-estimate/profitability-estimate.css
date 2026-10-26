@@ -1,4 +1,5 @@
-.profitability-estimate {
+.profitability-estimate,
+.profitability-decision-queue {
   margin-block: 1.5rem;
   border: 1px solid #e6eaf1;
   border-radius: 1rem;
@@ -12,7 +13,8 @@
 .profitability-estimate h4 {
   margin-block: 0.5rem 1rem;
 }
-.profitability-estimate button {
+.profitability-estimate button,
+.profitability-decision-queue button {
   min-height: 44px;
   border: 1px solid #b7a8df;
   border-radius: 0.5rem;
@@ -23,11 +25,13 @@
   max-width: 100%;
   white-space: normal;
 }
-.profitability-estimate button:disabled {
+.profitability-estimate button:disabled,
+.profitability-decision-queue button:disabled {
   opacity: 0.6;
   cursor: default;
 }
-.profitability-estimate :is(button, input, textarea):focus-visible {
+.profitability-estimate :is(button, input, textarea):focus-visible,
+.profitability-decision-queue button:focus-visible {
   outline: 3px solid #6950bd;
   outline-offset: 3px;
 }
@@ -125,4 +129,11 @@
   .profitability-facts dd {
     margin-bottom: 0.6rem;
   }
+}
+
+.profitability-queue-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
 }
