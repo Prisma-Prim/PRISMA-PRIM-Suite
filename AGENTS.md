@@ -103,4 +103,6 @@ This repository uses a single domain context in `CONTEXT.md`, with durable decis
 
 Use the repository skills under `.agents/skills/` when their descriptions match the task and the active harness exposes them. In particular: sharpen language and decisions before a spec; synthesize approved discussion with `to-spec`; create vertical tickets with `to-tickets`; implement with `implement` and `tdd`; review with `code-review` before final integration verification; reserve the thermo-nuclear and architecture reviews for structural checkpoints.
 
+For requested combined correctness/security and maintainability reviews, use `.agents/skills/thermos/SKILL.md`; its two parallel passes share one review round under the review policy above. Use `.agents/skills/thermo-nuclear-review/SKILL.md` for a correctness/security pass alone and `.agents/skills/deslop/SKILL.md` for focused style cleanup.
+
 For autonomous execution of one implementation ticket, use `docs/agents/issue-execution.md`. `docs/agents/local-codex-execution.md` remains a compatibility entry point for existing prompts.
