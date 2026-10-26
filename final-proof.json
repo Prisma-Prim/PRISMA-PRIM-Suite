@@ -1,0 +1,41 @@
+{
+  "issue": 898,
+  "pr": 899,
+  "source": "2430200be7885ec584d77686efbdadbe52940dd9",
+  "base": "ff0fd60e9e688d95e6444602f1a23da1ba08ac06",
+  "tree": "9aea54b3d763ba527d956fad071a5aa564edef26",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1708,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "source": "2430200be7885ec584d77686efbdadbe52940dd9",
+    "reviewedBase": "ff0fd60e9e688d95e6444602f1a23da1ba08ac06",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "orderedStandards": "PASS0 client898_standards",
+    "orderedSpecProduct": "PASS0 client898_spec; actual bounded delegated product approval",
+    "scope": "Docs-only complete Client mission/Task overview; no runtime, grant or business-rule change",
+    "noAdditionalReviewRequested": true
+  },
+  "independentGitHubCIExecuted": false,
+  "earlierVerification": {
+    "status": "failed at standard doctor; later required families unexecuted",
+    "cause": "pnpm11 effective-store dependency verification exceeded the unchanged10s readiness probe",
+    "restoredPrerequisite": "Identical effective-environment pnpm command completed supply-chain/lockfile verification and reused562packages in8.512s; fresh standard doctor passed in0.473s",
+    "sourceConfigurationAndBudgetsUnchanged": true
+  },
+  "scope": "Documentation-only Client mission/Task overview: complete active-Company/current-Client Project discovery, union-aware identity, recorded responsibility/lifecycle, deliberate read-only Task preview and exact existing Project/Task/result-review continuation under independent authority. No runtime, new grant, evidence inference, fulfillment/closure/certification rule, provider, real data or external message. MISSION-CLOSE-01 remains in its existing consolidated-question owner.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}
