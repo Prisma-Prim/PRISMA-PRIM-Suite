@@ -1,0 +1,52 @@
+{
+  "kind": "Noncanonical combined evidence; explicit owner exception pending",
+  "canonicalPassed": false,
+  "pr": 859,
+  "source": "e1aca077e83c56f4c34155909808dcdefb72ebdc",
+  "base": "c3a1f249180379569e01f18e238ca7d111c798d4",
+  "integrationTree": "cad9047b5aff8c2abdd0e4e238914420e2370c5e",
+  "selection": "Failed original prefix/bytes, actual controlled targeted packaging record/log, selected original summary lines and two inspected synthetic screenshots only. Complete original raw evidence remains local.",
+  "files": [
+    {
+      "path": "original-failed-fields.json",
+      "bytes": 333874,
+      "sha256": "6dc2ace8ce6d27a09dd44eeb8ce29200ef3656fac9a0d7f9ea98cab3ef50fa7d"
+    },
+    {
+      "path": "original-manifest-truncated.json",
+      "bytes": 319488,
+      "sha256": "8dde09bb502f33ff05885131bc264e9abe3c9686222fa52f61e8d837f27a691d"
+    },
+    {
+      "path": "project-navigation-desktop.png",
+      "bytes": 152508,
+      "sha256": "5c90428b1d4e1b7a7c46dd97067e08f801aceb1e44ce9ee3bfff0383371f5c75"
+    },
+    {
+      "path": "project-navigation-narrow.png",
+      "bytes": 110008,
+      "sha256": "6fb8efe52d4d431f873888c3f004726ad2e494677d16089031d93499dc8d3a9a"
+    },
+    {
+      "path": "report.md",
+      "bytes": 4186,
+      "sha256": "e5327fdf1b1c94a166adb0a89073ece90596ec8ca4a34d18343f64f0ec7300e4"
+    },
+    {
+      "path": "selected-family-summaries.json",
+      "bytes": 5616,
+      "sha256": "6b7004ad287bf6ffc9bd1135aed907ad22c8cebc97ca3e7ef6f432eb2da9a1f3"
+    },
+    {
+      "path": "targeted-packaging.json",
+      "bytes": 2416,
+      "sha256": "a3ce5966aabbbad9919a7a99c787c8c1c52cb05013b96226d9e0942759e216b7"
+    },
+    {
+      "path": "targeted-packaging.log",
+      "bytes": 6349,
+      "sha256": "816cbf0f5cc2228cc6fdd6a19b9ee2f2853d795f58bf69d21717c930ac99936c"
+    }
+  ],
+  "retainUntil": "2026-11-09T19:37:59.775093+00:00"
+}

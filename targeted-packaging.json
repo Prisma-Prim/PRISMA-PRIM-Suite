@@ -1,0 +1,72 @@
+{
+  "kind": "Actual targeted execution of the original packaging command after restoring the storage prerequisite; not a complete verify-local run.",
+  "command": "bash",
+  "args": [
+    "scripts/railway-packaging-smoke.sh"
+  ],
+  "cwd": "/workspace/work/integrate-pr859-20261026",
+  "startedAt": "2026-10-26T19:37:07.325205+00:00",
+  "finishedAt": "2026-10-26T19:37:59.650300+00:00",
+  "exitCode": 0,
+  "status": "passed",
+  "source": "e1aca077e83c56f4c34155909808dcdefb72ebdc",
+  "base": "c3a1f249180379569e01f18e238ca7d111c798d4",
+  "integrationTree": "cad9047b5aff8c2abdd0e4e238914420e2370c5e",
+  "allOriginalTrackedInputHashesMatchedBeforeAndAfter": true,
+  "trackedInputsCompared": 1703,
+  "configuration": {
+    "inheritedNames": [
+      "PATH",
+      "HOME",
+      "TMPDIR",
+      "HTTP_PROXY",
+      "HTTPS_PROXY",
+      "NO_PROXY",
+      "http_proxy",
+      "https_proxy",
+      "no_proxy",
+      "NODE_EXTRA_CA_CERTS",
+      "SSL_CERT_FILE",
+      "DATABASE_URL",
+      "TEST_DATABASE_URL",
+      "DOCKER_CONFIG",
+      "PNPM_HOME",
+      "PLAYWRIGHT_BROWSERS_PATH",
+      "pnpm_config_verify_deps_before_run"
+    ],
+    "overrides": {
+      "CI": "true",
+      "REQUIRE_ACCESS_POSTGRES": "true",
+      "REQUIRE_COMPANY_POSTGRES": "true",
+      "REQUIRE_CLIENT_POSTGRES": "true"
+    },
+    "settings": {
+      "PNPM_HOME": "/workspace/prisma-cloud-tools/cache/pnpm-home",
+      "PLAYWRIGHT_BROWSERS_PATH": "/workspace/prisma-cloud-tools/browsers",
+      "pnpm_config_verify_deps_before_run": "false"
+    },
+    "database": "Database URLs/credentials omitted; required database checks, if any, are recorded in the selected doctor log."
+  },
+  "effectiveEnvironmentPolicy": "Only original inherited-name allowlist plus exact original fixed overrides. Credential values are omitted. The packaging command manages its own isolated Docker PostgreSQL; host DB URL values are not required.",
+  "inheritedNamesActuallyPresent": [
+    "DOCKER_CONFIG",
+    "HOME",
+    "HTTPS_PROXY",
+    "HTTP_PROXY",
+    "NODE_EXTRA_CA_CERTS",
+    "NO_PROXY",
+    "PATH",
+    "PLAYWRIGHT_BROWSERS_PATH",
+    "PNPM_HOME",
+    "SSL_CERT_FILE",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "pnpm_config_verify_deps_before_run"
+  ],
+  "excludedPackagingOverrideNames": [
+    "PACKAGING_IMAGE_DIRECTORY",
+    "POSTGRES_IMAGE_ARCHIVE"
+  ],
+  "logSha256": "816cbf0f5cc2228cc6fdd6a19b9ee2f2853d795f58bf69d21717c930ac99936c"
+}

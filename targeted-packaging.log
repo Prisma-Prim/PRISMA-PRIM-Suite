@@ -1,0 +1,148 @@
+Acquiring pinned PostgreSQL image (attempt 1/4, limit 60s).
+Pinned PostgreSQL image acquired.
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from api.Dockerfile
+#1 transferring dockerfile: 1.61kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 1.05kB done
+#3 DONE 0.0s
+
+#4 [build 1/9] FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 38.25MB 0.2s done
+#5 DONE 0.2s
+
+#6 [build 5/9] COPY apps/api/package.json apps/api/package.json
+#6 CACHED
+
+#7 [build 2/9] WORKDIR /app
+#7 CACHED
+
+#8 [build 4/9] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#8 CACHED
+
+#9 [runtime 5/8] COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
+#9 CACHED
+
+#10 [runtime 6/8] COPY --from=build --chown=node:node /app/apps/api/drizzle ./apps/api/drizzle
+#10 CACHED
+
+#11 [build 6/9] COPY apps/web/package.json apps/web/package.json
+#11 CACHED
+
+#12 [build 8/9] COPY apps/api apps/api
+#12 CACHED
+
+#13 [runtime 7/8] COPY --from=build --chown=node:node /app/apps/api/drizzle.config.ts ./apps/api/drizzle.config.ts
+#13 CACHED
+
+#14 [build 9/9] RUN pnpm --filter @prisma-prim/api build
+#14 CACHED
+
+#15 [runtime 3/8] COPY --from=build --chown=node:node /app/node_modules ./node_modules
+#15 CACHED
+
+#16 [build 7/9] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && pnpm install --frozen-lockfile --filter @prisma-prim/api...
+#16 CACHED
+
+#17 [build 3/9] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && npm install --global pnpm@11.20.0
+#17 CACHED
+
+#18 [runtime 4/8] COPY --from=build --chown=node:node /app/apps/api/node_modules ./apps/api/node_modules
+#18 CACHED
+
+#19 [runtime 8/8] COPY --chown=node:node scripts/railway-api.mjs scripts/railway-config.mjs ./scripts/
+#19 CACHED
+
+#20 exporting to image
+#20 exporting layers done
+#20 writing image sha256:848ffc67d44672627d2951a0c95d6aa08add3637d649ce326596a836768ef922 done
+#20 naming to docker.io/library/prisma-prim-api:railway-packaging-2734339 done
+#20 DONE 0.0s
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from web.Dockerfile
+#1 transferring dockerfile: 1.48kB done
+#1 WARN: SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_CLERK_PUBLISHABLE_KEY") (line 16)
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#2 DONE 0.0s
+
+#3 [internal] load metadata for public.ecr.aws/docker/library/nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 1.05kB done
+#4 DONE 0.0s
+
+#5 [runtime 1/4] FROM public.ecr.aws/docker/library/nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284
+#5 DONE 0.0s
+
+#6 [build  1/10] FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 5.30MB 0.1s done
+#7 DONE 0.1s
+
+#8 [build  5/10] COPY apps/api/package.json apps/api/package.json
+#8 CACHED
+
+#9 [build  4/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#9 CACHED
+
+#10 [build  3/10] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && npm install --global pnpm@11.20.0
+#10 CACHED
+
+#11 [build  6/10] COPY apps/web/package.json apps/web/package.json
+#11 CACHED
+
+#12 [runtime 2/4] COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+#12 CACHED
+
+#13 [build 10/10] RUN node scripts/railway-web-config.mjs && pnpm --filter @prisma-prim/web build
+#13 CACHED
+
+#14 [runtime 3/4] COPY --chmod=644 deploy/railway/nginx.conf.template /etc/nginx/prisma.conf.template
+#14 CACHED
+
+#15 [build  2/10] WORKDIR /app
+#15 CACHED
+
+#16 [build  8/10] COPY apps/web apps/web
+#16 CACHED
+
+#17 [build  9/10] COPY scripts/railway-web-config.mjs scripts/railway-config.mjs ./scripts/
+#17 CACHED
+
+#18 [build  7/10] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && pnpm install --frozen-lockfile --filter @prisma-prim/web...
+#18 CACHED
+
+#19 [runtime 4/4] COPY --chmod=644 deploy/railway/web-start.sh /usr/local/bin/prisma-web-start
+#19 CACHED
+
+#20 exporting to image
+#20 exporting layers done
+#20 writing image sha256:d3a4f2412d516aa7583fc7a3376381a5ae35d955f4298ce4fc8cf27fdc1f4cf4 done
+#20 naming to docker.io/library/prisma-prim-web:railway-packaging-2734339 done
+#20 DONE 0.0s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_CLERK_PUBLISHABLE_KEY") (line 16)
+CLERK_PUBLISHABLE_KEY is required.
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[✓] migrations applied successfully!No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!PASS image startup, hosting ports, health, direct SPA navigation, production identity rejection and repeatable migrations.

@@ -1,0 +1,137 @@
+[
+  {
+    "family": "doctor",
+    "originalRelativeLog": "logs/doctor.log",
+    "originalLogSha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": [
+      "PASS pnpm: pnpm 11.20.0; repository expects 11.20.0.",
+      "PASS workspace: pnpm-workspace.yaml is present.",
+      "PASS lockfile: pnpm-lock.yaml is present.",
+      "PASS dependencies: The root node_modules directory is present.",
+      "PASS chromium: Playwright Chromium is installed and executable.",
+      "PASS database-variables: DATABASE_URL and TEST_DATABASE_URL contain valid PostgreSQL targets.",
+      "PASS database-safety: Development and test databases are distinct numeric-loopback targets; the test name ends in _test.",
+      "PASS postgres: The isolated PostgreSQL test database accepts a read-only connectivity probe; expected server_version_num >= 170000 and < 180000, detected 170011."
+    ]
+  },
+  {
+    "family": "format",
+    "originalRelativeLog": "logs/format.log",
+    "originalLogSha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  },
+  {
+    "family": "lint",
+    "originalRelativeLog": "logs/lint.log",
+    "originalLogSha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  },
+  {
+    "family": "types",
+    "originalRelativeLog": "logs/types.log",
+    "originalLogSha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  },
+  {
+    "family": "scripts",
+    "originalRelativeLog": "logs/scripts.log",
+    "originalLogSha256": "4db642c38e0fa090aa5cafd9fe97143752da00a09e61d97837af9d4cecff75e1",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  },
+  {
+    "family": "documentation",
+    "originalRelativeLog": "logs/documentation.log",
+    "originalLogSha256": "065846b2025568801d9f2586bc580ec27054d41146bdfe06db59e50aadd6c8d5",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": [
+      " Test Files  10 passed (10)",
+      "      Tests  83 passed (83)",
+      "   Duration  195.54s (transform 4.00s, setup 0ms, import 9.47s, tests 224.21s, environment 1ms)"
+    ]
+  },
+  {
+    "family": "api-parallel",
+    "originalRelativeLog": "logs/api-parallel.log",
+    "originalLogSha256": "12f75e233d5d365c97b091b35e1ea30dbde83baa6967dfd7a28e5967121bd856",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": [
+      " Test Files  187 passed | 1 skipped (188)",
+      "      Tests  3312 passed | 1 skipped (3313)",
+      "   Duration  2092.31s (transform 6.85s, setup 0ms, import 141.66s, tests 1924.99s, environment 19ms)"
+    ]
+  },
+  {
+    "family": "api-serial",
+    "originalRelativeLog": "logs/api-serial.log",
+    "originalLogSha256": "51767c4f7c166d31741b83043d35ae062f44d33429fcf1c651d5527e0605cf7a",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": [
+      " Test Files  8 passed (8)",
+      "      Tests  106 passed (106)",
+      "   Duration  63.59s (transform 2.32s, setup 0ms, import 11.31s, tests 51.15s, environment 1ms)"
+    ]
+  },
+  {
+    "family": "web-unit",
+    "originalRelativeLog": "logs/web-unit.log",
+    "originalLogSha256": "8677fed8bb39ba892e17a570a4c8de12ed4803e0c43d18eb2a91d9ef8656422e",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": [
+      " Test Files  195 passed (195)",
+      "      Tests  3177 passed (3177)",
+      "   Duration  313.67s (transform 7.35s, setup 29.48s, import 39.85s, tests 397.39s, environment 130.50s)"
+    ]
+  },
+  {
+    "family": "browser",
+    "originalRelativeLog": "local-browser/browser/playwright.log",
+    "originalLogSha256": "3f27dbbc42b29333d447ce1006e907098cde5ef4c71eb9ccc69270127bbde1ec",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": [
+      "  1 skipped",
+      "  707 passed (12.4m)"
+    ]
+  },
+  {
+    "family": "acceptance",
+    "originalRelativeLog": "local-browser/acceptance/playwright.log",
+    "originalLogSha256": "ad5d9c3a902e48ed4cdeecd7bff3c24460eb4793659fc118c358bd2ccc013527",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": [
+      "  116 passed (20.3m)"
+    ]
+  },
+  {
+    "family": "acceptance-evidence",
+    "originalRelativeLog": "logs/acceptance-evidence.log",
+    "originalLogSha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  },
+  {
+    "family": "build",
+    "originalRelativeLog": "logs/build.log",
+    "originalLogSha256": "06c94efdf49fcbf8aa6caf31f7e901097580e238d09eebef7afa21e3b0bd4cc0",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  },
+  {
+    "family": "railway-types",
+    "originalRelativeLog": "logs/railway-types.log",
+    "originalLogSha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  },
+  {
+    "family": "railway-tests",
+    "originalRelativeLog": "logs/railway-tests.log",
+    "originalLogSha256": "415468a073edaa1985f49cb8580d5b159434dffc7ec5e9e311cd51223e29ebd9",
+    "selection": "Summary lines only, not the complete original log.",
+    "lines": []
+  }
+]
