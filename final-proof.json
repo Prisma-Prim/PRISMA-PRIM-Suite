@@ -1,0 +1,391 @@
+{
+  "issue": 896,
+  "pr": 897,
+  "source": "a44c40e0e51bc390f7a0618c3e766aa44687f0b2",
+  "base": "c3a1f249180379569e01f18e238ca7d111c798d4",
+  "tree": "c3ccf0a16a59d10a8042841231ccca6020c26080",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40384549473,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473",
+    "attempt": 2,
+    "providerLatestJobAttempts": {
+      "checks": 2,
+      "scope": 2,
+      "postgres_image": 2,
+      "build": 2,
+      "packaging": 2,
+      "web_unit": 2,
+      "browser (1)": 2,
+      "browser (3)": 2,
+      "acceptance (2)": 2,
+      "api (1/3)": 2,
+      "api (2/3)": 2,
+      "api (3/3)": 2,
+      "acceptance (1)": 2,
+      "browser (2)": 2,
+      "api (serial)": 2,
+      "quality": 2
+    },
+    "actualExecutionOrigins": {
+      "checks": {
+        "actualJobId": 121789256200,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121789256200"
+      },
+      "scope": {
+        "actualJobId": 121789256301,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121789256301"
+      },
+      "postgres_image": {
+        "actualJobId": 121789358917,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121789358917"
+      },
+      "build": {
+        "actualJobId": 121790463464,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463464"
+      },
+      "packaging": {
+        "actualJobId": 121798975680,
+        "actualRunAttempt": 2,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121798975680"
+      },
+      "web_unit": {
+        "actualJobId": 121790463594,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463594"
+      },
+      "browser (1)": {
+        "actualJobId": 121790463736,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463736"
+      },
+      "browser (3)": {
+        "actualJobId": 121790463748,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463748"
+      },
+      "acceptance (2)": {
+        "actualJobId": 121790463809,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463809"
+      },
+      "api (1/3)": {
+        "actualJobId": 121790463812,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463812"
+      },
+      "api (2/3)": {
+        "actualJobId": 121790463818,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463818"
+      },
+      "api (3/3)": {
+        "actualJobId": 121790463829,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463829"
+      },
+      "acceptance (1)": {
+        "actualJobId": 121790463849,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463849"
+      },
+      "browser (2)": {
+        "actualJobId": 121790463852,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463852"
+      },
+      "api (serial)": {
+        "actualJobId": 121790463871,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121790463871"
+      },
+      "quality": {
+        "actualJobId": 121799814539,
+        "actualRunAttempt": 2,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40384549473/job/121799814539"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "source": "a44c40e0e51bc390f7a0618c3e766aa44687f0b2",
+    "actualApp": {
+      "passed": 10,
+      "viewports": [
+        "1440x900",
+        "390x844"
+      ],
+      "originalScreenshotsInspected": 6,
+      "screenshots": [
+        {
+          "privateRelativePath": "post-review-acceptance-evidence/client-commercial.acceptan-18349-dently-authorized-economics-operational-acceptance-desktop/client-commercial-economics-desktop.png",
+          "bytes": 129378,
+          "sha256": "3e354edc98eab7957a99974d91e7fc8fb032884b3e74de4e1500efa5d1a1bb36"
+        },
+        {
+          "privateRelativePath": "post-review-acceptance-evidence/client-commercial.acceptan-18349-dently-authorized-economics-operational-acceptance-desktop/client-commercial-first-desktop.png",
+          "bytes": 80835,
+          "sha256": "53429b0eb0025964e956ced8b10c5cda7e447267e2d3a83bd6032514901ba787"
+        },
+        {
+          "privateRelativePath": "post-review-acceptance-evidence/client-commercial.acceptan-18349-dently-authorized-economics-operational-acceptance-desktop/client-commercial-older-desktop.png",
+          "bytes": 33654,
+          "sha256": "3977e798214d6cd974c2e5588dc9301e1812c80eab30fd1f8621a4a06ce8ce77"
+        },
+        {
+          "privateRelativePath": "post-review-acceptance-evidence/client-commercial.acceptan-18349-dently-authorized-economics-operational-acceptance-narrow/client-commercial-economics-narrow.png",
+          "bytes": 128765,
+          "sha256": "d74e81e61493ef0ba1ff0d85bf38db76d7254c26368762d1d14da11f32538ab3"
+        },
+        {
+          "privateRelativePath": "post-review-acceptance-evidence/client-commercial.acceptan-18349-dently-authorized-economics-operational-acceptance-narrow/client-commercial-first-narrow.png",
+          "bytes": 36629,
+          "sha256": "9c4fcf96123e449859bf392f0fde2f03b31865d24d0d2cac959b7c1172a2db79"
+        },
+        {
+          "privateRelativePath": "post-review-acceptance-evidence/client-commercial.acceptan-18349-dently-authorized-economics-operational-acceptance-narrow/client-commercial-older-narrow.png",
+          "bytes": 31356,
+          "sha256": "0d35cf5d2ab1464cf79e221f44ef85a51c8b6579ba6f70a37749762d54969a6f"
+        }
+      ],
+      "newScenarios": 2,
+      "existingScenarios": 8
+    },
+    "affectedPostgres": {
+      "passed": 119,
+      "beforeFinalRepresentationCorrection": true
+    },
+    "finalIntakePostgres": {
+      "passed": 56,
+      "includesFinalUppercaseBoundaryCorrection": true
+    },
+    "finalPublicUI": {
+      "passed": 65,
+      "includesOriginalActivityAndRequestedRequestContracts": true,
+      "includesScopedTargetRetirementAndIdenticalUncertainCaptureRetry": true
+    },
+    "broaderDevelopmentVerification": {
+      "status": "passed before the bounded Spec correction; final correction has fresh strict types/lint,65 UI and10 real App cases; full independent CI still required",
+      "firstAttempt": {
+        "scriptsPassed": 487,
+        "apiPassed": 1510,
+        "dbInapplicableSkips": 1913,
+        "webPassed": 3190,
+        "webFailed": 2,
+        "identifiedCause": "Request heading focus affected the unchanged Activity section-focus contract; explicit Client-only focus target corrected it; no tests relaxed"
+      },
+      "testedSource": "343c3f613b79dcf24c00f19f2e167febcd38b287",
+      "passed": {
+        "scripts": 487,
+        "api": 1510,
+        "dbInapplicableSkips": 1913,
+        "web": 3192,
+        "apiAndWebBuilds": true
+      }
+    },
+    "prepublicationSpecCorrection": {
+      "finding": "P2 scoped exact-target read retirement",
+      "redCases": [
+        "held200 after Client union",
+        "held403 after Client union",
+        "unavailable Client scope navigation source"
+      ],
+      "resolved": true,
+      "commandsPreserved": true,
+      "ordinaryNavigationUnchanged": true
+    },
+    "firstIndependentCI": {
+      "run": 40380680160,
+      "source": "0f1ea0859251cee4a3841cc6e704ef5f4d5724ee",
+      "conclusion": "failure",
+      "failedJobs": [
+        "packaging",
+        "acceptance (1)",
+        "acceptance (2)",
+        "quality"
+      ],
+      "causes": [
+        "Official pinned Node image registry429 before construction",
+        "Two viewports of one existing foundation test used an ambiguous Company text selector after the new Company-attributed region was added"
+      ],
+      "correction": "One focused test-only commit; both original actual foundation journeys now pass; original runtime unchanged; full fresh CI required for new source",
+      "registryPrerequisiteRestored": {
+        "verifiedAt": "2026-10-26T18:59:17.498989+00:00",
+        "records": [
+          {
+            "name": "node",
+            "indexDigest": "sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df",
+            "amd64Digest": "sha256:e5a8dee7bc1e6a215d224a7ef8206f7e77271bc3cabd5febf2beafac0674f174",
+            "bothManifestByteHashesVerified": true
+          },
+          {
+            "name": "nginx",
+            "indexDigest": "sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284",
+            "amd64Digest": "sha256:09ab424a8c788f8d0fe3a64429f6d19dfa526885c8609b748d0943a75dcb9f8c",
+            "bothManifestByteHashesVerified": true
+          }
+        ],
+        "onlyMetadataRead": true,
+        "registryAndCredentialsUnchanged": true
+      }
+    },
+    "postpublicationFoundationCorrection": {
+      "actualAppCasesPassed": 2,
+      "viewports": [
+        "1440x900",
+        "390x844"
+      ],
+      "strictTypesPassed": true,
+      "lintAndFormatPassed": true,
+      "originalAssertionsAndBudgetsPreserved": true
+    },
+    "sameSourceRegistryRetry": {
+      "run": 40384549473,
+      "source": "a44c40e0e51bc390f7a0618c3e766aa44687f0b2",
+      "initialAttempt": 1,
+      "initialFailure": "Pinned Nginx acquisition Rate exceeded after verified Node acquisition; no image build reached",
+      "all10TestStepsAlreadyPassed": true,
+      "successfulJobsRetained": 14,
+      "onlyEligibleFailedJobs": [
+        "packaging",
+        "quality"
+      ],
+      "prerequisiteRestored": {
+        "verifiedAt": "2026-10-26T19:19:56.477197+00:00",
+        "image": "public.ecr.aws/docker/library/nginx@sha256:09ab424a8c788f8d0fe3a64429f6d19dfa526885c8609b748d0943a75dcb9f8c",
+        "configDigest": "sha256:c318e336065b17ff460aeac6d14bce5d0b13e35f25d5cb1843b635359fc00c9a",
+        "matchesVerifiedPinnedManifest": true,
+        "pullSucceeded": true,
+        "registryAndCredentialsUnchanged": true
+      },
+      "fullReplayPausedUntilDiagnosedPrerequisiteRestored": true
+    }
+  },
+  "review": {
+    "source": "a44c40e0e51bc390f7a0618c3e766aa44687f0b2",
+    "reviewedBase": "c3a1f249180379569e01f18e238ca7d111c798d4",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "preparation": {
+      "standards": {
+        "result": "PASS0",
+        "agent": "client896_standards",
+        "source": "343c3f613b79dcf24c00f19f2e167febcd38b287"
+      },
+      "spec": {
+        "agent": "client896_spec",
+        "source": "343c3f613b79dcf24c00f19f2e167febcd38b287",
+        "findings": 1,
+        "finding": "P2 inline exact-target Client-identity retirement",
+        "disposition": "Corrected before first publication; held200/403 after governed union, unavailable-scope lifetime and identical uncertain-capture retry regressions pass"
+      },
+      "finalDeltaSelfReview": "Standards/Spec PASS; signal belongs to inline read context, only queued/pending read is retired; commands, ordinary navigation, scopes and permissions unchanged"
+    },
+    "configuredOpeningReview": {
+      "commentId": 6424416442,
+      "source": "0f1ea0859251cee4a3841cc6e704ef5f4d5724ee",
+      "status": "completed",
+      "hasAnyFindings": false,
+      "hasUnresolvedFindings": false,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/897#issuecomment-6424416442"
+    },
+    "duplicateReviewRequested": false,
+    "postGreenReviewRequested": false,
+    "unresolvedThreads": 0,
+    "postpublicationCorrection": {
+      "parent": "0f1ea0859251cee4a3841cc6e704ef5f4d5724ee",
+      "source": "a44c40e0e51bc390f7a0618c3e766aa44687f0b2",
+      "scope": "Only scope the existing foundation Company assertion to its owning Shared details region and exact text. Same assertion and all scenario steps/budgets retained.",
+      "productionMaterialUnchanged": true,
+      "samePatternSearchComplete": true,
+      "strictAndLintPassed": true,
+      "actualFoundationCasesPassed": 2,
+      "standardsSpecDelta": "PASS; precise public region selector, no missing criterion or weakened check",
+      "existingReviewCarriedForward": true,
+      "newReviewRequested": false
+    },
+    "configuredAutomaticCorrectionReview": {
+      "source": "a44c40e0e51bc390f7a0618c3e766aa44687f0b2",
+      "status": "completed",
+      "trigger": "New commits; platform automatic, not requested by root",
+      "commentId": 6424416442,
+      "hasAnyFindings": false,
+      "hasUnresolvedFindings": false,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/897#issuecomment-6424416442"
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12682066472,
+      "name": "browser-evidence-pr-40384549473",
+      "size_in_bytes": 402032255,
+      "digest": "sha256:835ccd40193192575ce1cf01fd0c0617fd1f381000789f881bb242cb30965a4b",
+      "expires_at": "2026-11-09T19:32:36Z"
+    },
+    {
+      "id": 12681661635,
+      "name": "browser-evidence-part-acceptance-1-40384549473",
+      "size_in_bytes": 75208445,
+      "digest": "sha256:f36bbeb163336456f0d2eaa97fa410231d1d0c3ba3f8958d845022bea41e37b1",
+      "expires_at": "2026-11-09T19:26:11Z"
+    },
+    {
+      "id": 12680976600,
+      "name": "browser-evidence-part-acceptance-2-40384549473",
+      "size_in_bytes": 64361585,
+      "digest": "sha256:51e151a3fe7c4d2673b943285652bcdb7752b50d2f5228dd9ed208af063b5d81",
+      "expires_at": "2026-11-09T19:24:28Z"
+    },
+    {
+      "id": 12680366322,
+      "name": "browser-evidence-part-browser-3-40384549473",
+      "size_in_bytes": 71095683,
+      "digest": "sha256:5c45d0b0e784723c60cb5d3f7c621b6407f123d816ed04bde2a127769a27a323",
+      "expires_at": "2026-11-09T19:17:33Z"
+    },
+    {
+      "id": 12680181760,
+      "name": "browser-evidence-part-browser-1-40384549473",
+      "size_in_bytes": 113811497,
+      "digest": "sha256:f11d280ea537b565d4a600de408864a1877c419f9291b9687a90624798e1f762",
+      "expires_at": "2026-11-09T19:19:59Z"
+    },
+    {
+      "id": 12679354806,
+      "name": "browser-evidence-part-browser-2-40384549473",
+      "size_in_bytes": 77555133,
+      "digest": "sha256:f1843b485e7043dc1aab10b80ac5d1c4c9caf1c14f39fa8a47d09c77feb5cd6a",
+      "expires_at": "2026-11-09T19:19:11Z"
+    }
+  ],
+  "scope": "Approved Shared Client PRD21 commercial overview: complete current-Company/current-Client discovery before pagination, governed union/reversal reference identity, exact existing Request continuation and independently authorized economics. No new grant, migration, economic/workflow rule, provider, real-data activation or mission/Document runtime. MISSION-CLOSE-01 stays in its consolidated-question owner.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}
