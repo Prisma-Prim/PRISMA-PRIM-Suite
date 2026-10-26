@@ -34,6 +34,7 @@ type State =
         | 'unchanged';
     }
   | { kind: 'pending' | 'uncertain'; command: Command };
+export type ReviewAuthorityRefusal = 'unauthorized' | 'forbidden' | 'notFound';
 interface Props {
   snapshot: AvailableMissionReview;
   fresh: boolean;
@@ -41,6 +42,7 @@ interface Props {
   projectId: string;
   companyId?: string;
   onConfirmed: () => void;
+  onAuthorizationRefused: (status: ReviewAuthorityRefusal) => void;
 }
 
 /** This owner is retired on any consumed write capture change, without retiring readable history. */
@@ -51,6 +53,7 @@ export function MissionResultReviewForm({
   projectId,
   companyId,
   onConfirmed,
+  onAuthorizationRefused,
 }: Props) {
   const copy = useMissionReviewCopy();
   const [draft, setDraft] = useState<Intent>({
@@ -117,12 +120,14 @@ export function MissionResultReviewForm({
       if (response.status === 'unauthorized') {
         setDraft({ ...draft, basis: '', items: [] });
         setState({ kind: 'denied' });
+        onAuthorizationRefused(response.status);
         await identity.rejectSession();
         return;
       }
       if (response.status === 'forbidden' || response.status === 'notFound') {
         setDraft({ ...draft, basis: '', items: [] });
         setState({ kind: 'denied' });
+        onAuthorizationRefused(response.status);
         return;
       }
       if (response.status === 'conflict') {

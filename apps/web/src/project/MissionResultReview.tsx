@@ -9,7 +9,10 @@ import {
   type MissionReviewJudgment,
 } from './mission-result-review-response';
 import { useMissionReviewCopy } from './mission-result-review.copy';
-import { MissionResultReviewForm } from './MissionResultReviewForm';
+import {
+  MissionResultReviewForm,
+  type ReviewAuthorityRefusal,
+} from './MissionResultReviewForm';
 
 interface Props {
   actor: ActorContext;
@@ -72,15 +75,74 @@ export function MissionResultReview(props: Props) {
     c?.missionDeliverableAccessAssignmentId,
     c?.missionDeliverableAccessPermissionSetVersion,
   ]);
-  return <MissionReviewReader key={key} {...props} />;
+  return <MissionReviewScope key={key} {...props} />;
 }
+type ReadScope =
+  | { kind: 'fresh'; generation: number }
+  | { kind: 'writeRefused'; generation: number; reviewerKey: string }
+  | { kind: 'sessionRefused'; generation: number };
+interface ReaderProps extends Props {
+  reviewerKey: string;
+  deniedReviewerKey: string | null;
+  onAuthorizationRefused: (status: ReviewAuthorityRefusal) => void;
+}
+
+/** A command refusal retires every held read before independently revalidating readable history. */
+function MissionReviewScope(props: Props) {
+  const copy = useMissionReviewCopy();
+  const [scope, setScope] = useState<ReadScope>({
+    kind: 'fresh',
+    generation: 0,
+  });
+  const company = props.actor.activeCompany;
+  const reviewerKey = JSON.stringify([
+    company?.missionResultReviewPermissions,
+    company?.missionResultReviewerAssignmentId,
+    company?.missionResultReviewerPermissionSetVersion,
+  ]);
+  if (scope.kind === 'sessionRefused')
+    return (
+      <section
+        className="project-template-plan mission-result-review"
+        aria-label={copy('title')}
+      >
+        <h4>{copy('title')}</h4>
+        <p role="alert">{copy('denied')}</p>
+      </section>
+    );
+  return (
+    <MissionReviewReader
+      key={scope.generation}
+      {...props}
+      reviewerKey={reviewerKey}
+      deniedReviewerKey={
+        scope.kind === 'writeRefused' ? scope.reviewerKey : null
+      }
+      onAuthorizationRefused={(status) =>
+        setScope((current) =>
+          status === 'unauthorized'
+            ? { kind: 'sessionRefused', generation: current.generation + 1 }
+            : {
+                kind: 'writeRefused',
+                generation: current.generation + 1,
+                reviewerKey,
+              },
+        )
+      }
+    />
+  );
+}
+
 function MissionReviewReader({
   actor,
   identity,
   projectId,
   plan,
   onOpenTask,
-}: Props) {
+  reviewerKey,
+  deniedReviewerKey,
+  onAuthorizationRefused,
+}: ReaderProps) {
   const copy = useMissionReviewCopy();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [history, setHistory] = useState<History | null>(null);
@@ -219,12 +281,8 @@ function MissionReviewReader({
     return () => controller.abort();
   }, [older, companyId, identity, projectId, plan, retireProtectedRead]);
   const snapshot = load.kind === 'ready' ? load.snapshot : null;
-  const reviewerKey = JSON.stringify([
-    company?.missionResultReviewPermissions,
-    company?.missionResultReviewerAssignmentId,
-    company?.missionResultReviewerPermissionSetVersion,
-  ]);
   const canWrite =
+    deniedReviewerKey !== reviewerKey &&
     actor.active &&
     company?.missionResultReviewerPermissionSetVersion === 'v1' &&
     Boolean(company.missionResultReviewerAssignmentId) &&
@@ -295,6 +353,7 @@ function MissionReviewReader({
               identity={identity}
               projectId={projectId}
               companyId={companyId}
+              onAuthorizationRefused={onAuthorizationRefused}
               onConfirmed={() => setReload((n) => n + 1)}
             />
           )}
