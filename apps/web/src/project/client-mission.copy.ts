@@ -1,0 +1,122 @@
+import { defineMessages, useMessages } from '../localization/messages';
+
+const keys = [
+  'title',
+  'loading',
+  'empty',
+  'outOfRange',
+  'error',
+  'denied',
+  'refresh',
+  'retry',
+  'next',
+  'previous',
+  'openProject',
+  'previewTasks',
+  'page',
+  'hint',
+  'tasksFor',
+  'nextTasks',
+  'previousTasks',
+  'openTask',
+  'taskHint',
+] as const;
+const messages = defineMessages(keys, {
+  en: {
+    title: 'Client missions',
+    tasksFor: 'Tasks for',
+    nextTasks: 'Next Tasks',
+    previousTasks: 'Previous Tasks',
+    openTask: 'Open Task',
+    taskHint:
+      'Read-only preview. Open a Task to continue its work or examine its result.',
+    loading: 'Loading Client missions…',
+    empty: 'No Projects for this Client in this Company.',
+    outOfRange: 'No Projects on this page. Go back or refresh.',
+    error: 'Client missions could not be loaded.',
+    denied:
+      'Client missions are unavailable with your current access or Client identity.',
+    refresh: 'Refresh missions from beginning',
+    retry: 'Retry this page',
+    next: 'Next missions',
+    previous: 'Previous missions',
+    openProject: 'Open Project',
+    previewTasks: 'View Tasks',
+    page: 'Page',
+    hint: 'All recorded Project states are included. Open a Project to continue its work and review its results.',
+  },
+  ro: {
+    title: 'Misiunile Clientului',
+    tasksFor: 'Sarcinile Proiectului',
+    nextTasks: 'Sarcinile următoare',
+    previousTasks: 'Sarcinile precedente',
+    openTask: 'Deschide Sarcina',
+    taskHint:
+      'Previzualizare doar pentru citire. Deschideți o Sarcină pentru a continua lucrul sau a examina rezultatul.',
+    loading: 'Se încarcă misiunile Clientului…',
+    empty: 'Nu există Proiecte pentru acest Client în această Companie.',
+    outOfRange:
+      'Nu există Proiecte pe această pagină. Reveniți sau actualizați.',
+    error: 'Misiunile Clientului nu au putut fi încărcate.',
+    denied:
+      'Misiunile Clientului nu sunt disponibile cu accesul sau identitatea curentă a Clientului.',
+    refresh: 'Actualizează misiunile de la început',
+    retry: 'Reîncearcă această pagină',
+    next: 'Misiunile următoare',
+    previous: 'Misiunile precedente',
+    openProject: 'Deschide Proiectul',
+    previewTasks: 'Vezi Sarcinile',
+    page: 'Pagina',
+    hint: 'Sunt incluse toate stările înregistrate ale Proiectelor. Deschideți un Proiect pentru a continua lucrul și a examina rezultatele.',
+  },
+  fr: {
+    title: 'Missions du client',
+    tasksFor: 'Tâches du projet',
+    nextTasks: 'Tâches suivantes',
+    previousTasks: 'Tâches précédentes',
+    openTask: 'Ouvrir la tâche',
+    taskHint:
+      'Aperçu en lecture seule. Ouvrez une tâche pour poursuivre le travail ou examiner son résultat.',
+    loading: 'Chargement des missions du client…',
+    empty: 'Aucun projet pour ce client dans cette entreprise.',
+    outOfRange: 'Aucun projet sur cette page. Revenez ou actualisez.',
+    error: 'Impossible de charger les missions du client.',
+    denied:
+      'Les missions sont indisponibles avec vos droits ou l’identité actuelle du client.',
+    refresh: 'Actualiser les missions depuis le début',
+    retry: 'Réessayer cette page',
+    next: 'Missions suivantes',
+    previous: 'Missions précédentes',
+    openProject: 'Ouvrir le projet',
+    previewTasks: 'Voir les tâches',
+    page: 'Page',
+    hint: 'Tous les états enregistrés des projets sont inclus. Ouvrez un projet pour poursuivre le travail et examiner ses résultats.',
+  },
+  ru: {
+    title: 'Работы клиента',
+    tasksFor: 'Задачи проекта',
+    nextTasks: 'Следующие задачи',
+    previousTasks: 'Предыдущие задачи',
+    openTask: 'Открыть задачу',
+    taskHint:
+      'Предварительный просмотр. Откройте задачу, чтобы продолжить работу или рассмотреть результат.',
+    loading: 'Загрузка работ клиента…',
+    empty: 'У этого клиента нет проектов в этой компании.',
+    outOfRange:
+      'На этой странице нет проектов. Вернитесь назад или обновите список.',
+    error: 'Не удалось загрузить работы клиента.',
+    denied:
+      'Работы клиента недоступны с текущими правами или идентичностью клиента.',
+    refresh: 'Обновить работы с начала',
+    retry: 'Повторить загрузку страницы',
+    next: 'Следующие работы',
+    previous: 'Предыдущие работы',
+    openProject: 'Открыть проект',
+    previewTasks: 'Показать задачи',
+    page: 'Страница',
+    hint: 'Показаны все зарегистрированные состояния проектов. Откройте проект, чтобы продолжить работу и рассмотреть результаты.',
+  },
+});
+export function useClientMissionCopy() {
+  return useMessages(messages);
+}
