@@ -81,17 +81,19 @@ without widening oldv1; the flat plan defines no stage or completion obligation.
 Its runtime child follows the merged contract, after delivered D3/D4 under #820.
 
 The [mission-obligation contract](release-1-mission-obligations-prd.md)
-under #881 now approves §13's bounded read-only activity/result readiness outcome
-under Dan's explicit instruction to apply the established rules. The broader
-mutation directions remain separately qualified; no implementation or operational
-activation is implied by this documentation approval. The completed anonymous
-milestone and ordinary lifecycle retain their delivered scope.
+owns delivered read-only §13 (#883 / PR #884) and the complete approved next
+attributable human-review contract in §14 under #885, applying Dan's established
+rules instruction. §14 accepts exact declared-result evidence or a protected
+literal external/physical evidence reference, with human judgment and immutable
+history. Its runtime child follows documentation delivery and readiness checks.
+Guarded policy adoption/completion and scoped applicability remain separate;
+neither ordinary completion nor real operational activation is implied.
 
 Its [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
 owns pending first-tenant questions for Dan's single consolidated email. Preserve
 `MISSION-CLOSE-01` across handoffs; do not repeatedly ask individual questions or
-infer a certification-policy answer. The readiness outcome is independently ready
-without that answer.
+infer a certification-policy answer. The delivered readiness and next review outcome do not
+require that answer.
 
 ## 4. Cross-cutting PRDs
 
