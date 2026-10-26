@@ -16,6 +16,30 @@ export function readCommercialIntakeView(query: unknown): 'all' | 'mine_open' {
   invalidPage();
 }
 
+export function readCommercialIntakeScope(
+  query: unknown,
+): { kind: 'all' | 'mine_open' } | { kind: 'client'; clientDossierId: string } {
+  const view = readCommercialIntakeView(query);
+  if (typeof query !== 'object' || query === null || Array.isArray(query))
+    invalidPage();
+  if (Object.keys(query).some((key) => key.startsWith('clientDossierId[')))
+    invalidPage();
+  if (!('clientDossierId' in query) || query.clientDossierId === undefined)
+    return { kind: view };
+  if (
+    view !== 'all' ||
+    typeof query.clientDossierId !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      query.clientDossierId,
+    )
+  )
+    invalidPage();
+  return {
+    kind: 'client',
+    clientDossierId: query.clientDossierId.toLowerCase(),
+  };
+}
+
 export function readCommercialIntakeLimit(value: unknown): number {
   if (value === undefined) return 25;
   if (typeof value !== 'string' || !/^\d+$/.test(value)) invalidPage();

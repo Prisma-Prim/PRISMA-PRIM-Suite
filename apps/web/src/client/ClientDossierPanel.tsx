@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  type ReactNode,
   type Ref,
   useContext,
   useCallback,
@@ -112,6 +113,7 @@ export function ClientDossierPanel({
   onOpenProjects,
   onOpenDocuments,
   onOpenRequests,
+  renderCommercialWork,
 }: {
   clientAccountId: string | undefined;
   companyContextId: string;
@@ -127,6 +129,7 @@ export function ClientDossierPanel({
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
   onOpenDocuments?: (client: { id: string; displayName: string }) => void;
   onOpenRequests?: (client: { id: string; displayName: string }) => void;
+  renderCommercialWork?: (clientDossierId: string) => ReactNode;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const copy = useClientDossierCopy();
@@ -566,6 +569,7 @@ export function ClientDossierPanel({
           )}
         </section>
       </div>
+      {renderCommercialWork?.(dossier.id)}
       <ClientLegalEntities
         key={dossier.id}
         clientAccountId={dossier.id}
