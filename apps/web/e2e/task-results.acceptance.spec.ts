@@ -335,3 +335,306 @@ test('records a Task result, preserves its exact superseded PDF, corrects and co
     for (const bundle of [...grants].reverse()) await assign(bundle, false);
   }
 });
+
+// Seed through public REST; the new read/reload/navigation outcome uses the actual App.
+test('inspects mission readiness without accepting work and preserves independent evidence access', async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const narrow = info.project.name.endsWith('narrow');
+  const companyId = text(process.env.ACCEPTANCE_PRIMARY_COMPANY_ID),
+    membershipId = text(process.env.ACCEPTANCE_PRIMARY_MEMBERSHIP_ID);
+  const headers = { ...ada, 'x-company-context-id': companyId },
+    title = `Mission readiness DEMO ${narrow ? 'narrow' : 'desktop'}`;
+  const bundles = [
+    'project-template-user',
+    'mission-deliverable-access',
+    'document-content-reader',
+    'document-content-uploader',
+    'document-approver',
+    'document-project-organizer',
+    'task-result-recorder',
+  ];
+  const granted = new Set<string>();
+  async function assign(bundle: string, active: boolean) {
+    const path = `${origin}/company-${bundle}-assignments`,
+      options = { headers: { ...owner, 'idempotency-key': randomUUID() } };
+    const response = active
+      ? await page.request.post(path, {
+          ...options,
+          data: { companyId, workspaceMembershipId: membershipId },
+        })
+      : await page.request.delete(
+          `${path}/${membershipId}/${companyId}`,
+          options,
+        );
+    expect(response.status()).toBe(active ? 201 : 200);
+    if (active) granted.add(bundle);
+    else granted.delete(bundle);
+  }
+  async function post(path: string, data: unknown) {
+    const response = await page.request.post(`${origin}${path}`, {
+      headers: { ...headers, 'idempotency-key': randomUUID() },
+      data,
+    });
+    expect(response.status()).toBe(201);
+    return record(await response.json());
+  }
+  async function openProject() {
+    await page.goto('/');
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await selectOption(
+      page.getByLabel('Active Company', { exact: true }),
+      companyId,
+    );
+    if (narrow)
+      await page.getByRole('button', { name: 'Close navigation' }).click();
+    await navigate(page, 'Projects', narrow);
+    const projects = page.locator('.project-workspace');
+    await projects
+      .getByRole('searchbox', { name: 'Find Projects' })
+      .fill(title);
+    await projects
+      .getByRole('list', { name: 'Projects', exact: true })
+      .getByRole('button', { name: new RegExp(title, 'u') })
+      .click();
+    return projects;
+  }
+  try {
+    for (const bundle of bundles) await assign(bundle, true);
+    expect(
+      (
+        await page.request.post(`${origin}/company-context-assignments`, {
+          headers: { ...owner, 'idempotency-key': randomUUID() },
+          data: {
+            companyId: text(process.env.ACCEPTANCE_OTHER_COMPANY_ID),
+            workspaceMembershipId: membershipId,
+          },
+        })
+      ).status(),
+    ).toBe(201);
+
+    const clientId = text(
+      (await post('/clients', { displayName: title + ' Client' })).id,
+    );
+    const projectId = text(
+      (
+        await post('/projects/from-template', {
+          title,
+          clientAccountId: clientId,
+          templateKey: 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE',
+          templateVersion: 1,
+        })
+      ).id,
+    );
+    const planResponse = await page.request.get(
+      `${origin}/projects/${projectId}/template`,
+      { headers },
+    );
+    expect(planResponse.status()).toBe(200);
+    const plan = record(record(await planResponse.json()).template);
+    if (!Array.isArray(plan.activities))
+      throw new Error('Missing copied activities');
+    const [first, second, third] = plan.activities.map((value) =>
+      text(record(value).taskId),
+    );
+    if (!first || !second || !third) throw new Error('Missing mapped Tasks');
+    const pdf = await readFile(
+      new URL(
+        '../../api/test-support/fixtures/questionnaire-demo.pdf',
+        import.meta.url,
+      ),
+    );
+    const document = await post('/documents', {
+      type: 'mission-deliverable',
+      clientId,
+      title: title + ' PDF',
+      purpose: 'Synthetic readiness evidence',
+    });
+    const documentId = text(document.id),
+      versionId = text(record(document.version).id),
+      declaration = `Literal readiness result ${narrow ? 'narrow' : 'desktop'} DEMO883`;
+    const upload = await page.request.post(
+      `${origin}/documents/${documentId}/versions/${versionId}/content?expectedRevision=1&fileName=readiness-demo.pdf`,
+      {
+        headers: {
+          ...headers,
+          'idempotency-key': randomUUID(),
+          'content-type': 'application/pdf',
+        },
+        data: pdf,
+      },
+    );
+    expect(upload.status()).toBe(201);
+    expect(
+      (
+        await page.request.post(
+          `${origin}/documents/${documentId}/versions/${versionId}/official-designation`,
+          {
+            headers: { ...headers, 'idempotency-key': randomUUID() },
+            data: { expectedRevision: 2 },
+          },
+        )
+      ).status(),
+    ).toBe(200);
+    await post(`/documents/${documentId}/project-association`, {
+      action: 'link',
+      projectId,
+      expectedRevision: 0,
+    });
+    await post(`/tasks/${third}/results`, {
+      expectedTaskVersion: 1,
+      expectedResultRevision: 0,
+      documentId,
+      versionId,
+      declaration,
+    });
+    for (const taskId of [first, third])
+      await post(`/tasks/${taskId}/complete`, { expectedVersion: 1 });
+    await post(`/tasks/${second}/cancel`, {
+      expectedVersion: 1,
+      reason: 'Cancellation is not fulfillment DEMO',
+    });
+    const projects = await openProject();
+    let readiness = projects.getByRole('region', {
+      name: 'Mission readiness',
+      exact: true,
+    });
+    await expect(readiness.getByRole('listitem')).toHaveCount(13);
+    await expect(
+      readiness.getByText('Task done; no recorded result', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      readiness.getByText('Work cancelled; not fulfilled', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      readiness.getByText('Task done; recorded result not reviewed', {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(readiness.getByText('Work open', { exact: true })).toHaveCount(
+      10,
+    );
+    await expect(
+      readiness.getByText('Certificare obținută', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      readiness.getByText(
+        'Whether the mission can close before certification, and the evidence required, await business clarification.',
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await readiness
+      .getByRole('button', { name: 'Open Task — CT_AN03', exact: true })
+      .click();
+    const results = projects.locator('.task-results');
+    await expect(results.getByText(declaration, { exact: true })).toBeVisible();
+    await exactDownload(
+      page,
+      results.getByRole('button', { name: /Download exact PDF/u }),
+      pdf,
+    );
+    await post(`/tasks/${first}/reopen`, { expectedVersion: 2 });
+    await readiness
+      .getByRole('button', { name: 'Reload mission readiness', exact: true })
+      .click();
+    await expect(readiness.getByText('Work open', { exact: true })).toHaveCount(
+      11,
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+    await readiness.screenshot({
+      path: info.outputPath('mission-readiness.png'),
+    });
+
+    let releaseOld = () => {},
+      markHeld = () => {};
+    const oldGate = new Promise<void>((resolve) => {
+      releaseOld = resolve;
+    });
+    const held = new Promise<void>((resolve) => {
+      markHeld = resolve;
+    });
+    let firstRead = true;
+    const pattern = `**/api/projects/${projectId}/mission-readiness`;
+    await page.route(pattern, async (route) => {
+      const response = await route.fetch();
+      if (firstRead) {
+        firstRead = false;
+        markHeld();
+        await oldGate;
+      }
+      await route.fulfill({ response });
+    });
+    await readiness
+      .getByRole('button', { name: 'Reload mission readiness', exact: true })
+      .click();
+    await held;
+    await assign('document-content-reader', false);
+    // A real Company change retires the old App owner, then the same Project
+    // is reopened under newly observed evidence denial before releasing old data.
+    try {
+      if (narrow)
+        await page.getByRole('button', { name: 'Open navigation' }).click();
+      await selectOption(
+        page.getByLabel('Active Company', { exact: true }),
+        text(process.env.ACCEPTANCE_OTHER_COMPANY_ID),
+      );
+      await expect(readiness).toHaveCount(0);
+      await selectOption(
+        page.getByLabel('Active Company', { exact: true }),
+        companyId,
+      );
+      if (narrow)
+        await page.getByRole('button', { name: 'Close navigation' }).click();
+      await navigate(page, 'Projects', narrow);
+      await projects
+        .getByRole('searchbox', { name: 'Find Projects' })
+        .fill(title);
+      await projects
+        .getByRole('list', { name: 'Projects', exact: true })
+        .getByRole('button', { name: new RegExp(title, 'u') })
+        .click();
+      await expect(
+        readiness.getByText('Task done; evidence unavailable', { exact: true }),
+      ).toBeVisible();
+    } finally {
+      releaseOld();
+    }
+
+    readiness = projects.getByRole('region', {
+      name: 'Mission readiness',
+      exact: true,
+    });
+    await expect(
+      readiness.getByText('Task done; evidence unavailable', { exact: true }),
+    ).toBeVisible();
+    await expect(readiness.getByText(declaration, { exact: true })).toHaveCount(
+      0,
+    );
+    await expect(
+      readiness.getByText(title + ' PDF', { exact: false }),
+    ).toHaveCount(0);
+    await expect(
+      projects
+        .getByRole('region', { name: 'Plan copied from template', exact: true })
+        .getByRole('listitem'),
+    ).toHaveCount(13);
+  } finally {
+    expect(
+      (
+        await page.request.delete(
+          `${origin}/company-context-assignments/${membershipId}/${text(process.env.ACCEPTANCE_OTHER_COMPANY_ID)}`,
+          { headers: { ...owner, 'idempotency-key': randomUUID() } },
+        )
+      ).status(),
+    ).toBe(200);
+    for (const bundle of [...granted].reverse()) await assign(bundle, false);
+  }
+});

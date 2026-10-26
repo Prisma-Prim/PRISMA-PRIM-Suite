@@ -10,6 +10,7 @@ import { ProjectModule } from '../project/project.module.js';
 import { TaskModule } from '../task/task.module.js';
 import { ProjectStageService } from './project-stage.service.js';
 import { ProjectTemplateService } from './project-template.service.js';
+import { MissionReadinessService } from './mission-readiness.service.js';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ProjectTemplateService } from './project-template.service.js';
     TaskModule,
   ],
   providers: [
+    MissionReadinessService,
     ProjectTemplateAccessService,
     ProjectStageAccessService,
     ProjectTemplateService,
@@ -28,6 +30,7 @@ import { ProjectTemplateService } from './project-template.service.js';
     ProjectStageService,
   ],
   exports: [
+    MissionReadinessService,
     ProjectTemplateService,
     ProjectStageService,
     ProjectTemplateVersionService,
