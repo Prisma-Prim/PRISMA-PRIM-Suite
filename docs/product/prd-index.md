@@ -80,12 +80,18 @@ and their intended results. Explicit captured Template User v2 adds pilot access
 without widening oldv1; the flat plan defines no stage or completion obligation.
 Its runtime child follows the merged contract, after delivered D3/D4 under #820.
 
-The [D5/D13 mission-obligation proposal](release-1-mission-obligations-prd.md)
-under #879 is **Draft, ready for product review**. It owns the proposed required
-work/evidence, applicability decisions and reviewed consulting-completion basis.
-Its three business decisions A–C remain pending. It changes no approved behavior,
-activates no runtime and creates no ready implementation child. The completed
-anonymous milestone and ordinary lifecycle retain their delivered scope.
+The [mission-obligation contract](release-1-mission-obligations-prd.md)
+under #881 now approves §13's bounded read-only activity/result readiness outcome
+under Dan's explicit instruction to apply the established rules. The broader
+mutation directions remain separately qualified; no implementation or operational
+activation is implied by this documentation approval. The completed anonymous
+milestone and ordinary lifecycle retain their delivered scope.
+
+Its [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+owns pending first-tenant questions for Dan's single consolidated email. Preserve
+`MISSION-CLOSE-01` across handoffs; do not repeatedly ask individual questions or
+infer a certification-policy answer. The readiness outcome is independently ready
+without that answer.
 
 ## 4. Cross-cutting PRDs
 

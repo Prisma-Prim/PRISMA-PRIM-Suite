@@ -1270,12 +1270,15 @@ content/prices/numbering/signatures and deployment remain separate. No unresolve
 real numbering, legal or certification decision blocks this anonymous planning
 mechanism; none is silently decided by it.
 
-## 29. Draft mission obligations, exceptions and closure proposal (#879)
+## 29. Approved bounded mission readiness and later governance (#881)
 
-The [separate D5/D13 proposal](release-1-mission-obligations-prd.md) is Draft,
-ready for product review with decisions A–C pending. It owns only proposed
-obligation progress, reasoned applicability and reviewed consulting completion.
-It does not amend approved §§20,23,27,28, classify existing Tasks as mandatory,
-enable pilot stage advancement or authorize runtime work. The completed anonymous
-milestone remains delivered. Normalize any approved extension and its cross-cutting
-authority before creating a ready implementation child.
+The [mission-obligation contract](release-1-mission-obligations-prd.md) approves
+§13's first read-only thirteen-activity/result-readiness outcome under Dan's
+2026-10-26 authorization. It changes no ordinary Task/Project completion, enables
+no pilot stage transition and adopts no completion policy. Later mutation outcomes
+must first obtain their complete bounded contracts and readiness checks.
+
+The same PRD's [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+retains `MISSION-CLOSE-01` for Dan to forward with other still-open questions in
+one email to Iurie. It is not an answered policy or a blocker of the independent
+read-only outcome. No real grant or certification claim follows.
