@@ -1,3 +1,5 @@
+import { storedModelOfferSnapshot } from './model-offer-snapshot.js';
+import { offers } from '../database/schema/index.js';
 import { and, eq } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import type { DatabaseContext } from '../database/database-context.js';
@@ -41,8 +43,22 @@ export class OfferVersionDifferences {
     const mixed =
       previous.provenance !== 'ILLUSTRATIVE' ||
       version.provenance !== 'ILLUSTRATIVE';
-    const before = await this.fields({ actor, version: previous, mixed });
-    const after = await this.fields({ actor, version, snapshot, mixed });
+    const includeModel =
+      previous.provenance === 'COMPANY_MODEL_ESTIMATE' ||
+      version.provenance === 'COMPANY_MODEL_ESTIMATE';
+    const before = await this.fields({
+      actor,
+      version: previous,
+      mixed,
+      includeModel,
+    });
+    const after = await this.fields({
+      actor,
+      version,
+      snapshot,
+      mixed,
+      includeModel,
+    });
     return Object.entries(after).map(([field, current]) => ({
       field,
       previous: before[field] ?? null,
@@ -56,11 +72,13 @@ export class OfferVersionDifferences {
     version,
     snapshot,
     mixed,
+    includeModel,
   }: {
     actor: ActorContext;
     version: Version;
     snapshot?: PricingSnapshotRecord;
     mixed: boolean;
+    includeModel: boolean;
   }): Promise<Fields> {
     const content = {
       recipientKind: version.recipientKind,
@@ -74,9 +92,53 @@ export class OfferVersionDifferences {
       scopeNote: version.scopeNote,
       commercialConditions: version.commercialConditions,
     };
+    const modelFields: Fields = includeModel
+      ? {
+          modelVersionId: null,
+          modelVersionNumber: null,
+          modelApprovalDecisionId: null,
+          taxAmount: null,
+          taxLabel: null,
+          declarationBasis: null,
+          grossAmount: null,
+        }
+      : {};
+    if (version.provenance === 'COMPANY_MODEL_ESTIMATE') {
+      const [offer] = await this.database.connection
+        .select({ reference: offers.illustrativeReference })
+        .from(offers)
+        .where(
+          and(
+            eq(offers.workspaceId, version.workspaceId),
+            eq(offers.companyId, version.companyId),
+            eq(offers.id, version.offerId),
+          ),
+        );
+      if (!offer) throw new Error('Missing Offer identity.');
+      const frozen = storedModelOfferSnapshot(version, offer.reference);
+      return {
+        ...content,
+        pricingSnapshotId: null,
+        currency: frozen.priceSource.currency,
+        total: frozen.financialDeclaration.grossAmount,
+        priceSourceKind: 'DIRECTOR_APPROVED_ESTIMATE',
+        estimateVersionId: frozen.priceSource.estimateVersionId,
+        estimateVersionNumber: frozen.priceSource.estimateVersionNumber,
+        approvalDecisionId: frozen.priceSource.approvalDecisionId,
+        amount: frozen.priceSource.amount,
+        modelVersionId: frozen.modelSource.versionId,
+        modelVersionNumber: frozen.modelSource.versionNumber,
+        modelApprovalDecisionId: frozen.modelSource.approvalDecisionId,
+        taxAmount: frozen.financialDeclaration.taxAmount,
+        taxLabel: frozen.financialDeclaration.taxLabel,
+        declarationBasis: frozen.financialDeclaration.basis,
+        grossAmount: frozen.financialDeclaration.grossAmount,
+      };
+    }
     if (version.provenance === 'APPROVED_ESTIMATE_INTERNAL_DRAFT')
       return {
         ...content,
+        ...modelFields,
         pricingSnapshotId: null,
         currency: version.estimateSourceCurrency,
         total: null,
@@ -113,6 +175,7 @@ export class OfferVersionDifferences {
       commercialConditions: content.commercialConditions,
       ...(mixed
         ? {
+            ...modelFields,
             priceSourceKind: 'ILLUSTRATIVE_SNAPSHOT',
             estimateVersionId: null,
             estimateVersionNumber: null,

@@ -30,6 +30,7 @@ export interface ApplicationSection {
     | 'catalogue'
     | 'pricing'
     | 'offer-models'
+    | 'contract-models'
     | 'projects'
     | 'my-tasks'
     | 'unassigned-tasks'

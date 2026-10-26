@@ -338,9 +338,11 @@ describe('Contract history in the Activity Log', () => {
     expect(
       await screen.findByText(`Original source of ${subject}`),
     ).toBeVisible();
-    expect(
-      await within(contractRegion()).findByText('Conditions of version 1'),
-    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        within(contractRegion()).getByText('Conditions of version 1'),
+      ).toBeVisible(),
+    );
     expect(
       within(contractRegion()).getByText(
         'Historical version — preserved; no further decision or signature.',

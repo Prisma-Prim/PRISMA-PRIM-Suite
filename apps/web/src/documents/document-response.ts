@@ -2,6 +2,10 @@ import {
   readDocumentPdfContent,
   type DocumentPdfContent,
 } from './document-pdf-response';
+import {
+  readReceivedContractRelation,
+  type ReceivedContractRelation,
+} from './received-contract-response';
 interface WorkingDocumentBase {
   id: string;
   companyId: string;
@@ -17,7 +21,8 @@ interface WorkingDocumentBase {
   /** Allowed only while the original Client is active and a draft exists. */
   correction: 'allowed' | 'read-only';
 }
-export type DocumentFamily = 'questionnaire' | 'mission-deliverable';
+export type DocumentFamily =
+  'questionnaire' | 'mission-deliverable' | 'received-contract';
 type WorkingVersion = { id: string; status: 'draft' | 'official' };
 export type WorkingDocument = WorkingDocumentBase &
   (
@@ -28,6 +33,11 @@ export type WorkingDocument = WorkingDocumentBase &
     | {
         type: 'mission-deliverable';
         version: WorkingVersion & { representation: null };
+      }
+    | {
+        type: 'received-contract';
+        version: WorkingVersion & { representation: null };
+        receivedContractRelation: ReceivedContractRelation;
       }
   );
 /** One unverified external reference; its URL only under Representation read. */
@@ -96,7 +106,9 @@ export function readDocument(value: unknown): WorkingDocument {
   const row = record(value);
   const version = record(row.version);
   if (
-    (row.type !== 'questionnaire' && row.type !== 'mission-deliverable') ||
+    (row.type !== 'questionnaire' &&
+      row.type !== 'mission-deliverable' &&
+      row.type !== 'received-contract') ||
     row.confidentiality !== 'company-confidential' ||
     (version.status !== 'draft' && version.status !== 'official') ||
     (row.correction !== 'allowed' && row.correction !== 'read-only')
@@ -131,6 +143,15 @@ export function readDocument(value: unknown): WorkingDocument {
     };
   if (version.representation !== null)
     throw new Error('Invalid mission Document reference');
+  if (row.type === 'received-contract')
+    return {
+      ...base,
+      type: row.type,
+      version: { ...working, representation: null },
+      receivedContractRelation: readReceivedContractRelation(
+        row.receivedContractRelation,
+      ),
+    };
   return {
     ...base,
     type: row.type,
@@ -352,7 +373,7 @@ function readDocumentVersion(
     pdfContent: readDocumentPdfContent(row.pdfContent),
   };
   if (
-    family === 'mission-deliverable' &&
+    family !== 'questionnaire' &&
     row.status !== 'draft' &&
     base.pdfContent.state !== 'stored'
   )

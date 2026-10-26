@@ -14,6 +14,7 @@ import {
   requireUuid,
 } from '../access/access-command-validation.js';
 import type { ActorContext } from '../access/access.types.js';
+import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { OfferModelAccessService } from '../access/offer-model-access.service.js';
 import { AccountabilityService } from '../accountability/accountability.service.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
@@ -45,6 +46,7 @@ import {
   type ModelRow,
   type ModelVersionRow,
   type OfferModelResult,
+  storedContent,
 } from './offer-model.view.js';
 
 interface CommandInput {
@@ -66,6 +68,7 @@ export class OfferModelService {
   constructor(
     private readonly database: DatabaseContext,
     private readonly access: OfferModelAccessService,
+    private readonly companyAuthorization: CompanyContextAuthorization,
     private readonly accountability: AccountabilityService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {
@@ -80,6 +83,36 @@ export class OfferModelService {
   }
   withdraw(input: CommandInput & { versionId: string }) {
     return this.command({ ...input, kind: 'WITHDRAW' });
+  }
+
+  readSelectionForOffer({ actor }: { actor: ActorContext }) {
+    return this.database
+      .transaction(async () => ({
+        selection: await this.selectionForOffer({ actor, lock: 'share' }),
+      }))
+      .catch(safeFailure);
+  }
+
+  /** Borrow the Offer caller's transaction; retain the root lock through commit. */
+  async requireSelectedForOfferWithinTransaction(input: {
+    actor: ActorContext;
+    versionId: string;
+    versionNumber: number;
+  }) {
+    const selection = await this.selectionForOffer({
+      actor: input.actor,
+      lock: 'update',
+    });
+    if (
+      !selection ||
+      selection.versionId !== input.versionId ||
+      selection.versionNumber !== input.versionNumber
+    )
+      throw conflict(
+        'OFFER_MODEL_SELECTION_UNAVAILABLE',
+        'The selected Offer model is unavailable for new use.',
+      );
+    return selection;
   }
 
   read({ actor }: { actor: ActorContext }) {
@@ -362,6 +395,69 @@ export class OfferModelService {
       recordedAt: now,
     });
     return result;
+  }
+
+  private async selectionForOffer({
+    actor,
+    lock,
+  }: {
+    actor: ActorContext;
+    lock: 'share' | 'update';
+  }) {
+    const companyId = await this.companyAuthorization.requireOfferAccess(
+      actor,
+      ['commercial.offer.model.select'],
+      true,
+    );
+    const model = await this.root({ actor, companyId, lock });
+    if (!model?.activeVersionId) return null;
+    const version = await this.exactVersion({
+      model,
+      versionId: model.activeVersionId,
+    });
+    const [decision] = await this.database.connection
+      .select({
+        id: offerModelDecisions.id,
+        outcome: offerModelDecisions.outcome,
+        versionNumber: offerModelDecisions.versionNumber,
+        actorMembershipId: offerModelDecisions.actorMembershipId,
+        actorInternalUserId: offerModelDecisions.actorInternalUserId,
+        recordedAt: offerModelDecisions.recordedAt,
+      })
+      .from(offerModelDecisions)
+      .where(
+        and(
+          eq(offerModelDecisions.workspaceId, actor.workspaceId),
+          eq(offerModelDecisions.companyId, companyId),
+          eq(offerModelDecisions.modelId, model.id),
+          eq(offerModelDecisions.versionId, version.id),
+        ),
+      );
+    if (
+      !decision ||
+      decision.outcome !== 'APPROVE' ||
+      decision.versionNumber !== version.versionNumber
+    )
+      throw invalidStoredModel();
+    return {
+      kind: 'APPROVED_COMPANY_OFFER_MODEL',
+      modelId: model.id,
+      code: OFFER_MODEL_CODE,
+      language: OFFER_MODEL_LANGUAGE,
+      versionId: version.id,
+      versionNumber: version.versionNumber,
+      approvalDecisionId: decision.id,
+      approvedAt: decision.recordedAt.toISOString(),
+      approvedBy: {
+        workspaceMembershipId: decision.actorMembershipId,
+        internalUserId: decision.actorInternalUserId,
+      },
+      content: storedContent(version.content),
+    } satisfies {
+      kind: 'APPROVED_COMPANY_OFFER_MODEL';
+      code: typeof OFFER_MODEL_CODE;
+      language: typeof OFFER_MODEL_LANGUAGE;
+    } & Record<string, unknown>;
   }
 
   private async root({

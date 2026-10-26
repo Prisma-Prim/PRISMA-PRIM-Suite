@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createServer, type Server, type Socket } from 'node:net';
+import { openDocumentScannerFixture } from './document-scanner.test-support.js';
 import {
   createIsolatedPostgresTestDatabase,
   type IsolatedPostgresTestDatabase,
@@ -45,62 +45,10 @@ export async function createMissionDocumentFixture(
   let companyId: string;
   let membershipId: string;
   let clientId: string;
-  let scanner: Server;
-  const scannerSockets = new Set<Socket>();
-  let scanCount = 0;
-  let scanMode: 'clean' | 'unsafe' | 'unavailable' | 'malformed' = 'clean';
-  let holdScan: ((complete: () => void) => void) | undefined;
+  let scanner: Awaited<ReturnType<typeof openDocumentScannerFixture>>;
 
   async function start() {
-    // Actual scanner adapter with a deterministic external ClamAV wire fixture.
-    // This is not real ClamAV/definitions evidence and mocks no owning module.
-    scanner = createServer((socket) => {
-      scannerSockets.add(socket);
-      socket.on('close', () => scannerSockets.delete(socket));
-      let input = Buffer.alloc(0);
-      let completed = false;
-      socket.on('data', (chunk) => {
-        if (completed) return;
-        input = Buffer.concat([input, chunk]);
-        if (input.equals(Buffer.from('zVERSION\0'))) {
-          completed = true;
-          socket.end('ClamAV 1.4.3\0');
-          return;
-        }
-        if (!input.subarray(0, 10).equals(Buffer.from('zINSTREAM\0'))) return;
-        let offset = 10;
-        while (offset + 4 <= input.length) {
-          const size = input.readUInt32BE(offset);
-          if (size === 0) {
-            completed = true;
-            scanCount += 1;
-            const complete = () => {
-              if (scanMode === 'unavailable') socket.destroy();
-              else
-                socket.end(
-                  scanMode === 'unsafe'
-                    ? 'stream: DEMO.Test FOUND\0'
-                    : scanMode === 'malformed'
-                      ? 'uncertain\0'
-                      : 'stream: OK\0',
-                );
-            };
-            if (holdScan) holdScan(complete);
-            else complete();
-            return;
-          }
-          if (offset + 4 + size > input.length) return;
-          offset += 4 + size;
-        }
-      });
-    });
-    await new Promise<void>((resolve, reject) => {
-      scanner.once('error', reject);
-      scanner.listen(0, '127.0.0.1', resolve);
-    });
-    const scannerAddress = scanner.address();
-    if (!scannerAddress || typeof scannerAddress === 'string')
-      throw new Error('Expected scanner fixture address.');
+    scanner = await openDocumentScannerFixture();
 
     database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: databaseUrl,
@@ -123,19 +71,14 @@ export async function createMissionDocumentFixture(
             workspaceId: WORKSPACE_ID,
           },
         ]),
-        DOCUMENT_MALWARE_SCANNER_HOST: '127.0.0.1',
-        DOCUMENT_MALWARE_SCANNER_PORT: String(scannerAddress.port),
+        ...scanner.environment,
       },
     });
   }
   async function close() {
     await harness?.close();
     await database?.close();
-    for (const socket of scannerSockets) socket.destroy();
-    if (scanner)
-      await new Promise<void>((resolve, reject) =>
-        scanner.close((error) => (error ? reject(error) : resolve())),
-      );
+    await scanner?.close();
   }
   function call(
     path: string,
@@ -176,9 +119,7 @@ export async function createMissionDocumentFixture(
     return json(response);
   }
   async function reset() {
-    scanMode = 'clean';
-    scanCount = 0;
-    holdScan = undefined;
+    scanner.reset();
     await harness.pool.query(
       'TRUNCATE activity_log_events, workspace_memberships, internal_users, workspaces CASCADE',
     );
@@ -245,29 +186,13 @@ export async function createMissionDocumentFixture(
       return harness.pool;
     },
     get scanCount() {
-      return scanCount;
+      return scanner.scanCount;
     },
     setScanMode(mode: 'clean' | 'unsafe' | 'unavailable' | 'malformed') {
-      scanMode = mode;
+      scanner.setScanMode(mode);
     },
     holdNextScan() {
-      if (holdScan) throw new Error('A scanner barrier is already waiting.');
-      let releaseScan: (() => void) | undefined;
-      const reached = new Promise<void>((resolve) => {
-        holdScan = (complete) => {
-          holdScan = undefined;
-          releaseScan = complete;
-          resolve();
-        };
-      });
-      return {
-        reached,
-        release() {
-          const complete = releaseScan;
-          releaseScan = undefined;
-          complete?.();
-        },
-      };
+      return scanner.holdNextScan();
     },
   };
 }

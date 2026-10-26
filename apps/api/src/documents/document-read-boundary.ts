@@ -89,6 +89,15 @@ export class DocumentReadBoundary {
     lockAssignment: boolean,
   ): Promise<void> {
     if (type === 'questionnaire') return;
+    if (type === 'received-contract') {
+      if (
+        !(await this.authorization.hasReceivedContractAccess(actor, {
+          lockAssignment,
+        }))
+      )
+        throw new NotFoundException();
+      return;
+    }
     if (
       type !== 'mission-deliverable' ||
       !(await this.authorization.hasMissionDeliverableAccess(actor, {

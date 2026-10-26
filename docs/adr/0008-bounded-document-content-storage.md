@@ -84,3 +84,13 @@ to one Company-confidential mission-deliverable family. It adds no provider,
 filesystem persistence, real scanner configuration or storage permission. Its
 reference-free draft and explicit family-access gate remain capability-owned;
 existing questionnaire bytes, history and authority are unchanged.
+
+## Bounded scope extension — received Contract PDFs
+
+[Document Registry §24 / #870](../product/release-1-document-registry-24-received-contract-pdfs.md)
+extends the same 5 MiB private adapter, configured scan, structural parsing,
+immutable upload history and exact-Version downloads to one received-Contract
+family. It adds no storage provider, filesystem persistence, scanner bypass or
+real configuration. The separate family gate and exact declared Contract relation
+remain capability-owned; no byte retention or Document designation establishes
+signature validity, representation equivalence or business acceptance.

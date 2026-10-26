@@ -73,9 +73,13 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_user_assignment.revoked'
     | 'company_offer_preparer_assignment.granted'
     | 'company_offer_model_editor_assignment.granted'
+    | 'company_contract_model_editor_assignment.granted'
     | 'company_offer_model_editor_assignment.revoked'
+    | 'company_contract_model_editor_assignment.revoked'
     | 'company_offer_model_approver_assignment.granted'
+    | 'company_contract_model_approver_assignment.granted'
     | 'company_offer_model_approver_assignment.revoked'
+    | 'company_contract_model_approver_assignment.revoked'
     | 'company_offer_approver_assignment.granted'
     | 'company_offer_preparer_assignment.revoked'
     | 'company_offer_approver_assignment.revoked'
@@ -108,6 +112,10 @@ export interface OrdinaryActivityLogEvent {
     | 'company_document_project_organizer_assignment.revoked'
     | 'company_document_registrar_assignment.granted'
     | 'company_document_registrar_assignment.revoked'
+    | 'company_contract_signature_declarer_assignment.granted'
+    | 'company_contract_signature_declarer_assignment.revoked'
+    | 'company_received_contract_access_assignment.granted'
+    | 'company_received_contract_access_assignment.revoked'
     | 'company_mission_deliverable_access_assignment.granted'
     | 'company_mission_deliverable_access_assignment.revoked'
     | 'company_task_result_recorder_assignment.granted'
@@ -450,6 +458,13 @@ export type ContractActivityLogEvent = {
         | 'contract_version.approved'
         | 'contract_version.rejected';
       metadata: Record<string, never>;
+    }
+  | {
+      action: 'contract_version.signing_declared';
+      metadata: {
+        evidenceKind: 'DECLARED_RECEIVED_PDF';
+        provenance: 'COMPANY_MODEL_OFFER';
+      };
     }
   | {
       action: 'contract_version.signature_recorded';

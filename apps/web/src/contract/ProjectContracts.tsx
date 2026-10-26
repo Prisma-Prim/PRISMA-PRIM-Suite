@@ -46,9 +46,11 @@ function ProjectContractsSession({
   const company = actor.activeCompany;
   const mayRead = Boolean(
     company &&
-    ((company.contractPermissionSetVersion === 'v1' &&
+    (((company.contractPermissionSetVersion === 'v1' ||
+      company.contractPermissionSetVersion === 'v2') &&
       company.contractPermissionAssignmentId) ||
-      (company.contractApproverPermissionSetVersion === 'v1' &&
+      ((company.contractApproverPermissionSetVersion === 'v1' ||
+        company.contractApproverPermissionSetVersion === 'v2') &&
         company.contractApproverAssignmentId)) &&
     company.contractPermissions?.includes('commercial.contract.read') &&
     company.commercialIntakePermissions?.includes(

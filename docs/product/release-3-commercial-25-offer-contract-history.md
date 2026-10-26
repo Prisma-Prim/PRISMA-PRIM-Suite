@@ -15,23 +15,31 @@ Sources:
 
 The section 17.3 rule applies, with its Offer and Contract target predicates defined here: active membership, the server-validated active Company equal to the event's responsible Company, `commercial.activity.read` in that Company, and current read authority on the event's target. Reading an Offer or Contract target means its complete read prerequisite under sections 18.6 and 19.6: `commercial.offer.read` or `commercial.contract.read` together with current `commercial.opportunity.read` visibility of the owning Opportunity; neither permission alone suffices. Partial authority fails closed, and no count, label or ordering value discloses an event the actor cannot read.
 
-| Family   | Actions                                                                                                                                                                       | Target read required       |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| Offer    | `offer.created`, `offer_version.created`, `offer_version.approved`, `offer_version.rejected`, `offer_version.transmission_recorded`, `offer_version.client_response_recorded` | `commercial.offer.read`    |
-| Contract | `contract.created`, `contract_version.created`, `contract_version.approved`, `contract_version.rejected`, `contract_version.signature_recorded`, `contract_project.linked`    | `commercial.contract.read` |
+| Family   | Actions                                                                                                                                                                                                         | Target read required       |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| Offer    | `offer.created`, `offer_version.created`, `offer_version.approved`, `offer_version.rejected`, `offer_version.transmission_recorded`, `offer_version.client_response_recorded`                                   | `commercial.offer.read`    |
+| Contract | `contract.created`, `contract_version.created`, `contract_version.approved`, `contract_version.rejected`, `contract_version.signature_recorded`, `contract_version.signing_declared`, `contract_project.linked` | `commercial.contract.read` |
 
-`contract_project.linked` concerns two targets, so it is projected only when the actor can currently read both the Contract, as above, and the linked Project under the Project owner's read rule (Project read and its Client boundary), as the [Activity Log PRD](activity-log-accountability-prd.md#7-authorization-and-privacy) requires for relationship events; otherwise the whole event is omitted. `project.created` stays with the Project owner and is not added here. Unknown actions and metadata outside the section 18.10 or 19.12 shape fail closed, except the closed source-provenance metadata variant defined by [approved-estimate internal preparation §26.7](release-3-commercial-26-estimate-offer-preparation.md#267-activity-storage-and-compatibility). That variant adds no returned field: economic source identities/decisions remain Offer content, costs remain protected, and §25.2's minimal projection is unchanged.
+`contract_project.linked` concerns two targets, so it is projected only when the actor can currently read both the Contract, as above, and the linked Project under the Project owner's read rule (Project read and its Client boundary), as the [Activity Log PRD](activity-log-accountability-prd.md#7-authorization-and-privacy) requires for relationship events; otherwise the whole event is omitted. `project.created` stays with the Project owner and is not added here. Unknown actions and metadata outside the section 18.10 or 19.12 shape fail closed, except the closed source-provenance metadata variant defined by [approved-estimate internal preparation §26.7](release-3-commercial-26-estimate-offer-preparation.md#267-activity-storage-and-compatibility). The separate [§31](release-3-commercial-31-reported-signing-case-acceptance.md#317-existing-project-continuation-and-events) also owns its closed minimal declared-signing metadata variant. All other unknown shapes still fail closed. The §26 variant adds no returned field: economic source identities/decisions remain Offer content, costs remain protected, and §25.2's minimal projection is unchanged.
 
 ### 25.2 Returned content
 
 A projected event returns the section 17.3 fields: canonical action, responsible Company, actor label, server time and a readable target reference. In addition, from the recorded metadata and the immutable illustrative reference of the current target:
 
 - **Offer events:** the Offer's illustrative reference and the version number; for a Client response, its outcome (`ACCEPTED`, `REJECTED` or `EXPIRED`); for a transmission or response, the simulated provenance marker.
-- **Contract events:** the kind (`CONTRACT`, `PRECONTRACT` or `ADDENDUM`), the illustrative reference and the version number; for a signature, the simulated provenance marker; for a Project link, whether the Project was created and the Project's reference.
+- **Contract events:** the kind (`CONTRACT`, `PRECONTRACT` or `ADDENDUM`), the illustrative reference and the version number; for a legacy signature, the simulated provenance marker; for §31 reported signing, the declared/unverified `DECLARED_RECEIVED_PDF` / `COMPANY_MODEL_OFFER` markers; for a Project link, whether the Project was created and the Project's reference.
 
 Nothing else is returned: no amount, condition, scope, reason, note, signatory label, user-entered date, party identity, Snapshot content or warning text. An event whose Offer, Contract, owning Opportunity or linked Project can no longer be resolved is omitted entirely, because its read authority cannot be established; it is never shown with an unavailable reference.
 
 ### 25.3 Navigation
+
+The separate [reported signing/case-acceptance contract (§31)](release-3-commercial-31-reported-signing-case-acceptance.md#317-existing-project-continuation-and-events)
+adds `contract_version.signing_declared` to the Contract discovery family. Apply
+the same ordinary Contract/Opportunity/Client and Commercial Activity read
+predicates and exact-Version navigation. Its minimal Contract/Version discovery
+fields and explicit evidence markers identify a reported statement; it is distinct from a SIMULATED signature and
+produces no Offer-accepted event. No Document/PDF identity or human evidence prose
+is projected. Existing action semantics and old metadata remain unchanged.
 
 Each projected event offers one link to its target, which section 25.1 has already proven readable: it opens the Request detail of the Opportunity that owns the Offer or Contract, with the exact Offer Version or Contract Version the event concerns selected, including a superseded version. Opening a link after authority was lost returns the existing safe denial or not-found.
 

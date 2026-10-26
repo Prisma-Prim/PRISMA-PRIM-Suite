@@ -850,7 +850,7 @@ it('states exactly the approved commercial capabilities and action-specific prer
   });
   expect(
     screen.getByText(
-      'Company Offer Preparer v1 grants Offer read and preparation, recorded simulated transmission and read of the exact referenced Pricing Snapshot. Company context and Opportunity read must be authorized separately; naming a Client Legal Entity additionally requires Client read. It grants no pricing calculation or adjustment, Client, approval or Contract authority.',
+      'New Company Offer Preparer grants capture v3: Offer read, preparation, exact Pricing Snapshot read, approved-estimate drafts and full approved-model Offers with recorded simulated transmission. Company context, Opportunity/Client read and economic-source read remain separately authorized. Model configuration and Offer approval are separate. Existing v1/v2 grants retain their captured rights; revoke and grant again to enable the full-model journey.',
     ),
   ).toBeVisible();
   selectOption(
@@ -859,7 +859,7 @@ it('states exactly the approved commercial capabilities and action-specific prer
   );
   expect(
     screen.getByText(
-      'Company Offer Approver v1 grants Offer read, internal decisions and recorded simulated Client response. Company context and Opportunity read must be authorized separately. It grants no preparation, Client or Pricing authority.',
+      'New Company Offer Approver grants capture v2: Offer read, decisions and recorded simulated Client responses, including full approved-model Offers. Company context and Opportunity read remain separately authorized. It grants no preparation, Client, Pricing, economic-source or model-configuration access. Existing v1 grants retain their captured rights; revoke and grant again to enable the full-model journey.',
     ),
   ).toBeVisible();
   selectOption(
@@ -868,7 +868,7 @@ it('states exactly the approved commercial capabilities and action-specific prer
   );
   expect(
     screen.getByText(
-      'Company Contract Preparer v1 grants Contract read, preparation and Project linking. Company context and Opportunity read must be authorized separately. Creating from an Offer requires that Offer’s read; creating a Version and naming an entity for a direct Contract require Client read and an active Client–Company relationship. Choosing a Pricing Snapshot requires its separate read permission. Linking requires Project read; creating a Project additionally requires Project creation and the Project’s Client read. Later Contract reads do not universally require Offer or Client read. The bundle grants no Offer, Client, Pricing or Project authority.',
+      'Fresh grants capture v2: the existing v1 permissions plus approved-model selection and model-based Contract preparation. Existing v1 captures remain unchanged until revoked and granted again. Company Contract Preparer v1 grants Contract read, preparation and Project linking. Company context and Opportunity read must be authorized separately. Creating from an Offer requires that Offer’s read; creating a Version and naming an entity for a direct Contract require Client read and an active Client–Company relationship. Choosing a Pricing Snapshot requires its separate read permission. Linking requires Project read; creating a Project additionally requires Project creation and the Project’s Client read. Later Contract reads do not universally require Offer or Client read. The bundle grants no Offer, Client, Pricing or Project authority.',
     ),
   ).toBeVisible();
 });

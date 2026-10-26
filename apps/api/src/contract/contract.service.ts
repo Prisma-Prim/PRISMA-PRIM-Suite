@@ -1,4 +1,5 @@
 import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
+import { ModelContractService } from './model-contract.service.js';
 import { createDirectContract } from './contract-direct-command.js';
 import {
   createContractAddendum,
@@ -79,6 +80,7 @@ export class ContractService {
     private readonly offers: OfferService,
     private readonly pricing: PricingSnapshotService,
     private readonly versions: ContractVersionReader,
+    private readonly modelContracts: ModelContractService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {}
 
@@ -486,6 +488,19 @@ export class ContractService {
         if (!found || found.version.id !== input.versionId)
           throw new NotFoundException();
         const { contract, version } = found;
+        if (version.provenance === 'COMPANY_MODEL_OFFER') {
+          await this.authorization.requireContractQualityAccess(
+            actor,
+            true,
+            true,
+          );
+          await this.authorization.requireOfferAccess(
+            actor,
+            ['commercial.offer.read'],
+            true,
+          );
+        }
+
         const fingerprint = commandFingerprint({
           kind: 'RUN_QUALITY_CHECKS',
           ...(input.contractId === undefined
@@ -556,7 +571,7 @@ export class ContractService {
             'CONTRACT_VERSION_SUPERSEDED',
             'The Contract Version has been superseded.',
           );
-        const { evaluatedAt, ruleSetVersion, results } =
+        const { evaluatedAt, ruleSet, ruleSetVersion, results } =
           await this.evaluateFreshQuality({
             actor,
             companyId,
@@ -572,6 +587,7 @@ export class ContractService {
             contractVersionId: version.id,
             actorInternalUserId: actor.internalUserId,
             actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            ruleSet,
             ruleSetVersion,
             evaluatedAt,
             results,
@@ -616,6 +632,13 @@ export class ContractService {
     contract: ContractRow;
     version: VersionRow;
   }): Promise<ContractQualityEvaluation> {
+    if (version.provenance === 'COMPANY_MODEL_OFFER')
+      return this.modelContracts.evaluateFreshQualityWithinTransaction({
+        actor,
+        companyId,
+        contract,
+        version,
+      });
     const source =
       contract.origin !== 'ACCEPTED_OFFER' &&
       contract.origin !== 'OFFER_PREPARATION'
@@ -749,7 +772,12 @@ export class ContractService {
             ? { kind: 'DIRECT', companyId: contract.companyId }
             : missingQualitySource(),
     });
-    return { evaluatedAt, ruleSetVersion, results };
+    return {
+      ruleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE',
+      evaluatedAt,
+      ruleSetVersion,
+      results,
+    };
   }
 
   async listQualityRuns(input: {

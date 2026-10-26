@@ -71,7 +71,7 @@ export class ContractProjectsService {
           opportunityId: input.opportunityId,
           ...agreementTarget(input),
         });
-        this.links.requireExecuted(current);
+        await this.links.requireExecuted(current);
         const eligible = (
           await this.currentCandidates(
             input.actor,
@@ -208,7 +208,7 @@ export class ContractProjectsService {
         });
         if (current.contract.revision !== command.expectedContractRevision)
           throw conflict('STALE_CONTRACT_REVISION');
-        this.links.requireExecuted(current);
+        await this.links.requireExecuted(current);
         if (!context.eligible) throw conflict('PROJECT_NOT_ELIGIBLE');
         await this.links.requireCapacity({
           actor,

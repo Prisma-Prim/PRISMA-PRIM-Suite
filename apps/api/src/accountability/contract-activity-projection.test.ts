@@ -23,6 +23,7 @@ const ALL_ACTIONS = [
   'contract_version.created',
   'contract_version.approved',
   'contract_version.rejected',
+  'contract_version.signing_declared',
   'contract_version.signature_recorded',
   'contract_project.linked',
 ];
@@ -416,6 +417,75 @@ describe('Contract Activity metadata', () => {
         expect(readContractActivity(variant)).toBeUndefined();
     },
   );
+
+  it('binds new-mode metadata to the exact historical model/Offer/revision and refuses fabricated decisions or signatures', () => {
+    const modelVersionId = '10000000-0000-4000-8000-000000000868',
+      decisionId = '20000000-0000-4000-8000-000000000868';
+    const row = {
+      ...resolved(SOURCES.ACCEPTED_CONTRACT, VERSION_ID, 2),
+      action: 'contract_version.approved',
+      contractVersionId: VERSION_ID,
+      origin: 'COMPANY_MODEL_OFFER',
+      pricingSnapshotId: null,
+      modelSourceVersionId: modelVersionId,
+      modelSourceVersionNumber: 3,
+      modelSourceDecisionId: decisionId,
+      createdContractRevision: 5,
+    };
+    const metadata = {
+      contractId: CONTRACT_ID,
+      contractVersionId: VERSION_ID,
+      versionNumber: 2,
+      kind: 'CONTRACT',
+      origin: 'COMPANY_MODEL_OFFER',
+      provenance: 'COMPANY_MODEL_OFFER',
+      offerVersionId: OFFER_VERSION_ID,
+      modelVersionId,
+      modelVersionNumber: 3,
+      modelApprovalDecisionId: decisionId,
+      rendererVersion: 1,
+      contractRevision: 6,
+      ruleSetVersion: 1,
+      acknowledgedWarningCodes: [
+        'ANNEX_SCOPE_REVIEWED',
+        'MODEL_WORDING_REVIEWED',
+      ],
+    };
+    expect(readContractActivity({ ...row, metadata })).toEqual({
+      action: 'contract_version.approved',
+      target: target(SOURCES.ACCEPTED_CONTRACT, VERSION_ID, 2),
+      metadata: {},
+    });
+    for (const change of [
+      { modelVersionId: PARENT_ID },
+      { modelVersionNumber: 2 },
+      { modelApprovalDecisionId: PARENT_ID },
+      { offerVersionId: PARENT_ID },
+      { rendererVersion: 2 },
+      { contractRevision: 5 },
+      { provenance: 'ILLUSTRATIVE' },
+      { ruleSetVersion: 3 },
+      { acknowledgedWarningCodes: ['MODEL_WORDING_REVIEWED'] },
+      {
+        acknowledgedWarningCodes: [
+          'ANNEX_SCOPE_REVIEWED',
+          'MODEL_WORDING_REVIEWED',
+          'DIRECT_ORIGIN_REVIEWED',
+        ],
+      },
+      { reviewBasis: 'Human wording must never enter Activity' },
+    ])
+      expect(
+        readContractActivity({ ...row, metadata: { ...metadata, ...change } }),
+      ).toBeUndefined();
+    expect(
+      readContractActivity({
+        ...row,
+        action: 'contract_version.signature_recorded',
+        metadata: { ...metadata, evidenceKind: 'SIMULATED' },
+      }),
+    ).toBeUndefined();
+  });
 
   it('fails closed for sources, decisions and signatures outside their contracts', () => {
     const { ACCEPTED_CONTRACT, DIRECT_CONTRACT, PRECONTRACT, ADDENDUM } =

@@ -20,6 +20,7 @@ import { commandFingerprint } from '../command/idempotent-command.js';
 import { DatabaseContext } from '../database/database-context.js';
 import {
   INTERNAL_ESTIMATE_OFFER_PROVENANCE,
+  MODEL_ESTIMATE_OFFER_PROVENANCE,
   offerCommands,
   offerClientResponses,
   offers,
@@ -28,12 +29,21 @@ import {
 import { ProfitabilityEstimateService } from '../profitability-estimate/profitability-estimate.service.js';
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { OfferCommandStore } from './offer-command-store.js';
+import { ModelOfferView } from './model-offer-view.js';
+import { OfferModelService } from '../offer-model/offer-model.service.js';
+import { modelOfferFinancials } from './model-offer-financials.js';
+import { renderModelOfferRepresentation } from './model-offer-representation.js';
 import { EstimateOfferView } from './offer-estimate-view.js';
 import {
+  readCreateModelOfferCommand,
+  readCreateModelOfferVersionCommand,
   readCreateEstimateOfferCommand,
   readCreateEstimateOfferVersionCommand,
 } from './offer.validation.js';
-import type { InternalOfferRecord } from './offer-estimate-preparation.types.js';
+import type {
+  InternalOfferRecord,
+  ModelOfferRecord,
+} from './offer-estimate-preparation.types.js';
 
 interface PreparationInput {
   actor: ActorContext;
@@ -49,12 +59,21 @@ type PreparationCommand =
   | ({
       kind: 'CREATE_ESTIMATE_OFFER_VERSION';
       offer: typeof offers.$inferSelect;
-    } & ReturnType<typeof readCreateEstimateOfferVersionCommand>);
+    } & ReturnType<typeof readCreateEstimateOfferVersionCommand>)
+  | ({ kind: 'CREATE_MODEL_OFFER' } & ReturnType<
+      typeof readCreateModelOfferCommand
+    >)
+  | ({
+      kind: 'CREATE_MODEL_OFFER_VERSION';
+      offer: typeof offers.$inferSelect;
+    } & ReturnType<typeof readCreateModelOfferVersionCommand>);
+type PreparationKind = PreparationCommand['kind'];
 
 @Injectable()
 export class EstimateOfferPreparationService {
   private readonly commands: OfferCommandStore;
   private readonly views: EstimateOfferView;
+  private readonly modelViews: ModelOfferView;
 
   constructor(
     private readonly database: DatabaseContext,
@@ -63,32 +82,45 @@ export class EstimateOfferPreparationService {
     private readonly clients: ClientOperationalReferenceService,
     private readonly intake: CommercialIntakeService,
     private readonly estimates: ProfitabilityEstimateService,
+    private readonly models: OfferModelService,
     pricing: PricingSnapshotService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {
     this.commands = new OfferCommandStore(database);
     this.views = new EstimateOfferView({ database, intake, clock, pricing });
+    this.modelViews = new ModelOfferView({ database, pricing });
   }
 
-  create(input: PreparationInput): Promise<InternalOfferRecord> {
+  create(
+    input: PreparationInput,
+  ): Promise<InternalOfferRecord | ModelOfferRecord> {
     return this.prepare(input, 'CREATE_ESTIMATE_OFFER');
   }
 
-  createVersion(input: PreparationInput): Promise<InternalOfferRecord> {
+  createVersion(
+    input: PreparationInput,
+  ): Promise<InternalOfferRecord | ModelOfferRecord> {
     return this.prepare(input, 'CREATE_ESTIMATE_OFFER_VERSION');
+  }
+
+  createFromModel(input: PreparationInput) {
+    return this.prepare(input, 'CREATE_MODEL_OFFER');
+  }
+  createModelVersion(input: PreparationInput) {
+    return this.prepare(input, 'CREATE_MODEL_OFFER_VERSION');
   }
 
   private async prepare(
     { actor, opportunityId, payload, key }: PreparationInput,
-    kind: 'CREATE_ESTIMATE_OFFER' | 'CREATE_ESTIMATE_OFFER_VERSION',
-  ): Promise<InternalOfferRecord> {
-    await this.requireAccess(actor);
+    kind: PreparationKind,
+  ): Promise<InternalOfferRecord | ModelOfferRecord> {
+    await this.requireAccess(actor, kind);
     const idempotencyKey = requireIdempotencyKey(key);
     try {
       return await runClientReferenceTransaction({
         database: this.database,
         work: async () => {
-          const companyId = await this.requireAccess(actor, true);
+          const companyId = await this.requireAccess(actor, kind, true);
           await this.authorization.requireProfitabilityEstimateAccess(
             actor,
             'read',
@@ -122,7 +154,8 @@ export class EstimateOfferPreparationService {
             );
           if (
             !receipt &&
-            kind === 'CREATE_ESTIMATE_OFFER' &&
+            (kind === 'CREATE_ESTIMATE_OFFER' ||
+              kind === 'CREATE_MODEL_OFFER') &&
             opportunity.status !== 'OPEN'
           )
             throw conflict(
@@ -148,15 +181,33 @@ export class EstimateOfferPreparationService {
             existing?.originalClientAccountId ??
             opportunity.originalClientAccountId;
           let command: PreparationCommand;
-          if (kind === 'CREATE_ESTIMATE_OFFER')
-            command = { kind, ...readCreateEstimateOfferCommand(payload) };
-          else {
-            if (!existing) throw new NotFoundException();
-            command = {
-              kind,
-              offer: existing,
-              ...readCreateEstimateOfferVersionCommand(payload),
-            };
+          switch (kind) {
+            case 'CREATE_ESTIMATE_OFFER':
+              command = { kind, ...readCreateEstimateOfferCommand(payload) };
+              break;
+            case 'CREATE_MODEL_OFFER':
+              command = { kind, ...readCreateModelOfferCommand(payload) };
+              break;
+            case 'CREATE_ESTIMATE_OFFER_VERSION':
+              if (!existing) throw new NotFoundException();
+              command = {
+                kind,
+                offer: existing,
+                ...readCreateEstimateOfferVersionCommand(payload),
+              };
+              break;
+            case 'CREATE_MODEL_OFFER_VERSION':
+              if (!existing) throw new NotFoundException();
+              command = {
+                kind,
+                offer: existing,
+                ...readCreateModelOfferVersionCommand(payload),
+              };
+              break;
+            default: {
+              const exhaustive: never = kind;
+              return exhaustive;
+            }
           }
           // Acquire the write fence before a source read can borrow Client shares.
           const recipient = await this.clients.lockOfferRecipient(
@@ -176,7 +227,9 @@ export class EstimateOfferPreparationService {
               !receipt.resultVersionId ||
               receipt.resultOfferRevision === null
             )
-              throw new Error('The internal Offer receipt is incomplete.');
+              throw new Error(
+                'The stored Offer preparation receipt is incomplete.',
+              );
             const [offer] = await this.database.connection
               .select()
               .from(offers)
@@ -199,21 +252,91 @@ export class EstimateOfferPreparationService {
                 ),
               );
             if (!offer || !version) throw new NotFoundException();
-            return this.views.readPrepared({
+            const expectedProvenance =
+              'modelVersionId' in command
+                ? MODEL_ESTIMATE_OFFER_PROVENANCE
+                : INTERNAL_ESTIMATE_OFFER_PROVENANCE;
+            const expectedRevision =
+              'expectedOfferRevision' in command
+                ? command.expectedOfferRevision + 1
+                : 1;
+            if (
+              offer.opportunityId !== opportunity.id ||
+              version.opportunityId !== opportunity.id ||
+              version.offerId !== offer.id ||
+              offer.originalClientAccountId !== originalClientAccountId ||
+              version.originalClientAccountId !== originalClientAccountId ||
+              version.createdByWorkspaceMembershipId !==
+                actor.workspaceMembershipId ||
+              version.createdByInternalUserId !== actor.internalUserId ||
+              version.provenance !== expectedProvenance ||
+              receipt.resultOfferRevision !== expectedRevision ||
+              offer.revision < expectedRevision ||
+              (!('expectedOfferRevision' in command) &&
+                version.versionNumber !== 1) ||
+              version.estimateSourceVersionId !== command.estimateVersionId ||
+              version.estimateSourceVersionNumber !==
+                command.estimateVersionNumber ||
+              version.estimateSourceDecisionId !== source.approvalDecisionId ||
+              version.estimateSourceAmount !== source.amount ||
+              version.estimateSourceCurrency !== source.currency ||
+              version.recipientKind !== command.recipient.kind ||
+              (command.recipient.kind === 'ADDITIONAL' &&
+                version.recipientAdditionalLegalEntityId !==
+                  command.recipient.legalEntityId) ||
+              version.validityDays !== command.validityDays ||
+              version.scopeNote !== command.scopeNote ||
+              version.commercialConditions !== command.commercialConditions
+            )
+              throw new Error(
+                'The stored Offer preparation receipt has an invalid binding.',
+              );
+            const prepared = await this.readPrepared({
               actor,
               offer,
               version,
               revision: receipt.resultOfferRevision,
             });
+            if ('modelVersionId' in command) {
+              const content = prepared.version;
+              if (
+                content.provenance !== MODEL_ESTIMATE_OFFER_PROVENANCE ||
+                content.modelSource.versionId !== command.modelVersionId ||
+                content.modelSource.versionNumber !==
+                  command.modelVersionNumber ||
+                content.financialDeclaration.taxAmount !==
+                  command.financialDeclaration.taxAmount ||
+                content.financialDeclaration.taxLabel !==
+                  command.financialDeclaration.taxLabel ||
+                content.financialDeclaration.basis !==
+                  command.financialDeclaration.basis
+              )
+                throw new Error(
+                  'The stored Offer model receipt has an invalid binding.',
+                );
+            }
+            return prepared;
           }
-          if (kind === 'CREATE_ESTIMATE_OFFER' && existing)
+          const modelSource =
+            'modelVersionId' in command
+              ? await this.models.requireSelectedForOfferWithinTransaction({
+                  actor,
+                  versionId: command.modelVersionId,
+                  versionNumber: command.modelVersionNumber,
+                })
+              : null;
+          if (
+            (kind === 'CREATE_ESTIMATE_OFFER' ||
+              kind === 'CREATE_MODEL_OFFER') &&
+            existing
+          )
             throw conflict(
               'OFFER_ALREADY_EXISTS',
               'An Offer already exists for this Opportunity.',
             );
           let predecessor: typeof offerVersions.$inferSelect | undefined;
           let current = existing;
-          if (command.kind === 'CREATE_ESTIMATE_OFFER_VERSION') {
+          if ('offer' in command) {
             const [locked] = await this.database.connection
               .select()
               .from(offers)
@@ -291,6 +414,40 @@ export class EstimateOfferPreparationService {
                 })
                 .returning();
           if (!offer) throw new Error('The internal Offer was not recorded.');
+          const versionNumber = predecessor ? predecessor.versionNumber + 1 : 1;
+          const validUntil = new Date(
+            createdAt.getTime() + command.validityDays * 86_400_000,
+          );
+          const financialDeclaration =
+            'financialDeclaration' in command
+              ? modelOfferFinancials({
+                  declaration: command.financialDeclaration,
+                  netAmount: source.amount,
+                  currency: source.currency,
+                  actorWorkspaceMembershipId: actor.workspaceMembershipId,
+                  actorInternalUserId: actor.internalUserId,
+                  declaredAt: createdAt.toISOString(),
+                })
+              : null;
+          const modelGenerationSnapshot =
+            modelSource && financialDeclaration
+              ? {
+                  modelSource,
+                  financialDeclaration,
+                  representation: renderModelOfferRepresentation({
+                    modelSource,
+                    financialDeclaration,
+                    priceSource: source,
+                    illustrativeReference,
+                    versionNumber,
+                    recipient: recipient.recipient,
+                    createdAt: createdAt.toISOString(),
+                    validUntil: validUntil.toISOString(),
+                    scopeNote: command.scopeNote,
+                    commercialConditions: command.commercialConditions,
+                  }),
+                }
+              : null;
           const [version] = await this.database.connection
             .insert(offerVersions)
             .values({
@@ -300,7 +457,7 @@ export class EstimateOfferPreparationService {
               opportunityId: opportunity.id,
               clientRequestId: opportunity.clientRequestId,
               originalClientAccountId,
-              versionNumber: predecessor ? predecessor.versionNumber + 1 : 1,
+              versionNumber,
               predecessorVersionId: predecessor?.id ?? null,
               pricingSnapshotId: null,
               estimateSourceId: source.estimateId,
@@ -322,14 +479,24 @@ export class EstimateOfferPreparationService {
               recipientLegalAddress: recipient.recipient.legalAddress,
               issuingCompanyLabel: company.displayName,
               validityDays: command.validityDays,
-              validUntil: new Date(
-                createdAt.getTime() + command.validityDays * 86_400_000,
-              ),
+              validUntil,
               scopeNote: command.scopeNote,
               commercialConditions: command.commercialConditions,
               templateCode: null,
               templateVersion: null,
-              provenance: INTERNAL_ESTIMATE_OFFER_PROVENANCE,
+              provenance: modelSource
+                ? MODEL_ESTIMATE_OFFER_PROVENANCE
+                : INTERNAL_ESTIMATE_OFFER_PROVENANCE,
+              ...(modelSource
+                ? {
+                    modelSourceId: modelSource.modelId,
+                    modelSourceVersionId: modelSource.versionId,
+                    modelSourceVersionNumber: modelSource.versionNumber,
+                    modelSourceDecisionId: modelSource.approvalDecisionId,
+                    modelSourceDecisionOutcome: 'APPROVE',
+                    modelGenerationSnapshot,
+                  }
+                : {}),
               createdByInternalUserId: actor.internalUserId,
               createdByWorkspaceMembershipId: actor.workspaceMembershipId,
               createdAt,
@@ -365,7 +532,15 @@ export class EstimateOfferPreparationService {
             resultOfferRevision: revision,
             createdAt,
           });
-          await this.accountability.recordInternalOfferPrepared({
+          await this.accountability.recordEstimateOfferPrepared({
+            ...(modelSource
+              ? {
+                  provenance: MODEL_ESTIMATE_OFFER_PROVENANCE,
+                  modelVersionId: modelSource.versionId,
+                  modelVersionNumber: modelSource.versionNumber,
+                  modelApprovalDecisionId: modelSource.approvalDecisionId,
+                }
+              : { provenance: INTERNAL_ESTIMATE_OFFER_PROVENANCE }),
             actor,
             companyId,
             offerId: offer.id,
@@ -378,7 +553,7 @@ export class EstimateOfferPreparationService {
             approvalDecisionId: source.approvalDecisionId,
             occurredAt: createdAt,
           });
-          return this.views.readPrepared({ actor, offer, version, revision });
+          return this.readPrepared({ actor, offer, version, revision });
         },
       });
     } catch (error) {
@@ -391,14 +566,44 @@ export class EstimateOfferPreparationService {
     }
   }
 
-  private requireAccess(actor: ActorContext, lock = false) {
+  private readPrepared(
+    input: Parameters<EstimateOfferView['readPrepared']>[0],
+  ) {
+    switch (input.version.provenance) {
+      case MODEL_ESTIMATE_OFFER_PROVENANCE:
+        return this.modelViews.readPrepared(input);
+      case INTERNAL_ESTIMATE_OFFER_PROVENANCE:
+        return this.views.readPrepared(input);
+      case 'ILLUSTRATIVE':
+        throw new Error(
+          'An estimate preparation cannot return an illustrative Version.',
+        );
+      default: {
+        const exhaustive: never = input.version.provenance;
+        return exhaustive;
+      }
+    }
+  }
+
+  private requireAccess(
+    actor: ActorContext,
+    kind: PreparationKind,
+    lock = false,
+  ) {
     return this.authorization.requireOfferAccess(
       actor,
-      [
-        'commercial.offer.read',
-        'commercial.offer.prepare',
-        'commercial.offer.estimate.prepare',
-      ],
+      kind === 'CREATE_MODEL_OFFER' || kind === 'CREATE_MODEL_OFFER_VERSION'
+        ? [
+            'commercial.offer.read',
+            'commercial.offer.prepare',
+            'commercial.offer.model.select',
+            'commercial.offer.model_based.prepare',
+          ]
+        : [
+            'commercial.offer.read',
+            'commercial.offer.prepare',
+            'commercial.offer.estimate.prepare',
+          ],
       lock,
     );
   }

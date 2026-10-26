@@ -76,6 +76,11 @@ export async function recordContractSignature(
       });
       if (!found || found.version.id !== input.versionId)
         throw new NotFoundException();
+      if (found.version.provenance === 'COMPANY_MODEL_OFFER')
+        throw conflict(
+          'CONTRACT_EXECUTION_MODE_UNSUPPORTED',
+          'This Contract mode does not support simulated signature.',
+        );
       const fingerprint = commandFingerprint({
         kind: 'RECORD_SIGNATURE',
         opportunityId: input.opportunityId,

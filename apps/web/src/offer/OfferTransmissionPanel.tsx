@@ -1,3 +1,4 @@
+import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -10,7 +11,7 @@ import { useOfferQualityCopy } from './offer-quality-decision.copy';
 import {
   readOfferTransmission,
   type OfferQualityRunView,
-  type OfferView,
+  type ExecutableOfferView,
   type OfferTransmissionView,
 } from './offer-response';
 
@@ -32,6 +33,7 @@ type State =
 type Attempt = { body: string; key: string };
 
 export function OfferTransmissionPanel({
+  onCommandLockChange,
   identity,
   companyId,
   opportunityId,
@@ -39,10 +41,11 @@ export function OfferTransmissionPanel({
   onTransmission,
   reject,
 }: {
+  onCommandLockChange?: (locked: boolean) => void;
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  offer: OfferView;
+  offer: ExecutableOfferView;
   onTransmission: (decision: OfferTransmissionView) => void;
   reject: (
     result: ApiResult<unknown>,
@@ -74,6 +77,7 @@ export function OfferTransmissionPanel({
         !offer.version.decision.acknowledgedWarningCodes.includes(result.code),
     ) ?? [];
   const locked = state === 'running' || state === 'uncertain';
+  useOfferCommandLock(locked, onCommandLockChange);
   async function execute() {
     if (
       state === 'running' ||
@@ -125,6 +129,7 @@ export function OfferTransmissionPanel({
           result.value,
           {
             offerVersionId: offer.version.id,
+            ruleSet: offer.version.qualityRuleSet,
             ruleSetVersion: offer.version.qualityRuleSetVersion,
           },
           offer.version.decision,

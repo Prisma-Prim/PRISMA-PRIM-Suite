@@ -1,6 +1,9 @@
+import { useReportedSigningCopy } from '../contract/reported-signing.copy';
+import { useReceivedContractCopy } from '../documents/received-contract.copy';
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
+import { useContractModelCopy } from '../contract-model/contract-model.copy';
 import { useOfferModelCopy } from '../offer-model/offer-model.copy';
 import { useOperationalRiskCopy } from '../operational-risk/operational-risk.copy';
 import { useWorkspaceInvitationsCopy } from '../access/workspace-invitations.copy';
@@ -37,6 +40,7 @@ export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
   const ideas = useIdeasCopy();
   const model = useOfferModelCopy();
+  const contractModel = useContractModelCopy();
   const invitationActions = useWorkspaceInvitationsCopy().activityActionLabels;
   const pdfActions = useDocumentPdfCopy().activityActionLabels;
   const stage = useSalesStageCopy();
@@ -61,10 +65,18 @@ export function useActivityLogDisplay() {
   >;
   const risk = useOperationalRiskCopy();
   const missionActions = useMissionDeliverableCopy().activityActionLabels;
+  const receivedActions = useReceivedContractCopy().activityActionLabels;
+  const signing = useReportedSigningCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
     ...taskResultActions,
     ...missionActions,
+    ...receivedActions,
+    'company_contract_signature_declarer_assignment.granted':
+      signing('grantEvent'),
+    'company_contract_signature_declarer_assignment.revoked':
+      signing('revokeEvent'),
+    'contract_version.signing_declared': signing('declaredEvent'),
     'company_ideas_reader_assignment.granted': ideas('readerGranted'),
     'company_ideas_reader_assignment.revoked': ideas('readerRevoked'),
     'company_ideas_recorder_assignment.granted': ideas('recorderGranted'),
@@ -184,9 +196,17 @@ export function useActivityLogDisplay() {
       'company_offer_preparer_assignment.granted',
     ),
     'company_offer_model_editor_assignment.granted': model('editorGranted'),
+    'company_contract_model_editor_assignment.granted':
+      contractModel('editorGranted'),
     'company_offer_model_editor_assignment.revoked': model('editorRevoked'),
+    'company_contract_model_editor_assignment.revoked':
+      contractModel('editorRevoked'),
     'company_offer_model_approver_assignment.granted': model('approverGranted'),
+    'company_contract_model_approver_assignment.granted':
+      contractModel('approverGranted'),
     'company_offer_model_approver_assignment.revoked': model('approverRevoked'),
+    'company_contract_model_approver_assignment.revoked':
+      contractModel('approverRevoked'),
     'company_offer_preparer_assignment.revoked': message(
       'company_offer_preparer_assignment.revoked',
     ),
@@ -403,6 +423,8 @@ export function useActivityLogDisplay() {
           version: formatNumber(event.target.versionNumber),
         });
         switch (event.action) {
+          case 'contract_version.signing_declared':
+            return `${target} · ${signing('declared')}`;
           case 'contract_version.signature_recorded':
             return `${target} · ${message('simulated')}`;
           case 'contract_project.linked':

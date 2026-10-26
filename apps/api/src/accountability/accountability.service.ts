@@ -1,3 +1,6 @@
+import { receivedContractAssignment } from '../access/received-contract-access.js';
+import { CONTRACT_MODEL_CODE } from '../contract-model/contract-model.content.js';
+import { contractModelEvents } from '../database/schema/contract-model.js';
 import { companyRoleAssignments } from '../database/schema/index.js';
 import { offerModelEvents } from '../database/schema/offer-model.js';
 import { missionDeliverableAssignment } from '../access/mission-deliverable-access.js';
@@ -213,6 +216,7 @@ export class AccountabilityService {
     versionNumber: number;
     occurredAt: Date;
     outcome: 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+    provenance?: 'ILLUSTRATIVE' | 'COMPANY_MODEL_ESTIMATE';
   }): Promise<void> {
     await this.databaseContext.connection.insert(offerEvents).values({
       workspaceId: input.actor.workspaceId,
@@ -229,7 +233,7 @@ export class AccountabilityService {
         versionNumber: input.versionNumber,
         evidenceKind: 'SIMULATED',
         outcome: input.outcome,
-        provenance: 'ILLUSTRATIVE',
+        provenance: input.provenance ?? 'ILLUSTRATIVE',
       },
     });
   }
@@ -243,6 +247,7 @@ export class AccountabilityService {
     occurredAt: Date;
     ruleSetVersion: OfferQualityRuleSetVersion;
     acknowledgedWarningCodes: readonly string[];
+    provenance?: 'ILLUSTRATIVE' | 'COMPANY_MODEL_ESTIMATE';
   }): Promise<void> {
     await this.databaseContext.connection.insert(offerEvents).values({
       workspaceId: input.actor.workspaceId,
@@ -258,7 +263,7 @@ export class AccountabilityService {
         offerVersionId: input.offerVersionId,
         versionNumber: input.versionNumber,
         channel: 'SIMULATED',
-        provenance: 'ILLUSTRATIVE',
+        provenance: input.provenance ?? 'ILLUSTRATIVE',
         ruleSetVersion: input.ruleSetVersion,
         acknowledgedWarningCodes: input.acknowledgedWarningCodes,
       },
@@ -275,12 +280,16 @@ export class AccountabilityService {
     decision:
       | {
           state: 'APPROVED';
+          provenance?: 'ILLUSTRATIVE' | 'COMPANY_MODEL_ESTIMATE';
           ruleSetVersion: OfferQualityRuleSetVersion;
           acknowledgedWarningCodes: readonly string[];
         }
       | {
           state: 'REJECTED';
-          provenance?: 'ILLUSTRATIVE' | 'APPROVED_ESTIMATE_INTERNAL_DRAFT';
+          provenance?:
+            | 'ILLUSTRATIVE'
+            | 'APPROVED_ESTIMATE_INTERNAL_DRAFT'
+            | 'COMPANY_MODEL_ESTIMATE';
         };
   }) {
     const { decision } = input;
@@ -301,10 +310,7 @@ export class AccountabilityService {
         offerVersionId: input.offerVersionId,
         versionNumber: input.versionNumber,
         outcome: decision.state,
-        provenance:
-          decision.state === 'REJECTED'
-            ? (decision.provenance ?? 'ILLUSTRATIVE')
-            : 'ILLUSTRATIVE',
+        provenance: decision.provenance ?? 'ILLUSTRATIVE',
         ...(decision.state === 'APPROVED'
           ? {
               ruleSetVersion: decision.ruleSetVersion,
@@ -337,7 +343,10 @@ export class AccountabilityService {
     const metadata = {
       contractId: input.contractId,
       ...contractEventMetadata(input.source),
-      provenance: 'ILLUSTRATIVE',
+      provenance:
+        input.source.kind === 'COMPANY_MODEL_OFFER'
+          ? 'COMPANY_MODEL_OFFER'
+          : 'ILLUSTRATIVE',
     };
     await this.databaseContext.connection.insert(contractEvents).values([
       {
@@ -391,7 +400,10 @@ export class AccountabilityService {
         versionNumber: input.versionNumber,
         predecessorVersionNumber: input.predecessorVersionNumber,
         ...contractEventMetadata(input.source),
-        provenance: 'ILLUSTRATIVE',
+        provenance:
+          input.source.kind === 'COMPANY_MODEL_OFFER'
+            ? 'COMPANY_MODEL_OFFER'
+            : 'ILLUSTRATIVE',
         ...(input.pricingSnapshotId === null
           ? {}
           : { pricingSnapshotId: input.pricingSnapshotId }),
@@ -434,7 +446,10 @@ export class AccountabilityService {
         contractVersionId: input.contractVersionId,
         versionNumber: input.versionNumber,
         ...contractEventMetadata(input.source),
-        provenance: 'ILLUSTRATIVE',
+        provenance:
+          input.source.kind === 'COMPANY_MODEL_OFFER'
+            ? 'COMPANY_MODEL_OFFER'
+            : 'ILLUSTRATIVE',
         ...(input.pricingSnapshotId === null
           ? {}
           : { pricingSnapshotId: input.pricingSnapshotId }),
@@ -444,6 +459,33 @@ export class AccountabilityService {
               acknowledgedWarningCodes: decision.acknowledgedWarningCodes,
             }
           : {}),
+      },
+    });
+  }
+
+  async recordContractSigningDeclared(input: {
+    actor: ActorContext;
+    companyId: string;
+    contractId: string;
+    contractVersionId: string;
+    versionNumber: number;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(contractEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      contractId: input.contractId,
+      contractVersionId: input.contractVersionId,
+      action: 'contract_version.signing_declared',
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      metadata: {
+        contractId: input.contractId,
+        contractVersionId: input.contractVersionId,
+        versionNumber: input.versionNumber,
+        provenance: 'COMPANY_MODEL_OFFER',
+        evidenceKind: 'DECLARED_RECEIVED_PDF',
       },
     });
   }
@@ -557,19 +599,29 @@ export class AccountabilityService {
   }
 
   /** Only approved source identifiers are recorded; commercial amounts stay out. */
-  async recordInternalOfferPrepared(input: {
-    actor: ActorContext;
-    companyId: string;
-    offerId: string;
-    offerVersionId: string;
-    versionNumber: number;
-    illustrativeReference: number;
-    recipientKind: 'PRIMARY' | 'ADDITIONAL';
-    estimateVersionId: string;
-    estimateVersionNumber: number;
-    approvalDecisionId: string;
-    occurredAt: Date;
-  }): Promise<void> {
+  async recordEstimateOfferPrepared(
+    input: {
+      actor: ActorContext;
+      companyId: string;
+      offerId: string;
+      offerVersionId: string;
+      versionNumber: number;
+      illustrativeReference: number;
+      recipientKind: 'PRIMARY' | 'ADDITIONAL';
+      estimateVersionId: string;
+      estimateVersionNumber: number;
+      approvalDecisionId: string;
+      occurredAt: Date;
+    } & (
+      | { provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT' }
+      | {
+          provenance: 'COMPANY_MODEL_ESTIMATE';
+          modelVersionId: string;
+          modelVersionNumber: number;
+          modelApprovalDecisionId: string;
+        }
+    ),
+  ): Promise<void> {
     const envelope = {
       workspaceId: input.actor.workspaceId,
       companyId: input.companyId,
@@ -591,11 +643,18 @@ export class AccountabilityService {
             ? { predecessorVersionNumber: input.versionNumber - 1 }
             : {}),
           recipientKind: input.recipientKind,
-          provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+          provenance: input.provenance,
           priceSourceKind: 'DIRECTOR_APPROVED_ESTIMATE',
           estimateVersionId: input.estimateVersionId,
           estimateVersionNumber: input.estimateVersionNumber,
           approvalDecisionId: input.approvalDecisionId,
+          ...(input.provenance === 'COMPANY_MODEL_ESTIMATE'
+            ? {
+                modelVersionId: input.modelVersionId,
+                modelVersionNumber: input.modelVersionNumber,
+                modelApprovalDecisionId: input.modelApprovalDecisionId,
+              }
+            : {}),
         },
       },
     ];
@@ -607,7 +666,7 @@ export class AccountabilityService {
         metadata: {
           offerId: input.offerId,
           illustrativeReference: input.illustrativeReference,
-          provenance: 'APPROVED_ESTIMATE_INTERNAL_DRAFT',
+          provenance: input.provenance,
         },
       });
     await this.databaseContext.connection.insert(offerEvents).values(events);
@@ -1316,6 +1375,38 @@ export class AccountabilityService {
       throw new Error('The restricted Offer model event was not recorded.');
   }
 
+  /** Restricted configuration attribution; deliberately no public projection. */
+  async recordContractModelEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    modelId: string;
+    versionId: string;
+    versionNumber: number;
+    revision: number;
+    action: typeof contractModelEvents.$inferInsert.action;
+    recordedAt: Date;
+  }): Promise<void> {
+    const [recorded] = await this.databaseContext.connection
+      .insert(contractModelEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        modelId: input.modelId,
+        modelCode: CONTRACT_MODEL_CODE,
+        versionId: input.versionId,
+        versionNumber: input.versionNumber,
+        revision: input.revision,
+        action: input.action,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorDisplayName: input.actor.displayName,
+        recordedAt: input.recordedAt,
+      })
+      .returning({ id: contractModelEvents.id });
+    if (!recorded)
+      throw new Error('The restricted Contract model event was not recorded.');
+  }
+
   // Confidential profitability events have no Activity read projection.
   // Only these typed correlation fields enter the restricted envelope.
   async recordProfitabilityEstimateEvent(
@@ -1681,7 +1772,11 @@ export class AccountabilityService {
           origin: contracts.origin,
           sourceOfferVersionId: sql<
             string | null
-          >`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+          >`CASE WHEN ${contracts.origin} IN ('OFFER_PREPARATION','COMPANY_MODEL_OFFER') THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+          modelSourceVersionId: contractVersions.modelSourceVersionId,
+          modelSourceVersionNumber: contractVersions.modelSourceVersionNumber,
+          modelSourceDecisionId: contractVersions.modelSourceDecisionId,
+          createdContractRevision: contractVersions.createdContractRevision,
           parentContractId: contracts.parentContractId,
           addendumOrdinal: contracts.addendumOrdinal,
           illustrativeReference: contracts.illustrativeReference,
@@ -1862,6 +1957,14 @@ export class AccountabilityService {
         ),
       )
       .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
+        ),
+      )
+      .innerJoin(
         internalUsers,
         eq(internalUsers.id, projectCreationEvents.actorInternalUserId),
       )
@@ -1931,6 +2034,14 @@ export class AccountabilityService {
           eq(projects.workspaceId, projectResponsibilityEvents.workspaceId),
           eq(projects.companyId, projectResponsibilityEvents.companyId),
           eq(projects.id, projectResponsibilityEvents.projectId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
         ),
       )
       .innerJoin(
@@ -2012,6 +2123,14 @@ export class AccountabilityService {
           eq(projects.workspaceId, projectLifecycleTransitions.workspaceId),
           eq(projects.companyId, projectLifecycleTransitions.companyId),
           eq(projects.id, projectLifecycleTransitions.projectId),
+        ),
+      )
+      .innerJoin(
+        clientAccounts,
+        and(
+          eq(clientAccounts.workspaceId, projects.workspaceId),
+          eq(clientAccounts.id, projects.clientAccountId),
+          inArray(clientAccounts.status, ['active', 'superseded']),
         ),
       )
       .innerJoin(
@@ -2317,7 +2436,16 @@ export class AccountabilityService {
             .where(grant),
         )
       : sql`false`;
-    return sql`(${eq(workingDocuments.type, 'questionnaire')} OR (${eq(workingDocuments.type, 'mission-deliverable')} AND ${mission}))`;
+    const receivedGrant = receivedContractAssignment(actor);
+    const received = receivedGrant
+      ? exists(
+          this.databaseContext.connection
+            .select({ id: companyRoleAssignments.id })
+            .from(companyRoleAssignments)
+            .where(receivedGrant),
+        )
+      : sql`false`;
+    return sql`(${eq(workingDocuments.type, 'questionnaire')} OR (${eq(workingDocuments.type, 'mission-deliverable')} AND ${mission}) OR (${eq(workingDocuments.type, 'received-contract')} AND ${received}))`;
   }
 
   async documentEvents(
@@ -3280,9 +3408,13 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_approver_assignment.revoked':
     case 'company_document_content_reader_assignment.granted':
     case 'company_mission_deliverable_access_assignment.granted':
+    case 'company_contract_signature_declarer_assignment.granted':
+    case 'company_contract_signature_declarer_assignment.revoked':
+    case 'company_received_contract_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
     case 'company_mission_deliverable_access_assignment.revoked':
+    case 'company_received_contract_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':
     case 'company_document_content_uploader_assignment.revoked':
@@ -3301,9 +3433,13 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_pricing_user_assignment.granted':
     case 'company_pricing_user_assignment.revoked':
     case 'company_offer_model_editor_assignment.granted':
+    case 'company_contract_model_editor_assignment.granted':
     case 'company_offer_model_approver_assignment.granted':
+    case 'company_contract_model_approver_assignment.granted':
     case 'company_offer_model_editor_assignment.revoked':
+    case 'company_contract_model_editor_assignment.revoked':
     case 'company_offer_model_approver_assignment.revoked':
+    case 'company_contract_model_approver_assignment.revoked':
     case 'company_offer_preparer_assignment.granted':
     case 'company_contract_approver_assignment.granted':
     case 'company_contract_preparer_assignment.granted':
@@ -3606,6 +3742,17 @@ function contractEventMetadata(
         kind: source.contractKind,
         origin: source.kind,
         offerVersionId: source.offerVersionId,
+      };
+    case 'COMPANY_MODEL_OFFER':
+      return {
+        kind: 'CONTRACT',
+        origin: source.kind,
+        offerVersionId: source.offerVersionId,
+        modelVersionId: source.modelVersionId,
+        modelVersionNumber: source.modelVersionNumber,
+        modelApprovalDecisionId: source.modelApprovalDecisionId,
+        rendererVersion: source.rendererVersion,
+        contractRevision: source.contractRevision,
       };
     case 'ADDENDUM':
       return {

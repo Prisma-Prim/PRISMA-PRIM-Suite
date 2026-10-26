@@ -122,7 +122,7 @@ export class ContractProjectCreationService {
         });
         if (current.contract.revision !== command.expectedContractRevision)
           throw projectLinkConflict('STALE_CONTRACT_REVISION');
-        this.links.requireExecuted(current);
+        await this.links.requireExecuted(current);
         const candidates = await this.relationships.currentCandidates(
           actor,
           current.contract.originalClientAccountId,

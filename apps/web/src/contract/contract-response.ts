@@ -606,6 +606,7 @@ export function readContractPreparationSource(
   if (input.offer === null) return null;
   const offer = record(input.offer),
     version = record(offer.version);
+  if (unsupportedModelOfferSource(version)) return null;
   if (version.provenance !== 'ILLUSTRATIVE' || version.provisional !== true)
     throw new Error('Invalid preparation source.');
   if (version.supersededByVersionId !== null) return null;
@@ -635,6 +636,7 @@ export function readAcceptedOfferSource(value: unknown): string | null {
   const input = record(value);
   if (input.offer === null) return null;
   const version = record(record(input.offer).version);
+  if (unsupportedModelOfferSource(version)) return null;
   if (
     version.provenance !== 'ILLUSTRATIVE' ||
     version.provisional !== true ||
@@ -646,6 +648,16 @@ export function readAcceptedOfferSource(value: unknown): string | null {
     version.supersededByVersionId === null
     ? string(version.id)
     : null;
+}
+/** This renderer/source family has no binding in the legacy Contract journey. */
+function unsupportedModelOfferSource(version: Record<string, unknown>) {
+  if (version.provenance !== 'COMPANY_MODEL_ESTIMATE') return false;
+  if (
+    version.provisional !== true ||
+    version.eligibility !== 'NON_OFFICIAL_REHEARSAL'
+  )
+    throw new Error('Invalid Offer source.');
+  return true;
 }
 function record(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value))

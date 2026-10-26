@@ -206,6 +206,20 @@ Its attributable transitions are
 `company_mission_deliverable_access_assignment.granted` and `.revoked`, following
 the existing Company assignment event/metadata convention with no real grants.
 
+The [received Contract PDF family](release-1-document-registry-24-received-contract-pdfs.md)
+adds separate opt-in **Company Received Contract Access v1**, containing exactly
+`document.received_contract.access`. Existing Company assignment administration
+explicitly grants/revokes captured `v1` for an active same-Workspace membership
+and active Company under current `company.assignment.manage`; null/unknown
+captures fail closed. Existing grants, repeated grants, migration and bootstrap
+never add it implicitly. Its events are
+`company_received_contract_access_assignment.granted` and `.revoked`, with the
+existing bundle-label-only metadata. This gate grants no ordinary metadata,
+content, registration, Version, Approver, Contract/Opportunity, Project or
+administration permission. Section 24 owns the additional family and independent
+two-end relation-read consequences, including live revocation before replay and
+after scanning. No real assignments are created.
+
 The [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306)
 adds `commercial.opportunity.next_action.update` only through captured
 **Company Commercial Intake v2**. Intake v1 remains exactly the four read and
@@ -287,6 +301,45 @@ Director, pricing, Document and Workspace-owner grants confer neither bundle.
 These grants provide no Company context, commercial/client/price/cost read,
 Activity read, external-use or administration authority. Section 27 owns their
 complete independent model-read/mutation and lifecycle contract.
+
+The bounded [Company consulting Contract model contract (§29.4)](release-3-commercial-29-company-contract-model.md#294-independent-company-authority)
+adds independent opt-in **Company Contract Model Editor v1**, with exactly
+`commercial.contract.model.read` and `commercial.contract.model.version.create`,
+and **Company Contract Model Approver v1**, with exactly
+`commercial.contract.model.read`, `commercial.contract.model.decide` and
+`commercial.contract.model.withdraw`. Existing Company assignment administration,
+active membership/context and captured-version refusal apply. No old grant,
+Offer model role, Director/Workspace ownership or ordinary Contract capability
+substitutes; neither bundle grants those independent business reads/actions,
+Activity read or administration. No seed/backfill/automatic assignment occurs.
+Section29 owns the exact configuration lifecycle and replay authority.
+The separate [generated Contract contract (§30.5)](release-3-commercial-30-model-contract-generation.md#305-independent-authority-and-selected-model-projection)
+adds Company Contract Preparer v2 (preserves v1; adds exactly
+`commercial.contract.model.select` and `commercial.contract.model_based.prepare`)
+and Company Contract Approver v2 (preserves v1; adds exactly
+`commercial.contract.model_based.approve`). Fresh grants capture v2; old active v1,
+repeated grants and historical receipts remain v1 until explicit revoke/fresh
+grant. Null/unknown versions fail closed. No seed/backfill/automatic assignment.
+Selection exposes only the currently approved complete same-Company model/stamp,
+not configuration history or private decision notes. New preparation/decisions
+require the ordinary and additional permissions plus independent current source
+reads defined by §30. Copied Contract reads retain ordinary Contract/Opportunity
+authority without granting source catalogues or costs. Internal approval while
+this distinct source is pending never supplies signing or Offer acceptance;
+Early Preparation v1 and its existing accepted-source execution gate stay intact.
+
+The separate [reported-signing declaration contract (§31.5)](release-3-commercial-31-reported-signing-case-acceptance.md#315-independent-authority-and-safe-reads)
+adds opt-in **Company Contract Signature Declarer v1**, containing exactly
+`commercial.contract.signature.declare_external`. Existing Company assignment
+administration explicitly grants/revokes capturedv1; null/unknown/revoked captures
+fail closed. No old assignment, repeated grant, migration/bootstrap or other role
+expands. Its attributable transitions are
+`company_contract_signature_declarer_assignment.granted` / `.revoked`, following
+the existing Company bundle-label-only convention. It grants no ordinary
+Contract/signature/source/Client/Document/content/Project/Activity/context or
+administration rights. Section31 owns the complete independent mutation/read
+matrix; a stored declaration does not require this write grant or PDF access for
+subsequent independently authorized Project linking. No real grant is authorized.
 
 The separate [approved-model Offer generation contract (§28.5)](release-3-commercial-28-model-offer-generation.md#285-independent-authority-and-selected-model-projection)
 adds **Company Offer Preparer v3**, preserving v2 and adding exactly

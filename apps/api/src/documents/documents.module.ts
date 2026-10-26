@@ -1,4 +1,7 @@
+import { DocumentSigningReferenceService } from './document-signing-reference.service.js';
 import { DocumentContentService } from './document-content.service.js';
+import { ReceivedContractRelationsService } from './received-contract-relations.service.js';
+import { ContractDocumentReferenceModule } from '../contract/contract-document-reference.module.js';
 import { DocumentTaskResultReferenceService } from './document-task-result-reference.service.js';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
@@ -14,6 +17,7 @@ import { DocumentReadBoundary } from './document-read-boundary.js';
 import { DocumentVersionsService } from './document-versions.service.js';
 @Module({
   imports: [
+    ContractDocumentReferenceModule,
     ProjectModule,
     AccessModule,
     DatabaseModule,
@@ -21,11 +25,13 @@ import { DocumentVersionsService } from './document-versions.service.js';
     AccountabilityModule,
   ],
   providers: [
+    ReceivedContractRelationsService,
     DocumentsService,
     DocumentProjectsService,
     DocumentReadBoundary,
     DocumentVersionsService,
     DocumentContentService,
+    DocumentSigningReferenceService,
     DocumentTaskResultReferenceService,
     DocumentPdfStorage,
     DocumentMalwareScanner,
@@ -35,6 +41,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentProjectsService,
     DocumentVersionsService,
     DocumentContentService,
+    DocumentSigningReferenceService,
     DocumentTaskResultReferenceService,
   ],
 })

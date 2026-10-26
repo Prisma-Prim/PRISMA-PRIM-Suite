@@ -52,6 +52,22 @@ requires no placeholder URL and grants no implicit evidence, Task completion or
 operational authority. #820 owns D3/D4/D2 sequencing; runtime delivery follows a
 separate implementation child after the contract is merged.
 
+The [received Contract PDF contract](release-1-document-registry-24-received-contract-pdfs.md)
+under #870 owns D9's separately gated reference-free family, exact declared
+Contract-Version relation and source attribution, reusing immutable PDF/Version
+storage. Related Contract details and content retain independent read authority.
+Runtime follows the merged contract; signing/case acceptance remains D10 and
+neither upload nor designation completes the end-to-end dossier.
+
+The [reported signing/case-acceptance contract](release-3-commercial-31-reported-signing-case-acceptance.md)
+under #874 owns D10's exact human statement, independent captured authority,
+unverified/unknown facts, immutable evidence and existing Project continuation.
+It preserves old SIMULATED records and the owning Offer Client Response. Runtime
+is delivered by #877 / PR #878. The separately validated
+[merged-main anonymous dossier milestone](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/5355efd9e10e498675852552f382770e3ce1add9/report.md)
+includes thirteen exact result/PDF Versions, ordinary closure and closed-dossier
+reopening; it activates no real data or tenant configuration.
+
 The [bounded exact mission Task result contract](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
 under #832 links attributable result declarations/corrections to frozen readable
 mission Versions, preserving originals and independent Task/Document authority.
@@ -63,6 +79,19 @@ under #836 preserves one anonymous source Version, thirteen ordinary Task copies
 and their intended results. Explicit captured Template User v2 adds pilot access
 without widening oldv1; the flat plan defines no stage or completion obligation.
 Its runtime child follows the merged contract, after delivered D3/D4 under #820.
+
+The [mission-obligation contract](release-1-mission-obligations-prd.md)
+under #881 now approves §13's bounded read-only activity/result readiness outcome
+under Dan's explicit instruction to apply the established rules. The broader
+mutation directions remain separately qualified; no implementation or operational
+activation is implied by this documentation approval. The completed anonymous
+milestone and ordinary lifecycle retain their delivered scope.
+
+Its [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+owns pending first-tenant questions for Dan's single consolidated email. Preserve
+`MISSION-CLOSE-01` across handoffs; do not repeatedly ask individual questions or
+infer a certification-policy answer. The readiness outcome is independently ready
+without that answer.
 
 ## 4. Cross-cutting PRDs
 
@@ -93,11 +122,11 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| [Commercial Workflow](release-3-commercial-workflow-prd.md): core sections 1–15 and an index of one file per capability (sections 16–28) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
+| [Commercial Workflow](release-3-commercial-workflow-prd.md): core sections 1–15 and an index of one file per capability (sections 16–30) | Provisional MVP execution scope — business validation pending | Tenant/Company/Client Authorization; Activity Log; Governed Documents; UX/Configuration                                      |
 | [Illustrative Deterministic Pricing](release-3-illustrative-pricing-prd.md)                                                              | Provisional MVP execution scope — business validation pending | Commercial Workflow; Tenant/Company/Client Authorization; Activity Log; UX/Configuration                                     |
 | [Confirmed-Cost Profitability Estimate](release-3-confirmed-cost-profitability-estimate-prd.md)                                          | Approved — bounded first journey; delivery tracked in #498    | Commercial Workflow; Illustrative Deterministic Pricing; Tenant/Company/Client Authorization; Activity Log; UX/Configuration |
 
-The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates. Its [section 26](release-3-commercial-26-estimate-offer-preparation.md) owns D6's bounded exact Director-approved Estimate Version → internal Offer draft compatibility under #840, including independent captured v2 preparation, cost confidentiality, unspecified tax treatment and explicit downstream ineligibility. Its [section 27](release-3-commercial-27-company-offer-model.md) owns the first D7 outcome: explicit Company model editing, exact human approval and withdrawal. The separate [section 28](release-3-commercial-28-model-offer-generation.md) owns populated Offer generation from exact approved model/economic sources, explicit human net/tax facts, opt-in captured grants and non-official simulated eligibility. Contract approval is not runtime delivery or operational pricing approval.
+The Commercial Workflow PRD owns the reusable Request → Opportunity → pricing → Offer → Contract → Project journey. Its first manual intake slice is specified independently from the still-missing real Tariffs, calculations and Templates. Its [section 26](release-3-commercial-26-estimate-offer-preparation.md) owns D6's bounded exact Director-approved Estimate Version → internal Offer draft compatibility under #840, including independent captured v2 preparation, cost confidentiality, unspecified tax treatment and explicit downstream ineligibility. Its [section 27](release-3-commercial-27-company-offer-model.md) owns the first D7 outcome: explicit Company model editing, exact human approval and withdrawal. The separate [section 28](release-3-commercial-28-model-offer-generation.md) owns populated Offer generation from exact approved model/economic sources, explicit human net/tax facts, opt-in captured grants and non-official simulated eligibility. [Section 29](release-3-commercial-29-company-contract-model.md) owns D8's first bounded outcome: complete Company ordinary Contract/nine-section/thirteen-row-annex model configuration with independent human approval/withdrawal. [Section 30](release-3-commercial-30-model-contract-generation.md) owns the corresponding full non-official Contract/annex generation, exact Offer/model/financial concordance and internal approval while source acceptance is pending. Their runtime delivery is tracked by [#864](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/864) and [#868](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/868); received PDF evidence, exact human signing/acceptance declarations and official numbering remain separate. Product-contract approval is not runtime delivery or operational pricing approval.
 
 The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the governed illustrative fixed net discount created atomically with a new Snapshot (delivered by #458 / #470). It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
 

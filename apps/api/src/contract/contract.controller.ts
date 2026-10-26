@@ -1,3 +1,6 @@
+import { ModelContractService } from './model-contract.service.js';
+import { ContractModelService } from '../contract-model/contract-model.service.js';
+import { ReportedContractSigningService } from './reported-contract-signing.service.js';
 import {
   Body,
   Controller,
@@ -22,6 +25,9 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
 export class ContractController {
   constructor(
     private readonly contracts: ContractService,
+    private readonly signing: ReportedContractSigningService,
+    private readonly modelContracts: ModelContractService,
+    private readonly models: ContractModelService,
     private readonly projects: ContractProjectsService,
     private readonly projectCreation: ContractProjectCreationService,
   ) {}
@@ -73,6 +79,35 @@ export class ContractController {
       idempotencyKey,
     });
   }
+  @Get('model-selection') modelSelection(@Req() request: ActorContextRequest) {
+    return this.models.selectableForContract({ actor: actorFrom(request) });
+  }
+  @Post('from-approved-model') prepareModel(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.modelContracts.prepare({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
+  @Post('versions/from-approved-model') prepareModelVersion(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.modelContracts.createVersion({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post('preparation') prepare(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,
@@ -106,6 +141,35 @@ export class ContractController {
     return this.contracts.readOpportunity({
       actor: actorFrom(request),
       opportunityId,
+    });
+  }
+  @Get('versions/:versionId/signing-declarations/pdf-candidates')
+  signingCandidates(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Query('cursor') cursor: string | undefined,
+  ) {
+    return this.signing.candidates({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      cursor,
+    });
+  }
+  @Post('versions/:versionId/signing-declarations') declareSigning(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.signing.declare({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      payload,
+      idempotencyKey,
     });
   }
   @Post('versions/:versionId/signature') recordSignature(

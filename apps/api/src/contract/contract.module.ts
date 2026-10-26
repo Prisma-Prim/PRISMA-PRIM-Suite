@@ -1,3 +1,7 @@
+import { ReportedContractSigningService } from './reported-contract-signing.service.js';
+import { DocumentsModule } from '../documents/documents.module.js';
+import { ModelContractService } from './model-contract.service.js';
+import { ContractModelModule } from '../contract-model/contract-model.module.js';
 import { ContractVersionReader } from './contract-version-reader.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
@@ -15,7 +19,9 @@ import { ContractProjectLinkStore } from './contract-project-link.store.js';
 import { ContractProjectCreationService } from './contract-project-creation.service.js';
 @Module({
   imports: [
+    DocumentsModule,
     AccessModule,
+    ContractModelModule,
     ProjectModule,
     AccountabilityModule,
     ClientModule,
@@ -27,12 +33,16 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
   ],
   providers: [
     ContractVersionReader,
+    ReportedContractSigningService,
+    ModelContractService,
     ContractService,
     ContractProjectsService,
     ContractProjectLinkStore,
     ContractProjectCreationService,
   ],
   exports: [
+    ReportedContractSigningService,
+    ModelContractService,
     ContractService,
     ContractProjectsService,
     ContractProjectCreationService,

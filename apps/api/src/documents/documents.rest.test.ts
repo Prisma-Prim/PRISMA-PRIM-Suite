@@ -1,3 +1,4 @@
+import { receivedContractRelationsForTest } from './document-read.test-support.js';
 import { ConfigService } from '@nestjs/config';
 import { DocumentPdfStorage } from './document-pdf-storage.js';
 import { DocumentMalwareScanner } from './document-malware-scanner.js';
@@ -797,6 +798,12 @@ describe.skipIf(!databaseUrl)(
           new DocumentPdfStorage(context),
           new DocumentMalwareScanner(new ConfigService()),
         ),
+        receivedContractRelationsForTest({
+          context,
+          authorization,
+          clients,
+          accountability,
+        }),
       );
       const result = await documents.read(actor, text(registered.id));
       expect(result.version.representation).toMatchObject({ access: 'denied' });

@@ -67,6 +67,7 @@ export type WorkingVersion = { id: string; status: 'draft' | 'official' } & (
       representation: { id: string; url: string };
     }
   | { documentType: 'mission-deliverable'; representation: null }
+  | { documentType: 'received-contract'; representation: null }
 );
 
 type VersionCommandAction = typeof documentVersionCommands.$inferSelect.action;
@@ -152,7 +153,7 @@ export class DocumentVersionsService {
     )
       throw new Error('The Document has no working Version.');
     const identity = { id: working.id, status: working.status };
-    if (documentType === 'mission-deliverable') {
+    if (documentType !== 'questionnaire') {
       if (working.representationId !== null)
         throw new Error(
           'A mission Version cannot contain an external reference.',
@@ -329,7 +330,7 @@ export class DocumentVersionsService {
           }
           if (
             (visible.document.type === 'questionnaire' && item === null) ||
-            (visible.document.type === 'mission-deliverable' && item !== null)
+            (visible.document.type !== 'questionnaire' && item !== null)
           )
             throw new Error('Document reference does not match its family.');
           if (existing) {
@@ -544,9 +545,9 @@ export class DocumentVersionsService {
       authorize: () =>
         this.authorization.requireDocumentVersionManagement(actor),
       apply: (scope, document) => {
-        if (document.type === 'mission-deliverable')
+        if (document.type !== 'questionnaire')
           throw new BadRequestException(
-            'Mission deliverables do not accept external references',
+            'This Document family does not accept external references',
           );
         return this.applyRepresentationAddition(actor, scope, versionId, body);
       },
@@ -578,9 +579,9 @@ export class DocumentVersionsService {
       authorize: () =>
         this.authorization.requireDocumentVersionManagement(actor),
       apply: (scope, document) => {
-        if (document.type === 'mission-deliverable')
+        if (document.type !== 'questionnaire')
           throw new BadRequestException(
-            'Mission deliverables do not accept external references',
+            'This Document family does not accept external references',
           );
         return this.applyRepresentationRemoval(
           actor,
@@ -767,13 +768,13 @@ export class DocumentVersionsService {
     const draft = versions.find((version) => version.id === versionId);
     if (draft?.status !== 'draft') throw documentVersionStateInvalid();
     if (
-      document.type === 'mission-deliverable' &&
+      document.type !== 'questionnaire' &&
       !(await this.pdfs.hasStoredContent(scope, versionId))
     )
       throw new ConflictException({
         code: 'document_pdf_required',
         message:
-          'Preserve a clean PDF before designating this mission Version as official.',
+          'Preserve a clean PDF before designating this Version as official.',
       });
     const official = versions.find((version) => version.status === 'official');
     // The previous official Version is superseded first, so at no statement

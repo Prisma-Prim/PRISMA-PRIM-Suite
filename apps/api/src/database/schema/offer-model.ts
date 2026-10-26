@@ -165,6 +165,15 @@ export const offerModelDecisions = pgTable(
     ...attribution(),
   },
   (t) => [
+    uniqueIndex('offer_model_decisions_offer_source_unique').on(
+      t.workspaceId,
+      t.companyId,
+      t.modelId,
+      t.versionId,
+      t.versionNumber,
+      t.outcome,
+      t.id,
+    ),
     uniqueIndex('offer_model_decisions_version_unique').on(
       t.workspaceId,
       t.companyId,

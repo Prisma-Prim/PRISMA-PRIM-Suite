@@ -99,6 +99,8 @@ export async function createContractVersion(
           : { contractId: input.contractId }),
       });
       if (!found) throw new NotFoundException();
+      if (found.version.provenance === 'COMPANY_MODEL_OFFER')
+        throw conflict('CONTRACT_MODEL_SOURCE_REQUIRED');
       const early = found.contract.origin === 'OFFER_PREPARATION';
       if (early) {
         await dependencies.authorization.requireContractAccess(

@@ -100,6 +100,21 @@ export async function decideContractVersion(
       });
       if (!found || found.version.id !== input.versionId)
         throw new NotFoundException();
+      if (found.version.provenance === 'COMPANY_MODEL_OFFER') {
+        await dependencies.authorization.requireContractAccess(
+          actor,
+          [
+            'commercial.contract.approve',
+            'commercial.contract.model_based.approve',
+          ],
+          true,
+        );
+        await dependencies.authorization.requireOfferAccess(
+          actor,
+          ['commercial.offer.read'],
+          true,
+        );
+      }
       const fingerprint = commandFingerprint({
         kind: input.kind,
         opportunityId: input.opportunityId,
@@ -152,7 +167,11 @@ export async function decideContractVersion(
           'CONTRACT_VERSION_SUPERSEDED',
           'The Contract Version has been superseded.',
         );
-      const command = readContractDecisionCommand(input.kind, input.payload);
+      const command = readContractDecisionCommand(
+        input.kind,
+        input.payload,
+        found.version.provenance === 'COMPANY_MODEL_OFFER',
+      );
       // Approval shares C3's Client-owner fence and fresh evaluation. Rejection
       // needs no quality context, so it only locks the Contract's decision state.
       const quality =
@@ -238,6 +257,7 @@ export async function decideContractVersion(
             contractVersionId: current.version.id,
             actorInternalUserId: actor.internalUserId,
             actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            ruleSet: quality.ruleSet,
             ruleSetVersion: quality.ruleSetVersion,
             evaluatedAt: decidedAt,
             results: quality.results,
@@ -265,6 +285,7 @@ export async function decideContractVersion(
           actorInternalUserId: actor.internalUserId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
           decidedAt,
+          reviewBasis: command.kind === 'APPROVE' ? command.reviewBasis : null,
           reason: command.kind === 'REJECT' ? command.reason : null,
           qualityRunId: approval?.qualityRunId ?? null,
           representationChecksum: approval?.checksum ?? null,
@@ -321,7 +342,10 @@ export async function decideContractVersion(
               acknowledgedWarningCodes: approval.warnings,
             }
           : { kind: 'REJECT' },
-        source: contractSource(current.contract, current.version),
+        source: contractSource(
+          { ...current.contract, revision: current.contract.revision + 1 },
+          current.version,
+        ),
         pricingSnapshotId: current.version.pricingSnapshotId,
         occurredAt: decidedAt,
       });
@@ -410,6 +434,7 @@ export async function readContractDecision(
     const qualityRun = qualityRunView(run, version, contract);
     const acknowledgedWarningCodes = readContractWarningCodes(
       row.acknowledgedWarningCodes,
+      version.provenance === 'COMPANY_MODEL_OFFER',
     );
     if (
       qualityRun.results.some((result) => result.status === 'ERROR') ||
@@ -422,12 +447,23 @@ export async function readContractDecision(
         )
     )
       throw new Error('Invalid stored Contract approval warnings.');
+    if (
+      version.provenance === 'COMPANY_MODEL_OFFER' &&
+      (row.reviewBasis === null ||
+        !row.reviewBasis.trim() ||
+        row.reviewBasis.length > 2000)
+    )
+      throw new Error('Missing model Contract approval basis.');
     return {
       ...base,
       kind: 'APPROVE',
       qualityRun,
       acknowledgedWarningCodes,
       representationChecksum: row.representationChecksum,
+      ...(version.provenance === 'COMPANY_MODEL_OFFER' &&
+      row.reviewBasis !== null
+        ? { reviewBasis: row.reviewBasis }
+        : {}),
     };
   }
   throw new Error('Invalid stored Contract decision.');

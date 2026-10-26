@@ -16,6 +16,9 @@ import {
 // The captured permission sets every Company role bundle resolves today. A
 // new version is added here deliberately, never by editing an existing one.
 const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
+  company_contract_signature_declarer: {
+    v1: ['commercial.contract.signature.declare_external'],
+  },
   company_offer_model_editor: {
     v1: [
       'commercial.offer.model.read',
@@ -27,6 +30,19 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
       'commercial.offer.model.read',
       'commercial.offer.model.decide',
       'commercial.offer.model.withdraw',
+    ],
+  },
+  company_contract_model_editor: {
+    v1: [
+      'commercial.contract.model.read',
+      'commercial.contract.model.version.create',
+    ],
+  },
+  company_contract_model_approver: {
+    v1: [
+      'commercial.contract.model.read',
+      'commercial.contract.model.decide',
+      'commercial.contract.model.withdraw',
     ],
   },
   company_ideas_reader: { v1: ['idea.read'] },
@@ -151,6 +167,16 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
       'commercial.pricing.snapshot.read',
       'commercial.offer.estimate.prepare',
     ],
+    v3: [
+      'commercial.offer.read',
+      'commercial.offer.prepare',
+      'commercial.offer.transmission.record',
+      'commercial.pricing.snapshot.read',
+      'commercial.offer.estimate.prepare',
+      'commercial.offer.model.select',
+      'commercial.offer.model_based.prepare',
+      'commercial.offer.model_based.transmission.record',
+    ],
   },
   company_contract_early_preparation: {
     v1: ['commercial.contract.prepare_pending_offer'],
@@ -161,6 +187,13 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
       'commercial.contract.prepare',
       'commercial.contract.project.link',
     ],
+    v2: [
+      'commercial.contract.read',
+      'commercial.contract.prepare',
+      'commercial.contract.project.link',
+      'commercial.contract.model.select',
+      'commercial.contract.model_based.prepare',
+    ],
   },
   company_contract_approver: {
     v1: [
@@ -168,12 +201,25 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
       'commercial.contract.approve',
       'commercial.contract.signature.record',
     ],
+    v2: [
+      'commercial.contract.read',
+      'commercial.contract.approve',
+      'commercial.contract.signature.record',
+      'commercial.contract.model_based.approve',
+    ],
   },
   company_offer_approver: {
     v1: [
       'commercial.offer.read',
       'commercial.offer.approve',
       'commercial.offer.response.record',
+    ],
+    v2: [
+      'commercial.offer.read',
+      'commercial.offer.approve',
+      'commercial.offer.response.record',
+      'commercial.offer.model_based.approve',
+      'commercial.offer.model_based.response.record',
     ],
   },
   company_commercial_activity_reader: { v1: ['commercial.activity.read'] },
@@ -206,13 +252,19 @@ const EXPECTED: Record<CompanyRoleBundle, Record<string, readonly string[]>> = {
   company_mission_deliverable_access: {
     v1: ['document.mission_deliverable.access'],
   },
+  company_received_contract_access: {
+    v1: ['document.received_contract.access'],
+  },
   company_document_content_reader: { v1: ['document.content.read'] },
   company_document_content_uploader: { v1: ['document.content.upload'] },
 };
 
 const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
+  company_contract_signature_declarer: 'Company Contract Signature Declarer',
   company_offer_model_editor: 'Company Offer Model Editor',
   company_offer_model_approver: 'Company Offer Model Approver',
+  company_contract_model_editor: 'Company Contract Model Editor',
+  company_contract_model_approver: 'Company Contract Model Approver',
   company_ideas_reader: 'Company Ideas Reader',
   company_ideas_recorder: 'Company Ideas Recorder',
   company_ideas_reviewer: 'Company Ideas Reviewer',
@@ -247,6 +299,7 @@ const EXPECTED_LABELS: Record<CompanyRoleBundle, string> = {
   company_sales_stage_configuration: 'Company Sales Stage Configuration',
   company_task_result_recorder: 'Company Task Result Recorder',
   company_mission_deliverable_access: 'Company Mission Deliverable Access',
+  company_received_contract_access: 'Company Received Contract Access',
   company_document_content_reader: 'Company Document Content Reader',
   company_document_content_uploader: 'Company Document Content Uploader',
 };
@@ -358,9 +411,9 @@ describe('Company role permission set version CHECK', () => {
   const bundle = '"company_role_assignments"."bundle"::text';
   const version = '"company_role_assignments"."permission_set_version"';
   const singleVersionBundles =
-    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_deliverable_access', 'company_offer_model_editor', 'company_offer_model_approver'";
+    "'company_task_manager', 'company_document_project_organizer', 'company_document_approver', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_contract_early_preparation', 'company_commercial_activity_reader', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_deliverable_access', 'company_contract_signature_declarer', 'company_received_contract_access', 'company_offer_model_editor', 'company_offer_model_approver', 'company_contract_model_editor', 'company_contract_model_approver'";
   const versionedBundles =
-    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_deliverable_access', 'company_offer_model_editor', 'company_offer_model_approver'";
+    "'company_director_client_access', 'company_task_manager', 'company_document_project_organizer', 'company_document_registrar', 'company_document_approver', 'company_project_access', 'company_commercial_intake', 'company_service_catalogue', 'company_pricing_configuration', 'company_pricing_user', 'company_pricing_adjustment', 'company_offer_preparer', 'company_contract_preparer', 'company_contract_early_preparation', 'company_contract_approver', 'company_offer_approver', 'company_commercial_activity_reader', 'company_opportunity_manager', 'company_project_approver', 'company_profitability_contributor', 'company_profitability_director', 'company_sales_stage_configuration', 'company_document_content_reader', 'company_document_content_uploader', 'company_project_template_user', 'company_project_stage_advancer', 'company_project_template_configuration', 'company_ideas_reader', 'company_ideas_recorder', 'company_ideas_reviewer', 'company_operational_risk_reader', 'company_operational_risk_recorder', 'company_task_result_recorder', 'company_mission_deliverable_access', 'company_contract_signature_declarer', 'company_received_contract_access', 'company_offer_model_editor', 'company_offer_model_approver', 'company_contract_model_editor', 'company_contract_model_approver'";
   const EXPECTED_CHECK = [
     '(',
     `        (${bundle} = 'company_director_client_access'`,
@@ -375,7 +428,13 @@ describe('Company role permission set version CHECK', () => {
     '        OR',
     `        (${bundle} = 'company_opportunity_manager' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
     '        OR',
-    `        (${bundle} = 'company_offer_preparer' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
+    `        (${bundle} = 'company_offer_preparer' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2', 'v3'))`,
+    '        OR',
+    `        (${bundle} = 'company_contract_preparer' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
+    '        OR',
+    `        (${bundle} = 'company_contract_approver' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
+    '        OR',
+    `        (${bundle} = 'company_offer_approver' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
     '        OR',
     `        (${bundle} = 'company_project_template_user' AND ${version} IS NOT NULL AND ${version} IN ('v1', 'v2'))`,
     '        OR',

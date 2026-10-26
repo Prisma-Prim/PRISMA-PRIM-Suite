@@ -115,7 +115,7 @@ function optionalText(value: string | null): string {
   return value === null ? 'Not recorded' : escapeHtml(value);
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
