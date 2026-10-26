@@ -330,3 +330,106 @@ amount on a new Offer Version; no fiscal-cost input, source decision or existing
 estimate is reinterpreted or changed. This adds no tax engine or historical costs.
 
 Readiness requires the published canonical contract and amendments, the reviewed context-free child issue and closed dependencies. No additional Client case, tariff, fiscal opinion, Offer Template or Contract Template blocks this first journey. Broader pricing/fiscal policy, configuration administration, actual-cost tracking, integrations and Offer compatibility need separate approved slices.
+
+## 13. Approved Company queue awaiting Director decision (#889)
+
+**Authority and state.** Approved bounded product contract under Dan's
+2026-10-26 instruction to implement the independently testable pending-estimate
+queue. This is reversible product synthesis, not a new Iurie answer. Sections
+5–6 own versions, decisions and permissions; this section only adds discovery
+and exact navigation. Runtime delivery belongs to its separate child issue.
+No additional business answer or manual user acceptance blocks synthetic delivery.
+
+### Outcome and user stories
+
+An existing Director finds the Company's readable estimate Versions that have
+no decision, opens the exact Version and uses the existing decision journey.
+
+1. As a Director, I discover pending Versions across readable Opportunities.
+2. As a Director, I distinguish an earlier pending Version from the latest one.
+3. As a Director, I reach every pending Version beyond the first page.
+4. As a Director, I open the exact selected Version and inspect all frozen inputs,
+   results and current exact-version decision before acting.
+5. As a Director, I approve, request modification or reject using the existing
+   exact-version command, concurrency expectations and uncertain-retry protocol.
+6. As a Director, I refresh after a decision and see that Version leave the queue;
+   another pending Version of the same estimate remains independently visible.
+7. As a user losing authority or changing identity/Company, I retain no old queue,
+   exact detail, prepared decision or late protected response.
+8. As a reader, I distinguish empty, loading, failed and denied reads and can retry.
+9. As a desktop or narrow-screen user, I complete the same accessible journey.
+
+### Membership, authority and page contract
+
+A pending item is one immutable submitted Version with **no** separate decision.
+Include older undecided Versions, even if a successor exists or another Version
+was approved. Never invent an aggregate approval state, exclude an Opportunity
+because it is closed, or infer withdrawal/urgency from age. Sections 5–6 remain
+unchanged, including decisions on older Versions and all three decision codes.
+
+The active Company must pass live captured Director v1 decision authority **and**
+existing commercial Opportunity read authority, with the same Workspace/Company
+scope as ordinary estimate reads. Contributor-only, assignment administrators,
+ownership labels and unknown captures confer no queue access. No assignment,
+backfill, new permission or cross-Company view is introduced. Recheck the current
+scope/captures on every read, continuation, exact open, decision and replay.
+An empty authorized queue is not a substitute for a refused read. Client labels
+are omitted: this discovery grants no additional Client dossier read.
+
+GET `/profitability-estimate-decision-queue` accepts only an optional opaque
+`cursor`. It returns at most 25 items and an optional `nextCursor`. Each item
+contains the exact scoped Version/estimate/Opportunity/Request identities,
+Version number, latest Version number, submission timestamp and Opportunity
+title. Return no costs, totals, reasons, actor roster, hidden counts or Client
+labels. Membership, head marker, page boundary and labels share one coherent
+transactional read; existing authorization owners supply readable scope. Reads
+write no records, receipts, Activity events or Client reference-use fences.
+
+Order by submission time ascending, then Version ID ascending. This is stable
+chronological discovery, not business priority or an SLA. Cursor binds the
+Workspace/Company, timestamp and Version ID, is representation-validated and
+adds no authority. Reject malformed, extra, repeated or foreign-scope inputs
+with a safe 400. Every page independently reflects current data and access;
+new earlier rows require an explicit refresh from the beginning. There is no
+whole count, maximum-total cap, saved filter or synthesized business deadline.
+
+### User interface and navigation
+
+Expose an independent, clearly named pending-estimates region on the existing
+operational home only for the current eligible Director. Preserve ordinary home,
+Task, commercial editor and presentation lifetimes. Use existing Prisme controls
+and centralized four-locale copy. Next/Previous navigate bounded pages; Refresh
+returns to the beginning. Announce page/loading/error state and keep keyboard
+focus useful; narrow layout must not require horizontal page scrolling.
+
+A row opens its exact target in the existing estimate detail/decision owner.
+The target remains fixed after new submissions or decisions; never substitute
+latest or another pending Version. Revalidate through the ordinary exact read:
+a concurrent decision displays its actual state, and existing one-decision and
+replay rules handle races. Return to the list and explicitly refresh after work.
+Queue navigation adds no second decision form, endpoint or command implementation.
+Identity/session/Workspace/Company or consumed Director/intake capture change
+retires protected queue/detail/command owners and held replies. A command/read
+401/403/404 retires protected state before asynchronous access recovery; permitted
+existing estimate history elsewhere remains independently governed.
+
+### Proof and exclusions
+
+Use existing public REST/PostgreSQL and actual App/Playwright seams under Dan's
+autonomous-testing instruction. Prove empty and populated reads, older pending
+Versions, every decision code, exact historical open, two Directors racing,
+identical uncertain retry, pagination beyond25 with tied dates, malformed and
+foreign cursors, unsupported captures, current grant loss, Company/Workspace
+isolation, held responses and no write/event/fence side effects. Real desktop
+1440x900 and narrow390x844 App cases prepare synthetic records through public
+commands, open from Home, decide the selected Version, refresh and reopen history.
+Component fixtures separately prove asynchronous/privacy/locale edge cases.
+Run appropriate doctor, formatting, lint, strict types, affected PG/browser and
+broader sensitive development checks, bounded review, then exact-current-base
+integration verification before guarded merge. No manual user testing is required.
+
+No pricing/fiscal changes, estimate submission/decision semantics, real assignment,
+external transmission, reminders, ranking, bulk decisions, Offer/Contract queues,
+mission closure/certification, deployment/provider configuration or whole-MVP credit.
+Pending `MISSION-CLOSE-01` stays owned by the mission PRD§12 for one consolidated
+email and does not block this independent discovery feature.

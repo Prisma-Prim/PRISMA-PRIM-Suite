@@ -203,3 +203,5 @@ The repository maintains one Product Vision tracker and one tracker for each cro
 - represent hierarchy with parent and dependency links;
 - keep all Draft trackers free of the `ready-for-agent` label;
 - create vertical implementation children only after the applicable PRD passes every readiness gate.
+
+The [pending profitability estimate queue](release-3-confirmed-cost-profitability-estimate-prd.md#13-approved-company-queue-awaiting-director-decision-889) is the bounded Company Director discovery continuation approved on 2026-10-26. Its contract is separate from generic approval dashboards and requires no first-tenant closure/certification answer. Runtime state belongs to its implementation child.
