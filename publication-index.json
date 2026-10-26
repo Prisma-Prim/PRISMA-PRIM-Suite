@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "pr": 848,
+  "source": "27a2440f749909ed75cd245b35abc714dc4133fa",
+  "base": "f4be640df90a48f4ca7009e425b6485376a3fe7f",
+  "checkout": "27a2440f749909ed75cd245b35abc714dc4133fa",
+  "integrationTree": "6d0acec2b01b999ebaa44f4c24b8004e9db7f53d",
+  "startedAt": "2026-10-26T11:25:08.306Z",
+  "finishedAt": "2026-10-26T12:47:34.443Z",
+  "selection": "Reviewed compact original report, manifest and packaging log only. Complete original logs, screenshots and traces remain local; this is self-reported local evidence, not independent GitHub CI. No production or real Client data is included.",
+  "retainUntil": "2026-11-09T12:49:33.978923+00:00",
+  "files": [
+    {
+      "path": "report.md",
+      "originalPath": "report.md",
+      "bytes": 3595,
+      "sha256": "77580a46e4410e155a8bf216f283fb6f3294663f4aee81e9140d49a23e15eb81"
+    },
+    {
+      "path": "manifest.json",
+      "originalPath": "manifest.json",
+      "bytes": 909449,
+      "sha256": "765c13065e834eeac8e12e7e58bdffdabde6659cdfd83e5ca71a95c056f5adc8"
+    },
+    {
+      "path": "packaging.log",
+      "originalPath": "logs/packaging.log",
+      "bytes": 7870,
+      "sha256": "25ad0a47a962321cbd83bfeb8563662afcc2b60ab7c42762ce1bb73648da868c"
+    }
+  ]
+}
