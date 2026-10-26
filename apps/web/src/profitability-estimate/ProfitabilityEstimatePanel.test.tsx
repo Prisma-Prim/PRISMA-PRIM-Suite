@@ -70,6 +70,39 @@ function fillForm() {
   fireEvent.click(screen.getByRole('checkbox'));
 }
 describe('Profitability Estimate production public seam', () => {
+  it('opens the requested exact earlier Version instead of choosing the latest history item', async () => {
+    const fetch = vi.fn(async (input: string) =>
+      input.endsWith('/versions/version-1')
+        ? Response.json(syntheticVersion(1))
+        : Response.json({
+            items: [syntheticVersion(2)],
+            latestVersionNumber: 2,
+          }),
+    );
+    vi.stubGlobal('fetch', fetch);
+    window.localStorage.setItem('prisma-prim.interface-locale', 'en');
+    render(
+      <InterfaceLocaleProvider>
+        <ProfitabilityEstimatePanel
+          actor={both}
+          identity={deterministicBrowserIdentity()}
+          opportunityId="opportunity-1"
+          requestedVersionId="version-1"
+          onCompanyContextRejected={() => undefined}
+        />
+      </InterfaceLocaleProvider>,
+    );
+    expect(
+      await screen.findByRole('article', { name: 'Version 1' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('article', { name: 'Version 2' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Save confirmed version' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('requires explicit costs, target and fresh confirmation without a target default', async () => {
     const fetch = vi
       .fn()

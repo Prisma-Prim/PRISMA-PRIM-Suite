@@ -26,6 +26,8 @@ type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
+  requestedVersionId?: string;
+  onProtectedAccessRejected?: () => void;
   onCompanyContextRejected: (companyContextId: string) => void;
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
@@ -68,7 +70,7 @@ export function ProfitabilityEstimatePanel(props: Props) {
     return null;
   return (
     <ProfitabilityEstimateOwner
-      key={`${profitabilityContextKey(props.actor)}:${props.opportunityId}:${identityGeneration.current.generation}`}
+      key={`${profitabilityContextKey(props.actor)}:${props.opportunityId}:${props.requestedVersionId ?? 'history'}:${identityGeneration.current.generation}`}
       {...props}
       company={props.actor.activeCompany}
       authority={authority}
@@ -80,6 +82,8 @@ function ProfitabilityEstimateOwner({
   actor,
   identity,
   opportunityId,
+  requestedVersionId,
+  onProtectedAccessRejected,
   company,
   authority,
   onCompanyContextRejected,
@@ -102,11 +106,13 @@ function ProfitabilityEstimateOwner({
   const [readError, setReadError] = useState(false);
   const pending = useRef<AbortController | undefined>(undefined);
   const callbacks = useRef({
+    onProtectedAccessRejected,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
   });
   callbacks.current = {
+    onProtectedAccessRejected,
     onCompanyContextRejected,
     onActorRevalidated,
     onWorkspaceAccessRejected,
@@ -160,6 +166,7 @@ function ProfitabilityEstimateOwner({
       setSelected(undefined);
       setCorrection(undefined);
       setMutation({ kind: 'idle' });
+      callbacks.current.onProtectedAccessRejected?.();
       await handleAuthenticatedAccessRejection({
         result,
         identity,
@@ -193,14 +200,34 @@ function ProfitabilityEstimateOwner({
         setView({ kind: 'error' });
         return;
       }
-      setView({
-        kind: 'ready',
-        history: parseEstimateHistory(result.value, {
+      const history = parseEstimateHistory(result.value, {
+        workspaceId: actor.workspaceId,
+        companyId: company.id,
+        opportunityId,
+      });
+      if (requestedVersionId) {
+        const exact = await request(
+          `${basePath}/versions/${encodeURIComponent(requestedVersionId)}`,
+          controller,
+        );
+        if (
+          !exact ||
+          controller.signal.aborted ||
+          (await reject(exact, controller))
+        )
+          return;
+        if (exact.status !== 'ok')
+          throw new Error('Exact estimate unavailable.');
+        const version = parseEstimateVersion(exact.value, {
           workspaceId: actor.workspaceId,
           companyId: company.id,
           opportunityId,
-        }),
-      });
+        });
+        if (version.id !== requestedVersionId)
+          throw new Error('Unexpected exact profitability Version.');
+        setSelected(version);
+      }
+      setView({ kind: 'ready', history });
     } catch {
       if (!controller.signal.aborted) setView({ kind: 'error' });
     } finally {
@@ -209,7 +236,15 @@ function ProfitabilityEstimateOwner({
         setReading(false);
       }
     }
-  }, [actor.workspaceId, basePath, company.id, opportunityId, reject, request]);
+  }, [
+    actor.workspaceId,
+    basePath,
+    company.id,
+    opportunityId,
+    requestedVersionId,
+    reject,
+    request,
+  ]);
 
   useEffect(() => {
     void load();
@@ -431,7 +466,7 @@ function ProfitabilityEstimateOwner({
           </p>
         </>
       ) : null}
-      {authority.create && view.kind !== 'denied' ? (
+      {authority.create && !requestedVersionId && view.kind !== 'denied' ? (
         <div hidden={view.kind !== 'ready'}>
           <ProfitabilityForm
             key={`${correction?.id ?? 'first'}:${editorGeneration}`}
@@ -447,66 +482,70 @@ function ProfitabilityEstimateOwner({
       ) : null}
       {view.kind === 'ready' ? (
         <>
-          <h4>{copy('history')}</h4>
-          {view.history.items.length === 0 ? (
-            <p>{copy('empty')}</p>
-          ) : (
-            <ol className="profitability-history">
-              {view.history.items.map((version) => (
-                <li key={version.id}>
-                  <strong>
-                    {copy('version')} {version.versionNumber}
-                  </strong>
-                  <p>
-                    {copy('decision')}:{' '}
-                    {copy(version.decision?.code ?? 'awaiting')}
-                  </p>
-                  <p>
-                    {copy('author')}:{' '}
-                    <span className="profitability-reference">
-                      {version.createdByWorkspaceMembershipId}
-                    </span>{' '}
-                    — {formatDateTime(version.createdAt)}
-                  </p>
-                  <button
-                    type="button"
-                    disabled={locked}
-                    onClick={() =>
-                      void read(
-                        `${basePath}/versions/${encodeURIComponent(version.id)}`,
-                        'detail',
-                        version.id,
-                      )
-                    }
-                  >
-                    {copy('open')} {version.versionNumber}
-                  </button>
-                </li>
-              ))}
-            </ol>
-          )}
-          {readError ? <p role="alert">{copy('error')}</p> : null}
-          {reading ? <p role="status">{copy('loading')}</p> : null}
-          {view.history.nextCursor ? (
-            <button
-              type="button"
-              disabled={locked}
-              onClick={() =>
-                void read(
-                  `${basePath}?cursor=${encodeURIComponent(view.history.nextCursor ?? '')}`,
-                  'older',
-                )
-              }
-            >
-              {copy('more')}
-            </button>
+          {!requestedVersionId ? (
+            <>
+              <h4>{copy('history')}</h4>
+              {view.history.items.length === 0 ? (
+                <p>{copy('empty')}</p>
+              ) : (
+                <ol className="profitability-history">
+                  {view.history.items.map((version) => (
+                    <li key={version.id}>
+                      <strong>
+                        {copy('version')} {version.versionNumber}
+                      </strong>
+                      <p>
+                        {copy('decision')}:{' '}
+                        {copy(version.decision?.code ?? 'awaiting')}
+                      </p>
+                      <p>
+                        {copy('author')}:{' '}
+                        <span className="profitability-reference">
+                          {version.createdByWorkspaceMembershipId}
+                        </span>{' '}
+                        — {formatDateTime(version.createdAt)}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={locked}
+                        onClick={() =>
+                          void read(
+                            `${basePath}/versions/${encodeURIComponent(version.id)}`,
+                            'detail',
+                            version.id,
+                          )
+                        }
+                      >
+                        {copy('open')} {version.versionNumber}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              {readError ? <p role="alert">{copy('error')}</p> : null}
+              {reading ? <p role="status">{copy('loading')}</p> : null}
+              {view.history.nextCursor ? (
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() =>
+                    void read(
+                      `${basePath}?cursor=${encodeURIComponent(view.history.nextCursor ?? '')}`,
+                      'older',
+                    )
+                  }
+                >
+                  {copy('more')}
+                </button>
+              ) : null}
+            </>
           ) : null}
           {selected ? (
             <ProfitabilityVersionDetail
               version={selected}
               disabled={locked}
               mayDecide={authority.decide}
-              mayCreate={authority.create}
+              mayCreate={authority.create && !requestedVersionId}
               onDecide={(code) => decide(selected, code)}
               onCorrection={() => {
                 setCorrection(selected);

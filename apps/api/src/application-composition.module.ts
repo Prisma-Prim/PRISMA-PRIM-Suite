@@ -126,6 +126,7 @@ import { OperationalHomeController } from './operational-home/operational-home.c
 import { OfferController } from './offer/offer.controller.js';
 import { OfferModule } from './offer/offer.module.js';
 import { ProfitabilityEstimateModule } from './profitability-estimate/profitability-estimate.module.js';
+import { ProfitabilityDecisionQueueController } from './profitability-estimate/profitability-decision-queue.controller.js';
 import { ProfitabilityEstimateController } from './profitability-estimate/profitability-estimate.controller.js';
 
 @Module({
@@ -235,6 +236,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ContractController,
     ContractAgreementsController,
     ProfitabilityEstimateController,
+    ProfitabilityDecisionQueueController,
   ],
   providers: [
     VerifiedPrincipalAdapter,
