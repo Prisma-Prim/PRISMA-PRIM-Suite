@@ -1,0 +1,65 @@
+{
+  "issue": 879,
+  "pr": 880,
+  "source": "a28d5ff464228f3c6e3dbb6c0f4b617516122c4e",
+  "base": "d90cf4a28291259da08fde65f3b5ec7dceed1bd9",
+  "tree": "ee91108348a846dbd5755d5087237b4ec855ca4e",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1663,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "issue": 879,
+    "kind": "Draft documentation only",
+    "base": "d90cf4a28291259da08fde65f3b5ec7dceed1bd9",
+    "orderedPreparation": [
+      {
+        "order": 1,
+        "axis": "Standards",
+        "result": "PASS after replacing intentional Markdown hard breaks with paragraphs",
+        "blocking": 0,
+        "basis": "One Draft owner; no runtime/schema/permission/glossary activation; three-file reading route; English technical content without raw customer/model prose."
+      },
+      {
+        "order": 2,
+        "axis": "Spec",
+        "result": "PASS",
+        "blocking": 0,
+        "basis": "#879 outcome complete: source/approved/implemented/proposed distinctions, three pending decisionsA-C, independent permission/history/compatibility and future public seams. Explicit parallel progress rescope; certification ambiguity stays blocked."
+      }
+    ],
+    "relativeLinksAndAnchorsChecked": 60,
+    "pendingBusinessApproval": [
+      "A",
+      "B",
+      "C"
+    ],
+    "earlierCheck": "git diff --check initially refused three intentional Markdown hard breaks; converted to separate paragraphs, rerunPASS. No canonical final gate attempted/failed.",
+    "runtimeEvidence": "No runtime tests executed or claimed by this documentation change; existing exact milestone proof retains its actual source.",
+    "source": "a28d5ff464228f3c6e3dbb6c0f4b617516122c4e",
+    "reviewedBase": "d90cf4a28291259da08fde65f3b5ec7dceed1bd9",
+    "tree": "ee91108348a846dbd5755d5087237b4ec855ca4e",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "configuredOpeningReview": {
+      "commentId": 6409778244,
+      "status": "running as observed2026-10-26T06:33Z; no completion or zero-findings claim",
+      "requiredForDocs": false,
+      "extraTriggerRequested": false
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Draft D5/D13 proposal and existing reading-route pointers only. Three business choices A-C pending; documentation merge grants no business approval, runtime, real values/prose/grants/deployment, source amendment or official numbering. No ready runtime child created.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-12T00:00:00Z"
+}
