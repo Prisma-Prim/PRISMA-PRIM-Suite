@@ -59,54 +59,63 @@ export function readMissionReadiness(
     throw new Error('Mismatched mission readiness');
   const values: unknown[] = row.activities;
   const activities = values.map((value, index) => {
-    const item = object(value),
-      task = object(item.task),
-      result = object(item.result),
-      planned = expected.plan.activities[index];
-    const status = taskStates.find((state) => state === task.status);
-    if (
-      !planned ||
-      item.key !== planned.key ||
-      item.title !== planned.title ||
-      item.activity !== planned.activity ||
-      item.intendedResult !== planned.intendedResult ||
-      task.id !== planned.taskId ||
-      !status ||
-      typeof task.title !== 'string' ||
-      !task.title.trim() ||
-      typeof task.version !== 'number' ||
-      !Number.isSafeInteger(task.version) ||
-      task.version < 1
-    )
-      throw new Error('Invalid mission activity');
-    let projection: MissionResult;
-    if (result.kind === 'unavailable' && Object.keys(result).length === 1)
-      projection = { kind: 'unavailable' };
-    else if (result.kind === 'available')
-      projection = {
-        kind: 'available',
-        current:
-          result.current === null
-            ? null
-            : readTaskResultDeclaration(result.current),
-      };
-    else throw new Error('Invalid mission result');
-    const state = missionState(status, projection);
-    if (item.state !== state) throw new Error('Invalid diagnostic state');
-    return {
-      ...planned,
-      task: {
-        id: planned.taskId,
-        title: task.title,
-        status,
-        version: task.version,
-      },
-      result: projection,
-      state,
-    };
+    const row = readMissionActivity(value, expected.plan.activities[index]);
+    if (object(value).state !== row.state)
+      throw new Error('Invalid diagnostic state');
+    return row;
   });
   return { projectStatus: project.status, activities };
 }
 export type MissionReadinessSnapshot = NonNullable<
   ReturnType<typeof readMissionReadiness>
 >;
+
+/** Source and Task/result facts shared by independent mission projections. */
+export function readMissionActivity(
+  value: unknown,
+  planned: CopiedPilotTemplatePlan['activities'][number] | undefined,
+) {
+  const item = object(value),
+    task = object(item.task),
+    result = object(item.result);
+  const status = taskStates.find((state) => state === task.status);
+  if (
+    !planned ||
+    item.key !== planned.key ||
+    item.title !== planned.title ||
+    item.activity !== planned.activity ||
+    item.intendedResult !== planned.intendedResult ||
+    task.id !== planned.taskId ||
+    !status ||
+    typeof task.title !== 'string' ||
+    !task.title.trim() ||
+    typeof task.version !== 'number' ||
+    !Number.isSafeInteger(task.version) ||
+    task.version < 1
+  )
+    throw new Error('Invalid mission activity');
+  let projection: MissionResult;
+  if (result.kind === 'unavailable' && Object.keys(result).length === 1)
+    projection = { kind: 'unavailable' };
+  else if (result.kind === 'available')
+    projection = {
+      kind: 'available',
+      current:
+        result.current === null
+          ? null
+          : readTaskResultDeclaration(result.current),
+    };
+  else throw new Error('Invalid mission result');
+  const state = missionState(status, projection);
+  return {
+    ...planned,
+    task: {
+      id: planned.taskId,
+      title: task.title,
+      status,
+      version: task.version,
+    },
+    result: projection,
+    state,
+  };
+}

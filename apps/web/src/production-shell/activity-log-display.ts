@@ -1,6 +1,7 @@
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
+import { useMissionReviewCopy } from '../project/mission-result-review.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
 import { useContractModelCopy } from '../contract-model/contract-model.copy';
@@ -67,9 +68,12 @@ export function useActivityLogDisplay() {
   const missionActions = useMissionDeliverableCopy().activityActionLabels;
   const receivedActions = useReceivedContractCopy().activityActionLabels;
   const signing = useReportedSigningCopy();
+  const reviewCopy = useMissionReviewCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
     ...taskResultActions,
+    'company_mission_result_reviewer_assignment.granted': reviewCopy('granted'),
+    'company_mission_result_reviewer_assignment.revoked': reviewCopy('revoked'),
     ...missionActions,
     ...receivedActions,
     'company_contract_signature_declarer_assignment.granted':

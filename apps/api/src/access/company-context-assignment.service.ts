@@ -47,6 +47,7 @@ import {
   COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
@@ -142,6 +143,10 @@ const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
 };
 const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const MISSION_RESULT_REVIEWER_BUNDLE: BundleDefinition = {
+  value: COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
   permissionSetVersion: 'v1',
 };
 const MISSION_DELIVERABLE_ACCESS_BUNDLE: BundleDefinition = {
@@ -307,6 +312,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
 ] as const;
 
@@ -1451,6 +1457,32 @@ export class CompanyContextAssignmentService {
       command.idempotencyKey,
     );
   }
+  grantMissionResultReviewer(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_RESULT_REVIEWER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeMissionResultReviewer(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_RESULT_REVIEWER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   grantMissionDeliverableAccess(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -1978,6 +2010,10 @@ function assignmentAction(
       return granted
         ? 'company_task_result_recorder_assignment.granted'
         : 'company_task_result_recorder_assignment.revoked';
+    case COMPANY_MISSION_RESULT_REVIEWER_BUNDLE:
+      return granted
+        ? 'company_mission_result_reviewer_assignment.granted'
+        : 'company_mission_result_reviewer_assignment.revoked';
     case COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE:
       return granted
         ? 'company_mission_deliverable_access_assignment.granted'

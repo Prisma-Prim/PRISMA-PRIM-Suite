@@ -54,6 +54,9 @@ export async function createMissionDocumentFixture(
       baseDatabaseUrl: databaseUrl,
       namePrefix: 'mission_deliverables',
     });
+    await openHarness();
+  }
+  async function openHarness() {
     harness = await createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
       ...(migrationsFolder ? { migrationsFolder } : {}),
@@ -75,6 +78,11 @@ export async function createMissionDocumentFixture(
       },
     });
   }
+  async function restart() {
+    await harness.close();
+    await openHarness();
+  }
+
   async function close() {
     await harness?.close();
     await database?.close();
@@ -181,6 +189,7 @@ export async function createMissionDocumentFixture(
     grant,
     upload,
     reset,
+    restart,
     close,
     get pool() {
       return harness.pool;

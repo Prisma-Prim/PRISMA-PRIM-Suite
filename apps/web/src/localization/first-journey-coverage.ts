@@ -40,6 +40,7 @@ import { companyContextMessages } from '../company/company-context.copy';
 import { companyRegistrationMessages } from '../company/company-registration.copy';
 import { projectTemplateMessages } from '../project/project-template.copy';
 import { projectTaskMessages } from '../project/task.copy';
+import { missionReviewMessages } from '../project/mission-result-review.copy';
 import { taskResultMessages } from '../project/task-results.copy';
 import { projectTemplateVersionMessages } from '../project/project-template-version.copy';
 import { projectDocumentsMessages } from '../project/project-documents.copy';
@@ -58,6 +59,7 @@ import { interfaceLocaleMessages } from './interface-locale.copy';
 import { assertMessageCoverage } from './messages';
 
 export function assertFirstJourneyTranslationCoverage(): void {
+  assertMessageCoverage('missionReview', missionReviewMessages);
   assertMessageCoverage('taskResult', taskResultMessages);
   assertMessageCoverage('ideas', ideasMessages);
   assertMessageCoverage('companyAssignment', companyAssignmentMessages);

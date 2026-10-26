@@ -91,6 +91,63 @@ export class TaskResultsService {
     };
   }
 
+  /** Narrow composition seam for immutable mission-review evidence, including closed history. */
+  async reviewEvidenceWithinTransaction(input: {
+    actor: ActorContext;
+    taskId: string;
+    resultId: string;
+  }) {
+    const { task } = await this.tasks.readWithinTransaction(input);
+    await this.references.requireRead({
+      actor: input.actor,
+      context: task,
+      lock: false,
+    });
+    const [row] = await this.database.connection
+      .select()
+      .from(taskResultDeclarations)
+      .where(
+        and(
+          this.scope(input.actor, task),
+          eq(taskResultDeclarations.id, input.resultId),
+        ),
+      );
+    if (!row) throw new Error('Missing immutable review result evidence.');
+    return this.view(input.actor, task, row);
+  }
+
+  /** Fence only consumed read authority before the command's Client/Task barriers. */
+  async requireReviewReadWithinTransaction(input: {
+    actor: ActorContext;
+    taskId: string;
+  }) {
+    await this.access.requireActor(input.actor, false, true);
+    const { task } = await this.tasks.readWithinTransaction(input);
+    await this.references.requireRead({
+      actor: input.actor,
+      context: task,
+      lock: true,
+    });
+  }
+
+  /** Caller locks Client before Tasks; Documents retains the independent live evidence gate. */
+  async lockReviewTargetWithinTransaction(input: {
+    actor: ActorContext;
+    taskId: string;
+  }) {
+    const task = await this.tasks.lockReviewTargetWithinTransaction(input);
+    await this.references.requireRead({
+      actor: input.actor,
+      context: task,
+      lock: true,
+    });
+    const latest = await this.latest(input.actor, task);
+    return {
+      task,
+      current: latest ? await this.view(input.actor, task, latest) : null,
+    };
+  }
+
   async current(actor: ActorContext, input: { taskId: unknown }) {
     const taskId = requireUuid(input.taskId);
     return this.database.transaction(

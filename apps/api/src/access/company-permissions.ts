@@ -354,6 +354,10 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Task Result Recorder',
     versions: { v1: ['task.result.record'] },
   },
+  company_mission_result_reviewer: {
+    label: 'Company Mission Result Reviewer',
+    versions: { v1: ['project.mission_result.review'] },
+  },
   company_mission_deliverable_access: {
     label: 'Company Mission Deliverable Access',
     versions: { v1: ['document.mission_deliverable.access'] },
@@ -884,6 +888,21 @@ export function taskResultPermissionsFor(
 ): readonly TaskResultPermission[] {
   return companyRolePermissionsFor(
     COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+    version,
+  );
+}
+
+export const COMPANY_MISSION_RESULT_REVIEWER_BUNDLE =
+  'company_mission_result_reviewer' satisfies CompanyRoleBundle;
+export const COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_mission_result_reviewer.label;
+export type MissionResultReviewPermission =
+  CompanyRolePermission<'company_mission_result_reviewer'>;
+export function missionResultReviewPermissionsFor(
+  version: unknown,
+): readonly MissionResultReviewPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
     version,
   );
 }
