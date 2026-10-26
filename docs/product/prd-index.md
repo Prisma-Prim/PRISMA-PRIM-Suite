@@ -140,8 +140,12 @@ The Shared Client PRD's [section 21](release-1-shared-client-prd.md#21-approved-
 owns the approved bounded Client commercial overview: complete Company-scoped
 discovery and exact continuation into existing commercial work. Parent
 [#893](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/893) tracks ordered
-commercial, mission and Document composition; this contract approves only the
-commercial child, not runtime delivery or the later children.
+commercial, mission and Document composition. Its
+[section 22](release-1-shared-client-prd.md#22-approved-client-mission-and-task-overview-898)
+owns the next bounded mission/Task overview: complete scoped Project discovery,
+recorded responsibility/lifecycle, deliberate Task preview and exact continuation
+through existing result-review owners. These contracts approve only their named
+children; runtime delivery and later Document readiness require separate proof.
 
 ## 7. Other later releases
 
