@@ -463,6 +463,33 @@ export class AccountabilityService {
     });
   }
 
+  async recordContractSigningDeclared(input: {
+    actor: ActorContext;
+    companyId: string;
+    contractId: string;
+    contractVersionId: string;
+    versionNumber: number;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection.insert(contractEvents).values({
+      workspaceId: input.actor.workspaceId,
+      companyId: input.companyId,
+      contractId: input.contractId,
+      contractVersionId: input.contractVersionId,
+      action: 'contract_version.signing_declared',
+      actorInternalUserId: input.actor.internalUserId,
+      actorWorkspaceMembershipId: input.actor.workspaceMembershipId,
+      occurredAt: input.occurredAt,
+      metadata: {
+        contractId: input.contractId,
+        contractVersionId: input.contractVersionId,
+        versionNumber: input.versionNumber,
+        provenance: 'COMPANY_MODEL_OFFER',
+        evidenceKind: 'DECLARED_RECEIVED_PDF',
+      },
+    });
+  }
+
   async recordContractSignature(input: {
     actor: ActorContext;
     companyId: string;
@@ -3381,6 +3408,8 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_document_approver_assignment.revoked':
     case 'company_document_content_reader_assignment.granted':
     case 'company_mission_deliverable_access_assignment.granted':
+    case 'company_contract_signature_declarer_assignment.granted':
+    case 'company_contract_signature_declarer_assignment.revoked':
     case 'company_received_contract_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':

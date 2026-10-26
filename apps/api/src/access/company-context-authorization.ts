@@ -38,6 +38,7 @@ import {
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   receivedContractPermissionsFor,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
@@ -468,6 +469,26 @@ export class CompanyContextAuthorization {
       ? await query.for('share')
       : await query;
     return assignment !== undefined;
+  }
+
+  async requireContractSignatureDeclaration(
+    actor: ActorContext,
+    lock = false,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !company?.contractSignatureDeclarerAssignmentId ||
+      company.contractSignatureDeclarerPermissionSetVersion !== 'v1'
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      sql`(${capturedGrant(COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE)} AND ${eq(companyRoleAssignments.id, company.contractSignatureDeclarerAssignmentId)})`,
+      lock,
+    );
+    await this.requireLiveCompanyContext(actor, company.id, lock);
+    return company.id;
   }
 
   async hasReceivedContractAccess(
@@ -1515,6 +1536,7 @@ export class CompanyContextAuthorization {
         COMPANY_DOCUMENT_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
         COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+        COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
         COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
         COMPANY_TASK_RESULT_RECORDER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
@@ -1551,6 +1573,13 @@ export class CompanyContextAuthorization {
         displayName: row.displayName,
         clientPermissions: [],
       };
+      if (
+        row.bundle === COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.contractSignatureDeclarerAssignmentId = row.assignmentId;
+        company.contractSignatureDeclarerPermissionSetVersion = 'v1';
+      }
       Object.assign(company, projectIdeasAssignment(row));
       const modelGrant = captureOfferModelGrant(row);
       if (modelGrant)
@@ -1969,6 +1998,7 @@ function capturedVersionGrants(
 function capturedGrant(
   bundle:
     | typeof COMPANY_SERVICE_CATALOGUE_BUNDLE
+    | typeof COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE
     | typeof COMPANY_PRICING_CONFIGURATION_BUNDLE
     | typeof COMPANY_PRICING_USER_BUNDLE
     | typeof COMPANY_PROJECT_APPROVER_BUNDLE

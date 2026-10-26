@@ -1,3 +1,4 @@
+import { ReportedContractSigningService } from './reported-contract-signing.service.js';
 import {
   Body,
   Controller,
@@ -22,6 +23,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
 export class ContractAgreementsController {
   constructor(
     private readonly contracts: ContractService,
+    private readonly signing: ReportedContractSigningService,
     private readonly projects: ContractProjectsService,
     private readonly projectCreation: ContractProjectCreationService,
   ) {}
@@ -93,6 +95,39 @@ export class ContractAgreementsController {
         contractId,
       }),
     };
+  }
+  @Get('versions/:versionId/signing-declarations/pdf-candidates')
+  signingCandidates(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('contractId') contractId: string,
+    @Param('versionId') versionId: string,
+    @Query('cursor') cursor: string | undefined,
+  ) {
+    return this.signing.candidates({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      contractId,
+      cursor,
+    });
+  }
+  @Post('versions/:versionId/signing-declarations') declareSigning(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('contractId') contractId: string,
+    @Param('versionId') versionId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.signing.declare({
+      actor: actorFrom(request),
+      opportunityId,
+      versionId,
+      contractId,
+      payload,
+      idempotencyKey,
+    });
   }
   @Post('versions/:versionId/signature') recordSignature(
     @Req() request: ActorContextRequest,

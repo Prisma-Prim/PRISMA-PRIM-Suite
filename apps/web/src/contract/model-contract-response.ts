@@ -1,3 +1,5 @@
+import { readReportedSigning } from './reported-signing-response';
+import { readLinkedProjects } from './contract-projects-response';
 import {
   exactRecord,
   modelInteger,
@@ -27,8 +29,7 @@ export function readModelContract(value: unknown) {
     root.eligibility !== 'NON_OFFICIAL_REHEARSAL' ||
     v.provenance !== 'COMPANY_MODEL_OFFER' ||
     v.provisional !== true ||
-    v.executionState !== 'NOT_EXECUTED' ||
-    v.signature !== null ||
+    !['NOT_EXECUTED', 'EXECUTED'].includes(String(v.executionState)) ||
     v.pricingSnapshot !== null ||
     v.pricingSnapshotId !== null ||
     v.qualityRuleSet !== 'CONTRACT_QUALITY_COMPANY_MODEL' ||
@@ -95,8 +96,7 @@ export function readModelContract(value: unknown) {
   if (
     !Array.isArray(root.addenda) ||
     root.addenda.length ||
-    !Array.isArray(root.linkedProjects) ||
-    root.linkedProjects.length
+    !Array.isArray(root.linkedProjects)
   )
     invalid();
   const representation = {
@@ -113,6 +113,26 @@ export function readModelContract(value: unknown) {
           createdRevision: createdContractRevision,
           checksum: representation.sha256,
         });
+  const signature =
+    v.signature === null
+      ? null
+      : decision?.kind === 'APPROVE'
+        ? readReportedSigning(v.signature, {
+            contractId: id,
+            versionId,
+            versionNumber,
+            createdRevision: createdContractRevision,
+            checksum: representation.sha256,
+            approvalDecisionId: decision.id,
+          })
+        : invalid();
+  const linkedProjects = readLinkedProjects(root.linkedProjects, id, revision);
+  if (
+    (signature ? 'EXECUTED' : 'NOT_EXECUTED') !== v.executionState ||
+    (signature && supersededByVersionId !== null) ||
+    (!signature && supersededByVersionId === null && linkedProjects.length)
+  )
+    invalid();
   const decisionState = decision
     ? decision.kind === 'APPROVE'
       ? ('APPROVED' as const)
@@ -120,8 +140,13 @@ export function readModelContract(value: unknown) {
     : ('PENDING' as const);
   if (
     v.decisionState !== decisionState ||
-    revision < createdContractRevision + (decision ? 1 : 0) ||
+    revision <
+      createdContractRevision +
+        (decision ? 1 : 0) +
+        (signature ? 1 : 0) +
+        linkedProjects.length ||
     (supersededByVersionId === null &&
+      !signature &&
       revision !== createdContractRevision + (decision ? 1 : 0))
   )
     invalid();
@@ -133,6 +158,7 @@ export function readModelContract(value: unknown) {
     sourceOfferVersionId,
     illustrativeReference: modelInteger(root.illustrativeReference, 1),
     revision,
+    linkedProjects,
     kind: 'CONTRACT' as const,
     origin: 'COMPANY_MODEL_OFFER' as const,
     provisional: true as const,
@@ -164,7 +190,10 @@ export function readModelContract(value: unknown) {
       },
       decision,
       decisionState,
-      executionState: 'NOT_EXECUTED' as const,
+      signature,
+      executionState: signature
+        ? ('EXECUTED' as const)
+        : ('NOT_EXECUTED' as const),
       latestQualityRun:
         v.latestQualityRun === null
           ? null
@@ -238,6 +267,9 @@ export function readPreparedModelContract(
     ).some((key) => copy.financials[key] !== financials[key]) ||
     JSON.stringify(copy.caseDetails) !== JSON.stringify(expected.caseDetails) ||
     v.decisionState !== 'PENDING' ||
+    v.signature !== null ||
+    v.executionState !== 'NOT_EXECUTED' ||
+    next.linkedProjects.length !== 0 ||
     v.supersededByVersionId !== null ||
     next.revision !== (expected.prior ? expected.prior.revision + 1 : 1) ||
     v.versionNumber !==

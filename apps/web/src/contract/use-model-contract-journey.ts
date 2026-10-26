@@ -78,7 +78,10 @@ export type ModelContractJourneyProps = ContractPanelProps & {
 };
 
 /** One owner for all new-mode reads, drafts and commands. No sibling can replace an uncertain intent. */
-export function useModelContractJourney(props: ModelContractJourneyProps) {
+export function useModelContractJourney(
+  props: ModelContractJourneyProps,
+  siblingsProtected = false,
+) {
   const company = props.actor.activeCompany,
     companyId = company?.id;
   const permissions = company?.contractPermissions ?? [];
@@ -103,8 +106,62 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     permissions.includes('commercial.contract.model_based.approve');
   const mayCheck = offerRead && (preparation || mayApprove);
   const base = `/contracts/opportunities/${encodeURIComponent(props.opportunityId)}`;
-  const [contract, setContract] = useState(props.initialContract),
-    [draft, setDraft] = useState(blank),
+  const workspaceClientRead =
+    props.actor.workspacePermissions.includes('client.manage');
+  const companyClientRead = Boolean(
+    company?.clientPermissionAssignmentId &&
+    (company.clientPermissionSetVersion === 'v1' ||
+      company.clientPermissionSetVersion === 'v2') &&
+    company.clientPermissions?.includes('client.read'),
+  );
+  const projectReadAllowed = Boolean(
+    props.actor.active &&
+    company?.projectPermissionAssignmentId &&
+    (company.projectPermissionSetVersion === 'v1' ||
+      company.projectPermissionSetVersion === 'v2') &&
+    company.projectPermissions?.includes('project.read') &&
+    (workspaceClientRead || companyClientRead),
+  );
+  const projectReadAuthority = JSON.stringify([
+    companyId,
+    company?.projectPermissionAssignmentId,
+    company?.projectPermissionSetVersion,
+    projectReadAllowed,
+    workspaceClientRead
+      ? 'workspace-client-read'
+      : [
+          company?.clientPermissionAssignmentId,
+          company?.clientPermissionSetVersion,
+          companyClientRead,
+        ],
+  ]);
+  const projectGeneration = useRef({
+    authority: projectReadAuthority,
+    revision: 0,
+  });
+  if (projectGeneration.current.authority !== projectReadAuthority)
+    projectGeneration.current = {
+      authority: projectReadAuthority,
+      revision: projectGeneration.current.revision + 1,
+    };
+  const projectReadKey = JSON.stringify([
+    projectReadAuthority,
+    projectGeneration.current.revision,
+  ]);
+  // Every read/result carries the Project authority captured when it began.
+  // A held old response cannot requalify cached metadata under a new grant.
+  const [contractSnapshot, setContractSnapshot] = useState({
+    contract: props.initialContract,
+    projectReadKey,
+  });
+  const contract = contractSnapshot.contract;
+  const projectedContract =
+    contract === null ||
+    !contract.linkedProjects.length ||
+    (projectReadAllowed && contractSnapshot.projectReadKey === projectReadKey)
+      ? contract
+      : { ...contract, linkedProjects: [] };
+  const [draft, setDraft] = useState(blank),
     [mode, setMode] = useState<'view' | 'prepare' | 'successor'>(
       props.initialContract ? 'view' : 'prepare',
     );
@@ -128,7 +185,38 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     readRequest = useRef<AbortController | undefined>(undefined),
     writeRequest = useRef<AbortController | undefined>(undefined);
   const activeWrite = useRef(false);
-  const locked = running || feedback === 'uncertain';
+  const locked = running || feedback === 'uncertain' || siblingsProtected;
+  const mutationAuthority = JSON.stringify([
+    company?.contractPermissionAssignmentId,
+    company?.contractPermissionSetVersion,
+    company?.contractApproverAssignmentId,
+    company?.contractApproverPermissionSetVersion,
+    company?.clientPermissionAssignmentId,
+    company?.clientPermissionSetVersion,
+    company?.offerPermissionAssignmentId,
+    company?.offerPermissionSetVersion,
+    company?.offerApproverAssignmentId,
+    company?.offerApproverPermissionSetVersion,
+    company?.commercialIntakePermissionAssignmentId,
+    company?.commercialIntakePermissionSetVersion,
+    mayPrepare,
+    mayApprove,
+    mayCheck,
+  ]);
+  useEffect(() => {
+    writeRequest.current?.abort();
+    readRequest.current?.abort();
+    attempt.current = undefined;
+    activeWrite.current = false;
+    setDraft(blank());
+    setSources({ offer: null, model: null });
+    setReviewBasis('');
+    setReason('');
+    setAcknowledgements([]);
+    setRunning(false);
+    setFeedback(null);
+    setReadState('idle');
+  }, [mutationAuthority]);
   useEffect(
     () => () => {
       readRequest.current?.abort();
@@ -140,6 +228,15 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     if (!props.initialContract && mayPrepare)
       void loadSources(props.initialOffer);
   }, []);
+
+  useEffect(() => {
+    if (siblingsProtected) {
+      // Retire earlier navigation/reload replies when a sibling takes revision
+      // ownership. Independently requested later reads remain available.
+      readRequest.current?.abort();
+      setReadState('idle');
+    }
+  }, [siblingsProtected]);
 
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
     const denied = await handleAuthenticatedAccessRejection({
@@ -154,7 +251,8 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     if (denied && !signal.aborted) {
       readRequest.current?.abort();
       writeRequest.current?.abort();
-      setContract(null);
+      if (denied === 'unauthorized')
+        setContractSnapshot({ contract: null, projectReadKey });
       setDraft(blank());
       setSources({ offer: null, model: null });
       setHistory(null);
@@ -178,22 +276,24 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     ) => Promise<T>,
     apply: (value: T) => void,
   ) {
-    if (attempt.current || !companyId) return;
+    if (attempt.current || !companyId) return false;
     readRequest.current?.abort();
     const controller = new AbortController();
     readRequest.current = controller;
     setReadState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) return false;
       const value = await operation(api, controller.signal);
       if (!controller.signal.aborted) {
         apply(value);
         setReadState('idle');
+        return true;
       }
     } catch {
       if (!controller.signal.aborted) setReadState('error');
     }
+    return false;
   }
   async function get(
     api: Awaited<ReturnType<typeof createAuthenticatedApiClient>>,
@@ -267,7 +367,10 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     );
   }
   function applyContract(next: ModelContractView) {
-    setContract(next);
+    // A confirmed sibling result supersedes every read begun before it.
+    readRequest.current?.abort();
+    setReadState('idle');
+    setContractSnapshot({ contract: next, projectReadKey });
     setQuality(next.version.latestQualityRun);
     setAcknowledgements([]);
     setReviewBasis('');
@@ -284,7 +387,7 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     return next;
   }
   async function reload() {
-    await read(
+    return read(
       async (api, signal) =>
         checkScope(
           readModelContract(record(await get(api, base, signal)).contract),
@@ -468,6 +571,7 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
   }
   async function write(kind: CommandKind) {
     if (
+      siblingsProtected ||
       activeWrite.current ||
       (attempt.current && attempt.current.kind !== kind) ||
       !companyId
@@ -598,7 +702,9 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     }
   }
   return {
-    contract,
+    contract: projectedContract,
+    applyContract,
+    ownProtected: running || feedback === 'uncertain',
     draft,
     setDraft,
     mode,

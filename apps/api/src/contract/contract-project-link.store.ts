@@ -1,3 +1,4 @@
+import { storedSigningDeclaration } from './reported-contract-signing-view.js';
 import {
   ConflictException,
   Inject,
@@ -74,10 +75,17 @@ export class ContractProjectLinkStore {
     return found;
   }
 
-  requireExecuted(
+  async requireExecuted(
     current: Awaited<ReturnType<ContractProjectLinkStore['find']>>,
   ) {
-    if (current.contract.origin === 'COMPANY_MODEL_OFFER')
+    if (
+      current.contract.origin === 'COMPANY_MODEL_OFFER' &&
+      !(await storedSigningDeclaration(
+        this.database,
+        current.contract,
+        current.version,
+      ))
+    )
       throw projectLinkConflict('CONTRACT_EXECUTION_MODE_UNSUPPORTED');
     if (
       current.contract.kind !== 'CONTRACT' &&

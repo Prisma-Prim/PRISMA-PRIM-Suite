@@ -287,6 +287,7 @@ export async function prepareModelContractCase(page: Page, suffix: string) {
   }
   return {
     companyId,
+    clientId,
     companyName,
     otherCompanyId,
     otherCompanyName,

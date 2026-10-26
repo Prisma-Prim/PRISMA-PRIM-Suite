@@ -22,7 +22,7 @@ export function ContractPanel(props: ContractPanelProps) {
       value: generation.current.value + 1,
     };
   const c = props.actor.activeCompany;
-  const key = JSON.stringify([
+  const legacyKey = JSON.stringify([
     generation.current.value,
     props.actor.active,
     props.actor.workspaceId,
@@ -50,13 +50,29 @@ export function ContractPanel(props: ContractPanelProps) {
     c?.clientPermissionAssignmentId,
     c?.clientPermissions,
   ]);
-  return <ContractJourneyOwner key={key} {...props} />;
+  const key = JSON.stringify([
+    generation.current.value,
+    props.actor.active,
+    props.actor.workspaceId,
+    props.actor.internalUserId,
+    props.actor.workspaceMembershipId,
+    c?.id,
+    props.opportunityId,
+    props.requestedVersion,
+    c?.contractPermissions?.includes('commercial.contract.read'),
+    c?.commercialIntakePermissions?.includes('commercial.opportunity.read'),
+    c?.clientPermissions?.includes('client.read') ||
+      props.actor.workspacePermissions.includes('client.manage'),
+  ]);
+  return <ContractJourneyOwner key={key} {...props} legacyKey={legacyKey} />;
 }
 type Route =
   | { kind: 'loading' | 'error' | 'denied' }
   | { kind: 'legacy'; initialRead: { contract: unknown; offer?: unknown } }
   | { kind: 'model'; contract: ModelContractView | null; offer?: unknown };
-function ContractJourneyOwner(props: ContractPanelProps) {
+function ContractJourneyOwner(
+  props: ContractPanelProps & { legacyKey: string },
+) {
   const copy = useContractCopy(),
     [route, setRoute] = useState<Route>({ kind: 'loading' }),
     [reload, setReload] = useState(0);
@@ -180,7 +196,13 @@ function ContractJourneyOwner(props: ContractPanelProps) {
   }, [props.identity, props.opportunityId, companyId, mayRead, path, reload]);
   if (!mayRead) return null;
   if (route.kind === 'legacy')
-    return <LegacyContractPanel {...props} initialRead={route.initialRead} />;
+    return (
+      <LegacyContractPanel
+        key={props.legacyKey}
+        {...props}
+        initialRead={route.initialRead}
+      />
+    );
   if (route.kind === 'model')
     return (
       <ModelContractPanel

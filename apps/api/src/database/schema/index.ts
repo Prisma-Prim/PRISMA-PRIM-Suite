@@ -33,3 +33,5 @@ export * from './project-stage.js';
 export * from './project-template-version.js';
 export * from './ideas.js';
 export * from './operational-risk.js';
+
+export * from './contract-signing-declarations.js';

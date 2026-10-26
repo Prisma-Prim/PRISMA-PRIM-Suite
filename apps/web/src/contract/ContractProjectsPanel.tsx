@@ -51,7 +51,10 @@ export function ContractProjectsPanel({
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  contract: ContractView;
+  contract: Pick<
+    ContractView,
+    'id' | 'kind' | 'revision' | 'linkedProjects'
+  > & { version: Pick<ContractView['version'], 'executionState'> };
   mayLink: boolean;
   mayCreate: boolean;
   opportunityTitle: string;
@@ -79,7 +82,12 @@ export function ContractProjectsPanel({
   const read = useRef<AbortController | undefined>(undefined),
     pending = useRef<AbortController | undefined>(undefined),
     attempt = useRef<
-      | { body: string; key: string; project: ContractProjectCandidate }
+      | {
+          body: string;
+          key: string;
+          project: ContractProjectCandidate;
+          revision: number;
+        }
       | undefined
     >(undefined);
   const eligible = mayLink && contract.version.executionState === 'EXECUTED';
@@ -172,6 +180,7 @@ export function ContractProjectsPanel({
               expectedContractRevision: contract.revision,
             }),
             project,
+            revision: contract.revision,
           }
         : undefined);
     if (!command) return;
@@ -206,7 +215,7 @@ export function ContractProjectsPanel({
         if (
           link.contractId !== contract.id ||
           link.projectId !== command.project.id ||
-          link.revision !== contract.revision + 1
+          link.revision !== command.revision + 1
         )
           throw new Error('Mismatched Project link result.');
         attempt.current = undefined;

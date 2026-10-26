@@ -177,6 +177,8 @@ export interface ActorContext {
     >;
     missionDeliverableAccessAssignmentId?: string;
     missionDeliverableAccessPermissionSetVersion?: 'v1';
+    contractSignatureDeclarerAssignmentId?: string;
+    contractSignatureDeclarerPermissionSetVersion?: 'v1';
     receivedContractAccessAssignmentId?: string;
     receivedContractAccessPermissionSetVersion?: 'v1';
     documentPermissionSetVersion?: 'v1' | 'v2' | 'v3';
