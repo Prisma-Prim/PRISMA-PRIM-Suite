@@ -50,6 +50,7 @@ import {
 import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalogueWorkspace';
 import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
 import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
+import { ProfitabilityDecisionQueue } from './profitability-estimate/ProfitabilityDecisionQueue';
 import { OperationalHome } from './operational-home/OperationalHome';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 
@@ -314,7 +315,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // list and Task reads. Any session, Company, Client authority, assignment or
   // version change remounts it, dropping its late replies and closing its panel.
   const activeCompany = access.actor.activeCompany;
-  const operationalHome =
+  const operationalSummary =
     activeCompany &&
     (canAccessClients || canAccessProjects || canReadTasks(access.actor)) ? (
       <OperationalHome
@@ -354,6 +355,19 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         }}
       />
     ) : null;
+  const operationalHome = (
+    <>
+      {operationalSummary}
+      <ProfitabilityDecisionQueue
+        key={`profitability-queue:${access.sessionGeneration}`}
+        actor={access.actor}
+        identity={identity}
+        onActorRevalidated={acceptRevalidatedActor}
+        onCompanyContextRejected={rejectCompanyContext}
+        onWorkspaceAccessRejected={rejectWorkspaceAccess}
+      />
+    </>
+  );
 
   const sections: ApplicationSection[] = [];
   if (ideasAuthority(access.actor).read)

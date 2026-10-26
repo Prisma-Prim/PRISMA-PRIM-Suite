@@ -110,6 +110,269 @@ withPostgres('Confirmed-cost Profitability Estimates REST', () => {
     await database?.close();
   });
 
+  it('discovers the exact undecided Version in the Company Director queue', async () => {
+    const fixture = await prepared();
+    const version = record(
+      await submit(fixture, completeSubmission(), 'queue-first'),
+    );
+    const page = await read({
+      path: '/profitability-estimate-decision-queue',
+      companyId: fixture.companyId,
+      headers: DIRECTOR,
+    });
+    expect(page).toMatchObject({
+      items: [
+        {
+          versionId: stringField(version, 'id'),
+          versionNumber: 1,
+          opportunityId: fixture.opportunityId,
+        },
+      ],
+    });
+  });
+
+  it('keeps earlier undecided Versions after a successor decision and never writes on discovery', async () => {
+    const f = await prepared({ withClient: true });
+    const a = record(await submit(f, completeSubmission(), 'queue-old'));
+    const b = record(
+      await submit(
+        f,
+        { ...completeSubmission(), expectedLatestVersionNumber: 1 },
+        'queue-head',
+      ),
+    );
+    await decide(f, stringField(b, 'id'), 2, 'APPROVE', 'queue-head-approve');
+    const before = await pool.query(
+      'SELECT count(*)::int AS n FROM activity_log_events',
+    );
+    const page = record(
+      await read({
+        path: '/profitability-estimate-decision-queue',
+        companyId: f.companyId,
+        headers: DIRECTOR,
+      }),
+    );
+    expect(items(page)).toEqual([
+      {
+        workspaceId: WORKSPACE_ID,
+        companyId: f.companyId,
+        estimateId: stringField(a, 'estimateId'),
+        versionId: stringField(a, 'id'),
+        clientRequestId: f.requestId,
+        opportunityId: f.opportunityId,
+        versionNumber: 1,
+        latestVersionNumber: 2,
+        createdAt: '2026-10-01T12:00:00.000Z',
+        opportunityTitle: 'Synthetic Opportunity',
+      },
+    ]);
+    expect(
+      await pool.query('SELECT count(*)::int AS n FROM activity_log_events'),
+    ).toEqual(before);
+    await decide(f, stringField(a, 'id'), 1, 'MODIFY', 'queue-old-modify');
+    expect(
+      await read({
+        path: '/profitability-estimate-decision-queue',
+        companyId: f.companyId,
+        headers: DIRECTOR,
+      }),
+    ).toEqual({ items: [] });
+    expect(await exact(f, stringField(a, 'id'))).toMatchObject({
+      decision: { code: 'MODIFY' },
+    });
+  });
+
+  it('reaches all tied-date pending Versions and preserves a cursor after its anchor is decided', async () => {
+    const f = await prepared();
+    const versions: string[] = [];
+    for (let n = 1; n <= 27; n++)
+      versions.push(
+        stringField(
+          record(
+            await submit(
+              f,
+              {
+                ...completeSubmission(),
+                expectedLatestVersionNumber: n === 1 ? null : n - 1,
+              },
+              `queue-${n}`,
+            ),
+          ),
+          'id',
+        ),
+      );
+    const first = record(
+      await read({
+        path: '/profitability-estimate-decision-queue',
+        companyId: f.companyId,
+        headers: DIRECTOR,
+      }),
+    );
+    const sorted = [...versions].sort();
+    expect(
+      items(first).map((v) => stringField(record(v), 'versionId')),
+    ).toEqual(sorted.slice(0, 25));
+    const cursor = stringField(first, 'nextCursor');
+    const anchor = record(items(first)[24]);
+    await decide(
+      f,
+      stringField(anchor, 'versionId'),
+      numberField(anchor, 'versionNumber'),
+      'REJECT',
+      'queue-anchor-reject',
+    );
+    const last = record(
+      await read({
+        path: `/profitability-estimate-decision-queue?cursor=${cursor}`,
+        companyId: f.companyId,
+        headers: DIRECTOR,
+      }),
+    );
+    expect(items(last).map((v) => stringField(record(v), 'versionId'))).toEqual(
+      sorted.slice(25),
+    );
+    expect(last.nextCursor).toBeUndefined();
+    const other = await prepared();
+    expect(
+      (
+        await request({
+          path: `/profitability-estimate-decision-queue?cursor=${cursor}`,
+          companyId: other.companyId,
+          headers: DIRECTOR,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      await read({
+        path: '/profitability-estimate-decision-queue',
+        companyId: other.companyId,
+        headers: DIRECTOR,
+      }),
+    ).toEqual({ items: [] });
+  });
+
+  it('refuses malformed, repeated, extra and unsupported queue inputs without economics', async () => {
+    const f = await prepared();
+    for (const query of [
+      '?cursor=bad',
+      '?cursor=',
+      '?cursor=one&cursor=two',
+      '?limit=25',
+      '?companyId=other',
+      '?cursor=' +
+        Buffer.from(
+          JSON.stringify({
+            workspaceId: WORKSPACE_ID,
+            companyId: f.companyId,
+            createdAt: '2026-02-31T12:00:00.000000Z',
+            versionId: crypto.randomUUID(),
+          }),
+        ).toString('base64url'),
+    ]) {
+      const result = await request({
+        path: '/profitability-estimate-decision-queue' + query,
+        companyId: f.companyId,
+        headers: DIRECTOR,
+      });
+      expect(result.status).toBe(400);
+      expect(JSON.stringify(await result.json())).not.toContain('125.00');
+    }
+  });
+
+  it('requires current Director and independent Intake grants even for an empty queue', async () => {
+    const f = await prepared();
+    for (const headers of [OWNER, CONTRIBUTOR])
+      expect(
+        (
+          await request({
+            path: '/profitability-estimate-decision-queue',
+            companyId: f.companyId,
+            headers,
+          })
+        ).status,
+      ).toBe(403);
+    await revoke(INTAKE_ASSIGNMENTS, f.companyId, f.directorMembershipId);
+    expect(
+      (
+        await request({
+          path: '/profitability-estimate-decision-queue',
+          companyId: f.companyId,
+          headers: DIRECTOR,
+        })
+      ).status,
+    ).toBe(403);
+    await grant(INTAKE_ASSIGNMENTS, f.companyId, f.directorMembershipId);
+    await expect(
+      pool.query(
+        "UPDATE company_role_assignments SET permission_set_version='future' WHERE company_id=$1 AND workspace_membership_id=$2 AND bundle='company_profitability_director'",
+        [f.companyId, f.directorMembershipId],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await revoke(DIRECTOR_ASSIGNMENTS, f.companyId, f.directorMembershipId);
+    expect(
+      (
+        await request({
+          path: '/profitability-estimate-decision-queue',
+          companyId: f.companyId,
+          headers: DIRECTOR,
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it('keeps one exact decision when two authorized Directors race from the same queue target', async () => {
+    const f = await prepared();
+    await grant(DIRECTOR_ASSIGNMENTS, f.companyId, f.contributorMembershipId);
+    const version = record(
+      await submit(f, completeSubmission(), 'queue-race-version'),
+    );
+    const id = stringField(version, 'id'),
+      path = `${versionPath(f.opportunityId, id)}/decision`;
+    const options = [
+      {
+        path,
+        companyId: f.companyId,
+        headers: DIRECTOR,
+        key: 'queue-race-director',
+        body: decisionBody(1, 'APPROVE'),
+      },
+      {
+        path,
+        companyId: f.companyId,
+        headers: CONTRIBUTOR,
+        key: 'queue-race-contributor',
+        body: decisionBody(1, 'REJECT'),
+      },
+    ];
+    const observed = record(
+      await read({
+        path: '/profitability-estimate-decision-queue',
+        companyId: f.companyId,
+        headers: DIRECTOR,
+      }),
+    );
+    expect(items(observed)).toHaveLength(1);
+    const responses = await Promise.all(options.map((option) => post(option)));
+    expect(responses.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+    const winner = responses.findIndex((response) => response.status === 201),
+      option = options[winner];
+    if (!option) throw new Error('No winning exact command');
+    const response = responses[winner];
+    if (!response) throw new Error('No winning response');
+    const committed: unknown = await response.json();
+    expect(await command(option)).toEqual(committed);
+    expect(
+      await read({
+        path: '/profitability-estimate-decision-queue',
+        companyId: f.companyId,
+        headers: DIRECTOR,
+      }),
+    ).toEqual({ items: [] });
+    expect(await exact(f, id)).toEqual(committed);
+  });
+
   it('explicitly grants preparation, submits complete costs and reloads the exact frozen deterministic result', async () => {
     const fixture = await prepared();
     const body = completeSubmission();

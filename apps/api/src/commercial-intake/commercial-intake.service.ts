@@ -384,6 +384,30 @@ export class CommercialIntakeService {
     return target;
   }
 
+  /** Bounded labels for already scoped estimate Versions; never a Client read. */
+  async readProfitabilityOpportunityTitles(
+    actor: ActorContext,
+    opportunityIds: readonly string[],
+  ) {
+    const companyId = await this.authorization.requireCommercialIntakeAccess(
+      actor,
+      'read',
+    );
+    if (opportunityIds.length > 26) throw new BadRequestException();
+    if (opportunityIds.length === 0) return new Map<string, string>();
+    const rows = await this.databaseContext.connection
+      .select({ id: opportunities.id, title: opportunities.title })
+      .from(opportunities)
+      .where(
+        and(
+          eq(opportunities.workspaceId, actor.workspaceId),
+          eq(opportunities.companyId, companyId),
+          inArray(opportunities.id, [...opportunityIds]),
+        ),
+      );
+    return new Map(rows.map((row) => [row.id, row.title]));
+  }
+
   /** Profitability commands and reads retain the owner row and live read grant
    * until their transaction ends, including receipt replay. */
   async requireReadableProfitabilityOpportunity(
