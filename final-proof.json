@@ -1,0 +1,179 @@
+{
+  "issue": 883,
+  "pr": 884,
+  "source": "628d13f2c24186073db7e2d04572e6782f072d34",
+  "base": "89aa890a427b7540cfc711b769ea664b2d844111",
+  "tree": "9b1407f633b3d68dba50e3675ac0c2e013146785",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40295697455,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40295697455",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "source": "628d13f2c24186073db7e2d04572e6782f072d34",
+    "localExecutionIsSelfReported": true,
+    "targeted": {
+      "format": "passed",
+      "lint": "passed",
+      "strictTypes": "passed",
+      "publicPostgresREST": {
+        "cases": 65,
+        "files": 5,
+        "status": "passed",
+        "readinessCases": 4,
+        "finalExactVersionExtensionRerun": {
+          "cases": 4,
+          "status": "passed"
+        }
+      },
+      "browserComponentTests": {
+        "cases": 31,
+        "status": "passed",
+        "includesHeldRevokeRegrantProjectChangeAnd401RedGreen": true
+      },
+      "actualApp": {
+        "viewports": [
+          "1440x900",
+          "390x844"
+        ],
+        "existingPilotCases": 2,
+        "readinessCases": 2,
+        "status": "passed",
+        "finalReadinessRerunWithHeldActualCompanySwitchAndEvidenceDenial": {
+          "cases": 2,
+          "status": "passed"
+        },
+        "exactPdfBytesDownloaded": true,
+        "syntheticPublicRESTSeedsNotManualFullDataEntry": true
+      },
+      "baselineComparisons": {
+        "ModelContractPanel": {
+          "currentHead": 8,
+          "main": 8,
+          "status": "passed individually"
+        },
+        "ReportedSigningForm": {
+          "currentHead": 8,
+          "main": 8,
+          "status": "passed individually"
+        },
+        "baselineWrapperPreparation": "Initial pnpm wrapper refused modules purge before checks; unchanged same-lock native Vitest entrypoint then ran. No denial bypass or dependency/version substitution."
+      }
+    },
+    "broadDevelopment": [
+      {
+        "command": "pnpm verify",
+        "status": "failed",
+        "immutableSource": false,
+        "reason": "Evolving first run included intentional session401 RED, fixed before review, and existing Contract selector failure."
+      },
+      {
+        "command": "pnpm verify",
+        "status": "failed",
+        "immutableSource": true,
+        "source": "628d13f2c24186073db7e2d04572e6782f072d34",
+        "scriptsPassed": 483,
+        "apiPassed": 1505,
+        "apiInapplicableSkipped": 1865,
+        "webPassed": 3148,
+        "webFailed": 1,
+        "reason": "Existing ReportedSigningForm held-Project callback assertion did not arrive within waitFor1s; isolated8/8 passes on both main/head. No local whole-pass or proven baseline-defect conclusion."
+      }
+    ],
+    "scopeOfFinalGate": "Owner-authorized complete independent GitHub CI747#6332942799, not a passing canonical complete local gate. Final provider result recorded separately; raw logs/screenshots/traces stay private."
+  },
+  "review": {
+    "issue": 883,
+    "source": "628d13f2c24186073db7e2d04572e6782f072d34",
+    "base": "89aa890a427b7540cfc711b769ea664b2d844111",
+    "tree": "9b1407f633b3d68dba50e3675ac0c2e013146785",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "selfPreparation": "Ordered Standards then Spec preparation recorded before independent review; self session401 finding corrected and public RED/green supported before frozen reviewed commit.",
+    "independentRound": [
+      {
+        "axis": "Standards",
+        "reviewer": "issue883_standards_review",
+        "status": "PASS",
+        "blocking": 0,
+        "materialFindings": 0,
+        "note": "Publisher derivation and validating/redacting browser derivation serve separate boundaries; no cross-package abstraction warranted."
+      },
+      {
+        "axis": "Spec",
+        "reviewer": "issue883_spec_review",
+        "status": "PASS",
+        "blocking": 0,
+        "materialFindings": 0
+      }
+    ],
+    "correctionCommitRequired": false,
+    "sensitiveConfirmationRequired": false,
+    "manualReviewTriggerRequested": false,
+    "finalIntegrationGate": "Complete independent CI40295697455 passed all16jobs on reviewed source; no post-green review trigger.",
+    "configuredOpeningReview": {
+      "commentId": 6411990302,
+      "source": "628d13f2c24186073db7e2d04572e6782f072d34",
+      "status": "completed",
+      "findings": 0,
+      "unresolved": 0,
+      "manualTriggerRequested": false
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12639350088,
+      "name": "browser-evidence-part-browser-3-40295697455",
+      "size_in_bytes": 71169671,
+      "digest": "sha256:11b7d7c40ef9b83a580ed0d319718c556c5bd530d08160bc5ea5ee8d1edb1234",
+      "expires_at": "2026-11-09T09:01:37Z"
+    },
+    {
+      "id": 12638846737,
+      "name": "browser-evidence-part-acceptance-2-40295697455",
+      "size_in_bytes": 64036643,
+      "digest": "sha256:86714b7e629e8dbc9368426f2449383d0afdf5566b269f80a6f0f772228e5d19",
+      "expires_at": "2026-11-09T09:08:41Z"
+    },
+    {
+      "id": 12638253279,
+      "name": "browser-evidence-part-acceptance-1-40295697455",
+      "size_in_bytes": 74618792,
+      "digest": "sha256:ea3f625f39f4dff8670fb8e553d3cc01b35501847161e3932b28e792be2ac88a",
+      "expires_at": "2026-11-09T09:09:02Z"
+    },
+    {
+      "id": 12638193571,
+      "name": "browser-evidence-pr-40295697455",
+      "size_in_bytes": 401209582,
+      "digest": "sha256:4a6b15e52c54405692443a657f2b524bdc9682f93226c1e010c7d03cf752864a",
+      "expires_at": "2026-11-09T09:09:21Z"
+    },
+    {
+      "id": 12638052950,
+      "name": "browser-evidence-part-browser-2-40295697455",
+      "size_in_bytes": 77568957,
+      "digest": "sha256:6d188a0c09af41d7066ed15fd9f02b0715daa845e17d95e73233909fe701c902",
+      "expires_at": "2026-11-09T09:01:57Z"
+    },
+    {
+      "id": 12638048013,
+      "name": "browser-evidence-part-browser-1-40295697455",
+      "size_in_bytes": 113815607,
+      "digest": "sha256:3f2e1115e468b3ee35d9138e608772667a37610a24c5726578385b640d39dfa5",
+      "expires_at": "2026-11-09T09:02:12Z"
+    }
+  ],
+  "scope": "Approved mission PRD13 readonly diagnostic activity/result readiness for the existing copied13Task pilot only. MISSION-CLOSE-01 remains unanswered in the durable PRD register for one consolidated email. No writes, schema, event, grants, policy enrollment, ordinary completion/stage change, certification assurance, deployment or external message.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-12T00:00:00Z"
+}
