@@ -63,8 +63,10 @@ The [reported signing/case-acceptance contract](release-3-commercial-31-reported
 under #874 owns D10's exact human statement, independent captured authority,
 unverified/unknown facts, immutable evidence and existing Project continuation.
 It preserves old SIMULATED records and the owning Offer Client Response. Runtime
-follows separate readiness after canonical publication; final thirteen-Task/result/
-PDF/ordinary-closure acceptance still follows that delivery.
+is delivered by #877 / PR #878. The separately validated
+[merged-main anonymous dossier milestone](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/blob/5355efd9e10e498675852552f382770e3ce1add9/report.md)
+includes thirteen exact result/PDF Versions, ordinary closure and closed-dossier
+reopening; it activates no real data or tenant configuration.
 
 The [bounded exact mission Task result contract](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
 under #832 links attributable result declarations/corrections to frozen readable
@@ -77,6 +79,13 @@ under #836 preserves one anonymous source Version, thirteen ordinary Task copies
 and their intended results. Explicit captured Template User v2 adds pilot access
 without widening oldv1; the flat plan defines no stage or completion obligation.
 Its runtime child follows the merged contract, after delivered D3/D4 under #820.
+
+The [D5/D13 mission-obligation proposal](release-1-mission-obligations-prd.md)
+under #879 is **Draft, ready for product review**. It owns the proposed required
+work/evidence, applicability decisions and reviewed consulting-completion basis.
+Its three business decisions A–C remain pending. It changes no approved behavior,
+activates no runtime and creates no ready implementation child. The completed
+anonymous milestone and ordinary lifecycle retain their delivered scope.
 
 ## 4. Cross-cutting PRDs
 
