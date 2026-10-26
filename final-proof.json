@@ -1,0 +1,285 @@
+{
+  "issue": 887,
+  "pr": 888,
+  "source": "25136fccf0efbb1922fded136244ae871ec40f8e",
+  "base": "ff7813dc683fb04141a160fcc55eaf4f7220959c",
+  "tree": "ab2f25127518e0f3647f4b1cabb74993cd052c31",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40328087443,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40328087443",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "doctor": {
+      "profile": "web-postgres",
+      "passed": true,
+      "beforeEdits": true,
+      "postgresVersion": "17.11"
+    },
+    "sourcePreparation": "36d79d0967f19ad24da73091c156cd796a2357fc",
+    "finalCorrectionSource": "f88bd1fb494fc3ee59fe8fa27c846eb6e954e7cd",
+    "focusedPostgres": {
+      "regressionFiles": 7,
+      "regressionCasesPassed": 80,
+      "expandedNativeRestCasesPassed": 24,
+      "correctionRestCasesPassed": 24,
+      "genuinePreviousSchemaUpgrade": true,
+      "repeatUpgrade": true,
+      "apiRestarts": 2,
+      "controlledConcurrencyCasesPassed": 13,
+      "syntheticDataOnly": true
+    },
+    "focusedWeb": {
+      "frozenPreparationCasesPassed": 133,
+      "correctionCasesPassed": 16,
+      "paginationRefusalRedCasesFailedAsExpected": 2,
+      "separateTaskDraftCaptureCasesPassed": 8,
+      "activityLocalizationCasesPassed": 22,
+      "publishedReviewCorrectionCasesPassed": 50,
+      "commandRefusalRedCasesFailedAsExpected": 2
+    },
+    "actualApp": {
+      "finalCorrectionCasesPassed": 2,
+      "viewports": [
+        "1440x900",
+        "390x844"
+      ],
+      "fourLocalesAndFramePreserved": true,
+      "bothEvidenceVariantsAndBulkJudgment": true,
+      "exactPdfBytesCompared": true,
+      "uncertainIdenticalRetryNoDuplicate": true,
+      "currentAndStaleHistory": true,
+      "heldOldEvidenceRetired": true,
+      "finalSource": "39bfad1cfb3d48a4292fd525cef7b69334641b34"
+    },
+    "staticAndBuild": {
+      "formatPassed": true,
+      "lintPassed": true,
+      "strictTypesPassed": true,
+      "bothBuildsPassed": true,
+      "compilerVerifiedNoAnyCommandParser": true
+    },
+    "environmentFriction": "Initial standalone browser invocation lacked TEST_DATABASE_URL and ran no acceptance tests; managed PostgreSQL invocation supplies it. No tooling or environment change included.",
+    "interpretation": "Development evidence is self-reported and distinct from the final independent runner gate. Earlier failed development runs remain acknowledged; none is relabeled as a successful complete gate. No source dossiers, real grants/data or production activation.",
+    "broaderDevelopmentInitial": {
+      "command": "pnpm verify",
+      "passed": false,
+      "scriptsPassed": 483,
+      "apiPassed": 1510,
+      "apiDatabaseInapplicableSkips": 1903,
+      "webPassed": 3151,
+      "webFailed": 4,
+      "reason": "Four explicit Activity action-count assertions expected127 before the two new administration actions were added; updated129 and affected22cases pass. No passing complete local integration gate is claimed.",
+      "fullRunRepeated": false
+    },
+    "broaderDevelopment": {
+      "command": "pnpm verify",
+      "passed": true,
+      "scriptsPassed": 483,
+      "apiPassed": 1510,
+      "apiDatabaseInapplicableSkips": 1903,
+      "webPassed": 3162,
+      "webFailed": 0,
+      "bothBuildsPassed": true,
+      "note": "Successful broader development run after the configured opening-review correction; PostgreSQL acceptance evidence is recorded separately and complete independent finalCI remains pending."
+    },
+    "publishedReviewCorrectionSource": "39bfad1cfb3d48a4292fd525cef7b69334641b34",
+    "ciFixtureCorrection": {
+      "source": "d7feca072a7f5c93c7644bdebdb71a8a69f81923",
+      "fixtureOnly": true,
+      "browserCasesPassed": 26,
+      "unitCasesPassed": 78,
+      "strictTypesPassed": true,
+      "formatPassed": true
+    },
+    "initialIndependentCI": {
+      "run": 40322574398,
+      "source": "39bfad1cfb3d48a4292fd525cef7b69334641b34",
+      "passed": false,
+      "diagnosis": "Browser2 expected role list omitted the new Mission Result Reviewer. Its four locale cases failed; browser1 was matrix-cancelled. API4jobs and Web unit passed. Replaced with fresh full source-bound run after the identified fixture correction.",
+      "notRelabeledAsPassing": true
+    },
+    "secondIndependentCI": {
+      "run": 40324622441,
+      "source": "d7feca072a7f5c93c7644bdebdb71a8a69f81923",
+      "passed": false,
+      "diagnosis": "API2 received-contract migration5000ms deadline; sibling API1/3+3/3 matrix-cancelled. All3browser, Webunit, both acceptance, serialAPI, checks/build/packaging passed. Full runs paused after second failure until targeted diagnosis and correction.",
+      "notRelabeledAsPassing": true
+    },
+    "migrationDeadlineCorrection": {
+      "source": "778b6ae0ace0f06f8d3efe95cffa89f87cc8645f",
+      "testOnly": true,
+      "deadlineMs": 15000,
+      "firstIndependentRuntimeMs": 4200,
+      "isolatedHeadRuntimeMs": 3720,
+      "twoCpuBefore": "received migration timed out5006ms at5000ms inherited budget; other migration passed",
+      "twoCpuAfter": "Both migration cases pass; total8.87sec. Same finite2CPU/2worker profile, all assertions unchanged.",
+      "formatPassed": true,
+      "lintPassed": true,
+      "apiStrictTypesPassed": true,
+      "baselineAttempt": "Baseline managed runner could not start tests because pnpm requested interactive modules purge; not a behavioral baseline result.",
+      "fullRunResumeReason": "Identified finite test-deadline prerequisite corrected; reviewed production material and contracts unchanged."
+    },
+    "baseComposition": {
+      "reviewedBase": "f4be640df90a48f4ca7009e425b6485376a3fe7f",
+      "currentBase": "ff7813dc683fb04141a160fcc55eaf4f7220959c",
+      "mergeSource": "25136fccf0efbb1922fded136244ae871ec40f8e",
+      "conflicts": false,
+      "delta": "Main PR848 adds optional trusted-proxy BuildKit CA plumbing and installed review skills; changes two test synchronization/setup lines. No mission review production, permissions, schema, result/evidence or lifecycle contract changed. Mechanical auto-merge of task-results acceptance removes a duplicate grant owned by global setup; all mission assertions preserved.",
+      "reviewStillApplies": true,
+      "newReviewRequested": false,
+      "cancelledOldBaseRun": 40327916328,
+      "finalGate": "Fresh complete CI required on this exact composition.",
+      "targetedPackagingCasesPassed": 21
+    }
+  },
+  "review": {
+    "issue": 887,
+    "pr": 888,
+    "source": "25136fccf0efbb1922fded136244ae871ec40f8e",
+    "base": "ff7813dc683fb04141a160fcc55eaf4f7220959c",
+    "tree": "ab2f25127518e0f3647f4b1cabb74993cd052c31",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "configuredOpeningReview": {
+      "commentId": 6415450818,
+      "source": "f88bd1fb494fc3ee59fe8fa27c846eb6e954e7cd",
+      "status": "completed",
+      "manualTriggerRequested": false,
+      "findings": 1,
+      "unresolved": 0,
+      "reviewedSource": "f88bd1fb494fc3ee59fe8fa27c846eb6e954e7cd"
+    },
+    "postGreenReviewRequested": false,
+    "standardsSpecPreparation": [
+      {
+        "axis": "Standards",
+        "reviewer": "issue887_standards_review",
+        "reviewedSource": "36d79d0967f19ad24da73091c156cd796a2357fc",
+        "blocking": 1,
+        "followUps": 1,
+        "heuristics": 1,
+        "finding": "Later-history403/404 retained protected projection/history/form. Parser object inference leaked any; duplicate refusal handling allowed divergence."
+      },
+      {
+        "axis": "Spec",
+        "reviewer": "issue887_spec_review",
+        "reviewedSource": "36d79d0967f19ad24da73091c156cd796a2357fc",
+        "blocking": 1,
+        "finding": "Same single later-history privacy acceptance defect; no other established scope or implementation defect."
+      }
+    ],
+    "prepublicationCorrectionCommit": "f88bd1fb494fc3ee59fe8fa27c846eb6e954e7cd",
+    "prepublicationCorrection": "One batch shares protected retirement across current and both history paths, adds public UI RED/green cases for both403/404, and keeps validated parser output closed without any. Runtime intent unchanged.",
+    "prepublicationSensitiveCheck": {
+      "reviewer": "issue887_spec_review",
+      "status": "PASS",
+      "source": "f88bd1fb494fc3ee59fe8fa27c846eb6e954e7cd",
+      "newBlockingFindings": 0,
+      "limitedToCorrection": true
+    },
+    "uniquePreparationBlockingDefects": 1,
+    "publishedReviewRound": {
+      "trigger": "automatic PR opening",
+      "commentId": 6415450818,
+      "reviewedSource": "f88bd1fb494fc3ee59fe8fa27c846eb6e954e7cd",
+      "blockingFindings": 1,
+      "threadId": "PRRT_kwDOTxkDU86wP-Bl",
+      "finding": "Write authorization refusal did not revalidate the protected reader; old judgments/evidence could remain visible.",
+      "correctionCommit": "39bfad1cfb3d48a4292fd525cef7b69334641b34",
+      "correction": "One post-publication batch retires held read and command owners, revalidates independent reads on403/404, preserves readable history but blocks old Reviewer capture, and hides protected state on401 before session rejection. Three public UI cases cover evidence/refuser-only and held-read401.",
+      "anotherReviewRequested": false,
+      "resolved": true,
+      "replyCommentId": 4377154088,
+      "affectedVerification": "opening-correction-green-2.log50PASS; opening-corrected-app.log2PASS; broad-development-2.log pnpm verify PASS"
+    },
+    "verificationCorrection": {
+      "commit": "d7feca072a7f5c93c7644bdebdb71a8a69f81923",
+      "runtimeBehaviorChanged": false,
+      "files": [
+        "apps/web/src/access/company-assignment-localization.test-fixtures.ts"
+      ],
+      "diagnosis": "First CI browser menu expectation omitted the new already-reviewed role; four narrow locale assertions fail deterministically and sibling browser1 was cancelled by matrix fail-fast.",
+      "affectedChecks": "26 browser cases and78 unit cases pass; format and Web strict types pass.",
+      "reviewStillApplies": true,
+      "newReviewRequested": false
+    },
+    "secondVerificationCorrection": {
+      "commit": "778b6ae0ace0f06f8d3efe95cffa89f87cc8645f",
+      "runtimeBehaviorChanged": false,
+      "file": "apps/api/src/documents/received-contract.migration.test.ts",
+      "diagnosis": "Complete CI40324622441 API2 exceeded implicit5000ms in genuine prior-schema/public Contract/PDF/restart/repeat migration test. Same code passed priorCI in4200ms and isolated locally in3720ms; controlled two-CPU/two-worker realPG execution reproduced5006ms timeout.",
+      "correction": "Explicit finite15000ms for this one existing exhaustive migration test; all assertions, hooks, commands, production code and global/CI budgets unchanged.",
+      "affectedChecks": "Same two-CPU/two-worker two-migration-file execution PASS2cases; format, targeted ESLint and API strict types PASS.",
+      "reviewStillApplies": true,
+      "newReviewRequested": false
+    },
+    "baseAdvance": {
+      "reviewedBase": "f4be640df90a48f4ca7009e425b6485376a3fe7f",
+      "currentBase": "ff7813dc683fb04141a160fcc55eaf4f7220959c",
+      "mergeSource": "25136fccf0efbb1922fded136244ae871ec40f8e",
+      "conflicts": false,
+      "delta": "Main PR848 adds optional trusted-proxy BuildKit CA plumbing and installed review skills; changes two test synchronization/setup lines. No mission review production, permissions, schema, result/evidence or lifecycle contract changed. Mechanical auto-merge of task-results acceptance removes a duplicate grant owned by global setup; all mission assertions preserved.",
+      "reviewStillApplies": true,
+      "newReviewRequested": false,
+      "cancelledOldBaseRun": 40327916328,
+      "finalGate": "Fresh complete CI required on this exact composition."
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12655215603,
+      "name": "browser-evidence-part-acceptance-2-40328087443",
+      "size_in_bytes": 63886661,
+      "digest": "sha256:bfeb52da618a2a1b17e8e37e9d32e75d912cd9626a484a2e314c44c95f2ddf82",
+      "expires_at": "2026-11-09T13:22:33Z"
+    },
+    {
+      "id": 12654860293,
+      "name": "browser-evidence-part-browser-1-40328087443",
+      "size_in_bytes": 113753937,
+      "digest": "sha256:ee26558eb364cd955b45745549af0cd79d38d7145719dbae903cd9af79164a92",
+      "expires_at": "2026-11-09T13:16:39Z"
+    },
+    {
+      "id": 12654490476,
+      "name": "browser-evidence-part-browser-3-40328087443",
+      "size_in_bytes": 71156008,
+      "digest": "sha256:8a4805c67f126673714987b52c823cb5cee87a92a52dc0a729e3f29c36f170b8",
+      "expires_at": "2026-11-09T13:17:01Z"
+    },
+    {
+      "id": 12654171155,
+      "name": "browser-evidence-part-acceptance-1-40328087443",
+      "size_in_bytes": 74279226,
+      "digest": "sha256:61cd39b53b869ea19fed5affa9dabeb1db89934f9b46ec0f28461af35a0ae509",
+      "expires_at": "2026-11-09T13:20:39Z"
+    },
+    {
+      "id": 12653412908,
+      "name": "browser-evidence-pr-40328087443",
+      "size_in_bytes": 400601860,
+      "digest": "sha256:6fd198be7e6de7a3dfd49a6065dccd2e3ab7473f0846691c335762c87b3f8f2d",
+      "expires_at": "2026-11-09T13:23:52Z"
+    },
+    {
+      "id": 12653406676,
+      "name": "browser-evidence-part-browser-2-40328087443",
+      "size_in_bytes": 77526116,
+      "digest": "sha256:2d18dd75b37790b566f41751687b897e4d65f2f6d4d3de53a649a29d6a7b91cf",
+      "expires_at": "2026-11-09T13:17:04Z"
+    }
+  ],
+  "scope": "Approved missionPRD14 attributable result reviews of the existing copied13Task pilot, with exact declared and reported external evidence. Explicit Reviewer v1; no role backfill/actual grant or policy adoption, fulfillment/Client-acceptance/certification assurance, lifecycle/stage change, deployment or external message. MISSION-CLOSE-01 stays unanswered in PRD12 for one consolidated email.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}

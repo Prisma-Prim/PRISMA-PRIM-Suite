@@ -1,0 +1,27 @@
+{
+  "issue": 887,
+  "pr": 888,
+  "source": "25136fccf0efbb1922fded136244ae871ec40f8e",
+  "base": "ff7813dc683fb04141a160fcc55eaf4f7220959c",
+  "tree": "ab2f25127518e0f3647f4b1cabb74993cd052c31",
+  "run": 40328087443,
+  "keepThrough": "2026-11-12T23:59:59Z",
+  "selection": "Fully reviewed compact public technical metadata/report only; raw provider artifacts remain at the linked run.",
+  "files": [
+    {
+      "path": "ci-job-results.json",
+      "bytes": 7276,
+      "sha256": "246dab4abb9e5a113a71b73ad1f52885f84922ae51672d338f193998a11919c1"
+    },
+    {
+      "path": "final-proof.json",
+      "bytes": 14508,
+      "sha256": "0b1329012be213294090f05dd1f2fced1101109db76475b5d96eaf6565b84edf"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3175,
+      "sha256": "f733ca022969e20bce089bba29562acb2ef113534ead2b12594e5dbbf8c31fb1"
+    }
+  ]
+}
