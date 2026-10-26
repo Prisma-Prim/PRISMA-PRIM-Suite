@@ -1,7 +1,7 @@
 # PRD — Release 1 Shared Client
 
-**Status:** Draft — Company Director dossier delivered; governed duplicate-resolution contract approved for one vertical slice
-**Version:** 0.6
+**Status:** Draft — Company Director dossier delivered; governed duplicate-resolution and bounded Client commercial overview (§21) contracts approved
+**Version:** 0.7
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
@@ -288,3 +288,137 @@ Excluded, and not presented as business fact:
 - registry validation;
 - Company-specific entity data;
 - the stronger correction behaviour required once a governed Document references an entity (section 8).
+
+## 21. Approved Client commercial work overview (#894)
+
+### 21.1 Authority, outcome and boundary
+
+Under Dan's 26 October 2026 instruction to deliver the operational Client dossier
+autonomously, [#893](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/893)
+tracks three ordered outcomes: commercial work, missions, then governed Documents.
+This section approves only the first bounded outcome. It is delegated agent
+product synthesis of the existing commercial owners, not new Iurie evidence or
+runtime delivery. The remainder of this PRD keeps its stated readiness.
+
+The user can open a Client dossier, see its authorized commercial affairs in the
+active Company, identify the responsible person, recorded status and next action,
+and open the exact Request to continue the existing estimate, Offer and Contract
+journey. Today the dossier has navigation links, but its commercial restriction
+filters only already-loaded Company pages. A complete Client-scoped read removes
+that discovery gap. Value is demonstrated by finding an older matching affair
+behind more than one global page of unrelated Requests, then reaching its exact
+existing work without re-entry or another business workflow.
+
+This section owns Client overview composition and discovery only. The
+[Commercial Workflow PRD](release-3-commercial-workflow-prd.md), its linked
+capability sections and the
+[Confirmed-Cost Profitability Estimate PRD](release-3-confirmed-cost-profitability-estimate-prd.md)
+retain every economic, approval, transmission, acceptance, Contract and Project
+continuation rule. The [operational overview](release-1-operational-dashboard-acceptance-prd.md#6-operational-definitions)
+and [decision record §18](consolidated-product-decision-record.md#18-ux-localization-and-configuration-architecture)
+retain progressive disclosure and Company attribution. Implementation consumes
+public capability interfaces rather than importing another owner's private data
+model. React/Vite, NestJS and PostgreSQL/Drizzle remain the existing architecture;
+this additive read/composition needs no new ADR, provider or data migration.
+
+### 21.2 Stories and authorized set
+
+1. As a Client reader with commercial read access, I can discover every Request
+   whose original Client reference currently resolves to this readable dossier,
+   including after a valid governed union, without knowing its title in advance.
+2. I can distinguish same-named Clients, see the recorded next action, responsible
+   person, Opportunity status and optional Sales Stage, and load older matches.
+3. I can open the exact Request and its initial Opportunity in the existing
+   commercial owner; authorized estimate, Offer and Contract panels work there.
+4. I can refresh after an association, status change, union or reversal and see
+   the current authorized set, while original historical references stay intact.
+5. With Client access alone I can use the ordinary shared dossier without
+   receiving commercial affairs, counts, titles, people or next actions.
+
+The set is active Workspace + active Company + exact current Client dossier.
+Client owns resolution through non-reversed union operations and the existing
+Company-readable original-reference and canonical-dossier conditions. Ambiguous,
+cyclic or unreadable references fail closed under the existing identity owner;
+display names and Client Legal Entity identifiers are never match keys. Do not
+rewrite original Request references. An obsolete, inaccessible or foreign dossier
+target is rejected safely; it never falls back to an unfiltered Company list.
+
+All Opportunity outcome statuses are included; this is neither My open affairs
+nor a new notion of blocked, overdue or commercially complete work. Apply the
+Client membership predicate before pagination. Use the existing descending
+Request capture-time/ID order, default 25 and maximum 50 rows. Preserve timestamp
+precision and the existing opaque continuation representation. Every page
+revalidates the current actor, Company, dossier and set. Pagination is a live
+read, not a frozen business snapshot: refresh from the first page after identity
+or association changes. No total, cross-Company aggregate or new sorting rule is
+introduced. Existing unscoped All/My-open lists and their loaded-text filters
+retain their contracts; a Client-scoped response must never be labelled an
+unfiltered list, and a scoped read failure must not remove the restriction.
+
+### 21.3 Permissions, read lifetime and presentation
+
+| Operation                                   | Required existing authority                                   | Result                                                          |
+| ------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
+| Shared dossier                              | Current Client dossier read in the active Company             | Existing shared identity only                                   |
+| Commercial overview/pages                   | Both that Client read and live Company Commercial Intake read | Only matching authorized Request/initial-Opportunity list facts |
+| Exact Request continuation                  | Fresh owning Request read                                     | Existing detail and independently authorized panels             |
+| Estimate, Offer, Contract or Project action | Each owning capability's current read/command authority       | Existing workflow, validation and attributable events           |
+
+No grant, role bundle, captured assignment, permission inheritance or business
+transition changes. A readable Client or list row authorizes no cost, estimate,
+Offer, Contract or Project access by itself. Do not prefetch financial detail or
+expose hidden counts, metadata or actionable controls to a Client-only reader.
+Reads create no Activity Log event and do not advance Client versions, identity
+fences or commercial state. Mutations remain exclusively in their current owner.
+
+The inline region identifies the active Company and shows a bounded list with
+explicit loading, genuine empty, failed-read/retry and load-more states. A failed
+read is not an empty result. Labels use the existing localization catalogs and
+Prisme frame; keyboard users can reach each affair and focus moves to the exact
+opened Request. Desktop and narrow layouts wrap long labels without horizontal
+page overflow. The current Client navigation shortcut may reuse the complete
+scoped read, but it cannot be the sole visible outcome of this inline slice.
+
+Capture each read by actor/Workspace/Company/dossier identity. Abort or ignore
+older list, continuation and exact-target replies after context/access/Client
+identity retirement; a late failure cannot reject a newer Company's context.
+Capability rejection retires its protected region without clearing unrelated
+authorized dossier content. Exact continuation uses the existing navigation
+owner's draft, in-flight command and uncertain-retry safeguards; do not clear or
+rebind a held command to another Client, Company or Request. Revalidation and
+union/reversal follow the existing shell/Client identity invalidation signals.
+
+### 21.4 Verification, evidence and readiness
+
+Real PostgreSQL REST proof must cover complete pre-pagination membership across
+more than 50 unrelated newer Requests, tied capture timestamps and continuation
+without duplicates, same-name Clients, unassociated Requests, Workspace/Company
+and Client/commercial authority denials, malformed inputs, union and reversal,
+and unchanged ordinary All/My-open reads. Include a read-only assertion for
+versions, references and business events. Use deterministic identity changes
+between pages; no new write-side race or snapshot guarantee is introduced.
+
+Public UI tests cover empty/error/retry and pagination; Client-only access;
+retired/late replies on Client, Company and actor changes; exact target focus;
+and existing active-edit/uncertain-command navigation behavior. An actual App
+journey with synthetic PostgreSQL data proves the dossier's inline affair facts,
+an older matching affair, exact Request continuation and existing economic or
+Offer/Contract work under separate authority at 1440×900 and 390×844. Inspect
+synthetic screenshots and retain them only as execution evidence. Run affected
+Client/commercial/navigation suites, strict checks and the repository's complete
+final integration gate. Do not publish real Client records or private documents.
+
+Contract readiness is approved through ordered Standards then Spec/Product agent
+review under Dan's delegation. A narrow runtime child becomes ready only after
+this contract is canonical on main and its issue ownership/test gates pass.
+No business answer, manual user test, new provider configuration or technical
+research blocks this bounded read. Existing permissions and synthetic fixtures
+are sufficient; approval is not a claim that runtime already exists.
+
+Excluded: inline duplicate pricing/Offer/Contract editors, new commercial rules,
+AI priority, reminders, money totals, legal/fiscal/certification or mission-close
+policy, external sending, real production grants or data, and mission/Task/
+Document runtime composition. The latter remain later ordered #893 children.
+The unresolved `MISSION-CLOSE-01` remains solely in
+[Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email);
+keep it for Dan's consolidated email rather than asking him to decide here.
