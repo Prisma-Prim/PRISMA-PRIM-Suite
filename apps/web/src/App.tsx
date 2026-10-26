@@ -43,6 +43,7 @@ import { WorkspaceInvitations } from './access/WorkspaceInvitations';
 import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
 import { ClientWorkspace } from './client/ClientWorkspace';
+import { ClientCommercialOverview } from './commercial-intake/ClientCommercialOverview';
 import {
   CommercialIntakeWorkspace,
   type RequestedVersion,
@@ -84,6 +85,8 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     clientRequestId: string;
     /** The exact version to select in the Request detail, if any. */
     version?: RequestedVersion;
+    focusTarget?: 'request-detail';
+    sourceSignal?: AbortSignal;
     requestId: number;
   }>();
   const [requestedDocument, setRequestedDocument] = useState<
@@ -253,11 +256,20 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     : undefined;
   // The shell owns one requested Request for the Requests workspace it offers.
   const openRequest = canAccessCommercial
-    ? (clientRequestId: string, version?: RequestedVersion) => {
+    ? (
+        clientRequestId: string,
+        version?: RequestedVersion,
+        navigation?: {
+          focusTarget: 'request-detail';
+          sourceSignal: AbortSignal;
+        },
+      ) => {
         setRequestedRequest((current) => ({
           requestsMount,
           clientRequestId,
           version,
+          focusTarget: navigation?.focusTarget,
+          sourceSignal: navigation?.sourceSignal,
           requestId: (current?.requestId ?? 0) + 1,
         }));
         navigateToSection('requests');
@@ -531,6 +543,27 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onWorkspaceAccessRejected={rejectWorkspaceAccess}
           onActivityRecorded={refreshActivityLog}
           requestedClientDossierRequest={requestedClientDossierRequest}
+          renderCommercialWork={
+            canReadCompanyClients && openRequest
+              ? (clientDossierId) => (
+                  <ClientCommercialOverview
+                    actor={access.actor}
+                    identity={identity}
+                    clientDossierId={clientDossierId}
+                    clientIdentityRevision={clientIdentityGeneration}
+                    onOpenRequest={(clientRequestId, sourceSignal) =>
+                      openRequest(clientRequestId, undefined, {
+                        focusTarget: 'request-detail',
+                        sourceSignal,
+                      })
+                    }
+                    onCompanyContextRejected={rejectCompanyContext}
+                    onActorRevalidated={acceptRevalidatedActor}
+                    onWorkspaceAccessRejected={rejectWorkspaceAccess}
+                  />
+                )
+              : undefined
+          }
           onOpenProjects={
             canAccessProjects && activeCompanyId
               ? (client) => {

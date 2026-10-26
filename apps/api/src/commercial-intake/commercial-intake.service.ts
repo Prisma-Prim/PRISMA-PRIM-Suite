@@ -39,7 +39,7 @@ import {
   opportunityHistoryCursor,
   readCommercialIntakeCursor,
   readCommercialIntakeLimit,
-  readCommercialIntakeView,
+  readCommercialIntakeScope,
   readOpportunityHistoryCursor,
 } from './commercial-intake-pagination.js';
 import type {
@@ -1121,13 +1121,30 @@ export class CommercialIntakeService {
       readonly viewQuery: unknown;
     },
   ): Promise<CommercialIntakeListPage> {
+    return this.databaseContext.transaction(() => this.listPage(actor, query), {
+      isolationLevel: 'repeatable read',
+      accessMode: 'read only',
+    });
+  }
+
+  private async listPage(
+    actor: ActorContext,
+    query: Parameters<CommercialIntakeService['list']>[1],
+  ): Promise<CommercialIntakeListPage> {
     const companyId = await this.authorization.requireCommercialIntakeAccess(
       actor,
       'read',
     );
     const limit = readCommercialIntakeLimit(query.limit);
     const cursor = readCommercialIntakeCursor(query.cursor);
-    const view = readCommercialIntakeView(query.viewQuery);
+    const scope = readCommercialIntakeScope(query.viewQuery);
+    const clientIds =
+      scope.kind === 'client'
+        ? await this.clients.readDossierOriginalReferenceIds(
+            actor,
+            scope.clientDossierId,
+          )
+        : undefined;
     const rows = await this.databaseContext.connection
       .select({
         request: clientRequests,
@@ -1159,7 +1176,10 @@ export class CommercialIntakeService {
         and(
           eq(clientRequests.workspaceId, actor.workspaceId),
           eq(clientRequests.companyId, companyId),
-          view === 'mine_open'
+          clientIds
+            ? inArray(clientRequests.clientAccountId, [...clientIds])
+            : undefined,
+          scope.kind === 'mine_open'
             ? and(
                 eq(
                   opportunities.responsibleWorkspaceMembershipId,
