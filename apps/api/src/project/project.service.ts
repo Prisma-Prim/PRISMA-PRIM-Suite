@@ -63,6 +63,69 @@ export class ProjectService {
     });
   }
 
+  /** Client owns membership; Project owns facts, bounded selection and this read snapshot. */
+  async listForClient(
+    actor: ActorContext,
+    selection: { clientDossierId: string; offset: number },
+  ) {
+    return this.databaseContext.transaction(
+      async () => {
+        const companyId = await this.authorization.requireProjectAccess(actor);
+        const originalIds = await this.clients.readDossierOriginalReferenceIds(
+          actor,
+          selection.clientDossierId,
+        );
+        const pageSize = 25;
+        const rows =
+          originalIds.length === 0
+            ? []
+            : await this.databaseContext.connection
+                .select()
+                .from(projects)
+                .where(
+                  and(
+                    eq(projects.workspaceId, actor.workspaceId),
+                    eq(projects.companyId, companyId),
+                    inArray(projects.clientAccountId, [...originalIds]),
+                  ),
+                )
+                .orderBy(asc(projects.createdAt), asc(projects.id))
+                .limit(pageSize + 1)
+                .offset(selection.offset);
+        const references = await this.clients.readProjectReferences(actor, [
+          ...new Set(rows.map((row) => row.clientAccountId)),
+        ]);
+        const items = rows.slice(0, pageSize).map((row) => {
+          const reference = references.get(row.clientAccountId);
+          if (
+            !reference ||
+            reference.clientDossierId !== selection.clientDossierId
+          )
+            throw new NotFoundException();
+          return {
+            ...this.projectView(row, reference),
+            responsible:
+              row.responsibleMembershipId === null
+                ? null
+                : {
+                    workspaceMembershipId: row.responsibleMembershipId,
+                    displayLabel: row.responsibleDisplayLabel,
+                  },
+          };
+        });
+        return {
+          companyId,
+          clientDossierId: selection.clientDossierId,
+          offset: selection.offset,
+          pageSize,
+          hasMore: rows.length > pageSize,
+          items,
+        };
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
+  }
+
   /** The open Projects of the reader's Project list; it runs inside the caller's snapshot. */
   async countOpen(actor: ActorContext): Promise<number> {
     return (await this.list(actor)).filter((project) =>
