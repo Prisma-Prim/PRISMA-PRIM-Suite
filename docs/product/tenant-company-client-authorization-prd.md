@@ -150,6 +150,31 @@ existing minimal bundle-label Company assignment administration convention,
 exactly once per actual state change and never for failed/repeated/replayed state.
 No real assignment is authorized by this contract.
 
+The [attributable mission-result review contract](release-1-mission-obligations-prd.md#14-approved-next-vertical--record-attributable-result-review-885)
+adds independent opt-in **Company Mission Result Reviewer v1**, code
+`company_mission_result_reviewer`, containing exactly
+`project.mission_result.review`. Existing assignment administration grants/revokes
+captured v1 through `company.assignment.manage` and
+`/company-mission-result-reviewer-assignments`. Null/unknown versions fail closed;
+no old role, ownership, responsibility or migration grants it. It grants no
+context/read, Task/result mutation, upload/designation, scope exception, Project
+closing, certification or administration authority. Iurie is the known
+first-tenant principal approver through an explicit actual assignment, never a
+runtime identity default or real grant authorized by documentation.
+
+Commands and committed confirmation require current Reviewer plus §14's
+independent Project/original-Client, Task/copied-plan/Template User v2 and Document
+metadata/Mission Deliverable/Content Reader boundaries, including for literal
+external-evidence references. Read/history retains those read prerequisites
+without Reviewer. Assignment identity/version is consumed by the review UI only;
+Reviewer-only changes preserve independent existing owners. Its active-Company
+projection uses `missionResultReviewPermissions`, `missionResultReviewerAssignmentId`
+and `missionResultReviewerPermissionSetVersion`, with only captured v1 recognized.
+Administration emits
+`company_mission_result_reviewer_assignment.granted` or `.revoked` once per actual
+transition under the existing minimal bundle-label convention. §14 owns protected
+business history and exact immutable replay, not a generic Activity permission.
+
 The [Project responsible member slice](release-1-project-task-prd.md#21-approved-project-responsible-member-367) adds `project.update`, listed among the initial permissions of the consolidated decision record §8.1. It exists only through captured **Company Project Access v2**, which is v1 (`project.read`, `project.create`) plus `project.update`. Project Access v1 remains exactly read and create. Existing v1 assignments never expand in place and receive no migration grant. A fresh grant after explicit revocation captures v2 through the existing Company assignment administration and its attributable grant/revoke events. Every delivered Project-read and Project-create check accepts captured v1 or v2; `project.update` requires a live v2; null or unknown versions fail closed. In this slice `project.update` authorizes only the responsible-member change defined by the Project/Task PRD. It grants no Task, Document, Client, Company context or administration authority. No other bundle, Workspace ownership, Company Context Access, Company Director Client Access or Task Manager assignment confers it.
 
 The [provisional Project lifecycle](release-1-project-task-prd.md#23-approved-provisional-project-lifecycle-406) adds the opt-in **Company Project Approver v1**. It contains exactly `project.lifecycle.transition` (activate, hold, resume) and `project.close` (complete, cancel): the separate lifecycle-transition and close permissions of Project/Task PRD section 8 and decision record §8.1.
@@ -331,7 +356,7 @@ Early Preparation v1 and its existing accepted-source execution gate stay intact
 The separate [reported-signing declaration contract (§31.5)](release-3-commercial-31-reported-signing-case-acceptance.md#315-independent-authority-and-safe-reads)
 adds opt-in **Company Contract Signature Declarer v1**, containing exactly
 `commercial.contract.signature.declare_external`. Existing Company assignment
-administration explicitly grants/revokes capturedv1; null/unknown/revoked captures
+administration explicitly grants/revokes captured v1; null/unknown/revoked captures
 fail closed. No old assignment, repeated grant, migration/bootstrap or other role
 expands. Its attributable transitions are
 `company_contract_signature_declarer_assignment.granted` / `.revoked`, following
