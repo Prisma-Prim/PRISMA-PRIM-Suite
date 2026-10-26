@@ -348,3 +348,78 @@ it('refreshes a closed Project result without discarding the exact uncertain his
   );
   expect(screen.getByText('Preserved output DEMO')).toBeVisible();
 });
+
+it('preserves ordinary Task work while an evidence-only capture change retires protected result work', async () => {
+  const fixture = transport({ exists: true });
+  const view = render(show());
+  await openTask();
+  fireEvent.change(screen.getByLabelText('Task title'), {
+    target: { value: 'Independent ordinary Task draft DEMO887' },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Download exact PDF · Version 1' }),
+  );
+  await screen.findByText('Downloading exact PDF…');
+  if (!actor.activeCompany) throw new Error('Expected Company');
+  const changed: ActorContext = {
+    ...actor,
+    activeCompany: {
+      ...actor.activeCompany,
+      documentContentReaderAssignmentId: undefined,
+      documentPermissions: actor.activeCompany.documentPermissions?.filter(
+        (permission) => permission !== 'document.content.read',
+      ),
+    },
+  };
+  view.rerender(
+    <ProjectTasks
+      actor={changed}
+      identity={identity}
+      projectId="project-a"
+      projectStatus="active"
+    />,
+  );
+  expect(
+    screen.getByDisplayValue('Independent ordinary Task draft DEMO887'),
+  ).toBeInTheDocument();
+  await waitFor(() => expect(fixture.state.downloadSignal?.aborted).toBe(true));
+});
+
+it('preserves ordinary Task and declared-result drafts across independent Reviewer capture changes', async () => {
+  const fixture = transport({ exists: true });
+  const view = render(show());
+  await openTask();
+  fireEvent.change(screen.getByLabelText('Task title'), {
+    target: { value: 'Independent Task draft DEMO887' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Correct result' }));
+  fireEvent.change(screen.getByLabelText('Result declaration'), {
+    target: { value: 'Independent declaration draft DEMO887' },
+  });
+  if (!actor.activeCompany) throw new Error('Expected Company');
+  const changed: ActorContext = {
+    ...actor,
+    activeCompany: {
+      ...actor.activeCompany,
+      missionResultReviewPermissions: ['project.mission_result.review'],
+      missionResultReviewerAssignmentId: 'new-reviewer',
+      missionResultReviewerPermissionSetVersion: 'v1',
+    },
+  };
+  const before = fixture.fetcher.mock.calls.length;
+  view.rerender(
+    <ProjectTasks
+      actor={changed}
+      identity={identity}
+      projectId="project-a"
+      projectStatus="active"
+    />,
+  );
+  expect(
+    screen.getByDisplayValue('Independent Task draft DEMO887'),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByDisplayValue('Independent declaration draft DEMO887'),
+  ).toBeInTheDocument();
+  expect(fixture.fetcher.mock.calls).toHaveLength(before);
+});

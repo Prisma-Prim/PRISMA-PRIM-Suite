@@ -118,6 +118,15 @@ export class ProjectTemplateService {
     );
   }
 
+  /** Fence the same copied-plan authority for a composed mission command. */
+  async requirePilotReviewWithinTransaction(actor: ActorContext) {
+    return this.access.requireActor(actor, {
+      copiedPlan: true,
+      pilot: true,
+      lock: true,
+    });
+  }
+
   /** The caller owns the snapshot when composing copied-plan progress. */
   async readWithinTransaction(actor: ActorContext, projectId: string) {
     const companyId = await this.access.requireActor(actor, {

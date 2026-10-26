@@ -1,6 +1,7 @@
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
+import { useMissionReviewCopy } from '../project/mission-result-review.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
 import { useIdeasCopy } from '../ideas/ideas.copy';
 import { useContractModelCopy } from '../contract-model/contract-model.copy';
@@ -45,6 +46,7 @@ type AssignmentBundle =
   | 'contract-model-approver'
   | 'offer-model-editor'
   | 'offer-model-approver'
+  | 'mission-result-reviewer'
   | 'task-result-recorder'
   | 'task-manager'
   | 'company-context'
@@ -90,6 +92,7 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'offer-model-editor': '/company-offer-model-editor-assignments',
   'offer-model-approver': '/company-offer-model-approver-assignments',
   'task-result-recorder': '/company-task-result-recorder-assignments',
+  'mission-result-reviewer': '/company-mission-result-reviewer-assignments',
   'ideas-reader': '/company-ideas-reader-assignments',
   'ideas-recorder': '/company-ideas-recorder-assignments',
   'ideas-reviewer': '/company-ideas-reviewer-assignments',
@@ -286,6 +289,7 @@ export function CompanyContextAccess({
   const receivedCopy = useReceivedContractCopy();
   const signingCopy = useReportedSigningCopy();
   const taskResultCopy = useTaskResultCopy();
+  const reviewCopy = useMissionReviewCopy();
   if (!canManageAssignments) return null;
 
   async function submit(event: FormEvent, submission: Submission) {
@@ -675,6 +679,10 @@ export function CompanyContextAccess({
               },
               { value: 'task-manager', label: copy('taskManagerBundle') },
               {
+                value: 'mission-result-reviewer',
+                label: reviewCopy('bundle'),
+              },
+              {
                 value: 'task-result-recorder',
                 label: taskResultCopy.t('bundle'),
               },
@@ -690,6 +698,7 @@ export function CompanyContextAccess({
                 value === 'operational-risk-reader' ||
                 value === 'operational-risk-recorder' ||
                 value === 'task-manager' ||
+                value === 'mission-result-reviewer' ||
                 value === 'task-result-recorder' ||
                 value === 'commercial-intake' ||
                 value === 'service-catalogue' ||
@@ -742,6 +751,9 @@ export function CompanyContextAccess({
           )}
           {bundle === 'task-manager' && (
             <p>{copy('taskManagerPrerequisites')}</p>
+          )}
+          {bundle === 'mission-result-reviewer' && (
+            <p>{reviewCopy('prerequisites')}</p>
           )}
           {bundle === 'task-result-recorder' && (
             <p>{taskResultCopy.t('prerequisites')}</p>
@@ -930,6 +942,7 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'project-template-configuration': 'Company Project Template Configuration',
     'project-stage-advancer': 'Company Project Stage Advancer',
     'task-manager': 'Company Task Manager',
+    'mission-result-reviewer': 'Company Mission Result Reviewer',
     'task-result-recorder': 'Company Task Result Recorder',
     'document-project-organizer': 'Company Document Project Organizer',
     'document-registrar': 'Company Document Registrar',
