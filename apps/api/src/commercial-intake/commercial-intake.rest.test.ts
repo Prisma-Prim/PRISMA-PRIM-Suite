@@ -1547,6 +1547,219 @@ withPostgres('Company commercial intake REST', () => {
     },
   );
 
+  it('discovers complete Client affairs before pagination beyond fifty unrelated newer Requests', async () => {
+    const setup = await prepared(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Client dossier' },
+        'scope-client',
+        setup.company.id,
+      ),
+    );
+    const homonym = entity(
+      await command(
+        '/clients',
+        { displayName: 'Client dossier' },
+        'scope-homonym',
+        setup.company.id,
+      ),
+    );
+    const matches: string[] = [];
+    for (let index = 0; index < 3; index += 1) {
+      const created = detail(
+        await command(
+          '/commercial-intake/requests',
+          {
+            ...representativeBody(),
+            clientAccountId: client.id,
+            subject: `Matching affair ${index}`,
+          },
+          `scope-match-${index}`,
+          setup.company.id,
+        ),
+      );
+      matches.push(created.id);
+    }
+    for (let index = 0; index < 52; index += 1)
+      await command(
+        '/commercial-intake/requests',
+        {
+          ...representativeBody(),
+          ...(index % 2 === 0 ? { clientAccountId: homonym.id } : {}),
+          subject: `Unrelated newer affair ${index}`,
+        },
+        `scope-unrelated-${index}`,
+        setup.company.id,
+      );
+    // Equal microsecond timestamps force the existing ID tie-breaker.
+    await pool.query(
+      "UPDATE client_requests SET captured_at = TIMESTAMPTZ '2026-09-20 10:00:00.000900+00' WHERE client_account_id = $1",
+      [client.id],
+    );
+    const before = await pool.query(
+      'SELECT id, version, client_account_id FROM client_requests ORDER BY id',
+    );
+    const events = await pool.query('SELECT count(*) FROM activity_log_events');
+    const clientBefore = await (
+      await request(`/clients/${client.id}`, setup.company.id)
+    ).json();
+    const path = `/commercial-intake/requests?clientDossierId=${client.id}&limit=2`;
+    const uppercase = await request(
+      `/commercial-intake/requests?clientDossierId=${client.id.toUpperCase()}`,
+      setup.company.id,
+    );
+    expect(uppercase.status).toBe(200);
+    expect(listPage(await uppercase.json()).items).toHaveLength(3);
+    const response = await request(path, setup.company.id);
+    expect(response.status).toBe(200);
+    const first = listPage(await response.json());
+    expect(first.items.map(({ id }) => id)).toEqual(
+      [...matches].sort().reverse().slice(0, 2),
+    );
+    if (!first.nextCursor)
+      throw new Error('Expected the remaining matching affair.');
+    const second = listPage(
+      await (
+        await request(
+          `${path}&cursor=${encodeURIComponent(first.nextCursor)}`,
+          setup.company.id,
+        )
+      ).json(),
+    );
+    expect(second.items.map(({ id }) => id)).toEqual(
+      [...matches].sort().slice(0, 1),
+    );
+    expect(second).not.toHaveProperty('nextCursor');
+    expect(
+      first.items.every((item) => item.clientDossierId === client.id),
+    ).toBe(true);
+    expect(first).not.toHaveProperty('total');
+    expect(
+      (
+        await pool.query(
+          'SELECT id, version, client_account_id FROM client_requests ORDER BY id',
+        )
+      ).rows,
+    ).toEqual(before.rows);
+    expect(
+      (await pool.query('SELECT count(*) FROM activity_log_events')).rows,
+    ).toEqual(events.rows);
+    expect(
+      await (await request(`/clients/${client.id}`, setup.company.id)).json(),
+    ).toEqual(clientBefore);
+    const ordinary = listPage(
+      await (
+        await request('/commercial-intake/requests', setup.company.id)
+      ).json(),
+    );
+    expect(ordinary.items).toHaveLength(25);
+    expect(ordinary.items.every(({ id }) => !matches.includes(id))).toBe(true);
+  });
+
+  it('requires independent Client and Intake reads on every Client-scoped page without fallback', async () => {
+    const setup = await preparedRestrictedMember(true);
+    const client = entity(
+      await command(
+        '/clients',
+        { displayName: 'Protected Client' },
+        'protected-scope-client',
+        setup.company.id,
+      ),
+    );
+    const path = `/commercial-intake/requests?clientDossierId=${client.id}`;
+    const read = () =>
+      request(path, setup.company.id, { headers: setup.memberHeaders });
+    expect((await read()).status).toBe(200);
+    expect(
+      (
+        await request(path, setup.company.id, {
+          headers: {
+            ...setup.memberHeaders,
+            'x-workspace-context-id': '00000000-0000-4000-8000-000000000996',
+          },
+        })
+      ).status,
+    ).toBe(403);
+    const other = await prepared(true);
+    const hidden = await request(path, other.company.id);
+    const unknown = await request(
+      '/commercial-intake/requests?clientDossierId=00000000-0000-4000-8000-000000000997',
+      other.company.id,
+    );
+    expect(hidden.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    expect(await hidden.json()).toEqual(await unknown.json());
+    expect(
+      (
+        await request(
+          `/company-director-client-assignments/${setup.member.workspaceMembershipId}/${setup.company.id}`,
+          undefined,
+          {
+            method: 'DELETE',
+            headers: { 'idempotency-key': 'revoke-scoped-client' },
+          },
+        )
+      ).status,
+    ).toBe(200);
+    expect((await read()).status).toBe(403);
+    expect(
+      (
+        await request('/commercial-intake/requests', setup.company.id, {
+          headers: setup.memberHeaders,
+        })
+      ).status,
+    ).toBe(200);
+    await command(
+      '/company-director-client-assignments',
+      {
+        companyId: setup.company.id,
+        workspaceMembershipId: setup.member.workspaceMembershipId,
+      },
+      'restore-scoped-client',
+    );
+    expect(
+      (
+        await request(
+          `/company-commercial-intake-assignments/${setup.member.workspaceMembershipId}/${setup.company.id}`,
+          undefined,
+          {
+            method: 'DELETE',
+            headers: { 'idempotency-key': 'revoke-scoped-intake' },
+          },
+        )
+      ).status,
+    ).toBe(200);
+    expect((await read()).status).toBe(403);
+    expect(
+      (
+        await request(`/clients/${client.id}`, setup.company.id, {
+          headers: setup.memberHeaders,
+        })
+      ).status,
+    ).toBe(200);
+  });
+
+  it('rejects malformed and incompatible Client scopes instead of returning a Company list', async () => {
+    const setup = await prepared(true);
+    for (const query of [
+      'clientDossierId=',
+      'clientDossierId=invalid',
+      'clientDossierId[]=00000000-0000-4000-8000-000000000997',
+      'clientDossierId=00000000-0000-4000-8000-000000000997&clientDossierId=00000000-0000-4000-8000-000000000998',
+      'clientDossierId=00000000-0000-4000-8000-000000000997&view=mine_open',
+      'clientDossierId=00000000-0000-4000-8000-000000000997&limit=51',
+      'clientDossierId=00000000-0000-4000-8000-000000000997&cursor=invalid',
+    ]) {
+      const response = await request(
+        `/commercial-intake/requests?${query}`,
+        setup.company.id,
+      );
+      expect(response.status, query).toBe(400);
+      expect(await response.json()).not.toHaveProperty('items');
+    }
+  });
+
   it('paginates newest Requests with a stable bounded cursor and no count or Client metadata', async () => {
     const setup = await prepared();
     for (let index = 0; index < 27; index += 1)
@@ -1951,6 +2164,82 @@ withPostgres('Company commercial intake REST', () => {
       setup.company.id,
     );
     expect((await setup.reverse(next)).status).toBe(409);
+  });
+
+  it('discovers historical original references through the current dossier and repartitions after reversal', async () => {
+    const setup = await unionSetup();
+    const original = detail(
+      await command(
+        '/commercial-intake/requests',
+        {
+          ...representativeBody(),
+          clientAccountId: setup.second.id,
+        },
+        'scoped-before-union',
+        setup.other.id,
+      ),
+    );
+    const newer = detail(
+      await command(
+        '/commercial-intake/requests',
+        {
+          ...representativeBody(),
+          clientAccountId: setup.second.id,
+        },
+        'scoped-before-union-newer',
+        setup.other.id,
+      ),
+    );
+    const beforeUnion = listPage(
+      await (
+        await request(
+          `/commercial-intake/requests?clientDossierId=${setup.second.id}&limit=1`,
+          setup.other.id,
+        )
+      ).json(),
+    );
+    if (!beforeUnion.nextCursor)
+      throw new Error('Expected a pre-union continuation.');
+    const scoped = (clientId: string, companyId = setup.other.id) =>
+      request(
+        `/commercial-intake/requests?clientDossierId=${clientId}`,
+        companyId,
+      );
+    const reference = await setup.unite();
+    const obsoletePage = await request(
+      `/commercial-intake/requests?clientDossierId=${setup.second.id}&limit=1&cursor=${encodeURIComponent(beforeUnion.nextCursor)}`,
+      setup.other.id,
+    );
+    expect(obsoletePage.status).toBe(404);
+    const united = await scoped(setup.client.id);
+    expect(united.status).toBe(200);
+    expect(listPage(await united.json()).items.map(({ id }) => id)).toEqual([
+      newer.id,
+      original.id,
+    ]);
+    expect((await scoped(setup.second.id)).status).toBe(404);
+    const isolated = await scoped(setup.client.id, setup.company.id);
+    expect(isolated.status).toBe(200);
+    expect(listPage(await isolated.json()).items).toEqual([]);
+    // A read must not advance the Client reference fence and block reversal.
+    expect((await setup.reverse(reference)).status).toBe(201);
+    const reversed = await scoped(setup.second.id);
+    expect(reversed.status).toBe(200);
+    expect(listPage(await reversed.json()).items.map(({ id }) => id)).toEqual([
+      newer.id,
+      original.id,
+    ]);
+    expect((await scoped(setup.client.id)).status).toBe(404);
+    const reloaded = detail(
+      await (
+        await request(
+          `/commercial-intake/requests/${original.id}`,
+          setup.other.id,
+        )
+      ).json(),
+    );
+    expect(reloaded.clientReference?.originalClientId).toBe(setup.second.id);
+    expect(reloaded).toMatchObject({ version: 1 });
   });
 
   it('derives the canonical dossier on list rows after union and the original after reversal', async () => {

@@ -93,6 +93,79 @@ export class ClientOperationalReferenceService {
     return client;
   }
 
+  /** Original references for a current readable dossier, inside the caller's coherent read transaction. */
+  async readDossierOriginalReferenceIds(
+    actor: ActorContext,
+    clientDossierId: string,
+  ): Promise<readonly string[]> {
+    if (!actor.activeCompany?.clientPermissions.includes('client.read'))
+      throw new ForbiddenException();
+    const references = await this.readProjectReferences(actor, [
+      clientDossierId,
+    ]);
+    if (references.get(clientDossierId)?.clientDossierId !== clientDossierId)
+      throw new NotFoundException();
+    // Walk only this dossier's predecessor graph. Historical operational rows
+    // retain their original IDs; pagination must see all eligible originals.
+    const candidates = new Set([clientDossierId]);
+    let frontier = [clientDossierId];
+    while (frontier.length > 0) {
+      const predecessors = await this.databaseContext.connection
+        .select({
+          firstClientId: clientUnionReviews.firstClientId,
+          secondClientId: clientUnionReviews.secondClientId,
+        })
+        .from(clientUnionOperations)
+        .innerJoin(
+          clientUnionReviews,
+          and(
+            eq(
+              clientUnionReviews.workspaceId,
+              clientUnionOperations.workspaceId,
+            ),
+            eq(
+              clientUnionReviews.reference,
+              clientUnionOperations.reviewReference,
+            ),
+          ),
+        )
+        .leftJoin(
+          clientUnionReversals,
+          and(
+            eq(
+              clientUnionReversals.workspaceId,
+              clientUnionOperations.workspaceId,
+            ),
+            eq(clientUnionReversals.operationId, clientUnionOperations.id),
+          ),
+        )
+        .where(
+          and(
+            eq(clientUnionOperations.workspaceId, actor.workspaceId),
+            inArray(clientUnionOperations.canonicalClientId, frontier),
+            sql`${clientUnionReversals.operationId} IS NULL`,
+          ),
+        );
+      const next = new Set<string>();
+      for (const predecessor of predecessors)
+        for (const id of [
+          predecessor.firstClientId,
+          predecessor.secondClientId,
+        ])
+          if (!candidates.has(id)) {
+            candidates.add(id);
+            next.add(id);
+          }
+      frontier = [...next];
+    }
+    // The existing forward resolver owns ambiguity/cycle rejection and both
+    // original-reference and current-dossier Company visibility.
+    const resolved = await this.readProjectReferences(actor, [...candidates]);
+    return [...resolved]
+      .filter(([, reference]) => reference.clientDossierId === clientDossierId)
+      .map(([id]) => id);
+  }
+
   async readProjectReferences(
     actor: ActorContext,
     originalClientIds: readonly string[],

@@ -177,7 +177,11 @@ function stubRoutes(routes: Record<string, Responder[]>) {
 }
 
 type WorkspaceProps = {
-  requestedRequest?: { clientRequestId: string; requestId: number };
+  requestedRequest?: {
+    clientRequestId: string;
+    requestId: number;
+    sourceSignal?: AbortSignal;
+  };
   clientRestriction?: { clientDossierId: string; displayName: string };
 };
 
@@ -455,6 +459,45 @@ describe('CommercialIntakeWorkspace requested Request', () => {
     expect(heldNotice()).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: copy.back }));
     expect(listedSubjects()).toContain('New Request');
+    expect(transport.unexpected).toEqual([]);
+  });
+
+  it('retires a dossier-scoped queued target while keeping the uncertain capture and its exact retry', async () => {
+    const transport = stubRoutes({
+      [`GET ${listPath}`]: [
+        reply({ items: rows }),
+        reply({ items: [row('request-new', 'New Request'), ...rows] }),
+      ],
+      [capturePath]: [
+        networkFailure(),
+        reply(detail('request-new', 'New Request'), 201),
+      ],
+    });
+    const view = renderWorkspace();
+    await waitFor(() => expect(listedSubjects()).toHaveLength(3));
+    fillCapture();
+    fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.error);
+    const source = new AbortController();
+    view.update({
+      requestedRequest: { ...requested(1), sourceSignal: source.signal },
+    });
+    await settleEffects();
+    expect(heldNotice()).toHaveTextContent(copy.requestedAfterCapture);
+    act(() => source.abort());
+    expect(heldNotice()).not.toBeInTheDocument();
+    expectCaptureDraft();
+    fireEvent.click(screen.getByRole('button', { name: copy.capture }));
+    expect(
+      await screen.findByText('Original source of New Request'),
+    ).toBeVisible();
+    const [first, retry] = transport.calls(capturePath);
+    expect(retry?.[1]?.body).toBe(first?.[1]?.body);
+    expect(keyOf(retry?.[1])).toBeDefined();
+    expect(keyOf(retry?.[1])).toBe(keyOf(first?.[1]));
+    expect(
+      transport.calls(`GET ${detailPath('request-requested')}`),
+    ).toHaveLength(0);
     expect(transport.unexpected).toEqual([]);
   });
 

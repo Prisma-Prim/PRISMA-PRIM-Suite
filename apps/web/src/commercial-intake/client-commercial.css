@@ -1,0 +1,58 @@
+.client-commercial-work {
+  min-width: 0;
+  margin-block: 24px;
+  padding-block: 20px;
+  border-block: 1px solid var(--shell-line, #e6eaf1);
+  overflow-wrap: anywhere;
+}
+.client-commercial-work h4 {
+  margin: 0;
+}
+.client-commercial-work > p {
+  margin-block: 8px 16px;
+}
+.client-commercial-affairs-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+}
+.client-commercial-affairs-list > li {
+  border: 1px solid var(--shell-line, #e6eaf1);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+.client-commercial-affairs-list dl {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+}
+.client-commercial-affairs-list dl > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(0, 3fr);
+  gap: 8px;
+}
+.client-commercial-affairs-list dt {
+  font-weight: 600;
+}
+.client-commercial-affairs-list dd {
+  margin: 0;
+}
+.client-commercial-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.client-commercial-work button {
+  white-space: normal;
+  text-align: start;
+  max-width: 100%;
+}
+@media (max-width: 600px) {
+  .client-commercial-affairs-list dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}

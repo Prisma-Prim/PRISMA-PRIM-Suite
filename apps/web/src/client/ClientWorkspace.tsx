@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
@@ -73,6 +74,7 @@ export function ClientWorkspace({
   onOpenProjects,
   onOpenDocuments,
   onOpenRequests,
+  renderCommercialWork,
   onClientIdentityChanged,
   requestedClientDossierRequest,
 }: {
@@ -85,6 +87,7 @@ export function ClientWorkspace({
   onOpenProjects?: (client: { id: string; displayName: string }) => void;
   onOpenDocuments?: (client: { id: string; displayName: string }) => void;
   onOpenRequests?: (client: { id: string; displayName: string }) => void;
+  renderCommercialWork?: (clientDossierId: string) => ReactNode;
   /** Reported when a union or reversal changes the current Client identities. */
   onClientIdentityChanged?: () => void;
   requestedClientDossierRequest?: {
@@ -871,6 +874,7 @@ export function ClientWorkspace({
           onOpenProjects={onOpenProjects}
           onOpenDocuments={onOpenDocuments}
           onOpenRequests={onOpenRequests}
+          renderCommercialWork={renderCommercialWork}
           companyContextId={activeCompany.id}
           canUpdate={canUpdateClients}
           identity={identity}

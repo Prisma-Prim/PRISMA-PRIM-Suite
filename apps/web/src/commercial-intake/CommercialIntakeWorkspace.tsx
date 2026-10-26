@@ -150,6 +150,10 @@ export type RequestedVersion =
 type RequestedRequest = {
   clientRequestId: string;
   version?: RequestedVersion;
+  /** Inline dossier navigation focuses its exact detail; ordinary navigation keeps section focus. */
+  focusTarget?: 'request-detail';
+  /** A dossier-scoped caller retires only its queued or pending navigation read. */
+  sourceSignal?: AbortSignal;
   requestId: number;
 };
 
@@ -869,6 +873,15 @@ export function CommercialIntakeWorkspace({
   // held request; opening it aborts a detail read still in flight.
   useEffect(() => {
     setRequestToOpen(requestedRequest);
+    const source = requestedRequest?.sourceSignal;
+    if (!source) return;
+    const retire = () =>
+      setRequestToOpen((current) =>
+        current?.requestId === requestedRequest.requestId ? undefined : current,
+      );
+    if (source.aborted) retire();
+    else source.addEventListener('abort', retire, { once: true });
+    return () => source.removeEventListener('abort', retire);
   }, [requestedRequest]);
 
   // It opens exactly like choosing its row from the list, once no protected
@@ -877,6 +890,7 @@ export function CommercialIntakeWorkspace({
   useEffect(() => {
     if (!requestToOpen || protectedWork) return;
     setRequestToOpen(undefined);
+    if (requestToOpen.sourceSignal?.aborted) return;
     setSelected(undefined);
     const { clientRequestId, version, requestId } = requestToOpen;
     setRequestedVersion(
@@ -884,7 +898,7 @@ export function CommercialIntakeWorkspace({
         ? undefined
         : { clientRequestId, version, requestId },
     );
-    void selectRequest(clientRequestId);
+    void selectRequest(clientRequestId, false, requestToOpen.sourceSignal);
   }, [requestToOpen, protectedWork]);
 
   // Retire capture-only Client work and reread rows after an authority or
@@ -1160,12 +1174,21 @@ export function CommercialIntakeWorkspace({
   async function selectRequest(
     id: string,
     preserveConflict = false,
+    sourceSignal?: AbortSignal,
   ): Promise<void> {
-    if (!companyId) return;
+    if (!companyId || sourceSignal?.aborted) return;
     commandRequest.current?.abort();
     const controller = new AbortController();
     commandRequest.current = controller;
     detailRead.current = controller;
+    const retire = () => {
+      controller.abort();
+      if (detailRead.current === controller) {
+        detailRead.current = undefined;
+        setInFlight('none');
+      }
+    };
+    sourceSignal?.addEventListener('abort', retire, { once: true });
     const startedUnderProjection = clientProjection.current.revision;
     setInFlight('read');
     setFeedback('');
@@ -1209,6 +1232,7 @@ export function CommercialIntakeWorkspace({
     } catch {
       if (!controller.signal.aborted) setFeedback({ requestMessage: 'error' });
     } finally {
+      sourceSignal?.removeEventListener('abort', retire);
       if (!controller.signal.aborted) setInFlight('none');
       if (detailRead.current === controller) detailRead.current = undefined;
     }
@@ -2111,6 +2135,13 @@ export function CommercialIntakeWorkspace({
           actor={actor}
           identity={identity}
           request={visibleRequest}
+          requestedFocusId={
+            requestedRequest?.focusTarget === 'request-detail' &&
+            requestedRequest.clientRequestId === visibleRequest.id &&
+            requestedRequest.version === undefined
+              ? requestedRequest.requestId
+              : undefined
+          }
           requestedVersion={
             requestedVersion?.clientRequestId === visibleRequest.id
               ? requestedVersion
@@ -2811,6 +2842,7 @@ function RequestDetail({
   identity,
   request,
   requestedVersion,
+  requestedFocusId,
   onBack,
   pending,
   onOpenClientDossier,
@@ -2831,6 +2863,7 @@ function RequestDetail({
   request: ClientRequest;
   /** Opens the Offer or Contract with this exact version selected. */
   requestedVersion: RequestedDetailVersion | undefined;
+  requestedFocusId?: number;
   onBack: () => void;
   pending: boolean;
   /** Offered only for a current dossier identity, never a name or original id. */
@@ -2851,6 +2884,12 @@ function RequestDetail({
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
   const copy = useCommercialRequestCopy();
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (requestedFocusId === undefined || heading.current?.closest('[hidden]'))
+      return;
+    heading.current?.focus();
+  }, [requestedFocusId]);
   const stageCopy = useSalesStageCopy();
   const { formatDateTime } = useInterfaceLocale();
   // Each panel receives only the version it owns, numbered by its request.
@@ -2877,7 +2916,7 @@ function RequestDetail({
         {copy.back}
       </button>
       <p>{copy.detail}</p>
-      <h3 id="commercial-intake-detail-title">
+      <h3 id="commercial-intake-detail-title" tabIndex={-1} ref={heading}>
         {request.subject ?? copy.title}
       </h3>
       <dl>

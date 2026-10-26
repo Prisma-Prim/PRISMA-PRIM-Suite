@@ -147,7 +147,11 @@ function respond(value: unknown, status = 200) {
 }
 
 function installTransport(
-  options: { united?: boolean; personalEmpty?: boolean } = {},
+  options: {
+    united?: boolean;
+    personalEmpty?: boolean;
+    readFirstRequest?: (init: RequestInit | undefined) => Promise<Response>;
+  } = {},
 ): Transport {
   const state: Transport = {
     united: options.united ?? false,
@@ -181,6 +185,24 @@ function installTransport(
       if (path.includes('/client-duplicate-reviews?'))
         return respond({ items: [], next_cursor: null });
       if (path.includes('/commercial-intake/requests?')) {
+        const dossierId = new URL(path, 'http://localhost').searchParams.get(
+          'clientDossierId',
+        );
+        if (dossierId !== null)
+          return respond({
+            items: [
+              requestRow(
+                'request-second',
+                'Second Client Request',
+                derived(secondClient.id),
+              ),
+              requestRow(
+                'request-first',
+                'First Client Request',
+                derived(firstCurrent()),
+              ),
+            ].filter((item) => item.clientDossierId === dossierId),
+          });
         state.requestListReads += 1;
         // A fresh read after reassignment may omit an already opened detail.
         if (
@@ -208,6 +230,11 @@ function installTransport(
                 ],
         });
       }
+      if (
+        path.endsWith('/commercial-intake/requests/request-first') &&
+        options.readFirstRequest
+      )
+        return options.readFirstRequest(init);
       if (path.endsWith('/commercial-intake/requests/request-first'))
         return state.forbidRequestDetail
           ? respond({}, 403)
@@ -412,6 +439,93 @@ describe('Client dossier and Client Request navigation through App', () => {
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
   });
+
+  it('shows Client commercial affairs inline and opens the exact existing Request', async () => {
+    const transport = installTransport();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    const dossier = await openDossier(firstClient.id, 'Alex');
+    const commercial = await within(dossier).findByRole('region', {
+      name: 'Commercial affairs',
+    });
+    expect(within(commercial).getByText('Company A')).toBeVisible();
+    expect(
+      await within(commercial).findByText('Follow up First Client Request'),
+    ).toBeVisible();
+    expect(within(commercial).getByText('Resolver')).toBeVisible();
+    expect(
+      within(commercial).queryByText('Second Client Request'),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      within(commercial).getByRole('button', {
+        name: 'Open Request: First Client Request',
+      }),
+    );
+    expect(
+      await within(requestsRegion()).findByText(
+        'Original source of First Client Request',
+      ),
+    ).toBeVisible();
+    expect(
+      within(requestsRegion()).getByRole('heading', {
+        name: 'First Client Request',
+      }),
+    ).toHaveFocus();
+    expect(transport.mutations).toEqual([]);
+  });
+
+  it.each([200, 403])(
+    'retires a held inline Request reply after Client union (%s)',
+    async (status) => {
+      let release: ((response: Response) => void) | undefined;
+      let readSignal: AbortSignal | null | undefined;
+      const held = new Promise<Response>((resolve) => {
+        release = resolve;
+      });
+      const read = vi.fn((init: RequestInit | undefined) => {
+        readSignal = init?.signal;
+        return held;
+      });
+      installTransport({ readFirstRequest: read });
+      render(<App identity={deterministicBrowserIdentity()} />);
+      const dossier = await openDossier(firstClient.id, 'Alex');
+      const commercial = await within(dossier).findByRole('region', {
+        name: 'Commercial affairs',
+      });
+      try {
+        fireEvent.click(
+          await within(commercial).findByRole('button', {
+            name: 'Open Request: First Client Request',
+          }),
+        );
+        await waitFor(() => expect(read).toHaveBeenCalledOnce());
+        navigateTo('Clients');
+        await uniteFirstIntoSecond(dossier);
+        await waitFor(() => expect(readSignal?.aborted).toBe(true));
+      } finally {
+        await act(async () => {
+          release?.(
+            respond(
+              status === 200
+                ? requestDetail('request-first', 'First Client Request', {
+                    originalClientId: firstClient.id,
+                    currentClientId: firstClient.id,
+                  })
+                : {},
+              status,
+            ),
+          );
+          await held;
+        });
+      }
+      navigateTo('Client Requests');
+      await waitFor(() => expect(listedRequests()).toHaveLength(3));
+      expect(
+        within(requestsRegion()).queryByText(
+          'Original source of First Client Request',
+        ),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('keeps the exact readable v1 Request mounted when a fresh personal list no longer contains it', async () => {
     const transport = installTransport({ personalEmpty: true });
