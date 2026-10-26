@@ -1,7 +1,7 @@
 # PRD — Release 1 Shared Client
 
-**Status:** Draft — Company Director dossier delivered; governed duplicate-resolution and bounded Client commercial overview (§21) contracts approved
-**Version:** 0.7
+**Status:** Draft — Company Director dossier delivered; governed duplicate-resolution and bounded Client commercial (§21) and mission/Task (§22) overview contracts approved
+**Version:** 0.8
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
@@ -422,3 +422,149 @@ Document runtime composition. The latter remain later ordered #893 children.
 The unresolved `MISSION-CLOSE-01` remains solely in
 [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email);
 keep it for Dan's consolidated email rather than asking him to decide here.
+
+## 22. Approved Client mission and Task overview (#898)
+
+### 22.1 Authority, value and public owners
+
+Under the same delegated 26 October instruction, [#893](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/893)
+continues after commercial delivery #896 / PR #897. This section approves its
+second bounded outcome through ordered Standards then Spec/Product agent review.
+It is reversible product synthesis of existing facts and navigation, not a new
+Iurie answer, operational mission approval or runtime-delivery claim.
+
+From the readable Client dossier, the user discovers its active Company's
+Projects, sees recorded responsibility and lifecycle, deliberately previews one
+Project's Tasks with their states, assignees and calendar dates, and opens the
+exact Project or Task in its existing workspace. That workspace retains its
+copied-plan, diagnostic, attributable result-review, Document and command owners.
+The present shortcut and complete but unbounded global Project directory do not
+provide that inline journey. A matching Project beyond 50 unrelated records and
+its exact Task demonstrate useful discovery without re-entry or name matching.
+
+This section owns only dossier composition and scoped discovery. The
+[Project/Task PRD](release-1-project-task-prd.md) retains record, responsibility,
+date, lifecycle, ordering, original-Client read-only and mutation contracts.
+[Mission Obligations §§13–14](release-1-mission-obligations-prd.md#13-approved-first-vertical--inspect-mission-activityresult-readiness)
+retain diagnostic and separate human-review meanings. Approved source/Task work
+does not establish fulfilled obligations or certification. Use public owners;
+React/Vite, NestJS and PostgreSQL/Drizzle remain unchanged. No new provider,
+dependency, schema, durable architectural choice or migration is required.
+
+### 22.2 Stories, membership and bounded discovery
+
+1. A Client reader with current Project read can find every readable Project
+   resolving to this dossier in the active Company, including historical original
+   references after a valid union; same-named Clients remain separate.
+2. The user sees each Project's title, original Client label, recorded responsible
+   member or Unassigned, and exact lifecycle, including completed/cancelled work.
+3. With independent Task read, the user deliberately previews a selected matching
+   Project's Tasks and sees literal title, state, manual priority, recorded
+   assignee or Unassigned, and date or No due date; missing facts are not inferred.
+4. Opening a Project or Task uses its exact identifiers and fresh owning reads,
+   preserving existing drafts, pending commands, conflict and identical uncertain
+   retry behavior. Its existing plan/result-review regions explain available
+   recorded judgments and gaps under their independent authority.
+5. Refresh after assignment, lifecycle, association or Client identity changes
+   shows current permitted facts. A Client-only reader sees no Project facts;
+   a Project-only reader receives no Task facts or hidden counts.
+
+The set is current actor + Workspace + active Company + exact current readable
+Client dossier. Reuse the Client-owned original-reference membership from §21
+and each Project's existing original-Client visibility; ambiguous, cyclic,
+inaccessible or foreign targets fail closed, never to an unfiltered list. Do not
+rewrite original references or infer membership from titles or legal entities.
+
+Use an additive strict Client-scoped Project-list selection: one scalar UUID
+`clientDossierId`, optionally one nonnegative safe-integer `offset`, no other keys
+in that selection. Normalize UUID representation at the boundary; reject empty,
+repeated, bracketed, malformed, negative, fractional and unsafe values, and any
+combination with `view=mine_open`. Omitted Client selection preserves the existing
+All/My-open API and ignored legacy-query behavior. The new response identifies
+Company, dossier, offset, fixed page size 25, next-page presence and matching rows.
+Apply readable membership before the 25+1 lookahead, in one read-only
+repeatable-read transaction. Preserve ascending creation-time then identifier
+order and every lifecycle; no new urgency, sort, total or cross-Company aggregate.
+Reads advance no version, Client fence, command outcome or Activity Log event.
+
+Previous, Next and Refresh are explicit; Refresh returns to zero. Each page
+revalidates authority and identity. An out-of-range page offers back/refresh;
+pagination is live, with no frozen snapshot across requests or concurrent
+mutations. A failed scoped read never removes the restriction. Changing Project
+page or refreshing retires the preview and its outstanding reads. The Task preview
+uses only the chosen Project's existing complete Task-list read and existing order,
+with an explicit local 25-row display window; do not call it server pagination.
+No Task/result/evidence request is made for every directory row. Preview reads
+create no eligible-member lookup, command or result-review interpretation.
+
+### 22.3 Independent authority, lifetime and presentation
+
+| Operation                         | Required current authority                                  | Result                                                  |
+| --------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- |
+| Shared dossier                    | Existing Client dossier read                                | Existing shared identity                                |
+| Project discovery                 | That Client read plus existing Company Project read         | Matching Project facts and recorded responsibility only |
+| Selected Project's Task preview   | Existing Task read plus that Project/original-Client access | Existing readable Task facts only                       |
+| Exact Project/Task continuation   | Fresh owning Project/Task reads                             | Existing detail and independently permitted work        |
+| Results, reviews, PDFs or command | Each existing owner’s complete current prerequisites        | Existing protected content and deliberate actions       |
+
+No permission, captured bundle, assignment or real person changes. A preview or
+responsibility is not authority. No financial, Document, result or review content
+is prefetched into this region. A Task-read refusal removes only its preview;
+Project and shared Client facts remain under their independent authority. A
+Project-read refusal retires Project/preview facts while preserving shared Client
+content. A refusal is not an empty list; malformed, foreign and unsupported
+responses are unavailable. A superseded original or closed Project can retain its
+existing readable Task history without gaining mutation rights.
+
+Capture requests by identity/session, actor, Workspace, Company, captured Project,
+Task and Client authority, dossier and Client-identity revision. A newer page,
+preview or retired context aborts or ignores old successes and failures before
+they affect a newer scope. Union/reversal retires the inline selection. An exact
+opening not yet resolved is retired with its source region; once opened, existing
+owners revalidate their stable record independently. Do not cancel or rebind a
+pending mutation to another Project, Task, Client or Company. An abandoned queued
+opening preserves the original uncertain command's payload, version and key.
+
+Use progressively disclosed Prisme regions with active Company attribution,
+distinct loading, genuine empty, unavailable/retry, denied and out-of-range
+states. The selected Project remains named above its Tasks. Existing ro/ru/fr/en
+resources localize interface labels without changing literal business content,
+dates or requests on locale change. Keyboard users reach every Project/Task and
+focus reaches the exact opened detail. At 1440×900 and 390×844, long labels wrap
+without horizontal page overflow. Show factual states, not a new blocked/overdue
+ranking, completion percentage, assurance badge or claim that a done Task fulfills
+its intended result. Review gaps are read in the existing owning Project region;
+unavailable review data cannot be presented as no human review.
+
+### 22.4 Acceptance, readiness and exclusions
+
+Public PostgreSQL REST proves matches beyond 50 unrelated Projects, the 25-row
+boundary/lookahead and creation/ID ties, all lifecycle states, same-name separation,
+strict query/UUID behavior, Company/Workspace/Client/Project denials, union/reversal
+between pages and unchanged All/My-open behavior. Assert no state, fence, receipt
+or event change. Existing selected-Project Task REST authority remains unchanged.
+
+Public component/App tests prove pagination, empty/error/retry, selected-Project
+scope, independent Task loss, malformed/foreign data, actor/Company/identity
+retirement and abort-ignoring late 200/403 replies. Exact Project/Task continuation
+must preserve pending registration and Task command/uncertain-retry safeguards.
+Registered actual App/API/synthetic PostgreSQL journeys prove Client → matching
+Project beyond the first scoped page → Task preview with responsibility/date → exact Task and its
+existing result/review work at both viewports, including read-only and separately
+revoked Task access. Inspect original screenshots and retain outside source
+history. Run affected Project, Client, Task and navigation suites, strict checks
+and the repository's complete exact-integration gate after bounded review.
+
+The canonical contract and closed commercial dependencies precede a narrow
+implementation child with fresh ownership/readiness checks. Existing permissions,
+synthetic fixtures and public seams suffice; no manual user test, external
+configuration, new research or father answer blocks this factual read. Contract
+approval grants no later Document child readiness or whole-MVP credit.
+
+Excluded: duplicate Project/Task editors, assignment automation, new reminders,
+team/consolidated directories, deadlines for Projects, evidence inference,
+mission fulfillment/exception/closure policy, certification, economic/legal
+rules, provider/deployment or real data/grants. `MISSION-CLOSE-01` stays solely in
+[Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+for Dan's consolidated email; no question is reissued here. Governed Documents
+remain the next ordered #893 delivery with their own readiness check.
