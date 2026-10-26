@@ -1,0 +1,39 @@
+{
+  "issue": 902,
+  "pr": 903,
+  "source": "0b849da28255a3886bbed4910ced0b0412a5e455",
+  "base": "248ca3abac1dec0dd1f15037ae9b850a19962caf",
+  "tree": "acaa2309e3ba313eb7928b0e084a5c5a5fd94762",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1717,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "source": "0b849da28255a3886bbed4910ced0b0412a5e455",
+    "reviewedBase": "248ca3abac1dec0dd1f15037ae9b850a19962caf",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "orderedStandards": "PASS0 client902_standards",
+    "orderedSpecProduct": "PASS0 client902_spec; root actual bounded factual product approval under Dan delegation",
+    "scope": "Docs-only complete Client governedDocument overview; existingcompleteCompanyread and local25matchingwindows; no runtime, new grant or governance rule",
+    "noAdditionalReviewRequested": true
+  },
+  "independentGitHubCIExecuted": false,
+  "setupFriction": {
+    "initialSharedClone": "Inherited alternates exceeded Git nesting limit before checkout; no edits",
+    "restoredPrerequisite": "Fresh direct GitHub main clone, frozen install and standard doctor passed; no configuration or check changes"
+  },
+  "scope": "Documentation-only Client governed-Document overview: existing complete Company read, exact current dossier membership with local25matchingwindows, recorded family/workingVersion metadata and exact existing Document/Version/history/content continuation under independent authority. No runtime, new grant, evidence inference, fulfillment/closure/certification rule, provider, real data or external message. MISSION-CLOSE-01 remains in its existing consolidated-question owner.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}
