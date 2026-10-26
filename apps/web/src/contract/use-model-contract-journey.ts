@@ -78,7 +78,10 @@ export type ModelContractJourneyProps = ContractPanelProps & {
 };
 
 /** One owner for all new-mode reads, drafts and commands. No sibling can replace an uncertain intent. */
-export function useModelContractJourney(props: ModelContractJourneyProps) {
+export function useModelContractJourney(
+  props: ModelContractJourneyProps,
+  siblingsProtected = false,
+) {
   const company = props.actor.activeCompany,
     companyId = company?.id;
   const permissions = company?.contractPermissions ?? [];
@@ -128,7 +131,30 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     readRequest = useRef<AbortController | undefined>(undefined),
     writeRequest = useRef<AbortController | undefined>(undefined);
   const activeWrite = useRef(false);
-  const locked = running || feedback === 'uncertain';
+  const locked = running || feedback === 'uncertain' || siblingsProtected;
+  const mutationAuthority = JSON.stringify([
+    company?.contractPermissionAssignmentId,
+    company?.contractPermissionSetVersion,
+    company?.contractApproverAssignmentId,
+    company?.contractApproverPermissionSetVersion,
+    mayPrepare,
+    mayApprove,
+    mayCheck,
+  ]);
+  useEffect(() => {
+    writeRequest.current?.abort();
+    readRequest.current?.abort();
+    attempt.current = undefined;
+    activeWrite.current = false;
+    setDraft(blank());
+    setSources({ offer: null, model: null });
+    setReviewBasis('');
+    setReason('');
+    setAcknowledgements([]);
+    setRunning(false);
+    setFeedback(null);
+    setReadState('idle');
+  }, [mutationAuthority]);
   useEffect(
     () => () => {
       readRequest.current?.abort();
@@ -154,7 +180,7 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     if (denied && !signal.aborted) {
       readRequest.current?.abort();
       writeRequest.current?.abort();
-      setContract(null);
+      if (denied === 'unauthorized') setContract(null);
       setDraft(blank());
       setSources({ offer: null, model: null });
       setHistory(null);
@@ -178,22 +204,24 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     ) => Promise<T>,
     apply: (value: T) => void,
   ) {
-    if (attempt.current || !companyId) return;
+    if (attempt.current || !companyId) return false;
     readRequest.current?.abort();
     const controller = new AbortController();
     readRequest.current = controller;
     setReadState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) return false;
       const value = await operation(api, controller.signal);
       if (!controller.signal.aborted) {
         apply(value);
         setReadState('idle');
+        return true;
       }
     } catch {
       if (!controller.signal.aborted) setReadState('error');
     }
+    return false;
   }
   async function get(
     api: Awaited<ReturnType<typeof createAuthenticatedApiClient>>,
@@ -284,7 +312,7 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
     return next;
   }
   async function reload() {
-    await read(
+    return read(
       async (api, signal) =>
         checkScope(
           readModelContract(record(await get(api, base, signal)).contract),
@@ -468,6 +496,7 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
   }
   async function write(kind: CommandKind) {
     if (
+      siblingsProtected ||
       activeWrite.current ||
       (attempt.current && attempt.current.kind !== kind) ||
       !companyId
@@ -599,6 +628,8 @@ export function useModelContractJourney(props: ModelContractJourneyProps) {
   }
   return {
     contract,
+    applyContract,
+    ownProtected: running || feedback === 'uncertain',
     draft,
     setDraft,
     mode,

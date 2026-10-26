@@ -44,6 +44,7 @@ import {
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
@@ -145,6 +146,10 @@ const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
 };
 const MISSION_DELIVERABLE_ACCESS_BUNDLE: BundleDefinition = {
   value: COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const CONTRACT_SIGNATURE_DECLARER_BUNDLE: BundleDefinition = {
+  value: COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
   permissionSetVersion: 'v1',
 };
 const RECEIVED_CONTRACT_ACCESS_BUNDLE: BundleDefinition = {
@@ -299,6 +304,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_SALES_STAGE_CONFIGURATION_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+  COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
@@ -1473,6 +1479,34 @@ export class CompanyContextAssignmentService {
       idempotencyKey,
     );
   }
+  grantContractSignatureDeclarer(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CONTRACT_SIGNATURE_DECLARER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeContractSignatureDeclarer(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      CONTRACT_SIGNATURE_DECLARER_BUNDLE,
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
   grantReceivedContractAccess(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -1948,6 +1982,10 @@ function assignmentAction(
       return granted
         ? 'company_mission_deliverable_access_assignment.granted'
         : 'company_mission_deliverable_access_assignment.revoked';
+    case COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE:
+      return granted
+        ? 'company_contract_signature_declarer_assignment.granted'
+        : 'company_contract_signature_declarer_assignment.revoked';
     case COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE:
       return granted
         ? 'company_received_contract_access_assignment.granted'

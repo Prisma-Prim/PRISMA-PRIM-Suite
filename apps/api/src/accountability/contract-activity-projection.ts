@@ -26,6 +26,7 @@ const CONTRACT_ACTIVITY_ACTIONS = [
   'contract_version.created',
   'contract_version.approved',
   'contract_version.rejected',
+  'contract_version.signing_declared',
   'contract_version.signature_recorded',
   'contract_project.linked',
 ] as const;
@@ -69,6 +70,14 @@ export type ContractActivityProjection =
         | 'contract_version.rejected';
       target: ContractVersionTarget;
       metadata: Record<string, never>;
+    }
+  | {
+      action: 'contract_version.signing_declared';
+      target: ContractVersionTarget;
+      metadata: {
+        evidenceKind: 'DECLARED_RECEIVED_PDF';
+        provenance: 'COMPANY_MODEL_OFFER';
+      };
     }
   | {
       action: 'contract_version.signature_recorded';
@@ -145,6 +154,32 @@ export function readContractActivity(
           metadata: {
             created: metadata.created,
             project: { projectId, projectTitle },
+          },
+        }
+      : undefined;
+  }
+  if (action === 'contract_version.signing_declared') {
+    return target.kind === 'CONTRACT' &&
+      row.origin === 'COMPANY_MODEL_OFFER' &&
+      row.executionState === 'EXECUTED' &&
+      row.contractVersionId === target.contractVersionId &&
+      hasExactly(metadata, [
+        'contractId',
+        'contractVersionId',
+        'versionNumber',
+        'provenance',
+        'evidenceKind',
+      ]) &&
+      metadata.contractVersionId === target.contractVersionId &&
+      metadata.versionNumber === target.versionNumber &&
+      metadata.provenance === 'COMPANY_MODEL_OFFER' &&
+      metadata.evidenceKind === 'DECLARED_RECEIVED_PDF'
+      ? {
+          action,
+          target,
+          metadata: {
+            evidenceKind: 'DECLARED_RECEIVED_PDF',
+            provenance: 'COMPANY_MODEL_OFFER',
           },
         }
       : undefined;

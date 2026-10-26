@@ -176,6 +176,11 @@ const targetTypes = {
   'contract_version.created': 'contract_version',
   'contract_version.approved': 'contract_version',
   'contract_version.rejected': 'contract_version',
+  'contract_version.signing_declared': 'contract_version',
+  'company_contract_signature_declarer_assignment.granted':
+    'company_role_assignment',
+  'company_contract_signature_declarer_assignment.revoked':
+    'company_role_assignment',
   'contract_version.signature_recorded': 'contract_version',
   'contract_project.linked': 'contract_version',
 } as const satisfies Record<ActivityAction, ActivityLogEvent['target']['type']>;
@@ -392,6 +397,7 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
     case 'contract_version.created':
     case 'contract_version.approved':
     case 'contract_version.rejected':
+    case 'contract_version.signing_declared':
     case 'contract_version.signature_recorded':
     case 'contract_project.linked':
       return contractEvent(value, action, target);
@@ -513,6 +519,23 @@ function contractEvent(
     case 'contract_version.rejected':
       if (Object.keys(metadata).length !== 0) invalid();
       return { ...recorded(event), action, target: version, metadata: {} };
+    case 'contract_version.signing_declared':
+      if (
+        kind !== 'CONTRACT' ||
+        Object.keys(metadata).length !== 2 ||
+        metadata.evidenceKind !== 'DECLARED_RECEIVED_PDF' ||
+        metadata.provenance !== 'COMPANY_MODEL_OFFER'
+      )
+        invalid();
+      return {
+        ...recorded(event),
+        action,
+        target: version,
+        metadata: {
+          evidenceKind: 'DECLARED_RECEIVED_PDF',
+          provenance: 'COMPANY_MODEL_OFFER',
+        },
+      };
     case 'contract_version.signature_recorded':
       if (
         Object.keys(metadata).length !== 1 ||

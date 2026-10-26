@@ -181,6 +181,8 @@ export type CanonicalActivityEvent =
         | 'company_document_approver_assignment.revoked'
         | 'company_document_content_reader_assignment.granted'
         | 'company_mission_deliverable_access_assignment.granted'
+        | 'company_contract_signature_declarer_assignment.granted'
+        | 'company_contract_signature_declarer_assignment.revoked'
         | 'company_received_contract_access_assignment.granted'
         | 'company_task_result_recorder_assignment.granted'
         | 'company_document_content_reader_assignment.revoked'
@@ -279,6 +281,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | 'Company Contract Signature Declarer'
           | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
@@ -381,6 +384,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_document_approver_assignment.revoked'
     | 'company_document_content_reader_assignment.granted'
     | 'company_mission_deliverable_access_assignment.granted'
+    | 'company_contract_signature_declarer_assignment.granted'
+    | 'company_contract_signature_declarer_assignment.revoked'
     | 'company_received_contract_access_assignment.granted'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_document_content_reader_assignment.revoked'
@@ -526,6 +531,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | 'Company Contract Signature Declarer'
           | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL

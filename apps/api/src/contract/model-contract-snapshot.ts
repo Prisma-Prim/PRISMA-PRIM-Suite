@@ -39,7 +39,7 @@ function readSnapshot(
     version.templateCode !== 'COMPANY_CONSULTING_CONTRACT_RO' ||
     version.templateVersion !== 1 ||
     version.pricingSnapshotId !== null ||
-    version.executionState !== 'NOT_EXECUTED'
+    !['NOT_EXECUTED', 'EXECUTED'].includes(version.executionState)
   )
     throw invalid();
   const snapshot = exactRecord(version.modelGenerationSnapshot, [

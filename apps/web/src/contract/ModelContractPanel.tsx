@@ -1,3 +1,14 @@
+import { useCallback, useState } from 'react';
+import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import type { ApiResult } from '../api/authenticated-api-client';
+import { ContractProjectsPanel } from './ContractProjectsPanel';
+import { ReportedSigningForm } from './ReportedSigningForm';
+import { ReportedSigningHistory } from './ReportedSigningHistory';
+import {
+  reportedSigningAuthority,
+  reportedSigningPdfAuthority,
+} from './reported-signing-authority';
+import { useReportedSigningCopy } from './reported-signing.copy';
 import { ContractModelBody } from '../contract-model/ContractModelVersionContent';
 import { useContractCopy } from './contract.copy';
 import { useContractDecisionCopy } from './contract-decision.copy';
@@ -13,12 +24,51 @@ import {
 } from './use-model-contract-journey';
 
 export function ModelContractPanel(props: ModelContractJourneyProps) {
-  const journey = useModelContractJourney(props),
+  const [declarationProtected, setDeclarationProtected] = useState(false),
+    [projectProtected, setProjectProtected] = useState(false);
+  const journey = useModelContractJourney(
+      props,
+      declarationProtected || projectProtected,
+    ),
     copy = useModelContractCopy(),
     common = useContractCopy(),
     decision = useContractDecisionCopy(),
     versions = useContractVersionCopy(),
-    financial = useModelOfferCopy();
+    financial = useModelOfferCopy(),
+    signingCopy = useReportedSigningCopy();
+  const company = props.actor.activeCompany;
+  const declarationAuthority = reportedSigningAuthority(props.actor),
+    pdfAuthority = reportedSigningPdfAuthority(props.actor);
+  const reject = useCallback(
+    (result: ApiResult<unknown>, signal: AbortSignal) =>
+      handleAuthenticatedAccessRejection({
+        result,
+        identity: props.identity,
+        companyContextId: company?.id,
+        onCompanyContextRejected: props.onCompanyContextRejected,
+        onActorRevalidated: props.onActorRevalidated ?? (() => undefined),
+        onWorkspaceAccessRejected: props.onWorkspaceAccessRejected,
+        signal,
+      }),
+    [
+      props.identity,
+      company?.id,
+      props.onCompanyContextRejected,
+      props.onActorRevalidated,
+      props.onWorkspaceAccessRejected,
+    ],
+  );
+  const projectKey = JSON.stringify([
+    company?.contractPermissionAssignmentId,
+    company?.contractPermissionSetVersion,
+    company?.contractPermissions?.includes('commercial.contract.project.link'),
+    company?.projectPermissionAssignmentId,
+    company?.projectPermissionSetVersion,
+    company?.projectPermissions,
+    company?.clientPermissionAssignmentId,
+    company?.clientPermissionSetVersion,
+    props.actor.workspacePermissions.includes('client.manage'),
+  ]);
   const { contract, locked } = journey;
   const differenceLabel = (field: string) => {
     switch (field) {
@@ -62,7 +112,11 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
     >
       <h4>{copy('title')}</h4>
       <p className="contract-banner">{copy('notice')}</p>
-      <p>{copy('pendingAcceptance')}</p>
+      <p>
+        {contract?.version.signature
+          ? signingCopy('offerSeparate')
+          : copy('pendingAcceptance')}
+      </p>
       {journey.confirmed && <p role="status">{copy(journey.confirmed)}</p>}
       {journey.running && <p role="status">{common('running')}</p>}
       {journey.readState === 'loading' && (
@@ -91,28 +145,112 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
                   ? 'rejected'
                   : 'pending',
             )}{' '}
-            · {common('execution')}
+            ·{' '}
+            {contract.version.signature
+              ? signingCopy('declared')
+              : common('execution')}
           </p>
           <ModelContractDetails
             key={contract.version.id}
             contract={contract}
-            locked={locked}
+            locked={journey.ownProtected}
           />
           <ModelContractChecks journey={journey} />
-          {journey.mayPrepare && (
-            <button
-              type="button"
-              disabled={locked}
-              onClick={() => void journey.startSuccessor()}
-            >
-              {copy('copy')}
-            </button>
+          {contract.version.signature && company && (
+            <ReportedSigningHistory
+              declaration={contract.version.signature}
+              identity={props.identity}
+              companyId={company.id}
+              pdfAllowed={pdfAuthority.allowed}
+              pdfAuthorityKey={pdfAuthority.key}
+              reject={reject}
+            />
           )}
+          {company &&
+            (declarationAuthority.allowed ? (
+              <ReportedSigningForm
+                key={contract.version.id + declarationAuthority.key}
+                identity={props.identity}
+                companyId={company.id}
+                membershipId={props.actor.workspaceMembershipId}
+                opportunityId={props.opportunityId}
+                contract={contract}
+                protectedCommand={journey.ownProtected || projectProtected}
+                reject={reject}
+                onProtectionChange={setDeclarationProtected}
+                onReload={journey.reload}
+                onDeclared={(declaration) =>
+                  journey.applyContract({
+                    ...contract,
+                    revision: Math.max(contract.revision, declaration.revision),
+                    version: {
+                      ...contract.version,
+                      signature: declaration,
+                      executionState: 'EXECUTED',
+                      latestQualityRun: declaration.qualityRun,
+                    },
+                  })
+                }
+              />
+            ) : (
+              <p>{signingCopy('prerequisites')}</p>
+            ))}
+          {company && (
+            <ContractProjectsPanel
+              key={contract.id + projectKey}
+              identity={props.identity}
+              companyId={company.id}
+              opportunityId={props.opportunityId}
+              opportunityTitle={props.opportunityTitle ?? ''}
+              contract={contract}
+              mayCreate={
+                company.projectPermissions?.includes('project.create') === true
+              }
+              mayLink={Boolean(
+                company.contractPermissionAssignmentId &&
+                (company.contractPermissionSetVersion === 'v1' ||
+                  company.contractPermissionSetVersion === 'v2') &&
+                company.contractPermissions?.includes(
+                  'commercial.contract.project.link',
+                ) &&
+                company.projectPermissions?.includes('project.read') &&
+                (company.clientPermissions?.includes('client.read') ||
+                  props.actor.workspacePermissions.includes('client.manage')),
+              )}
+              protectedCommand={journey.ownProtected || declarationProtected}
+              reject={reject}
+              onProtectionChange={setProjectProtected}
+              onReload={() => void journey.reload()}
+              onOpenProject={props.onOpenProject}
+              onLinked={(link, project) =>
+                journey.applyContract({
+                  ...contract,
+                  revision: Math.max(contract.revision, link.revision),
+                  linkedProjects: contract.linkedProjects.some(
+                    (existing) => existing.link.id === link.id,
+                  )
+                    ? contract.linkedProjects
+                    : [{ ...project, link }, ...contract.linkedProjects],
+                })
+              }
+            />
+          )}
+
+          {journey.mayPrepare &&
+            contract.version.executionState === 'NOT_EXECUTED' && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => void journey.startSuccessor()}
+              >
+                {copy('copy')}
+              </button>
+            )}
           <section aria-label={versions('history')}>
             <h5>{versions('history')}</h5>
             <button
               type="button"
-              disabled={locked || journey.readState === 'loading'}
+              disabled={journey.ownProtected || journey.readState === 'loading'}
               onClick={() => void journey.loadHistory()}
             >
               {versions('history')}
@@ -139,7 +277,9 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
                 {journey.history.nextCursor && (
                   <button
                     type="button"
-                    disabled={locked || journey.readState === 'loading'}
+                    disabled={
+                      journey.ownProtected || journey.readState === 'loading'
+                    }
                     onClick={() =>
                       void journey.loadHistory(
                         journey.history?.nextCursor ?? undefined,
@@ -171,7 +311,7 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
           )}
           <button
             type="button"
-            disabled={locked}
+            disabled={journey.ownProtected}
             onClick={() => void journey.reload()}
           >
             {common('refresh')}

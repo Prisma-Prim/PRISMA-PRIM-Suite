@@ -1,3 +1,5 @@
+import type { ReportedSigningDeclaration } from './reported-contract-signing-view.js';
+import type { ContractProjectsService } from './contract-projects.service.js';
 import { modelContractDifferences } from './model-contract-differences.js';
 import type { ActorContext } from '../access/access.types.js';
 import { readContractDecision } from './contract-decision-command.js';
@@ -8,6 +10,7 @@ import {
   contracts,
   contractVersions,
   contractQualityRuns,
+  contractProjectLinks,
 } from '../database/schema/index.js';
 import { storedModelContractSnapshot } from './model-contract-snapshot.js';
 
@@ -17,10 +20,31 @@ export async function modelContractView(
   actor: ActorContext,
   contract: typeof contracts.$inferSelect,
   version: typeof contractVersions.$inferSelect,
-  projection: 'CURRENT' | 'CREATION_RECEIPT' = 'CURRENT',
+  projection:
+    | { kind: 'CREATION_RECEIPT' }
+    | {
+        kind: 'CURRENT';
+        signature: ReportedSigningDeclaration | null;
+        linkedProjects: Awaited<
+          ReturnType<ContractProjectsService['linkedProjects']>
+        >;
+      },
 ) {
   const snapshot = storedModelContractSnapshot(contract, version);
-  const creationReceipt = projection === 'CREATION_RECEIPT';
+  const creationReceipt = projection.kind === 'CREATION_RECEIPT';
+  const signature = projection.kind === 'CURRENT' ? projection.signature : null;
+  const allLinks = creationReceipt
+    ? []
+    : await database.connection
+        .select({ id: contractProjectLinks.id })
+        .from(contractProjectLinks)
+        .where(
+          and(
+            eq(contractProjectLinks.workspaceId, contract.workspaceId),
+            eq(contractProjectLinks.companyId, contract.companyId),
+            eq(contractProjectLinks.contractId, contract.id),
+          ),
+        );
   const [previous] = version.predecessorVersionId
     ? await database.connection
         .select()
@@ -69,9 +93,13 @@ export async function modelContractView(
   if (
     !creationReceipt &&
     (version.decisionState !== decisionState ||
+      version.executionState !== (signature ? 'EXECUTED' : 'NOT_EXECUTED') ||
       (!version.supersededByVersionId &&
         contract.revision !==
-          version.createdContractRevision + (decision ? 1 : 0)))
+          version.createdContractRevision +
+            (decision ? 1 : 0) +
+            (signature ? 1 : 0) +
+            allLinks.length))
   )
     throw new Error('Invalid model Contract decision state.');
   const latestQualityRun = quality
@@ -109,7 +137,8 @@ export async function modelContractView(
     precontract: null,
     parent: null,
     addenda: [],
-    linkedProjects: [],
+    linkedProjects:
+      projection.kind === 'CURRENT' ? projection.linkedProjects : [],
     illustrativeReference: contract.illustrativeReference,
     revision: creationReceipt
       ? version.createdContractRevision
@@ -141,7 +170,7 @@ export async function modelContractView(
         financials: snapshot.financials,
       },
       decision,
-      signature: null,
+      signature,
       latestQualityRun,
       recipient,
       issuingCompanyLabel: version.issuingCompanyLabel,
@@ -155,7 +184,9 @@ export async function modelContractView(
       preliminaryWork: null,
       changeSummary: null,
       decisionState,
-      executionState: 'NOT_EXECUTED' as const,
+      executionState: signature
+        ? ('EXECUTED' as const)
+        : ('NOT_EXECUTED' as const),
       provenance: 'COMPANY_MODEL_OFFER' as const,
       provisional: true as const,
       createdByWorkspaceMembershipId: version.createdByWorkspaceMembershipId,
@@ -174,11 +205,7 @@ export function modelContractCreationReceipt(
   contract: typeof contracts.$inferSelect,
   version: typeof contractVersions.$inferSelect,
 ) {
-  return modelContractView(
-    database,
-    actor,
-    contract,
-    version,
-    'CREATION_RECEIPT',
-  );
+  return modelContractView(database, actor, contract, version, {
+    kind: 'CREATION_RECEIPT',
+  });
 }

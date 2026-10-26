@@ -9,8 +9,11 @@ import {
 } from '../offer/offer-estimate-preparation.test-support.js';
 type Fixture = Awaited<ReturnType<typeof openEstimateOfferFixture>>;
 
-export async function prepareReceivedContractSource(fixture: Fixture) {
-  const ready = await prepareModelContractSource(fixture);
+export async function prepareReceivedContractSource(
+  fixture: Fixture,
+  options: { clientTaxId?: string } = {},
+) {
+  const ready = await prepareModelContractSource(fixture, options);
   const contract = responseRecord(
     await ready.invoke(ready.path + '/from-approved-model', ready.intent),
   );
@@ -30,8 +33,11 @@ export async function prepareReceivedContractSource(fixture: Fixture) {
   };
 }
 
-export async function registerReceivedContract(fixture: Fixture) {
-  const selected = await prepareReceivedContractSource(fixture);
+export async function registerReceivedContract(
+  fixture: Fixture,
+  sourceOptions: { clientTaxId?: string } = {},
+) {
+  const selected = await prepareReceivedContractSource(fixture, sourceOptions);
   const { ready, contractId, contractVersionId } = selected;
   const options = {
     path: '/documents',

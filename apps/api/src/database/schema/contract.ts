@@ -335,7 +335,7 @@ export const contractVersions = pgTable(
     check(
       'contract_versions_model_source_check',
       sql`(CASE WHEN ${t.provenance}='COMPANY_MODEL_OFFER' THEN
-      ${t.templateCode}='COMPANY_CONSULTING_CONTRACT_RO' AND ${t.executionState}='NOT_EXECUTED'
+      ${t.templateCode}='COMPANY_CONSULTING_CONTRACT_RO'
       AND ${t.modelSourceId} IS NOT NULL AND ${t.modelSourceVersionId} IS NOT NULL AND ${t.modelSourceVersionNumber}>0
       AND ${t.modelSourceDecisionId} IS NOT NULL AND ${t.modelSourceDecisionOutcome}='APPROVE'
       AND jsonb_typeof(${t.modelGenerationSnapshot})='object'
@@ -736,7 +736,7 @@ export const contractCommands = pgTable(
     ),
     check(
       'contract_commands_kind_check',
-      sql`((((((((${t.kind} = 'CREATE' AND ${t.resultQualityRunId} IS NULL) OR (${t.kind} = 'RUN_QUALITY_CHECKS' AND ${t.resultQualityRunId} IS NOT NULL)) AND ${t.resultDecisionId} IS NULL OR (${t.kind} IN ('APPROVE','REJECT') AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NOT NULL)) AND ${t.resultSignatureId} IS NULL) OR (${t.kind} = 'RECORD_SIGNATURE' AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NULL AND ${t.resultSignatureId} IS NOT NULL)) AND ${t.resultProjectLinkId} IS NULL) OR (${t.kind} IN ('LINK_PROJECT','CREATE_PROJECT') AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NULL AND ${t.resultSignatureId} IS NULL AND ${t.resultProjectLinkId} IS NOT NULL)) AND ${t.resultVersionId} IS NULL) OR (${t.kind}='CREATE_VERSION' AND ${t.resultVersionId} IS NOT NULL AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NULL AND ${t.resultSignatureId} IS NULL AND ${t.resultProjectLinkId} IS NULL)`,
+      sql`((((((((${t.kind} = 'CREATE' AND ${t.resultQualityRunId} IS NULL) OR (${t.kind} = 'RUN_QUALITY_CHECKS' AND ${t.resultQualityRunId} IS NOT NULL)) AND ${t.resultDecisionId} IS NULL OR (${t.kind} IN ('APPROVE','REJECT') AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NOT NULL)) AND ${t.resultSignatureId} IS NULL) OR (${t.kind} = 'RECORD_SIGNATURE' AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NULL AND ${t.resultSignatureId} IS NOT NULL)) AND ${t.resultProjectLinkId} IS NULL) OR (${t.kind} IN ('LINK_PROJECT','CREATE_PROJECT') AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NULL AND ${t.resultSignatureId} IS NULL AND ${t.resultProjectLinkId} IS NOT NULL)) AND ${t.resultVersionId} IS NULL) OR (${t.kind} IN ('CREATE_VERSION','DECLARE_SIGNING') AND ${t.resultVersionId} IS NOT NULL AND ${t.resultQualityRunId} IS NULL AND ${t.resultDecisionId} IS NULL AND ${t.resultSignatureId} IS NULL AND ${t.resultProjectLinkId} IS NULL)`,
     ),
     foreignKey({
       name: 'contract_commands_version_fk',
@@ -870,6 +870,9 @@ export const contractEvents = pgTable(
       .where(
         sql`${t.action} IN ('contract_version.approved','contract_version.rejected')`,
       ),
+    uniqueIndex('contract_events_signing_declared_unique')
+      .on(t.workspaceId, t.companyId, t.contractVersionId)
+      .where(sql`${t.action} = 'contract_version.signing_declared'`),
     uniqueIndex('contract_events_signature_unique')
       .on(t.workspaceId, t.companyId, t.contractVersionId)
       .where(sql`${t.action} = 'contract_version.signature_recorded'`),
@@ -914,7 +917,7 @@ export const contractEvents = pgTable(
     }),
     check(
       'contract_events_target_check',
-      sql`(${t.action} IN ('contract.created','contract_project.linked') AND ${t.contractVersionId} IS NULL) OR (${t.action} IN ('contract_version.created','contract_version.approved','contract_version.rejected','contract_version.signature_recorded') AND ${t.contractVersionId} IS NOT NULL)`,
+      sql`(${t.action} IN ('contract.created','contract_project.linked') AND ${t.contractVersionId} IS NULL) OR (${t.action} IN ('contract_version.created','contract_version.approved','contract_version.rejected','contract_version.signature_recorded','contract_version.signing_declared') AND ${t.contractVersionId} IS NOT NULL)`,
     ),
     check(
       'contract_events_metadata_check',
@@ -926,7 +929,7 @@ export const contractEvents = pgTable(
         AND jsonb_typeof(${t.metadata}->'offerVersionId')='string' AND jsonb_typeof(${t.metadata}->'modelVersionId')='string'
         AND jsonb_typeof(${t.metadata}->'modelApprovalDecisionId')='string' AND (${t.metadata}->>'modelVersionNumber')::integer>0
         AND ${t.metadata}->'rendererVersion'='1'::jsonb AND (${t.metadata}->>'contractRevision')::integer>0
-        AND (CASE WHEN ${t.action}='contract_version.approved' THEN ${t.metadata}->'ruleSetVersion'='1'::jsonb AND jsonb_typeof(${t.metadata}->'acknowledgedWarningCodes')='array' ELSE NOT (${t.metadata}?|ARRAY['ruleSetVersion','acknowledgedWarningCodes']) END)) IS TRUE`,
+        AND (CASE WHEN ${t.action}='contract_version.approved' THEN ${t.metadata}->'ruleSetVersion'='1'::jsonb AND jsonb_typeof(${t.metadata}->'acknowledgedWarningCodes')='array' ELSE NOT (${t.metadata}?|ARRAY['ruleSetVersion','acknowledgedWarningCodes']) END)) IS TRUE OR (${t.action}='contract_version.signing_declared' AND jsonb_typeof(${t.metadata})='object' AND ${t.metadata}=jsonb_build_object('contractId',${t.contractId}::text,'contractVersionId',${t.contractVersionId}::text,'versionNumber',(${t.metadata}->>'versionNumber')::integer,'provenance','COMPANY_MODEL_OFFER','evidenceKind','DECLARED_RECEIVED_PDF') AND (${t.metadata}->>'versionNumber')::integer>0) IS TRUE`,
     ),
   ],
 );

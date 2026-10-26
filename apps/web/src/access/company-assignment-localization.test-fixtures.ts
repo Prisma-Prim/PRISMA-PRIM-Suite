@@ -484,6 +484,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'contract-signature-declarer',
+    canonical: 'Company Contract Signature Declarer',
+    version: 'v1',
+    labels: {
+      en: 'Company Contract Signature Declarer',
+      fr: 'Déclarant de signature du contrat de la société',
+      ro: 'Declarant al semnării Contractului în Companie',
+      ru: 'Декларант подписания Договора Компании',
+    },
+  },
+  {
     value: 'received-contract-access',
     canonical: 'Company Received Contract Access',
     version: 'v1',

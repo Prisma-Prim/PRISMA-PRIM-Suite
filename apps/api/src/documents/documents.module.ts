@@ -1,3 +1,4 @@
+import { DocumentSigningReferenceService } from './document-signing-reference.service.js';
 import { DocumentContentService } from './document-content.service.js';
 import { ReceivedContractRelationsService } from './received-contract-relations.service.js';
 import { ContractDocumentReferenceModule } from '../contract/contract-document-reference.module.js';
@@ -30,6 +31,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentReadBoundary,
     DocumentVersionsService,
     DocumentContentService,
+    DocumentSigningReferenceService,
     DocumentTaskResultReferenceService,
     DocumentPdfStorage,
     DocumentMalwareScanner,
@@ -39,6 +41,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentProjectsService,
     DocumentVersionsService,
     DocumentContentService,
+    DocumentSigningReferenceService,
     DocumentTaskResultReferenceService,
   ],
 })

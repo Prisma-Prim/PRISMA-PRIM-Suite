@@ -10784,6 +10784,9 @@ withPostgres('First illustrative Contract REST', () => {
                 'contract_commands_run_fk',
                 'contract_commands_signature_fk',
                 'contract_commands_project_link_fk',
+                // Additive §31 result-presence triggers have no historic equivalent.
+                'contract_commands_reported_signing_result',
+                'contract_events_reported_signing_result',
                 'contracts_signature_evidence',
                 'contract_versions_signature_evidence',
               ],

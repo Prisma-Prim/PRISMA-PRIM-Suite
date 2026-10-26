@@ -1,3 +1,4 @@
+import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
 import { useTaskResultCopy } from '../project/task-results.copy';
@@ -65,11 +66,17 @@ export function useActivityLogDisplay() {
   const risk = useOperationalRiskCopy();
   const missionActions = useMissionDeliverableCopy().activityActionLabels;
   const receivedActions = useReceivedContractCopy().activityActionLabels;
+  const signing = useReportedSigningCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
     ...taskResultActions,
     ...missionActions,
     ...receivedActions,
+    'company_contract_signature_declarer_assignment.granted':
+      signing('grantEvent'),
+    'company_contract_signature_declarer_assignment.revoked':
+      signing('revokeEvent'),
+    'contract_version.signing_declared': signing('declaredEvent'),
     'company_ideas_reader_assignment.granted': ideas('readerGranted'),
     'company_ideas_reader_assignment.revoked': ideas('readerRevoked'),
     'company_ideas_recorder_assignment.granted': ideas('recorderGranted'),
@@ -416,6 +423,8 @@ export function useActivityLogDisplay() {
           version: formatNumber(event.target.versionNumber),
         });
         switch (event.action) {
+          case 'contract_version.signing_declared':
+            return `${target} · ${signing('declared')}`;
           case 'contract_version.signature_recorded':
             return `${target} · ${message('simulated')}`;
           case 'contract_project.linked':

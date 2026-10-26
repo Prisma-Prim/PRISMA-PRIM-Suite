@@ -358,6 +358,10 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Mission Deliverable Access',
     versions: { v1: ['document.mission_deliverable.access'] },
   },
+  company_contract_signature_declarer: {
+    label: 'Company Contract Signature Declarer',
+    versions: { v1: ['commercial.contract.signature.declare_external'] },
+  },
   company_received_contract_access: {
     label: 'Company Received Contract Access',
     versions: { v1: ['document.received_contract.access'] },
@@ -531,6 +535,10 @@ export function missionDeliverablePermissionsFor(
   );
 }
 
+export const COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE =
+  'company_contract_signature_declarer' satisfies CompanyRoleBundle;
+export const COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_contract_signature_declarer.label;
 export const COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE =
   'company_received_contract_access' satisfies CompanyRoleBundle;
 export const COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL =

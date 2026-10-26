@@ -73,8 +73,36 @@ export class ModelContractService {
     contract: ContractRow;
     version: typeof contractVersions.$inferSelect;
   }): Promise<ContractQualityEvaluation> {
+    await this.authorization.requireContractQualityAccess(
+      input.actor,
+      true,
+      true,
+    );
+    return this.evaluateBoundQualityWithinTransaction(input);
+  }
+
+  /** Declaration consumes ordinary signature authority, never model-based approval. */
+  async evaluateSigningQualityWithinTransaction(input: {
+    actor: ActorContext;
+    companyId: string;
+    contract: ContractRow;
+    version: typeof contractVersions.$inferSelect;
+  }): Promise<ContractQualityEvaluation> {
+    await this.authorization.requireContractAccess(
+      input.actor,
+      ['commercial.contract.read', 'commercial.contract.signature.record'],
+      true,
+    );
+    return this.evaluateBoundQualityWithinTransaction(input);
+  }
+
+  private async evaluateBoundQualityWithinTransaction(input: {
+    actor: ActorContext;
+    companyId: string;
+    contract: ContractRow;
+    version: typeof contractVersions.$inferSelect;
+  }): Promise<ContractQualityEvaluation> {
     const { actor, companyId, contract, version } = input;
-    await this.authorization.requireContractQualityAccess(actor, true, true);
     await this.authorization.requireOfferAccess(
       actor,
       ['commercial.offer.read'],

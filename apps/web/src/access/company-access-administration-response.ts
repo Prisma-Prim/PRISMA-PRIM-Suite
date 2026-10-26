@@ -11,6 +11,7 @@ const CAPTURED_VERSIONS = {
   'Company Context Access': [null],
   'Company Director Client Access': ['v1', 'v2'],
   'Company Mission Deliverable Access': ['v1'],
+  'Company Contract Signature Declarer': ['v1'],
   'Company Received Contract Access': ['v1'],
   'Company Document Registrar': ['v1', 'v2', 'v3'],
   'Company Document Approver': ['v1'],
