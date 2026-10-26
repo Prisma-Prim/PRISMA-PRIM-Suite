@@ -1,0 +1,59 @@
+{
+  "issue": 885,
+  "pr": 886,
+  "source": "b951e5d21d8bf5dd993275c2b4bbef7a1558eec2",
+  "base": "82a3796743777e89bf7c64efb1bb1f77912a8eab",
+  "tree": "d703f4673d32693d273490f1eca6e176ed5de5ad",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1669,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "issue": 885,
+    "kind": "Approved bounded attributable result-review contract; docs only",
+    "orderedPreparation": [
+      {
+        "order": 1,
+        "axis": "Standards",
+        "result": "PASS",
+        "blocking": 0,
+        "basis": "One capability owner and existing cross-cutting/index pointers; exact minimal captured opt-in, English generic rules, protected internal events, no real grant/source/private research/runtime. No glossary/context root edit is needed for a bounded capability definition."
+      },
+      {
+        "order": 2,
+        "axis": "Spec",
+        "result": "PASS",
+        "blocking": 0,
+        "basis": "Source-backed intended criterion plus attributable human review. Both existing exact declaration and external-reported reference avoid universal PDF rule. Complete actor/state/revision/batch/replay/history/failure/race/native/upgrade/App/lifetime contract. Diagnostic legacy protocol has no separate review verdict; UI must not make false absence claim. Completion/adoption/exceptions unready; MISSION-CLOSE-01 remains unanswered and consolidated."
+      }
+    ],
+    "relativeLinksAndAnchorsChecked": 131,
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "runtimeTests": "Future implementation requirements only; none executed/claimed for this documentation change.",
+    "source": "b951e5d21d8bf5dd993275c2b4bbef7a1558eec2",
+    "reviewedBase": "82a3796743777e89bf7c64efb1bb1f77912a8eab",
+    "tree": "d703f4673d32693d273490f1eca6e176ed5de5ad",
+    "configuredOpeningReview": {
+      "commentId": 6413109464,
+      "source": "b951e5d21d8bf5dd993275c2b4bbef7a1558eec2",
+      "status": "completed",
+      "findings": 0,
+      "manualTriggerRequested": false
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only approved attributable mission-result-review contract, cross-cutting authority and existing pointers. Supports exact declared evidence or literal external-reported evidence under human judgment; no runtime, real grant, scope exception, completion/certification policy or external message. MISSION-CLOSE-01 remains unanswered for one consolidated email.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-12T00:00:00Z"
+}
