@@ -216,7 +216,7 @@ My Tasks keeps its own order and presentation. This deterministic ordering is th
 ### 17.4 Excluded
 
 - elapsed-time "What changed since yesterday" filters (session 28); the bounded latest-dated Activity preview is separately approved in section 18;
-- money, invoices, payments, audits, trainings, nonconformities, certificates and approval queues, whose capabilities do not exist;
+- money, invoices, payments, audits, trainings, nonconformities, certificates and general approval queues; the separately approved [pending-estimate discovery](release-3-confirmed-cost-profitability-estimate-prd.md#13-approved-company-queue-awaiting-director-decision-889) reuses existing Director decisions and does not expand these summaries;
 - Workspace-wide or "All Companies" views, which will reuse these definitions;
 - commercial dashboards and Opportunity next actions;
 - configurable widgets, personalization, saved views, thresholds and time zones;
@@ -377,3 +377,7 @@ Standards/Spec approval; local work may start before publication under Dan's
 standing delivery authorization. The applicable verification/review and
 exact-source/base/tree merge gates remain in force. Approval proves neither
 implementation nor MVP/Sarcina delivery.
+
+## 21. Pending profitability estimate discovery
+
+The [Profitability Estimate PRD§13](release-3-confirmed-cost-profitability-estimate-prd.md#13-approved-company-queue-awaiting-director-decision-889) solely owns the approved bounded Company queue, its independent Director/intake gates, complete chronological pagination and exact-Version continuation into existing decisions. Home composes that region without changing §17 summaries, attention ranking, Task lifetimes or the remaining Draft dashboard scope. Its child issue owns runtime delivery; this link is no runtime claim.
