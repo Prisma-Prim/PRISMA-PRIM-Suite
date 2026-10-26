@@ -322,4 +322,6 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       await rm(previous, { recursive: true, force: true });
     }
   },
+  // Covers the prior schema, public Contract/PDF workflows, restarts and repeat migration.
+  15_000,
 );
