@@ -81,7 +81,9 @@ function reference(value: unknown): TaskResultReference {
     representationId: text(input.representationId),
   };
 }
-function declaration(value: unknown): TaskResultDeclaration {
+export function readTaskResultDeclaration(
+  value: unknown,
+): TaskResultDeclaration {
   const input = row(value);
   const actor = row(input.actor);
   const occurredAt = text(input.occurredAt);
@@ -142,7 +144,7 @@ export function readTaskResultSnapshot(
   const revision = integer(input.revision, 0);
   if (revision === 0 && input.current === null)
     return { ...common, revision: 0, current: null };
-  const current = declaration(input.current);
+  const current = readTaskResultDeclaration(input.current);
   if (revision !== current.revision) throw new Error('Missing current result');
   return { ...common, revision, current };
 }
@@ -171,7 +173,7 @@ export function readTaskResultPage(
   target(input, expected.taskId);
   if (!Array.isArray(input.declarations) || input.declarations.length > 25)
     throw new Error('Invalid result history');
-  const declarations = input.declarations.map(declaration);
+  const declarations = input.declarations.map(readTaskResultDeclaration);
   let previous = expected.beforeRevision ?? 2147483648;
   const ids = new Set<string>();
   for (const item of declarations) {
