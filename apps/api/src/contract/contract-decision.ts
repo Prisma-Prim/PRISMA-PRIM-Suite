@@ -1,3 +1,5 @@
+import { readModelContractWarningCodes } from './model-contract-quality.js';
+import { text } from '../contract-model/contract-model.content.js';
 import { BadRequestException } from '@nestjs/common';
 import {
   CONTRACT_QUALITY_RULES,
@@ -10,6 +12,7 @@ export type ContractDecisionCommand =
       readonly kind: 'APPROVE';
       readonly expectedContractRevision: number;
       readonly acknowledgedWarningCodes: readonly ContractQualityCode[];
+      readonly reviewBasis: string | null;
     }
   | {
       readonly kind: 'REJECT';
@@ -28,12 +31,15 @@ export type ContractDecision = {
       readonly qualityRun: ContractQualityRun;
       readonly acknowledgedWarningCodes: readonly ContractQualityCode[];
       readonly representationChecksum: string;
+      readonly reviewBasis?: string;
     }
   | { readonly kind: 'REJECT'; readonly reason: string }
 );
 export function readContractWarningCodes(
   value: unknown,
+  modelBased = false,
 ): ContractQualityCode[] {
+  if (modelBased) return readModelContractWarningCodes(value);
   if (
     !Array.isArray(value) ||
     value.length > Object.keys(CONTRACT_QUALITY_RULES).length
@@ -52,19 +58,26 @@ export function readContractWarningCodes(
   }
   return codes;
 }
-function isQualityCode(value: string): value is ContractQualityCode {
+function isQualityCode(
+  value: string,
+): value is keyof typeof CONTRACT_QUALITY_RULES {
   return Object.hasOwn(CONTRACT_QUALITY_RULES, value);
 }
 export function readContractDecisionCommand(
   kind: 'APPROVE' | 'REJECT',
   value: unknown,
+  modelBased = false,
 ): ContractDecisionCommand {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw invalid('body');
   const input = Object.fromEntries(Object.entries(value));
   const allowed =
     kind === 'APPROVE'
-      ? ['expectedContractRevision', 'acknowledgedWarningCodes']
+      ? [
+          'expectedContractRevision',
+          'acknowledgedWarningCodes',
+          ...(modelBased ? ['reviewBasis'] : []),
+        ]
       : ['expectedContractRevision', 'reason'];
   for (const key of Object.keys(input))
     if (!allowed.includes(key)) throw invalid(key);
@@ -79,8 +92,10 @@ export function readContractDecisionCommand(
     return {
       kind,
       expectedContractRevision,
+      reviewBasis: modelBased ? text(input.reviewBasis, 2000) : null,
       acknowledgedWarningCodes: readContractWarningCodes(
         input.acknowledgedWarningCodes,
+        modelBased,
       ),
     };
   const reason = input.reason;

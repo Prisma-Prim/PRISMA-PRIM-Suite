@@ -80,6 +80,13 @@ Model-read permission grants no Activity access. Separate model bundle assignmen
 events retain the existing Company administration visibility and bundle-label-only
 metadata convention.
 
+The bounded [Company consulting Contract model contract §29.7](release-3-commercial-29-company-contract-model.md#297-activity-privacy-and-compatibility)
+owns its model Version creation/approval/rejection/withdrawal events and exact
+minimal metadata. They remain internal and are not projected through commercial
+Activity, dashboards, counts or filters. Clause, party/requisites, source and
+decision text never enter those events; model read grants no Activity access.
+Assignment events retain ordinary Company visibility and bundle-label metadata.
+
 The separate [generated Offer compatibility contract §28.9](release-3-commercial-28-model-offer-generation.md#289-activity-storage-and-compatibility)
 reuses the existing Offer event family and transaction guarantees for the new
 closed model/economic source variant. Its source stamps remain frozen Offer
@@ -245,6 +252,27 @@ events still require both endpoints. Filter inaccessible family events before
 page bounds/counts/labels. No filename, checksum, bytes, external content, title,
 purpose or hidden Project identity is added to event metadata. Captured family
 assignment grant/revoke events follow the existing Company assignment convention.
+
+The [received Contract PDF family](release-1-document-registry-24-received-contract-pdfs.md)
+likewise reuses the existing atomic Document events and minimal metadata, with
+live family/ordinary target visibility before page bounds, counts or labels.
+Registration records the Document, not a new Contract event or execution fact;
+its declared relation/source/receipt date and Contract identifiers do not enter
+event metadata. Project association retains both endpoint reads. Family assignment
+events use the existing bundle-label-only convention. No upload, designation,
+denial, rollback or replay silently records signing, acceptance or Task completion.
+
+The separate [reported signing/case-acceptance contract (§31.7)](release-3-commercial-31-reported-signing-case-acceptance.md#317-existing-project-continuation-and-events)
+adds one atomic `contract_version.signing_declared` event under current Contract target
+visibility and the existing commercial Version discovery boundary. It reports
+the human statement, not verified signing or an Offer Client Response change.
+Only the closed minimal Contract/Version discovery and declared/unverified
+evidence-marker variant owned by §31 is allowed; no
+signatory/mandate/basis/date prose, Document/PDF identifiers, filename/hash/bytes or
+payment. No Offer-accepted event is produced. The new Declarer assignment's
+grant/revoke follows the existing bundle-label-only convention. Refusal, rollback,
+replay and unchanged assignment state add no event. Section31 owns the outcome;
+[Commercial§25](release-3-commercial-25-offer-contract-history.md) owns navigation.
 
 For the approved [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306),
 one committed material update creates exactly one

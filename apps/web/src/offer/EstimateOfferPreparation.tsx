@@ -1,3 +1,12 @@
+import { useModelOfferCopy } from './model-offer.copy';
+import {
+  declaredGross,
+  readSelectedOfferModel,
+  type ModelOfferView,
+  type SelectedOfferModel,
+} from './model-offer-response';
+import { SelectedOfferModelContent } from './ModelOfferDetails';
+import { exactRecord, text } from '../offer-model/offer-model-content';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -52,12 +61,22 @@ type Attempt = {
     scopeNote: string | null;
     commercialConditions: string | null;
   };
-};
+} & (
+  | { mode: 'INTERNAL' }
+  | {
+      mode: 'COMPANY_MODEL';
+      model: SelectedOfferModel;
+      financialDeclaration: NonNullable<
+        ReturnType<typeof modelFormIntent>
+      >['financialDeclaration'];
+    }
+);
 
 export function mayPrepareEstimateOffer(actor: ActorContext): boolean {
   const company = actor.activeCompany;
   return (
-    company?.offerPermissionSetVersion === 'v2' &&
+    (company?.offerPermissionSetVersion === 'v2' ||
+      company?.offerPermissionSetVersion === 'v3') &&
     !!company.offerPermissionAssignmentId &&
     [
       'commercial.offer.read',
@@ -71,7 +90,19 @@ export function mayPrepareEstimateOffer(actor: ActorContext): boolean {
   );
 }
 
+export function mayPrepareModelOffer(actor: ActorContext): boolean {
+  const company = actor.activeCompany;
+  return (
+    mayPrepareEstimateOffer(actor) &&
+    company?.offerPermissionSetVersion === 'v3' &&
+    company.offerPermissions?.includes('commercial.offer.model.select') ===
+      true &&
+    company.offerPermissions.includes('commercial.offer.model_based.prepare')
+  );
+}
+
 type PreparationProps = {
+  mode?: 'INTERNAL' | 'COMPANY_MODEL';
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
@@ -79,7 +110,7 @@ type PreparationProps = {
   clientLabel: string;
   offer?: OfferReadView;
   reject: RejectionHandler;
-  onCreated: (offer: InternalOfferView) => void;
+  onCreated: (offer: InternalOfferView | ModelOfferView) => void;
   onOpen: (open: boolean) => void;
 };
 export function EstimateOfferPreparation(props: PreparationProps) {
@@ -96,6 +127,7 @@ export function EstimateOfferPreparation(props: PreparationProps) {
 
 /** Owns only price-source selection and an exact literal preparation command. */
 function EstimateOfferPreparationOwner({
+  mode = 'INTERNAL',
   actor,
   identity,
   opportunityId,
@@ -107,6 +139,17 @@ function EstimateOfferPreparationOwner({
   onOpen,
 }: PreparationProps) {
   const copy = useEstimateOfferCopy();
+  const modelCopy = useModelOfferCopy();
+  const permitted =
+    mode === 'COMPANY_MODEL'
+      ? mayPrepareModelOffer(actor)
+      : mayPrepareEstimateOffer(actor);
+  const [model, setModel] = useState<SelectedOfferModel>();
+  const [modelChosen, setModelChosen] = useState(false);
+  const [netConfirmed, setNetConfirmed] = useState(false);
+  const [taxAmount, setTaxAmount] = useState('');
+  const [taxLabel, setTaxLabel] = useState('');
+  const [basis, setBasis] = useState('');
   const content = useOfferPreparationCopy();
   const { formatDecimal, formatDateTime } = useOfferPresentation();
   const fieldId = useId();
@@ -134,7 +177,7 @@ function EstimateOfferPreparationOwner({
   const locked = state === 'sending' || state === 'uncertain';
 
   async function load(nextCursor?: string) {
-    if (!companyId || !mayPrepareEstimateOffer(actor)) return;
+    if (!companyId || !permitted) return;
     active.current?.abort();
     const request = new AbortController();
     active.current = request;
@@ -142,7 +185,7 @@ function EstimateOfferPreparationOwner({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
-      const [history, legal] = await Promise.all([
+      const [history, legal, selectedModel] = await Promise.all([
         api.request<unknown>(
           `/opportunities/${encodeURIComponent(opportunityId)}/profitability-estimates?limit=25${nextCursor ? '&cursor=' + encodeURIComponent(nextCursor) : ''}`,
           { companyContextId: companyId, signal: request.signal },
@@ -151,21 +194,45 @@ function EstimateOfferPreparationOwner({
           `/clients/${encodeURIComponent(clientId)}/legal-entities`,
           { companyContextId: companyId, signal: request.signal },
         ),
+        mode === 'COMPANY_MODEL'
+          ? api.request<unknown>('/offer-models/consulting-ro/for-offer', {
+              companyContextId: companyId,
+              signal: request.signal,
+            })
+          : Promise.resolve(null),
       ]);
       if (request.signal.aborted) return;
       const denied =
         (await reject(history, request.signal)) ||
-        (await reject(legal, request.signal));
+        (await reject(legal, request.signal)) ||
+        (selectedModel && (await reject(selectedModel, request.signal)));
       if (request.signal.aborted) return;
       if (denied) {
         setSources([]);
         setSourceId('');
+        setModel(undefined);
+        setModelChosen(false);
+        setNetConfirmed(false);
         setState('denied');
         return;
       }
-      if (history.status !== 'ok' || legal.status !== 'ok') {
+      if (
+        history.status !== 'ok' ||
+        legal.status !== 'ok' ||
+        (selectedModel && selectedModel.status !== 'ok')
+      ) {
         setState('unavailable');
         return;
+      }
+      if (selectedModel?.status === 'ok') {
+        const projection = exactRecord(selectedModel.value, ['selection']);
+        setModel(
+          projection.selection === null
+            ? undefined
+            : readSelectedOfferModel(projection.selection),
+        );
+        setModelChosen(false);
+        setNetConfirmed(false);
       }
       const page = parseEstimateHistory(history.value, {
         workspaceId: actor.workspaceId,
@@ -203,13 +270,23 @@ function EstimateOfferPreparationOwner({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (
-      !companyId ||
-      (locked && state !== 'uncertain') ||
-      !mayPrepareEstimateOffer(actor)
-    )
-      return;
+    if (!companyId || (locked && state !== 'uncertain') || !permitted) return;
     const validityDays = Number(days);
+    const modelIntent =
+      mode === 'COMPANY_MODEL'
+        ? modelFormIntent({
+            model,
+            modelChosen,
+            netConfirmed,
+            taxAmount,
+            taxLabel,
+            basis,
+          })
+        : undefined;
+    if (!attempt.current && mode === 'COMPANY_MODEL' && !modelIntent) {
+      setState('invalid');
+      return;
+    }
     if (
       !attempt.current &&
       (!selected ||
@@ -224,6 +301,9 @@ function EstimateOfferPreparationOwner({
       attempt.current ??
       (selected
         ? {
+            ...(modelIntent
+              ? { mode: 'COMPANY_MODEL' as const, ...modelIntent }
+              : { mode: 'INTERNAL' as const }),
             key: crypto.randomUUID(),
             source: selected,
             expected: {
@@ -237,6 +317,13 @@ function EstimateOfferPreparationOwner({
             },
             body: JSON.stringify({
               ...(offer ? { expectedOfferRevision: offer.revision } : {}),
+              ...(modelIntent
+                ? {
+                    modelVersionId: modelIntent.model.versionId,
+                    modelVersionNumber: modelIntent.model.versionNumber,
+                    financialDeclaration: modelIntent.financialDeclaration,
+                  }
+                : {}),
               estimateVersionId: selected.estimateVersionId,
               estimateVersionNumber: selected.estimateVersionNumber,
               recipient:
@@ -259,7 +346,7 @@ function EstimateOfferPreparationOwner({
       const api = await createAuthenticatedApiClient(identity);
       if (request.signal.aborted) return;
       const result = await api.request<unknown>(
-        `/offers/opportunities/${encodeURIComponent(opportunityId)}/${offer ? 'versions/' : ''}from-approved-estimate`,
+        `/offers/opportunities/${encodeURIComponent(opportunityId)}/${offer ? 'versions/' : ''}from-approved-${command.mode === 'COMPANY_MODEL' ? 'model' : 'estimate'}`,
         {
           companyContextId: companyId,
           method: 'POST',
@@ -278,6 +365,9 @@ function EstimateOfferPreparationOwner({
         attempt.current = undefined;
         setSources([]);
         setSourceId('');
+        setModel(undefined);
+        setModelChosen(false);
+        setNetConfirmed(false);
         setState('denied');
         return;
       }
@@ -286,6 +376,7 @@ function EstimateOfferPreparationOwner({
         if (
           isIllustrativeOffer(created) ||
           !sameApprovedSource(created.version.priceSource, command.source) ||
+          !matchesPreparationMode(created, command) ||
           created.companyId !== companyId ||
           created.opportunityId !== opportunityId ||
           !matchesPreparedContent(created, command.expected)
@@ -315,7 +406,7 @@ function EstimateOfferPreparationOwner({
   }
 
   const feedback = preparationFeedback(state);
-  if (!mayPrepareEstimateOffer(actor)) return null;
+  if (!permitted) return null;
   if (!open)
     return (
       <button
@@ -326,7 +417,7 @@ function EstimateOfferPreparationOwner({
           void load();
         }}
       >
-        {copy('prepare')}
+        {mode === 'COMPANY_MODEL' ? modelCopy('prepare') : copy('prepare')}
       </button>
     );
   return (
@@ -334,12 +425,33 @@ function EstimateOfferPreparationOwner({
       className="estimate-offer-preparation"
       onSubmit={(event) => void submit(event)}
     >
-      <p>{copy('notice')}</p>
+      <p>{mode === 'COMPANY_MODEL' ? modelCopy('notice') : copy('notice')}</p>
       {state === 'loading' && <p role="status">{copy('loading')}</p>}
       {state === 'sending' && <p role="status">{content.preparing}</p>}
       {feedback && <p role="alert">{copy(feedback)}</p>}
       {state !== 'denied' && (
         <>
+          {mode === 'COMPANY_MODEL' &&
+            (model ? (
+              <>
+                <SelectedOfferModelContent model={model} />
+                <label className="model-offer-confirmation">
+                  <input
+                    type="checkbox"
+                    checked={modelChosen}
+                    disabled={locked}
+                    onChange={(event) => {
+                      attempt.current = undefined;
+                      setModelChosen(event.target.checked);
+                      setNetConfirmed(false);
+                    }}
+                  />
+                  {modelCopy('chooseModel')}
+                </label>
+              </>
+            ) : (
+              state === 'ready' && <p role="status">{modelCopy('noModel')}</p>
+            ))}
           <label htmlFor={`${fieldId}-source`}>{copy('source')}</label>
           <select
             id={`${fieldId}-source`}
@@ -348,6 +460,7 @@ function EstimateOfferPreparationOwner({
             onChange={(event) => {
               attempt.current = undefined;
               setSourceId(event.target.value);
+              setNetConfirmed(false);
             }}
           >
             <option value="">{copy('choose')}</option>
@@ -385,6 +498,72 @@ function EstimateOfferPreparationOwner({
                 {selected.approvalDecisionId}
               </dd>
             </dl>
+          )}
+          {mode === 'COMPANY_MODEL' && (
+            <fieldset disabled={locked}>
+              <label className="model-offer-confirmation">
+                <input
+                  type="checkbox"
+                  checked={netConfirmed}
+                  onChange={(event) => {
+                    attempt.current = undefined;
+                    setNetConfirmed(event.target.checked);
+                  }}
+                />
+                {modelCopy('netConfirmed')}
+              </label>
+              <label>
+                {modelCopy('tax')}
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={taxAmount}
+                  onChange={(event) => {
+                    attempt.current = undefined;
+                    setTaxAmount(event.target.value);
+                  }}
+                />
+              </label>
+              <label>
+                {modelCopy('taxLabel')}
+                <textarea
+                  maxLength={200}
+                  value={taxLabel}
+                  onChange={(event) => {
+                    attempt.current = undefined;
+                    setTaxLabel(event.target.value);
+                  }}
+                />
+              </label>
+              <label>
+                {modelCopy('basis')}
+                <textarea
+                  maxLength={2000}
+                  value={basis}
+                  onChange={(event) => {
+                    attempt.current = undefined;
+                    setBasis(event.target.value);
+                  }}
+                />
+              </label>
+              {selected && /^[0-9]+\.[0-9]{2}$/u.test(taxAmount) && (
+                <dl>
+                  <dt>{modelCopy('net')}</dt>
+                  <dd>
+                    {formatDecimal(selected.amount)} {selected.currency}
+                  </dd>
+                  <dt>{modelCopy('tax')}</dt>
+                  <dd>
+                    {formatDecimal(taxAmount)} {selected.currency}
+                  </dd>
+                  <dt>{modelCopy('gross')}</dt>
+                  <dd>
+                    {formatDecimal(declaredGross(selected.amount, taxAmount))}{' '}
+                    {selected.currency}
+                  </dd>
+                </dl>
+              )}
+            </fieldset>
           )}
           <label>
             {content.recipient}
@@ -450,7 +629,11 @@ function EstimateOfferPreparationOwner({
               (!selected && state !== 'uncertain')
             }
           >
-            {state === 'uncertain' ? copy('retry') : copy('create')}
+            {state === 'uncertain'
+              ? copy('retry')
+              : mode === 'COMPANY_MODEL'
+                ? modelCopy('create')
+                : copy('create')}
           </button>
         </>
       )}
@@ -471,8 +654,8 @@ function EstimateOfferPreparationOwner({
 }
 
 function sameApprovedSource(
-  one: InternalOfferPriceSource,
-  two: InternalOfferPriceSource,
+  one: Omit<InternalOfferPriceSource, 'taxTreatment'>,
+  two: Omit<InternalOfferPriceSource, 'taxTreatment'>,
 ): boolean {
   return (
     one.kind === two.kind &&
@@ -482,13 +665,12 @@ function sameApprovedSource(
     one.approvalDecisionId === two.approvalDecisionId &&
     one.approvedAt === two.approvedAt &&
     one.amount === two.amount &&
-    one.currency === two.currency &&
-    one.taxTreatment === two.taxTreatment
+    one.currency === two.currency
   );
 }
 
 function matchesPreparedContent(
-  offer: InternalOfferView,
+  offer: InternalOfferView | ModelOfferView,
   expected: Attempt['expected'],
 ): boolean {
   const version = offer.version;
@@ -525,4 +707,52 @@ function preparationFeedback(state: State) {
       return exhaustive;
     }
   }
+}
+
+function modelFormIntent(input: {
+  model: SelectedOfferModel | undefined;
+  modelChosen: boolean;
+  netConfirmed: boolean;
+  taxAmount: string;
+  taxLabel: string;
+  basis: string;
+}) {
+  if (
+    !input.model ||
+    !input.modelChosen ||
+    !input.netConfirmed ||
+    !/^[0-9]+\.[0-9]{2}$/u.test(input.taxAmount)
+  )
+    return;
+  try {
+    return {
+      model: input.model,
+      financialDeclaration: {
+        kind: 'NET_PLUS_DECLARED_TAX' as const,
+        netAmountConfirmed: true as const,
+        taxAmount: input.taxAmount,
+        taxLabel: text(input.taxLabel, 200),
+        basis: text(input.basis, 2_000),
+      },
+    };
+  } catch {
+    return;
+  }
+}
+function matchesPreparationMode(
+  offer: InternalOfferView | ModelOfferView,
+  command: Attempt,
+) {
+  if (command.mode === 'INTERNAL')
+    return offer.version.provenance === 'APPROVED_ESTIMATE_INTERNAL_DRAFT';
+  if (offer.version.provenance !== 'COMPANY_MODEL_ESTIMATE') return false;
+  const actual = offer.version.financialDeclaration;
+  return (
+    JSON.stringify(offer.version.modelSource) ===
+      JSON.stringify(command.model) &&
+    actual.netAmount === command.source.amount &&
+    actual.taxAmount === command.financialDeclaration.taxAmount &&
+    actual.taxLabel === command.financialDeclaration.taxLabel &&
+    actual.basis === command.financialDeclaration.basis
+  );
 }

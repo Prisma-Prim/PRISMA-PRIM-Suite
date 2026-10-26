@@ -11,6 +11,8 @@ import { CompanyProjectTemplateConfigurationAssignmentController } from './acces
 import { CompanyProjectStageAdvancerAssignmentController } from './access/company-project-stage-advancer-assignment.controller.js';
 import { DocumentContentController } from './documents/document-content.controller.js';
 import { CompanyMissionDeliverableAccessAssignmentController } from './access/company-mission-deliverable-access-assignment.controller.js';
+import { CompanyContractSignatureDeclarerAssignmentController } from './access/company-contract-signature-declarer-assignment.controller.js';
+import { CompanyReceivedContractAccessAssignmentController } from './access/company-received-contract-access-assignment.controller.js';
 import { TaskResultsController } from './task/task-results.controller.js';
 import { CompanyTaskResultRecorderAssignmentController } from './access/company-task-result-recorder-assignment.controller.js';
 import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
@@ -32,6 +34,12 @@ import {
   CompanyOfferModelEditorAssignmentController,
   CompanyOfferModelApproverAssignmentController,
 } from './access/company-offer-model-assignment.controller.js';
+import { ContractModelController } from './contract-model/contract-model.controller.js';
+import { ContractModelModule } from './contract-model/contract-model.module.js';
+import {
+  CompanyContractModelEditorAssignmentController,
+  CompanyContractModelApproverAssignmentController,
+} from './access/company-contract-model-assignment.controller.js';
 import { CompanyContractPreparerAssignmentController } from './access/company-contract-preparer-assignment.controller.js';
 import { TaskModule } from './task/task.module.js';
 import { TaskController } from './task/task.controller.js';
@@ -119,6 +127,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    ContractModelModule,
     OfferModelModule,
     IdeasModule,
     OperationalRiskModule,
@@ -142,6 +151,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    ContractModelController,
     OfferModelController,
     CompanyIdeasReaderAssignmentController,
     CompanyIdeasRecorderAssignmentController,
@@ -165,6 +175,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyDocumentApproverAssignmentController,
     CompanyDocumentContentReaderAssignmentController,
     CompanyMissionDeliverableAccessAssignmentController,
+    CompanyContractSignatureDeclarerAssignmentController,
+    CompanyReceivedContractAccessAssignmentController,
     CompanyTaskResultRecorderAssignmentController,
     CompanyDocumentContentUploaderAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
@@ -204,6 +216,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyOfferPreparerAssignmentController,
     CompanyContractPreparerAssignmentController,
     CompanyContractEarlyPreparationAssignmentController,
+    CompanyContractModelEditorAssignmentController,
+    CompanyContractModelApproverAssignmentController,
     CompanyOfferModelEditorAssignmentController,
     CompanyOfferModelApproverAssignmentController,
     CompanyContractApproverAssignmentController,

@@ -1269,3 +1269,16 @@ certification/training approval, real source import/grants/providers, commercial
 content/prices/numbering/signatures and deployment remain separate. No unresolved
 real numbering, legal or certification decision blocks this anonymous planning
 mechanism; none is silently decided by it.
+
+## 29. Approved bounded mission readiness and later governance (#881)
+
+The [mission-obligation contract](release-1-mission-obligations-prd.md) approves
+§13's first read-only thirteen-activity/result-readiness outcome under Dan's
+2026-10-26 authorization. It changes no ordinary Task/Project completion, enables
+no pilot stage transition and adopts no completion policy. Later mutation outcomes
+must first obtain their complete bounded contracts and readiness checks.
+
+The same PRD's [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+retains `MISSION-CLOSE-01` for Dan to forward with other still-open questions in
+one email to Iurie. It is not an answered policy or a blocker of the independent
+read-only outcome. No real grant or certification claim follows.

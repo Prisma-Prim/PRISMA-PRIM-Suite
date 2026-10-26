@@ -47,14 +47,14 @@ function administration(active: boolean, version: unknown = 'v1') {
 }
 afterEach(() => vi.unstubAllGlobals());
 describe('Company Offer Approver administration', () => {
-  it('explicitly grants and revokes captured v1 with separate command keys', async () => {
+  it('explicitly grants and revokes captured v2 with separate command keys', async () => {
     let active = false;
     const commands: Array<{ method: string; key: string | null }> = [];
     vi.stubGlobal(
       'fetch',
       vi.fn(async (path: string, init?: RequestInit) => {
         if (path.endsWith('/administration'))
-          return Response.json(administration(active));
+          return Response.json(administration(active, 'v2'));
         if (path.startsWith('/api/company-offer-approver-assignments')) {
           const method = init?.method ?? 'GET';
           commands.push({
@@ -68,7 +68,7 @@ describe('Company Offer Approver administration', () => {
               workspaceMembershipId: membershipId,
               companyId,
               bundle: 'Company Offer Approver',
-              permissionSetVersion: 'v1',
+              permissionSetVersion: 'v2',
               active,
             },
             { status: active ? 201 : 200 },
@@ -89,13 +89,13 @@ describe('Company Offer Approver administration', () => {
     selectOption(screen.getByLabelText('Access bundle'), 'offer-approver');
     expect(
       screen.getByText(
-        'Company Offer Approver v1 grants Offer read, internal decisions and recorded simulated Client response. Company context and Opportunity read must be authorized separately. It grants no preparation, Client or Pricing authority.',
+        'New Company Offer Approver grants capture v2: Offer read, decisions and recorded simulated Client responses, including full approved-model Offers. Company context and Opportunity read remain separately authorized. It grants no preparation, Client, Pricing, economic-source or model-configuration access. Existing v1 grants retain their captured rights; revoke and grant again to enable the full-model journey.',
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
     await screen.findByText('Access granted. Server state refreshed.');
     expect(screen.getByText(/Current server state:/u)).toHaveTextContent(
-      'Granted — captured version v1',
+      'Granted — captured version v2',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Revoke access' }));
     await screen.findByText('Access revoked. Server state refreshed.');
@@ -109,7 +109,7 @@ describe('Company Offer Approver administration', () => {
     expect(commands[0]?.key).toBeTruthy();
     expect(commands[0]?.key).not.toBe(commands[1]?.key);
   });
-  it.each([null, 'v2', 'unknown'])(
+  it.each([null, 'v99', 'unknown'])(
     'fails closed for captured version %s',
     async (version) => {
       vi.stubGlobal(

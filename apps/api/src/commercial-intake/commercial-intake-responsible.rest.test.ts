@@ -1537,15 +1537,20 @@ describe.skipIf(!databaseUrl)(
           // after it share-locked the target's authority.
           const held = await barrier('LOCK TABLE opportunities IN SHARE MODE');
           let released = false;
+          const pendingRequests: Promise<Response>[] = [];
           try {
             const pending = reassign(opportunityId, {
               expectedVersion: 1,
               workspaceMembershipId: ion,
             });
+            pendingRequests.push(pending);
             await waitForLockWaiters('update "opportunities"%', 1);
             const targetChange = changeTarget(ion);
+            pendingRequests.push(targetChange);
             await waitForLockWaiters(
-              '%from "workspace_memberships"%for update%',
+              change === 'revocation'
+                ? '%update "company_role_assignments"%'
+                : '%from "workspace_memberships"%for update%',
               1,
             );
             await held.query('COMMIT');
@@ -1555,6 +1560,7 @@ describe.skipIf(!databaseUrl)(
           } finally {
             if (!released) await held.query('ROLLBACK');
             held.release();
+            await Promise.allSettled(pendingRequests);
           }
           await expectUnchanged(opportunityId, ion, 2);
           expect(await responsibleEvents(opportunityId)).toHaveLength(1);

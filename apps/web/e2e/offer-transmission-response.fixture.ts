@@ -138,12 +138,14 @@ export async function installTransmissionRoutes(
   const requests: string[] = [];
   const lateReplies: string[] = [];
   const transmissionGate = gate();
+  const historyGate = gate();
   const responseGates = new Map(
     requests707.map(({ outcome }) => [outcome, gate()]),
   );
   let retired = false;
   page.on('close', () => {
     transmissionGate.release();
+    historyGate.release();
     for (const pending of responseGates.values()) pending.release();
   });
 
@@ -259,6 +261,8 @@ export async function installTransmissionRoutes(
       if (historical && path === `${base}/versions/${historical.version.id}`)
         return route.fulfill({ json: { offer: historical } });
       if (path.endsWith('/versions/version-history') && authorityLoss) {
+        await historyGate.promise;
+        if (page.isClosed()) return;
         retired = true;
         return route.fulfill({
           status: 403,
@@ -328,6 +332,7 @@ export async function installTransmissionRoutes(
     requests,
     lateReplies,
     releaseTransmission: transmissionGate.release,
+    releaseHistory: historyGate.release,
     releaseResponse(outcome: OfferClientResponseView['outcome']) {
       const pending = responseGates.get(outcome);
       if (!pending) throw new Error('Missing response HTTP gate.');

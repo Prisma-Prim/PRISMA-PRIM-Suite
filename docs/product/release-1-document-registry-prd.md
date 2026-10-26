@@ -1,6 +1,6 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; typed references in #401; stored questionnaire PDFs in #633; wider governance remains Draft
+**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; typed references in #401; stored questionnaire PDFs in #633; mission PDFs in #825 and received Contract PDFs in #870; wider governance remains Draft
 **Version:** 1.0
 **Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
@@ -746,3 +746,11 @@ retention/deletion and real assignments or deployment remain outside D3. Real-da
 use still needs the existing Platform readiness and configured maintained scanner;
 synthetic protocol fixtures are not real-provider proof. No additional Iurie
 questionnaire is needed to implement this bounded provisional family.
+
+## 24. Approved bounded received Contract PDFs (#870)
+
+[Section 24 — received Contract PDFs](release-1-document-registry-24-received-contract-pdfs.md)
+owns the complete separate family, exact declared Contract-Version relation,
+source attribution, independent access and immutable PDF/Version journey.
+Preservation declares no signing, equivalence or acceptance; runtime follows its
+merged contract under #820's D9 frontier.

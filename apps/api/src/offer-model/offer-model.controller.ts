@@ -25,6 +25,10 @@ export class OfferModelController {
   read(@Req() request: ActorContextRequest) {
     return this.models.read({ actor: actorFrom(request) });
   }
+  @Get('for-offer')
+  readSelectionForOffer(@Req() request: ActorContextRequest) {
+    return this.models.readSelectionForOffer({ actor: actorFrom(request) });
+  }
   @Get('versions')
   history(@Req() request: ActorContextRequest, @Query() query: unknown) {
     return this.models.history({ actor: actorFrom(request), query });

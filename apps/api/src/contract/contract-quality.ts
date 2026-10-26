@@ -1,3 +1,4 @@
+import type { ModelContractQualityCode } from './model-contract-quality.js';
 import { ConflictException } from '@nestjs/common';
 import type { OfferRecipientCopy } from '../offer/offer.types.js';
 import {
@@ -99,26 +100,33 @@ export const CONTRACT_QUALITY_RULES = {
   TERM_END_NOT_PASSED: 'WARNING',
   PROVISIONAL_MARKER_PRESENT: 'ERROR',
 } satisfies Record<string, 'ERROR' | 'WARNING'>;
-export type ContractQualityCode = keyof typeof CONTRACT_QUALITY_RULES;
+export type ContractQualityCode =
+  keyof typeof CONTRACT_QUALITY_RULES | ModelContractQualityCode;
 export type ContractQualityResult = {
   readonly code: ContractQualityCode;
   readonly status: 'PASS' | 'WARNING' | 'ERROR';
 };
-export interface ContractQualityRun {
+type ContractQualityBinding =
+  | {
+      readonly ruleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE';
+      readonly ruleSetVersion: ContractQualityRuleSetVersion;
+    }
+  | {
+      readonly ruleSet: 'CONTRACT_QUALITY_COMPANY_MODEL';
+      readonly ruleSetVersion: 1;
+    };
+export type ContractQualityRun = {
   readonly id: string;
   readonly contractVersionId: string;
-  readonly ruleSet: 'CONTRACT_QUALITY_ILLUSTRATIVE';
-  readonly ruleSetVersion: ContractQualityRuleSetVersion;
   readonly actorWorkspaceMembershipId: string;
   readonly evaluatedAt: string;
   readonly results: readonly ContractQualityResult[];
-}
-/** One fresh evaluation at a fenced server instant under the bound version. */
-export interface ContractQualityEvaluation {
+} & ContractQualityBinding;
+/** One fenced fresh evaluation with its exact renderer-independent rule binding. */
+export type ContractQualityEvaluation = {
   readonly evaluatedAt: Date;
-  readonly ruleSetVersion: ContractQualityRuleSetVersion;
   readonly results: ContractQualityResult[];
-}
+} & ContractQualityBinding;
 /**
  * Stable pure rule set seam for the delivered Contract origins and Addenda.
  * The owning command supplies one fenced server instant and the bound version.
@@ -127,7 +135,7 @@ export function evaluateContractQuality(
   input: ContractQualityInput,
 ): ContractQualityResult[] {
   const output: ContractQualityResult[] = [];
-  const check = (code: ContractQualityCode, passed: boolean) =>
+  const check = (code: keyof typeof CONTRACT_QUALITY_RULES, passed: boolean) =>
     output.push({
       code,
       status: passed ? 'PASS' : CONTRACT_QUALITY_RULES[code],
@@ -269,6 +277,8 @@ export function readContractQualityResults(
   if (!Array.isArray(value) || value.length !== codes.length)
     throw new Error('Invalid Contract Quality Check results.');
   return codes.map((code, index) => {
+    if (!isLegacyQualityCode(code))
+      throw new Error('Invalid illustrative Contract quality code.');
     const item: unknown = value[index];
     if (
       typeof item !== 'object' ||
@@ -299,4 +309,10 @@ export function requireHeadContractVersion(input: {
       code: 'CONTRACT_VERSION_SUPERSEDED',
       message: 'The Contract Version has been superseded.',
     });
+}
+
+function isLegacyQualityCode(
+  code: ContractQualityCode,
+): code is keyof typeof CONTRACT_QUALITY_RULES {
+  return Object.hasOwn(CONTRACT_QUALITY_RULES, code);
 }

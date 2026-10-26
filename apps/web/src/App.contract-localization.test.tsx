@@ -131,9 +131,13 @@ it('retires a locale-preserved representation on session loss through the real A
       ),
     }),
   );
-  await within(
-    await screen.findByRole('region', { name: 'Contract' }),
-  ).findByText(contractLocaleScope);
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole('region', { name: 'Contract' })).getByText(
+        contractLocaleScope,
+      ),
+    ).toBeVisible(),
+  );
   fireEvent.click(
     await screen.findByRole('button', { name: 'Open exact Contract document' }),
   );

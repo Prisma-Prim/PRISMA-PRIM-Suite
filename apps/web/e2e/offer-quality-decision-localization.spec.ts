@@ -131,12 +131,18 @@ async function installRoutes(
   const commands: Command[] = [];
   const requests: string[] = [];
   const lateDecisionReplies: string[] = [];
-  const gates = { quality: gate(), approve: gate(), reject: gate() };
+  const gates = {
+    quality: gate(),
+    approve: gate(),
+    reject: gate(),
+    history: gate(),
+  };
   let retired = false;
   page.on('close', () => {
     gates.quality.release();
     gates.approve.release();
     gates.reject.release();
+    gates.history.release();
   });
 
   function actor(selectedCompany: boolean) {
@@ -212,6 +218,18 @@ async function installRoutes(
     const [opportunityId, offer] = entry;
     const base = `/api/offers/opportunities/${opportunityId}`;
     if (request.method() === 'GET') {
+      if (
+        authorityLoss &&
+        path === `${base}/versions` &&
+        new URL(request.url()).searchParams.has('cursor')
+      ) {
+        await gates.history.promise;
+        if (page.isClosed()) return;
+        return route.fulfill({
+          status: 403,
+          json: { privateDetail: 'HIDDEN-RETIRED-AUTHORITY' },
+        });
+      }
       if (path === `${base}/versions`)
         return route.fulfill({
           json: {
@@ -223,7 +241,7 @@ async function installRoutes(
                 supersededByVersionId: null,
               },
             ],
-            nextCursor: null,
+            nextCursor: authorityLoss ? 'retirement-page' : null,
           },
         });
       if (path === base || path === `${base}/versions/${offer.version.id}`)
@@ -324,6 +342,7 @@ async function installRoutes(
     releaseQuality: gates.quality.release,
     releaseApproval: gates.approve.release,
     releaseRejection: gates.reject.release,
+    releaseHistory: gates.history.release,
   };
 }
 
@@ -388,7 +407,9 @@ async function openRequest(
     .click();
   const result = await reply;
   await expect(
-    page.locator('.offer-version-history').getByRole('button'),
+    page
+      .locator('.offer-version-history')
+      .getByRole('button', { name: locale.openOne, exact: true }),
   ).toBeDisabled();
   return result;
 }
@@ -792,6 +813,21 @@ test('retires a real Company approval authority and suppresses its late result a
   await page
     .getByRole('checkbox', { name: locale.rules[5], exact: true })
     .check();
+  // Start the independent read before the command takes ownership. New
+  // sibling actions must be disabled while its confirmation is outstanding.
+  const historyRead = page.waitForRequest(
+    (request) =>
+      request.method() === 'GET' &&
+      new URL(request.url()).searchParams.get('cursor') === 'retirement-page',
+  );
+  await page
+    .locator('.offer-version-history')
+    .getByRole('button', {
+      name: 'Afficher les versions plus anciennes',
+      exact: true,
+    })
+    .click();
+  await historyRead;
   await page.getByRole('button', { name: locale.approve, exact: true }).click();
   await expect(
     page.getByText(locale.runningDecision, { exact: true }),
@@ -803,7 +839,10 @@ test('retires a real Company approval authority and suppresses its late result a
       new URL(reply.url()).pathname ===
         '/api/offers/opportunities/opportunity-approve',
   );
-  await page.getByRole('button', { name: locale.run, exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: locale.run, exact: true }),
+  ).toBeDisabled();
+  observed.releaseHistory();
   expect(await (await reread).json()).toMatchObject({
     offer: {
       version: {

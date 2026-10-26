@@ -127,6 +127,14 @@ Configuration is typed and bounded. Workspace defaults and Company overrides are
 
 Tenant names never appear in conditional code.
 
+The [bounded Company consulting Contract model configuration (§29.8)](release-3-commercial-29-company-contract-model.md#298-interface-and-safe-asynchronous-work)
+uses the accepted Prisme Company configuration and ordinary explicit assignment
+controls. Full literal content/review, independent pending/active approval,
+history, identical uncertain retry and scope/access retirement share one owner;
+locale changes neither replace that owner nor translate saved business text.
+Conflicting sibling actions stay disabled while the outcome is running/uncertain.
+Its actual App proof covers keyboard/focus and desktop1440/narrow390.
+
 ## 9. Notifications
 
 Notifications derive from durable business events and rules. They have recipient, reason, Company/Workspace scope, channel, schedule, escalation, deduplication and disposition.

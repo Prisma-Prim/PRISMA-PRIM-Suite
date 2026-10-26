@@ -43,7 +43,7 @@ describe('Company Offer Preparer permission sets', () => {
     );
   });
 
-  it.each([null, undefined, '', 'V1', 'v3', 1])(
+  it.each([null, undefined, '', 'V1', 'v99', 1])(
     'fails closed for an unsupported version: %s',
     (version) => expect(offerPreparerPermissionsFor(version)).toEqual([]),
   );
@@ -60,7 +60,7 @@ describe('Company Offer Approver permission sets', () => {
       'commercial.offer.approve',
     );
   });
-  it.each([null, undefined, '', 'v2', 'V1', 1])(
+  it.each([null, undefined, '', 'v99', 'V1', 1])(
     'fails closed for version %s',
     (version) => expect(offerApproverPermissionsFor(version)).toEqual([]),
   );

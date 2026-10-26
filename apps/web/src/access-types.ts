@@ -17,6 +17,7 @@ export interface ActorContext {
     displayName: string;
     /** This additional wire projection is proved by the Offer-model boundary. */
     offerModelGrants?: unknown;
+    contractModelGrants?: unknown;
     taskPermissions?: Array<'task.read' | 'task.manage'>;
     taskPermissionAssignmentId?: string;
     taskPermissionSetVersion?: 'v1';
@@ -69,6 +70,9 @@ export interface ActorContext {
     pricingUserPermissionSetVersion?: 'v1';
     contractPermissions?: Array<
       | 'commercial.contract.read'
+      | 'commercial.contract.model.select'
+      | 'commercial.contract.model_based.prepare'
+      | 'commercial.contract.model_based.approve'
       | 'commercial.contract.prepare_pending_offer'
       | 'commercial.contract.prepare'
       | 'commercial.contract.project.link'
@@ -78,9 +82,9 @@ export interface ActorContext {
     contractEarlyPreparationAssignmentId?: string;
     contractEarlyPreparationPermissionSetVersion?: 'v1';
     contractPermissionAssignmentId?: string;
-    contractPermissionSetVersion?: 'v1';
+    contractPermissionSetVersion?: 'v1' | 'v2';
     contractApproverAssignmentId?: string;
-    contractApproverPermissionSetVersion?: 'v1';
+    contractApproverPermissionSetVersion?: 'v1' | 'v2';
     profitabilityContributorPermissions?: Array<
       | 'commercial.profitability_estimate.read'
       | 'commercial.profitability_estimate.create'
@@ -97,15 +101,20 @@ export interface ActorContext {
       | 'commercial.offer.read'
       | 'commercial.offer.prepare'
       | 'commercial.offer.estimate.prepare'
+      | 'commercial.offer.model.select'
+      | 'commercial.offer.model_based.prepare'
+      | 'commercial.offer.model_based.approve'
+      | 'commercial.offer.model_based.transmission.record'
+      | 'commercial.offer.model_based.response.record'
       | 'commercial.offer.approve'
       | 'commercial.offer.response.record'
       | 'commercial.offer.transmission.record'
       | 'commercial.pricing.snapshot.read'
     >;
     offerPermissionAssignmentId?: string;
-    offerPermissionSetVersion?: 'v1' | 'v2';
+    offerPermissionSetVersion?: 'v1' | 'v2' | 'v3';
     offerApproverAssignmentId?: string;
-    offerApproverPermissionSetVersion?: 'v1';
+    offerApproverPermissionSetVersion?: 'v1' | 'v2';
     pricingAdjustmentPermissions?: Array<'commercial.pricing.adjustment.apply'>;
     pricingAdjustmentPermissionAssignmentId?: string;
     pricingAdjustmentPermissionSetVersion?: 'v1';
@@ -154,6 +163,7 @@ export interface ActorContext {
       | 'client.duplicate.resolve'
     >;
     documentPermissions?: Array<
+      | 'document.received_contract.access'
       | 'document.mission_deliverable.access'
       | 'document.read'
       | 'document.register'
@@ -167,6 +177,10 @@ export interface ActorContext {
     >;
     missionDeliverableAccessAssignmentId?: string;
     missionDeliverableAccessPermissionSetVersion?: 'v1';
+    contractSignatureDeclarerAssignmentId?: string;
+    contractSignatureDeclarerPermissionSetVersion?: 'v1';
+    receivedContractAccessAssignmentId?: string;
+    receivedContractAccessPermissionSetVersion?: 'v1';
     documentPermissionSetVersion?: 'v1' | 'v2' | 'v3';
     documentPermissionAssignmentId?: string;
     /** The live Company Document Approver assignment, if any. */

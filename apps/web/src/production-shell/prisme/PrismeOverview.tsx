@@ -50,6 +50,7 @@ export function SectionIcon({
     catalogue: BookOpen,
     pricing: SlidersHorizontal,
     'offer-models': BookOpen,
+    'contract-models': BookOpen,
     activity: Activity,
     invitations: Mail,
   };

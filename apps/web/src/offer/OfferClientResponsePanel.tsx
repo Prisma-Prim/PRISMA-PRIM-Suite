@@ -1,3 +1,4 @@
+import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -9,7 +10,7 @@ import { useOfferClientResponseCopy } from './offer-transmission-response.copy';
 import {
   readOfferClientResponse,
   type OfferClientResponseView,
-  type OfferView,
+  type ExecutableOfferView,
 } from './offer-response';
 
 type State =
@@ -29,6 +30,7 @@ type State =
 type Attempt = { body: string; key: string };
 
 export function OfferClientResponsePanel({
+  onCommandLockChange,
   identity,
   companyId,
   opportunityId,
@@ -36,10 +38,11 @@ export function OfferClientResponsePanel({
   onResponse,
   reject,
 }: {
+  onCommandLockChange?: (locked: boolean) => void;
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
-  offer: OfferView;
+  offer: ExecutableOfferView;
   onResponse: (response: OfferClientResponseView) => void;
   reject: (
     result: ApiResult<unknown>,
@@ -54,6 +57,7 @@ export function OfferClientResponsePanel({
   const pending = useRef<AbortController | undefined>(undefined);
   useEffect(() => () => pending.current?.abort(), []);
   const locked = state === 'running' || state === 'uncertain';
+  useOfferCommandLock(locked, onCommandLockChange);
   const blocked = [
     'denied',
     'unavailable',

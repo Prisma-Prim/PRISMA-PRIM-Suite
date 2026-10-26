@@ -33,9 +33,12 @@ import {
 import { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { commandFingerprint } from '../command/idempotent-command.js';
 import type { PricingSnapshotRecord } from '../pricing-configuration/pricing-snapshot.types.js';
-import { offerClientResponseState } from './offer.types.js';
+import { offerClientResponseState, offerDecisionState } from './offer.types.js';
 import { OfferVersionDifferences } from './offer-version-differences.js';
 import { OfferCommandStore } from './offer-command-store.js';
+import { storedModelOfferSnapshot } from './model-offer-snapshot.js';
+import { MODEL_OFFER_NON_OFFICIAL_MARKER } from './model-offer-representation.js';
+import { ModelOfferView } from './model-offer-view.js';
 import { EstimateOfferView } from './offer-estimate-view.js';
 import type { OfferReadRecord } from './offer-estimate-preparation.types.js';
 import type {
@@ -43,6 +46,7 @@ import type {
   OfferVersionRecord,
   OfferRecipientCopy,
   OfferDecision,
+  OfferDecisionState,
   OfferTransmission,
   OfferClientResponse,
   OfferTransmissionState,
@@ -64,6 +68,8 @@ import {
 } from './offer-binding.js';
 import {
   evaluateOfferQuality,
+  evaluateModelOfferQuality,
+  readModelOfferQualityResults,
   readOfferQualityResults,
   requireHeadOfferVersion,
   type OfferQualityRun,
@@ -77,6 +83,7 @@ type OfferCommandRow = typeof offerCommands.$inferSelect;
 export class OfferService {
   private readonly commands: OfferCommandStore;
   private readonly estimateViews: EstimateOfferView;
+  private readonly modelViews: ModelOfferView;
 
   constructor(
     private readonly databaseContext: DatabaseContext,
@@ -88,6 +95,10 @@ export class OfferService {
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
   ) {
     this.commands = new OfferCommandStore(databaseContext);
+    this.modelViews = new ModelOfferView({
+      database: databaseContext,
+      pricing,
+    });
     this.estimateViews = new EstimateOfferView({
       database: databaseContext,
       intake,
@@ -146,7 +157,7 @@ export class OfferService {
         and(
           eq(
             offerVersions.id,
-            sql`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+            sql`CASE WHEN ${contracts.origin} IN ('OFFER_PREPARATION','COMPANY_MODEL_OFFER') THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
           ),
           eq(offerVersions.offerId, offers.id),
           eq(offerVersions.workspaceId, contracts.workspaceId),
@@ -228,7 +239,7 @@ export class OfferService {
           eq(offerVersions.offerId, contracts.sourceOfferId),
           eq(
             offerVersions.id,
-            sql`CASE WHEN ${contracts.origin} = 'OFFER_PREPARATION' THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
+            sql`CASE WHEN ${contracts.origin} IN ('OFFER_PREPARATION','COMPANY_MODEL_OFFER') THEN ${contractVersions.sourceOfferVersionId} ELSE ${contracts.sourceOfferVersionId} END`,
           ),
         ),
       )
@@ -292,6 +303,118 @@ export class OfferService {
       .limit(1);
     return accepted !== undefined;
   }
+  /** Full-model source only. Caller orders Opportunity and Client before this Offer fence. */
+  async resolveModelContractSource(input: {
+    actor: ActorContext;
+    opportunityId: string;
+    offerVersionId: string;
+    requireEligible: boolean;
+  }) {
+    const companyId = await this.authorization.requireOfferAccess(
+      input.actor,
+      ['commercial.offer.read'],
+      true,
+    );
+    const opportunity = await this.intake.requireReadableOfferOpportunity(
+      input.actor,
+      input.opportunityId,
+      false,
+    );
+    const [offer] = await this.databaseContext.connection
+      .select()
+      .from(offers)
+      .where(
+        and(
+          eq(offers.workspaceId, input.actor.workspaceId),
+          eq(offers.companyId, companyId),
+          eq(offers.opportunityId, input.opportunityId),
+        ),
+      )
+      .for('update');
+    if (!offer) throw new NotFoundException();
+    const { version } = await this.requireOfferById(
+      input.actor,
+      companyId,
+      offer.id,
+      input.offerVersionId,
+    );
+    if (version.provenance !== 'COMPANY_MODEL_ESTIMATE')
+      throw namedConflict(
+        'OFFER_MODEL_CONTRACT_SOURCE_REQUIRED',
+        'Select a full model-based Offer.',
+      );
+    const snapshot = storedModelOfferSnapshot(
+      version,
+      offer.illustrativeReference,
+    );
+    const decision = await this.findDecision(
+      input.actor.workspaceId,
+      companyId,
+      version.id,
+    );
+    const transmission = await this.findTransmission(
+      input.actor.workspaceId,
+      companyId,
+      version.id,
+    );
+    const response = await this.findClientResponse({
+      workspaceId: input.actor.workspaceId,
+      companyId,
+      offerVersionId: version.id,
+    });
+    const ready =
+      opportunity.status === 'OPEN' &&
+      !version.supersededByVersionId &&
+      decision?.state === 'APPROVED' &&
+      !!transmission &&
+      this.clock.now() < version.validUntil &&
+      (!response || response.outcome === 'ACCEPTED');
+    if (input.requireEligible && !ready)
+      throw namedConflict(
+        'OFFER_NOT_PREPARABLE',
+        'Select a current approved and transmitted non-official Offer.',
+      );
+    const financials = snapshot.financialDeclaration;
+    return {
+      ready,
+      validUntil: version.validUntil,
+      copy: {
+        workspaceId: offer.workspaceId,
+        companyId,
+        opportunityId: offer.opportunityId,
+        originalClientAccountId: offer.originalClientAccountId,
+        clientRequestId: offer.clientRequestId,
+        offerId: offer.id,
+        offerVersionId: version.id,
+        offerVersionNumber: version.versionNumber,
+        illustrativeReference: offer.illustrativeReference,
+        representationSha256: snapshot.representation.sha256,
+        recipient: offerRecipientCopy(version),
+        scopeNote: version.scopeNote,
+        commercialConditions: version.commercialConditions,
+        model: {
+          modelId: snapshot.modelSource.modelId,
+          versionId: snapshot.modelSource.versionId,
+          versionNumber: snapshot.modelSource.versionNumber,
+          approvalDecisionId: snapshot.modelSource.approvalDecisionId,
+          approvedAt: snapshot.modelSource.approvedAt,
+          approvedBy: snapshot.modelSource.approvedBy,
+          issuer: snapshot.modelSource.content.issuer,
+          serviceTitle: snapshot.modelSource.content.serviceTitle,
+          frameworks: snapshot.modelSource.content.frameworks,
+        },
+        priceSource: snapshot.priceSource,
+        financials: {
+          netAmount: financials.netAmount,
+          taxAmount: financials.taxAmount,
+          grossAmount: financials.grossAmount,
+          taxLabel: financials.taxLabel,
+          currency: financials.currency,
+        },
+      },
+    };
+  }
+
   /** Recorded accepted source only; no pricing or live-Client projection locks. */
   async resolveAcceptedContractSource(input: {
     actor: ActorContext;
@@ -322,6 +445,11 @@ export class OfferService {
       offer.id,
       input.offerVersionId,
     );
+    if (version.provenance === 'COMPANY_MODEL_ESTIMATE')
+      throw namedConflict(
+        'OFFER_MODEL_CONTRACT_UNSUPPORTED',
+        'This Offer model is not supported by the current Contract journey.',
+      );
     const response = await this.findClientResponse({
       workspaceId: input.actor.workspaceId,
       companyId,
@@ -377,6 +505,11 @@ export class OfferService {
       offer.id,
       input.offerVersionId,
     );
+    if (version.provenance === 'COMPANY_MODEL_ESTIMATE')
+      throw namedConflict(
+        'OFFER_MODEL_CONTRACT_UNSUPPORTED',
+        'This Offer model is not supported by the current Contract journey.',
+      );
     const response = await this.findClientResponse({
       workspaceId: input.actor.workspaceId,
       companyId,
@@ -1026,6 +1159,27 @@ export class OfferService {
         offer.id,
         offerVersionId,
       );
+      if (stored.version.provenance === 'COMPANY_MODEL_ESTIMATE') {
+        const prepared = await this.modelViews.readPrepared({
+          actor,
+          ...stored,
+          revision: stored.offer.revision,
+        });
+        const clientReference = await this.intake.readPricingClientProjection(
+          actor,
+          stored.offer.originalClientAccountId,
+        );
+        return {
+          ...prepared,
+          ...(clientReference ? { clientReference } : {}),
+          version: {
+            ...prepared.version,
+            supersededByVersionId: stored.version.supersededByVersionId,
+            supersededAt: stored.version.supersededAt?.toISOString() ?? null,
+            ...(await this.workflowFacts(actor, stored.offer, stored.version)),
+          },
+        };
+      }
       if (stored.version.provenance === INTERNAL_ESTIMATE_OFFER_PROVENANCE)
         return this.estimateViews.read({
           actor,
@@ -1114,6 +1268,8 @@ export class OfferService {
           ),
         );
       if (!target) throw new NotFoundException();
+      if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
+        await this.authorization.requireOfferQualityAccess(actor, true, true);
       const fingerprint = commandFingerprint({
         kind: 'RUN_QUALITY_CHECKS',
         opportunityId: opportunity.id,
@@ -1184,49 +1340,12 @@ export class OfferService {
         offerVersionId: target.id,
         headVersionId: head?.id,
       });
-      illustrativeSnapshotId(target);
-      const pricing = await this.pricing.inspectOfferQualitySnapshot({
-        actor,
-        companyId,
-        opportunityId: opportunity.id,
-        snapshotId: illustrativeSnapshotId(target),
-      });
-      const recipient = offerRecipientCopy(target);
-      const context = await this.clients.inspectOfferQualityContext({
-        actor,
-        companyId,
-        originalClientAccountId: offer.originalClientAccountId,
-        snapshotOriginalClientAccountId: pricing.originalClientAccountId,
-        recipient:
-          recipient.kind === 'PRIMARY'
-            ? { kind: 'PRIMARY' }
-            : {
-                kind: 'ADDITIONAL',
-                legalEntityId: recipient.additionalLegalEntityId,
-              },
-        recordedIdentity: recipient,
-      });
-      const { ruleSetVersion } = storedOfferBinding(target);
-      const evaluatedAt = this.clock.now();
-      const results = evaluateOfferQuality({
+      const {
+        ruleSet,
         ruleSetVersion,
         instant: evaluatedAt,
-        validUntil: target.validUntil,
-        snapshot: {
-          ...pricing.snapshot,
-          belongsToOffer:
-            pricing.snapshot.opportunityId === offer.opportunityId,
-        },
-        previousTransmittedCurrency: await this.previousTransmittedCurrency(
-          actor,
-          offer,
-          target,
-        ),
-        ...context,
-        recipientTaxId: target.recipientTaxId,
-        provenance: target.provenance,
-        provisional: target.provenance === 'ILLUSTRATIVE',
-      });
+        results,
+      } = await this.inspectCurrentQuality({ actor, offer, target });
       const [run] = await this.databaseContext.connection
         .insert(offerQualityRuns)
         .values({
@@ -1236,6 +1355,7 @@ export class OfferService {
           offerVersionId: target.id,
           actorInternalUserId: actor.internalUserId,
           actorWorkspaceMembershipId: actor.workspaceMembershipId,
+          ruleSet,
           ruleSetVersion,
           evaluatedAt,
           results,
@@ -1307,6 +1427,15 @@ export class OfferService {
             ),
           );
         if (!target) throw new NotFoundException();
+        if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
+          await this.authorization.requireOfferAccess(
+            actor,
+            [
+              'commercial.offer.approve',
+              'commercial.offer.model_based.approve',
+            ],
+            true,
+          );
         const fingerprint = commandFingerprint({
           kind: input.kind,
           opportunityId: opportunity.id,
@@ -1339,7 +1468,11 @@ export class OfferService {
             throw new Error('The recorded Offer decision is missing.');
           return this.decisionView(decision);
         }
-        const command = readOfferDecisionCommand(input.payload, input.kind);
+        const command = readOfferDecisionCommand(
+          input.payload,
+          input.kind,
+          target.provenance === 'COMPANY_MODEL_ESTIMATE',
+        );
         const [offer] = await this.databaseContext.connection
           .select()
           .from(offers)
@@ -1388,49 +1521,14 @@ export class OfferService {
           | undefined;
         let decidedAt: Date;
         if (command.kind === 'APPROVE') {
-          illustrativeSnapshotId(target);
-          const pricing = await this.pricing.inspectOfferQualitySnapshot({
-            actor,
-            companyId,
-            opportunityId: offer.opportunityId,
-            snapshotId: illustrativeSnapshotId(target),
-          });
-          const recipient = offerRecipientCopy(target);
-          const context = await this.clients.inspectOfferQualityContext({
-            actor,
-            companyId,
-            originalClientAccountId: offer.originalClientAccountId,
-            snapshotOriginalClientAccountId: pricing.originalClientAccountId,
-            recipient:
-              recipient.kind === 'PRIMARY'
-                ? { kind: 'PRIMARY' }
-                : {
-                    kind: 'ADDITIONAL',
-                    legalEntityId: recipient.additionalLegalEntityId,
-                  },
-            recordedIdentity: recipient,
-          });
-          const { ruleSetVersion } = storedOfferBinding(target);
-          decidedAt = this.clock.now();
-          const results = evaluateOfferQuality({
+          const {
+            ruleSet,
             ruleSetVersion,
-            instant: decidedAt,
-            validUntil: target.validUntil,
-            snapshot: {
-              ...pricing.snapshot,
-              belongsToOffer:
-                pricing.snapshot.opportunityId === offer.opportunityId,
-            },
-            previousTransmittedCurrency: await this.previousTransmittedCurrency(
-              actor,
-              offer,
-              target,
-            ),
-            ...context,
-            recipientTaxId: target.recipientTaxId,
-            provenance: target.provenance,
-            provisional: target.provenance === 'ILLUSTRATIVE',
-          });
+            instant,
+            results,
+            representationSha256,
+          } = await this.inspectCurrentQuality({ actor, offer, target });
+          decidedAt = instant;
           if (results.some((result) => result.status === 'ERROR'))
             throw namedConflict(
               'QUALITY_CHECK_ERRORS',
@@ -1449,11 +1547,6 @@ export class OfferService {
               'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
               'Acknowledge exactly the current Quality Check warnings.',
             );
-          const representation = offerVersionView(
-            offer.illustrativeReference,
-            target,
-            pricing.snapshot,
-          ).representation;
           const [run] = await this.databaseContext.connection
             .insert(offerQualityRuns)
             .values({
@@ -1463,6 +1556,7 @@ export class OfferService {
               offerVersionId: target.id,
               actorInternalUserId: actor.internalUserId,
               actorWorkspaceMembershipId: actor.workspaceMembershipId,
+              ruleSet,
               ruleSetVersion,
               evaluatedAt: decidedAt,
               results,
@@ -1474,7 +1568,7 @@ export class OfferService {
             ruleSetVersion,
             qualityRunId: run.id,
             acknowledgedWarningCodes: command.acknowledgedWarningCodes,
-            representationSha256: representation.sha256,
+            representationSha256: representationSha256(),
           };
         } else decidedAt = this.clock.now();
         const [decision] = await this.databaseContext.connection
@@ -1522,6 +1616,10 @@ export class OfferService {
           decision: approval
             ? {
                 state: 'APPROVED',
+                provenance:
+                  target.provenance === 'COMPANY_MODEL_ESTIMATE'
+                    ? 'COMPANY_MODEL_ESTIMATE'
+                    : 'ILLUSTRATIVE',
                 ruleSetVersion: approval.ruleSetVersion,
                 acknowledgedWarningCodes: approval.acknowledgedWarningCodes,
               }
@@ -1590,6 +1688,15 @@ export class OfferService {
             ),
           );
         if (!target) throw new NotFoundException();
+        if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
+          await this.authorization.requireOfferAccess(
+            actor,
+            [
+              'commercial.offer.response.record',
+              'commercial.offer.model_based.response.record',
+            ],
+            true,
+          );
         await this.lockCommand(actor, companyId, idempotencyKey);
         const recipient = offerRecipientCopy(target);
         // The response selects no new entity. Fence recorded references through
@@ -1673,7 +1780,7 @@ export class OfferService {
           offerVersionId: target.id,
           headVersionId: head?.id,
         });
-        illustrativeSnapshotId(target);
+        executionBinding(target);
         const transmission = await this.findTransmission(
           actor.workspaceId,
           companyId,
@@ -1757,6 +1864,10 @@ export class OfferService {
           createdAt: decidedAt,
         });
         await this.accountability.recordOfferClientResponse({
+          provenance:
+            target.provenance === 'COMPANY_MODEL_ESTIMATE'
+              ? 'COMPANY_MODEL_ESTIMATE'
+              : 'ILLUSTRATIVE',
           actor,
           companyId,
           offerId: offer.id,
@@ -1880,6 +1991,15 @@ export class OfferService {
             ),
           );
         if (!target) throw new NotFoundException();
+        if (target.provenance === 'COMPANY_MODEL_ESTIMATE')
+          await this.authorization.requireOfferAccess(
+            actor,
+            [
+              'commercial.offer.transmission.record',
+              'commercial.offer.model_based.transmission.record',
+            ],
+            true,
+          );
         const fingerprint = commandFingerprint({
           kind: 'RECORD_TRANSMISSION',
           opportunityId: opportunity.id,
@@ -1912,7 +2032,10 @@ export class OfferService {
             throw new Error('The recorded Offer transmission is missing.');
           return this.transmissionView(row);
         }
-        const command = readOfferTransmissionCommand(input.payload);
+        const command = readOfferTransmissionCommand(
+          input.payload,
+          target.provenance === 'COMPANY_MODEL_ESTIMATE',
+        );
         const [offer] = await this.databaseContext.connection
           .select()
           .from(offers)
@@ -1946,7 +2069,7 @@ export class OfferService {
           offerVersionId: target.id,
           headVersionId: head?.id,
         });
-        illustrativeSnapshotId(target);
+        executionBinding(target);
         const approval = await this.findDecision(
           actor.workspaceId,
           companyId,
@@ -1964,50 +2087,13 @@ export class OfferService {
             'OFFER_VERSION_ALREADY_TRANSMITTED',
             'The Offer Version already has a transmission.',
           );
-        const pricing = await this.pricing.inspectOfferQualitySnapshot({
-          actor,
-          companyId,
-          opportunityId: offer.opportunityId,
-          snapshotId: illustrativeSnapshotId(target),
-        });
-        const recipient = offerRecipientCopy(target);
-        const context = await this.clients.inspectOfferQualityContext({
-          actor,
-          companyId,
-          originalClientAccountId: offer.originalClientAccountId,
-          snapshotOriginalClientAccountId: pricing.originalClientAccountId,
-          recipient:
-            recipient.kind === 'PRIMARY'
-              ? { kind: 'PRIMARY' }
-              : {
-                  kind: 'ADDITIONAL',
-                  legalEntityId: recipient.additionalLegalEntityId,
-                },
-          recordedIdentity: recipient,
-        });
-        const { ruleSetVersion } = storedOfferBinding(target);
-        const transmittedAt = this.clock.now();
-        if (!Number.isFinite(transmittedAt.getTime()))
-          throw new Error('Invalid server instant.');
-        const results = evaluateOfferQuality({
+        const {
+          ruleSet,
           ruleSetVersion,
           instant: transmittedAt,
-          validUntil: target.validUntil,
-          snapshot: {
-            ...pricing.snapshot,
-            belongsToOffer:
-              pricing.snapshot.opportunityId === offer.opportunityId,
-          },
-          previousTransmittedCurrency: await this.previousTransmittedCurrency(
-            actor,
-            offer,
-            target,
-          ),
-          ...context,
-          recipientTaxId: target.recipientTaxId,
-          provenance: target.provenance,
-          provisional: target.provenance === 'ILLUSTRATIVE',
-        });
+          results,
+          representationSha256,
+        } = await this.inspectCurrentQuality({ actor, offer, target });
         if (results.some((result) => result.status === 'ERROR'))
           throw namedConflict(
             'QUALITY_CHECK_ERRORS',
@@ -2015,6 +2101,7 @@ export class OfferService {
           );
         const previouslyAcknowledged = readOfferWarningCodes(
           approval.acknowledgedWarningCodes,
+          target.provenance === 'COMPANY_MODEL_ESTIMATE',
         );
         const warnings = results
           .filter(
@@ -2033,12 +2120,7 @@ export class OfferService {
             'QUALITY_CHECK_WARNINGS_UNACKNOWLEDGED',
             'Acknowledge exactly the current warnings not acknowledged at approval.',
           );
-        const representation = offerVersionView(
-          offer.illustrativeReference,
-          target,
-          pricing.snapshot,
-        ).representation;
-        if (representation.sha256 !== approval.representationSha256)
+        if (representationSha256() !== approval.representationSha256)
           throw namedConflict(
             'REPRESENTATION_MISMATCH',
             'The representation does not match the approved checksum.',
@@ -2052,6 +2134,7 @@ export class OfferService {
             offerVersionId: target.id,
             actorInternalUserId: actor.internalUserId,
             actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            ruleSet,
             ruleSetVersion,
             evaluatedAt: transmittedAt,
             results,
@@ -2097,6 +2180,10 @@ export class OfferService {
           createdAt: transmittedAt,
         });
         await this.accountability.recordOfferTransmission({
+          provenance:
+            target.provenance === 'COMPANY_MODEL_ESTIMATE'
+              ? 'COMPANY_MODEL_ESTIMATE'
+              : 'ILLUSTRATIVE',
           actor,
           companyId,
           offerId: offer.id,
@@ -2126,7 +2213,11 @@ export class OfferService {
     version: OfferVersionRow,
   ): Promise<string | null> {
     const [earlier] = await this.databaseContext.connection
-      .select({ id: offerVersions.id })
+      .select({
+        id: offerVersions.id,
+        provenance: offerVersions.provenance,
+        currency: offerVersions.estimateSourceCurrency,
+      })
       .from(offerVersions)
       .innerJoin(
         offerTransmissions,
@@ -2148,6 +2239,11 @@ export class OfferService {
       .orderBy(desc(offerVersions.versionNumber))
       .limit(1);
     if (!earlier) return null;
+    if (earlier.provenance === 'COMPANY_MODEL_ESTIMATE') {
+      if (earlier.currency === null)
+        throw new Error('Missing prior Offer currency.');
+      return earlier.currency;
+    }
     const snapshot = await this.pricing.resolveOfferVersionSnapshot({
       actor,
       companyId: offer.companyId,
@@ -2207,6 +2303,7 @@ export class OfferService {
       qualityRun: qualityRunView(run),
       acknowledgedWarningCodes: readOfferWarningCodes(
         row.acknowledgedWarningCodes,
+        run.ruleSet === 'OFFER_QUALITY_COMPANY_MODEL',
       ),
       representationSha256: row.representationSha256,
     };
@@ -2267,21 +2364,116 @@ export class OfferService {
       qualityRun: qualityRunView(run),
       acknowledgedWarningCodes: readOfferWarningCodes(
         row.acknowledgedWarningCodes,
+        run.ruleSet === 'OFFER_QUALITY_COMPANY_MODEL',
       ),
       representationSha256: row.representationSha256,
     };
   }
 
-  private async offerView(
+  private async inspectCurrentQuality({
+    actor,
+    offer,
+    target,
+  }: {
+    actor: ActorContext;
+    offer: OfferRow;
+    target: OfferVersionRow;
+  }) {
+    const { ruleSet, ruleSetVersion } = executionBinding(target);
+    const frozen =
+      target.provenance === 'COMPANY_MODEL_ESTIMATE'
+        ? storedModelOfferSnapshot(target, offer.illustrativeReference)
+        : null;
+    const pricing = frozen
+      ? null
+      : await this.pricing.inspectOfferQualitySnapshot({
+          actor,
+          companyId: offer.companyId,
+          opportunityId: offer.opportunityId,
+          snapshotId: illustrativeSnapshotId(target),
+        });
+    const recipient = offerRecipientCopy(target);
+    const context = await this.clients.inspectOfferQualityContext({
+      actor,
+      companyId: offer.companyId,
+      originalClientAccountId: offer.originalClientAccountId,
+      snapshotOriginalClientAccountId: pricing?.originalClientAccountId ?? null,
+      recipient:
+        recipient.kind === 'PRIMARY'
+          ? { kind: 'PRIMARY' }
+          : {
+              kind: 'ADDITIONAL',
+              legalEntityId: recipient.additionalLegalEntityId,
+            },
+      recordedIdentity: recipient,
+    });
+    const instant = this.clock.now();
+    if (!Number.isFinite(instant.getTime()))
+      throw new Error('Invalid server instant.');
+    const previousTransmittedCurrency = await this.previousTransmittedCurrency(
+      actor,
+      offer,
+      target,
+    );
+    if (frozen)
+      return {
+        ruleSet,
+        ruleSetVersion,
+        instant,
+        results: evaluateModelOfferQuality({
+          instant,
+          validUntil: target.validUntil,
+          modelApprovalCoherent: true,
+          economicSourceCoherent: true,
+          declaredTotalsCoherent: true,
+          representationCoherent: true,
+          ...context,
+          recipientTaxId: target.recipientTaxId,
+          currency: frozen.priceSource.currency,
+          previousTransmittedCurrency,
+          nonOfficialMarkerPresent: frozen.representation.html.includes(
+            MODEL_OFFER_NON_OFFICIAL_MARKER,
+          ),
+          illustrativeModel:
+            frozen.modelSource.content.sourceKind === 'ILLUSTRATIVE',
+        }),
+        representationSha256: () => frozen.representation.sha256,
+      };
+    if (!pricing) throw new Error('Missing illustrative quality source.');
+    return {
+      ruleSet,
+      ruleSetVersion,
+      instant,
+      results: evaluateOfferQuality({
+        ruleSetVersion,
+        instant,
+        validUntil: target.validUntil,
+        snapshot: {
+          ...pricing.snapshot,
+          belongsToOffer:
+            pricing.snapshot.opportunityId === offer.opportunityId,
+        },
+        previousTransmittedCurrency,
+        ...context,
+        recipientTaxId: target.recipientTaxId,
+        provenance: target.provenance,
+        provisional: target.provenance === 'ILLUSTRATIVE',
+      }),
+      representationSha256: () =>
+        offerVersionView(offer.illustrativeReference, target, pricing.snapshot)
+          .representation.sha256,
+    };
+  }
+
+  private async workflowFacts(
     actor: ActorContext,
     offer: OfferRow,
     version: OfferVersionRow,
-    snapshot: PricingSnapshotRecord,
-  ): Promise<OfferRecord> {
-    const clientReference = await this.intake.readPricingClientProjection(
-      actor,
-      offer.originalClientAccountId,
-    );
+  ): Promise<
+    Pick<OfferVersionRecord, 'latestQualityRun' | 'validityElapsed'> &
+      OfferDecisionState &
+      OfferTransmissionState
+  > {
     const [latestRun] = await this.databaseContext.connection
       .select()
       .from(offerQualityRuns)
@@ -2318,13 +2510,17 @@ export class OfferService {
       ? await this.transmissionView(transmissionRow)
       : null;
     // Every stored run of a version uses the rule set bound at its creation.
-    const { ruleSetVersion } = storedOfferBinding(version);
+    const { ruleSet, ruleSetVersion } = executionBinding(version);
     if (
       [
         latestQualityRun,
         decision?.state === 'APPROVED' ? decision.qualityRun : null,
         transmission?.qualityRun ?? null,
-      ].some((run) => run !== null && run.ruleSetVersion !== ruleSetVersion)
+      ].some(
+        (run) =>
+          run !== null &&
+          (run.ruleSet !== ruleSet || run.ruleSetVersion !== ruleSetVersion),
+      )
     )
       throw new Error('A stored Offer run does not match its bound rule set.');
     const transmissionState: OfferTransmissionState = transmission
@@ -2339,6 +2535,25 @@ export class OfferService {
           clientResponse: null,
           transmission: null,
         };
+    return {
+      latestQualityRun,
+      ...offerDecisionState(decision),
+      ...transmissionState,
+      validityElapsed: this.clock.now() >= version.validUntil,
+    };
+  }
+
+  private async offerView(
+    actor: ActorContext,
+    offer: OfferRow,
+    version: OfferVersionRow,
+    snapshot: PricingSnapshotRecord,
+  ): Promise<OfferRecord> {
+    const clientReference = await this.intake.readPricingClientProjection(
+      actor,
+      offer.originalClientAccountId,
+    );
+    const workflow = await this.workflowFacts(actor, offer, version);
     return {
       id: offer.id,
       companyId: offer.companyId,
@@ -2359,11 +2574,7 @@ export class OfferService {
           version,
           snapshot,
         ),
-        latestQualityRun,
-        decision,
-        decisionState: decision?.state ?? 'PENDING',
-        ...transmissionState,
-        validityElapsed: this.clock.now() >= version.validUntil,
+        ...workflow,
       },
     };
   }
@@ -2543,20 +2754,43 @@ function namedConflict(code: string, message: string): ConflictException {
 function qualityRunView(
   row: typeof offerQualityRuns.$inferSelect,
 ): OfferQualityRun {
-  if (
-    row.ruleSet !== 'OFFER_QUALITY_ILLUSTRATIVE' ||
-    (row.ruleSetVersion !== 1 && row.ruleSetVersion !== 2)
-  )
-    throw new Error('Unsupported stored Offer Quality Check rule set.');
-  return {
+  const facts = {
     id: row.id,
     offerVersionId: row.offerVersionId,
-    ruleSet: row.ruleSet,
-    ruleSetVersion: row.ruleSetVersion,
     actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
     evaluatedAt: row.evaluatedAt.toISOString(),
-    results: readOfferQualityResults(row.results),
   };
+  if (row.ruleSet === 'OFFER_QUALITY_COMPANY_MODEL' && row.ruleSetVersion === 1)
+    return {
+      ...facts,
+      ruleSet: row.ruleSet,
+      ruleSetVersion: 1,
+      results: readModelOfferQualityResults(row.results),
+    };
+  if (
+    row.ruleSet === 'OFFER_QUALITY_ILLUSTRATIVE' &&
+    (row.ruleSetVersion === 1 || row.ruleSetVersion === 2)
+  )
+    return {
+      ...facts,
+      ruleSet: row.ruleSet,
+      ruleSetVersion: row.ruleSetVersion,
+      results: readOfferQualityResults(row.results),
+    };
+  throw new Error('Unsupported stored Offer Quality Check rule set.');
+}
+
+function executionBinding(row: OfferVersionRow) {
+  if (row.provenance === 'COMPANY_MODEL_ESTIMATE')
+    return {
+      ruleSet: 'OFFER_QUALITY_COMPANY_MODEL',
+      ruleSetVersion: 1,
+    } satisfies { ruleSet: 'OFFER_QUALITY_COMPANY_MODEL'; ruleSetVersion: 1 };
+  illustrativeSnapshotId(row);
+  return {
+    ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE',
+    ...storedOfferBinding(row),
+  } satisfies { ruleSet: 'OFFER_QUALITY_ILLUSTRATIVE'; ruleSetVersion: 1 | 2 };
 }
 
 function illustrativeSnapshotId(row: OfferVersionRow): string {

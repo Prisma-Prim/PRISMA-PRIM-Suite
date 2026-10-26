@@ -75,9 +75,13 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_operational_risk_reader',
   'company_operational_risk_recorder',
   'company_mission_deliverable_access',
+  'company_contract_signature_declarer',
+  'company_received_contract_access',
   'company_task_result_recorder',
   'company_offer_model_editor',
+  'company_contract_model_editor',
   'company_offer_model_approver',
+  'company_contract_model_approver',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -750,9 +754,13 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_document_approver_assignment.revoked',
   'company_document_content_reader_assignment.granted',
   'company_mission_deliverable_access_assignment.granted',
+  'company_contract_signature_declarer_assignment.granted',
+  'company_contract_signature_declarer_assignment.revoked',
+  'company_received_contract_access_assignment.granted',
   'company_task_result_recorder_assignment.granted',
   'company_document_content_reader_assignment.revoked',
   'company_mission_deliverable_access_assignment.revoked',
+  'company_received_contract_access_assignment.revoked',
   'company_task_result_recorder_assignment.revoked',
   'company_document_content_uploader_assignment.granted',
   'company_document_content_uploader_assignment.revoked',
@@ -812,9 +820,13 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'client_legal_entity.registered',
   'client_legal_entity.corrected',
   'company_offer_model_editor_assignment.granted',
+  'company_contract_model_editor_assignment.granted',
   'company_offer_model_editor_assignment.revoked',
+  'company_contract_model_editor_assignment.revoked',
   'company_offer_model_approver_assignment.granted',
+  'company_contract_model_approver_assignment.granted',
   'company_offer_model_approver_assignment.revoked',
+  'company_contract_model_approver_assignment.revoked',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
@@ -863,6 +875,8 @@ export const activityLogEvents = pgTable(
               | 'Company Document Approver'
               | 'Company Document Content Reader'
               | 'Company Mission Deliverable Access'
+              | 'Company Contract Signature Declarer'
+              | 'Company Received Contract Access'
               | 'Company Task Result Recorder'
               | 'Company Document Content Uploader'
               | 'Company Project Access'
@@ -871,6 +885,8 @@ export const activityLogEvents = pgTable(
               | 'Company Pricing Configuration'
               | 'Company Pricing User'
               | 'Company Offer Preparer'
+              | 'Company Contract Model Editor'
+              | 'Company Contract Model Approver'
               | 'Company Offer Model Editor'
               | 'Company Offer Model Approver'
               | 'Company Contract Preparer'

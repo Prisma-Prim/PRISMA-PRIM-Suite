@@ -3576,6 +3576,19 @@ received clauses, source contradictions, prices, fiscal treatment, official
 numbering or actual tenant assignments. Generation remains separately scoped;
 no new numbered decision or Iurie answer is claimed.
 
+The 2026-10-25 D10 normalization under
+[#874](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/874) continues that
+standing representative-dossier direction after delivered model-based Contract
+generation and received-PDF preservation.
+[Commercial Workflow§31](release-3-commercial-31-reported-signing-case-acceptance.md)
+owns a bounded attributed human statement of reported signing/concordance/mandate
+and case acceptance against exact preserved sources, and existing Project
+continuation. It keeps unknown/unverified facts explicit, old SIMULATED evidence
+and Offer Client Responses unchanged. This is provisional agent product synthesis,
+not Dan's personal review of exact fields, a new Iurie answer, universal real-use
+signing/acceptance/effect policy, verified mandate/payment or actual tenant grant.
+No new numbered decision or whole-milestone credit is asserted.
+
 ### 34.6 Bounded confirmed-cost first-journey approval — 2026-10-01
 
 Under Dan's 2026-10-01 delegation to complete priority 4, coordinating root product review in [#497](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/497) approves the existing reversible Draft choices and the bounded version/concurrency conventions needed to make them executable. The [Confirmed-Cost Profitability Estimate PRD §11](release-3-confirmed-cost-profitability-estimate-prd.md#11-decision-provenance-and-implementation-boundary) owns the dated decision provenance; its first-journey contract owns observable behavior. Dan's separate 2026-09-30 Contributor/Director permission decision remains owned by the authorization PRD. The Activity Log owner normalizes internal recording only, with no projection or access expansion.

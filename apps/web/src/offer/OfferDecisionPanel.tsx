@@ -1,3 +1,4 @@
+import { useOfferCommandLock } from './use-offer-command-lock';
 import { useEffect, useRef, useState } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -9,7 +10,7 @@ import { useOfferDecisionCopy } from './offer-quality-decision.copy';
 import {
   readOfferDecision,
   type OfferReadView,
-  isIllustrativeOffer,
+  isExecutableOffer,
   type OfferDecisionView,
   type OfferQualityRunView,
 } from './offer-response';
@@ -30,6 +31,7 @@ type State =
 type Attempt = { kind: 'approve' | 'reject'; body: string; key: string };
 
 export function OfferDecisionPanel({
+  onCommandLockChange,
   identity,
   companyId,
   opportunityId,
@@ -37,6 +39,7 @@ export function OfferDecisionPanel({
   onDecision,
   reject,
 }: {
+  onCommandLockChange?: (locked: boolean) => void;
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
@@ -68,11 +71,12 @@ export function OfferDecisionPanel({
       (result) => result.status === 'WARNING',
     ) ?? [];
   const locked = state === 'running' || state === 'uncertain';
+  useOfferCommandLock(locked, onCommandLockChange);
   async function execute(kind: 'approve' | 'reject') {
     if (
       state === 'running' ||
       offer.version.decision ||
-      (kind === 'approve' && !isIllustrativeOffer(offer))
+      (kind === 'approve' && !isExecutableOffer(offer))
     )
       return;
     if (
@@ -125,8 +129,11 @@ export function OfferDecisionPanel({
       } else if (result.status === 'ok') {
         const decision = readOfferDecision(result.value, {
           offerVersionId: offer.version.id,
-          ...(isIllustrativeOffer(offer)
-            ? { ruleSetVersion: offer.version.qualityRuleSetVersion }
+          ...(isExecutableOffer(offer)
+            ? {
+                ruleSet: offer.version.qualityRuleSet,
+                ruleSetVersion: offer.version.qualityRuleSetVersion,
+              }
             : {}),
         });
         attempt.current = undefined;
@@ -165,7 +172,7 @@ export function OfferDecisionPanel({
   return (
     <section className="offer-decision" aria-labelledby="offer-decision-title">
       <h5 id="offer-decision-title">{copy.title}</h5>
-      {isIllustrativeOffer(offer) && <p>{copy.explanation}</p>}
+      {isExecutableOffer(offer) && <p>{copy.explanation}</p>}
       {state !== 'idle' && (
         <p role={state === 'running' ? 'status' : 'alert'}>{copy[state]}</p>
       )}
@@ -193,7 +200,7 @@ export function OfferDecisionPanel({
               ))}
             </fieldset>
           )}
-          {isIllustrativeOffer(offer) && (
+          {isExecutableOffer(offer) && (
             <button
               type="button"
               disabled={locked}

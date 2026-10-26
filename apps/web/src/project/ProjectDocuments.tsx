@@ -1,3 +1,4 @@
+import { hasReceivedContractAccess } from '../documents/received-contract-access';
 import { hasMissionDeliverableAccess } from '../documents/mission-deliverable-access';
 import { useContext, useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
@@ -119,7 +120,9 @@ function ProjectDocumentSession({
         documents: listing.documents.filter(
           (row) =>
             row.document.type === 'questionnaire' ||
-            hasMissionDeliverableAccess(actor.activeCompany),
+            (row.document.type === 'mission-deliverable'
+              ? hasMissionDeliverableAccess(actor.activeCompany)
+              : hasReceivedContractAccess(actor.activeCompany)),
         ),
       },
     };

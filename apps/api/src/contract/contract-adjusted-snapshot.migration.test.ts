@@ -137,7 +137,7 @@ it.skipIf(!databaseUrl)(
             async (table) =>
               (
                 await query(
-                  `SELECT to_jsonb(row_value)${table === 'contract_versions' ? "-'source_offer_version_id'" : ''} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
+                  `SELECT to_jsonb(row_value)${table === 'contract_versions' ? "-ARRAY['source_offer_version_id','model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']" : table === 'contract_decisions' ? "-'review_basis'" : ''} AS value FROM ${table} row_value ORDER BY to_jsonb(row_value)::text`,
                 )
               ).rows,
           ),
