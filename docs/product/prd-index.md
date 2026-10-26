@@ -136,6 +136,13 @@ The Confirmed-Cost Profitability Estimate PRD owns a separate manual-input first
 
 R3B4 is an additive slice, not a dependency of the priority Offer O1 slice. Existing Snapshots remain unchanged; the delivered Offer compatibility slice O8 and its Contract follow-up read, check and render the immutable adjustment trace without repricing it (Commercial Workflow PRD [section 18.2](release-3-commercial-18-offers.md#182-offer-and-offer-version) and [section 19.5](release-3-commercial-19-contracts.md#195-quality-checks-and-offer-concordance)).
 
+The Shared Client PRD's [section 21](release-1-shared-client-prd.md#21-approved-client-commercial-work-overview-894)
+owns the approved bounded Client commercial overview: complete Company-scoped
+discovery and exact continuation into existing commercial work. Parent
+[#893](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/893) tracks ordered
+commercial, mission and Document composition; this contract approves only the
+commercial child, not runtime delivery or the later children.
+
 ## 7. Other later releases
 
 Release 2 and Releases 4–7 remain intentionally skeletal in the Product Vision until priority business evidence arrives. Their current order is:
