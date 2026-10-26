@@ -142,10 +142,16 @@ discovery and exact continuation into existing commercial work. Parent
 [#893](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/893) tracks ordered
 commercial, mission and Document composition. Its
 [section 22](release-1-shared-client-prd.md#22-approved-client-mission-and-task-overview-898)
-owns the next bounded mission/Task overview: complete scoped Project discovery,
+owns the bounded mission/Task overview: complete scoped Project discovery,
 recorded responsibility/lifecycle, deliberate Task preview and exact continuation
-through existing result-review owners. These contracts approve only their named
-children; runtime delivery and later Document readiness require separate proof.
+through existing result-review owners. Its
+[section 23](release-1-shared-client-prd.md#23-approved-client-governed-document-overview-902)
+under #902 owns the third composition contract: existing complete authorized
+Document discovery with local display windows and exact continuation through
+existing Version/history/content owners. Registry §§17–24 retain independent
+family, metadata/content and immutable-original meaning. These contracts approve
+only their named children; runtime delivery requires separate readiness and
+proof, without new governance rules or whole-MVP completion credit.
 
 ## 7. Other later releases
 

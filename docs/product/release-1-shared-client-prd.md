@@ -1,7 +1,7 @@
 # PRD — Release 1 Shared Client
 
-**Status:** Draft — Company Director dossier delivered; governed duplicate-resolution and bounded Client commercial (§21) and mission/Task (§22) overview contracts approved
-**Version:** 0.8
+**Status:** Draft — Company Director dossier delivered; governed duplicate-resolution and bounded Client commercial (§21), mission/Task (§22) and Document (§23) overview contracts approved
+**Version:** 0.9
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant, Company, Shared Client and Authorization PRD; Activity Log PRD
 
@@ -568,3 +568,150 @@ rules, provider/deployment or real data/grants. `MISSION-CLOSE-01` stays solely 
 [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
 for Dan's consolidated email; no question is reissued here. Governed Documents
 remain the next ordered #893 delivery with their own readiness check.
+
+## 23. Approved Client governed-Document overview (#902)
+
+### 23.1 Authority, outcome and public owners
+
+Dan's 2026-10-26 instruction authorizes the three ordered operational Client
+deliveries under [#893](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/893).
+Commercial #896 and missions #900 are delivered. This is delegated, reversible
+composition of existing Document facts and continuation, not a new Iurie answer
+or a new governance policy. The contract must be canonical before its runtime
+child begins; this documentation alone delivers no runtime.
+
+From a readable Client dossier, an authorized user finds that active Company's
+matching Documents, sees their recorded family and working-Version state, then
+opens the exact Document to use its existing Versions, preserved PDF/history and
+independently authorized content. This makes conserved mission and received
+pieces reachable alongside commercial and operational work without another
+editor, downloader or approval workflow.
+
+This section owns only Client composition and exact continuation. [Document
+Registry §§17–24](release-1-document-registry-prd.md#17-approved-working-questionnaire-reference-tracer-239)
+retain every family, original Client, association, metadata, Version,
+Representation, correction, designation and immutable PDF rule, including the
+[received-Contract authority](release-1-document-registry-24-received-contract-pdfs.md).
+Client §11 owns governed original/canonical identity. Authorization §8 and
+CONTEXT/ADR0006 remain authoritative. No Project or Contract association is
+inferred from a filename, label, shared name, legal entity or dossier membership.
+
+### 23.2 Stories, matching and complete local pages
+
+1. A Client reader with current Document metadata authority can find every
+   matching authorized Document in the active Company, including conserved
+   original references after a valid Client union.
+2. The user distinguishes same-named Clients by their exact dossier identities,
+   and sees each Document's literal title, family, original Client label,
+   Company-confidential classification, recorded creation date and working
+   Version's `draft` or `official` status.
+3. The user explicitly advances or returns through fixed 25-row local display
+   windows until every matching Document is reachable, and refreshes the complete
+   source from the beginning after new work or an identity change.
+4. The user opens one exact Document and continues in its existing detail,
+   selectable formal Versions, correction/upload history and exact preserved
+   content under the independent rights those owners require.
+5. A metadata reader without content access still finds and opens the Document;
+   neither filename, checksum, protected PDF identity/history nor bytes are
+   disclosed without content authority. Missing/inaccessible content never
+   becomes an empty Document list or evidence that no file exists.
+6. A user losing a family gate stops seeing/opening that family while authorized
+   sibling families remain reachable. A Client-only user keeps the ordinary
+   dossier without a Document read or hidden count.
+7. A user with pending or uncertain registration/correction/Version work can
+   navigate without replacing that command's original body, target, revision or
+   retry key; an abandoned opening cannot later redirect the user.
+
+Reuse the existing **complete Company Document list**, its live family filtering
+and Client-owned `clientDossierId` projection. Match the current exact dossier
+after that authorized read and before local selection. Preserve its descending
+creation-time/ID order; do not impose a first-N Company truncation, global text
+search, new sort, total or new API/query mode. This is explicit client-side
+display pagination over an already complete read, not server-side Client
+pagination. Each refresh re-evaluates the current Company, original relationship,
+family and dossier projection. Pages are live views, not frozen exports.
+
+Original references are never rewritten. Governed union/reversal and the existing
+readable active or superseded original Client conditions remain with Client and
+Document. A missing optional dossier target cannot be guessed from the original
+label; it does not hide that independently readable Document in its ordinary
+owner. Archived, foreign, unavailable or stale membership does not fall back to
+an unfiltered inline directory. Reads advance no working revision, Client fence,
+receipt, association, designation or Activity Log event.
+
+### 23.3 Independent authority, lifetime and presentation
+
+| Region/action                                 | Existing current authority                                               | Consequence                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Shared dossier                                | Existing Client dossier read                                             | Existing shared identity only                                    |
+| Inline Documents                              | That Client read plus captured Company Document Registrar metadata read  | Only matching authorized metadata and working-Version facts      |
+| Mission/received family                       | Its independent live captured family gate, in addition to ordinary reads | Only that family; it grants no sibling, content or command right |
+| Exact detail, Versions and correction history | Existing Document/Client/family boundaries                               | Existing owner re-reads the exact target                         |
+| Reference or stored PDF/history/download      | Existing separate Representation/content authority                       | Only the exact permitted reference or immutable stored content   |
+| Project/Contract relation or any mutation     | Its existing independent authorities and state/revision/key rules        | No authority comes from the dossier or a list row                |
+
+The ready dossier composes a localized, Company-attributed region in the accepted
+Prisme direction, usable at 1440×900 and 390×844 without horizontal overflow.
+Previous/Next are local and add no I/O. Refresh/retry are explicit. Distinguish
+loading, no matches, empty current window after a set change, unavailable with
+retry, and denied; a failed or denied read must not masquerade as zero Documents.
+Use existing family/status/date presentation. No per-row Version, history,
+content, Project or Contract read is needed for discovery. Existing permitted
+reference fields received from the complete owner read are not rendered as
+inline content links. `official` implies no signature, acceptance, certification,
+knowledge-indexing approval or mission fulfillment.
+
+Capture reads and pending openings by identity/session, actor, Workspace,
+Company, consumed Client/Registrar/family authority, dossier and Client identity
+revision. Abort or ignore retired late 200/403 replies before applying facts or
+access rejections. Local page/refresh/source retirement ends an originating
+queued or unresolved opening; it cannot cancel another owner's command. Family
+loss retires that family's facts and openings, without treating authorized
+siblings or shared Client content as denied. Reference/content/Project/Contract
+grant changes remain independent and do not grant or remove metadata authority.
+
+Exact continuation checks the requested Document ID and active Company, focuses
+its ready detail through an opt-in target, and puts no business identifier in
+URL/history. Existing registration, correction and Version owners retain their
+active-edit and pending/uncertain-command safeguards; an opening waits or is
+retired without rebinding the protected work. Once stable detail is ready, its
+owner revalidates identity/access; the originating inline source no longer owns
+that stable record. Reuse shell identity/union/reversal invalidation signals.
+
+The old Client-to-Documents shortcut and ordinary title/Client text filter retain
+their semantics. Inline discovery adds its own legitimate complete read when the
+dossier becomes ready; this does not authorize redundant list refreshes merely
+from choosing the old shortcut or returning to an already current ordinary list.
+Tests must account explicitly for the new read owner while preserving the
+existing no-mutation and exact identity-filter assertions.
+
+### 23.4 Acceptance, readiness and exclusions
+
+Public UI and existing REST/PostgreSQL seams prove matching across local windows
+behind more than 50 unrelated records, 25-row boundaries/order, same-named
+Clients, union/reversal, original preservation, Workspace/Company and family
+isolation, metadata/content independence and no read writes. Cover empty/error/
+retry/denied states, malformed/foreign data, captured authority loss/regrant,
+identity/context retirement, abort-ignoring late 200/403, exact focus and protected
+registration/correction/Version commands with identical uncertain retries.
+
+Registered actual App/API/synthetic PostgreSQL at both viewports proves Client →
+matching second-window Document → existing formal Versions and exact preserved
+PDF/upload history, including an old official Version and its successor. A real
+synthetic content-grant revocation preserves metadata while denying content.
+Inspect original synthetic screenshots outside source history. Run affected
+Client↔Document, Project↔Document, Version/content, navigation and foundation
+journeys, strict checks and the complete final exact-integration gate after the
+bounded review. No provider, Clerk configuration or manual user test is needed.
+
+Create the narrow runtime child only after this contract merges and fresh
+ownership/readiness checks pass. Existing public owners, explicit synthetic
+grants and disposable PostgreSQL suffice. No new business answer blocks this
+factual slice. [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+remains the sole `MISSION-CLOSE-01` register for Dan's consolidated email.
+
+Excluded: new schema/API/grant/family, duplicate Document or content editor,
+automatic association, new evidence/officialization/approval/retention/numbering/
+signature rules, provider sync or deployment, Template generation, imports,
+OCR/AI, financial/legal/certification/mission fulfillment or closure policy, real
+data/assignments and whole-MVP or operational-activation credit.
