@@ -22,6 +22,7 @@ const CAPTURED_VERSIONS = {
   'Company Project Access': ['v1', 'v2'],
   'Company Task Manager': ['v1'],
   'Company Task Result Recorder': ['v1'],
+  'Company Mission Result Reviewer': ['v1'],
   'Company Service Catalogue': ['v1'],
   'Company Pricing Configuration': ['v1'],
   'Company Pricing User': ['v1'],

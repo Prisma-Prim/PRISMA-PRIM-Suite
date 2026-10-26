@@ -15,8 +15,11 @@ import { CompanyContractSignatureDeclarerAssignmentController } from './access/c
 import { CompanyReceivedContractAccessAssignmentController } from './access/company-received-contract-access-assignment.controller.js';
 import { TaskResultsController } from './task/task-results.controller.js';
 import { CompanyTaskResultRecorderAssignmentController } from './access/company-task-result-recorder-assignment.controller.js';
+import { CompanyMissionResultReviewerAssignmentController } from './access/company-mission-result-reviewer-assignment.controller.js';
 import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
 import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
+import { MissionResultReviewModule } from './project-mission-review/mission-result-review.module.js';
+import { MissionResultReviewController } from './project-mission-review/mission-result-review.controller.js';
 import { ProjectTemplateModule } from './project-template/project-template.module.js';
 import { ProjectTemplateController } from './project-template/project-template.controller.js';
 import { CompanyProjectTemplateUserAssignmentController } from './access/company-project-template-user-assignment.controller.js';
@@ -132,6 +135,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     IdeasModule,
     OperationalRiskModule,
     ProjectTemplateModule,
+    MissionResultReviewModule,
     TaskModule,
     DocumentsModule,
     ProjectModule,
@@ -160,6 +164,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     IdeasController,
     OperationalRiskController,
     ProjectTemplateController,
+    MissionResultReviewController,
     CompanyProjectTemplateUserAssignmentController,
     CompanyProjectTemplateConfigurationAssignmentController,
     CompanyProjectStageAdvancerAssignmentController,
@@ -178,6 +183,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyContractSignatureDeclarerAssignmentController,
     CompanyReceivedContractAccessAssignmentController,
     CompanyTaskResultRecorderAssignmentController,
+    CompanyMissionResultReviewerAssignmentController,
     CompanyDocumentContentUploaderAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,

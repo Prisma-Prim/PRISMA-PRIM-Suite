@@ -592,6 +592,16 @@ export class TaskService {
     await this.projects.read(input.actor, current.projectId);
     return view(current);
   }
+  /** Review owns no Task mutation permission. Acquire after the original Client barrier. */
+  async lockReviewTargetWithinTransaction(input: {
+    actor: ActorContext;
+    taskId: string;
+  }) {
+    await this.access.requireActor(input.actor, false, true);
+    const current = await this.row(input.actor, input.taskId, true);
+    await this.projects.read(input.actor, current.projectId);
+    return view(current);
+  }
   async read(actor: ActorContext, taskIdValue: unknown) {
     const taskId = requireUuid(taskIdValue);
     return this.database.transaction(

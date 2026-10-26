@@ -583,6 +583,17 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'mission-result-reviewer',
+    canonical: 'Company Mission Result Reviewer',
+    version: 'v1',
+    labels: {
+      ro: 'Revizor al rezultatelor misiunii companiei',
+      ru: 'Проверяющий результатов миссии компании',
+      fr: 'Réviseur des résultats de mission de l’entreprise',
+      en: 'Company Mission Result Reviewer',
+    },
+  },
+  {
     value: 'task-result-recorder',
     canonical: 'Company Task Result Recorder',
     version: 'v1',

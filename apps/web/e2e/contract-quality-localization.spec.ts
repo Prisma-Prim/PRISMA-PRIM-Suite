@@ -291,7 +291,7 @@ for (const locale of contractQualityLocales) {
     await expect(
       checks.getByText(locale.warnings, { exact: true }),
     ).toBeVisible();
-    expect(observed.state.attempts).toHaveLength(2);
+    await expect.poll(() => observed.state.attempts.length).toBe(2);
     expect(observed.state.attempts[1]).toEqual(observed.state.attempts[0]);
     expect(observed.state.attempts[0]).toEqual({
       path: qualityPath,

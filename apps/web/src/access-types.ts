@@ -21,6 +21,9 @@ export interface ActorContext {
     taskPermissions?: Array<'task.read' | 'task.manage'>;
     taskPermissionAssignmentId?: string;
     taskPermissionSetVersion?: 'v1';
+    missionResultReviewPermissions?: Array<'project.mission_result.review'>;
+    missionResultReviewerAssignmentId?: string;
+    missionResultReviewerPermissionSetVersion?: 'v1';
     taskResultPermissions?: Array<'task.result.record'>;
     taskResultRecorderAssignmentId?: string;
     taskResultRecorderPermissionSetVersion?: 'v1';

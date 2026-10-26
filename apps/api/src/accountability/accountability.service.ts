@@ -48,6 +48,7 @@ import { DatabaseContext } from '../database/database-context.js';
 import {
   taskEvents,
   taskResultEvents,
+  missionResultReviewEvents,
   tasks,
   projectCreationEvents,
   projectResponsibilityEvents,
@@ -694,6 +695,30 @@ export class AccountabilityService {
       occurredAt: input.occurredAt,
       metadata: { revision: input.revision },
     });
+  }
+  /** Restricted review facts are never projected into ordinary Activity or Task history. */
+  async recordMissionResultReviewEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    batchId: string;
+    reviewRevision: number;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(missionResultReviewEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        projectId: input.projectId,
+        batchId: input.batchId,
+        reviewRevision: input.reviewRevision,
+        action: 'project.mission_result.reviewed',
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: { revision: input.reviewRevision },
+      });
   }
   async recordTaskEvent(input: {
     actor: ActorContext;
@@ -3412,10 +3437,12 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_contract_signature_declarer_assignment.revoked':
     case 'company_received_contract_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
+    case 'company_mission_result_reviewer_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
     case 'company_mission_deliverable_access_assignment.revoked':
     case 'company_received_contract_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.revoked':
+    case 'company_mission_result_reviewer_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':
     case 'company_document_content_uploader_assignment.revoked':
     case 'company_project_assignment.granted':

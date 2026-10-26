@@ -1,14 +1,14 @@
 # Consulting mission obligations, exceptions and closure — D5/D13
 
-**Status:** Approved bounded readiness contract in §13; established directions below authorized by Dan on 2026-10-26. Full certification-closure policy remains unresolved in §12.
+**Status:** Approved bounded readiness (§13) and attributable result-review (§14) contracts under Dan's 2026-10-26 instruction to apply established rules. Certification closure remains unresolved in §12.
 
 **Owner:** Dan Popescu; source-backed preparation under [#879](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/879).
 
 **Parents:** [#820](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/820), Project/Task [#63](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/63).
 
-**Baseline:** main `d90cf4a28291259da08fde65f3b5ec7dceed1bd9`.
+**Behavior baseline:** main `82a3796743777e89bf7c64efb1bb1f77912a8eab`; §13 delivered through #883 / PR #884. The earlier anonymous milestone proof retains its own recorded revision.
 
-Dan explicitly authorized applying the established rules after the source reassessment. This approval is a bounded product decision, not a new Iurie answer or proof of historical work. §13 fully specifies the first independently usable runtime outcome. Existing Project/Task §§23,27,28 retain delivered behavior; subsequent mutation outcomes require their own complete approved vertical contracts. No real assignment, operational model, certification policy or deployment is approved here.
+Dan explicitly authorized applying the established rules after the source reassessment. This approval is a bounded product decision, not a new Iurie answer or proof of historical work. §13 specifies the delivered read-only outcome; §14 fully specifies the next attributable review outcome. Existing Project/Task §§23,27,28 retain delivered behavior; subsequent mutation outcomes require their own complete approved vertical contracts. No real assignment, operational model, certification policy or deployment is approved here.
 
 ## 1. Problem, value and current evidence
 
@@ -110,7 +110,7 @@ bounded completion record.
 ## 3. Proposed actors, scope and authority
 
 Sections 3–9 retain a non-executable mutation blueprint for later qualification.
-Only §13 is the complete approved runtime contract. In particular, the proposed
+Only §§13–14 are complete approved runtime contracts. In particular, the proposed
 completion examples cannot resolve or bypass `MISSION-CLOSE-01`.
 
 All data remains inside one Workspace, Company, Project and its original
@@ -335,7 +335,7 @@ runtime tests listed here are future requirements, not executed proof.
 
 The supplied dossier, email clarifications and existing Sarcina transcriptions are reused. No repeated questionnaire or upload is required. Known source facts, reasoned product synthesis and actual unproved outcomes remain distinct. The broader 105-page Sarcina is used through its existing controlled transcription, not claimed freshly reread; E08 is the different pricing specification.
 
-The immediate runtime frontier is §13's read-only readiness view. It needs no certification-policy answer or new permission, schema, grant or provider. After delivery, qualify the next complete vertical contract for attributable evidence review and guarded opt-in completion, then scoped applicability history; these mutation directions cannot be implemented from incomplete blueprint text alone. No unsupported result format or unreviewed declaration becomes accepted work. The pending certification policy never silently becomes permissive.
+The read-only readiness outcome in §13 is delivered through #883 / PR #884. Attributable human review in §14 is implemented by #887, following the approved #885 contract and the established evidence rules. It needs no answer about closing without certification. Guarded opt-in completion and scoped applicability remain later separately qualified contracts; §§3–9 alone do not authorize their implementation. No unsupported source or unreviewed declaration automatically becomes accepted work. The pending certification policy never silently becomes permissive.
 
 The owner's request to keep outstanding questions durably for one eventual email is recorded in §12. Another agent follows that register, retains its state and reminds Dan when assembling the consolidated request. There is no individual-answer prompt or scheduled email. The completed anonymous ordinary-lifecycle milestone remains delivered.
 
@@ -490,3 +490,229 @@ old replies. Required existing Project/Template/Task/result and ordinary closure
 regressions pass. No new migration/native SQL or runtime mutation test is invented
 for this read-only slice. Targeted local checks, bounded independent review and
 the final exact-source/base/tree integration gate remain mandatory before merge.
+
+## 14. Approved next vertical — record attributable result review (#885)
+
+### Outcome, authority and exclusions
+
+An explicitly authorized human reviews selected activities of the existing copied
+thirteen-activity pilot against their preserved intended results, records one
+attributable judgment and later reopens the exact evidence and basis reviewed.
+The source-backed rule is an acceptance criterion plus appropriate verifiable
+evidence, with reason, author, time and Version history. This implements the
+established direction in §2; it is no new Iurie answer or historical case fact.
+
+One exact §27 declared result is supported. So is an explicit literal reference
+to reported external/physical evidence, consistent with §2A: an absent app PDF
+cannot establish that no actual evidence exists. The application validates the
+record and authorization; the reviewer supplies the judgment. A reported external
+reference does not prove the artifact exists, its contents or later external
+changes. No URL is fetched or treated as authenticated storage.
+
+This outcome records neither mission fulfillment nor certification, contractual
+scope agreement, Client handover/acceptance or a waiver. It does not adopt a policy,
+exclude work, close a Project or change ordinary Task/result/stage operations.
+`MISSION-CLOSE-01` remains unanswered in §12 for the single consolidated email.
+There is no individual prompt or real assignment/data/provider activation.
+
+### Actors, captured authority and scope
+
+The independent opt-in **Company Mission Result Reviewer v1** contains exactly
+`project.mission_result.review`. Its technical code is
+`company_mission_result_reviewer`. Existing Company assignment administration
+explicitly grants/revokes it through current `company.assignment.manage` for an
+active same-Workspace membership and Company. No old captured bundle, Workspace
+ownership, responsibility or migration grants it; null/unknown captures fail
+closed. Iurie is the known first-tenant principal approver, through actual explicit
+application assignment, never a hard-coded identity or automatic grant.
+
+Review commands and committed confirmation require that live captured permission
+plus active Workspace/membership/Company context, Project/original-Client, Task,
+copied-plan and Template User v2 pilot read, and independent Document metadata,
+Mission Deliverable Access and Content Reader authority. Task management, result
+Recorder, upload/designation, Project closing and Company administration are not
+granted by the new role. Reads/history retain all combined read prerequisites
+without requiring Reviewer. The new role adds no ability to read a source.
+
+Only the exact preserved Version 1 pilot and all thirteen unambiguous mapped Tasks are
+eligible. No title join, latest-template lookup, subset model or manually created
+Task becomes a source activity. No-plan/compatible legacy returns `review: null`;
+unknown/corrupt mappings are errors. New review requires an open Project, active
+original Client relationship and selected Tasks done. Closed/superseded-original
+contexts retain current-authorized history and committed confirmation only.
+
+### User stories
+
+1. As a reader, I distinguish no review, an accepted human judgment, requested
+   rework, changed app facts and unavailable review data.
+2. As the authorized reviewer, I inspect each selected preserved criterion and
+   exact readable result before choosing my judgment.
+3. As the reviewer of physical/external evidence, I preserve its concrete literal
+   reference and my basis without manufacturing a §27 PDF declaration.
+4. As a reviewer, I select several eligible activities and submit one explicit
+   judgment/basis, rather than make thirteen compulsory approval clicks.
+5. As a reviewer correcting my judgment, I append a new review while preserving
+   what was judged, by whom and against which exact app facts.
+6. As a reader after Task/result change or PDF succession, I distinguish a stale
+   review from the same current declaration against its exact historical PDF.
+7. As a caller after a lost response, I confirm the identical command under
+   current authority without duplicating review, receipt or event.
+8. As a reader losing evidence or Reviewer access, I retain independent permitted
+   source/Task/result work while protected review data or drafts retire promptly.
+
+### Public command and immutable history
+
+Project/Template owns a narrow mission-review public interface composed with
+existing Project, copied-plan and Task/Document owners. Use
+`POST /projects/:projectId/mission-result-reviews` with an idempotency key.
+The normalized intent contains:
+
+- `expectedReviewRevision`: the observed Project-wide review-stream revision,
+  initially 0; positive bounded revisions thereafter.
+- `outcome`: exactly `ACCEPTED_BY_REVIEWER` or `NEEDS_WORK`, applying to every
+  selected activity; neither means automatic verification or completion.
+- `basis`: mandatory literal trimmed human reasoning, at most 2000 Unicode
+  characters, explaining the judgment against the listed criteria.
+- `items`: one through 13 unique mapped Task identities, normalized into conserved
+  source order. Each has `taskId`, positive `expectedTaskVersion`, nonnegative
+  `expectedResultRevision` and one closed evidence variant below.
+
+`DECLARED_RESULT` identifies the exact current §27 `resultId`; it must match the
+observed result revision and its independently qualified exact frozen reference.
+No latest-PDF retarget is allowed. `EXTERNAL_REPORTED` contains a concrete literal
+`reference` (trimmed, 1–1000 Unicode characters) identifying the evidence as reported,
+including its supplied identifier/version/date/location when known. This reference
+and the human basis remain reported information, not app assurance. Both variants
+consume the independent evidence-read boundary; external reference is no bypass.
+No optional-field bag may admit both variants or an unidentified source.
+
+A material submission appends one immutable batch/revision and its selected rows,
+reviewer identity/captured assignment Version, server time, basis, outcome and exact
+source/mapping plus observed Task title/version and result revision/evidence.
+Each row preserves its previous review reference, if any. The latest judgment per
+activity comes from its newest batch; a batch omitting an activity does not erase
+that activity's prior review. No history update/delete or new Task/result follows.
+
+Workspace/actor/idempotency key identifies the command; its fingerprint includes
+Company, original Project and the complete normalized intent. Identical committed
+confirmation returns the original receipt under current authorization and readable
+original evidence, including after ordinary closure/original-Client supersession.
+Changed intent with the same key conflicts. Replay never rejudges changed evidence. Successful recorded/unchanged
+commands return 201 with `action`, `projectId`, `batchId` and `reviewRevision`;
+identical committed confirmation returns its original action and identities.
+Malformed input is 400; current authorization/privacy refusals retain the owning
+403/404 boundaries; changed/stale facts and unsupported write intent are 409;
+corruption/provider/server failure stays an error, never empty success.
+A fresh key with current expected review revision and an otherwise identical last
+batch by the same reviewer is unchanged: record only its confirmation receipt,
+without another batch, event or Client reference-use increment. A different human
+or materially changed judgment is an attributable new review.
+
+Concurrent competing expected revisions cannot both append the same successor.
+Task reopening/result correction, Project closure, Client union and grant
+revocation/suspension must serialize through the owning public locks/guards.
+Recheck current source, selected done Task versions and current result revisions
+at commit; stale facts conflict without partial facts. Do not compose nested
+DatabaseContext transactions as though they shared a snapshot. Preserve the
+repository's parent/role/Client/Project/Task lock-order contracts; prove both serial
+orders and deterministic contested orderings through public PostgreSQL commands.
+
+### Read projection, evidence and lifetime
+
+`GET /projects/:projectId/mission-result-reviews` returns the exact13 source/current
+Task/result facts and latest review per activity in one repeatable-read snapshot. An authorized empty
+review stream is available at revision 0 with thirteen absent latest judgments;
+it is distinct from unsupported `review: null` and unavailable evidence.
+For a recognized plan and authorized evidence read, return an available projection
+with Project/source identity, stream revision and all thirteen ordered activities. Each
+latest judgment is absent or the immutable batch/row evidence, outcome, basis,
+reviewer/server time and observed app facts. Derive separately whether those
+observed Task/result versions still match current app facts. A Task or declaration
+change makes the prior judgment stale; changing official designation alone never
+retargets or invalidates the same eligible historical PDF reference. External
+changes cannot be inferred from app-version equality.
+
+If independent evidence read is denied, return an unavailable projection without
+revision, decision count/IDs, reviewer/time, basis or evidence details, even when
+no review exists. Source/Task owners retain their independent reads. Corruption,
+missing referenced history and server failure stay errors, never empty/unavailable
+success. `GET /projects/:projectId/mission-result-reviews/history` uses the same
+boundary, bounded 25-batch pages and validated `beforeRevision` cursor, with no
+foreign identifiers/counts leaked by cursors or lookahead. Unsupported history is
+`history: null`; recognized denied evidence is an unavailable history projection.
+Available history carries bounded batches, `hasMore` and `nextBeforeRevision`
+(last returned revision only when more exists, otherwise null). Historical declared
+results are resolved through the Task/Document owner under current authority.
+
+§13 remains the legacy raw Task/declaration diagnostic protocol, without a review
+adjudication. Its `RECORDED_RESULT_NOT_REVIEWED` code denotes a raw declaration
+unassessed by that projection; it must not assert that no separate human review
+exists. The current UI labels that fact as a recorded declaration and presents
+§14's separate current/stale human judgment explicitly. No fulfillment predicate
+may be derived from the raw diagnostic codes. Existing consumers retain the five
+raw codes; ordinary Task/result/source APIs and records retain their contracts.
+
+The existing Project detail exposes a localized review region and exact current
+criteria/evidence, selection and explicit outcome/basis, clear external-reported
+wording, immutable history and explicit reload. It reuses existing exact Task/PDF
+navigation and shared four-locale copy; source, reference and basis stay literal.
+No review control appears without its current write prerequisites. Preparing a
+review requires current eligible facts, not an old cached projection. Conflict
+requires reload/review; uncertain submission preserves only the identical bounded
+retry intent until authority/scope changes retire it. Bind the selected criteria,
+evidence and observed app versions when preparing the intent. A later reload or
+observed Task/result change cannot silently retarget an old judgment/basis to new
+facts; mark it stale and require a deliberate new review/selection.
+
+Scope/identity/Project and consumed capture changes abort/retire held reads,
+commands, literal evidence/basis drafts and protected projections immediately;
+revoke/regrant cannot restore an old reply. Reviewer-only loss preserves permitted
+review-history and source/Task/result reads; evidence-only loss does not remount unrelated owners.
+Locale/frame/sibling navigation preserves work whose consumed authority is
+unchanged, without new requests or events merely for presentation changes.
+Loading, unsupported, empty, denied, unavailable, malformed/server failure, stale,
+conflict, pending, uncertain, confirmed and closed-history states are distinct.
+
+### Native integrity, Activity and compatibility
+
+Use additive reviewed Drizzle/SQL migrations for bounded batches/items/receipts
+and the captured role. Native scope/source/actor/result and predecessor constraints
+must reject foreign, unmapped, duplicate, mismatched or forged coupled facts;
+selected counts stay 1–13 and evidence variants remain constructive. Historical
+observed versions do not prevent legitimate future Task/result changes. Seal
+append-only review history and require its corresponding immutable command/event
+facts without accepting partial commits. No role backfill or Project enrollment.
+
+Each material review appends internal `project.mission_result.reviewed`, targeting
+the Company-owned review batch, with actor/server time and review revision only.
+It shares the transaction with rows, receipt and original Client reference-use
+fence. Denied, failed, unchanged and replayed intent emits none. The event exposes
+no basis, evidence, result identifiers or criteria through ordinary Activity/Task
+history; protected public review history owns them. There is no new ordinary
+Activity projection. Assignment grant/revoke events use the existing minimal
+bundle-label administration convention exactly once per actual transition.
+
+Genuine previous-schema upgrade and repeat-upgrade preserve existing Projects,
+Tasks, copied plans, exact result/PDF history, receipts/events, old captured roles
+and ordinary completion. This contract creates no real assignment or runtime;
+its complete independent implementation child follows documentation delivery.
+
+### Acceptance and verification
+
+Public PostgreSQL REST proves explicit grant/revoke and captured-version refusal,
+all thirteen mapping, both evidence variants and outcomes, bulk review/history, unchanged
+and same-key/changed-intent replay, reload/current-versus-stale distinctions,
+exact formerly official PDF retention, closure/original-Client-supersession history,
+privacy and unsupported/corrupt scope. Native integrity and coupled rollback are
+proved without mocking owners. Deterministically test both serial and contested
+orders for competing keys, Task/result mutation, closure, union and revocation.
+Restart twice; compare conserved facts before/after real previous-schema upgrade
+and repeat upgrade. Unknown role versions and no historical grants fail closed.
+
+Actual App at 1440×900/390×844 proves explicit multi-activity judgment, a literal
+external reference, exact declared-evidence navigation, current/stale history,
+uncertain identical retry and no duplicates, held old replies across relevant
+capture/identity/Project changes, independent work preservation and locale/frame
+behavior. Existing source/Task/result/ordinary closure regressions remain required.
+Targeted checks, bounded independent review and final exact-source/current-base/tree
+integration proof precede merge; proposed tests here are not execution evidence.

@@ -37,13 +37,13 @@ export const missionReadinessMessages = defineMessages(keys, {
     openTask: 'Open Task',
     unavailable: 'Result evidence unavailable under current access.',
     notRecorded: 'No result recorded in the application.',
-    recorded: 'Recorded declaration; not reviewed.',
+    recorded: 'Recorded declaration.',
     history: 'Closed Project: historical diagnostic view.',
     WORK_OPEN: 'Work open',
     WORK_CANCELLED: 'Work cancelled; not fulfilled',
     EVIDENCE_UNAVAILABLE: 'Task done; evidence unavailable',
     RESULT_NOT_RECORDED: 'Task done; no recorded result',
-    RECORDED_RESULT_NOT_REVIEWED: 'Task done; recorded result not reviewed',
+    RECORDED_RESULT_NOT_REVIEWED: 'Task done; recorded declaration',
   },
   fr: {
     title: 'État de préparation de la mission',
@@ -60,14 +60,13 @@ export const missionReadinessMessages = defineMessages(keys, {
     openTask: 'Ouvrir la tâche',
     unavailable: 'Preuve du résultat inaccessible avec les droits actuels.',
     notRecorded: 'Aucun résultat enregistré dans l’application.',
-    recorded: 'Déclaration enregistrée ; non revue.',
+    recorded: 'Déclaration enregistrée.',
     history: 'Projet clôturé : vue de diagnostic historique.',
     WORK_OPEN: 'Travail ouvert',
     WORK_CANCELLED: 'Travail annulé ; non accompli',
     EVIDENCE_UNAVAILABLE: 'Tâche terminée ; preuve inaccessible',
     RESULT_NOT_RECORDED: 'Tâche terminée ; aucun résultat enregistré',
-    RECORDED_RESULT_NOT_REVIEWED:
-      'Tâche terminée ; résultat enregistré non revu',
+    RECORDED_RESULT_NOT_REVIEWED: 'Tâche terminée ; déclaration enregistrée',
   },
   ro: {
     title: 'Starea pregătirii misiunii',
@@ -85,14 +84,13 @@ export const missionReadinessMessages = defineMessages(keys, {
     unavailable:
       'Dovada rezultatului nu este accesibilă cu drepturile actuale.',
     notRecorded: 'Niciun rezultat înregistrat în aplicație.',
-    recorded: 'Declarație înregistrată; nerevizuită.',
+    recorded: 'Declarație înregistrată.',
     history: 'Proiect închis: vizualizare diagnostică istorică.',
     WORK_OPEN: 'Lucrare deschisă',
     WORK_CANCELLED: 'Lucrare anulată; neîndeplinită',
     EVIDENCE_UNAVAILABLE: 'Sarcină finalizată; dovadă inaccesibilă',
     RESULT_NOT_RECORDED: 'Sarcină finalizată; niciun rezultat înregistrat',
-    RECORDED_RESULT_NOT_REVIEWED:
-      'Sarcină finalizată; rezultat înregistrat nerevizuit',
+    RECORDED_RESULT_NOT_REVIEWED: 'Sarcină finalizată; declarație înregistrată',
   },
   ru: {
     title: 'Готовность миссии',
@@ -109,14 +107,13 @@ export const missionReadinessMessages = defineMessages(keys, {
     openTask: 'Открыть задачу',
     unavailable: 'Доказательство результата недоступно с текущими правами.',
     notRecorded: 'Результат не записан в приложении.',
-    recorded: 'Декларация записана; не проверена.',
+    recorded: 'Декларация записана.',
     history: 'Закрытый проект: исторический диагностический обзор.',
     WORK_OPEN: 'Работа открыта',
     WORK_CANCELLED: 'Работа отменена; не выполнена',
     EVIDENCE_UNAVAILABLE: 'Задача завершена; доказательство недоступно',
     RESULT_NOT_RECORDED: 'Задача завершена; результат не записан',
-    RECORDED_RESULT_NOT_REVIEWED:
-      'Задача завершена; записанный результат не проверен',
+    RECORDED_RESULT_NOT_REVIEWED: 'Задача завершена; декларация записана',
   },
 });
 export function useMissionReadinessCopy() {

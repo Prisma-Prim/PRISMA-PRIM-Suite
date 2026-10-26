@@ -42,61 +42,64 @@ export class MissionReadinessService {
 
   async read(actor: ActorContext, projectId: string) {
     return this.database.transaction(
-      async () => {
-        const { template } = await this.templates.readWithinTransaction(
-          actor,
-          projectId,
-        );
-        if (!template || template.templateKey !== PILOT_TEMPLATE_KEY)
-          return { assessment: null };
-        if (
-          template.version !== 1 ||
-          template.activities.length !== 13 ||
-          new Set(template.activities.map((row) => row.taskId)).size !== 13
-        )
-          throw new Error('Invalid stored mission activity mapping.');
-        const project = await this.projects.read(actor, projectId);
-        const activities = [];
-        for (const activity of template.activities) {
-          const current = await this.results.readinessWithinTransaction(
-            actor,
-            activity.taskId,
-          );
-          if (current.task.projectId !== projectId)
-            throw new Error('Invalid stored mission Task Project.');
-          activities.push({
-            key: activity.key,
-            title: activity.title,
-            activity: activity.activity,
-            intendedResult: activity.intendedResult,
-            task: {
-              id: current.task.id,
-              title: current.task.title,
-              status: current.task.status,
-              version: current.task.version,
-            },
-            result: current.result,
-            state: missionActivityState(current),
-          });
-        }
-        return {
-          assessment: {
-            kind: 'DIAGNOSTIC_ONLY' as const,
-            project: { id: project.id, status: project.status },
-            source: {
-              templateKey: template.templateKey,
-              version: template.version,
-              title: template.title,
-            },
-            clarification: {
-              state: 'BUSINESS_CLARIFICATION_PENDING' as const,
-              questionId: 'MISSION-CLOSE-01' as const,
-            },
-            activities,
-          },
-        };
-      },
+      () => this.readWithinTransaction(actor, projectId),
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
     );
+  }
+
+  /** Caller owns the snapshot when composing governed mission evidence. */
+  async readWithinTransaction(actor: ActorContext, projectId: string) {
+    const { template } = await this.templates.readWithinTransaction(
+      actor,
+      projectId,
+    );
+    if (!template || template.templateKey !== PILOT_TEMPLATE_KEY)
+      return { assessment: null };
+    if (
+      template.version !== 1 ||
+      template.activities.length !== 13 ||
+      new Set(template.activities.map((row) => row.taskId)).size !== 13
+    )
+      throw new Error('Invalid stored mission activity mapping.');
+    const project = await this.projects.read(actor, projectId);
+    const activities = [];
+    for (const activity of template.activities) {
+      const current = await this.results.readinessWithinTransaction(
+        actor,
+        activity.taskId,
+      );
+      if (current.task.projectId !== projectId)
+        throw new Error('Invalid stored mission Task Project.');
+      activities.push({
+        key: activity.key,
+        title: activity.title,
+        activity: activity.activity,
+        intendedResult: activity.intendedResult,
+        task: {
+          id: current.task.id,
+          title: current.task.title,
+          status: current.task.status,
+          version: current.task.version,
+        },
+        result: current.result,
+        state: missionActivityState(current),
+      });
+    }
+    return {
+      assessment: {
+        kind: 'DIAGNOSTIC_ONLY' as const,
+        project: { id: project.id, status: project.status },
+        source: {
+          templateKey: template.templateKey,
+          version: template.version,
+          title: template.title,
+        },
+        clarification: {
+          state: 'BUSINESS_CLARIFICATION_PENDING' as const,
+          questionId: 'MISSION-CLOSE-01' as const,
+        },
+        activities,
+      },
+    };
   }
 }

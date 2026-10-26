@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page, type Locator } from '@playwright/test';
+import { enterClassicCompatibility } from './classic-compatibility';
 import { selectOption } from './select-option';
 
 const origin = 'http://127.0.0.1:4174/api';
@@ -346,13 +347,14 @@ test('inspects mission readiness without accepting work and preserves independen
     membershipId = text(process.env.ACCEPTANCE_PRIMARY_MEMBERSHIP_ID);
   const headers = { ...ada, 'x-company-context-id': companyId },
     title = `Mission readiness DEMO ${narrow ? 'narrow' : 'desktop'}`;
+  // Global setup owns the Project Document Organizer grant.
   const bundles = [
+    'mission-result-reviewer',
     'project-template-user',
     'mission-deliverable-access',
     'document-content-reader',
     'document-content-uploader',
     'document-approver',
-    'document-project-organizer',
     'task-result-recorder',
   ];
   const granted = new Set<string>();
@@ -509,7 +511,7 @@ test('inspects mission readiness without accepting work and preserves independen
       readiness.getByText('Work cancelled; not fulfilled', { exact: true }),
     ).toBeVisible();
     await expect(
-      readiness.getByText('Task done; recorded result not reviewed', {
+      readiness.getByText('Task done; recorded declaration', {
         exact: true,
       }),
     ).toBeVisible();
@@ -525,6 +527,106 @@ test('inspects mission readiness without accepting work and preserves independen
         { exact: true },
       ),
     ).toBeVisible();
+    const reviewRegion = projects.locator('.mission-result-review');
+    await expect(reviewRegion).toHaveAccessibleName('Mission result review');
+    await expect(reviewRegion.getByRole('checkbox')).toHaveCount(13);
+    await reviewRegion
+      .getByRole('checkbox', { name: 'Select activity — CT_AN01', exact: true })
+      .check();
+    await reviewRegion
+      .getByRole('checkbox', { name: 'Select activity — CT_AN03', exact: true })
+      .check();
+    await reviewRegion
+      .getByRole('textbox', {
+        name: 'Literal external reference — CT_AN01',
+        exact: true,
+      })
+      .fill('Physical register {literal} DEMO887');
+    await reviewRegion
+      .getByRole('combobox', { name: 'Review outcome', exact: true })
+      .selectOption('ACCEPTED_BY_REVIEWER');
+    await reviewRegion
+      .getByRole('textbox', { name: 'Shared review basis', exact: true })
+      .fill('Reviewed literal criteria and exact declared evidence DEMO887');
+    const sent: Array<{ body: string | null; key: string | undefined }> = [];
+    let loseFirstConfirmation = true;
+    const reviewPattern = `**/api/projects/${projectId}/mission-result-reviews`;
+    await page.route(reviewPattern, async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      sent.push({
+        body: route.request().postData(),
+        key: route.request().headers()['idempotency-key'],
+      });
+      if (loseFirstConfirmation) {
+        loseFirstConfirmation = false;
+        const committed = await route.fetch();
+        expect(committed.status()).toBe(201);
+        await route.abort('failed');
+      } else await route.continue();
+    });
+    await reviewRegion
+      .getByRole('button', { name: 'Record human review', exact: true })
+      .click();
+    await expect(
+      reviewRegion.getByRole('button', {
+        name: 'Retry identical review',
+        exact: true,
+      }),
+    ).toBeVisible();
+    const presentationRequests: string[] = [];
+    const countPresentation = (request: { url(): string }) => {
+      if (
+        request.url().includes(`/projects/${projectId}/mission-result-reviews`)
+      )
+        presentationRequests.push(request.url());
+    };
+    page.on('request', countPresentation);
+    for (const locale of ['ro', 'ru', 'fr', 'en']) {
+      await selectOption(page.locator('#interface-locale'), locale);
+      await expect(reviewRegion.locator('textarea')).toHaveValue(
+        'Reviewed literal criteria and exact declared evidence DEMO887',
+      );
+      await expect(
+        reviewRegion.locator('input:not([type="checkbox"])'),
+      ).toHaveValue('Physical register {literal} DEMO887');
+    }
+    if (narrow)
+      await page.getByRole('button', { name: 'Open navigation' }).click();
+    await enterClassicCompatibility(page);
+    await expect(reviewRegion.locator('textarea')).toHaveValue(
+      'Reviewed literal criteria and exact declared evidence DEMO887',
+    );
+    await page.getByRole('button', { name: 'Try Prisme' }).click();
+    if (narrow)
+      await expect(
+        page.getByRole('button', { name: 'Open navigation' }),
+      ).toBeVisible();
+    expect(presentationRequests).toEqual([]);
+    page.off('request', countPresentation);
+    await reviewRegion
+      .getByRole('button', { name: 'Retry identical review', exact: true })
+      .click();
+    await expect(
+      reviewRegion.getByText('Review confirmed.', { exact: true }),
+    ).toBeVisible();
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual(sent[0]);
+    await page.unroute(reviewPattern);
+    await expect(
+      reviewRegion.getByText('Observed app facts still match', { exact: true }),
+    ).toHaveCount(2);
+    const reviewed = record(
+      await (
+        await page.request.get(
+          `${origin}/projects/${projectId}/mission-result-reviews/history`,
+          { headers },
+        )
+      ).json(),
+    );
+    expect(record(reviewed.history).batches).toHaveLength(1);
+    await reviewRegion.screenshot({
+      path: info.outputPath('mission-human-review.png'),
+    });
     await readiness
       .getByRole('button', { name: 'Open Task — CT_AN03', exact: true })
       .click();
@@ -536,6 +638,14 @@ test('inspects mission readiness without accepting work and preserves independen
       pdf,
     );
     await post(`/tasks/${first}/reopen`, { expectedVersion: 2 });
+    await reviewRegion
+      .getByRole('button', { name: 'Reload review', exact: true })
+      .click();
+    await expect(
+      reviewRegion.getByText('App facts changed; review again', {
+        exact: true,
+      }),
+    ).toHaveCount(1);
     await readiness
       .getByRole('button', { name: 'Reload mission readiness', exact: true })
       .click();
