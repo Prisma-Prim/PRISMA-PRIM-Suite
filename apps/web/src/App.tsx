@@ -44,6 +44,7 @@ import { CompanyContextSelector } from './company/CompanyContextSelector';
 import { CompanyRegistration } from './company/CompanyRegistration';
 import { ClientWorkspace } from './client/ClientWorkspace';
 import { ClientCommercialOverview } from './commercial-intake/ClientCommercialOverview';
+import { ClientMissionOverview } from './project/ClientMissionOverview';
 import {
   CommercialIntakeWorkspace,
   type RequestedVersion,
@@ -171,8 +172,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   }, [documentsContext]);
   // A requested Project open belongs to the context that keys the Projects
   // owner. A session, Client authority or Company change, or the loss of the
-  // Projects section, retires it for good; a Client identity change does not,
-  // because the Project id is stable.
+  // Projects section, retires it for good. Ordinary targets keep their stable
+  // Project id across Client identity changes; inline Client openings also
+  // carry their originating region's independent source signal.
   const projectRequestContext =
     access.status === 'active' && canAccessProjectsSection(access.actor)
       ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
@@ -576,6 +578,24 @@ export function App({ identity }: { identity: BrowserIdentity }) {
                   });
                   navigateToSection('projects');
                 }
+              : undefined
+          }
+          renderMissionWork={
+            canReadCompanyClients && openProject
+              ? (clientDossierId) => (
+                  <ClientMissionOverview
+                    actor={access.actor}
+                    identity={identity}
+                    clientDossierId={clientDossierId}
+                    clientIdentityRevision={clientIdentityGeneration}
+                    onOpenProject={(target, sourceSignal) =>
+                      openProject({ ...target, sourceSignal })
+                    }
+                    onCompanyContextRejected={rejectCompanyContext}
+                    onActorRevalidated={acceptRevalidatedActor}
+                    onWorkspaceAccessRejected={rejectWorkspaceAccess}
+                  />
+                )
               : undefined
           }
           onOpenDocuments={

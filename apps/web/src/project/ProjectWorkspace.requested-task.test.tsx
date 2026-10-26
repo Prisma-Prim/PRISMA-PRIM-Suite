@@ -293,12 +293,19 @@ function renderWorkspace() {
   );
   const view = render(workspace());
   return {
-    request(owner: typeof atelierProject, task: TaskRow, requestId: number) {
+    request(
+      owner: typeof atelierProject,
+      task: TaskRow,
+      requestId: number,
+      sourceSignal?: AbortSignal,
+    ) {
       current = {
         kind: 'project',
         projectId: owner.id,
         taskId: task.id,
         requestId,
+        sourceSignal,
+        focus: sourceSignal ? 'task' : undefined,
       };
       view.rerender(workspace());
     },
@@ -366,6 +373,65 @@ async function startRegistration(server: ReturnType<typeof taskServer>) {
 }
 
 describe('Requested Task opens', () => {
+  it.each([200, 403])(
+    'retires the inline Task read before an abort-ignoring late %s reply',
+    async (status) => {
+      const server = taskServer();
+      const workspace = renderWorkspace();
+      await screen.findByRole('button', { name: betaRow });
+      const source = new AbortController();
+      server.hold(taskRead(taskTwo));
+      workspace.request(betaProject, taskTwo, 1, source.signal);
+      const held = await server.requested(taskRead(taskTwo));
+      await act(async () => source.abort());
+      expect(held.signal?.aborted).toBe(true);
+      await server.release(
+        taskRead(taskTwo),
+        status === 200
+          ? Response.json({ mutable: true, task: taskTwo })
+          : new Response(null, { status }),
+      );
+      expect(
+        within(tasksPanel()).queryByRole('heading', { name: taskTwo.title }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: betaRow })).toBeInTheDocument();
+      expect(screen.queryByText(taskCopy.denied)).not.toBeInTheDocument();
+    },
+  );
+
+  it('abandons an inline Task queued behind a command while preserving its exact uncertain retry', async () => {
+    const server = taskServer();
+    const workspace = renderWorkspace();
+    const tasks = await chooseTask(betaRow, taskOne);
+    changeValue(
+      within(tasks).getByLabelText('Task title'),
+      'Corrected preparation notes',
+    );
+    server.hold(taskEdit(taskOne));
+    fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+    const command = await server.requested(taskEdit(taskOne));
+    const source = new AbortController();
+    workspace.request(betaProject, taskTwo, 1, source.signal);
+    await waitFor(() => expect(server.count(betaProjectRead)).toBe(2));
+    await settle();
+    await act(async () => source.abort());
+    expect(command.signal?.aborted).toBe(false);
+    await server.release(
+      taskEdit(taskOne),
+      new Response(null, { status: 500 }),
+    );
+    const retry = await within(tasksPanel()).findByRole('button', {
+      name: taskCopy.retry,
+    });
+    expect(server.count(taskRead(taskTwo))).toBe(0);
+    fireEvent.click(retry);
+    await waitFor(() => expect(server.count(taskEdit(taskOne))).toBe(2));
+    const [first, retried] = server.requests(taskEdit(taskOne));
+    expect(first?.key).toBeTruthy();
+    expect(retried?.key).toBe(first?.key);
+    expect(retried?.body).toBe(first?.body);
+  });
+
   it.each([
     { visit: 'never opened', prepare: async () => undefined, reads: 1 },
     {
@@ -443,23 +509,55 @@ describe('Requested Task opens', () => {
     },
   );
 
-  it('forwards the Task target only into its own Project', async () => {
+  it.each(['Project', 'Company'])(
+    'refuses an exact opening response for another %s before selecting any detail',
+    async (mismatch) => {
+      const server = taskServer();
+      const workspace = renderWorkspace();
+      await screen.findByRole('button', { name: betaRow });
+      server.replyOnce(betaProjectRead, () =>
+        Response.json(
+          mismatch === 'Project'
+            ? atelierProject
+            : { ...betaProject, companyId: 'other-company' },
+        ),
+      );
+
+      workspace.request(betaProject, taskTwo, 1);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        loadOrSaveError,
+      );
+      expect(openedDetail()).not.toBeInTheDocument();
+      await settle();
+
+      expect(server.count(taskRead(taskTwo))).toBe(0);
+      expect(server.count(taskRead(atelierTask))).toBe(0);
+      expect(
+        screen.queryByRole('heading', { name: taskTwo.title }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('keeps an already opened inline Task independent while its eligible-member lookup is still pending', async () => {
     const server = taskServer();
     const workspace = renderWorkspace();
     await screen.findByRole('button', { name: betaRow });
-    server.replyOnce(betaProjectRead, () => Response.json(atelierProject));
-
-    workspace.request(betaProject, taskTwo, 1);
-    await waitFor(() =>
-      expect(detailClient()).toBe(`Client: ${atelier.displayName}`),
-    );
-    await settle();
-
-    expect(server.count(taskRead(taskTwo))).toBe(0);
-    expect(server.count(taskRead(atelierTask))).toBe(0);
-    expect(
-      within(tasksPanel()).queryByRole('heading', { name: taskTwo.title }),
-    ).not.toBeInTheDocument();
+    const members = 'GET /api/projects/project-beta/eligible-task-assignees';
+    server.hold(members);
+    const source = new AbortController();
+    workspace.request(betaProject, taskTwo, 1, source.signal);
+    const detail = await openedTask(taskTwo);
+    const auxiliary = await server.requested(members);
+    const heading = within(detail).getByRole('heading', {
+      name: taskTwo.title,
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    await act(async () => source.abort());
+    expect(heading).toBeVisible();
+    expect(heading).toHaveFocus();
+    expect(auxiliary.signal?.aborted).toBe(false);
+    await server.release(members);
+    expect(heading).toBeVisible();
   });
 
   it.each([

@@ -114,6 +114,7 @@ export function ClientDossierPanel({
   onOpenDocuments,
   onOpenRequests,
   renderCommercialWork,
+  renderMissionWork,
 }: {
   clientAccountId: string | undefined;
   companyContextId: string;
@@ -130,6 +131,7 @@ export function ClientDossierPanel({
   onOpenDocuments?: (client: { id: string; displayName: string }) => void;
   onOpenRequests?: (client: { id: string; displayName: string }) => void;
   renderCommercialWork?: (clientDossierId: string) => ReactNode;
+  renderMissionWork?: (clientDossierId: string) => ReactNode;
 }) {
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const copy = useClientDossierCopy();
@@ -570,6 +572,7 @@ export function ClientDossierPanel({
         </section>
       </div>
       {renderCommercialWork?.(dossier.id)}
+      {renderMissionWork?.(dossier.id)}
       <ClientLegalEntities
         key={dossier.id}
         clientAccountId={dossier.id}

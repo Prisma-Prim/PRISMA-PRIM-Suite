@@ -208,8 +208,8 @@ function renderWorkspace(
   const view = render(workspace(revision, current));
   return {
     openDossier,
-    request(projectId: string, requestId: number) {
-      current = { kind: 'project', projectId, requestId };
+    request(projectId: string, requestId: number, sourceSignal?: AbortSignal) {
+      current = { kind: 'project', projectId, requestId, sourceSignal };
       view.rerender(workspace(revision, current));
     },
     directory(client: typeof atelier, requestId: number) {
@@ -249,6 +249,84 @@ async function startRegistration(server: ReturnType<typeof projectServer>) {
 }
 
 describe('Requested Project opens', () => {
+  it('keeps current detail when identity revalidation returns the same Project id under a foreign Company', async () => {
+    const server = projectServer();
+    const workspace = renderWorkspace();
+    fireEvent.click(await screen.findByRole('button', { name: betaRow }));
+    await waitFor(() =>
+      expect(detailClient()).toBe(`Client: ${beta.displayName}`),
+    );
+    server.hold(betaDetail);
+    workspace.deliver(1);
+    await server.release(
+      betaDetail,
+      Response.json({
+        ...betaProject,
+        companyId: 'other-company',
+        clientDisplayName: 'Foreign confidential Client',
+      }),
+    );
+    await screen.findByText(loadOrSaveError);
+    expect(detailClient()).toBe(`Client: ${beta.displayName}`);
+    expect(
+      screen.queryByText('Foreign confidential Client'),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([200, 403])(
+    'retires a pending inline opening before its late %s response can affect Project state',
+    async (status) => {
+      const server = projectServer();
+      const workspace = renderWorkspace();
+      await screen.findByRole('button', { name: betaRow });
+      const source = new AbortController();
+      server.hold(atelierDetail);
+      workspace.request(atelierProject.id, 1, source.signal);
+      const held = await server.requested(atelierDetail);
+      await act(async () => source.abort());
+      expect(held.signal?.aborted).toBe(true);
+      await server.release(
+        atelierDetail,
+        status === 200
+          ? Response.json(atelierProject)
+          : new Response(null, { status }),
+      );
+      expect(openedDetail()).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: betaRow })).toBeInTheDocument();
+      expect(screen.queryByText(deniedMessage)).not.toBeInTheDocument();
+    },
+  );
+
+  it.each([false, true])(
+    'abandons a queued inline target without cancelling registration or changing its uncertain retry (later directory: %s)',
+    async (laterDirectory) => {
+      const server = projectServer();
+      const workspace = renderWorkspace();
+      const registration = await startRegistration(server);
+      const source = new AbortController();
+      workspace.request(atelierProject.id, 1, source.signal);
+      if (laterDirectory) workspace.directory(beta, 2);
+      await act(async () => source.abort());
+      expect(registration.signal?.aborted).toBe(false);
+      await server.release(
+        'POST /api/projects',
+        new Response(null, { status: 500 }),
+      );
+      await settle();
+      expect(server.count(atelierDetail)).toBe(0);
+      expect(screen.getByLabelText('Project title')).toHaveValue(
+        registeredProject.title,
+      );
+      expect(screen.getByLabelText('Client')).toHaveValue(beta.id);
+      fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+      await waitFor(() => expect(server.count('POST /api/projects')).toBe(2));
+      const [first, retry] = server.requests('POST /api/projects');
+      expect(first?.key).toBeTruthy();
+      expect(retry?.key).toBe(first?.key);
+      expect(retry?.body).toBe(first?.body);
+    },
+  );
+
   it('opens a directly requested closed Project while its row stays hidden by the default filter', async () => {
     projectServer();
     const workspace = renderWorkspace();

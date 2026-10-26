@@ -1,5 +1,6 @@
 import { changeValue } from './test/select-option';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -86,6 +87,8 @@ function actorFor(companyId: string): ActorContext {
       clientPermissionAssignmentId: 'assignment-1',
       clientPermissionSetVersion: 'v2',
       projectPermissions: ['project.read'],
+      projectPermissionAssignmentId: 'project-assignment-1',
+      projectPermissionSetVersion: 'v2',
       taskPermissions: ['task.read', 'task.manage'],
       taskPermissionAssignmentId: 'task-assignment-1',
       taskPermissionSetVersion: 'v1',
@@ -101,6 +104,7 @@ function installTransport(options: { united?: boolean } = {}) {
   const state = {
     united: options.united ?? false,
     projectListReads: 0,
+    clientProjectListReads: 0,
     projectDetailReads: 0,
   };
   const projectsFor = (companyId: string | null) =>
@@ -138,6 +142,32 @@ function installTransport(options: { united?: boolean } = {}) {
       if (path.endsWith('/projects')) {
         state.projectListReads += 1;
         return respond(projectsFor(companyContextId));
+      }
+      if (path.includes('/projects?clientDossierId=')) {
+        state.clientProjectListReads += 1;
+        const url = new URL(path, 'http://localhost');
+        const clientDossierId = url.searchParams.get('clientDossierId');
+        return respond({
+          companyId: companyContextId,
+          clientDossierId,
+          offset: Number(url.searchParams.get('offset') ?? 0),
+          pageSize: 25,
+          hasMore: false,
+          items: projectsFor(companyContextId)
+            .filter(
+              (project) =>
+                (project.clientDossierId ?? project.clientAccountId) ===
+                clientDossierId,
+            )
+            .map((project) => ({
+              ...project,
+              clientDossierId,
+              responsible: {
+                workspaceMembershipId: membershipId,
+                displayLabel: 'Recorded mission coordinator',
+              },
+            })),
+        });
       }
       if (path.endsWith('/projects?view=mine_open')) {
         state.projectListReads += 1;
@@ -342,6 +372,88 @@ describe('Client dossier and Project navigation through App', () => {
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
   });
+
+  it('discovers recorded Client missions inline and opens the exact existing Project', async () => {
+    const transport = installTransport();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await screen.findByRole('navigation', { name: 'Primary navigation' });
+    const dossier = await openDossier(firstClient.displayName);
+    const missions = await within(dossier).findByRole('region', {
+      name: 'Client missions',
+    });
+    expect(
+      await within(missions).findByText('Recorded mission coordinator'),
+    ).toBeVisible();
+    fireEvent.click(
+      within(missions).getByRole('button', {
+        name: `Open Project: ${historicalProject.title}`,
+      }),
+    );
+    await within(projectsRegion()).findByRole('article', {
+      name: historicalProject.title,
+    });
+    await waitFor(() =>
+      expect(
+        within(projectsRegion()).getByRole('heading', {
+          name: historicalProject.title,
+        }),
+      ).toHaveFocus(),
+    );
+    expect(transport.clientProjectListReads).toBe(1);
+    expect(transport.projectDetailReads).toBe(1);
+    expect(window.location.hash).toBe('#projects');
+  });
+
+  it.each([200, 403])(
+    'retires the actual inline opening on union before a late %s can affect the newer dossier',
+    async (status) => {
+      installTransport();
+      const originalFetch = globalThis.fetch;
+      const held: Array<{
+        answer: (value: Response) => void;
+        signal: AbortSignal | null | undefined;
+      }> = [];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+          if (input.toString().endsWith(`/projects/${historicalProject.id}`))
+            return new Promise<Response>((answer) =>
+              held.push({ answer, signal: init?.signal }),
+            );
+          return originalFetch(input, init);
+        }),
+      );
+      render(<App identity={deterministicBrowserIdentity()} />);
+      await screen.findByRole('navigation', { name: 'Primary navigation' });
+      const dossier = await openDossier(firstClient.displayName);
+      fireEvent.click(
+        await within(dossier).findByRole('button', {
+          name: `Open Project: ${historicalProject.title}`,
+        }),
+      );
+      await waitFor(() => expect(held).toHaveLength(1));
+      navigateTo('Clients');
+      const canonical = await uniteFirstIntoSecond(dossier);
+      const current = held[0];
+      if (!current) throw new Error('Expected held exact opening.');
+      expect(current.signal?.aborted).toBe(true);
+      await act(async () =>
+        current.answer(
+          status === 200
+            ? respond(historicalProject)
+            : new Response(null, { status }),
+        ),
+      );
+      expect(canonical).toBeVisible();
+      navigateTo('Projects');
+      await waitFor(() => expect(projectRows()).toEqual([historicalRow]));
+      expect(
+        within(projectsRegion()).queryByRole('article', {
+          name: historicalProject.title,
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('lists the superseded Client’s Project from the canonical dossier and returns there, keeping the Task draft', async () => {
     const transport = installTransport();

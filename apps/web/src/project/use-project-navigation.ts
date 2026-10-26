@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 /** Task focus requires an exact Task identity. */
-export type ProjectOpenTarget = { projectId: string } & (
-  { taskId?: string; focus?: undefined } | { taskId: string; focus: 'task' }
+export type ProjectOpenTarget = {
+  projectId: string;
+  sourceSignal?: AbortSignal;
+} & (
+  | { taskId?: string; focus?: undefined }
+  | { taskId: string; focus: 'task' }
+  | { taskId?: undefined; focus: 'project' }
 );
 
 export type ProjectNavigationIntent =

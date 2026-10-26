@@ -64,6 +64,7 @@ type SelectedProject = {
   project: ProjectView;
   identityRevision: number;
   requestedTask?: RequestedTask;
+  requestedProjectFocusId?: number;
 };
 type Registration = {
   title: string;
@@ -90,7 +91,10 @@ type Feedback =
 type ProjectRequest =
   | {
       kind: 'open';
+      projectId: string;
       requestedTask?: RequestedTask & { projectId: string };
+      sourceSignal?: AbortSignal;
+      requestedProjectFocusId?: number;
     }
   | { kind: 'register'; command: Registration };
 export function ProjectWorkspace({
@@ -178,6 +182,8 @@ export function ProjectWorkspace({
   >(navigation?.kind === 'project' ? navigation : undefined);
   if (navigation?.kind === 'project') latestProjectRequest.current = navigation;
   const appliedNavigation = useRef<number | undefined>(undefined);
+  const projectHeading = useRef<HTMLHeadingElement>(null);
+  const focusedProjectRequest = useRef<number | undefined>(undefined);
   const identityRevision = useRef(clientIdentityRevision);
   identityRevision.current = clientIdentityRevision;
   const retry = useRef<Registration | null>(null);
@@ -286,7 +292,8 @@ export function ProjectWorkspace({
         if (
           result.status !== 'ok' ||
           !isProject(result.value) ||
-          result.value.id !== staleProjectId
+          result.value.id !== staleProjectId ||
+          result.value.companyId !== companyId
         )
           throw new Error('Refresh failed');
         const project = result.value;
@@ -347,17 +354,45 @@ export function ProjectWorkspace({
       consumedProjectRequest.current = requestedProject.requestId;
       return;
     }
+    if (requestedProject.sourceSignal?.aborted) {
+      consumedProjectRequest.current = requestedProject.requestId;
+      return;
+    }
     if (pending && registering.current) return;
     consumedProjectRequest.current = requestedProject.requestId;
-    const { projectId, taskId, requestId, focus } = requestedProject;
-    void run(`/projects/${encodeURIComponent(projectId)}`, {
+    const { projectId, taskId, requestId, focus, sourceSignal } =
+      requestedProject;
+    void run({
       kind: 'open',
+      projectId,
+      sourceSignal,
+      requestedProjectFocusId: focus === 'project' ? requestId : undefined,
       requestedTask:
         taskId === undefined
           ? undefined
-          : { projectId, taskId, requestId, focus },
+          : {
+              projectId,
+              taskId,
+              requestId,
+              focus: focus === 'task' ? 'task' : undefined,
+              sourceSignal,
+            },
     });
   }, [navigation, load.kind, pending]);
+
+  useEffect(() => {
+    const focusId = selected?.requestedProjectFocusId;
+    if (focusId === undefined || focusId === focusedProjectRequest.current)
+      return;
+    const frame = window.requestAnimationFrame(() => {
+      const heading = projectHeading.current;
+      if (!heading?.isConnected) return;
+      focusedProjectRequest.current = focusId;
+      heading.scrollIntoView?.({ block: 'start' });
+      heading.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selected]);
 
   /**
    * Re-reads the opened Project after a confirmed lifecycle change or an
@@ -398,7 +433,8 @@ export function ProjectWorkspace({
       if (
         result.status !== 'ok' ||
         !isProject(result.value) ||
-        result.value.id !== projectId
+        result.value.id !== projectId ||
+        result.value.companyId !== companyId
       )
         throw new Error('Refresh failed');
       const project = result.value;
@@ -419,15 +455,29 @@ export function ProjectWorkspace({
         directory.refreshMineAfterChange();
     }
   }
-  async function run(
-    path: string,
-    projectRequest: ProjectRequest = { kind: 'open' },
-  ) {
+  async function run(projectRequest: ProjectRequest) {
+    const path =
+      projectRequest.kind === 'open'
+        ? `/projects/${encodeURIComponent(projectRequest.projectId)}`
+        : projectRequest.command.source.kind === 'template'
+          ? '/projects/from-template'
+          : '/projects';
     const command =
       projectRequest.kind === 'register' ? projectRequest.command : undefined;
+    const sourceSignal =
+      projectRequest.kind === 'open' ? projectRequest.sourceSignal : undefined;
+    if (sourceSignal?.aborted) return;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
+    const retireSourceRead = () => {
+      controller.abort();
+      if (request.current === controller) {
+        request.current = null;
+        setPending(false);
+      }
+    };
+    sourceSignal?.addEventListener('abort', retireSourceRead, { once: true });
     registering.current = command !== undefined;
     let phase: 'preparing' | 'sent' | 'confirmed' = 'preparing';
     const startedUnder = identityRevision.current;
@@ -436,6 +486,7 @@ export function ProjectWorkspace({
     setFeedback(null);
     try {
       const api = await createAuthenticatedApiClient(identity);
+      if (controller.signal.aborted) return;
       phase = 'sent';
       const result = await api.request<unknown>(path, {
         companyContextId: companyId,
@@ -478,7 +529,13 @@ export function ProjectWorkspace({
         } else deny();
         return;
       }
-      if (result.status !== 'ok' || !isProject(result.value)) {
+      if (
+        result.status !== 'ok' ||
+        !isProject(result.value) ||
+        (projectRequest.kind === 'open' &&
+          (result.value.id !== projectRequest.projectId ||
+            result.value.companyId !== companyId))
+      ) {
         setFeedback(
           command?.source.kind === 'template'
             ? templateCreationMessage(result)
@@ -494,12 +551,14 @@ export function ProjectWorkspace({
         setSelected({
           project: result.value,
           identityRevision: startedUnder,
+          requestedProjectFocusId: projectRequest.requestedProjectFocusId,
           requestedTask:
             target?.projectId === result.value.id
               ? {
                   taskId: target.taskId,
                   requestId: target.requestId,
                   focus: target.focus,
+                  sourceSignal: target.sourceSignal,
                 }
               : undefined,
         });
@@ -535,6 +594,7 @@ export function ProjectWorkspace({
             : 'error',
         );
     } finally {
+      sourceSignal?.removeEventListener('abort', retireSourceRead);
       if (!controller.signal.aborted) setPending(false);
     }
   }
@@ -564,10 +624,7 @@ export function ProjectWorkspace({
             source,
           };
     retry.current = command;
-    void run(
-      source.kind === 'template' ? '/projects/from-template' : '/projects',
-      { kind: 'register', command },
-    );
+    void run({ kind: 'register', command });
   }
   function moveDetailTab(
     event: KeyboardEvent<HTMLButtonElement>,
@@ -750,7 +807,7 @@ export function ProjectWorkspace({
                   type="button"
                   disabled={pending}
                   onClick={() =>
-                    void run(`/projects/${encodeURIComponent(project.id)}`)
+                    void run({ kind: 'open', projectId: project.id })
                   }
                 >
                   <span>{project.title}</span>{' '}
@@ -853,7 +910,13 @@ export function ProjectWorkspace({
               <p className="project-detail-status">
                 <ProjectStatusLabel status={selected.project.status} />
               </p>
-              <h3 id="selected-project-title">{selected.project.title}</h3>
+              <h3
+                id="selected-project-title"
+                tabIndex={-1}
+                ref={projectHeading}
+              >
+                {selected.project.title}
+              </h3>
               <p className="project-detail-client">
                 {copy.clientPrefix} {selected.project.clientDisplayName}
               </p>
@@ -877,7 +940,13 @@ export function ProjectWorkspace({
             </div>
           ) : (
             <>
-              <h3 id="selected-project-title">{selected.project.title}</h3>
+              <h3
+                id="selected-project-title"
+                tabIndex={-1}
+                ref={projectHeading}
+              >
+                {selected.project.title}
+              </h3>
               <p className="project-detail-status">
                 <ProjectStatusLabel status={selected.project.status} />
               </p>
