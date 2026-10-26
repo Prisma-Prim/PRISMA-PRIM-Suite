@@ -3,6 +3,7 @@ import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { Select } from '../presentation/Select';
+import { MissionResultReview } from './MissionResultReview';
 import { MissionReadiness } from './MissionReadiness';
 import { useProjectTemplateCopy } from './project-template.copy';
 import { useProjectTemplateVersionCopy } from './project-template-version.copy';
@@ -456,13 +457,22 @@ export function ProjectTemplatePlan({
       {planView}
       {load.kind === 'ready' &&
         load.template?.templateKey === pilotTemplateKey && (
-          <MissionReadiness
-            actor={actor}
-            identity={identity}
-            projectId={projectId}
-            plan={load.template}
-            onOpenTask={onOpenTask}
-          />
+          <>
+            <MissionResultReview
+              actor={actor}
+              identity={identity}
+              projectId={projectId}
+              plan={load.template}
+              onOpenTask={onOpenTask}
+            />
+            <MissionReadiness
+              actor={actor}
+              identity={identity}
+              projectId={projectId}
+              plan={load.template}
+              onOpenTask={onOpenTask}
+            />
+          </>
         )}
     </>
   );

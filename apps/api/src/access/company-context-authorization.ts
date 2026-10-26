@@ -33,6 +33,7 @@ import {
   COMPANY_TASK_MANAGER_BUNDLE,
   taskPermissionsFor,
   taskResultPermissionsFor,
+  missionResultReviewPermissionsFor,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE,
   COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
   COMPANY_DOCUMENT_APPROVER_BUNDLE,
@@ -42,6 +43,7 @@ import {
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   receivedContractPermissionsFor,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
   missionDeliverablePermissionsFor,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   documentApproverPermissionsFor,
@@ -156,6 +158,41 @@ export class CompanyContextAuthorization {
       true,
     );
     return company.id;
+  }
+
+  async requireMissionResultReviewer(actor: ActorContext) {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company?.missionResultReviewPermissions?.includes(
+        'project.mission_result.review',
+      ) ||
+      company.missionResultReviewerPermissionSetVersion !== 'v1' ||
+      !company.missionResultReviewerAssignmentId
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, company.id, true);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(
+          companyRoleAssignments.id,
+          company.missionResultReviewerAssignmentId,
+        ),
+        eq(
+          companyRoleAssignments.bundle,
+          COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+        ),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      true,
+    );
+    return {
+      companyId: company.id,
+      assignmentId: company.missionResultReviewerAssignmentId,
+      permissionSetVersion: 'v1' as const,
+    };
   }
 
   async requireIdeasAccess(
@@ -1539,6 +1576,7 @@ export class CompanyContextAuthorization {
         COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE,
         COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
         COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+        COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
@@ -1682,6 +1720,16 @@ export class CompanyContextAuthorization {
         ];
         company.taskResultRecorderAssignmentId = row.assignmentId;
         company.taskResultRecorderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_MISSION_RESULT_REVIEWER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.missionResultReviewPermissions = [
+          ...missionResultReviewPermissionsFor(row.permissionSetVersion),
+        ];
+        company.missionResultReviewerAssignmentId = row.assignmentId;
+        company.missionResultReviewerPermissionSetVersion = 'v1';
       }
       if (row.bundle === COMPANY_DOCUMENT_REGISTRAR_BUNDLE) {
         if (!isDocumentPermissionSetVersion(row.permissionSetVersion)) continue;

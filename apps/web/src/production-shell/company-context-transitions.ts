@@ -118,6 +118,8 @@ export interface OrdinaryActivityLogEvent {
     | 'company_received_contract_access_assignment.revoked'
     | 'company_mission_deliverable_access_assignment.granted'
     | 'company_mission_deliverable_access_assignment.revoked'
+    | 'company_mission_result_reviewer_assignment.granted'
+    | 'company_mission_result_reviewer_assignment.revoked'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_task_result_recorder_assignment.revoked'
     | 'company_document_content_reader_assignment.granted'

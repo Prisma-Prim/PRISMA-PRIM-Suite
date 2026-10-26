@@ -87,6 +87,13 @@ export const projectTemplateTaskCopies = pgTable(
     position: integer('position').notNull(),
   },
   (table) => [
+    uniqueIndex('project_template_task_copies_review_scope_unique').on(
+      table.workspaceId,
+      table.companyId,
+      table.projectId,
+      table.taskId,
+      table.position,
+    ),
     uniqueIndex('project_template_task_copies_task_unique').on(
       table.workspaceId,
       table.companyId,

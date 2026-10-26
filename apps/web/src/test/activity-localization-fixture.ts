@@ -555,6 +555,19 @@ export const activityEventsByAction = {
     action: 'company_mission_deliverable_access_assignment.granted',
     target: targets.company_role_assignment,
   },
+  'company_mission_result_reviewer_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_mission_result_reviewer_assignment.granted',
+    action: 'company_mission_result_reviewer_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_mission_result_reviewer_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_mission_result_reviewer_assignment.revoked',
+    action: 'company_mission_result_reviewer_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+
   'company_task_result_recorder_assignment.granted': {
     ...ordinary,
     id: 'event-company_task_result_recorder_assignment.granted',

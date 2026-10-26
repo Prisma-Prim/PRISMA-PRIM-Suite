@@ -27,6 +27,7 @@ import type {
   CompanyProjectTemplateConfigurationPermission,
   CompanyProjectStagePermission,
   TaskResultPermission,
+  MissionResultReviewPermission,
 } from './company-permissions.js';
 import type { IdeasActorProjection } from './ideas-captured-grants.js';
 import type { ContractModelActorProjection } from './contract-model-captured-grants.js';
@@ -72,6 +73,9 @@ export interface ActiveCompanyContext
   taskResultPermissions?: TaskResultPermission[];
   taskResultRecorderAssignmentId?: string;
   taskResultRecorderPermissionSetVersion?: 'v1';
+  missionResultReviewPermissions?: MissionResultReviewPermission[];
+  missionResultReviewerAssignmentId?: string;
+  missionResultReviewerPermissionSetVersion?: 'v1';
   taskPermissions?: Array<'task.read' | 'task.manage'>;
   taskPermissionAssignmentId?: string;
   taskPermissionSetVersion?: 'v1';
