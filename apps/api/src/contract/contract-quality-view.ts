@@ -1,3 +1,4 @@
+import { readModelContractQualityResults } from './model-contract-quality.js';
 import {
   contractQualityRuns,
   contractVersions,
@@ -14,6 +15,24 @@ export function qualityRunView(
   version: VersionRow,
   contract: typeof contracts.$inferSelect,
 ): ContractQualityRun {
+  if (version.provenance === 'COMPANY_MODEL_OFFER') {
+    if (
+      contract.origin !== 'COMPANY_MODEL_OFFER' ||
+      row.ruleSet !== 'CONTRACT_QUALITY_COMPANY_MODEL' ||
+      row.ruleSetVersion !== 1 ||
+      row.contractVersionId !== version.id
+    )
+      throw new Error('Invalid model Contract rule set binding.');
+    return {
+      id: row.id,
+      contractVersionId: row.contractVersionId,
+      ruleSet: row.ruleSet,
+      ruleSetVersion: 1,
+      actorWorkspaceMembershipId: row.actorWorkspaceMembershipId,
+      evaluatedAt: row.evaluatedAt.toISOString(),
+      results: readModelContractQualityResults(row.results),
+    };
+  }
   if (
     row.ruleSet !== 'CONTRACT_QUALITY_ILLUSTRATIVE' ||
     (row.ruleSetVersion !== 1 &&

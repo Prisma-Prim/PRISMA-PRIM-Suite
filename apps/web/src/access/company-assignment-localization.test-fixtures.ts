@@ -286,6 +286,50 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'offer-model-editor',
+    canonical: 'Company Offer Model Editor',
+    version: 'v1',
+    labels: {
+      ro: 'Editor al modelelor de ofertă ale companiei',
+      ru: 'Редактор шаблонов предложений компании',
+      fr: 'Éditeur des modèles d’offre de la société',
+      en: 'Company Offer Model Editor',
+    },
+  },
+  {
+    value: 'offer-model-approver',
+    canonical: 'Company Offer Model Approver',
+    version: 'v1',
+    labels: {
+      ro: 'Aprobator al modelelor de ofertă ale companiei',
+      ru: 'Утверждающий шаблоны предложений компании',
+      fr: 'Approbateur des modèles d’offre de la société',
+      en: 'Company Offer Model Approver',
+    },
+  },
+  {
+    value: 'contract-model-editor',
+    canonical: 'Company Contract Model Editor',
+    version: 'v1',
+    labels: {
+      ro: 'Editor al modelelor de contract ale companiei',
+      ru: 'Редактор шаблонов договоров компании',
+      fr: 'Éditeur des modèles de contrat de la société',
+      en: 'Company Contract Model Editor',
+    },
+  },
+  {
+    value: 'contract-model-approver',
+    canonical: 'Company Contract Model Approver',
+    version: 'v1',
+    labels: {
+      ro: 'Aprobator al modelelor de contract ale companiei',
+      ru: 'Утверждающий шаблоны договоров компании',
+      fr: 'Approbateur des modèles de contrat de la société',
+      en: 'Company Contract Model Approver',
+    },
+  },
+  {
     value: 'contract-preparer',
     canonical: 'Company Contract Preparer',
     version: 'v1',
@@ -437,6 +481,28 @@ export const assignmentBundleCases = [
       ru: 'Регистратор документов компании',
       fr: 'Responsable de l’enregistrement des documents de la société',
       en: 'Company Document Registrar',
+    },
+  },
+  {
+    value: 'contract-signature-declarer',
+    canonical: 'Company Contract Signature Declarer',
+    version: 'v1',
+    labels: {
+      en: 'Company Contract Signature Declarer',
+      fr: 'Déclarant de signature du contrat de la société',
+      ro: 'Declarant al semnării Contractului în Companie',
+      ru: 'Декларант подписания Договора Компании',
+    },
+  },
+  {
+    value: 'received-contract-access',
+    canonical: 'Company Received Contract Access',
+    version: 'v1',
+    labels: {
+      en: 'Company Received Contract Access',
+      fr: 'Accès aux contrats reçus de la société',
+      ro: 'Acces la contractele primite ale companiei',
+      ru: 'Доступ к полученным договорам компании',
     },
   },
   {

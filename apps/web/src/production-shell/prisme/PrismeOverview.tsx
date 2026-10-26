@@ -49,6 +49,8 @@ export function SectionIcon({
     requests: ClipboardList,
     catalogue: BookOpen,
     pricing: SlidersHorizontal,
+    'offer-models': BookOpen,
+    'contract-models': BookOpen,
     activity: Activity,
     invitations: Mail,
   };

@@ -206,6 +206,20 @@ Its attributable transitions are
 `company_mission_deliverable_access_assignment.granted` and `.revoked`, following
 the existing Company assignment event/metadata convention with no real grants.
 
+The [received Contract PDF family](release-1-document-registry-24-received-contract-pdfs.md)
+adds separate opt-in **Company Received Contract Access v1**, containing exactly
+`document.received_contract.access`. Existing Company assignment administration
+explicitly grants/revokes captured `v1` for an active same-Workspace membership
+and active Company under current `company.assignment.manage`; null/unknown
+captures fail closed. Existing grants, repeated grants, migration and bootstrap
+never add it implicitly. Its events are
+`company_received_contract_access_assignment.granted` and `.revoked`, with the
+existing bundle-label-only metadata. This gate grants no ordinary metadata,
+content, registration, Version, Approver, Contract/Opportunity, Project or
+administration permission. Section 24 owns the additional family and independent
+two-end relation-read consequences, including live revocation before replay and
+after scanning. No real assignments are created.
+
 The [provisional Opportunity next-action update](release-3-commercial-16-opportunity-next-action.md#16-approved-provisional-opportunity-next-action-update-306)
 adds `commercial.opportunity.next_action.update` only through captured
 **Company Commercial Intake v2**. Intake v1 remains exactly the four read and
@@ -270,9 +284,9 @@ failed attempt record none. These events attribute the transition only; neither
 recording nor reading them confers `commercial.activity.read` or any commercial
 read, and the bundle's permission semantics above are unchanged.
 
-The [approved-estimate internal Offer preparation contract (§26)](release-3-commercial-26-estimate-offer-preparation.md#264-independent-current-authority), authorized by Dan's D6 continuation under #840 on 2026-10-24, adds **Company Offer Preparer v2**. It preserves v1's `commercial.offer.read`, `commercial.offer.prepare`, `commercial.offer.transmission.record` and `commercial.pricing.snapshot.read`, adding exactly `commercial.offer.estimate.prepare`. New grants capture v2; active v1, repeated grants and old receipts retain v1 until explicit revocation and fresh grant. Null/unknown captures fail closed. Grant/revoke uses the existing Company-scoped administrator, active-membership and minimal bundle-label event convention; no backfill or automatic grant occurs.
+The [approved-estimate internal Offer preparation contract (§26)](release-3-commercial-26-estimate-offer-preparation.md#264-independent-current-authority), authorized by Dan's D6 continuation under #840 on 2026-10-24, adds **Company Offer Preparer v2**. It preserves v1's `commercial.offer.read`, `commercial.offer.prepare`, `commercial.offer.transmission.record` and `commercial.pricing.snapshot.read`, adding exactly `commercial.offer.estimate.prepare`. At that slice's introduction new grants captured v2; active v1, repeated grants and old receipts retained v1 until explicit revocation and fresh grant. Section28 below adds a later capture without changing those historical assignments. Null/unknown captures fail closed. Grant/revoke uses the existing Company-scoped administrator, active-membership and minimal bundle-label event convention; no backfill or automatic grant occurs.
 
-The new handoff requires live v2 plus independent estimate read (Contributor v1 or Director v1), current Opportunity visibility and the ordinary Offer/Client prerequisites. v2 grants none of those independent reads, estimate creation/decision, Offer approval, Contract or cross-Company authority. Existing Snapshot authority and both profitability bundles remain unchanged. Ordinary current Offer readers may read an already frozen internal draft's amount/currency and approved-source stamp, without gaining cost, margin, target, strategic rationale or economic event/history access. Revoking economic read therefore denies new handoffs and mutation replay while preserving independently authorized commercial content reads. §26 owns the complete states and source eligibility; an estimate approval never supplies Offer approval or transmission authority.
+The handoff requires live v2 or its compatible v3 successor plus independent estimate read (Contributor v1 or Director v1), current Opportunity visibility and the ordinary Offer/Client prerequisites. Neither capture grants those independent reads, estimate creation/decision, Offer approval, Contract or cross-Company authority. Existing Snapshot authority and both profitability bundles remain unchanged. Ordinary current Offer readers may read an already frozen internal draft's amount/currency and approved-source stamp, without gaining cost, margin, target, strategic rationale or economic event/history access. Revoking economic read therefore denies new handoffs and mutation replay while preserving independently authorized commercial content reads. §26 owns the complete states and source eligibility; an estimate approval never supplies Offer approval or transmission authority.
 
 The bounded [Company consulting Offer model contract (§27)](release-3-commercial-27-company-offer-model.md#274-independent-authority)
 adds two independent opt-in Company bundles under Dan's 2026-10-24 continuation
@@ -287,6 +301,66 @@ Director, pricing, Document and Workspace-owner grants confer neither bundle.
 These grants provide no Company context, commercial/client/price/cost read,
 Activity read, external-use or administration authority. Section 27 owns their
 complete independent model-read/mutation and lifecycle contract.
+
+The bounded [Company consulting Contract model contract (§29.4)](release-3-commercial-29-company-contract-model.md#294-independent-company-authority)
+adds independent opt-in **Company Contract Model Editor v1**, with exactly
+`commercial.contract.model.read` and `commercial.contract.model.version.create`,
+and **Company Contract Model Approver v1**, with exactly
+`commercial.contract.model.read`, `commercial.contract.model.decide` and
+`commercial.contract.model.withdraw`. Existing Company assignment administration,
+active membership/context and captured-version refusal apply. No old grant,
+Offer model role, Director/Workspace ownership or ordinary Contract capability
+substitutes; neither bundle grants those independent business reads/actions,
+Activity read or administration. No seed/backfill/automatic assignment occurs.
+Section29 owns the exact configuration lifecycle and replay authority.
+The separate [generated Contract contract (§30.5)](release-3-commercial-30-model-contract-generation.md#305-independent-authority-and-selected-model-projection)
+adds Company Contract Preparer v2 (preserves v1; adds exactly
+`commercial.contract.model.select` and `commercial.contract.model_based.prepare`)
+and Company Contract Approver v2 (preserves v1; adds exactly
+`commercial.contract.model_based.approve`). Fresh grants capture v2; old active v1,
+repeated grants and historical receipts remain v1 until explicit revoke/fresh
+grant. Null/unknown versions fail closed. No seed/backfill/automatic assignment.
+Selection exposes only the currently approved complete same-Company model/stamp,
+not configuration history or private decision notes. New preparation/decisions
+require the ordinary and additional permissions plus independent current source
+reads defined by §30. Copied Contract reads retain ordinary Contract/Opportunity
+authority without granting source catalogues or costs. Internal approval while
+this distinct source is pending never supplies signing or Offer acceptance;
+Early Preparation v1 and its existing accepted-source execution gate stay intact.
+
+The separate [reported-signing declaration contract (§31.5)](release-3-commercial-31-reported-signing-case-acceptance.md#315-independent-authority-and-safe-reads)
+adds opt-in **Company Contract Signature Declarer v1**, containing exactly
+`commercial.contract.signature.declare_external`. Existing Company assignment
+administration explicitly grants/revokes capturedv1; null/unknown/revoked captures
+fail closed. No old assignment, repeated grant, migration/bootstrap or other role
+expands. Its attributable transitions are
+`company_contract_signature_declarer_assignment.granted` / `.revoked`, following
+the existing Company bundle-label-only convention. It grants no ordinary
+Contract/signature/source/Client/Document/content/Project/Activity/context or
+administration rights. Section31 owns the complete independent mutation/read
+matrix; a stored declaration does not require this write grant or PDF access for
+subsequent independently authorized Project linking. No real grant is authorized.
+
+The separate [approved-model Offer generation contract (§28.5)](release-3-commercial-28-model-offer-generation.md#285-independent-authority-and-selected-model-projection)
+adds **Company Offer Preparer v3**, preserving v2 and adding exactly
+`commercial.offer.model.select`, `commercial.offer.model_based.prepare` and
+`commercial.offer.model_based.transmission.record`, and **Company Offer Approver
+v2**, preserving v1 and adding exactly `commercial.offer.model_based.approve` and
+`commercial.offer.model_based.response.record`. New grants capture these versions;
+active older captures, repeated grants and old receipts do not expand. Explicit
+revocation/fresh grant is required; all delivered earlier checks accept the new
+capture for its preserved permissions. No new bundle label, assignment event,
+backfill or real-tenant grant is introduced.
+
+Selection exposes only the active approved same-Company model and permitted
+content/stamp for Offer preparation, never configuration history or decision notes.
+Preparing a generated Offer also requires independent estimate/Opportunity/Client
+authority; the grants confer no such authority or model editing/decision/withdrawal.
+New-mode check/decision/transmission/response commands require §28's additional
+opt-in permissions as well as their ordinary permissions. Ordinary Offer readers
+may read the already frozen model/commercial/declaration content without live
+configuration or economic read. Section28 owns complete source, replay, checks and
+non-official simulated eligibility; older internal drafts remain ineligible.
 
 Dan's 2026-09-30 Product Owner decision for [#488](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/488) adds two separate opt-in bundles for the [approved first confirmed-cost profitability journey](release-3-confirmed-cost-profitability-estimate-prd.md):
 

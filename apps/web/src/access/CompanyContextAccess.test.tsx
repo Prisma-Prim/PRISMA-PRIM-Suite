@@ -478,7 +478,7 @@ describe('CompanyContextAccess', () => {
     },
     {
       name: 'an unknown Contract Approver version',
-      assignment: { bundle: 'Company Contract Approver', version: 'v2' },
+      assignment: { bundle: 'Company Contract Approver', version: 'v3' },
     },
     {
       name: 'an unknown Director Client version',

@@ -9,6 +9,8 @@ import type {
   CompanyPricingConfigurationPermission,
   CompanyPricingUserPermission,
   CompanyOfferPermission,
+  CompanyOfferPreparerPermissionSetVersion,
+  CompanyOfferApproverPermissionSetVersion,
   CompanyContractPermission,
   CompanyPricingAdjustmentPermission,
   CompanyCommercialActivityPermission,
@@ -27,6 +29,8 @@ import type {
   TaskResultPermission,
 } from './company-permissions.js';
 import type { IdeasActorProjection } from './ideas-captured-grants.js';
+import type { ContractModelActorProjection } from './contract-model-captured-grants.js';
+import type { OfferModelActorProjection } from './offer-model-captured-grants.js';
 
 export interface ExternalPrincipal {
   provider: string;
@@ -41,7 +45,11 @@ export type WorkspacePermission =
   | 'client.manage'
   | 'member.invite';
 
-export interface ActiveCompanyContext extends IdeasActorProjection {
+export interface ActiveCompanyContext
+  extends
+    IdeasActorProjection,
+    OfferModelActorProjection,
+    ContractModelActorProjection {
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];
@@ -50,6 +58,10 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   documentPermissionAssignmentId?: string;
   missionDeliverableAccessAssignmentId?: string;
   missionDeliverableAccessPermissionSetVersion?: 'v1';
+  contractSignatureDeclarerAssignmentId?: string;
+  contractSignatureDeclarerPermissionSetVersion?: 'v1';
+  receivedContractAccessAssignmentId?: string;
+  receivedContractAccessPermissionSetVersion?: 'v1';
   /** The live captured Company Document Approver assignment, if any. */
   documentApproverAssignmentId?: string;
   documentApproverPermissionSetVersion?: 'v1';
@@ -85,14 +97,14 @@ export interface ActiveCompanyContext extends IdeasActorProjection {
   contractEarlyPreparationAssignmentId?: string;
   contractEarlyPreparationPermissionSetVersion?: 'v1';
   contractPermissionAssignmentId?: string;
-  contractPermissionSetVersion?: 'v1';
+  contractPermissionSetVersion?: 'v1' | 'v2';
   contractApproverAssignmentId?: string;
-  contractApproverPermissionSetVersion?: 'v1';
+  contractApproverPermissionSetVersion?: 'v1' | 'v2';
   offerPermissions?: CompanyOfferPermission[];
   offerPermissionAssignmentId?: string;
-  offerPermissionSetVersion?: 'v1' | 'v2';
+  offerPermissionSetVersion?: CompanyOfferPreparerPermissionSetVersion;
   offerApproverAssignmentId?: string;
-  offerApproverPermissionSetVersion?: 'v1';
+  offerApproverPermissionSetVersion?: CompanyOfferApproverPermissionSetVersion;
   pricingAdjustmentPermissions?: CompanyPricingAdjustmentPermission[];
   pricingAdjustmentPermissionAssignmentId?: string;
   pricingAdjustmentPermissionSetVersion?: 'v1';

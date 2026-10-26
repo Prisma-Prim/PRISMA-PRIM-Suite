@@ -1269,3 +1269,13 @@ certification/training approval, real source import/grants/providers, commercial
 content/prices/numbering/signatures and deployment remain separate. No unresolved
 real numbering, legal or certification decision blocks this anonymous planning
 mechanism; none is silently decided by it.
+
+## 29. Draft mission obligations, exceptions and closure proposal (#879)
+
+The [separate D5/D13 proposal](release-1-mission-obligations-prd.md) is Draft,
+ready for product review with decisions A–C pending. It owns only proposed
+obligation progress, reasoned applicability and reviewed consulting completion.
+It does not amend approved §§20,23,27,28, classify existing Tasks as mandatory,
+enable pilot stage advancement or authorize runtime work. The completed anonymous
+milestone remains delivered. Normalize any approved extension and its cross-cutting
+authority before creating a ready implementation child.

@@ -198,3 +198,28 @@ The registered `personal-attention.acceptance.spec.ts` exercises the actual page
 exact Task completion/reload, four locales and styled controls at 1440px and 390px.
 Original viewport screenshots use `testInfo.outputPath` at the Home entry, page
 header/controls and exact Task; generated evidence remains outside Git.
+
+## Company consulting Offer model — issue #847
+
+`#offer-models` admits only a currently captured Company Offer Model Editor or
+Approver, independently of pricing and commercial intake. The bounded Romanian
+model owner supplies full plain-text entry, exact review, attributed decisions,
+current selection, withdrawal and historical content under
+[Commercial §27](../../../../../docs/product/release-3-commercial-27-company-offer-model.md).
+It reuses shared Select and the Prisme violet controls; stored text keeps its
+original language when the interface locale changes. The registered
+`offer-model.acceptance.spec.ts` uses the real App, isolated PostgreSQL and
+synthetic content at 1440/390. Screenshots remain in ignored test output. No
+configuration is installed or approved automatically.
+
+## Company consulting Contract model — issue #864
+
+`#contract-models` uses independent captured Company Contract Model Editor and
+Approver assignments and separately authorized Company context. Its fixed ordinary
+Romanian Contract model includes all nine sections, four blank signature areas and
+thirteen intended annex activities under [Commercial §29](../../../../../docs/product/release-3-commercial-29-company-contract-model.md).
+Full immutable entry, exact review, pending head versus active approval, replacement,
+withdrawal and historical reads use the accepted frame and shared Select. The
+registered `contract-model.acceptance.spec.ts` exercises the actual App and isolated
+PostgreSQL at 1440/390, including exact retries and real authority retirement.
+Configuration approval records human intent; it creates no Contract or signature.

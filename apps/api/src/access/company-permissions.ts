@@ -183,6 +183,16 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.pricing.snapshot.read',
         'commercial.offer.estimate.prepare',
       ],
+      v3: [
+        'commercial.offer.read',
+        'commercial.offer.prepare',
+        'commercial.offer.transmission.record',
+        'commercial.pricing.snapshot.read',
+        'commercial.offer.estimate.prepare',
+        'commercial.offer.model.select',
+        'commercial.offer.model_based.prepare',
+        'commercial.offer.model_based.transmission.record',
+      ],
     },
   },
   company_contract_preparer: {
@@ -192,6 +202,13 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.contract.read',
         'commercial.contract.prepare',
         'commercial.contract.project.link',
+      ],
+      v2: [
+        'commercial.contract.read',
+        'commercial.contract.prepare',
+        'commercial.contract.project.link',
+        'commercial.contract.model.select',
+        'commercial.contract.model_based.prepare',
       ],
     },
   },
@@ -207,6 +224,12 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.contract.approve',
         'commercial.contract.signature.record',
       ],
+      v2: [
+        'commercial.contract.read',
+        'commercial.contract.approve',
+        'commercial.contract.signature.record',
+        'commercial.contract.model_based.approve',
+      ],
     },
   },
   company_offer_approver: {
@@ -216,6 +239,13 @@ export const COMPANY_ROLE_BUNDLES = {
         'commercial.offer.read',
         'commercial.offer.approve',
         'commercial.offer.response.record',
+      ],
+      v2: [
+        'commercial.offer.read',
+        'commercial.offer.approve',
+        'commercial.offer.response.record',
+        'commercial.offer.model_based.approve',
+        'commercial.offer.model_based.response.record',
       ],
     },
   },
@@ -328,6 +358,52 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Mission Deliverable Access',
     versions: { v1: ['document.mission_deliverable.access'] },
   },
+  company_contract_signature_declarer: {
+    label: 'Company Contract Signature Declarer',
+    versions: { v1: ['commercial.contract.signature.declare_external'] },
+  },
+  company_received_contract_access: {
+    label: 'Company Received Contract Access',
+    versions: { v1: ['document.received_contract.access'] },
+  },
+  company_offer_model_editor: {
+    label: 'Company Offer Model Editor',
+    versions: {
+      v1: [
+        'commercial.offer.model.read',
+        'commercial.offer.model.version.create',
+      ],
+    },
+  },
+  company_offer_model_approver: {
+    label: 'Company Offer Model Approver',
+    versions: {
+      v1: [
+        'commercial.offer.model.read',
+        'commercial.offer.model.decide',
+        'commercial.offer.model.withdraw',
+      ],
+    },
+  },
+  company_contract_model_editor: {
+    label: 'Company Contract Model Editor',
+    versions: {
+      v1: [
+        'commercial.contract.model.read',
+        'commercial.contract.model.version.create',
+      ],
+    },
+  },
+  company_contract_model_approver: {
+    label: 'Company Contract Model Approver',
+    versions: {
+      v1: [
+        'commercial.contract.model.read',
+        'commercial.contract.model.decide',
+        'commercial.contract.model.withdraw',
+      ],
+    },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -414,6 +490,22 @@ export function companyRoleVersionsWith<Bundle extends CompanyRoleBundle>(
 // owning modules import; none of them adds a permission or a version.
 export const COMPANY_CONTEXT_ACCESS_BUNDLE =
   'company_context_access' satisfies CompanyRoleBundle;
+export const COMPANY_OFFER_MODEL_EDITOR_BUNDLE =
+  'company_offer_model_editor' satisfies CompanyRoleBundle;
+export const COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_offer_model_editor.label;
+export const COMPANY_OFFER_MODEL_APPROVER_BUNDLE =
+  'company_offer_model_approver' satisfies CompanyRoleBundle;
+export const COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_offer_model_approver.label;
+export const COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE =
+  'company_contract_model_editor' satisfies CompanyRoleBundle;
+export const COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_contract_model_editor.label;
+export const COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE =
+  'company_contract_model_approver' satisfies CompanyRoleBundle;
+export const COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_contract_model_approver.label;
 export const COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_context_access.label;
 export const COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE =
@@ -439,6 +531,23 @@ export function missionDeliverablePermissionsFor(
 ): readonly DocumentPermission[] {
   return companyRolePermissionsFor(
     COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE,
+    version,
+  );
+}
+
+export const COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE =
+  'company_contract_signature_declarer' satisfies CompanyRoleBundle;
+export const COMPANY_CONTRACT_SIGNATURE_DECLARER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_contract_signature_declarer.label;
+export const COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE =
+  'company_received_contract_access' satisfies CompanyRoleBundle;
+export const COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_received_contract_access.label;
+export function receivedContractPermissionsFor(
+  version: unknown,
+): readonly DocumentPermission[] {
+  return companyRolePermissionsFor(
+    COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
     version,
   );
 }
@@ -611,6 +720,8 @@ export const COMPANY_OFFER_APPROVER_V1_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_offer_approver.versions.v1;
 export type CompanyOfferApproverPermission =
   CompanyRolePermission<'company_offer_approver'>;
+export type CompanyOfferApproverPermissionSetVersion =
+  CompanyRolePermissionSetVersion<'company_offer_approver'>;
 export type CompanyOfferPermission =
   CompanyOfferPreparerPermission | CompanyOfferApproverPermission;
 export function offerApproverPermissionsFor(
@@ -629,6 +740,8 @@ export const COMPANY_OFFER_PREPARER_V2_PERMISSIONS =
   COMPANY_ROLE_BUNDLES.company_offer_preparer.versions.v2;
 export type CompanyOfferPreparerPermission =
   CompanyRolePermission<'company_offer_preparer'>;
+export type CompanyOfferPreparerPermissionSetVersion =
+  CompanyRolePermissionSetVersion<'company_offer_preparer'>;
 export function offerPreparerPermissionsFor(
   version: unknown,
 ): readonly CompanyOfferPreparerPermission[] {
@@ -671,6 +784,7 @@ export type DocumentPermission =
   | DocumentApproverPermission
   | CompanyRolePermission<'company_document_content_reader'>
   | CompanyRolePermission<'company_mission_deliverable_access'>
+  | CompanyRolePermission<'company_received_contract_access'>
   | CompanyRolePermission<'company_document_content_uploader'>
   | CompanyRolePermission<'company_document_project_organizer'>;
 export type DocumentPermissionSetVersion =

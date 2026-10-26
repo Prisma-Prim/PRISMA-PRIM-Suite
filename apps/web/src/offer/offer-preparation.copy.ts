@@ -1,3 +1,4 @@
+import { useModelOfferCopy } from './model-offer.copy';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import {
   defineMessages,
@@ -487,6 +488,7 @@ export function useOfferVersionCopy() {
   const message = useMessages(offerPreparationMessages);
   const { formatNumber } = useInterfaceLocale();
   const estimate = useEstimateOfferCopy();
+  const model = useModelOfferCopy();
   return {
     prepare: message('versionPrepare'),
     create: message('versionCreate'),
@@ -512,6 +514,13 @@ export function useOfferVersionCopy() {
     historical: message('historical'),
     currentHead: message('currentHead'),
     fields: {
+      modelVersionId: model('model'),
+      modelVersionNumber: message('version'),
+      modelApprovalDecisionId: estimate('approval'),
+      taxAmount: model('tax'),
+      taxLabel: model('taxLabel'),
+      declarationBasis: model('basis'),
+      grossAmount: model('gross'),
       priceSourceKind: estimate('priceSource'),
       estimateVersionId: estimate('source'),
       estimateVersionNumber: message('version'),

@@ -4,7 +4,7 @@ Part of the [Commercial Workflow PRD](release-3-commercial-workflow-prd.md).
 
 ## 26. Bounded approved-estimate internal Offer preparation
 
-**Status:** Approved provisional product contract; runtime not delivered.  
+**Status:** Approved provisional product contract; runtime delivered through [#842](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/842).\
 **Owner:** Dan Popescu.  
 **Origin:** [#840](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/840), D6 under the [source-backed consulting pilot #820](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/820).
 
@@ -148,3 +148,9 @@ This contract requires no new Iurie dossier, fiscal opinion, tariff, cost recons
 After this canonical amendment is merged and ordinary readiness gates pass, one vertical implementation issue must deliver the scoped migration, independent administration, protected source handoff, Offer/UI/history variants, safe downstream refusal and complete proofs together. Root owns its verification/review monitoring; no new review round follows a main advance alone. Documentation approval is not runtime delivery.
 
 Deferred: fiscal/net/gross determination; operational price/Template approval; official numbering; external representation, sending or acceptance; Contract consumption of this source; automatic pricing, target/overhead/fiscal/FX calculations; strategic-price disclosure; actual costs; and generalized price-source configuration. These require their own approved contracts and do not silently widen this handoff.
+
+The separate [§28 generation contract](release-3-commercial-28-model-offer-generation.md)
+now defines a new complete Offer variant with an approved Company model and
+explicit human net/tax declaration. It never upgrades these existing internal
+drafts or interprets their unspecified tax in place. Its runtime remains separate;
+fiscal policy, official numbering and real external effects are not approved here.

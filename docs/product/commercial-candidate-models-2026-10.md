@@ -68,6 +68,12 @@ this preparation retains only its source-location mapping.
 
 ## 4. Preparation delivered; operational work remains separate
 
+The separately normalized [Company consulting Contract model contract (§29)](release-3-commercial-29-company-contract-model.md)
+owns D8's bounded full-content configuration/approval outcome. It uses this CT
+mapping as provenance without converting the blank skeleton or received clauses
+into approved defaults. Matching generated Contract compatibility and official
+numbering remain separately scoped; this candidate file stays non-canonical.
+
 The received example remains controlled evidence. These files are candidate review structures. An approved Template Version is a later explicitly governed version, while an immutable historical illustrative output preserves the exact Template/data it originally used. A correcting candidate never rewrites either the received source or the illustrative output.
 
 Operational generation needs a separately scoped issue after its actual readiness gates close. This preparation does not change O1–O8/C1–CP2, waive C1's acceptance prerequisite, select a direct-origin workaround, assign official numbers or approve real pricing. Import, upload, storage, sending, signatures, payment tracking, Project automation and operational Template/legal approval remain excluded. This documentation adds no functional MVP percentage gain.

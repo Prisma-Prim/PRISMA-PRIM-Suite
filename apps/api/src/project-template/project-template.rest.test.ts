@@ -815,10 +815,7 @@ describe.skipIf(!databaseUrl)(
             first = advance();
             await observedWaiters('%from "client_accounts"%for update%', 1);
             second = revoke();
-            await observedWaiters(
-              '%from "workspace_memberships"%for update%',
-              1,
-            );
+            await observedWaiters('%update "company_role_assignments"%', 1);
           }
           await barrier.query('COMMIT');
           expect([(await first).status, (await second).status]).toEqual(

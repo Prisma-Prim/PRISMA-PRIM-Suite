@@ -11,6 +11,12 @@ import {
   canReadProjectTemplateCatalogue,
 } from './project/ProjectTemplateConfiguration';
 import { useAppCopy } from './app.copy';
+import { OfferModelWorkspace } from './offer-model/OfferModelWorkspace';
+import { offerModelAuthority } from './offer-model/offer-model-authority';
+import { useOfferModelCopy } from './offer-model/offer-model.copy';
+import { ContractModelWorkspace } from './contract-model/ContractModelWorkspace';
+import { contractModelAuthority } from './contract-model/contract-model-authority';
+import { useContractModelCopy } from './contract-model/contract-model.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
 import { UnassignedTasks } from './project/UnassignedTasks';
 import { useUnassignedTasksCopy } from './project/unassigned-tasks.copy';
@@ -49,6 +55,8 @@ import { useProductionShellContext } from './production-shell/useProductionShell
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
+  const modelCopy = useOfferModelCopy();
+  const contractModelCopy = useContractModelCopy();
   const ideasCopy = useIdeasCopy();
   const prismeCopy = usePrismeCopy();
   const unassignedCopy = useUnassignedTasksCopy();
@@ -454,6 +462,38 @@ export function App({ identity }: { identity: BrowserIdentity }) {
             onWorkspaceAccessRejected={rejectWorkspaceAccess}
           />
         </Fragment>
+      ),
+    });
+  if (offerModelAuthority(access.actor))
+    sections.push({
+      id: 'offer-models',
+      label: modelCopy('title'),
+      description: modelCopy('description'),
+      content: (
+        <OfferModelWorkspace
+          key={`offer-model:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
+      ),
+    });
+  if (contractModelAuthority(access.actor))
+    sections.push({
+      id: 'contract-models',
+      label: contractModelCopy('title'),
+      description: contractModelCopy('description'),
+      content: (
+        <ContractModelWorkspace
+          key={`contract-model:${access.sessionGeneration}`}
+          actor={access.actor}
+          identity={identity}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+        />
       ),
     });
   if (access.actor.activeCompany && canAccessClients)

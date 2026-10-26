@@ -22,6 +22,7 @@ import type {
   COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL,
   COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL,
+  COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
@@ -33,6 +34,10 @@ import type {
   COMPANY_OFFER_PREPARER_BUNDLE_LABEL,
   COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL,
   COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL,
+  COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL,
+  COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL,
+  COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL,
+  COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL,
   COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL,
   COMPANY_OFFER_APPROVER_BUNDLE_LABEL,
   COMPANY_PRICING_ADJUSTMENT_BUNDLE_LABEL,
@@ -176,9 +181,13 @@ export type CanonicalActivityEvent =
         | 'company_document_approver_assignment.revoked'
         | 'company_document_content_reader_assignment.granted'
         | 'company_mission_deliverable_access_assignment.granted'
+        | 'company_contract_signature_declarer_assignment.granted'
+        | 'company_contract_signature_declarer_assignment.revoked'
+        | 'company_received_contract_access_assignment.granted'
         | 'company_task_result_recorder_assignment.granted'
         | 'company_document_content_reader_assignment.revoked'
         | 'company_mission_deliverable_access_assignment.revoked'
+        | 'company_received_contract_access_assignment.revoked'
         | 'company_task_result_recorder_assignment.revoked'
         | 'company_document_content_uploader_assignment.granted'
         | 'company_document_content_uploader_assignment.revoked'
@@ -196,11 +205,19 @@ export type CanonicalActivityEvent =
         | 'company_pricing_configuration_assignment.revoked'
         | 'company_pricing_user_assignment.granted'
         | 'company_pricing_user_assignment.revoked'
+        | 'company_offer_model_editor_assignment.granted'
+        | 'company_contract_model_editor_assignment.granted'
+        | 'company_offer_model_approver_assignment.granted'
+        | 'company_contract_model_approver_assignment.granted'
         | 'company_offer_preparer_assignment.granted'
         | 'company_contract_preparer_assignment.granted'
         | 'company_contract_early_preparation_assignment.granted'
         | 'company_contract_approver_assignment.granted'
         | 'company_offer_approver_assignment.granted'
+        | 'company_offer_model_editor_assignment.revoked'
+        | 'company_contract_model_editor_assignment.revoked'
+        | 'company_offer_model_approver_assignment.revoked'
+        | 'company_contract_model_approver_assignment.revoked'
         | 'company_offer_preparer_assignment.revoked'
         | 'company_contract_preparer_assignment.revoked'
         | 'company_contract_early_preparation_assignment.revoked'
@@ -251,6 +268,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL
+          | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
@@ -262,6 +280,11 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | 'Company Contract Signature Declarer'
+          | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
+          | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
+          | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL
@@ -361,9 +384,13 @@ export interface OrdinaryActivityLogEvent {
     | 'company_document_approver_assignment.revoked'
     | 'company_document_content_reader_assignment.granted'
     | 'company_mission_deliverable_access_assignment.granted'
+    | 'company_contract_signature_declarer_assignment.granted'
+    | 'company_contract_signature_declarer_assignment.revoked'
+    | 'company_received_contract_access_assignment.granted'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_document_content_reader_assignment.revoked'
     | 'company_mission_deliverable_access_assignment.revoked'
+    | 'company_received_contract_access_assignment.revoked'
     | 'company_task_result_recorder_assignment.revoked'
     | 'company_document_content_uploader_assignment.granted'
     | 'company_document_content_uploader_assignment.revoked'
@@ -381,11 +408,19 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_configuration_assignment.revoked'
     | 'company_pricing_user_assignment.granted'
     | 'company_pricing_user_assignment.revoked'
+    | 'company_offer_model_editor_assignment.granted'
+    | 'company_contract_model_editor_assignment.granted'
+    | 'company_offer_model_approver_assignment.granted'
+    | 'company_contract_model_approver_assignment.granted'
     | 'company_offer_preparer_assignment.granted'
     | 'company_contract_preparer_assignment.granted'
     | 'company_contract_early_preparation_assignment.granted'
     | 'company_contract_approver_assignment.granted'
     | 'company_offer_approver_assignment.granted'
+    | 'company_offer_model_editor_assignment.revoked'
+    | 'company_contract_model_editor_assignment.revoked'
+    | 'company_offer_model_approver_assignment.revoked'
+    | 'company_contract_model_approver_assignment.revoked'
     | 'company_offer_preparer_assignment.revoked'
     | 'company_contract_preparer_assignment.revoked'
     | 'company_contract_early_preparation_assignment.revoked'
@@ -483,6 +518,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_DOCUMENT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_READER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_DELIVERABLE_ACCESS_BUNDLE_LABEL
+          | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
@@ -494,6 +530,11 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_PRICING_USER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
+          | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | 'Company Contract Signature Declarer'
+          | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
+          | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
+          | typeof COMPANY_OFFER_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_EARLY_PREPARATION_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_APPROVER_BUNDLE_LABEL

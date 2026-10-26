@@ -1,3 +1,4 @@
+import { useModelOfferCopy } from './model-offer.copy';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { defineMessages, useMessages } from '../localization/messages';
 import type { OfferQualityRunView } from './offer-response';
@@ -332,8 +333,19 @@ export const offerQualityDecisionMessages = defineMessages(keys, {
   },
 });
 
-function qualityLabels(message: (key: Key) => string) {
+function qualityLabels(
+  message: (key: Key) => string,
+  modelMessage: ReturnType<typeof useModelOfferCopy>,
+) {
   return {
+    MODEL_APPROVAL_COHERENT: modelMessage('MODEL_APPROVAL_COHERENT'),
+    ECONOMIC_SOURCE_COHERENT: modelMessage('ECONOMIC_SOURCE_COHERENT'),
+    DECLARED_TOTALS_COHERENT: modelMessage('DECLARED_TOTALS_COHERENT'),
+    REPRESENTATION_COHERENT: modelMessage('REPRESENTATION_COHERENT'),
+    NON_OFFICIAL_MARKER_PRESENT: modelMessage('NON_OFFICIAL_MARKER_PRESENT'),
+    DECLARED_TAX_UNVERIFIED: modelMessage('DECLARED_TAX_UNVERIFIED'),
+    NON_OFFICIAL_OFFER: modelMessage('NON_OFFICIAL_OFFER'),
+    ILLUSTRATIVE_MODEL: modelMessage('ILLUSTRATIVE_MODEL'),
     PRICING_SNAPSHOT_COHERENT: message('rulePricingSnapshot'),
     CURRENCY_UNCHANGED: message('ruleCurrency'),
     VALIDITY_OPEN: message('ruleValidity'),
@@ -347,6 +359,7 @@ function qualityLabels(message: (key: Key) => string) {
 
 export function useOfferQualityCopy() {
   const message = useMessages(offerQualityDecisionMessages);
+  const modelMessage = useModelOfferCopy();
   const { formatDateTime } = useInterfaceLocale();
   return {
     title: message('qualityTitle'),
@@ -366,7 +379,7 @@ export function useOfferQualityCopy() {
     evaluatedAt: message('qualityEvaluatedAt'),
     actor: message('qualityActor'),
     ruleSet: message('qualityRuleSet'),
-    qualityLabels: qualityLabels(message),
+    qualityLabels: qualityLabels(message, modelMessage),
     statusLabels: {
       PASS: message('statusPass'),
       WARNING: message('statusWarning'),
@@ -381,6 +394,7 @@ export function useOfferQualityCopy() {
 
 export function useOfferDecisionCopy() {
   const message = useMessages(offerQualityDecisionMessages);
+  const modelMessage = useModelOfferCopy();
   return {
     title: message('decisionTitle'),
     approve: message('decisionApprove'),
@@ -408,6 +422,6 @@ export function useOfferDecisionCopy() {
     approvedChecksum: message('decisionApprovedChecksum'),
     acknowledgedWarnings: message('decisionAcknowledgedWarnings'),
     noWarnings: message('decisionNoWarnings'),
-    qualityLabels: qualityLabels(message),
+    qualityLabels: qualityLabels(message, modelMessage),
   };
 }

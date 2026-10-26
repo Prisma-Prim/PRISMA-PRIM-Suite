@@ -55,6 +55,12 @@ export interface LockedClientLegalRecipient {
 export class ClientOperationalReferenceService {
   constructor(private readonly databaseContext: DatabaseContext) {}
 
+  async requireReferenceReadAuthority(actor: ActorContext, lock = false) {
+    const companyId = this.requireClientRead(actor);
+    if (lock) await this.lockClientReadAuthority(actor, companyId);
+    return companyId;
+  }
+
   async readReferenceClient(actor: ActorContext, originalClientId: string) {
     const companyId = this.requireClientRead(actor);
     const [client] = await this.databaseContext.connection

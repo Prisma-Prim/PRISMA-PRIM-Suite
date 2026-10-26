@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
 import { createPostgresRestTestHarness } from '../database/postgres-rest-test-harness.js';
+import type { ServerClock } from '../clock/server-clock.js';
 
 export const ESTIMATE_OFFER_WORKSPACE = '00000000-0000-4000-8000-000000000842';
 export const ESTIMATE_OFFER_OWNER = memberHeaders('estimate-offer-owner');
@@ -14,7 +15,16 @@ export const ESTIMATE_OFFER_READER = memberHeaders('estimate-offer-reader');
 // Public business commands use only isolated PostgreSQL and synthetic identities,
 // prices and labels. The deterministic identity provider is the external seam.
 export async function openEstimateOfferFixture(
-  options: { migrationsFolder?: string; legacyPreparer?: boolean } = {},
+  options: {
+    migrationsFolder?: string;
+    scannerEnvironment?: {
+      DOCUMENT_MALWARE_SCANNER_HOST: string;
+      DOCUMENT_MALWARE_SCANNER_PORT: string;
+    };
+    legacyPreparer?: boolean;
+    historicalOfferCaptures?: { preparer: 'v1' | 'v2'; approver: 'v1' };
+    serverClock?: ServerClock;
+  } = {},
 ) {
   const baseDatabaseUrl = process.env.TEST_DATABASE_URL;
   if (!baseDatabaseUrl) throw new Error('TEST_DATABASE_URL is required.');
@@ -26,8 +36,11 @@ export async function openEstimateOfferFixture(
     createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
       migrationsFolder: options.migrationsFolder,
-      serverClock: { now: () => new Date('2026-10-24T09:00:00.000Z') },
+      serverClock: options.serverClock ?? {
+        now: () => new Date('2026-10-24T09:00:00.000Z'),
+      },
       environment: {
+        ...options.scannerEnvironment,
         NODE_ENV: 'test',
         ACCESS_IDENTITY_MODE: 'test',
         ACCESS_BOOTSTRAP_EXTERNAL_PROVIDER: 'deterministic-test',
@@ -137,7 +150,36 @@ export async function openEstimateOfferFixture(
     });
   }
 
-  async function prepare() {
+  // Genuine old-schema fixtures seed only their explicit historical captures.
+  // Runtime grants still use the live public endpoint and current default.
+  async function seedHistoricalCapture(input: {
+    companyId: string;
+    membershipId: string;
+    bundle: 'company_offer_preparer' | 'company_offer_approver';
+    version: 'v1' | 'v2';
+  }) {
+    const owner = responseRecord(await read({ path: '/access/current-actor' }));
+    await harness.pool.query(
+      `WITH assignment AS (
+      INSERT INTO company_role_assignments (workspace_id,company_id,workspace_membership_id,bundle,permission_set_version)
+      VALUES ($1,$2,$3,$5,$6) RETURNING id
+    ) INSERT INTO company_context_assignment_commands (workspace_id,actor_workspace_membership_id,bundle,idempotency_key,operation,target_workspace_membership_id,company_id,result_assignment_id)
+      SELECT $1,$4,$5,$7,'grant',$3,$2,id FROM assignment`,
+      [
+        ESTIMATE_OFFER_WORKSPACE,
+        input.companyId,
+        input.membershipId,
+        responseString(owner, 'workspaceMembershipId'),
+        input.bundle,
+        input.version,
+        'historical-' + input.bundle,
+      ],
+    );
+  }
+
+  async function prepare(
+    input: { clientTaxId?: string; clientAddress?: string } = {},
+  ) {
     const company = responseRecord(
       await command({
         path: '/companies',
@@ -185,7 +227,18 @@ export async function openEstimateOfferFixture(
         !options.legacyPreparer ||
         path !== '/company-offer-preparer-assignments'
       )
-        await grant({ path, companyId, membershipId: preparerMembershipId });
+        if (
+          path === '/company-offer-preparer-assignments' &&
+          options.historicalOfferCaptures
+        )
+          await seedHistoricalCapture({
+            companyId,
+            membershipId: preparerMembershipId,
+            bundle: 'company_offer_preparer',
+            version: options.historicalOfferCaptures.preparer,
+          });
+        else
+          await grant({ path, companyId, membershipId: preparerMembershipId });
     if (options.legacyPreparer) {
       // A genuine pre-0078 assignment and receipt, seeded under the old CHECK.
       const owner = responseRecord(
@@ -210,11 +263,19 @@ export async function openEstimateOfferFixture(
       companyId,
       membershipId: directorMembershipId,
     });
-    await grant({
-      path: '/company-offer-approver-assignments',
-      companyId,
-      membershipId: readerMembershipId,
-    });
+    if (options.historicalOfferCaptures)
+      await seedHistoricalCapture({
+        companyId,
+        membershipId: readerMembershipId,
+        bundle: 'company_offer_approver',
+        version: options.historicalOfferCaptures.approver,
+      });
+    else
+      await grant({
+        path: '/company-offer-approver-assignments',
+        companyId,
+        membershipId: readerMembershipId,
+      });
     const client = responseRecord(
       await command({
         path: '/clients',
@@ -222,8 +283,8 @@ export async function openEstimateOfferFixture(
         headers: ESTIMATE_OFFER_PREPARER,
         body: {
           displayName: 'Synthetic internal Offer Client',
-          taxId: 'SYNTHETIC-842',
-          address: '842 Example Street',
+          taxId: input.clientTaxId ?? 'SYNTHETIC-842',
+          address: input.clientAddress ?? '842 Example Street',
         },
       }),
     );

@@ -694,7 +694,7 @@ describe.skipIf(!databaseUrl)(
             second = deny();
             await waitForQuery(
               kind === 'revoke'
-                ? '%from "workspace_memberships"%for update%'
+                ? '%update "company_role_assignments"%'
                 : '%from "workspaces"%for update%',
             );
           }

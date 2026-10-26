@@ -1,0 +1,124 @@
+.contract-model-workspace {
+  color: var(--prisme-ink, #15233b);
+  max-width: 75rem;
+}
+
+.contract-model-workspace > header {
+  margin-bottom: 1.5rem;
+}
+
+.contract-model-workspace p {
+  overflow-wrap: anywhere;
+}
+
+.contract-model-company {
+  font-weight: 600;
+}
+
+.contract-model-workspace fieldset {
+  border: 1px solid var(--prisme-border, #dce1eb);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-block: 1rem;
+  min-width: 0;
+}
+.contract-model-field {
+  display: grid;
+  gap: 0.4rem;
+  margin-block: 1rem;
+  font-weight: 600;
+}
+.contract-model-field input,
+.contract-model-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--prisme-border, #dce1eb);
+  border-radius: 0.5rem;
+  padding: 0.65rem;
+  font: inherit;
+  color: inherit;
+  background: white;
+}
+.contract-model-field textarea {
+  resize: vertical;
+}
+.contract-model-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block: 1rem;
+}
+.contract-model-workspace button {
+  max-width: 100%;
+  white-space: normal;
+}
+.contract-model-literal,
+.contract-model-version dd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.contract-model-version {
+  border-top: 1px solid var(--prisme-border, #dce1eb);
+  margin-block: 1.5rem;
+  padding-block: 1rem;
+}
+.contract-model-version dd {
+  margin-inline-start: 1rem;
+  margin-block-end: 1rem;
+}
+.contract-model-provenance {
+  font-weight: 600;
+  color: var(--prisme-accent, #6750a4);
+}
+.contract-model-version li {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 48rem) {
+  .contract-model-framework {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+    gap: 0.75rem;
+  }
+}
+
+.contract-model-workspace button {
+  cursor: pointer;
+  background: #f7f3ff;
+  border: 1px solid #d8c7f5;
+  border-radius: 0.75rem;
+  color: #583491;
+  font: inherit;
+  font-weight: 650;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+}
+.contract-model-workspace button:hover:not(:disabled) {
+  background: #ede3ff;
+}
+.contract-model-workspace button[type='submit'] {
+  color: white;
+  background: #7355da;
+  border-color: #7355da;
+}
+.contract-model-workspace button:disabled,
+.contract-model-workspace fieldset:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.contract-model-workspace :is(button, input, textarea):focus-visible {
+  outline: 3px solid #b49aea;
+  outline-offset: 3px;
+}
+.contract-model-workspace {
+  min-width: 0;
+  line-height: 1.5;
+}
+.contract-model-version,
+.contract-model-history {
+  background: white;
+  padding: 1rem;
+  border: 1px solid #e4dcf5;
+  border-radius: 1rem;
+}

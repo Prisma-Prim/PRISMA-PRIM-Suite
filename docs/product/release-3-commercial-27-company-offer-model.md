@@ -1,6 +1,7 @@
 # PRD — Release 3 Commercial Workflow, section 27: Company consulting Offer model
 
-**Status:** Approved provisional product contract — runtime not delivered  
+**Status:** Approved provisional product contract — model configuration runtime delivered ([#847](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/847))
+
 **Owner:** Dan Popescu  
 **Contract issue:** [#845](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/845)
 
@@ -238,15 +239,16 @@ Synthetic models alone are used in repository fixtures and evidence.
 
 ## 27.9 Readiness and deferred work
 
-After this contract merges, one narrow vertical runtime child can deliver the
-configuration/approval outcome above. No new dossier or actual legal approval is
+The narrow configuration/approval runtime is delivered by
+[#847](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/847). No new dossier or actual legal approval is
 needed to implement and demonstrate it safely. Real configured content and its
 human approval remain explicit deployment/user actions, not installation effects.
 
-The next D7 slice must separately decide exact model selection, per-Offer
-population, immutable generated representations, price/tax interpretation and
-operational eligibility from a selected approved Estimate Version. It cannot
-simply remove §26's internal-only flag. Official issuance needs independently
+The separate [§28 D7 generation contract](release-3-commercial-28-model-offer-generation.md)
+defines exact model selection, per-Offer population, frozen representations and
+explicit human net/tax declaration from a selected approved Estimate Version.
+Its non-official rehearsal runtime remains separate; it cannot simply remove
+§26's internal-only flag. Official issuance needs independently
 configured Offer numbering (D11); Contract content/annex, separate numbering,
 received scans and external signing/acceptance follow D8/D12/D9/D10. None is
 implemented or approved by this model configuration contract. No generic editor,

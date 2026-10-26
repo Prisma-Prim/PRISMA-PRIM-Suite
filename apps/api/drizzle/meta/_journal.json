@@ -554,6 +554,48 @@
       "when": 1792827521312,
       "tag": "0078_approved_estimate_offer",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1792843361579,
+      "tag": "0079_company_offer_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1792859209352,
+      "tag": "0080_model_offer_generation",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1792875644021,
+      "tag": "0081_company_contract_model",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1792926985230,
+      "tag": "0082_model_contract_generation",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1792945092755,
+      "tag": "0083_received_contract_pdfs",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1792970350606,
+      "tag": "0084_reported_contract_signing",
+      "breakpoints": true
     }
   ]
 }

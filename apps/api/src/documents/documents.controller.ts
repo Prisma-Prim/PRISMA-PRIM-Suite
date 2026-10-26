@@ -30,6 +30,12 @@ export class DocumentsController {
   @Get() list(@Req() request: ActorContextRequest) {
     return this.documents.list(actor(request));
   }
+  @Get('received-contract-sources') receivedContractSources(
+    @Req() request: ActorContextRequest,
+    @Query() query: unknown,
+  ) {
+    return this.documents.receivedContractSources(actor(request), query);
+  }
   @Get(':id') read(
     @Req() request: ActorContextRequest,
     @Param('id') id: string,

@@ -1,5 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
-import { OFFER_QUALITY_CODES, type OfferQualityCode } from './offer-quality.js';
+import {
+  OFFER_QUALITY_CODES,
+  MODEL_OFFER_QUALITY_CODES,
+  type OfferQualityCode,
+} from './offer-quality.js';
+import { readModelOfferFinancialDeclaration } from './model-offer-financials.js';
 
 export type OfferClientResponseCommand = { expectedOfferRevision: number } & (
   | { outcome: 'ACCEPTED'; receivedAt: Date }
@@ -56,11 +61,16 @@ export type OfferDecisionCommand =
     }
   | { kind: 'REJECT'; expectedOfferRevision: number; reason: string };
 
-export function readOfferWarningCodes(value: unknown): OfferQualityCode[] {
+export function readOfferWarningCodes(
+  value: unknown,
+  modelBased = false,
+): OfferQualityCode[] {
   if (!Array.isArray(value)) throw invalid('acknowledgedWarningCodes');
   const result: OfferQualityCode[] = [];
   for (const item of value) {
-    const code = OFFER_QUALITY_CODES.find((code) => code === item);
+    const code = (
+      modelBased ? MODEL_OFFER_QUALITY_CODES : OFFER_QUALITY_CODES
+    ).find((code) => code === item);
     if (!code || result.includes(code))
       throw invalid('acknowledgedWarningCodes');
     result.push(code);
@@ -71,6 +81,7 @@ export function readOfferWarningCodes(value: unknown): OfferQualityCode[] {
 export function readOfferDecisionCommand(
   value: unknown,
   kind: 'APPROVE' | 'REJECT',
+  modelBased = false,
 ): OfferDecisionCommand {
   const input = record(value, 'body');
   const expectedOfferRevision = input.expectedOfferRevision;
@@ -86,6 +97,7 @@ export function readOfferDecisionCommand(
       expectedOfferRevision,
       acknowledgedWarningCodes: readOfferWarningCodes(
         input.acknowledgedWarningCodes,
+        modelBased,
       ),
     };
   const reason = input.reason;
@@ -99,7 +111,10 @@ export function readOfferDecisionCommand(
   return { kind, expectedOfferRevision, reason };
 }
 
-export function readOfferTransmissionCommand(value: unknown) {
+export function readOfferTransmissionCommand(
+  value: unknown,
+  modelBased = false,
+) {
   const input = record(value, 'body');
   for (const field of Object.keys(input))
     if (
@@ -119,6 +134,7 @@ export function readOfferTransmissionCommand(value: unknown) {
     expectedOfferRevision,
     acknowledgedWarningCodes: readOfferWarningCodes(
       input.acknowledgedWarningCodes,
+      modelBased,
     ),
     note: optionalText(input, 'note', 500).value,
   };
@@ -215,6 +231,60 @@ function readEstimateOfferContent(input: Record<string, unknown>) {
     estimateVersionId: estimateVersionId.toLowerCase(),
     estimateVersionNumber,
     ...readOfferContent(input),
+  };
+}
+
+export function readCreateModelOfferCommand(value: unknown) {
+  return readModelOfferCommand(value, false);
+}
+
+export function readCreateModelOfferVersionCommand(value: unknown) {
+  const input = record(value, 'body');
+  const revision = input.expectedOfferRevision;
+  if (
+    typeof revision !== 'number' ||
+    !Number.isSafeInteger(revision) ||
+    revision < 1
+  )
+    throw invalid('expectedOfferRevision');
+  return {
+    ...readModelOfferCommand(input, true),
+    expectedOfferRevision: revision,
+  };
+}
+
+function readModelOfferCommand(value: unknown, successor: boolean) {
+  const input = record(value, 'body');
+  const fields = [
+    ...ESTIMATE_CONTENT_FIELDS,
+    'modelVersionId',
+    'modelVersionNumber',
+    'financialDeclaration',
+    ...(successor ? ['expectedOfferRevision'] : []),
+  ];
+  for (const key of Object.keys(input))
+    if (!fields.includes(key)) throw invalid(key);
+  const modelVersionNumber = input.modelVersionNumber;
+  if (
+    typeof modelVersionNumber !== 'number' ||
+    !Number.isSafeInteger(modelVersionNumber) ||
+    modelVersionNumber < 1
+  )
+    throw invalid('modelVersionNumber');
+  const content = readEstimateOfferContent(input);
+  for (const [field, text] of Object.entries({
+    scopeNote: content.scopeNote,
+    commercialConditions: content.commercialConditions,
+  }))
+    if (typeof text === 'string' && /[\uD800-\uDFFF]/u.test(text))
+      throw invalid(field);
+  return {
+    ...content,
+    modelVersionId: uuid(input.modelVersionId, 'modelVersionId').toLowerCase(),
+    modelVersionNumber,
+    financialDeclaration: readModelOfferFinancialDeclaration(
+      input.financialDeclaration,
+    ),
   };
 }
 

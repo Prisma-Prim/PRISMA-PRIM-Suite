@@ -24,6 +24,20 @@ const owner: ActorContext = {
 afterEach(() => vi.unstubAllGlobals());
 it.each([
   {
+    role: 'Contract signature declarer',
+    route: 'contract-signature-declarer',
+    value: 'contract-signature-declarer',
+    label: 'Company Contract Signature Declarer',
+    option: 'Company Contract Signature Declarer',
+  },
+  {
+    role: 'received Contract family',
+    route: 'received-contract-access',
+    value: 'received-contract-access',
+    label: 'Company Received Contract Access',
+    option: 'Company Received Contract Access',
+  },
+  {
     role: 'Task result recorder',
     route: 'task-result-recorder',
     value: 'task-result-recorder',
@@ -138,6 +152,8 @@ it.each([
   'Company Document Content Reader',
   'Company Document Content Uploader',
   'Company Mission Deliverable Access',
+  'Company Contract Signature Declarer',
+  'Company Received Contract Access',
 ])('fails closed on unknown captured version for %s', async (bundle) => {
   vi.stubGlobal(
     'fetch',

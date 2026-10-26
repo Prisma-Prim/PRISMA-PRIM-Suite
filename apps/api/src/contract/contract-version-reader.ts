@@ -1,3 +1,7 @@
+import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
+import { DocumentSigningReferenceService } from '../documents/document-signing-reference.service.js';
+import { readReportedSigningDeclaration } from './reported-contract-signing-view.js';
+import { modelContractView } from './model-contract-view.js';
 import { contractSource } from './contract-source.js';
 import {
   BadRequestException,
@@ -40,6 +44,8 @@ export class ContractVersionReader {
     private readonly offers: OfferService,
     private readonly pricing: PricingSnapshotService,
     private readonly projectLinks: ContractProjectsService,
+    private readonly signingDocuments: DocumentSigningReferenceService,
+    private readonly clients: ClientOperationalReferenceService,
   ) {}
   async read(input: {
     actor: ActorContext;
@@ -154,6 +160,14 @@ export class ContractVersionReader {
           throw new BadRequestException({ field: 'cursor' });
         return { items: [], nextCursor: null };
       }
+      if (
+        current.contract.origin === 'COMPANY_MODEL_OFFER' &&
+        current.version.executionState === 'EXECUTED'
+      )
+        await this.clients.readReferenceClient(
+          input.actor,
+          current.contract.originalClientAccountId,
+        );
       const scope = and(
         eq(contractVersions.workspaceId, input.actor.workspaceId),
         eq(contractVersions.companyId, companyId),
@@ -172,6 +186,32 @@ export class ContractVersionReader {
         });
         if (!cursor) throw new BadRequestException({ field: 'cursor' });
         before = cursor.version.versionNumber;
+      }
+      // New-mode history is a bounded index. Exact reads own the complete
+      // copied model/representation; listing never materializes fifty copies.
+      if (current.contract.origin === 'COMPANY_MODEL_OFFER') {
+        const rows = await this.databaseContext.connection
+          .select({
+            id: contractVersions.id,
+            versionNumber: contractVersions.versionNumber,
+            provenance: contractVersions.provenance,
+          })
+          .from(contractVersions)
+          .where(
+            and(
+              scope,
+              before === undefined
+                ? undefined
+                : lt(contractVersions.versionNumber, before),
+            ),
+          )
+          .orderBy(desc(contractVersions.versionNumber))
+          .limit(limit + 1);
+        const items = rows.slice(0, limit);
+        return {
+          items,
+          nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null,
+        };
       }
       const rows = await this.databaseContext.connection
         .select()
@@ -289,6 +329,31 @@ export class ContractVersionReader {
   }
 
   async view(actor: ActorContext, contract: ContractRow, version: VersionRow) {
+    if (version.provenance === 'COMPANY_MODEL_OFFER') {
+      // The declared history adds Client identity read; pre-declaration frozen
+      // Contract reads retain their existing Commercial §30 authority.
+      if (version.executionState === 'EXECUTED')
+        await this.clients.readReferenceClient(
+          actor,
+          contract.originalClientAccountId,
+        );
+      const signature = await readReportedSigningDeclaration({
+        database: this.databaseContext,
+        documents: this.signingDocuments,
+        actor,
+        contract,
+        version,
+      });
+      const linkedProjects = await this.projectLinks.linkedProjects(
+        actor,
+        contract,
+      );
+      return modelContractView(this.databaseContext, actor, contract, version, {
+        kind: 'CURRENT',
+        signature,
+        linkedProjects,
+      });
+    }
     const source = contractSource(contract, version);
     if (
       !Number.isInteger(contract.revision) ||

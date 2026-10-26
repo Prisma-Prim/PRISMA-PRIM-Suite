@@ -1603,6 +1603,14 @@ Money follows the fixed-precision and currency rules in section 12. Discounts, o
 
 The later [bounded approved-estimate internal preparation contract, Commercial Workflow §26](release-3-commercial-26-estimate-offer-preparation.md), authorized by Dan's D6 continuation in #840 on 2026-10-24, adds an internal-only exact economic price-source variant under the same Offer identity/history. It preserves unspecified tax meaning and independent approvals; existing illustrative Snapshots and their simulated workflow remain unchanged. The capability PRD owns the complete behavior and permission consequences; this is no new Iurie fiscal or operational-content approval.
 
+The separate [Commercial Workflow §28](release-3-commercial-28-model-offer-generation.md),
+normalized under Dan's 2026-10-24 ordered pilot continuation in #850, defines a new
+approved-model/economic Offer variant with explicit human net/tax facts and frozen
+Romanian output. It remains non-official and simulated, preserves old internal
+drafts and captured grants, and supplies no real fiscal, numbering, acceptance or
+legal authority. The capability owner holds the complete contract; this is not new
+Iurie evidence or an automatic upgrade of a received example.
+
 Three dimensions are recorded separately:
 
 1. internal preparation and approval state;
@@ -3567,6 +3575,19 @@ agent product synthesis for a bounded configuration capability, not approval of
 received clauses, source contradictions, prices, fiscal treatment, official
 numbering or actual tenant assignments. Generation remains separately scoped;
 no new numbered decision or Iurie answer is claimed.
+
+The 2026-10-25 D10 normalization under
+[#874](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/874) continues that
+standing representative-dossier direction after delivered model-based Contract
+generation and received-PDF preservation.
+[Commercial Workflow§31](release-3-commercial-31-reported-signing-case-acceptance.md)
+owns a bounded attributed human statement of reported signing/concordance/mandate
+and case acceptance against exact preserved sources, and existing Project
+continuation. It keeps unknown/unverified facts explicit, old SIMULATED evidence
+and Offer Client Responses unchanged. This is provisional agent product synthesis,
+not Dan's personal review of exact fields, a new Iurie answer, universal real-use
+signing/acceptance/effect policy, verified mandate/payment or actual tenant grant.
+No new numbered decision or whole-milestone credit is asserted.
 
 ### 34.6 Bounded confirmed-cost first-journey approval — 2026-10-01
 

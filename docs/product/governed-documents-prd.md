@@ -98,6 +98,14 @@ upload history. Its PDF-only draft requires no external-reference placeholder;
 official designation requires clean stored content. The independent family gate
 adds to existing metadata/content authority and does not create verified evidence.
 
+The separate [received Contract PDF family](release-1-document-registry-24-received-contract-pdfs.md)
+uses the same bounded storage/scan/immutable-Version owners and an independently
+granted family gate. Its exact human-declared Contract-Version relation and source
+attribution remain conserved and require both read boundaries to disclose.
+Preservation or official Document designation proves neither generated/received
+representation equivalence nor signing, mandate, acceptance, payment or legal
+issuance. D10's later exact declaration contract remains separate.
+
 [Exact mission Task results](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
 may declare a result against one frozen mission Version and its exact preserved
 PDF under both Task and Document read boundaries. The Task-owned append-only
@@ -152,6 +160,22 @@ immutable Versions, separately granted human approval and explicit withdrawal fr
 new use. It seeds no approved content and does not treat receipt of an example as
 approval. Its first runtime outcome is configuration, not generated Offer bytes,
 price/tax authority, external use or Document Registry designation.
+
+The separate [Commercial Workflow §28](release-3-commercial-28-model-offer-generation.md)
+defines one fixed Romanian generated Offer representation from exact approved
+model/economic sources and human-declared commercial facts. It preserves full
+inputs, HTML and digest under the Offer Version, with explicit renderer identity;
+it creates no Document Registry entry, provider Location or official designation.
+Non-official rehearsal output and later numbering retain distinct immutable
+representations/Versions; an approved checksum is never rewritten.
+
+The bounded [Commercial Workflow §29](release-3-commercial-29-company-contract-model.md)
+defines complete Company ordinary consulting Contract model configuration,
+including sectionsI–IX, party/signature areas and thirteen intended-activity rows,
+with independently granted human decisions and withdrawal. It seeds no actual
+clause or approval. Configuration creates no Contract, representation, Registry
+entry, official number or signature; matching generation and exact evidence
+receive separate contracts. Received candidate originals remain unchanged.
 
 Question source: S03.
 

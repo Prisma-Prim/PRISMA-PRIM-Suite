@@ -18,11 +18,13 @@ import {
   profitabilityEstimateDecisions,
   profitabilityEstimateVersions,
 } from './profitability-estimate.js';
+import { offerModelVersions, offerModelDecisions } from './offer-model.js';
 
 export const OFFER_PROVENANCE = 'ILLUSTRATIVE' as const;
 export const OFFER_TEMPLATE_CODE = 'OFFER_ILLUSTRATIVE' as const;
 export const INTERNAL_ESTIMATE_OFFER_PROVENANCE =
   'APPROVED_ESTIMATE_INTERNAL_DRAFT';
+export const MODEL_ESTIMATE_OFFER_PROVENANCE = 'COMPANY_MODEL_ESTIMATE';
 
 /** The durable commercial identity. O1 permits exactly one per Opportunity. */
 export const offers = pgTable(
@@ -154,6 +156,16 @@ export const offerVersions = pgTable(
     }),
     estimateSourceAmount: text('estimate_source_amount'),
     estimateSourceCurrency: text('estimate_source_currency'),
+    modelSourceId: uuid('model_source_id'),
+    modelSourceVersionId: uuid('model_source_version_id'),
+    modelSourceVersionNumber: integer('model_source_version_number'),
+    modelSourceDecisionId: uuid('model_source_decision_id'),
+    modelSourceDecisionOutcome: text('model_source_decision_outcome', {
+      enum: ['APPROVE'],
+    }),
+    modelGenerationSnapshot: jsonb(
+      'model_generation_snapshot',
+    ).$type<unknown>(),
     recipientClientAccountId: uuid('recipient_client_account_id').notNull(),
     recipientKind: text('recipient_kind', {
       enum: ['PRIMARY', 'ADDITIONAL'],
@@ -185,7 +197,11 @@ export const offerVersions = pgTable(
       .default('NONE')
       .notNull(),
     provenance: text('provenance', {
-      enum: [OFFER_PROVENANCE, INTERNAL_ESTIMATE_OFFER_PROVENANCE],
+      enum: [
+        OFFER_PROVENANCE,
+        INTERNAL_ESTIMATE_OFFER_PROVENANCE,
+        MODEL_ESTIMATE_OFFER_PROVENANCE,
+      ],
     })
       .default(OFFER_PROVENANCE)
       .notNull(),
@@ -284,7 +300,7 @@ export const offerVersions = pgTable(
         AND ${table.decisionState} = 'PENDING'
         AND ${table.transmissionState} = 'NOT_TRANSMITTED'
         AND ${table.clientResponseState} = 'NONE'
-        AND ${table.provenance} IN ('ILLUSTRATIVE', 'APPROVED_ESTIMATE_INTERNAL_DRAFT')`,
+        AND ${table.provenance} IN ('ILLUSTRATIVE', 'APPROVED_ESTIMATE_INTERNAL_DRAFT', 'COMPANY_MODEL_ESTIMATE')`,
     ),
     check(
       'offer_versions_lineage_check',
@@ -345,7 +361,7 @@ export const offerVersions = pgTable(
       'offer_versions_template_check',
       sql`(CASE WHEN ${table.provenance} = 'ILLUSTRATIVE' THEN
         ${table.templateCode} = 'OFFER_ILLUSTRATIVE' AND ${table.templateVersion} IN (1, 2)
-        ELSE ${table.provenance} = 'APPROVED_ESTIMATE_INTERNAL_DRAFT'
+        ELSE ${table.provenance} IN ('APPROVED_ESTIMATE_INTERNAL_DRAFT', 'COMPANY_MODEL_ESTIMATE')
           AND ${table.templateCode} IS NULL AND ${table.templateVersion} IS NULL
         END) IS TRUE`,
     ),
@@ -357,16 +373,71 @@ export const offerVersions = pgTable(
         AND ${table.estimateSourceVersionNumber} IS NULL AND ${table.estimateSourceDecisionId} IS NULL
         AND ${table.estimateSourceDecisionCode} IS NULL AND ${table.estimateSourceApprovedAt} IS NULL
         AND ${table.estimateSourceAmount} IS NULL AND ${table.estimateSourceCurrency} IS NULL
-        WHEN ${table.provenance} = 'APPROVED_ESTIMATE_INTERNAL_DRAFT' THEN
+        WHEN ${table.provenance} IN ('APPROVED_ESTIMATE_INTERNAL_DRAFT', 'COMPANY_MODEL_ESTIMATE') THEN
         ${table.pricingSnapshotId} IS NULL
         AND ${table.estimateSourceId} IS NOT NULL AND ${table.estimateSourceVersionId} IS NOT NULL
         AND ${table.estimateSourceVersionNumber} IS NOT NULL AND ${table.estimateSourceVersionNumber} > 0
         AND ${table.estimateSourceDecisionId} IS NOT NULL AND ${table.estimateSourceDecisionCode} = 'APPROVE'
         AND ${table.estimateSourceApprovedAt} IS NOT NULL
-        AND ${table.estimateSourceAmount} IS NOT NULL AND ${table.estimateSourceAmount} ~ '^(0|[1-9][0-9]*)[.][0-9]{2}$' AND ${table.estimateSourceAmount}::numeric > 0
+        AND ${table.estimateSourceAmount} IS NOT NULL
+        AND ((${table.provenance} = 'APPROVED_ESTIMATE_INTERNAL_DRAFT' AND ${table.estimateSourceAmount} ~ '^(0|[1-9][0-9]*)[.][0-9]{2}$')
+          OR (${table.provenance} = 'COMPANY_MODEL_ESTIMATE' AND ${table.estimateSourceAmount} ~ '^[0-9]+[.][0-9]{2}$'))
+        AND (CASE WHEN ${table.provenance} = 'APPROVED_ESTIMATE_INTERNAL_DRAFT' THEN ${table.estimateSourceAmount}::numeric > 0 ELSE ${table.estimateSourceAmount} ~ '[1-9]' END)
         AND ${table.estimateSourceCurrency} IS NOT NULL AND ${table.estimateSourceCurrency} ~ '^[A-Z]{3}$'
         ELSE false END) IS TRUE`,
     ),
+    check(
+      'offer_versions_model_source_check',
+      sql`(CASE WHEN ${table.provenance} = 'COMPANY_MODEL_ESTIMATE' THEN
+        ${table.modelSourceId} IS NOT NULL AND ${table.modelSourceVersionId} IS NOT NULL
+        AND ${table.modelSourceVersionNumber} IS NOT NULL AND ${table.modelSourceVersionNumber} > 0
+        AND ${table.modelSourceDecisionId} IS NOT NULL AND ${table.modelSourceDecisionOutcome} = 'APPROVE'
+        AND jsonb_typeof(${table.modelGenerationSnapshot}) = 'object'
+        AND ${table.modelGenerationSnapshot} ?& ARRAY['modelSource','financialDeclaration','representation']
+        AND (${table.modelGenerationSnapshot} - ARRAY['modelSource','financialDeclaration','representation']::text[]) = '{}'::jsonb
+        ELSE ${table.modelSourceId} IS NULL AND ${table.modelSourceVersionId} IS NULL
+        AND ${table.modelSourceVersionNumber} IS NULL AND ${table.modelSourceDecisionId} IS NULL
+        AND ${table.modelSourceDecisionOutcome} IS NULL AND ${table.modelGenerationSnapshot} IS NULL
+        END) IS TRUE`,
+    ),
+    foreignKey({
+      name: 'offer_versions_model_version_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.modelSourceId,
+        table.modelSourceVersionId,
+        table.modelSourceVersionNumber,
+      ],
+      foreignColumns: [
+        offerModelVersions.workspaceId,
+        offerModelVersions.companyId,
+        offerModelVersions.modelId,
+        offerModelVersions.id,
+        offerModelVersions.versionNumber,
+      ],
+    }),
+    foreignKey({
+      name: 'offer_versions_model_approval_fk',
+      columns: [
+        table.workspaceId,
+        table.companyId,
+        table.modelSourceId,
+        table.modelSourceVersionId,
+        table.modelSourceVersionNumber,
+        table.modelSourceDecisionOutcome,
+        table.modelSourceDecisionId,
+      ],
+      foreignColumns: [
+        offerModelDecisions.workspaceId,
+        offerModelDecisions.companyId,
+        offerModelDecisions.modelId,
+        offerModelDecisions.versionId,
+        offerModelDecisions.versionNumber,
+        offerModelDecisions.outcome,
+        offerModelDecisions.id,
+      ],
+    }),
     foreignKey({
       name: 'offer_versions_estimate_version_fk',
       columns: [
@@ -494,11 +565,28 @@ export const offerQualityRuns = pgTable(
     }),
     check(
       'offer_quality_runs_rule_set_check',
-      sql`${table.ruleSet} = 'OFFER_QUALITY_ILLUSTRATIVE' AND ${table.ruleSetVersion} IN (1, 2)`,
+      sql`(${table.ruleSet} = 'OFFER_QUALITY_ILLUSTRATIVE' AND ${table.ruleSetVersion} IN (1, 2))
+        OR (${table.ruleSet} = 'OFFER_QUALITY_COMPANY_MODEL' AND ${table.ruleSetVersion} = 1)`,
     ),
     check(
       'offer_quality_runs_results_check',
-      sql`(CASE WHEN jsonb_typeof(${table.results}) <> 'array' THEN false ELSE
+      sql`(CASE WHEN jsonb_typeof(${table.results}) <> 'array' THEN false
+    WHEN ${table.ruleSet} = 'OFFER_QUALITY_COMPANY_MODEL' THEN
+    jsonb_array_length(${table.results}) = 13
+    AND ${table.results}->0->>'code' = 'MODEL_APPROVAL_COHERENT' AND ${table.results}->0->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->1->>'code' = 'ECONOMIC_SOURCE_COHERENT' AND ${table.results}->1->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->2->>'code' = 'DECLARED_TOTALS_COHERENT' AND ${table.results}->2->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->3->>'code' = 'REPRESENTATION_COHERENT' AND ${table.results}->3->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->4->>'code' = 'VALIDITY_OPEN' AND ${table.results}->4->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->5->>'code' = 'RECIPIENT_AVAILABLE' AND ${table.results}->5->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->6->>'code' = 'RECIPIENT_IDENTITY_CURRENT' AND ${table.results}->6->>'status' IN ('PASS','WARNING')
+    AND ${table.results}->7->>'code' = 'RECIPIENT_TAX_ID_RECORDED' AND ${table.results}->7->>'status' IN ('PASS','WARNING')
+    AND ${table.results}->8->>'code' = 'CURRENCY_UNCHANGED' AND ${table.results}->8->>'status' IN ('PASS','WARNING')
+    AND ${table.results}->9->>'code' = 'NON_OFFICIAL_MARKER_PRESENT' AND ${table.results}->9->>'status' IN ('PASS','ERROR')
+    AND ${table.results}->10->>'code' = 'DECLARED_TAX_UNVERIFIED' AND ${table.results}->10->>'status' = 'WARNING'
+    AND ${table.results}->11->>'code' = 'NON_OFFICIAL_OFFER' AND ${table.results}->11->>'status' = 'WARNING'
+    AND ${table.results}->12->>'code' = 'ILLUSTRATIVE_MODEL' AND ${table.results}->12->>'status' IN ('PASS','WARNING')
+    ELSE
     jsonb_array_length(${table.results}) = 8
     AND ${table.results}->0->>'code' = 'PRICING_SNAPSHOT_COHERENT' AND ${table.results}->0->>'status' IN ('PASS','ERROR')
     AND ${table.results}->1->>'code' = 'CURRENCY_UNCHANGED' AND ${table.results}->1->>'status' IN ('PASS','WARNING')
@@ -530,6 +618,8 @@ export const offerCommands = pgTable(
         'CREATE_OFFER_VERSION',
         'CREATE_ESTIMATE_OFFER',
         'CREATE_ESTIMATE_OFFER_VERSION',
+        'CREATE_MODEL_OFFER',
+        'CREATE_MODEL_OFFER_VERSION',
         'RUN_QUALITY_CHECKS',
         'APPROVE',
         'REJECT',
@@ -593,9 +683,9 @@ export const offerCommands = pgTable(
     }),
     check(
       'offer_commands_kind_result_check',
-      sql`((${table.kind} IN ('CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER_VERSION') AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} > 1)
-      OR (${table.kind} = 'CREATE_ESTIMATE_OFFER' AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} = 1)
-      OR (${table.kind} NOT IN ('CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER', 'CREATE_ESTIMATE_OFFER_VERSION') AND ${table.resultVersionId} IS NULL AND ${table.resultOfferRevision} IS NULL)) AND ((${table.kind} IN ('CREATE_OFFER', 'CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER', 'CREATE_ESTIMATE_OFFER_VERSION') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
+      sql`((${table.kind} IN ('CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER_VERSION', 'CREATE_MODEL_OFFER_VERSION') AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} > 1)
+      OR (${table.kind} IN ('CREATE_ESTIMATE_OFFER', 'CREATE_MODEL_OFFER') AND ${table.resultVersionId} IS NOT NULL AND ${table.resultOfferRevision} IS NOT NULL AND ${table.resultOfferRevision} = 1)
+      OR (${table.kind} NOT IN ('CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER', 'CREATE_ESTIMATE_OFFER_VERSION', 'CREATE_MODEL_OFFER', 'CREATE_MODEL_OFFER_VERSION') AND ${table.resultVersionId} IS NULL AND ${table.resultOfferRevision} IS NULL)) AND ((${table.kind} IN ('CREATE_OFFER', 'CREATE_OFFER_VERSION', 'CREATE_ESTIMATE_OFFER', 'CREATE_ESTIMATE_OFFER_VERSION', 'CREATE_MODEL_OFFER', 'CREATE_MODEL_OFFER_VERSION') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} = 'RUN_QUALITY_CHECKS' AND ${table.resultQualityRunId} IS NOT NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} IN ('APPROVE','REJECT') AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NOT NULL AND ${table.resultTransmissionId} IS NULL AND ${table.resultClientResponseId} IS NULL)
       OR (${table.kind} = 'RECORD_TRANSMISSION' AND ${table.resultQualityRunId} IS NULL AND ${table.resultDecisionId} IS NULL AND ${table.resultTransmissionId} IS NOT NULL AND ${table.resultClientResponseId} IS NULL)
@@ -736,6 +826,32 @@ export const offerEvents = pgTable(
       'offer_events_metadata_check',
       sql`(CASE
         WHEN jsonb_typeof(${table.metadata}) <> 'object' THEN false
+        WHEN ${table.metadata}->>'provenance' = 'COMPANY_MODEL_ESTIMATE'
+          AND ${table.action} IN ('offer.created', 'offer_version.created') THEN
+          ${table.metadata}->>'offerId' = ${table.offerId}::text AND
+          CASE WHEN ${table.action} = 'offer.created' THEN
+            ${table.metadata} ?& ARRAY['offerId','illustrativeReference','provenance']
+            AND (${table.metadata} - ARRAY['offerId','illustrativeReference','provenance']::text[]) = '{}'::jsonb
+            AND jsonb_typeof(${table.metadata}->'illustrativeReference') = 'number'
+            AND ${table.metadata}->>'illustrativeReference' ~ '^[1-9][0-9]*$'
+          ELSE
+            ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','recipientKind','provenance','priceSourceKind','estimateVersionId','estimateVersionNumber','approvalDecisionId','modelVersionId','modelVersionNumber','modelApprovalDecisionId']
+            AND (${table.metadata} - ARRAY['offerId','offerVersionId','versionNumber','predecessorVersionNumber','recipientKind','provenance','priceSourceKind','estimateVersionId','estimateVersionNumber','approvalDecisionId','modelVersionId','modelVersionNumber','modelApprovalDecisionId']::text[]) = '{}'::jsonb
+            AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
+            AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number'
+            AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
+            AND ((${table.metadata}->>'versionNumber' = '1' AND NOT (${table.metadata} ? 'predecessorVersionNumber')) OR ((${table.metadata}->>'versionNumber')::numeric > 1 AND jsonb_typeof(${table.metadata}->'predecessorVersionNumber') = 'number' AND (${table.metadata}->>'predecessorVersionNumber')::numeric = (${table.metadata}->>'versionNumber')::numeric - 1))
+            AND ${table.metadata}->>'recipientKind' IN ('PRIMARY','ADDITIONAL')
+            AND ${table.metadata}->>'priceSourceKind' = 'DIRECTOR_APPROVED_ESTIMATE'
+            AND jsonb_typeof(${table.metadata}->'estimateVersionNumber') = 'number'
+            AND ${table.metadata}->>'estimateVersionNumber' ~ '^[1-9][0-9]*$'
+            AND jsonb_typeof(${table.metadata}->'modelVersionNumber') = 'number'
+            AND ${table.metadata}->>'modelVersionNumber' ~ '^[1-9][0-9]*$'
+            AND ${table.metadata}->>'estimateVersionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            AND ${table.metadata}->>'approvalDecisionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            AND ${table.metadata}->>'modelVersionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+            AND ${table.metadata}->>'modelApprovalDecisionId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+          END
         WHEN ${table.metadata}->>'provenance' = 'APPROVED_ESTIMATE_INTERNAL_DRAFT' THEN
           ${table.metadata}->>'offerId' = ${table.offerId}::text AND
           CASE WHEN ${table.action} = 'offer.created' THEN
@@ -789,8 +905,8 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'offerId' = ${table.offerId}::text
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
-          AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
-          AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND jsonb_typeof(${table.metadata}->'ruleSetVersion') = 'number' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2') AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
+          AND ${table.metadata}->>'provenance' IN ('ILLUSTRATIVE', 'COMPANY_MODEL_ESTIMATE')
+          AND ((${table.action} = 'offer_version.approved' AND ${table.metadata}->>'outcome' = 'APPROVED' AND jsonb_typeof(${table.metadata}->'ruleSetVersion') = 'number' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2') AND (${table.metadata}->>'provenance' = 'ILLUSTRATIVE' OR ${table.metadata}->>'ruleSetVersion' = '1') AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array')
           OR (${table.action} = 'offer_version.rejected' AND ${table.metadata}->>'outcome' = 'REJECTED' AND NOT (${table.metadata} ?| ARRAY['ruleSetVersion','acknowledgedWarningCodes'])))
         WHEN ${table.action} = 'offer_version.transmission_recorded' THEN
           ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','channel','provenance','ruleSetVersion','acknowledgedWarningCodes']
@@ -799,8 +915,8 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'offerVersionId' = ${table.offerVersionId}::text
           AND jsonb_typeof(${table.metadata}->'versionNumber') = 'number' AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'channel' = 'SIMULATED'
-          AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
-          AND jsonb_typeof(${table.metadata}->'ruleSetVersion') = 'number' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2')
+          AND ${table.metadata}->>'provenance' IN ('ILLUSTRATIVE', 'COMPANY_MODEL_ESTIMATE')
+          AND jsonb_typeof(${table.metadata}->'ruleSetVersion') = 'number' AND ${table.metadata}->>'ruleSetVersion' IN ('1','2') AND (${table.metadata}->>'provenance' = 'ILLUSTRATIVE' OR ${table.metadata}->>'ruleSetVersion' = '1')
           AND jsonb_typeof(${table.metadata}->'acknowledgedWarningCodes') = 'array'
         WHEN ${table.action} = 'offer_version.client_response_recorded' THEN
           ${table.metadata} ?& ARRAY['offerId','offerVersionId','versionNumber','evidenceKind','outcome','provenance']
@@ -811,7 +927,7 @@ export const offerEvents = pgTable(
           AND ${table.metadata}->>'versionNumber' ~ '^[1-9][0-9]*$'
           AND ${table.metadata}->>'evidenceKind' = 'SIMULATED'
           AND ${table.metadata}->>'outcome' IN ('ACCEPTED','REJECTED','EXPIRED')
-          AND ${table.metadata}->>'provenance' = 'ILLUSTRATIVE'
+          AND ${table.metadata}->>'provenance' IN ('ILLUSTRATIVE', 'COMPANY_MODEL_ESTIMATE')
         ELSE false
       END) IS TRUE`,
     ),

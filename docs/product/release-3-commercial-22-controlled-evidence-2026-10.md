@@ -21,7 +21,18 @@ The current illustrative route records a simulated acceptance in O6 before C1 cr
 
 Section 22.4 selects the bounded preparation option for an illustrative Contract, with exact Offer source per Contract Version and an explicit opt-in write capability. It does not select a universal real acceptance, signing or legal-effect policy. Preparation creates no acceptance; approval/signature still require recorded acceptance of the exact source. The existing C1 accepted-Offer route remains available and the direct origin is not a workaround for a pending Offer. Received files do not become imported Contracts.
 
-OQ3 in section 18.13 now has case-specific evidence, but the general rule and confirmation authority remain open. OQC1/OQC2 in section 19.15 still require complete signing, mandate and effect policy. The remaining request is targeted policy/evidence for these gaps, not repetition of E02's already-described sequence.
+The separate Company-model mode in §30 permits internal approval before
+acceptance. [Reported signing and case acceptance (§31)](release-3-commercial-31-reported-signing-case-acceptance.md)
+normalizes D10's bounded human statement against exact preserved evidence and
+existing Project continuation. It preserves the independent Offer Client
+Response and old SIMULATED records; it is not a universal acceptance, mandate or
+effect policy and does not alter D1's existing accepted-source execution gate.
+
+OQ3 in section 18.13 now has case-specific evidence, but general real-use policy
+and confirmation authority remain open. OQC1/OQC2 in section 19.15 retain their
+operational signing, mandate and effect-policy dependencies. Those gaps do not
+require repeating E02's known sequence or block the explicitly unverified
+non-official §31 rehearsal.
 
 ### 22.2 Numbering direction without an invented final rule
 

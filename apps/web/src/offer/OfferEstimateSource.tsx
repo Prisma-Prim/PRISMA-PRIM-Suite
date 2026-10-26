@@ -19,7 +19,7 @@ type Props = {
   actor: ActorContext;
   identity: BrowserIdentity;
   opportunityId: string;
-  source: InternalOfferPriceSource;
+  source: Omit<InternalOfferPriceSource, 'taxTreatment'>;
   reject: (
     result: ApiResult<unknown>,
     signal: AbortSignal,

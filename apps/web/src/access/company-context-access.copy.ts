@@ -34,9 +34,9 @@ export const companyContextAccessCopy = {
     'Allows Contract preparation and reading; Company context, Opportunity read, Offer read and Client read must be assigned separately. Project linking is not yet available.',
   offerApproverBundle: 'Company Offer Approver',
   offerApproverPrerequisites:
-    'Company Offer Approver v1 grants Offer read and decisions only. Company context and Opportunity read must be authorized separately. It grants no preparation or Client read.',
+    'New Company Offer Approver grants capture v2: Offer read, decisions and recorded simulated Client responses, including full approved-model Offers. Company context and Opportunity read remain separately authorized. It grants no preparation, Client, Pricing, economic-source or model-configuration access. Existing v1 grants retain their captured rights; revoke and grant again to enable the full-model journey.',
   offerPreparerPrerequisites:
-    'Company Offer Preparer v1 grants Offer read and preparation plus Pricing Snapshot read. Company context, Commercial Intake read and Client read must already be authorized separately.',
+    'New Company Offer Preparer grants capture v3: Offer read, preparation, exact Pricing Snapshot read, approved-estimate drafts and full approved-model Offers with recorded simulated transmission. Company context, Opportunity/Client read and economic-source read remain separately authorized. Model configuration and Offer approval are separate. Existing v1/v2 grants retain their captured rights; revoke and grant again to enable the full-model journey.',
   opportunityManagerBundle: 'Company Opportunity Manager',
   opportunityManagerPrerequisites:
     'Company Opportunity Manager v2 changes the responsible actor and the outcome status; Company context and Commercial Intake read are authorized separately.',

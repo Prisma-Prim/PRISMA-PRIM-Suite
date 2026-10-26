@@ -327,6 +327,54 @@ export const activityEventsByAction = {
     action: 'company_offer_preparer_assignment.granted',
     target: targets.company_role_assignment,
   },
+  'company_offer_model_editor_assignment.granted': {
+    ...ordinary,
+    id: 'event-model-editor-granted',
+    action: 'company_offer_model_editor_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_offer_model_editor_assignment.revoked': {
+    ...ordinary,
+    id: 'event-model-editor-revoked',
+    action: 'company_offer_model_editor_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_offer_model_approver_assignment.granted': {
+    ...ordinary,
+    id: 'event-model-approver-granted',
+    action: 'company_offer_model_approver_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_offer_model_approver_assignment.revoked': {
+    ...ordinary,
+    id: 'event-model-approver-revoked',
+    action: 'company_offer_model_approver_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_model_editor_assignment.granted': {
+    ...ordinary,
+    id: 'event-contract-model-editor-granted',
+    action: 'company_contract_model_editor_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_model_editor_assignment.revoked': {
+    ...ordinary,
+    id: 'event-contract-model-editor-revoked',
+    action: 'company_contract_model_editor_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_model_approver_assignment.granted': {
+    ...ordinary,
+    id: 'event-contract-model-approver-granted',
+    action: 'company_contract_model_approver_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_model_approver_assignment.revoked': {
+    ...ordinary,
+    id: 'event-contract-model-approver-revoked',
+    action: 'company_contract_model_approver_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_offer_approver_assignment.granted': {
     ...ordinary,
     id: 'event-company_offer_approver_assignment.granted',
@@ -475,6 +523,30 @@ export const activityEventsByAction = {
     ...ordinary,
     id: 'event-company_document_registrar_assignment.revoked',
     action: 'company_document_registrar_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_signature_declarer_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_contract_signature_declarer_assignment.granted',
+    action: 'company_contract_signature_declarer_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_contract_signature_declarer_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_contract_signature_declarer_assignment.revoked',
+    action: 'company_contract_signature_declarer_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_received_contract_access_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_received_contract_access_assignment.granted',
+    action: 'company_received_contract_access_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_received_contract_access_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_received_contract_access_assignment.revoked',
+    action: 'company_received_contract_access_assignment.revoked',
     target: targets.company_role_assignment,
   },
   'company_mission_deliverable_access_assignment.granted': {
@@ -889,6 +961,16 @@ export const activityEventsByAction = {
     action: 'contract_version.rejected',
     target: targets.contract_version,
     metadata: {},
+  },
+  'contract_version.signing_declared': {
+    ...ordinary,
+    id: 'event-contract_version.signing_declared',
+    action: 'contract_version.signing_declared',
+    target: targets.contract_version,
+    metadata: {
+      evidenceKind: 'DECLARED_RECEIVED_PDF',
+      provenance: 'COMPANY_MODEL_OFFER',
+    },
   },
   'contract_version.signature_recorded': {
     ...ordinary,

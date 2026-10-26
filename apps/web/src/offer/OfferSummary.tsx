@@ -1,3 +1,5 @@
+import { ModelOfferDetails } from './ModelOfferDetails';
+import { useModelOfferCopy } from './model-offer.copy';
 import { useOfferPreparationCopy } from './offer-preparation.copy';
 import { useOfferPresentation } from './offer-presentation';
 import { useOfferBindingCopy } from './offer-binding.copy';
@@ -8,13 +10,14 @@ import {
 } from './offer-transmission-response.copy';
 import { useEstimateOfferCopy } from './offer-estimate.copy';
 import {
-  isIllustrativeOffer,
+  isExecutableOffer,
   type OfferReadView,
   type OfferDecisionView,
 } from './offer-response';
 
 export function OfferSummary({ offer }: { offer: OfferReadView }) {
   const copy = useOfferPreparationCopy();
+  const modelCopy = useModelOfferCopy();
   const decisionCopy = useOfferDecisionCopy();
   const transmissionCopy = useOfferTransmissionCopy();
   const responseCopy = useOfferClientResponseCopy();
@@ -22,7 +25,7 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
     useOfferPresentation();
   const internalCopy = useEstimateOfferCopy();
   const bindingCopy = useOfferBindingCopy();
-  if (!isIllustrativeOffer(offer))
+  if (!isExecutableOffer(offer))
     return (
       <div className="offer-summary">
         <strong>{internalCopy('internal')}</strong>
@@ -109,13 +112,29 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
           </dd>
         </div>
         <div>
-          <dt>{copy.snapshotTotal}</dt>
+          <dt>
+            {version.provenance === 'COMPANY_MODEL_ESTIMATE'
+              ? modelCopy('gross')
+              : copy.snapshotTotal}
+          </dt>
           <dd>
-            {formatDecimal(version.pricingSnapshot.total)}{' '}
-            {version.pricingSnapshot.currency}
+            {formatDecimal(
+              version.provenance === 'COMPANY_MODEL_ESTIMATE'
+                ? version.financialDeclaration.grossAmount
+                : version.pricingSnapshot.total,
+            )}{' '}
+            {version.provenance === 'COMPANY_MODEL_ESTIMATE'
+              ? version.priceSource.currency
+              : version.pricingSnapshot.currency}
           </dd>
         </div>
       </dl>
+      {version.provenance === 'COMPANY_MODEL_ESTIMATE' && (
+        <ModelOfferDetails
+          version={version}
+          illustrativeReference={offer.illustrativeReference}
+        />
+      )}
       {version.scopeNote && <p>{version.scopeNote}</p>}
       {version.commercialConditions && <p>{version.commercialConditions}</p>}
       {version.transmission && (
@@ -224,10 +243,19 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
         </p>
         <dl>
           <div>
-            <dt>{copy.templateVersion}</dt>
+            <dt>
+              {version.provenance === 'COMPANY_MODEL_ESTIMATE'
+                ? modelCopy('renderer')
+                : copy.templateVersion}
+            </dt>
             <dd>
-              {version.representation.templateCode} v
-              {version.representation.templateVersion}
+              {version.provenance === 'COMPANY_MODEL_ESTIMATE'
+                ? version.representation.rendererCode
+                : version.representation.templateCode}{' '}
+              v
+              {version.provenance === 'COMPANY_MODEL_ESTIMATE'
+                ? version.representation.rendererVersion
+                : version.representation.templateVersion}
             </dd>
           </div>
           <div>
@@ -243,11 +271,16 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
             </dd>
           </div>
         </dl>
-        {version.representation.templateVersion === 2 && (
-          <p>{bindingCopy('adjustedSnapshot')}</p>
-        )}
+        {version.provenance === 'ILLUSTRATIVE' &&
+          version.representation.templateVersion === 2 && (
+            <p>{bindingCopy('adjustedSnapshot')}</p>
+          )}
         <iframe
-          title={copy.representationFrame}
+          title={
+            version.provenance === 'COMPANY_MODEL_ESTIMATE'
+              ? modelCopy('title')
+              : copy.representationFrame
+          }
           sandbox=""
           srcDoc={version.representation.html}
         />

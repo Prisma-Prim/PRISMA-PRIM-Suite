@@ -6161,7 +6161,7 @@ withPostgres('First illustrative Contract REST', () => {
       'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
     );
     try {
-      for (const version of [null, 'v2', 'V1']) {
+      for (const version of [null, 'v3', 'V1']) {
         await pool.query(
           "UPDATE company_role_assignments SET permission_set_version=$1 WHERE bundle='company_contract_preparer' AND company_id=$2",
           [version, target.fixture.companyId],
@@ -8666,8 +8666,9 @@ withPostgres('First illustrative Contract REST', () => {
       'commercial.contract.read',
       'commercial.contract.approve',
       'commercial.contract.signature.record',
+      'commercial.contract.model_based.approve',
     ]);
-    expect(active.contractApproverPermissionSetVersion).toBe('v1');
+    expect(active.contractApproverPermissionSetVersion).toBe('v2');
     expect(active.contractPermissionAssignmentId).toBeUndefined();
     expect(active.clientPermissions).toEqual([]);
     for (const field of [
@@ -10383,7 +10384,7 @@ withPostgres('First illustrative Contract REST', () => {
         await pool.query(
           'ALTER TABLE opportunities ADD COLUMN sales_stage_id uuid',
         );
-        // The current ORM returns the additive 0078 fields even for a legacy
+        // The current ORM returns the additive 0078/0080 fields even for a legacy
         // Snapshot Version. Temporarily expose only nullable slots for fixture
         // creation, then remove every slot before the genuine baseline upgrade.
         const estimateSourceColumns = [
@@ -10395,6 +10396,12 @@ withPostgres('First illustrative Contract REST', () => {
           ['estimate_source_approved_at', 'timestamptz'],
           ['estimate_source_amount', 'text'],
           ['estimate_source_currency', 'text'],
+          ['model_source_id', 'uuid'],
+          ['model_source_version_id', 'uuid'],
+          ['model_source_version_number', 'integer'],
+          ['model_source_decision_id', 'uuid'],
+          ['model_source_decision_outcome', 'text'],
+          ['model_generation_snapshot', 'jsonb'],
         ];
         for (const [column, type] of estimateSourceColumns)
           await pool.query(
@@ -10711,7 +10718,7 @@ withPostgres('First illustrative Contract REST', () => {
           index >= 56
             ? (
                 await pool.query(
-                  'SELECT to_jsonb(d) AS row FROM contract_decisions d',
+                  "SELECT to_jsonb(d)-'review_basis' AS row FROM contract_decisions d",
                 )
               ).rows
             : null;
@@ -10733,7 +10740,7 @@ withPostgres('First illustrative Contract REST', () => {
           }>(
             `SELECT
         (SELECT jsonb_agg(to_jsonb(c)-ARRAY['direct_reason','parent_contract_id','addendum_ordinal','precontract_id']::text[] ORDER BY id) FROM contracts c) AS contracts,
-        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-'source_offer_version_id'-ARRAY['change_summary','template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] WHEN $4::boolean THEN to_jsonb(v)-'source_offer_version_id'-ARRAY['change_summary','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] ELSE to_jsonb(v)-'source_offer_version_id'-ARRAY['change_summary','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
+        (SELECT jsonb_agg(CASE WHEN $1::boolean THEN to_jsonb(v)-'source_offer_version_id'-ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]-ARRAY['change_summary','template_code','template_version','clause_versions','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] WHEN $4::boolean THEN to_jsonb(v)-'source_offer_version_id'-ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]-ARRAY['change_summary','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] ELSE to_jsonb(v)-'source_offer_version_id'-ARRAY['model_source_id','model_source_version_id','model_source_version_number','model_source_decision_id','model_source_decision_outcome','model_generation_snapshot']::text[]-ARRAY['change_summary','created_contract_revision','predecessor_version_id','superseded_by_version_id','superseded_at','preliminary_work_scope','preliminary_financial_conditions','preliminary_limits']::text[] END ORDER BY id) FROM contract_versions v) AS versions,
         (SELECT jsonb_agg(CASE WHEN $3::boolean THEN to_jsonb(c)-'result_version_id' ELSE to_jsonb(c)-ARRAY['kind','result_quality_run_id','result_decision_id','result_signature_id','result_project_link_id','result_version_id']::text[] END ORDER BY id) FROM contract_commands c) AS commands,
         (SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM contract_events e) AS events,
         (SELECT jsonb_agg(to_jsonb(r) ORDER BY company_id) FROM contract_reference_counters r) AS counters,
@@ -10744,6 +10751,11 @@ withPostgres('First illustrative Contract REST', () => {
             [
               index === 53,
               [
+                'contracts_model_generation_evidence',
+                'contract_versions_model_generation_evidence',
+                'contract_versions_model_source_check',
+                'contract_versions_model_version_fk',
+                'contract_versions_model_approval_fk',
                 'contract_versions_source_offer_version_fk',
                 'contract_versions_preparation_source_check',
                 'contract_versions_template_binding_check',
@@ -10772,6 +10784,9 @@ withPostgres('First illustrative Contract REST', () => {
                 'contract_commands_run_fk',
                 'contract_commands_signature_fk',
                 'contract_commands_project_link_fk',
+                // Additive §31 result-presence triggers have no historic equivalent.
+                'contract_commands_reported_signing_result',
+                'contract_events_reported_signing_result',
                 'contracts_signature_evidence',
                 'contract_versions_signature_evidence',
               ],
@@ -10792,7 +10807,10 @@ withPostgres('First illustrative Contract REST', () => {
           await pool.query(`ALTER TABLE offer_versions DROP COLUMN ${column}`);
         }
         await pool.query(
-          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle='company_offer_preparer' AND permission_set_version='v2'",
+          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle IN ('company_offer_preparer','company_offer_approver') AND permission_set_version IN ('v2','v3')",
+        );
+        await pool.query(
+          "UPDATE company_role_assignments SET permission_set_version='v1' WHERE bundle::text IN ('company_contract_preparer','company_contract_approver') AND permission_set_version='v2'",
         );
         await pool.query(
           'ALTER TABLE opportunities DROP COLUMN sales_stage_id',
@@ -10854,7 +10872,7 @@ withPostgres('First illustrative Contract REST', () => {
           expect(
             (
               await pool.query(
-                'SELECT to_jsonb(d) AS row FROM contract_decisions d',
+                "SELECT to_jsonb(d)-'review_basis' AS row FROM contract_decisions d",
               )
             ).rows,
           ).toEqual(historicDecisions);
@@ -11196,11 +11214,13 @@ withPostgres('First illustrative Contract REST', () => {
       ),
     );
     expect(record(actor.activeCompany)).toMatchObject({
-      contractPermissionSetVersion: 'v1',
+      contractPermissionSetVersion: 'v2',
       contractPermissions: [
         'commercial.contract.read',
         'commercial.contract.prepare',
         'commercial.contract.project.link',
+        'commercial.contract.model.select',
+        'commercial.contract.model_based.prepare',
       ],
     });
     expect(
@@ -11465,7 +11485,7 @@ withPostgres('First illustrative Contract REST', () => {
       'ALTER TABLE company_role_assignments DROP CONSTRAINT company_role_assignments_permission_set_version_check',
     );
     try {
-      for (const version of [null, 'v2', 'V1']) {
+      for (const version of [null, 'v3', 'V1']) {
         await pool.query(
           "UPDATE company_role_assignments SET permission_set_version=$1 WHERE bundle='company_contract_preparer' AND company_id=$2",
           [version, fixture.companyId],

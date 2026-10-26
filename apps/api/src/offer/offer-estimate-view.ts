@@ -1,3 +1,7 @@
+import {
+  storedEstimatePrice,
+  storedRecipient,
+} from './offer-stored-content.js';
 import { OfferVersionDifferences } from './offer-version-differences.js';
 import type { PricingSnapshotService } from '../pricing-configuration/pricing-snapshot.service.js';
 import { and, eq } from 'drizzle-orm';
@@ -11,9 +15,8 @@ import {
   offerDecisions,
   INTERNAL_ESTIMATE_OFFER_PROVENANCE,
 } from '../database/schema/index.js';
-import type { OfferRecipientCopy, OfferDecision } from './offer.types.js';
+import type { OfferDecision } from './offer.types.js';
 import type {
-  EstimateOfferPriceSource,
   InternalOfferRecord,
   InternalOfferVersionRecord,
 } from './offer-estimate-preparation.types.js';
@@ -146,52 +149,4 @@ export class EstimateOfferView {
       version: resolvedVersion,
     };
   }
-}
-
-export function storedEstimatePrice(row: VersionRow): EstimateOfferPriceSource {
-  if (
-    row.provenance !== INTERNAL_ESTIMATE_OFFER_PROVENANCE ||
-    row.pricingSnapshotId !== null ||
-    row.templateCode !== null ||
-    row.templateVersion !== null ||
-    row.estimateSourceId === null ||
-    row.estimateSourceVersionId === null ||
-    row.estimateSourceVersionNumber === null ||
-    row.estimateSourceDecisionId === null ||
-    row.estimateSourceDecisionCode !== 'APPROVE' ||
-    row.estimateSourceApprovedAt === null ||
-    row.estimateSourceAmount === null ||
-    row.estimateSourceCurrency === null
-  )
-    throw new Error('The stored internal Offer price source is invalid.');
-  return {
-    kind: 'DIRECTOR_APPROVED_ESTIMATE',
-    estimateId: row.estimateSourceId,
-    estimateVersionId: row.estimateSourceVersionId,
-    estimateVersionNumber: row.estimateSourceVersionNumber,
-    approvalDecisionId: row.estimateSourceDecisionId,
-    approvedAt: row.estimateSourceApprovedAt.toISOString(),
-    amount: row.estimateSourceAmount,
-    currency: row.estimateSourceCurrency,
-    taxTreatment: 'UNSPECIFIED',
-  };
-}
-
-function storedRecipient(row: VersionRow): OfferRecipientCopy {
-  const facts = {
-    legalName: row.recipientLegalName,
-    taxId: row.recipientTaxId,
-    legalAddress: row.recipientLegalAddress,
-  };
-  if (row.recipientKind === 'PRIMARY') return { ...facts, kind: 'PRIMARY' };
-  if (
-    row.recipientKind === 'ADDITIONAL' &&
-    row.recipientAdditionalLegalEntityId !== null
-  )
-    return {
-      ...facts,
-      kind: 'ADDITIONAL',
-      additionalLegalEntityId: row.recipientAdditionalLegalEntityId,
-    };
-  throw new Error('The stored internal Offer recipient is invalid.');
 }

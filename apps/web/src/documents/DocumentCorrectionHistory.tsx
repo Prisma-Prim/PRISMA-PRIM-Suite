@@ -9,6 +9,11 @@ import {
   type DocumentCorrectionChange,
 } from './document-response';
 import { useDocumentCorrectionHistoryCopy } from './document-correction-history.copy';
+import {
+  documentFamilyCaptureKey,
+  hasDocumentFamilyAccess,
+} from './document-family-access';
+import type { DocumentFamily } from './document-response';
 import './document-correction-history.css';
 
 interface LoadedHistory {
@@ -30,16 +35,22 @@ export function DocumentCorrectionHistory({
   actor,
   identity,
   documentId,
+  documentType = 'questionnaire',
   workingRevision,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
   documentId: string;
+  documentType?: DocumentFamily;
   /** The open Document's revision; a newer one reloads an open first page. */
   workingRevision: number;
 }) {
   const company = actor.activeCompany;
-  if (!company?.documentPermissions?.includes('document.read')) return null;
+  if (
+    !company?.documentPermissions?.includes('document.read') ||
+    !hasDocumentFamilyAccess(company, documentType)
+  )
+    return null;
   const canReadReference = company.documentPermissions.includes(
     'document.reference.read',
   );
@@ -50,8 +61,7 @@ export function DocumentCorrectionHistory({
         actor.workspaceMembershipId,
         company.id,
         documentId,
-        company.missionDeliverableAccessAssignmentId,
-        company.missionDeliverableAccessPermissionSetVersion,
+        documentFamilyCaptureKey(company, documentType),
         canReadReference,
       ])}
       identity={identity}
