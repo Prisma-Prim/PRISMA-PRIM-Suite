@@ -1,0 +1,294 @@
+{
+  "issue": 891,
+  "pr": 892,
+  "source": "f04ffa6cf888ab5ef3c817ac0b56b3d6f6635955",
+  "base": "f551b8cb3635070ac160b6f8872c143dc114645c",
+  "tree": "3ba123a284524e1e6d5286a8b997a5fee907b695",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40350510581,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581",
+    "attempt": 2,
+    "providerLatestJobAttempts": {
+      "scope": 2,
+      "checks": 2,
+      "postgres_image": 2,
+      "web_unit": 2,
+      "build": 2,
+      "packaging": 2,
+      "acceptance (2)": 2,
+      "acceptance (1)": 2,
+      "browser (1)": 2,
+      "browser (2)": 2,
+      "api (1/3)": 2,
+      "browser (3)": 2,
+      "api (2/3)": 2,
+      "api (serial)": 2,
+      "api (3/3)": 2,
+      "quality": 2
+    },
+    "actualExecutionOrigins": {
+      "scope": {
+        "actualJobId": 121668978510,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121668978510"
+      },
+      "checks": {
+        "actualJobId": 121668979134,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121668979134"
+      },
+      "postgres_image": {
+        "actualJobId": 121669078998,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121669078998"
+      },
+      "web_unit": {
+        "actualJobId": 121670331155,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331155"
+      },
+      "build": {
+        "actualJobId": 121670331164,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331164"
+      },
+      "packaging": {
+        "actualJobId": 121678245418,
+        "actualRunAttempt": 2,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121678245418"
+      },
+      "acceptance (2)": {
+        "actualJobId": 121670331205,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331205"
+      },
+      "acceptance (1)": {
+        "actualJobId": 121670331209,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331209"
+      },
+      "browser (1)": {
+        "actualJobId": 121670331276,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331276"
+      },
+      "browser (2)": {
+        "actualJobId": 121670331300,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331300"
+      },
+      "api (1/3)": {
+        "actualJobId": 121670331393,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331393"
+      },
+      "browser (3)": {
+        "actualJobId": 121670331397,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331397"
+      },
+      "api (2/3)": {
+        "actualJobId": 121670331447,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331447"
+      },
+      "api (serial)": {
+        "actualJobId": 121670331468,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331468"
+      },
+      "api (3/3)": {
+        "actualJobId": 121670331497,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": true,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121670331497"
+      },
+      "quality": {
+        "actualJobId": 121679379870,
+        "actualRunAttempt": 2,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40350510581/job/121679379870"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "doctorWebPostgres": {
+      "passed": true,
+      "postgres": "17.11"
+    },
+    "meaningfulRedGreen": [
+      "REST queue membership",
+      "exact earlier-Version UI entry",
+      "keyboard focus"
+    ],
+    "postgresCasesPassed": 64,
+    "webCasesPassed": 31,
+    "actualAppCasesPassed": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "scope": "Synthetic public REST/PostgreSQL setup and actual App; no real principal/grant or provider",
+    "actualAppLog": "actual-app-4.log",
+    "fourLocalesPreserveTarget": true,
+    "heldOldCompanyReplyRetired": true,
+    "commandRefusalRetiresParent": [
+      401,
+      403,
+      404
+    ],
+    "identicalLostConfirmationRetryProved": true,
+    "finalStrictTypesPassed": true,
+    "focusedE2ETypesPassed": true,
+    "scopedLintPassed": true,
+    "broaderDevelopment": {
+      "command": "pnpm verify",
+      "passed": true,
+      "scriptCasesPassed": 487,
+      "apiCasesPassed": 1510,
+      "apiDatabaseInapplicableSkips": 1909,
+      "webCasesPassed": 3174,
+      "bothBuildsPassed": true,
+      "canonicalCompleteLocalIntegrationGateClaimed": false
+    },
+    "finalGate": {
+      "kind": "owner-authorized complete independent GitHub CI",
+      "status": "passed",
+      "run": 40350510581,
+      "attempt": 2,
+      "canonicalCompleteLocalGateClaimed": false
+    },
+    "independentCIFirstAttempt": {
+      "run": 40350510581,
+      "attempt": 1,
+      "source": "f04ffa6cf888ab5ef3c817ac0b56b3d6f6635955",
+      "packagingJob": 121670331182,
+      "failure": "Official ECR manifest request returned toomanyrequests: Rate exceeded before packaging image construction. All10actual test steps and14other jobs subsequently passed; initial whole-run conclusion remains failure.",
+      "registryRecheck": "Both exact reviewed Node/Nginx index manifests subsequently retrieved and SHA256 verified from managed harness at2026-10-26T15:39:42Z; not a GitHub runner/global rate-limit attestation.",
+      "nextAction": "Completed one diagnosed failed-job-only packaging/quality retry, unchanged source/base; both succeeded and14successful jobs were retained.",
+      "overallStatus": "completed",
+      "overallConclusion": "failure",
+      "all10ActualTestStepsPassed": true,
+      "all14OtherJobsPassed": true,
+      "retryReason": "Diagnosed temporary official ECR manifest rate error; over10min elapsed and exact pinned manifest endpoints subsequently verified. One failed-job-only retry on newly scheduled GitHub runners, unchanged source/base; no passing tests repeated."
+    },
+    "finalIndependentCI": {
+      "run": 40350510581,
+      "conclusion": "success",
+      "attempt": 2,
+      "source": "f04ffa6cf888ab5ef3c817ac0b56b3d6f6635955",
+      "diagnosedFailedOnlyRetry": [
+        "packaging",
+        "quality"
+      ],
+      "successfulOriginalJobsRetained": 14,
+      "sourceChanged": false,
+      "newReviewRequested": false
+    },
+    "developmentFailuresRetained": [
+      "Meaningful REST membership, exact-open UI and keyboard RED checks failed before implementation.",
+      "A native unsupported-version fixture hit the existing permission-set CHECK; final proof asserts its rejection and revoked Director denial.",
+      "First actual App attempt stopped before scenarios on two new test typing errors; corrected strict types passed.",
+      "Second actual App attempt exposed exact-text and narrow-navigation fixture mistakes; corrected without product/assertion budget changes.",
+      "Third actual App attempt passed the business journey but its final revoke fixture used an incorrect URL; corrected to the existing public DELETE route.",
+      "Fourth actual App attempt passed both complete scenarios; failed attempts are not relabeled as passing integration evidence."
+    ]
+  },
+  "review": {
+    "source": "f04ffa6cf888ab5ef3c817ac0b56b3d6f6635955",
+    "base": "f551b8cb3635070ac160b6f8872c143dc114645c",
+    "tree": "3ba123a284524e1e6d5286a8b997a5fee907b695",
+    "complete": true,
+    "prepublicationStandards": {
+      "reviewer": "queue891_standards",
+      "result": "PASS",
+      "blocking": 0
+    },
+    "prepublicationSpec": {
+      "reviewer": "queue891_spec",
+      "result": "PASS",
+      "blocking": 0
+    },
+    "structuralSelfReview": "PASS; isolated read service, existing decision commands reused, no new1k crossing",
+    "publishedReview": {
+      "trigger": "automatic PR opening",
+      "commentId": 6419960144,
+      "source": "f04ffa6cf888ab5ef3c817ac0b56b3d6f6635955",
+      "status": "completed",
+      "findings": 0,
+      "unresolved": 0,
+      "duplicateTriggerRequested": false
+    },
+    "blockingFindingsRemaining": 0
+  },
+  "artifacts": [
+    {
+      "id": 12665210705,
+      "name": "browser-evidence-part-acceptance-2-40350510581",
+      "size_in_bytes": 64363753,
+      "digest": "sha256:228b89599485f7b54ac804d7210c3eb5e81de6b6d1969d21c40d8f98421c8719",
+      "expires_at": "2026-11-09T15:46:48Z"
+    },
+    {
+      "id": 12665121914,
+      "name": "browser-evidence-pr-40350510581",
+      "size_in_bytes": 401518981,
+      "digest": "sha256:6122882a0d75f797150d3a1d7a197574120b7da15335821ad6330757ac9fb6cb",
+      "expires_at": "2026-11-09T15:51:40Z"
+    },
+    {
+      "id": 12665100032,
+      "name": "browser-evidence-part-browser-2-40350510581",
+      "size_in_bytes": 77556235,
+      "digest": "sha256:7f478926c836ced7daa129ea709db9bfad2cea3fa1acdefb3b01e930b102fce5",
+      "expires_at": "2026-11-09T15:41:12Z"
+    },
+    {
+      "id": 12664130795,
+      "name": "browser-evidence-part-browser-1-40350510581",
+      "size_in_bytes": 113758108,
+      "digest": "sha256:27002dbcd64d546eb1238f703852f1ec497d77c8f741bb2867a5c10610b891c6",
+      "expires_at": "2026-11-09T15:41:04Z"
+    },
+    {
+      "id": 12664086670,
+      "name": "browser-evidence-part-acceptance-1-40350510581",
+      "size_in_bytes": 74687841,
+      "digest": "sha256:5bb649f7d0d132c89bf5c669337f35b206fa39f521a932fc91f7f49ce33ea862",
+      "expires_at": "2026-11-09T15:47:00Z"
+    },
+    {
+      "id": 12663313086,
+      "name": "browser-evidence-part-browser-3-40350510581",
+      "size_in_bytes": 71153132,
+      "digest": "sha256:618305f894a89c0aa1c5db0b554cbe326ac5f05e1132d25ee792a2798755cb3f",
+      "expires_at": "2026-11-09T15:41:15Z"
+    }
+  ],
+  "scope": "Approved Profitability Estimate PRD13 pending-Version discovery, scoped captured Director plus independent Intake authority, chronological25-item pagination and exact existing decisions with unchanged retries/history. No new grant, migration, fiscal rule, provider, real-data activation or certification policy. MISSION-CLOSE-01 remains unanswered for one consolidated email.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}
