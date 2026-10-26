@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
@@ -90,6 +90,10 @@ function MissionReviewReader({
   const [older, setOlder] = useState<number | null>(null);
   const company = actor.activeCompany;
   const companyId = company?.id;
+  const retireProtectedRead = useCallback(() => {
+    setLoad({ kind: 'denied' });
+    setHistory(null);
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     setPending(true);
@@ -102,12 +106,12 @@ function MissionReviewReader({
         );
         if (controller.signal.aborted) return;
         if (response.status === 'unauthorized') {
-          setLoad({ kind: 'denied' });
+          retireProtectedRead();
           await identity.rejectSession();
           return;
         }
         if (response.status === 'forbidden' || response.status === 'notFound') {
-          setLoad({ kind: 'denied' });
+          retireProtectedRead();
           return;
         }
         if (response.status !== 'ok') {
@@ -132,8 +136,7 @@ function MissionReviewReader({
         );
         if (controller.signal.aborted) return;
         if (historyResponse.status === 'unauthorized') {
-          setLoad({ kind: 'denied' });
-          setHistory(null);
+          retireProtectedRead();
           await identity.rejectSession();
           return;
         }
@@ -142,8 +145,7 @@ function MissionReviewReader({
             historyResponse.status === 'forbidden' ||
             historyResponse.status === 'notFound'
           ) {
-            setLoad({ kind: 'denied' });
-            setHistory(null);
+            retireProtectedRead();
             return;
           }
           if (historyResponse.status !== 'ok')
@@ -169,7 +171,7 @@ function MissionReviewReader({
       }
     })();
     return () => controller.abort();
-  }, [companyId, identity, projectId, plan, reload]);
+  }, [companyId, identity, projectId, plan, reload, retireProtectedRead]);
   useEffect(() => {
     if (older === null) return;
     const controller = new AbortController();
@@ -183,9 +185,12 @@ function MissionReviewReader({
         );
         if (controller.signal.aborted) return;
         if (response.status === 'unauthorized') {
-          setLoad({ kind: 'denied' });
-          setHistory(null);
+          retireProtectedRead();
           await identity.rejectSession();
+          return;
+        }
+        if (response.status === 'forbidden' || response.status === 'notFound') {
+          retireProtectedRead();
           return;
         }
         if (response.status !== 'ok') throw new Error('History unavailable');
@@ -212,7 +217,7 @@ function MissionReviewReader({
       }
     })();
     return () => controller.abort();
-  }, [older, companyId, identity, projectId, plan]);
+  }, [older, companyId, identity, projectId, plan, retireProtectedRead]);
   const snapshot = load.kind === 'ready' ? load.snapshot : null;
   const reviewerKey = JSON.stringify([
     company?.missionResultReviewPermissions,

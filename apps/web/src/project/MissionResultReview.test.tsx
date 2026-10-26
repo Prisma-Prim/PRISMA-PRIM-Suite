@@ -338,3 +338,93 @@ it('redacts the current projection when the following history read observes evid
   await screen.findByText('Evidence unavailable under current access.');
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 });
+
+it.each([403, 404])(
+  'retires loaded protected judgments, older history and a draft when pagination observes HTTP%s',
+  async (status) => {
+    const first = plan.activities[0];
+    if (!first) throw new Error('Expected mapped activity');
+    const judgment = (revision: number) => ({
+      id: `row-${revision}`,
+      batchId: `batch-${revision}`,
+      reviewRevision: revision,
+      predecessorId: revision > 1 ? `row-${revision - 1}` : null,
+      outcome: 'NEEDS_WORK',
+      basis: 'Protected historical basis DEMO887',
+      actor: {
+        internalUserId: 'owner',
+        workspaceMembershipId: 'member',
+        displayName: 'Owner',
+      },
+      occurredAt: '2026-10-26T10:00:00.000Z',
+      observedTask: { id: first.taskId, title: first.title, version: 2 },
+      observedResultRevision: 0,
+      evidence: {
+        kind: 'EXTERNAL_REPORTED',
+        reference: 'Protected historical evidence DEMO887',
+      },
+    });
+    const current = snapshot().review;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('beforeRevision='))
+          return Response.json(
+            { message: 'Read authority revoked DEMO' },
+            { status },
+          );
+        if (url.includes('/history'))
+          return Response.json({
+            history: {
+              kind: 'available',
+              hasMore: true,
+              nextBeforeRevision: 2,
+              batches: Array.from({ length: 25 }, (_, index) => {
+                const row = judgment(26 - index);
+                return {
+                  id: row.batchId,
+                  reviewRevision: row.reviewRevision,
+                  outcome: row.outcome,
+                  basis: row.basis,
+                  items: [row],
+                };
+              }),
+            },
+          });
+        return Response.json({
+          review: {
+            ...current,
+            revision: 26,
+            activities: current.activities.map((row, index) => ({
+              ...row,
+              latest: index === 0 ? { ...judgment(26), current: true } : null,
+            })),
+          },
+        });
+      }),
+    );
+    render(<MissionResultReview {...props} />);
+    await screen.findByRole('button', { name: 'Load older reviews' });
+    expect(
+      screen.getAllByText('Protected historical basis DEMO887').length,
+    ).toBeGreaterThan(1);
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Shared review basis' }),
+      { target: { value: 'Protected pending review draft DEMO887' } },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Load older reviews' }));
+    await screen.findByText('Review access unavailable.');
+    expect(
+      screen.queryByText('Protected historical basis DEMO887'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Protected historical evidence DEMO887'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue('Protected pending review draft DEMO887'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Record human review' }),
+    ).not.toBeInTheDocument();
+  },
+);

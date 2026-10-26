@@ -1,7 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireUuid } from '../access/access-command-validation.js';
 
-function object(value: unknown, fields: readonly string[]) {
+function object(
+  value: unknown,
+  fields: readonly string[],
+): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new BadRequestException('A review object is required.');
   const parsed = Object.fromEntries(Object.entries(value));
@@ -30,7 +33,10 @@ function literal(value: unknown, maximum: number) {
     );
   return value.trim();
 }
-function evidenceInput(value: unknown) {
+type ReviewEvidence =
+  | { kind: 'DECLARED_RESULT'; resultId: string }
+  | { kind: 'EXTERNAL_REPORTED'; reference: string };
+function evidenceInput(value: unknown): ReviewEvidence {
   const input = object(value, ['kind', 'resultId', 'reference']);
   if (input.kind === 'DECLARED_RESULT' && input.reference === undefined)
     return { kind: input.kind, resultId: requireUuid(input.resultId) };
@@ -40,6 +46,11 @@ function evidenceInput(value: unknown) {
     'Choose an exact declared result or a reported external reference.',
   );
 }
+function outcomeInput(value: unknown): 'ACCEPTED_BY_REVIEWER' | 'NEEDS_WORK' {
+  if (value !== 'ACCEPTED_BY_REVIEWER' && value !== 'NEEDS_WORK')
+    throw new BadRequestException('Choose an explicit review outcome.');
+  return value;
+}
 export function reviewInput(value: unknown) {
   const input = object(value, [
     'expectedReviewRevision',
@@ -47,11 +58,7 @@ export function reviewInput(value: unknown) {
     'basis',
     'items',
   ]);
-  if (
-    input.outcome !== 'ACCEPTED_BY_REVIEWER' &&
-    input.outcome !== 'NEEDS_WORK'
-  )
-    throw new BadRequestException('Choose an explicit review outcome.');
+  const outcome = outcomeInput(input.outcome);
   if (
     !Array.isArray(input.items) ||
     input.items.length < 1 ||
@@ -76,7 +83,7 @@ export function reviewInput(value: unknown) {
     throw new BadRequestException('Select each activity once.');
   return {
     expectedReviewRevision: revision(input.expectedReviewRevision),
-    outcome: input.outcome,
+    outcome,
     basis: literal(input.basis, 2000),
     items,
   };
