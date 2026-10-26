@@ -3,6 +3,7 @@ import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { Select } from '../presentation/Select';
+import { MissionReadiness } from './MissionReadiness';
 import { useProjectTemplateCopy } from './project-template.copy';
 import { useProjectTemplateVersionCopy } from './project-template-version.copy';
 import {
@@ -375,7 +376,7 @@ export function ProjectTemplatePlan({
     return () => controller.abort();
   }, [companyId, identity, projectId, generation]);
   if (load.kind === 'ready' && load.template === null) return null;
-  return (
+  const planView = (
     <section className="project-template-plan" aria-label={copy('plan')}>
       <h4>{copy('plan')}</h4>
       {load.kind !== 'ready' ? (
@@ -449,6 +450,21 @@ export function ProjectTemplatePlan({
         )
       )}
     </section>
+  );
+  return (
+    <>
+      {planView}
+      {load.kind === 'ready' &&
+        load.template?.templateKey === pilotTemplateKey && (
+          <MissionReadiness
+            actor={actor}
+            identity={identity}
+            projectId={projectId}
+            plan={load.template}
+            onOpenTask={onOpenTask}
+          />
+        )}
+    </>
   );
 }
 

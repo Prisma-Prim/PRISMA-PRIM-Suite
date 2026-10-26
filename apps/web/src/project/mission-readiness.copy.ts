@@ -1,0 +1,124 @@
+import { defineMessages, useMessages } from '../localization/messages';
+
+const keys = [
+  'title',
+  'notice',
+  'clarification',
+  'loading',
+  'error',
+  'malformed',
+  'denied',
+  'empty',
+  'reload',
+  'openTask',
+  'unavailable',
+  'notRecorded',
+  'recorded',
+  'history',
+  'WORK_OPEN',
+  'WORK_CANCELLED',
+  'EVIDENCE_UNAVAILABLE',
+  'RESULT_NOT_RECORDED',
+  'RECORDED_RESULT_NOT_REVIEWED',
+] as const;
+export const missionReadinessMessages = defineMessages(keys, {
+  en: {
+    title: 'Mission readiness',
+    notice:
+      'Diagnostic view of Tasks and recorded results. It does not approve work or change Project completion.',
+    clarification:
+      'Whether the mission can close before certification, and the evidence required, await business clarification.',
+    loading: 'Loading mission readiness…',
+    error: 'Mission readiness could not be loaded.',
+    malformed: 'The mission readiness response could not be verified.',
+    denied: 'Mission readiness access is unavailable.',
+    empty: 'No supported mission assessment.',
+    reload: 'Reload mission readiness',
+    openTask: 'Open Task',
+    unavailable: 'Result evidence unavailable under current access.',
+    notRecorded: 'No result recorded in the application.',
+    recorded: 'Recorded declaration; not reviewed.',
+    history: 'Closed Project: historical diagnostic view.',
+    WORK_OPEN: 'Work open',
+    WORK_CANCELLED: 'Work cancelled; not fulfilled',
+    EVIDENCE_UNAVAILABLE: 'Task done; evidence unavailable',
+    RESULT_NOT_RECORDED: 'Task done; no recorded result',
+    RECORDED_RESULT_NOT_REVIEWED: 'Task done; recorded result not reviewed',
+  },
+  fr: {
+    title: 'État de préparation de la mission',
+    notice:
+      'Vue de diagnostic des tâches et résultats enregistrés. Elle ne valide pas les prestations et ne modifie pas la clôture du projet.',
+    clarification:
+      'La clôture avant certification et la preuve requise attendent une clarification métier.',
+    loading: 'Chargement de l’état de la mission…',
+    error: 'Impossible de charger l’état de la mission.',
+    malformed: 'La réponse sur l’état de la mission n’a pas pu être vérifiée.',
+    denied: 'Accès à l’état de la mission indisponible.',
+    empty: 'Aucune évaluation de mission prise en charge.',
+    reload: 'Recharger l’état de la mission',
+    openTask: 'Ouvrir la tâche',
+    unavailable: 'Preuve du résultat inaccessible avec les droits actuels.',
+    notRecorded: 'Aucun résultat enregistré dans l’application.',
+    recorded: 'Déclaration enregistrée ; non revue.',
+    history: 'Projet clôturé : vue de diagnostic historique.',
+    WORK_OPEN: 'Travail ouvert',
+    WORK_CANCELLED: 'Travail annulé ; non accompli',
+    EVIDENCE_UNAVAILABLE: 'Tâche terminée ; preuve inaccessible',
+    RESULT_NOT_RECORDED: 'Tâche terminée ; aucun résultat enregistré',
+    RECORDED_RESULT_NOT_REVIEWED:
+      'Tâche terminée ; résultat enregistré non revu',
+  },
+  ro: {
+    title: 'Starea pregătirii misiunii',
+    notice:
+      'Vizualizare diagnostică a sarcinilor și rezultatelor înregistrate. Nu aprobă lucrările și nu modifică închiderea proiectului.',
+    clarification:
+      'Închiderea înainte de certificare și dovada necesară așteaptă clarificarea de afaceri.',
+    loading: 'Se încarcă starea misiunii…',
+    error: 'Starea misiunii nu a putut fi încărcată.',
+    malformed: 'Răspunsul privind starea misiunii nu a putut fi verificat.',
+    denied: 'Accesul la starea misiunii nu este disponibil.',
+    empty: 'Nicio evaluare de misiune acceptată.',
+    reload: 'Reîncarcă starea misiunii',
+    openTask: 'Deschide sarcina',
+    unavailable:
+      'Dovada rezultatului nu este accesibilă cu drepturile actuale.',
+    notRecorded: 'Niciun rezultat înregistrat în aplicație.',
+    recorded: 'Declarație înregistrată; nerevizuită.',
+    history: 'Proiect închis: vizualizare diagnostică istorică.',
+    WORK_OPEN: 'Lucrare deschisă',
+    WORK_CANCELLED: 'Lucrare anulată; neîndeplinită',
+    EVIDENCE_UNAVAILABLE: 'Sarcină finalizată; dovadă inaccesibilă',
+    RESULT_NOT_RECORDED: 'Sarcină finalizată; niciun rezultat înregistrat',
+    RECORDED_RESULT_NOT_REVIEWED:
+      'Sarcină finalizată; rezultat înregistrat nerevizuit',
+  },
+  ru: {
+    title: 'Готовность миссии',
+    notice:
+      'Диагностический обзор задач и записанных результатов. Он не утверждает работы и не изменяет закрытие проекта.',
+    clarification:
+      'Возможность закрытия до сертификации и необходимые доказательства ожидают уточнения бизнес-правил.',
+    loading: 'Загрузка готовности миссии…',
+    error: 'Не удалось загрузить готовность миссии.',
+    malformed: 'Не удалось проверить ответ о готовности миссии.',
+    denied: 'Доступ к готовности миссии недоступен.',
+    empty: 'Нет поддерживаемой оценки миссии.',
+    reload: 'Обновить готовность миссии',
+    openTask: 'Открыть задачу',
+    unavailable: 'Доказательство результата недоступно с текущими правами.',
+    notRecorded: 'Результат не записан в приложении.',
+    recorded: 'Декларация записана; не проверена.',
+    history: 'Закрытый проект: исторический диагностический обзор.',
+    WORK_OPEN: 'Работа открыта',
+    WORK_CANCELLED: 'Работа отменена; не выполнена',
+    EVIDENCE_UNAVAILABLE: 'Задача завершена; доказательство недоступно',
+    RESULT_NOT_RECORDED: 'Задача завершена; результат не записан',
+    RECORDED_RESULT_NOT_REVIEWED:
+      'Задача завершена; записанный результат не проверен',
+  },
+});
+export function useMissionReadinessCopy() {
+  return useMessages(missionReadinessMessages);
+}
