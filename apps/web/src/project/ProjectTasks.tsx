@@ -58,6 +58,8 @@ export type RequestedTask = {
   taskId: string;
   requestId: number;
   focus?: 'task';
+  /** Optional originating Client-preview lifetime; never a mutation signal. */
+  sourceSignal?: AbortSignal;
 };
 type Props = {
   actor: ActorContext;
@@ -457,7 +459,7 @@ function TaskProject({
   async function refresh(
     taskId: string | null,
     controller: AbortController,
-    requestedOpenId?: number,
+    read: { requestedOpenId?: number; onTargetReady?: () => void } = {},
   ) {
     const api = await createAuthenticatedApiClient(identity);
     if (controller.signal.aborted) return;
@@ -489,7 +491,12 @@ function TaskProject({
           scope,
           taskId,
         );
-        nextDetail = { kind: 'ready', ...task, events, requestedOpenId };
+        nextDetail = {
+          kind: 'ready',
+          ...task,
+          events,
+          requestedOpenId: read.requestedOpenId,
+        };
       } catch (error: unknown) {
         if (!(error instanceof ReadFailure) || error.kind !== 'missing')
           throw error;
@@ -497,6 +504,9 @@ function TaskProject({
       }
     }
     if (controller.signal.aborted) return;
+    // Stable target facts are resolved here. An auxiliary member lookup stays
+    // under this owner's authority and must not prolong the originating preview.
+    read.onTargetReady?.();
     setLoad({ kind: 'ready', listing });
     // A member the authoritative listing no longer references cannot stay selected.
     setAssigneeFilter((previous) =>
@@ -547,8 +557,14 @@ function TaskProject({
   }
   async function open(
     taskId: string | null,
-    options: { reload?: boolean; requestedOpenId?: number } = {},
+    options: {
+      reload?: boolean;
+      requestedOpenId?: number;
+      sourceSignal?: AbortSignal;
+    } = {},
   ) {
+    if (options.sourceSignal?.aborted) return;
+    const previousLoad = load;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -568,9 +584,28 @@ function TaskProject({
       deny();
       return;
     }
+    const retireSourceRead = () => {
+      controller.abort();
+      if (request.current === controller) {
+        request.current = null;
+        setSelected(null);
+        setDetail(null);
+        setLoad(
+          previousLoad.kind === 'ready' ? previousLoad : { kind: 'error' },
+        );
+      }
+    };
+    options.sourceSignal?.addEventListener('abort', retireSourceRead, {
+      once: true,
+    });
+    const stopSourceRetirement = () =>
+      options.sourceSignal?.removeEventListener('abort', retireSourceRead);
     setLoad({ kind: 'loading' });
     try {
-      await refresh(taskId, controller, options.requestedOpenId);
+      await refresh(taskId, controller, {
+        requestedOpenId: options.requestedOpenId,
+        onTargetReady: stopSourceRetirement,
+      });
     } catch (error: unknown) {
       if (controller.signal.aborted) return;
       if (error instanceof ReadFailure && error.kind === 'denied') deny();
@@ -578,6 +613,8 @@ function TaskProject({
         setLoad({ kind: 'error' });
         setDetail(taskId ? { kind: 'error' } : null);
       }
+    } finally {
+      stopSourceRetirement();
     }
   }
   useEffect(() => {
@@ -604,8 +641,10 @@ function TaskProject({
     )
       return;
     consumedTaskRequest.current = requestedTask.requestId;
+    if (requestedTask.sourceSignal?.aborted) return;
     void open(requestedTask.taskId, {
       requestedOpenId: requestedTask.requestId,
+      sourceSignal: requestedTask.sourceSignal,
     });
   }, [requestedTask, commandSettling]);
   // The section keeps ordinary Task-opening focus. Only an explicit Task-focus
