@@ -1270,15 +1270,19 @@ content/prices/numbering/signatures and deployment remain separate. No unresolve
 real numbering, legal or certification decision blocks this anonymous planning
 mechanism; none is silently decided by it.
 
-## 29. Approved bounded mission readiness and later governance (#881)
+## 29. Mission readiness, attributable review and later governance
 
-The [mission-obligation contract](release-1-mission-obligations-prd.md) approves
-§13's first read-only thirteen-activity/result-readiness outcome under Dan's
-2026-10-26 authorization. It changes no ordinary Task/Project completion, enables
-no pilot stage transition and adopts no completion policy. Later mutation outcomes
-must first obtain their complete bounded contracts and readiness checks.
+The [mission-obligation contract](release-1-mission-obligations-prd.md) owns the
+delivered §13 read-only diagnostic outcome (#883 / PR #884) and the next approved
+§14 attributable result review under #885. Review is a separate human judgment
+against preserved intended results and identified evidence; an external/physical
+reference creates no §27 PDF declaration. Raw diagnostic codes convey no review
+adjudication or fulfillment predicate; the current UI must not label an actually
+separately reviewed result as lacking any review.
 
-The same PRD's [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
-retains `MISSION-CLOSE-01` for Dan to forward with other still-open questions in
-one email to Iurie. It is not an answered policy or a blocker of the independent
-read-only outcome. No real grant or certification claim follows.
+Neither outcome adopts a completion policy, changes ordinary Task/lifecycle or
+enables a pilot stage transition. Later guarded completion/applicability mutations
+require complete bounded contracts. The same PRD's
+[open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+retains unanswered `MISSION-CLOSE-01` across handoffs for Dan's single consolidated
+email to Iurie. No certificate, waiver, actual grant or external message follows.

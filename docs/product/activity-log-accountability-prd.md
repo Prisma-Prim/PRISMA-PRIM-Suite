@@ -137,6 +137,17 @@ events. Assignment grant/revoke uses
 `company_task_manager_assignment.revoked` with existing administration visibility.
 No event mutation/deletion route or general member-directory exposure is added.
 
+For [attributable mission-result review](release-1-mission-obligations-prd.md#14-approved-next-vertical--record-attributable-result-review-885),
+each material batch records internal `project.mission_result.reviewed`, targeting
+the Company-owned review batch with server actor/time and metadata containing
+only its review revision. It shares the transaction with immutable selected rows,
+receipt and original Client reference-use fence. Denied, failed, unchanged and
+replayed intent emits none. No ordinary Activity/Task-history projection exposes
+review IDs, counts, basis, evidence or human judgments; the protected public review
+history owns those fields under current combined read prerequisites. Native
+coupled integrity refuses partial audit/receipt/history commits. Separate Reviewer
+assignment events follow Authorization §8's minimal bundle-label convention.
+
 For [exact mission Task results](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832),
 each committed first declaration or material correction records respectively
 `task.result.recorded` or `task.result.corrected`, targeting the Company-owned
@@ -168,7 +179,7 @@ ordinary `task.created` events atomically with the Project, complete immutable
 source/mapping, Tasks, command identity and original Client fence. Exact replay,
 refusal and rollback add none. Existing Project/Task projection boundaries and
 actor/server-time attribution remain; full actions/intended results stay in the
-gated copied plan, not new broad Activity metadata. Userv2 grant/revocation uses
+gated copied plan, not new broad Activity metadata. User v2 grant/revocation uses
 the existing Company assignment transition convention. No new event family,
 stage progress, Task completion, actual-result declaration or certification
 fact is inferred by copying.
