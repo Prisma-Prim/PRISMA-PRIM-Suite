@@ -590,6 +590,17 @@ describe.skipIf(!databaseUrl)(
         await fixture.command('/projects/from-template', body, { key }),
       ).toMatchObject({ id: projectId, status: 'cancelled' });
       expect(await fixture.read(path)).toEqual(source);
+      const readiness = object(
+        (await fixture.read(`/projects/${projectId}/mission-readiness`))
+          .assessment,
+      );
+      expect(readiness).toMatchObject({
+        project: { id: projectId, status: 'cancelled' },
+      });
+      expect(objects(readiness.activities).map((row) => row.state)).toEqual(
+        Array.from({ length: 13 }, () => 'EVIDENCE_UNAVAILABLE'),
+      );
+
       expect(
         (
           await fixture.harness.pool.query(
@@ -814,6 +825,19 @@ describe.skipIf(!databaseUrl)(
         await fixture.command('/projects/from-template', body, { key }),
       ).toMatchObject({ id: project.id });
       expect(await fixture.read(path)).toEqual(copy);
+      expect(
+        object(
+          (
+            await fixture.read(
+              `/projects/${text(project.id)}/mission-readiness`,
+            )
+          ).assessment,
+        ),
+      ).toMatchObject({
+        project: { id: project.id },
+        source: { templateKey: pilotKey, version: 1 },
+      });
+
       expect(
         (
           await fixture.request('/projects/from-template', {
