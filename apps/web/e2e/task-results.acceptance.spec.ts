@@ -346,13 +346,13 @@ test('inspects mission readiness without accepting work and preserves independen
     membershipId = text(process.env.ACCEPTANCE_PRIMARY_MEMBERSHIP_ID);
   const headers = { ...ada, 'x-company-context-id': companyId },
     title = `Mission readiness DEMO ${narrow ? 'narrow' : 'desktop'}`;
+  // Global setup owns the Project Document Organizer grant.
   const bundles = [
     'project-template-user',
     'mission-deliverable-access',
     'document-content-reader',
     'document-content-uploader',
     'document-approver',
-    'document-project-organizer',
     'task-result-recorder',
   ];
   const granted = new Set<string>();
