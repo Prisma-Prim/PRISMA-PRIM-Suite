@@ -1,0 +1,267 @@
+{
+  "issue": 877,
+  "pr": 878,
+  "source": "5f29834b6c976a7a640e49ef5366f36309290280",
+  "base": "08859a37d1ce9ce9623d1dd244cdd741d8194a9a",
+  "tree": "39701778b91bb01cb07663b013658b88bcb9c812",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40259045820,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40259045820",
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "sensitiveBroadCommand": {
+      "command": "node scripts/managed-postgres.mjs -- pnpm verify",
+      "source": "ffee7ee6b0ad1d510fadfd8b6219d58e3af870bc",
+      "exitCode": 1,
+      "scriptsPassed": 483,
+      "apiParallelPassed": 3257,
+      "apiParallelFailed": 2,
+      "expectedExternalScannerIntegrationSkipped": 1,
+      "diagnosis": "Both failures shared one old expected action inventory. Runtime behavior was intentional. Never relabeled as a successful full command."
+    },
+    "identifiedCorrection": {
+      "finalSource": "7965bcc2e7b1836fa2bfef0f1dc4843249c77ab7",
+      "changedFile": "apps/api/src/accountability/contract-activity-projection.test.ts",
+      "oneInsertion": "contract_version.signing_declared",
+      "focusedPassed": 45,
+      "format": "PASS",
+      "lint": "PASS",
+      "runtimeUnchanged": true
+    },
+    "remainingDevelopmentPhases": {
+      "source": "7965bcc2e7b1836fa2bfef0f1dc4843249c77ab7",
+      "apiSerialPassed": 106,
+      "webUnitPassed": 3140,
+      "bothProductionBuilds": "PASS",
+      "exitCode": 0
+    },
+    "targetedBeforeReview": {
+      "api": 185,
+      "historicalUpgrade": 10,
+      "sqlAnd83Upgrade": 2,
+      "web": 54,
+      "affectedActualApp": "12unchanged earlier +4corrected old/new ModelContract"
+    },
+    "targetedCorrection": {
+      "api": 31,
+      "accessStates": 7,
+      "web": 11,
+      "actualApp1440And390": 2,
+      "format": "PASS",
+      "types": "PASS",
+      "lint": "PASS"
+    },
+    "finalGate": {
+      "run": 40259045820,
+      "source": "5f29834b6c976a7a640e49ef5366f36309290280",
+      "result": "success",
+      "fullIndependent": true,
+      "jobs": 16,
+      "actualTestSteps": 10
+    },
+    "additionalOriginalReadyReviewCorrection": {
+      "source": "d45eb2abec53e734b942a27acf3bcbf3d67e2f78",
+      "runtimeDeltaFrom7965bcc": "Eight source capture IDs/versions in existing preparation retirement key;3RED cases then14affected component casesPASS,4actualApp casesPASS;types/lint/formatPASS. No backend/schema/permissions business rule change.",
+      "previousCI": {
+        "run": 40252979526,
+        "source": "7965bcc2e7b1836fa2bfef0f1dc4843249c77ab7",
+        "result": "success but superseded by this known-conformance fix; never claimed final proof"
+      }
+    },
+    "finalFocusedCorrection": {
+      "source": "5f29834b6c976a7a640e49ef5366f36309290280",
+      "reportedSigningApiPassed": 38,
+      "webPassed": 27,
+      "actualAppDesktopNarrowPassed": 4,
+      "types": "PASS",
+      "lint": "PASS",
+      "format": "PASS",
+      "redProofs": [
+        "native simulated evidence on Company-model",
+        "native reported evidence on legacy mode",
+        "cached Project projection after authority loss",
+        "historical unsigned Version after root linkage"
+      ],
+      "supersededRun": {
+        "run": 40255285899,
+        "conclusion": "cancelled after known findings; not final evidence"
+      }
+    }
+  },
+  "review": {
+    "issue": 877,
+    "pr": 878,
+    "source": "7ff4ad4e87681e6caadb825f95aa751d29492a24",
+    "base": "08859a37d1ce9ce9623d1dd244cdd741d8194a9a",
+    "tree": "955127083a20ce68fc0e8acff4eb873f46db7b1c",
+    "round": 1,
+    "axes": {
+      "standards": {
+        "blocking": 1,
+        "followups": 0
+      },
+      "spec": {
+        "blocking": 2,
+        "followups": 0
+      }
+    },
+    "findings": [
+      {
+        "axis": "spec",
+        "finding": "Earlier draft PDF uploads became declaration candidates after designation of their Version",
+        "disposition": "accepted; candidate/exact Document predicate and independent SQL require the final successful upload of that exact official/formerly official Version; ordinary historical download preserved",
+        "proof": "review-api-red.log RED; review-api-green.log31 PASS including native SQL positive control and earlier-upload forgery"
+      },
+      {
+        "axis": "spec",
+        "finding": "Held earlier reload or Version navigation can replace a confirmed declaration or retire an uncertain owner",
+        "disposition": "accepted; shared read owner retires earlier replies at sibling protection and when applying confirmed result, later independent reads remain available",
+        "proof": "RED then11affected Web casesPASS; held-read regression in actual App desktop/narrow4PASS and final complete CI"
+      },
+      {
+        "axis": "standards",
+        "finding": "Selected exact PDF download unmounted with Declarer authority loss",
+        "disposition": "accepted; one parent-owned download outside declaration/history subtrees; its lifetime keyed only to exact Version/tuple and consumed PDF authority",
+        "proof": "RED then11affected Web casesPASS; held exact PDF across actual Declarer-only revocation in actual App desktop/narrow4PASS and final complete CI"
+      }
+    ],
+    "correction": "one amended correction commit 5f29834b6c976a7a640e49ef5366f36309290280",
+    "confirmation": {
+      "count": 1,
+      "reviewer": "issue877_spec_review",
+      "result": "PASS; all3 accepted blockers addressed, zero remaining/new blockers in focused correction",
+      "readOnly": true,
+      "checksNotRerunByReviewer": true,
+      "scope": "Only the original three corrections on ffee7ee; later focused source capture, Project projection, SQL mode exclusion and historical parser deltas were root-reviewed and tested. No claim of a later independent confirmation."
+    },
+    "broaderVerify": "First full pnpm verify failed2shared old action-inventory assertions. One-line fixture correction45focusedPASS; subsequent serialAPI106/Web3140/bothbuildsPASS on recorded7965bcc. Final focused corrections38API/27Web/4App/types/lint/formatPASS. Complete independent CI40259045820 reexecuted all16jobs/10Teststeps on final5f29834. No complete pnpm verify command success or canonical verify-local claim.",
+    "finalCI": "40259045820 complete success on 5f29834b6c976a7a640e49ef5366f36309290280",
+    "wholeCase": "still required after runtime merge",
+    "correctedSource": "ffee7ee6b0ad1d510fadfd8b6219d58e3af870bc",
+    "correctedTree": "7daffbd7ce4041158d8b36f211a6568cb7e68bdc",
+    "targetedCorrection": {
+      "api": 31,
+      "accessStates": 7,
+      "webComponents": 11,
+      "actualApp": 2,
+      "format": "PASS",
+      "types": "PASS",
+      "lint": "whole lint only unused new binding; binding removed and focused lint PASS"
+    },
+    "remainingBlockers": 0,
+    "finalSource": "5f29834b6c976a7a640e49ef5366f36309290280",
+    "finalTree": "39701778b91bb01cb07663b013658b88bcb9c812",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "automaticReadyReview": {
+      "commentId": 6405933721,
+      "reviewId": 5646334420,
+      "source": "7965bcc2e7b1836fa2bfef0f1dc4843249c77ab7",
+      "status": "completed original trigger; source-capture thread resolved and actual4App checksPASS",
+      "originalRoundBlockingFindings": 1,
+      "threadId": "PRRT_kwDOTxkDU86wG8ht",
+      "finding": "Preparation draft/key/held reply survives Company-only Client capture loss when Workspace Client manage keeps the old mayPrepare predicate true; Offer/Intake captures likewise omitted.",
+      "disposition": "Accepted; exact consumed Client/Offer/Intake assignment IDs and versions retire preparation without remounting independent declaration/PDF/Project owners. Three RED cases,14Web/4actualApp/types/lint/formatPASS; final CI reexecuted.",
+      "collection": "Collected late during pre-merge guard after initial candidate CI. No merge or conformant/final claim on that candidate.",
+      "correction": "One amended correction commit d45eb2abec53e734b942a27acf3bcbf3d67e2f78",
+      "targeted": {
+        "componentTestsPassed": 14,
+        "actualDesktopNarrowPassed": 4,
+        "types": "PASS",
+        "lint": "PASS",
+        "format": "PASS"
+      }
+    },
+    "automaticUpdateReceipt": {
+      "reviewId": 5646506733,
+      "source": "d45eb2abec53e734b942a27acf3bcbf3d67e2f78",
+      "findings": 2,
+      "disposition": "Both accepted in same amended focused correction; both threads resolved after affected proof. No manual review/ready trigger or extra confirmation requested.",
+      "projectRead": "compound captured-authority snapshot/epoch withholds cached and held Project projections without retiring uncertain declaration",
+      "sql": "mutually exclude native simulated evidence on Company-model and reported evidence on legacy mode; preserve complete legacy guard",
+      "rootSamePattern": "Opposite SQL mode tested RED then fixed; historical unsigned superseded Contract retains independently authorized root Project links, parser RED then corrected",
+      "targeted": {
+        "reportedSigningApi": 38,
+        "web": 27,
+        "actualApp": 4,
+        "types": "PASS",
+        "lint": "PASS",
+        "format": "PASS"
+      },
+      "threads": [
+        "PRRT_kwDOTxkDU86wHL13",
+        "PRRT_kwDOTxkDU86wHL16"
+      ]
+    },
+    "additionalAutomaticHeadUpdate": {
+      "source": "5f29834b6c976a7a640e49ef5366f36309290280",
+      "status": "running as observed2026-10-26T02:37:29Z; no unsupported completion/zero-findings claim",
+      "requestedByRoot": false,
+      "disposition": "Applicable independent Standards/Spec round and original automatic receipts are complete; known findings corrected/threads resolved. Unrequested ongoing update does not add another required review trigger. Inspect any actually delivered findings before guarded merge."
+    },
+    "inventoryOnlyIntermediateDelta": {
+      "from": "ffee7ee6b0ad1d510fadfd8b6219d58e3af870bc",
+      "onlyFile": "apps/api/src/accountability/contract-activity-projection.test.ts",
+      "oneInsertion": "contract_version.signing_declared in the exact expected action inventory",
+      "rootDisposition": "Only this intermediate ffee7ee-to-7965bcc delta was test-inventory-only;45focused checksPASS. The later source-capture, Project projection, SQL mode and historical parser deltas are separately disclosed above and are not claimed byte-identical to the confirmation source.",
+      "to": "7965bcc2e7b1836fa2bfef0f1dc4843249c77ab7"
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12624540714,
+      "name": "browser-evidence-part-browser-2-40259045820",
+      "size_in_bytes": 77533651,
+      "digest": "sha256:62261dc7a358dadcf73405b5eb1f9093ffe222226ff53ecbb036097b93ede35c",
+      "expires_at": "2026-11-09T02:33:12Z"
+    },
+    {
+      "id": 12624466592,
+      "name": "browser-evidence-part-acceptance-1-40259045820",
+      "size_in_bytes": 73964355,
+      "digest": "sha256:4979d347da769320d919fb7121e54e6b7c758fb6cc23bf17756aeaec8a824f0e",
+      "expires_at": "2026-11-09T02:37:16Z"
+    },
+    {
+      "id": 12624311552,
+      "name": "browser-evidence-part-browser-1-40259045820",
+      "size_in_bytes": 113754690,
+      "digest": "sha256:a0127e2618542e8e91f774aaf76dfc3f8d8abe3373cb43a14de8e4069a136290",
+      "expires_at": "2026-11-09T02:33:22Z"
+    },
+    {
+      "id": 12623972834,
+      "name": "browser-evidence-pr-40259045820",
+      "size_in_bytes": 400164302,
+      "digest": "sha256:be8f6e8ab835926d8a16d8af73cd080bc828b32901c5a864ef89d8ed00daed29",
+      "expires_at": "2026-11-09T02:37:38Z"
+    },
+    {
+      "id": 12623901764,
+      "name": "browser-evidence-part-acceptance-2-40259045820",
+      "size_in_bytes": 63743364,
+      "digest": "sha256:8c70e92ae3440e06f3667d27500c500fb7512341a48cd3a940d46bb05101f5c5",
+      "expires_at": "2026-11-09T02:36:53Z"
+    },
+    {
+      "id": 12623469706,
+      "name": "browser-evidence-part-browser-3-40259045820",
+      "size_in_bytes": 71168330,
+      "digest": "sha256:4b6251892456f5eeaf15b9dd6ba055a1d5ef3bea0ec67f418c96d21f0ec900a4",
+      "expires_at": "2026-11-09T02:33:14Z"
+    }
+  ],
+  "scope": "Commercial31 runtime only: explicit opt-in unverified signing/case acceptance, exact designated received PDF, immutable declaration/quality/execution/receipt/event, independent history/PDF authorization and existing13TaskProject continuation. No Offer response rewrite, real grants/documents/deployment, official numbering or legal/payment assurance. Whole-case13results/PDF/ordinary closure acceptance remains separate root work after runtime merge.",
+  "publication": "Only reviewed public technical metadata/report. No raw logs, archives, images, traces, model/financial body, source dossier or client prose selected. Canonical complete local integration gate was not executed or claimed; independent CI is the explicitly authorized runtime alternative.",
+  "keepThrough": "2026-11-12T00:00:00Z"
+}
