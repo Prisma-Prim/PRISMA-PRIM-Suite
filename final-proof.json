@@ -1,0 +1,35 @@
+{
+  "issue": 889,
+  "pr": 890,
+  "source": "6731f2a4dfad08fe282b79d8421afd47261380c5",
+  "base": "4fbb9be6246c0268a6ef29572d44e2a00be45101",
+  "tree": "7fe90193d6a41afc412030a02e9efa470fedf4dd",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1694,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "source": "6731f2a4dfad08fe282b79d8421afd47261380c5",
+    "reviewedBase": "4fbb9be6246c0268a6ef29572d44e2a00be45101",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "orderedStandards": "PASS0 queue889_standards",
+    "orderedSpecProduct": "PASS0 queue889_spec; actual bounded product approval under Dan delegation",
+    "scope": "Docs-only pending profitability estimate queue; no runtime or permission changes",
+    "noAdditionalReviewRequested": true
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only approved pending profitability estimate queue: all undecided exact Versions, current captured Director/intake authority, chronological bounded discovery and continuation into existing decisions. No runtime, new grant, pricing/decision rule, provider, activation or external message. MISSION-CLOSE-01 remains unanswered for one consolidated email.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}
