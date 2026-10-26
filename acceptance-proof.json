@@ -1,0 +1,51 @@
+{
+  "parent": 820,
+  "runtimeIssue": 877,
+  "runtimePR": 878,
+  "actualMain": "d90cf4a28291259da08fde65f3b5ec7dceed1bd9",
+  "soleParent": "08859a37d1ce9ce9623d1dd244cdd741d8194a9a",
+  "testedTree": "39701778b91bb01cb07663b013658b88bcb9c812",
+  "runtimeIndependentProof": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/tree/1db86c984e2ff43dc85bfbe5eff369ddc24e62c3",
+  "runtimeIndependentCI": {
+    "run": 40259045820,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40259045820",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true
+  },
+  "wholeCaseExecution": "Actual merged main with temporary test-only harness files; no tracked production changes. Local execution, not independent runner attestation.",
+  "api": {
+    "passed": 1,
+    "ordinaryTasks": 13,
+    "exactResultVersions": 13,
+    "distinctPdfByteComparisons": 26,
+    "apiRestarts": 2,
+    "prematureClosureDenied": true,
+    "ordinaryClosureAndReceiptsAfterRestart": true,
+    "noDuplicateProject": true,
+    "independentPdfDenial": true
+  },
+  "browser": {
+    "passed": 2,
+    "viewports": [
+      "1440x900",
+      "390x844"
+    ],
+    "fullRequestEconomicOfferContractReceivedPdfDeclarationExistingProjectJourney": true,
+    "initialCommercialSetupThroughPublicRestFixtures": true,
+    "thirteenResultsRecordedThroughPublicRest": true,
+    "ordinaryTasksAndResultVersions": 13,
+    "exactPdfBytesBeforeAndAfterClosure": true,
+    "ordinaryClosureThroughActualUI": true,
+    "reopenedClosedProjectThroughActualUI": true,
+    "lastResultActualDownload": true,
+    "foreignCompanyDeniedWithoutTitleDisclosure": true,
+    "independentContentDenialWithoutHistoryLoss": true,
+    "sourceOfferResponseUnchanged": true
+  },
+  "scope": "Representative source-shaped anonymous ELECTRO SERVICE GRUP consulting case; the preserved eighteen Offer stages and thirteen Contract activities remain distinct. Human configuration/approvals and work/signature declarations in this rehearsal are deliberately synthetic. No real tenant activation, historical cost reconstruction, actual completed work, verified signature/mandate/legal/payment/certification, official numbering or whole-MVP completion claim.",
+  "commands": {
+    "api": "node scripts/managed-postgres.mjs -- pnpm --filter @prisma-prim/api exec vitest run src/contract/whole-case-acceptance.private.test.ts",
+    "browser": "node scripts/managed-postgres.mjs -- pnpm --filter @prisma-prim/web exec playwright test --config playwright.acceptance.config.ts whole-case-reported-signing.acceptance.spec.ts"
+  },
+  "keepThrough": "2026-11-12T00:00:00Z"
+}

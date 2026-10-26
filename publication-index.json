@@ -1,0 +1,27 @@
+{
+  "actualMain": "d90cf4a28291259da08fde65f3b5ec7dceed1bd9",
+  "testedTree": "39701778b91bb01cb07663b013658b88bcb9c812",
+  "keepThrough": "2026-11-12T00:00:00Z",
+  "files": [
+    {
+      "path": "acceptance-proof.json",
+      "bytes": 2610,
+      "sha256": "35d0be8eac1491184c278858fecc12de953145a2ec897dfa4514bbdac7036718"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3223,
+      "sha256": "d4fccebbc68bb50713d8f82d8f0c2a45c06e0b11bd18e0e26ae2bfd2cc76ba27"
+    },
+    {
+      "path": "whole-case-acceptance.private.test.ts",
+      "bytes": 10594,
+      "sha256": "f1c0d277424a6a45c00acd8495ce535c892bf7f855500e6ff3bf4ea2e7ef9fe4"
+    },
+    {
+      "path": "whole-case-reported-signing.acceptance.spec.ts",
+      "bytes": 28634,
+      "sha256": "ec720926ebb5012cce56b8802adef003be5c9f330ba9c803e16c265db2e3b6d7"
+    }
+  ]
+}
