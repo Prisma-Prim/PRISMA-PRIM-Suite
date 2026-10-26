@@ -31,6 +31,7 @@ withPostgres('Independent reported-signing SQL integrity', () => {
     const foreign = await prepareReportedSigning(fixture),
       ready = await prepareReportedSigning(fixture, {
         clientTaxId: 'FOREIGN-INTEGRITY-877',
+        correctedPdf: true,
       });
     const current = responseRecord(
       responseRecord(
@@ -66,6 +67,11 @@ withPostgres('Independent reported-signing SQL integrity', () => {
     if (!Array.isArray(page.items) || !page.items[0])
       throw new Error('Missing exact native reference.');
     const pdf = responseRecord(page.items[0]);
+    const earlier = await fixture.pool.query<{ facts: unknown }>(
+      `SELECT jsonb_build_object('representationId',id::text,'fileName',file_name,'mediaType',media_type,'size',size,'sha256',sha256,'scanOutcome',scan_outcome,'scanEngine',scan_engine,'scannedAt',to_char(scanned_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'storedByMembershipId',stored_by_membership_id::text,'storedAt',to_char(stored_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) facts FROM document_pdfs WHERE id=$1`,
+      [ready.earlierRepresentationId],
+    );
+    const earlierPdf = { ...pdf, ...responseRecord(earlier.rows[0]?.facts) };
     const material = {
       workspaceId: responseString(actor, 'workspaceId'),
       companyId: ready.target.companyId,
@@ -172,6 +178,25 @@ withPostgres('Independent reported-signing SQL integrity', () => {
       }
     }
     await expect(nativeControl()).resolves.toBeUndefined();
+    async function insertLegacySignature() {
+      const connection = await fixture.pool.connect();
+      try {
+        await connection.query('BEGIN');
+        await connection.query(
+          `INSERT INTO contract_signatures(workspace_id,company_id,contract_id,contract_version_id,result_revision,actor_internal_user_id,actor_workspace_membership_id,recorded_at,provider_signatory_label,client_signatory_label,provider_signed_on,client_signed_on,quality_run_id,representation_checksum,acknowledged_warning_codes) SELECT workspace_id,company_id,contract_id,contract_version_id,3,actor_internal_user_id,actor_workspace_membership_id,evaluated_at,'Synthetic legacy provider','Synthetic legacy Client',(evaluated_at AT TIME ZONE 'UTC')::date,(evaluated_at AT TIME ZONE 'UTC')::date,id,$2,'[]'::jsonb FROM contract_quality_runs WHERE id=$1`,
+          [material.runId, material.checksum],
+        );
+        await connection.query('SET CONSTRAINTS ALL IMMEDIATE');
+      } finally {
+        await connection.query('ROLLBACK');
+        connection.release();
+      }
+    }
+    await expect(insertLegacySignature()).rejects.toHaveProperty(
+      'code',
+      '23514',
+    );
+
     for (const [label, change] of [
       [
         'foreign approval',
@@ -186,6 +211,17 @@ withPostgres('Independent reported-signing SQL integrity', () => {
       [
         'foreign PDF representation',
         { representationId: foreign.body.representationId },
+      ],
+      [
+        'earlier draft PDF in the same designated Version',
+        {
+          representationId: ready.earlierRepresentationId,
+          statement: {
+            ...ready.body,
+            representationId: ready.earlierRepresentationId,
+          },
+          pdf: earlierPdf,
+        },
       ],
       ['approved checksum', { checksum: 'f'.repeat(64) }],
       [
@@ -283,5 +319,9 @@ withPostgres('Independent reported-signing SQL integrity', () => {
         })
       ).status,
     ).toBe(201);
+    await expect(insertLegacySignature()).rejects.toHaveProperty(
+      'code',
+      '23514',
+    );
   }, 30_000);
 });

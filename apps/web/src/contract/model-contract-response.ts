@@ -130,7 +130,7 @@ export function readModelContract(value: unknown) {
   if (
     (signature ? 'EXECUTED' : 'NOT_EXECUTED') !== v.executionState ||
     (signature && supersededByVersionId !== null) ||
-    (!signature && linkedProjects.length)
+    (!signature && supersededByVersionId === null && linkedProjects.length)
   )
     invalid();
   const decisionState = decision

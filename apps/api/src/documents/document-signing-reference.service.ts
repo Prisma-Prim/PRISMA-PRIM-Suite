@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, eq, gt, inArray } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { CompanyContextAuthorization } from '../access/company-context-authorization.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
@@ -175,6 +175,9 @@ export class DocumentSigningReferenceService {
       ),
       inArray(documentVersions.status, ['official', 'superseded']),
       eq(documentPdfs.scanOutcome, 'clean'),
+      // An official Version freezes its final successful draft upload. Earlier
+      // uploads remain downloadable history, never signing candidates.
+      sql`${documentPdfs.uploadRevision} = (SELECT max(designated_pdf.upload_revision) FROM document_pdfs designated_pdf WHERE designated_pdf.workspace_id=${documentPdfs.workspaceId} AND designated_pdf.company_id=${documentPdfs.companyId} AND designated_pdf.document_id=${documentPdfs.documentId} AND designated_pdf.version_id=${documentPdfs.versionId})`,
     );
   }
   private selection() {

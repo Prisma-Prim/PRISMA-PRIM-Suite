@@ -52,6 +52,119 @@ function capture(init: RequestInit | undefined): Attempt {
 }
 
 describe('Corresponding Contract component command ownership', () => {
+  it.each(['client', 'offer', 'intake'] as const)(
+    'retires a held preparation command and literal draft when its consumed %s capture changes, preserving ordinary Contract reads',
+    async (kind) => {
+      const source = modelContractFixture();
+      const actor: typeof modelContractActor = {
+        ...modelContractActor,
+        workspacePermissions: [
+          ...modelContractActor.workspacePermissions,
+          'client.manage',
+        ],
+        activeCompany: {
+          ...modelContractActor.activeCompany,
+          id: source.companyId,
+          displayName: 'Captured source Company',
+          clientPermissions: ['client.read'],
+          clientPermissionAssignmentId: 'source-client-v2',
+          clientPermissionSetVersion: 'v2',
+          offerPermissionAssignmentId: 'source-offer-v3',
+          offerPermissionSetVersion: 'v3',
+          offerApproverAssignmentId: 'source-offer-alternative-v2',
+          offerApproverPermissionSetVersion: 'v2',
+          commercialIntakePermissionAssignmentId: 'source-intake-v4',
+          commercialIntakePermissionSetVersion: 'v4',
+        },
+      };
+      let release: ((value: Response) => void) | undefined;
+      let signal: AbortSignal | null | undefined;
+      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        if (init?.method === 'POST') {
+          signal = init.signal;
+          return new Promise<Response>((resolve) => {
+            release = resolve;
+          });
+        }
+        const path = input.toString();
+        if (path.endsWith('/model-selection'))
+          return response({ selection: selectedContractModelFixture });
+        if (path.includes('/offers/'))
+          return response({ offer: modelContractSourceOfferFixture() });
+        return response({ contract: source, precontract: null });
+      });
+      const view = render(panel(actor));
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Copy this Version into a successor draft',
+        }),
+      );
+      const form = await screen.findByRole('form', {
+        name: 'Prepare a complete successor',
+      });
+      await selectOption(
+        within(form).getByLabelText('Select the exact source Offer Version'),
+        source.version.sourceOfferVersionId,
+      );
+      await selectOption(
+        within(form).getByLabelText(
+          'Select the approved Contract model Version',
+        ),
+        selectedContractModelFixture.versionId,
+      );
+      const label = 'Case Client requisites and representative wording';
+      fireEvent.change(within(form).getByLabelText(label), {
+        target: { value: 'Protected source-specific literal draft' },
+      });
+      fireEvent.click(within(form).getByRole('checkbox'));
+      fireEvent.submit(form);
+      await waitFor(() => expect(signal).toBeDefined());
+      const c = actor.activeCompany;
+      if (!c) throw new Error('Missing source Company.');
+      const changed =
+        kind === 'client'
+          ? {
+              ...c,
+              clientPermissions: [],
+              clientPermissionAssignmentId: undefined,
+              clientPermissionSetVersion: undefined,
+            }
+          : kind === 'offer'
+            ? {
+                ...c,
+                offerPermissionAssignmentId: undefined,
+                offerPermissionSetVersion: undefined,
+              }
+            : {
+                ...c,
+                commercialIntakePermissionAssignmentId:
+                  'fresh-source-intake-v4',
+              };
+      view.rerender(panel({ ...actor, activeCompany: changed }));
+      await waitFor(() => expect(signal?.aborted).toBe(true));
+      expect(
+        screen.queryByDisplayValue('Protected source-specific literal draft'),
+      ).not.toBeInTheDocument();
+      await act(async () => {
+        release?.(response({}, 503));
+      });
+      expect(
+        screen.queryByRole('button', {
+          name: 'Retry the same Contract command',
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: 'Download exact non-official Contract HTML',
+        }),
+      ).toBeEnabled();
+      view.rerender(panel(actor));
+      expect(
+        screen.queryByDisplayValue('Protected source-specific literal draft'),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it('retires a successor draft when its independent Workspace Client authority is lost and does not restore it after a new grant', async () => {
     const source = modelContractFixture();
     const privileged: typeof modelContractActor = {

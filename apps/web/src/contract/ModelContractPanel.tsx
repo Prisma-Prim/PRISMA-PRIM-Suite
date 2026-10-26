@@ -1,7 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import type { ApiResult } from '../api/authenticated-api-client';
 import { ContractProjectsPanel } from './ContractProjectsPanel';
+import { SigningPdfDownload } from './SigningPdfDownload';
+import type { SigningPdfReference } from './reported-signing-response';
 import { ReportedSigningForm } from './ReportedSigningForm';
 import { ReportedSigningHistory } from './ReportedSigningHistory';
 import {
@@ -70,6 +72,18 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
     props.actor.workspacePermissions.includes('client.manage'),
   ]);
   const { contract, locked } = journey;
+  const [selectedPdf, setSelectedPdf] = useState<SigningPdfReference | null>(
+    null,
+  );
+  useEffect(() => {
+    setSelectedPdf(null);
+  }, [contract?.version.id, pdfAuthority.key]);
+  const signature = contract?.version.signature;
+  const pdf = signature
+    ? signature.pdf.access === 'granted'
+      ? signature.pdf.reference
+      : null
+    : selectedPdf;
   const differenceLabel = (field: string) => {
     switch (field) {
       case 'documentDate':
@@ -159,10 +173,21 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
           {contract.version.signature && company && (
             <ReportedSigningHistory
               declaration={contract.version.signature}
+              pdfAllowed={pdfAuthority.allowed}
+            />
+          )}
+          {company && pdfAuthority.allowed && pdf && (
+            <SigningPdfDownload
+              key={JSON.stringify([
+                contract.version.id,
+                pdfAuthority.key,
+                pdf.documentId,
+                pdf.documentVersionId,
+                pdf.representationId,
+              ])}
               identity={props.identity}
               companyId={company.id}
-              pdfAllowed={pdfAuthority.allowed}
-              pdfAuthorityKey={pdfAuthority.key}
+              pdf={pdf}
               reject={reject}
             />
           )}
@@ -178,6 +203,7 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
                 protectedCommand={journey.ownProtected || projectProtected}
                 reject={reject}
                 onProtectionChange={setDeclarationProtected}
+                onPdfSelected={setSelectedPdf}
                 onReload={journey.reload}
                 onDeclared={(declaration) =>
                   journey.applyContract({

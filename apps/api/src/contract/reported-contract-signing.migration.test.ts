@@ -361,6 +361,27 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           acknowledgedWarningCodes: page.warningCodes,
         }),
       ).toMatchObject({ evidenceKind: 'DECLARED_RECEIVED_PDF' });
+      async function insertReportedEvidenceIntoLegacyMode() {
+        const connection = await f.pool.connect();
+        try {
+          await connection.query('BEGIN');
+          const inserted = await connection.query(
+            `INSERT INTO contract_signing_declarations(workspace_id,company_id,contract_id,contract_version_id,approval_decision_id,quality_run_id,representation_checksum,document_id,document_version_id,representation_id,result_revision,actor_workspace_membership_id,actor_internal_user_id,recorded_at,statement,pdf)
+          SELECT v.workspace_id,v.company_id,v.contract_id,v.id,d.id,d.quality_run_id,d.representation_checksum,s.document_id,s.document_version_id,s.representation_id,3,d.actor_workspace_membership_id,d.actor_internal_user_id,d.decided_at,s.statement,s.pdf
+          FROM contract_versions v JOIN contracts c ON c.id=v.contract_id JOIN contract_decisions d ON d.contract_version_id=v.id AND d.kind='APPROVE' CROSS JOIN contract_signing_declarations s
+          WHERE c.company_id=$1 AND c.origin<>'COMPANY_MODEL_OFFER' AND s.contract_version_id=$2 LIMIT 1`,
+            [source.companyId, received.contractVersionId],
+          );
+          expect(inserted.rowCount).toBe(1);
+          await connection.query('SET CONSTRAINTS ALL IMMEDIATE');
+        } finally {
+          await connection.query('ROLLBACK');
+          connection.release();
+        }
+      }
+      await expect(
+        insertReportedEvidenceIntoLegacyMode(),
+      ).rejects.toHaveProperty('code', '23514');
     } finally {
       await fixture?.close();
       await scanner.close();

@@ -1,4 +1,3 @@
-import { SigningPdfDownload } from './SigningPdfDownload';
 import { useDocumentVersionsCopy } from '../documents/document-versions.copy';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import {
@@ -17,6 +16,7 @@ import {
   readReportedSigning,
   readSigningPdfCandidates,
   type ReportedSigningView,
+  type SigningPdfReference,
 } from './reported-signing-response';
 import type { BrowserIdentity } from '../access-composition';
 
@@ -60,6 +60,7 @@ export function ReportedSigningForm(props: {
     signal: AbortSignal,
   ) => Promise<'unauthorized' | 'forbidden' | undefined>;
   onDeclared: (declaration: ReportedSigningView) => void;
+  onPdfSelected: (pdf: SigningPdfReference | null) => void;
   onProtectionChange: (value: boolean) => void;
   onReload: () => Promise<boolean>;
 }) {
@@ -138,12 +139,16 @@ export function ReportedSigningForm(props: {
         items:
           cursor && current ? [...current.items, ...next.items] : next.items,
       }));
-      if (!cursor) setSelected('');
+      if (!cursor) {
+        setSelected('');
+        props.onPdfSelected(null);
+      }
       setReadState('idle');
     } catch {
       if (!controller.signal.aborted) {
         setPage(null);
         setSelected('');
+        props.onPdfSelected(null);
         setAcknowledged([]);
         setReadState('error');
       }
@@ -280,6 +285,7 @@ export function ReportedSigningForm(props: {
       setMutation({ kind: 'editing', feedback: 'idle' });
       setPage(null);
       setSelected('');
+      props.onPdfSelected(null);
       setAcknowledged([]);
     }
   }
@@ -394,18 +400,6 @@ export function ReportedSigningForm(props: {
           {copy('retry')}
         </button>
       )}
-      {!props.contract.version.signature &&
-        page?.items
-          .filter((pdf) => pdf.representationId === selected)
-          .map((pdf) => (
-            <SigningPdfDownload
-              key={pdf.representationId}
-              identity={props.identity}
-              companyId={props.companyId}
-              pdf={pdf}
-              reject={props.reject}
-            />
-          ))}
       {feedback === 'unavailable' ? (
         <button type="button" onClick={() => void reload()}>
           {copy('refresh')}
@@ -433,7 +427,13 @@ export function ReportedSigningForm(props: {
                       label: `${row.title} · ${row.documentVersionNumber} · ${documentCopy.statusLabels[row.status]} · ${row.fileName}`,
                     })),
                   ]}
-                  onValueChange={setSelected}
+                  onValueChange={(id) => {
+                    setSelected(id);
+                    props.onPdfSelected(
+                      page.items.find((pdf) => pdf.representationId === id) ??
+                        null,
+                    );
+                  }}
                 />
                 {!page.items.length && <p>{copy('empty')}</p>}
                 {page.nextCursor && (

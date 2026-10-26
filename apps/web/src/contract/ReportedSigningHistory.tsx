@@ -1,5 +1,3 @@
-import { SigningPdfDownload } from './SigningPdfDownload';
-import type { BrowserIdentity } from '../access-composition';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { useContractRecordedValues } from './contract-recorded-values';
 import { useReportedSigningCopy } from './reported-signing.copy';
@@ -7,18 +5,10 @@ import type { ReportedSigningView } from './reported-signing-response';
 
 export function ReportedSigningHistory({
   declaration,
-  identity,
-  companyId,
   pdfAllowed,
-  pdfAuthorityKey,
-  reject,
 }: {
   declaration: ReportedSigningView;
-  identity: BrowserIdentity;
-  companyId: string;
   pdfAllowed: boolean;
-  pdfAuthorityKey: string;
-  reject: Parameters<typeof SigningPdfDownload>[0]['reject'];
 }) {
   const copy = useReportedSigningCopy(),
     { formatDateTime } = useInterfaceLocale(),
@@ -69,15 +59,7 @@ export function ReportedSigningHistory({
           {declaration.actorWorkspaceMembershipId}
         </dd>
       </dl>
-      {pdfAllowed && declaration.pdf.access === 'granted' ? (
-        <SigningPdfDownload
-          key={pdfAuthorityKey}
-          identity={identity}
-          companyId={companyId}
-          pdf={declaration.pdf.reference}
-          reject={reject}
-        />
-      ) : (
+      {(!pdfAllowed || declaration.pdf.access === 'denied') && (
         <p>{copy('pdfDenied')}</p>
       )}
     </section>

@@ -106,8 +106,62 @@ export function useModelContractJourney(
     permissions.includes('commercial.contract.model_based.approve');
   const mayCheck = offerRead && (preparation || mayApprove);
   const base = `/contracts/opportunities/${encodeURIComponent(props.opportunityId)}`;
-  const [contract, setContract] = useState(props.initialContract),
-    [draft, setDraft] = useState(blank),
+  const workspaceClientRead =
+    props.actor.workspacePermissions.includes('client.manage');
+  const companyClientRead = Boolean(
+    company?.clientPermissionAssignmentId &&
+    (company.clientPermissionSetVersion === 'v1' ||
+      company.clientPermissionSetVersion === 'v2') &&
+    company.clientPermissions?.includes('client.read'),
+  );
+  const projectReadAllowed = Boolean(
+    props.actor.active &&
+    company?.projectPermissionAssignmentId &&
+    (company.projectPermissionSetVersion === 'v1' ||
+      company.projectPermissionSetVersion === 'v2') &&
+    company.projectPermissions?.includes('project.read') &&
+    (workspaceClientRead || companyClientRead),
+  );
+  const projectReadAuthority = JSON.stringify([
+    companyId,
+    company?.projectPermissionAssignmentId,
+    company?.projectPermissionSetVersion,
+    projectReadAllowed,
+    workspaceClientRead
+      ? 'workspace-client-read'
+      : [
+          company?.clientPermissionAssignmentId,
+          company?.clientPermissionSetVersion,
+          companyClientRead,
+        ],
+  ]);
+  const projectGeneration = useRef({
+    authority: projectReadAuthority,
+    revision: 0,
+  });
+  if (projectGeneration.current.authority !== projectReadAuthority)
+    projectGeneration.current = {
+      authority: projectReadAuthority,
+      revision: projectGeneration.current.revision + 1,
+    };
+  const projectReadKey = JSON.stringify([
+    projectReadAuthority,
+    projectGeneration.current.revision,
+  ]);
+  // Every read/result carries the Project authority captured when it began.
+  // A held old response cannot requalify cached metadata under a new grant.
+  const [contractSnapshot, setContractSnapshot] = useState({
+    contract: props.initialContract,
+    projectReadKey,
+  });
+  const contract = contractSnapshot.contract;
+  const projectedContract =
+    contract === null ||
+    !contract.linkedProjects.length ||
+    (projectReadAllowed && contractSnapshot.projectReadKey === projectReadKey)
+      ? contract
+      : { ...contract, linkedProjects: [] };
+  const [draft, setDraft] = useState(blank),
     [mode, setMode] = useState<'view' | 'prepare' | 'successor'>(
       props.initialContract ? 'view' : 'prepare',
     );
@@ -137,6 +191,14 @@ export function useModelContractJourney(
     company?.contractPermissionSetVersion,
     company?.contractApproverAssignmentId,
     company?.contractApproverPermissionSetVersion,
+    company?.clientPermissionAssignmentId,
+    company?.clientPermissionSetVersion,
+    company?.offerPermissionAssignmentId,
+    company?.offerPermissionSetVersion,
+    company?.offerApproverAssignmentId,
+    company?.offerApproverPermissionSetVersion,
+    company?.commercialIntakePermissionAssignmentId,
+    company?.commercialIntakePermissionSetVersion,
     mayPrepare,
     mayApprove,
     mayCheck,
@@ -167,6 +229,15 @@ export function useModelContractJourney(
       void loadSources(props.initialOffer);
   }, []);
 
+  useEffect(() => {
+    if (siblingsProtected) {
+      // Retire earlier navigation/reload replies when a sibling takes revision
+      // ownership. Independently requested later reads remain available.
+      readRequest.current?.abort();
+      setReadState('idle');
+    }
+  }, [siblingsProtected]);
+
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
     const denied = await handleAuthenticatedAccessRejection({
       result,
@@ -180,7 +251,8 @@ export function useModelContractJourney(
     if (denied && !signal.aborted) {
       readRequest.current?.abort();
       writeRequest.current?.abort();
-      if (denied === 'unauthorized') setContract(null);
+      if (denied === 'unauthorized')
+        setContractSnapshot({ contract: null, projectReadKey });
       setDraft(blank());
       setSources({ offer: null, model: null });
       setHistory(null);
@@ -295,7 +367,10 @@ export function useModelContractJourney(
     );
   }
   function applyContract(next: ModelContractView) {
-    setContract(next);
+    // A confirmed sibling result supersedes every read begun before it.
+    readRequest.current?.abort();
+    setReadState('idle');
+    setContractSnapshot({ contract: next, projectReadKey });
     setQuality(next.version.latestQualityRun);
     setAcknowledgements([]);
     setReviewBasis('');
@@ -627,7 +702,7 @@ export function useModelContractJourney(
     }
   }
   return {
-    contract,
+    contract: projectedContract,
     applyContract,
     ownProtected: running || feedback === 'uncertain',
     draft,

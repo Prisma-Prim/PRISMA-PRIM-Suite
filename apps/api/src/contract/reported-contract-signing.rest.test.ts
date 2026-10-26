@@ -527,4 +527,37 @@ withPostgres('Reported Contract signing public REST', () => {
       ).rows[0]?.count,
     ).toBe(1);
   });
+
+  it('qualifies only the exact PDF frozen at designation while retaining earlier draft uploads as ordinary download history', async () => {
+    const { body, path, target, earlierRepresentationId } =
+      await prepareReportedSigning(fixture, { correctedPdf: true });
+    const selection = responseRecord(
+      await fixture.read({ ...target, path: path + '/pdf-candidates' }),
+    );
+    expect(selection.items).toEqual([
+      expect.objectContaining({ representationId: body.representationId }),
+    ]);
+    expect(body.representationId).not.toBe(earlierRepresentationId);
+    expect(
+      (
+        await fixture.post({
+          ...target,
+          path,
+          body: { ...body, representationId: earlierRepresentationId },
+        })
+      ).status,
+    ).toBe(404);
+    const historical = await fixture.request({
+      ...target,
+      path: `/documents/${body.documentId}/versions/${body.documentVersionId}/content/${earlierRepresentationId}`,
+    });
+    expect(historical.status).toBe(200);
+    expect(Buffer.from(await historical.arrayBuffer())).toEqual(PDF_A);
+    expect(await fixture.command({ ...target, path, body })).toMatchObject({
+      pdf: {
+        access: 'granted',
+        reference: { representationId: body.representationId },
+      },
+    });
+  });
 });

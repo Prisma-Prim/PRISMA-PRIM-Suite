@@ -23,6 +23,7 @@ const ALL_ACTIONS = [
   'contract_version.created',
   'contract_version.approved',
   'contract_version.rejected',
+  'contract_version.signing_declared',
   'contract_version.signature_recorded',
   'contract_project.linked',
 ];

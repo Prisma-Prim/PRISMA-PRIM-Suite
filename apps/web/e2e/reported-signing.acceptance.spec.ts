@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import {
   prepareReceivedContractCase,
@@ -164,6 +165,57 @@ test('records reported signing through exact uncertain retries, literal locale/f
     label:
       'Representative received Contract DEMO · 1 · Official · reported-demo.pdf',
   });
+  // A selected PDF download belongs to its Document authority, independently
+  // from the declaration draft that initially offered the reference.
+  let releaseSelectedPdf: (() => void) | undefined;
+  const selectedPdfRoute =
+    '**/api/documents/' +
+    documentId +
+    '/versions/' +
+    documentVersionId +
+    '/content/*';
+  await page.route(selectedPdfRoute, async (route) => {
+    const actual = await route.fetch({
+      headers: { ...route.request().headers(), ...identity },
+    });
+    expect(actual.status()).toBe(200);
+    await new Promise<void>((resolve) => {
+      releaseSelectedPdf = resolve;
+    });
+    await route.fulfill({ response: actual });
+  });
+  const selectedDownload = page.waitForEvent('download');
+  await panel
+    .getByRole('button', { name: 'Download this exact PDF', exact: true })
+    .click();
+  await expect.poll(() => Boolean(releaseSelectedPdf)).toBe(true);
+  await ready.revoke('company-contract-signature-declarer');
+  await declaration
+    .getByRole('button', { name: 'Load eligible received PDFs' })
+    .click();
+  await expect(declaration).toHaveCount(0);
+  await expect(
+    panel.getByRole('button', { name: 'Download this exact PDF', exact: true }),
+  ).toBeVisible();
+  releaseSelectedPdf?.();
+  const downloaded = await selectedDownload;
+  const downloadedPath = await downloaded.path();
+  if (!downloadedPath)
+    throw new Error('Missing independently conserved PDF download.');
+  expect(await readFile(downloadedPath)).toEqual(ready.pdfA);
+  await page.unroute(selectedPdfRoute);
+  await ready.command('/company-contract-signature-declarer-assignments', {
+    companyId: ready.companyId,
+    workspaceMembershipId: ready.preparerId,
+  });
+  await openCase();
+  await declaration
+    .getByRole('button', { name: 'Load eligible received PDFs' })
+    .click();
+  await selectOption(selector, {
+    label:
+      'Representative received Contract DEMO · 1 · Official · reported-demo.pdf',
+  });
   const provider = declaration.getByRole('group', {
       name: 'Reported provider signatory',
     }),
@@ -207,6 +259,26 @@ test('records reported signing through exact uncertain retries, literal locale/f
     .getAttribute('id');
   if (!providerId) throw new Error('Missing labeled provider field.');
   const preservedProvider = page.locator(`[id="${providerId}"]`);
+  let releaseOldReload: (() => void) | undefined;
+  let heldOldReload = false;
+  const rootReadRoute = '**/api' + contractPath;
+  await page.route(rootReadRoute, async (route) => {
+    if (route.request().method() !== 'GET' || heldOldReload)
+      return route.fallback();
+    heldOldReload = true;
+    const old = await route.fetch({
+      headers: { ...route.request().headers(), ...identity },
+    });
+    expect(old.status()).toBe(200);
+    await new Promise<void>((resolve) => {
+      releaseOldReload = resolve;
+    });
+    await route.fulfill({ response: old }).catch(() => undefined);
+  });
+  await panel
+    .getByRole('button', { name: 'Reload Contract', exact: true })
+    .click();
+  await expect.poll(() => Boolean(releaseOldReload)).toBe(true);
   const declarationRequests: {
     body: string | null;
     key: string | undefined;
@@ -303,6 +375,11 @@ test('records reported signing through exact uncertain retries, literal locale/f
   await expect(
     panel.getByRole('button', { name: 'Retry the identical declaration' }),
   ).toHaveCount(0);
+  releaseOldReload?.();
+  await page.unroute(rootReadRoute);
+  await expect(
+    panel.getByRole('heading', { name: 'Recorded declaration' }),
+  ).toBeVisible();
   expect(declarationRequests).toHaveLength(3);
   expect(declarationRequests[1]).toEqual(declarationRequests[0]);
   expect(declarationRequests[2]).toEqual(declarationRequests[0]);

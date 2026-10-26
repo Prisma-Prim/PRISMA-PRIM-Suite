@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 import { registerReceivedContract } from '../documents/received-contract.test-support.js';
-import { PDF_A } from '../documents/mission-document.test-support.js';
+import { PDF_A, PDF_B } from '../documents/mission-document.test-support.js';
 import {
   ESTIMATE_OFFER_PREPARER,
   responseRecord,
@@ -9,7 +9,7 @@ import {
 } from '../offer/offer-estimate-preparation.test-support.js';
 export async function prepareReportedSigning(
   fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
-  options: { clientTaxId?: string } = {},
+  options: { clientTaxId?: string; correctedPdf?: boolean } = {},
 ) {
   const f = await registerReceivedContract(fixture, options);
   for (const path of [
@@ -27,11 +27,18 @@ export async function prepareReportedSigning(
     responseRecord(f.document.version),
     'id',
   );
-  expect((await f.upload(documentVersionId, 1, PDF_A)).status).toBe(201);
+  const firstUpload = await f.upload(documentVersionId, 1, PDF_A);
+  expect(firstUpload.status).toBe(201);
+  const earlierRepresentationId = responseString(
+    responseRecord(await firstUpload.json()),
+    'representationId',
+  );
+  if (options.correctedPdf)
+    expect((await f.upload(documentVersionId, 2, PDF_B)).status).toBe(201);
   expect(
     (
       await f.mutate(`/versions/${documentVersionId}/official-designation`, {
-        expectedRevision: 2,
+        expectedRevision: options.correctedPdf ? 3 : 2,
       })
     ).status,
   ).toBe(200);
@@ -74,5 +81,5 @@ export async function prepareReportedSigning(
     acceptanceBasis: ' Acceptance reported for this case ',
     acknowledgedWarningCodes: warnings,
   };
-  return { f, body, path, target, documentVersionId };
+  return { f, body, path, target, documentVersionId, earlierRepresentationId };
 }
