@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -65,6 +66,30 @@ export class TaskResultsService {
     private readonly closedProjects: ProjectClosedGuard,
     private readonly accountability: AccountabilityService,
   ) {}
+
+  /** Caller owns a read-only snapshot. Only the independent read gate may be unavailable. */
+  async readinessWithinTransaction(actor: ActorContext, taskId: string) {
+    const { task } = await this.tasks.readWithinTransaction({ actor, taskId });
+    try {
+      await this.references.requireRead({ actor, context: task, lock: false });
+    } catch (error) {
+      if (!(
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      ))
+        throw error;
+      return { task, result: { kind: 'unavailable' as const } };
+    }
+    // An invalid stored reference is an error, never an empty or denied projection.
+    const latest = await this.latest(actor, task);
+    return {
+      task,
+      result: {
+        kind: 'available' as const,
+        current: latest ? await this.view(actor, task, latest) : null,
+      },
+    };
+  }
 
   async current(actor: ActorContext, input: { taskId: unknown }) {
     const taskId = requireUuid(input.taskId);

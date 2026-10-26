@@ -18,6 +18,7 @@ import {
 } from '../access/actor-context.adapter.js';
 import { ProjectStageService } from './project-stage.service.js';
 import { ProjectTemplateService } from './project-template.service.js';
+import { MissionReadinessService } from './mission-readiness.service.js';
 
 @Controller()
 @UseGuards(ActorContextAdapter)
@@ -26,7 +27,16 @@ export class ProjectTemplateController {
     private readonly templates: ProjectTemplateService,
     private readonly stages: ProjectStageService,
     private readonly versions: ProjectTemplateVersionService,
+    private readonly readiness: MissionReadinessService,
   ) {}
+
+  @Get('projects/:projectId/mission-readiness')
+  missionReadiness(
+    @Req() request: ActorContextRequest,
+    @Param('projectId', new ParseUUIDPipe()) projectId: string,
+  ) {
+    return this.readiness.read(actor(request), projectId);
+  }
 
   @Get('projects/:projectId/stage-progress')
   progress(
