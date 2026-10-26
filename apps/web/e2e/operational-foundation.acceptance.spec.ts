@@ -83,7 +83,11 @@ test('operates the delivered Client, Project, Task and working Document journey 
   await expect(
     clientDossier.getByRole('heading', { name: clientName, exact: true }),
   ).toBeVisible();
-  await expect(clientDossier.getByText('PRISMA-PRIM')).toBeVisible();
+  await expect(
+    clientDossier
+      .getByRole('region', { name: 'Shared details', exact: true })
+      .getByText('PRISMA-PRIM', { exact: true }),
+  ).toBeVisible();
   await clientDossier
     .getByRole('button', { name: 'Open Client Projects' })
     .click();
