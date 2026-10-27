@@ -1,0 +1,102 @@
+{
+  "source": "aacda4a34631fbd1ddf7889b0dd3528af851f8bc",
+  "tree": "ff62610dcc2611286bac65aab089ee221f779912",
+  "base": "2e6e3e820228c0debf5520091cc5285279590a2e",
+  "canonicalization": "Prettier TypeScript, repository options plus objectWrap=collapse on both sides to normalize formatting-only expansion; comments retained",
+  "files": [
+    {
+      "file": "apps/api/src/commercial-intake/commercial-intake.service.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/pricing-configuration/pricing-snapshot.service.ts",
+      "reversed": 3,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/offer/offer.service.ts",
+      "reversed": 6,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/offer/offer-estimate-preparation.service.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract.service.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-direct-command.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-addendum-command.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-version-command.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-decision-command.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-signature-command.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-version-reader.ts",
+      "reversed": 3,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-projects.service.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/contract-project-creation.service.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/model-contract.service.ts",
+      "reversed": 1,
+      "equal": true,
+      "commentsPreserved": true
+    },
+    {
+      "file": "apps/api/src/contract/reported-contract-signing.service.ts",
+      "reversed": 2,
+      "equal": true,
+      "commentsPreserved": true
+    }
+  ],
+  "sentinelIdentical": true,
+  "ordinaryOwnerIdentical": true,
+  "definitions": 25,
+  "passed": true
+}

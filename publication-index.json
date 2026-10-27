@@ -1,0 +1,130 @@
+{
+  "schema": "pr860-local-combined-evidence/v1",
+  "pr": 860,
+  "status": "evidence-pair-prepared-owner-exception-pending",
+  "canonical": false,
+  "currentBaseMergeQualified": false,
+  "ownerExceptionRequired": true,
+  "ownerExceptionGranted": false,
+  "failedAssertionWaived": false,
+  "createdAt": "2026-10-27T19:44:16.231200+00:00",
+  "retainUntil": "2026-11-10T19:44:16.231200+00:00",
+  "minimumRetentionDays": 14,
+  "oldFull": {
+    "source": "aacda4a34631fbd1ddf7889b0dd3528af851f8bc",
+    "base": "2e6e3e820228c0debf5520091cc5285279590a2e",
+    "tree": "ff62610dcc2611286bac65aab089ee221f779912",
+    "status": "passed",
+    "families": 16,
+    "manifestSHA256": "ef70f893769e35d8342b52b4eba5551b478c4a8227a059cd21adab6c40fc54ca",
+    "provenanceSHA256": "c6d097c8218c72bc82a4455dd52caf00485329c32b4004e7079abe15b1150435",
+    "originalArtifactsVerified": 2440,
+    "originalTrackedInputsVerified": 1753
+  },
+  "currentComposition": {
+    "source": "12a5c74fdadcb27923a222cf94d460a43442c1a2",
+    "base": "410c49884fd369009c30028c117368c0c0c45525",
+    "tree": "b19e57c7af8c2d7428920a8f0024d886528e0f9b",
+    "canonicalCompleteGatePassed": false,
+    "manualDeltaBase": "aacda4a34631fbd1ddf7889b0dd3528af851f8bc",
+    "manualCommandsPassed": 6,
+    "beforeAfterTrackedInputsVerified": 1754,
+    "nonMarkdownEntriesIdentical": 1639,
+    "modifiedMarkdown": 4,
+    "addedMarkdown": 1
+  },
+  "compatibilityProof": {
+    "sha256": "c46a4cea0bc887dcc817be523d55ccd55875f05a0faaf83fc844cc3d04bd38b8",
+    "originalCaptureStatus": "incomplete",
+    "laterTerminalFullProvenanceUnchanged": true
+  },
+  "selection": "Selected original evidence plus an explicit non-canonical combination. All raw local artifact hashes verified; full raw evidence remains local. Self-reported local evidence, not independent GitHub CI.",
+  "localRawEvidence": [
+    "/workspace/work/integrate860-verification-20261027-4",
+    "/workspace/work/integrate860-docdelta2-development-20261027-1"
+  ],
+  "remoteSourceAndBaseChecked": false,
+  "publicationPerformed": false,
+  "publicationAndMergeOwner": "root; verify remote source/head/base immediately before publication and merge",
+  "secretScreen": {
+    "selectedFilesPassedPatternScreen": true,
+    "guarantee": "Pattern screening only; root reviews the selected packet before publication."
+  },
+  "limits": {
+    "maxBlobBytes": 5242880,
+    "maxTotalBytes": 20971520
+  },
+  "indexChecksum": "The index cannot include its own checksum; the preparer stdout and later read-back record carry it.",
+  "files": [
+    {
+      "path": "full-report.md",
+      "bytes": 3595,
+      "sha256": "91d59f43264b8c723bd9b098f70d22571d54f91209ae1c5ba9d097443605b42a",
+      "originalPath": "/workspace/work/integrate860-verification-20261027-4/report.md",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "full-manifest.json",
+      "bytes": 932541,
+      "sha256": "ef70f893769e35d8342b52b4eba5551b478c4a8227a059cd21adab6c40fc54ca",
+      "originalPath": "/workspace/work/integrate860-verification-20261027-4/manifest.json",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "packaging.log",
+      "bytes": 12303,
+      "sha256": "429ae1d3fcdd6f3acc13b34e0f715d8252844457b921d4d77a67a3606c69b3ae",
+      "originalPath": "/workspace/work/integrate860-verification-20261027-4/logs/packaging.log",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "compatibility-proof.json",
+      "bytes": 7507,
+      "sha256": "c46a4cea0bc887dcc817be523d55ccd55875f05a0faaf83fc844cc3d04bd38b8",
+      "originalPath": "/workspace/work/pr860-docdelta2-compatibility-proof-20261027.json",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "manual-docs-report.md",
+      "bytes": 1114,
+      "sha256": "e3744618f8098e16a72874b320cd3f7e06255a032a2f2c8f459671865ea5df1d",
+      "originalPath": "/workspace/work/integrate860-docdelta2-development-20261027-1/development-report.md",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "manual-docs-record.json",
+      "bytes": 642961,
+      "sha256": "9a689ff29d1aa95c753eee6201ecd4ac53e5cb13489fb1274150b7f7b8cd2f90",
+      "originalPath": "/workspace/work/integrate860-docdelta2-development-20261027-1/development-record.json",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "reused-preservation-proof.json",
+      "bytes": 2785,
+      "sha256": "53afee530494b8e2af4df1fc5fc26869db2f2c68b06f193a027edabdccb83d7b",
+      "originalPath": "/workspace/work/pr860-preservation-proof-aacda4a-2e6e3e8.json",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "upstream-main-audit.md",
+      "bytes": 5717,
+      "sha256": "1781f7a2c7ec979567448b84ef4e74852eb6fde901528c910e0dd7babdeba128",
+      "originalPath": "/workspace/work/pr860-base2e6e3e8-audit-20261027.md",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "current-preservation-proof.json",
+      "bytes": 2785,
+      "sha256": "3c352fc34c4fd0483357a8eae544b0b83f204e4e9e86cdff4346081adef05ae7",
+      "originalPath": "/workspace/work/pr860-preservation-proof-12a5c74-410c498.json",
+      "byteIdenticalOriginal": true
+    },
+    {
+      "path": "combination.md",
+      "bytes": 3854,
+      "sha256": "a5506bfe049aae884806f2baf9ea0a287d6aef768f8604652c1c88de56acbd26",
+      "originalPath": null,
+      "byteIdenticalOriginal": false
+    }
+  ]
+}

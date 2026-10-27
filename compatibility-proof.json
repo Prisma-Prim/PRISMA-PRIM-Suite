@@ -1,0 +1,159 @@
+{
+  "kind": "immutable-documentation-composition-identity",
+  "canonical": false,
+  "status": "passed",
+  "currentBaseMergeQualified": false,
+  "ownerExceptionGranted": false,
+  "createdAt": "2026-10-27T18:44:18.456621+00:00",
+  "checkout": "/workspace/work/integrate-pr860-docdelta2-20261027",
+  "source": "12a5c74fdadcb27923a222cf94d460a43442c1a2",
+  "actualMain": "410c49884fd369009c30028c117368c0c0c45525",
+  "deltaBase": "aacda4a34631fbd1ddf7889b0dd3528af851f8bc",
+  "integrationTree": "b19e57c7af8c2d7428920a8f0024d886528e0f9b",
+  "activeCheckoutAndOriginRefUnchanged": true,
+  "oldFull": {
+    "path": "/workspace/work/integrate860-verification-20261027-4/manifest.json",
+    "source": "aacda4a34631fbd1ddf7889b0dd3528af851f8bc",
+    "base": "2e6e3e820228c0debf5520091cc5285279590a2e",
+    "tree": "ff62610dcc2611286bac65aab089ee221f779912",
+    "statusAtCapture": "incomplete",
+    "terminalResultClaim": null,
+    "provenanceSHA256": "c6d097c8218c72bc82a4455dd52caf00485329c32b4004e7079abe15b1150435",
+    "inputSetSHA256": "32f95f8777be175c9c171256382bd607401e692f55e2ecc87c420ca940388c1d",
+    "trackedInputCount": 1753,
+    "allRecordedModesAndSHA256MatchImmutableGit": true
+  },
+  "candidateTrackedFiles": 1754,
+  "unchangedRecordedInputs": 1749,
+  "modifiedRecordedInputs": 4,
+  "newTrackedMarkdownFiles": [
+    "docs/product/release-1-configurable-mission-plans-prd.md"
+  ],
+  "unchangedRecordedInputsProofSHA256": "66899fa17fae2e527ffe1f4c51a242f5ca325e82b1361b8079b71e10571ea629",
+  "nonMarkdownTrackedFileCount": 1639,
+  "allNonMarkdownTrackedModesAndBlobsIdentical": true,
+  "nonMarkdownInputsProofSHA256": "b22f3fc4d1cb802a0143a274efdd140b34263de545a250239364a3d2136b1630",
+  "allCandidateWorkingModesAndSHA256MatchImmutableGit": true,
+  "allIncomingMainDocumentsPreservedExactly": true,
+  "changedDocuments": [
+    {
+      "path": "docs/product/activity-log-accountability-prd.md",
+      "status": "modified",
+      "oldMode": "100644",
+      "oldBlob": "6b2302682279f671e8541d416edfe3b2e0079411",
+      "oldSHA256": "0e968695fb07b78c5d0279b6e9193ca0bc9bee27779a4b3c5f679cab56ad10ce",
+      "newMode": "100644",
+      "newBlob": "4dd6ac4e1a9bf6f58fe89c7d300f82abf1fd5ff3",
+      "newSHA256": "59f01be90033fe673a8194d81e591e8e7e9863f1a5fa100a1b86c50b8b44f8a8",
+      "matchesActualMain": true
+    },
+    {
+      "path": "docs/product/prd-index.md",
+      "status": "modified",
+      "oldMode": "100644",
+      "oldBlob": "543ca9520b5047e205242b9dcaea6b9e47e7be61",
+      "oldSHA256": "43687098af58afb22c58b2ea4ef14df3ae58060ed20ec8623d83ae5dcf780d7f",
+      "newMode": "100644",
+      "newBlob": "1d488d2793e7eddfa361b4a04a82ea9cc375e6af",
+      "newSHA256": "030d62e773f0fa9727b12bf2adb61821953a1dcf6537beb43d5017314292fed6",
+      "matchesActualMain": true
+    },
+    {
+      "path": "docs/product/release-1-configurable-mission-plans-prd.md",
+      "status": "added",
+      "oldMode": null,
+      "oldBlob": null,
+      "oldSHA256": null,
+      "newMode": "100644",
+      "newBlob": "0d2ce78f795f608c7ddc658abaab2a2dba46210c",
+      "newSHA256": "5f440042b7faebec520f31328202a50f28f9a927b00f418fc06e50af2ae536da",
+      "matchesActualMain": true
+    },
+    {
+      "path": "docs/product/release-1-project-task-prd.md",
+      "status": "modified",
+      "oldMode": "100644",
+      "oldBlob": "00de7ab09e24bfde1eb18eb45674c0dc599cd98f",
+      "oldSHA256": "4fbf21293729bfb3eb785d14ea8b5049e96b3355781381b23cb391ffcb68ff1e",
+      "newMode": "100644",
+      "newBlob": "f1c69016b8e24204504dac95b832f35ab11fb339",
+      "newSHA256": "2d6fff907b0d37e863195d4f268b365c6ef2d561d2149e32f463c532e7941039",
+      "matchesActualMain": true
+    },
+    {
+      "path": "docs/product/tenant-company-client-authorization-prd.md",
+      "status": "modified",
+      "oldMode": "100644",
+      "oldBlob": "dff51dfdb4e4c5c35f67c7bf90c631c2886936c3",
+      "oldSHA256": "daa8160976e411ab187abc9c640e3dd5d094909ce7a567e745ec8d0d54c4241a",
+      "newMode": "100644",
+      "newBlob": "f464c753f6bf77c2efc7f8d9a4fe531c96c5dec8",
+      "newSHA256": "2567449f9e81ccc363db0f55140cb42b376f57ecfd2cc82d68cc69dbe4065cfe",
+      "matchesActualMain": true
+    }
+  ],
+  "classification": {
+    "files": [
+      "docs/product/activity-log-accountability-prd.md",
+      "docs/product/prd-index.md",
+      "docs/product/release-1-configurable-mission-plans-prd.md",
+      "docs/product/release-1-project-task-prd.md",
+      "docs/product/tenant-company-client-authorization-prd.md"
+    ],
+    "documentationOnly": true,
+    "actualMainFiles": [
+      "apps/api/src/client/client-operational-reference.service.ts",
+      "apps/api/src/client/client-reference-state-drift.ts",
+      "apps/api/src/client/client-reference-transaction.test.ts",
+      "apps/api/src/client/client-reference-transaction.ts",
+      "apps/api/src/commercial-intake/commercial-intake.service.ts",
+      "apps/api/src/contract/contract-addendum-command.ts",
+      "apps/api/src/contract/contract-decision-command.ts",
+      "apps/api/src/contract/contract-direct-command.ts",
+      "apps/api/src/contract/contract-project-creation.service.ts",
+      "apps/api/src/contract/contract-projects.service.ts",
+      "apps/api/src/contract/contract-signature-command.ts",
+      "apps/api/src/contract/contract-version-command.ts",
+      "apps/api/src/contract/contract-version-reader.ts",
+      "apps/api/src/contract/contract.service.ts",
+      "apps/api/src/contract/model-contract.service.ts",
+      "apps/api/src/contract/reported-contract-signing.service.ts",
+      "apps/api/src/database/client-reference-state-drift.ts",
+      "apps/api/src/database/database-context.test.ts",
+      "apps/api/src/database/database-context.ts",
+      "apps/api/src/offer/offer-estimate-preparation.service.ts",
+      "apps/api/src/offer/offer.service.ts",
+      "apps/api/src/pricing-configuration/pricing-snapshot.service.ts"
+    ],
+    "documentationOnlyAgainstActualMain": false
+  },
+  "recoveryPatch": "224653f3d592b154e494cd5f305ab6b7f66ec15c",
+  "reverseProofReuse": {
+    "path": "/workspace/work/pr860-preservation-proof-aacda4a-2e6e3e8.json",
+    "sha256": "53afee530494b8e2af4df1fc5fc26869db2f2c68b06f193a027edabdccb83d7b",
+    "definitions": 25,
+    "modules": 15,
+    "sourceApiSubtreeIdentical": true,
+    "baselineApiSubtreeIdentical": true,
+    "formatterAndConfigurationInputsIdentical": true,
+    "method": "Existing reverse proof reused by identical source and baseline API subtrees; all non-Markdown formatter/configuration inputs are unchanged. No hardcoded helper was rerun on another checkout."
+  },
+  "runtimeBoundary": {
+    "productContractOnly": true,
+    "runtimeDeliverySeparatelyRequired": true,
+    "permissionRegistryOrGrantImplementationChanged": false,
+    "nativeProjectTaskClientDocumentOwnersPreserved": true,
+    "productionSourceReferencesToRootProductDocs": 0,
+    "rootDocsExcludedByDockerContextAllowlist": true,
+    "runtimeCopiesRootDocs": false
+  },
+  "manualDocumentationCommands": {
+    "status": "prepared-not-started",
+    "count": 6,
+    "canonical": false,
+    "waitingForExplicitRootSignalAfterFull4Completion": true
+  },
+  "knownNativeLimitation": "Complete canonical evidence requires current origin/main; no repeat of the previously observed non-current-base refusal and no guard/ref modification.",
+  "reproduction": "/workspace/work/pr860-docdelta2-proof-20261027.py",
+  "digestEncoding": "SHA-256 of UTF-8 JSON sorted by keys, compact separators; aggregate input rows ordered lexicographically by path."
+}

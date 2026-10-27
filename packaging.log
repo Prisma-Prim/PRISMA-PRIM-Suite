@@ -1,0 +1,238 @@
+Acquiring pinned PostgreSQL image (attempt 1/4, limit 60s).
+Pinned PostgreSQL image acquired.
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from api.Dockerfile
+#1 transferring dockerfile: 1.61kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 1.05kB done
+#3 DONE 0.0s
+
+#4 [build 1/9] FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 38.51MB 0.2s done
+#5 DONE 0.2s
+
+#6 [build 3/9] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && npm install --global pnpm@11.20.0
+#6 CACHED
+
+#7 [build 4/9] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#7 CACHED
+
+#8 [build 5/9] COPY apps/api/package.json apps/api/package.json
+#8 CACHED
+
+#9 [build 2/9] WORKDIR /app
+#9 CACHED
+
+#10 [build 6/9] COPY apps/web/package.json apps/web/package.json
+#10 CACHED
+
+#11 [build 7/9] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && pnpm install --frozen-lockfile --filter @prisma-prim/api...
+#11 2.991 ? Verifying lockfile against supply-chain policies (658 entries)...
+#11 3.003 Lockfile is up to date, resolution step is skipped
+#11 3.118 Progress: resolved 1, reused 0, downloaded 0, added 0
+#11 3.196 .                                        | +525 ++++++++++++++++++++++++++++++++
+#11 3.415 
+#11 3.415    ╭──────────────────────────────────────────╮
+#11 3.415    │                                          │
+#11 3.415    │   Update available! 11.20.0 → 12.15.0.   │
+#11 3.415    │   Changelog: https://pnpm.io/v/12.15.0   │
+#11 3.415    │     To update, run: pnpm add -g pnpm     │
+#11 3.415    │                                          │
+#11 3.415    ╰──────────────────────────────────────────╯
+#11 3.415 
+#11 4.119 Progress: resolved 525, reused 0, downloaded 0, added 0
+#11 4.563 Packages are hard linked from the content-addressable store to the virtual store.
+#11 4.563   Content-addressable store is at: /root/.local/share/pnpm/store/v11
+#11 4.563   Virtual store is at:             node_modules/.pnpm
+#11 5.146 Progress: resolved 525, reused 0, downloaded 36, added 31
+#11 6.147 Progress: resolved 525, reused 0, downloaded 76, added 76
+#11 7.147 Progress: resolved 525, reused 0, downloaded 117, added 117
+#11 8.148 Progress: resolved 525, reused 0, downloaded 167, added 167
+#11 9.165 Progress: resolved 525, reused 0, downloaded 209, added 209
+#11 10.17 Progress: resolved 525, reused 0, downloaded 258, added 258
+#11 11.17 Progress: resolved 525, reused 0, downloaded 308, added 308
+#11 12.17 Progress: resolved 525, reused 0, downloaded 366, added 366
+#11 13.17 Progress: resolved 525, reused 0, downloaded 426, added 426
+#11 14.17 Progress: resolved 525, reused 0, downloaded 491, added 491
+#11 14.68 Progress: resolved 525, reused 0, downloaded 525, added 525, done
+#11 16.42 ✓ Lockfile passes supply-chain policies (658 entries in 13.4s)
+#11 16.43 .../esbuild@0.28.1/node_modules/esbuild postinstall$ node install.js
+#11 16.43 .../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+#11 16.44 .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+#11 16.51 .../esbuild@0.28.1/node_modules/esbuild postinstall: Done
+#11 16.52 .../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+#11 16.53 .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+#11 16.74 Done in 14.5s using pnpm v11.20.0
+#11 DONE 16.8s
+
+#12 [build 8/9] COPY apps/api apps/api
+#12 DONE 2.1s
+
+#13 [build 9/9] RUN pnpm --filter @prisma-prim/api build
+#13 4.016 $ nest build
+#13 DONE 18.7s
+
+#9 [build 2/9] WORKDIR /app
+#9 CACHED
+
+#14 [runtime 3/8] COPY --from=build --chown=node:node /app/node_modules ./node_modules
+#14 DONE 3.5s
+
+#15 [runtime 4/8] COPY --from=build --chown=node:node /app/apps/api/node_modules ./apps/api/node_modules
+#15 DONE 1.6s
+
+#16 [runtime 5/8] COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
+#16 DONE 1.8s
+
+#17 [runtime 6/8] COPY --from=build --chown=node:node /app/apps/api/drizzle ./apps/api/drizzle
+#17 DONE 1.6s
+
+#18 [runtime 7/8] COPY --from=build --chown=node:node /app/apps/api/drizzle.config.ts ./apps/api/drizzle.config.ts
+#18 DONE 2.0s
+
+#19 [runtime 8/8] COPY --chown=node:node scripts/railway-api.mjs scripts/railway-config.mjs ./scripts/
+#19 DONE 2.0s
+
+#20 exporting to image
+#20 exporting layers
+#20 exporting layers 4.1s done
+#20 writing image sha256:6a63ea7f280f4e322b2ee256afda08ea78c912bc49241681d4a71168af405d2f done
+#20 naming to docker.io/library/prisma-prim-api:railway-packaging-367110 done
+#20 DONE 4.1s
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from web.Dockerfile
+#1 transferring dockerfile: 1.48kB done
+#1 WARN: SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_CLERK_PUBLISHABLE_KEY") (line 16)
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284
+#2 DONE 0.0s
+
+#3 [internal] load metadata for public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 1.05kB done
+#4 DONE 0.0s
+
+#5 [build  1/10] FROM public.ecr.aws/docker/library/node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df
+#5 DONE 0.0s
+
+#6 [runtime 1/4] FROM public.ecr.aws/docker/library/nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 5.41MB 0.1s done
+#7 DONE 0.1s
+
+#8 [build  3/10] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && npm install --global pnpm@11.20.0
+#8 CACHED
+
+#9 [build  4/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+#9 CACHED
+
+#10 [build  5/10] COPY apps/api/package.json apps/api/package.json
+#10 CACHED
+
+#11 [build  2/10] WORKDIR /app
+#11 CACHED
+
+#12 [build  6/10] COPY apps/web/package.json apps/web/package.json
+#12 CACHED
+
+#13 [build  7/10] RUN --mount=type=secret,id=proxy_ca     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi     && pnpm install --frozen-lockfile --filter @prisma-prim/web...
+#13 1.270 ? Verifying lockfile against supply-chain policies (658 entries)...
+#13 1.280 Lockfile is up to date, resolution step is skipped
+#13 1.380 Progress: resolved 1, reused 0, downloaded 0, added 0
+#13 1.429 .                                        | +263 ++++++++++++++++++++++++++
+#13 1.562 
+#13 1.562    ╭──────────────────────────────────────────╮
+#13 1.562    │                                          │
+#13 1.562    │   Update available! 11.20.0 → 12.15.0.   │
+#13 1.562    │   Changelog: https://pnpm.io/v/12.15.0   │
+#13 1.562    │     To update, run: pnpm add -g pnpm     │
+#13 1.562    │                                          │
+#13 1.562    ╰──────────────────────────────────────────╯
+#13 1.562 
+#13 2.303 Packages are hard linked from the content-addressable store to the virtual store.
+#13 2.303   Content-addressable store is at: /root/.local/share/pnpm/store/v11
+#13 2.303   Virtual store is at:             node_modules/.pnpm
+#13 2.382 Progress: resolved 263, reused 0, downloaded 3, added 3
+#13 3.382 Progress: resolved 263, reused 0, downloaded 64, added 64
+#13 4.382 Progress: resolved 263, reused 0, downloaded 129, added 129
+#13 5.392 Progress: resolved 263, reused 0, downloaded 189, added 188
+#13 6.389 Progress: resolved 263, reused 0, downloaded 211, added 207
+#13 7.086 Progress: resolved 263, reused 0, downloaded 263, added 263, done
+#13 10.55 ✓ Lockfile passes supply-chain policies (658 entries in 9.2s)
+#13 10.56 .../esbuild@0.28.1/node_modules/esbuild postinstall$ node install.js
+#13 10.62 .../esbuild@0.28.1/node_modules/esbuild postinstall: Done
+#13 10.76 Done in 10.1s using pnpm v11.20.0
+#13 DONE 10.8s
+
+#14 [build  8/10] COPY apps/web apps/web
+#14 DONE 1.6s
+
+#15 [build  9/10] COPY scripts/railway-web-config.mjs scripts/railway-config.mjs ./scripts/
+#15 DONE 1.7s
+
+#16 [build 10/10] RUN node scripts/railway-web-config.mjs && pnpm --filter @prisma-prim/web build
+#16 2.427 $ tsc -b && vite build
+#16 15.24 vite v8.2.1 building client environment for production...
+#16 15.25 [2K
+transforming...✓ 1979 modules transformed.
+#16 15.65 rendering chunks...
+#16 15.88 computing gzip size...
+#16 15.91 dist/index.html                                    0.50 kB │ gzip:   0.31 kB
+#16 15.91 dist/assets/PrismaCertUiBaseline-DM0fZBM-.css     54.19 kB │ gzip:  10.19 kB
+#16 15.91 dist/assets/index-5A5SHW_w.css                   168.85 kB │ gzip:  24.88 kB
+#16 15.91 dist/assets/PrismaCertUiBaseline-DTc9AENU.js     259.83 kB │ gzip: 139.88 kB
+#16 15.91 dist/assets/fiber-renderer-C0o1c45X.js           484.48 kB │ gzip: 121.91 kB
+#16 15.91 dist/assets/index-DnvYvSTV.js                  2,214.99 kB │ gzip: 554.07 kB
+#16 15.91 
+#16 15.91 [plugin builtin:vite-reporter] 
+#16 15.91 (!) Some chunks are larger than 500 kB after minification. Consider:
+#16 15.91 - Using dynamic import() to code-split the application
+#16 15.91 - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+#16 15.91 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#16 15.91 ✓ built in 667ms
+#16 DONE 15.9s
+
+#6 [runtime 1/4] FROM public.ecr.aws/docker/library/nginx:1.28.0-alpine@sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284
+#6 CACHED
+
+#17 [runtime 2/4] COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+#17 DONE 0.4s
+
+#18 [runtime 3/4] COPY --chmod=644 deploy/railway/nginx.conf.template /etc/nginx/prisma.conf.template
+#18 DONE 0.1s
+
+#19 [runtime 4/4] COPY --chmod=644 deploy/railway/web-start.sh /usr/local/bin/prisma-web-start
+#19 DONE 0.1s
+
+#20 exporting to image
+#20 exporting layers
+#20 exporting layers 0.8s done
+#20 writing image sha256:92746931e8295f50ecafb7cad3b8e97518c457b8abf9579c05119bc9e32a1fd6 done
+#20 naming to docker.io/library/prisma-prim-web:railway-packaging-367110 done
+#20 DONE 0.8s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - SecretsUsedInArgOrEnv: Do not use ARG or ENV instructions for sensitive data (ARG "VITE_CLERK_PUBLISHABLE_KEY") (line 16)
+CLERK_PUBLISHABLE_KEY is required.
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[⣽] applying migrations...[2K[1G[⣷] applying migrations...[2K[1G[⣯] applying migrations...[2K[1G[⣟] applying migrations...[2K[1G[⡿] applying migrations...[2K[1G[⢿] applying migrations...[2K[1G[⣻] applying migrations...[2K[1G[✓] migrations applied successfully!No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/apps/api/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] applying migrations...[2K[1G[✓] migrations applied successfully!PASS image startup, hosting ports, health, direct SPA navigation, production identity rejection and repeatable migrations.
