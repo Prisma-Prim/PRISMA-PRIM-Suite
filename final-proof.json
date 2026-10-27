@@ -1,0 +1,494 @@
+{
+  "issue": 904,
+  "pr": 905,
+  "source": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+  "base": "0dba6f687fb7ba231837a2d1e9162bde9589cffa",
+  "tree": "18224709252f97ee1f056c6f1868b3ad89871ba9",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40461701824,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824",
+    "attempt": 1,
+    "providerLatestJobAttempts": {
+      "scope": 1,
+      "checks": 1,
+      "postgres_image": 1,
+      "build": 1,
+      "acceptance (1)": 1,
+      "packaging": 1,
+      "api (serial)": 1,
+      "web_unit": 1,
+      "acceptance (2)": 1,
+      "api (2/3)": 1,
+      "api (1/3)": 1,
+      "api (3/3)": 1,
+      "browser (2)": 1,
+      "browser (1)": 1,
+      "browser (3)": 1,
+      "quality": 1
+    },
+    "actualExecutionOrigins": {
+      "scope": {
+        "actualJobId": 122047589809,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047589809"
+      },
+      "checks": {
+        "actualJobId": 122047590040,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047590040"
+      },
+      "postgres_image": {
+        "actualJobId": 122047639023,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047639023"
+      },
+      "build": {
+        "actualJobId": 122048338935,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048338935"
+      },
+      "acceptance (1)": {
+        "actualJobId": 122048338967,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048338967"
+      },
+      "packaging": {
+        "actualJobId": 122048339013,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339013"
+      },
+      "api (serial)": {
+        "actualJobId": 122048339017,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339017"
+      },
+      "web_unit": {
+        "actualJobId": 122048339051,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339051"
+      },
+      "acceptance (2)": {
+        "actualJobId": 122048339067,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339067"
+      },
+      "api (2/3)": {
+        "actualJobId": 122048339070,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339070"
+      },
+      "api (1/3)": {
+        "actualJobId": 122048339087,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339087"
+      },
+      "api (3/3)": {
+        "actualJobId": 122048339104,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339104"
+      },
+      "browser (2)": {
+        "actualJobId": 122048339116,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339116"
+      },
+      "browser (1)": {
+        "actualJobId": 122048339217,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339217"
+      },
+      "browser (3)": {
+        "actualJobId": 122048339233,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339233"
+      },
+      "quality": {
+        "actualJobId": 122052130114,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122052130114"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "source": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+    "actualApp": {
+      "passed": 12,
+      "newScenarios": 2,
+      "existingScenarios": 10,
+      "viewports": [
+        "1440x900",
+        "390x844"
+      ],
+      "originalScreenshotsInspected": 6,
+      "screenshots": [
+        {
+          "path": "final-acceptance-evidence/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-content-denied-desktop.png",
+          "bytes": 60011,
+          "sha256": "c0f55e5362f9d5f58b8dc181f5611433a757dfa80b31e5754972a57a354a012d"
+        },
+        {
+          "path": "final-acceptance-evidence/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-history-desktop.png",
+          "bytes": 82453,
+          "sha256": "2f7540e19431c893f0c01abc59dc5dcbaf8a09ab074be991446427579a8f111b"
+        },
+        {
+          "path": "final-acceptance-evidence/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-window-desktop.png",
+          "bytes": 30394,
+          "sha256": "39cd3e05e5be500a3ba22d60566c7f1ba5def907884d07a39e5e253c9f99f4da"
+        },
+        {
+          "path": "final-acceptance-evidence/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-narrow/client-documents-content-denied-narrow.png",
+          "bytes": 54079,
+          "sha256": "79d4791abdfe4b1dc5be9e800b8e334b15259541f331db811dc9239a326d1751"
+        },
+        {
+          "path": "final-acceptance-evidence/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-narrow/client-documents-history-narrow.png",
+          "bytes": 73969,
+          "sha256": "1b06b69cc34577e89c1c299c97ffd192072838a549c401196c11cedb3c0e2560"
+        },
+        {
+          "path": "final-acceptance-evidence/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-narrow/client-documents-window-narrow.png",
+          "bytes": 26940,
+          "sha256": "04c871f9deedac8ae84f9d013d2c61d146ae2630bb4511378783c483cbe85e88"
+        }
+      ],
+      "exactCurrentPreviousAndEarlierUploadBytesCompared": true,
+      "realContentRevocationPreservesMetadataAndDeniesCurrentHistoryExactBytes": true
+    },
+    "affectedPostgres": {
+      "passed": 376,
+      "optionalSkipped": 1,
+      "optionalSkipReason": "Disposable real ClamAV integration requires TEST_CLAMAV_HOST/PORT, absent; deterministic external protocol fixtures are not real-engine or production-readiness proof"
+    },
+    "affectedPublicUI": {
+      "passed": 250,
+      "files": 21,
+      "focused": 45
+    },
+    "broaderDevelopmentVerification": {
+      "status": "passed",
+      "testedSource": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+      "scripts": 487,
+      "api": 1510,
+      "dbInapplicableSkips": 1917,
+      "web": 3279,
+      "apiAndWebBuilds": true
+    },
+    "preparatoryRedGreen": [
+      "App inline region/exact focus",
+      "Empty working-Version identity rejected",
+      "Wrong exact Document/Company responses refused",
+      "Native source ignores late200/403",
+      "Version pending/uncertain command continuity",
+      "PDF pending/uncertain bytes/key continuity",
+      "Unconsumed Client grant does not reset Workspace alternative"
+    ],
+    "earlierFailuresRetained": {
+      "firstBroadVerify": "Unused test import stopped lint; removed before complete fresh pass",
+      "initialActual": "Nonexistent unnecessary Find Clients selector; corrected to exact visible Client identity card; run interrupted and retained",
+      "startupRefusal": "Owned interrupted Vite preview retained port4173; only proven ownprocess2119748 stopped,4173/4174verifiedfree",
+      "thirdActual": "Both viewports passed immutable content/history but hash navigation intentionally retained window2 before revoked-access phase; explicit page.reload revalidates current grants/starts freshdossier; fresh12casespassed"
+    },
+    "sameSourceRegistryRetry": {
+      "run": 40413383630,
+      "source": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+      "initialAttempt": 1,
+      "initialFailure": "Pinned official Node index GET429 Data limit exceeded before image construction",
+      "all10TestStepsAlreadyPassed": true,
+      "successfulJobsRetained": 14,
+      "onlyEligibleFailedJobs": [
+        "packaging",
+        "quality"
+      ],
+      "sourceConfigurationCredentialsAndBudgetsUnchanged": true,
+      "metadataOnlyProbeBeforeAttempt2": {
+        "verifiedAt": "2026-10-26T22:49:25.381818+00:00",
+        "records": [
+          {
+            "name": "nginx",
+            "indexDigest": "sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284",
+            "amd64Digest": "sha256:09ab424a8c788f8d0fe3a64429f6d19dfa526885c8609b748d0943a75dcb9f8c",
+            "configDigest": "sha256:c318e336065b17ff460aeac6d14bce5d0b13e35f25d5cb1843b635359fc00c9a",
+            "bothManifestByteHashesVerified": true
+          },
+          {
+            "name": "node",
+            "indexDigest": "sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df",
+            "amd64Digest": "sha256:e5a8dee7bc1e6a215d224a7ef8206f7e77271bc3cabd5febf2beafac0674f174",
+            "configDigest": "sha256:622f209f6c16ba5af4d9a337cae6577d096f17174b904cfc6a5b0c81a2679c24",
+            "bothManifestByteHashesVerified": true
+          }
+        ],
+        "onlyMetadataRead": true,
+        "registryAndCredentialsUnchanged": true,
+        "localToolSetup": "Only Buildx diagnostic cache uses an owned writable workspace directory; Docker config and registry credentials unchanged"
+      },
+      "fullImageProbeBeforeAttempt3": {
+        "verifiedAt": "2026-10-26T22:53:35.713020+00:00",
+        "records": [
+          {
+            "name": "nginx",
+            "indexDigest": "sha256:30f1c0d78e0ad60901648be663a710bdadf19e4c10ac6782c235200619158284",
+            "amd64Digest": "sha256:09ab424a8c788f8d0fe3a64429f6d19dfa526885c8609b748d0943a75dcb9f8c",
+            "configDigest": "sha256:c318e336065b17ff460aeac6d14bce5d0b13e35f25d5cb1843b635359fc00c9a",
+            "bothManifestByteHashesVerified": true,
+            "pullSucceeded": true,
+            "configDigestMatchesPinnedManifest": true
+          },
+          {
+            "name": "node",
+            "indexDigest": "sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df",
+            "amd64Digest": "sha256:e5a8dee7bc1e6a215d224a7ef8206f7e77271bc3cabd5febf2beafac0674f174",
+            "configDigest": "sha256:622f209f6c16ba5af4d9a337cae6577d096f17174b904cfc6a5b0c81a2679c24",
+            "bothManifestByteHashesVerified": true,
+            "pullSucceeded": true,
+            "configDigestMatchesPinnedManifest": true
+          }
+        ],
+        "registryAndCredentialsUnchanged": true,
+        "strongerDiagnostic": "Actual full pinned linux/amd64 image pulls and image config identity, after metadata-only recovery did not resolve the CI egress refusal"
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "packagingJob": 121890413885,
+          "outcome": "failed Node pinned index429; all14 other jobs/10Test steps passed"
+        },
+        {
+          "attempt": 2,
+          "packagingJob": 121896417223,
+          "outcome": "same429 despite local metadata recovery; only failed jobs replayed"
+        },
+        {
+          "attempt": 3,
+          "packagingJob": 121898689618,
+          "outcome": "same429 despite stronger local full pinned-image/config digest recovery; only failed jobs replayed"
+        },
+        {
+          "attempt": 4,
+          "packagingJob": 122033344450,
+          "outcome": "same429 after almost7h cooldown; one diagnostic failed-job-only replay, all14original successes retained"
+        }
+      ],
+      "completeIntegrationGate": "blocked; neither local probes nor retained successful jobs constitute a complete passing gate",
+      "furtherBlindRetriesPaused": true,
+      "frictionIssue": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/906",
+      "resolvedBySeparatePrerequisite": {
+        "issue": 906,
+        "pr": 907,
+        "merge": "0dba6f687fb7ba231837a2d1e9162bde9589cffa",
+        "ci": 40459206013,
+        "proof": "10635e4064fd4575b74c35beb21158d0841acbb1",
+        "originalFailedAttemptsRemainFailed": true,
+        "currentIntegrationRequiresFreshCompleteCI": true
+      }
+    },
+    "integrationAfterBaseAdvance": {
+      "source": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+      "base": "0dba6f687fb7ba231837a2d1e9162bde9589cffa",
+      "tree": "18224709252f97ee1f056c6f1868b3ad89871ba9",
+      "unchangedOriginalReviewedProductSource": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+      "all18AddedRemovedByteDeltasIdentical": true,
+      "conflicts": false,
+      "typecheck": "PASS bothpackages",
+      "publicUI": {
+        "passed": 240,
+        "files": 20,
+        "command": "pnpm --filter @prisma-prim/web exec vitest run src/documents src/App.client-document-navigation.test.tsx --maxWorkers=2"
+      },
+      "doctor": "PASS Chromium/runtime; no new local real-PostgreSQL run claimed",
+      "finalCompleteIndependentCI": {
+        "run": 40461701824,
+        "attempt": 1,
+        "conclusion": "success",
+        "all16JobsPassed": true,
+        "all10ActualTestStepsPassed": true,
+        "source": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+        "base": "0dba6f687fb7ba231837a2d1e9162bde9589cffa",
+        "tree": "18224709252f97ee1f056c6f1868b3ad89871ba9"
+      },
+      "newVisualOrProductSourceChanges": false
+    }
+  },
+  "review": {
+    "source": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+    "reviewedBase": "23bd1f8697efb37382d42180ea81872c206664f8",
+    "preparationComplete": true,
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "preparation": {
+      "standards": "PASS0 client904_standards",
+      "spec": "PASS0 client904_spec",
+      "structuralAudit": "Complete in Standards preparation; existing DocumentWorkspace1650\u21921716 and Versions1042\u21921080 already>1000; new inline owner separate and coordination boolean-only",
+      "findings": 0
+    },
+    "applicableProductCodeReview": "Completed configured opening review0; no correction or additional trigger",
+    "duplicateReviewRequested": false,
+    "postGreenReviewRequested": false,
+    "unresolvedThreads": 0,
+    "configuredOpeningReview": {
+      "commentId": 6428863486,
+      "source": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+      "status": "completed",
+      "hasAnyFindings": false,
+      "hasUnresolvedFindings": false,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/905#issuecomment-6428863486"
+    },
+    "originalReviewedProductSource": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+    "finalIntegrationSource": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+    "currentBase": "0dba6f687fb7ba231837a2d1e9162bde9589cffa",
+    "currentIntegrationTree": "18224709252f97ee1f056c6f1868b3ad89871ba9",
+    "integrationReviewReuse": {
+      "all18PerFileAddedRemovedBytesIdentical": true,
+      "conflicts": false,
+      "noProductCorrection": true,
+      "scope": "Only integration with main859 and reviewed/verified prerequisite907; current product delta matches original complete review",
+      "prerequisiteReview": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/907#issuecomment-6435007978",
+      "noNewReviewRoundRequested": true
+    },
+    "configuredReviewFinalSourceUpdate": {
+      "commit_sha": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/905#issuecomment-6428863486",
+      "commentId": 6428863486,
+      "completedAt": "2026-10-27T06:33:05.976580Z",
+      "scope": "Existing configured review comment updated automatically to the final integration source; no new review trigger requested. Original reviewed product delta was reused before renewed CI."
+    }
+  },
+  "reviewedProductMaterialReuse": {
+    "originalReviewedSource": "4af3872a403cf57e66513cbc75759ffdc9f50988",
+    "originalReviewedBase": "23bd1f8697efb37382d42180ea81872c206664f8",
+    "finalIntegrationSource": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+    "currentBase": "0dba6f687fb7ba231837a2d1e9162bde9589cffa",
+    "tree": "18224709252f97ee1f056c6f1868b3ad89871ba9",
+    "files": 18,
+    "allPerFileAddedRemovedBytesIdentical": true,
+    "conflicts": false,
+    "originalDelta": {
+      "apps/web/e2e/client-document-navigation.acceptance.spec.ts": "44a83a1f23063eb07e7ee66704db7368adb2f6fa4111483da9b6e0c770456477",
+      "apps/web/e2e/client-documents.acceptance.spec.ts": "c1961f5db0c00677f907f8e0c133b541e83b60860c267e0982951169ce96454e",
+      "apps/web/playwright.acceptance.config.ts": "c3a03f1a9481661ffb8ff41756bee3fe283cd4a743fbf7e328d5cf2b29cb39d2",
+      "apps/web/src/App.client-document-navigation.test.tsx": "e084fa04bffaedcfef0e30b45a36ce9c680f4bb85e7298b387cd5b1a14712c7e",
+      "apps/web/src/App.tsx": "0a202fa72975c4dfa10ceb50fb525a26226d0e63e58e970eb500ae0905431984",
+      "apps/web/src/client/ClientDossierPanel.tsx": "59d89313a2703b49dd5b65eb874a42a1c587151e06667f16b9aa9a7ccef8f8b6",
+      "apps/web/src/client/ClientWorkspace.tsx": "ce0799abe55d39f147ef11ac089e40b5ffefe218db003e6cf01be81bf7141e5f",
+      "apps/web/src/documents/ClientDocumentOverview.test.tsx": "268c6365306d12aa955615a794a6fe708a61ed1bf98f1ff0a87be84d1542298c",
+      "apps/web/src/documents/ClientDocumentOverview.tsx": "3036f9edee592675cd690d51ddbbea2b728ecf0ad73e6636dec09ea71b1f8e8e",
+      "apps/web/src/documents/DocumentPdfContent.tsx": "9a7eefeb639daf17420df79a428276c8a29715b67ded324134f5f919b1731af9",
+      "apps/web/src/documents/DocumentVersions.tsx": "7913686e7b742498b8df20f13c2fa37e70bc90fafa0a61aa7e2b1c0fa10c4d9d",
+      "apps/web/src/documents/DocumentWorkspace.scoped-opening.test.tsx": "80f46fd694591158153d86645a5afb7d4f0337ffb86b5582d4997d93e853171d",
+      "apps/web/src/documents/DocumentWorkspace.tsx": "5be3681d7124aa0069ec10fefb51ecced01dcdf1c607abeffbdd773578f43e3d",
+      "apps/web/src/documents/client-document-overview-response.ts": "49bc5d4dda1732393ad0d62dd0242043f40c4af9991cdc9e5ec3ef95eb46b156",
+      "apps/web/src/documents/client-document-overview.copy.ts": "186ca2eb1f690d29bc0c32a890d3ddc3c472d3bafff4de526a40cf061ab7c1bc",
+      "apps/web/src/documents/client-document-overview.css": "b44b5a7306bb02e5239d6e280a78551e12babfb1d0bbd12d06389787b39247bc",
+      "apps/web/src/documents/document-navigation-protection.ts": "ed9c48306105f3f034f9da8660f936c8d7da6ee0fdd1ad7d3d1c7d92a37549ff",
+      "apps/web/src/documents/documents.copy.ts": "1915531b87ba084297a0099440c2b7470c1d8c6aaf797b815c01a9602fb42b82"
+    },
+    "integrationDelta": {
+      "apps/web/e2e/client-document-navigation.acceptance.spec.ts": "44a83a1f23063eb07e7ee66704db7368adb2f6fa4111483da9b6e0c770456477",
+      "apps/web/e2e/client-documents.acceptance.spec.ts": "c1961f5db0c00677f907f8e0c133b541e83b60860c267e0982951169ce96454e",
+      "apps/web/playwright.acceptance.config.ts": "c3a03f1a9481661ffb8ff41756bee3fe283cd4a743fbf7e328d5cf2b29cb39d2",
+      "apps/web/src/App.client-document-navigation.test.tsx": "e084fa04bffaedcfef0e30b45a36ce9c680f4bb85e7298b387cd5b1a14712c7e",
+      "apps/web/src/App.tsx": "0a202fa72975c4dfa10ceb50fb525a26226d0e63e58e970eb500ae0905431984",
+      "apps/web/src/client/ClientDossierPanel.tsx": "59d89313a2703b49dd5b65eb874a42a1c587151e06667f16b9aa9a7ccef8f8b6",
+      "apps/web/src/client/ClientWorkspace.tsx": "ce0799abe55d39f147ef11ac089e40b5ffefe218db003e6cf01be81bf7141e5f",
+      "apps/web/src/documents/ClientDocumentOverview.test.tsx": "268c6365306d12aa955615a794a6fe708a61ed1bf98f1ff0a87be84d1542298c",
+      "apps/web/src/documents/ClientDocumentOverview.tsx": "3036f9edee592675cd690d51ddbbea2b728ecf0ad73e6636dec09ea71b1f8e8e",
+      "apps/web/src/documents/DocumentPdfContent.tsx": "9a7eefeb639daf17420df79a428276c8a29715b67ded324134f5f919b1731af9",
+      "apps/web/src/documents/DocumentVersions.tsx": "7913686e7b742498b8df20f13c2fa37e70bc90fafa0a61aa7e2b1c0fa10c4d9d",
+      "apps/web/src/documents/DocumentWorkspace.scoped-opening.test.tsx": "80f46fd694591158153d86645a5afb7d4f0337ffb86b5582d4997d93e853171d",
+      "apps/web/src/documents/DocumentWorkspace.tsx": "5be3681d7124aa0069ec10fefb51ecced01dcdf1c607abeffbdd773578f43e3d",
+      "apps/web/src/documents/client-document-overview-response.ts": "49bc5d4dda1732393ad0d62dd0242043f40c4af9991cdc9e5ec3ef95eb46b156",
+      "apps/web/src/documents/client-document-overview.copy.ts": "186ca2eb1f690d29bc0c32a890d3ddc3c472d3bafff4de526a40cf061ab7c1bc",
+      "apps/web/src/documents/client-document-overview.css": "b44b5a7306bb02e5239d6e280a78551e12babfb1d0bbd12d06389787b39247bc",
+      "apps/web/src/documents/document-navigation-protection.ts": "ed9c48306105f3f034f9da8660f936c8d7da6ee0fdd1ad7d3d1c7d92a37549ff",
+      "apps/web/src/documents/documents.copy.ts": "1915531b87ba084297a0099440c2b7470c1d8c6aaf797b815c01a9602fb42b82"
+    },
+    "reviewReuse": "Main-only integration; existing product review and prerequisite907 review apply; no duplicate review round"
+  },
+  "renewedPackagingRecovery": {
+    "source": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+    "run": 40461701824,
+    "job": 122048339013,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339013",
+    "restoredKey": "packaging-images-linux-amd64-4991e92d61b2965280dd7244994dc00af458db85c97e35d74b353f203c79a1de",
+    "currentVerificationPassed": true,
+    "acquisitionSkipped": true,
+    "productionPackagingPassed": true,
+    "allOtherCurrentFamiliesStillRequired": true
+  },
+  "artifacts": [
+    {
+      "id": 12715362025,
+      "name": "browser-evidence-part-acceptance-2-40461701824",
+      "size_in_bytes": 65213469,
+      "digest": "sha256:7febc746b574d3ff8a9f956fc63cfa309fb362249d4c1336e85df3b265ad2b1f",
+      "expires_at": "2026-11-10T06:45:47Z"
+    },
+    {
+      "id": 12715207150,
+      "name": "browser-evidence-part-browser-1-40461701824",
+      "size_in_bytes": 113767505,
+      "digest": "sha256:8f9d3ed6c2e86935c1cd53e22b7ac1a87fd5242394f75f8eb2fd97c26161d7e3",
+      "expires_at": "2026-11-10T06:41:01Z"
+    },
+    {
+      "id": 12715142211,
+      "name": "browser-evidence-part-browser-3-40461701824",
+      "size_in_bytes": 71158927,
+      "digest": "sha256:5e98e0bd82f3a4cc7ed1f56e1cec3ed3c3ccbd9ed498fc4b76654d740ba208e9",
+      "expires_at": "2026-11-10T06:38:24Z"
+    },
+    {
+      "id": 12715122341,
+      "name": "browser-evidence-part-browser-2-40461701824",
+      "size_in_bytes": 77569875,
+      "digest": "sha256:6017793ebd870e99a3ad2f36abb20ecc4e212e8b44cc9d5857ac6b600caa17a5",
+      "expires_at": "2026-11-10T06:38:39Z"
+    },
+    {
+      "id": 12714639180,
+      "name": "browser-evidence-pr-40461701824",
+      "size_in_bytes": 403479482,
+      "digest": "sha256:a42f1502192787665f747ae9f62abfbbddd83e2814c045e649aa5450a50b27d5",
+      "expires_at": "2026-11-10T06:46:57Z"
+    },
+    {
+      "id": 12714449419,
+      "name": "browser-evidence-part-acceptance-1-40461701824",
+      "size_in_bytes": 75769794,
+      "digest": "sha256:a815169caa118a6e9d313488613a632be2751f0d80eabbb37c36910cbd2b7467",
+      "expires_at": "2026-11-10T06:46:37Z"
+    }
+  ],
+  "scope": "Approved Shared Client PRD23 governed-Document overview: reuse the existing complete authorized Company read, filter exact Client-owned dossier membership before local25display windows, retain independent family/metadata/content/Project/Contract authority and original references; exact existing Document/Version/PDF-history continuation and protected pending/uncertain commands. No API/schema/dependency/grant/governance rule, provider, real activation or whole-MVP credit. MISSION-CLOSE-01 stays in its consolidated-question owner.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}

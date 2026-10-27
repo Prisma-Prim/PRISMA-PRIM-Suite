@@ -1,0 +1,378 @@
+{
+  "issue": 904,
+  "pr": 905,
+  "run": 40461701824,
+  "source": "bc15706f0e7b67aa39fd26fbc9475241d4316d69",
+  "base": "0dba6f687fb7ba231837a2d1e9162bde9589cffa",
+  "tree": "18224709252f97ee1f056c6f1868b3ad89871ba9",
+  "jobs": [
+    {
+      "id": 122047589809,
+      "name": "scope",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047589809",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122047589809,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047589809"
+      },
+      "steps": []
+    },
+    {
+      "id": 122047590040,
+      "name": "checks",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047590040",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122047590040,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047590040"
+      },
+      "steps": []
+    },
+    {
+      "id": 122047639023,
+      "name": "postgres_image",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047639023",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122047639023,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122047639023"
+      },
+      "steps": []
+    },
+    {
+      "id": 122048338935,
+      "name": "build",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048338935",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048338935,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048338935"
+      },
+      "steps": []
+    },
+    {
+      "id": 122048338967,
+      "name": "acceptance (1)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048338967",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048338967,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048338967"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test acceptance",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Verify acceptance failure evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Upload acceptance evidence",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339013,
+      "name": "packaging",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339013",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339013,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339013"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Validate Railway configuration without credentials",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Prove production image packaging",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339017,
+      "name": "api (serial)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339017",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339017,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339017"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339051,
+      "name": "web_unit",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339051",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339051,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339051"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test Web unit",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339067,
+      "name": "acceptance (2)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339067",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339067,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339067"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test acceptance",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Verify acceptance failure evidence",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 8,
+          "name": "Upload acceptance evidence",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339070,
+      "name": "api (2/3)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339070",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339070,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339070"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339087,
+      "name": "api (1/3)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339087",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339087,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339087"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339104,
+      "name": "api (3/3)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339104",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339104,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339104"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test API",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339116,
+      "name": "browser (2)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339116",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339116,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339116"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test browser",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Upload browser evidence",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339217,
+      "name": "browser (1)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339217",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339217,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339217"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test browser",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Upload browser evidence",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122048339233,
+      "name": "browser (3)",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339233",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122048339233,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122048339233"
+      },
+      "steps": [
+        {
+          "number": 5,
+          "name": "Test browser",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Upload browser evidence",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 122052130114,
+      "name": "quality",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122052130114",
+      "conclusion": "success",
+      "providerLatestRunAttempt": 1,
+      "actualExecution": {
+        "actualJobId": 122052130114,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40461701824/job/122052130114"
+      },
+      "steps": [
+        {
+          "number": 4,
+          "name": "Require every verification result",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 5,
+          "name": "Download complete browser evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Upload complete browser evidence",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ]
+}
