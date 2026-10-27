@@ -288,6 +288,10 @@ create-and-link remains available for its ordinary separate preparatory outcome;
 it creates no copied plan/Tasks. Neither route activates/completes a Project,
 completes a Task, records a result, creates a stage/obligation or certifies work.
 
+The separately bounded [configured mission continuation](release-1-configurable-mission-plans-prd.md#10-contract-to-configured-mission-continuation)
+defines an optional plan-based create-and-link outcome. The empty registration
+and pilot-linking routes above retain their existing meaning.
+
 Activity §7 owns one `contract_version.signing_declared` event for the committed
 statement, using §25's existing Contract/Version discovery and current target-read
 filters.

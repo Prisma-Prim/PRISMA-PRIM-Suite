@@ -1,12 +1,14 @@
 # PRD — Company-configured mission plans
 
-**Status:** Approved bounded MVP contract — ordered Standards then Spec/Product
-preparation and root delegated approval, 2026-10-27, under
-[#918](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/918) for Dan's
-explicit outcome in [#917](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/917).
-Approval uses [the standing delegation](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237),
-not a personal owner review. Product approval is separate from runtime delivery;
-this is no new Iurie answer or approval of actual business content.
+**Status:** Approved bounded MVP contract — §§1–9 under
+[#918](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/918) for
+[#917](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/917), and Contract
+continuation §10 under [#923](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/923)
+for [#922](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/922).
+Ordered Standards then Spec/Product preparation and root delegated approval,
+2026-10-27, use [the standing delegation](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237).
+Product approval is separate from runtime delivery; this is no new Iurie answer
+or approval of actual business content.
 
 **Owner:** Dan Popescu. Project/Task [§1 and §§23–29](release-1-project-task-prd.md),
 [authorization §8](tenant-company-client-authorization-prd.md#8-initial-permission-families),
@@ -334,3 +336,158 @@ workflow/category editors, required/optional obligations, stages/dependencies,
 automatic assignment/dates, result verification/approval, certification, D5/D13
 policy, official numbering, prices/legal clauses, signature/payment, actual data,
 providers, deployment and whole-MVP completion. These are not hidden prerequisites.
+
+## 10. Contract to configured mission continuation
+
+**Status:** Approved bounded continuation after ordered Standards then
+Spec/Product preparation and root delegated approval, 2026-10-27, under
+[#923](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/923), child of
+[#922](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/922).
+Product approval is separate from runtime and first-tenant business approval.
+
+### 10.1 Outcome and authority
+
+An independently authorized user starts a configured mission directly from an
+agreement already eligible for native Project continuation. One deliberate action
+creates its preparatory Project, exact selected plan Tasks and preserved source,
+and the existing Contract–Project link. The user does not re-enter the Client or
+create and link a second Project separately. This joins delivered planning and
+commercial paths; it does not interpret the Contract annex or infer obligations.
+
+[Commercial Workflow §19.11](release-3-commercial-19-contracts.md#1911-project-creation-or-linking)
+continues to own agreement eligibility, candidates, cardinality, Client resolution,
+link revision and visibility; [§31.7](release-3-commercial-31-reported-signing-case-acceptance.md#317-existing-project-continuation-and-events)
+owns the qualifying Company-model signing declaration. This section is an explicit
+opt-in exception to the empty-Project creation outcome, not a change to those
+owners or to manual creation/linking. §§1–9 above own every source/Task-copy rule.
+
+User stories:
+
+1. As a Contract collaborator, I explicitly choose a mission plan and inspect one
+   exact Version before creating the linked Project and Tasks together.
+2. As a creator, I retain the agreement's server-established Client relationship
+   and acknowledge all existing candidates before choosing a new Project.
+3. As a manual user, I keep empty Project creation and existing-Project linking
+   unchanged, without acquiring a mission-plan or Task permission requirement.
+4. As a user with a lost response, I recover the same Project, link and Tasks with
+   an explicit identical retry, including after native refresh or lifecycle change.
+5. As a collaborator, I open native Task work and the preserved exact source from
+   the created Project; successor source publications never rewrite that copy.
+6. As a user changing Company, access or interface language, I retain the existing
+   separation between protected command work and independent authorized drafts.
+
+### 10.2 Actors, eligibility and exact creation
+
+Require live native Contract read/link and its Opportunity/Client visibility,
+independent known-v1 mission-plan User read/instantiate, Project read/create and
+Task read/manage for a new configured creation. Configuration alone, role titles,
+signatory declarations and Document access confer none of those rights. No new
+bundle, captured-set expansion, implicit assignment or actual grant is introduced.
+
+Reuse native eligible CONTRACT/PRECONTRACT states and the current Company-model
+evidence qualification. Addendum, unexecuted or unqualified agreements retain
+their native refusal. Reuse complete candidate acknowledgement, empty included,
+the native over-50-candidate refusal, link capacity and optimistic Contract
+revision. A candidate change must cause deliberate review, never blind creation.
+
+The user selects the plan and exact published Version/id/number through existing
+complete catalogue/history pages and previews its full content. No plan is
+implicitly selected from a Contract title, annex or current source head. A later
+source publication does not invalidate the explicitly chosen older Version.
+
+The server alone resolves the Contract's original Client through the native Client
+owner under its creation lock. The new Project preserves that actual native
+creation Client; the Contract's historical original reference stays unchanged.
+Reject a supplied Client override and malformed, foreign or mixed source identity.
+
+One caller-owned transaction creates the preparatory Project, all ordinary Tasks,
+immutable copy/mapping, native histories/events/fence, Contract link/revision/event
+and command receipt. Defaults and exact one-to-one mapping follow §5. Failure at
+the last row/event leaves none of the new creation or its effects. Compose native
+owners through a narrow reusable transaction seam; neither nested owning
+transactions nor duplicated Project/Task/Client policy is permitted.
+
+The chosen plan is human-selected planning context. Selection proves no identity
+with the Contract annex, amendment, complete obligation set, accepted delivery or
+certification. Existing activation, stages, result review and closure retain their
+independent authority. This command performs no activation or achieved-result act.
+
+### 10.3 Command identity, recovery and history
+
+The existing Contract Workspace/Company/actor command-key namespace owns this user intent.
+Its fingerprint distinguishes configured creation from manual creation/linking and
+includes Company, exact agreement/Opportunity, normalized Project title, complete
+sorted acknowledged candidate ids, expected Contract revision and exact plan/
+Version/number. Within that namespace, identical/concurrent retries recover one
+outcome; changed intent with the same key conflicts. Preserve Company key isolation
+and every old manual/link fingerprint, receipt
+and refusal. Do not create a global key namespace shared with unrelated Project
+commands. Any internal native creation identity is server-established inside the
+same transaction and is not a separate user command or retry.
+
+Current Contract/Opportunity/Client visibility, mission-plan User read/instantiate
+and native Project/Task read precede committed replay. Fresh Project-create,
+Task-manage, candidate-set, active-Client creation and original-revision checks
+must not replace that historical readable replay. Native closure or Client
+supersession does not retarget the stored Project, Client, source or link.
+Existing manual receipt semantics are not relaxed to share the new path.
+
+Preserve native lock order and whole-command recovery against Client union/reversal,
+candidate/Contract changes, revocation and suspension. Denial first creates nothing;
+creation first leaves one complete attributable outcome. Replays, read failures
+and rollbacks append no extra events. No new Activity family or source-body
+metadata is needed: reuse ordinary Project/Task creation and Contract-link events.
+
+### 10.4 Interface, privacy and continuation
+
+Use the existing Prisme Contract continuation and mission-plan source controls.
+Configured creation is explicit and optional. Preserve literal title, exact source,
+candidate acknowledgement, submitted body and key while pending/uncertain, including
+through native Contract/candidate refresh. Mode/source/reload controls cannot
+destroy that owner. Only explicit identical retry recovers uncertainty; a confirmed
+success remains confirmed if a subsequent list refresh fails.
+
+Consumed identity/session/Company and authority changes permanently retire
+consuming work and suppress late data/navigation/Activity/shared-access effects.
+Independent manual registration, Contract decision and native Task drafts survive
+unrelated plan denial. Locale-only changes preserve focus, literal work, exact
+source and command with no I/O. Central ro/ru/fr/en copy distinguishes loading,
+empty, unavailable/retry, denied, invalid, stale candidates/revision, definite key
+conflict, uncertainty and confirmation. Preserve keyboard use and no horizontal
+overflow at1440px and390px. Internal ids never become business fields or URL state.
+
+The confirmed Project opens through existing native continuation. Its preserved
+plan and exact linked Task navigation follow §5; later Task edits or source
+publications leave that copy intact. Reads disclose no foreign source, receipt,
+candidate, Contract, Task or count. No new file, provider, polling or AI is added.
+
+### 10.5 Public acceptance and readiness
+
+1. Public REST/disposable PostgreSQL proves one complete configured create-and-link,
+   exact source/defaults/Tasks/mapping, native attribution and no Client input.
+2. Prove independent missing/unknown/foreign permissions, native agreement/evidence
+   refusal, complete candidate/capacity/revision conflicts and strict malformed or
+   mixed source input without partial creation or information disclosure.
+3. Exact/concurrent retries, changed-mode/source/Contract intent, last-step rollback,
+   live authorization ordering and historical closed/superseded-Client replay keep
+   one outcome. Existing empty creation, linking and their receipts remain valid.
+4. Public HTTP/native-parent tests prove protected recovery through native refresh,
+   context round trips and late200/403, unavailable source, exact continuation,
+   no-I/O locale continuity and preserved independent drafts. Audit actual parent
+   mounting and consumed authority wiring, not only the isolated new component.
+5. Registered actual PostgreSQL App at1440/390 chooses an exact plan by keyboard
+   from an eligible synthetic agreement, acknowledges candidates, loses a committed
+   response, refreshes and identically retries to one Project/link/Task set. Open
+   and edit a native Task, publish a changed successor and reopen the unchanged
+   original source. Inspect original synthetic screenshots and overflow.
+
+Product preparation and delegated approval are complete. Runtime still requires
+this contract on main, then fresh ownership, seam fit and all readiness gates
+for one vertical child. No real operational plan,
+actual assignment, provider setup, manual user test or Iurie answer is required.
+MISSION-CLOSE-01 remains solely Mission Obligations§12, for the consolidated email.
+
+Excluded: attach/replace a plan on an existing Project, auto-create on signature,
+new obligation/applicability/completion policy, activation, operational model
+approval, legal/price/numbering/signature decisions, actual business data/grants,
+imports, external providers, deployment and a whole-MVP completion claim.
