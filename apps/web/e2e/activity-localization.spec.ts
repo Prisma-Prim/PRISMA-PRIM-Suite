@@ -391,8 +391,19 @@ for (const locale of locales) {
     expect(state.activityReads).toBe(1);
     await capture(page, testInfo, `activity-exact-contract-${locale.code}`);
     await go(page, 'activity', locale);
-    const beforeFrame = state.gets.length;
+    const beforeFrame = [...state.gets];
     await enterClassicCompatibility(page, locale.optIn);
+    // Classic compatibility mounts Home alongside the retained Activity owner.
+    // Its independently authorized queue reads once; Activity does not reload.
+    await expect
+      .poll(() => state.gets)
+      .toEqual([
+        ...beforeFrame,
+        {
+          path: '/api/offer-decision-queue',
+          companyId: activityLocaleIds.company,
+        },
+      ]);
     await expect(ledger).toBeVisible();
     await expect(rows).toHaveCount(11);
     for (const original of originalRows)
@@ -401,7 +412,13 @@ for (const locale of locales) {
       );
     await page.getByRole('button', { name: locale.optIn, exact: true }).click();
     await expect(page).toHaveURL(/\/#activity$/u);
-    expect(state.gets).toHaveLength(beforeFrame);
+    expect(state.gets).toEqual([
+      ...beforeFrame,
+      {
+        path: '/api/offer-decision-queue',
+        companyId: activityLocaleIds.company,
+      },
+    ]);
     expect(state.commands).toEqual([]);
   });
 

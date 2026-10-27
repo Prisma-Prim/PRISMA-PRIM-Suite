@@ -163,8 +163,20 @@ export function offerClientResponseState(
   }
 }
 
-export function readOfferDetail(value: unknown): OfferReadView | null {
+export function readOfferDetail(
+  value: unknown,
+  expected?: { companyId: string; opportunityId: string; offerId: string },
+): OfferReadView | null {
   const detail = record(value);
+  if (expected) {
+    const offer = record(detail.offer);
+    if (
+      offer.id !== expected.offerId ||
+      offer.companyId !== expected.companyId ||
+      offer.opportunityId !== expected.opportunityId
+    )
+      throw new Error('Mismatched requested Offer.');
+  }
   return detail.offer === null ? null : readOffer(detail.offer);
 }
 
