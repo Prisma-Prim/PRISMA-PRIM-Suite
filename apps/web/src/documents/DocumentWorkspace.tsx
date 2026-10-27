@@ -74,7 +74,12 @@ function documentFilterText(value: string) {
     .replace(/[țţ]/gu, 't');
 }
 /** One request to open a Document; a newer request id supersedes older ones. */
-export type RequestedDocument = { documentId: string; requestId: number };
+export type DocumentOpenTarget =
+  | string
+  | { documentId: string; focus?: 'document'; sourceSignal?: AbortSignal };
+export type RequestedDocument = Exclude<DocumentOpenTarget, string> & {
+  requestId: number;
+};
 export function DocumentWorkspace(
   props: Parameters<typeof DocumentSession>[0],
 ) {
@@ -130,6 +135,12 @@ function DocumentSession({
   const missionCopy = useMissionDeliverableCopy();
   const receivedCopy = useReceivedContractCopy();
   const [receivedBusy, setReceivedBusy] = useState(false);
+  const [versionWorkProtected, setVersionWorkProtected] = useState(false);
+  const detailHeading = useRef<HTMLHeadingElement>(null);
+  const focusedRequest = useRef<number | undefined>(undefined);
+  const [focusRequest, setFocusRequest] = useState<number | undefined>(
+    undefined,
+  );
   const isPrisme = useContext(ApplicationPresentation) === 'prisme';
   const [state, setState] = useState<Load>({ status: 'loading' });
   const [filter, setFilter] = useState<DocumentFilter>({
@@ -187,7 +198,8 @@ function DocumentSession({
     editing ||
     correction === 'pending' ||
     correction === 'uncertain' ||
-    receivedBusy;
+    receivedBusy ||
+    versionWorkProtected;
   const protectedWorkInProgress = useRef(protectedWorkActive);
   protectedWorkInProgress.current = protectedWorkActive;
   /**
@@ -344,9 +356,14 @@ function DocumentSession({
       )
       .map(metadataOnly);
   }
-  function readVisibleDetail(value: unknown): WorkingDocumentDetail {
+  function readVisibleDetail(
+    value: unknown,
+    expectedId?: string,
+  ): WorkingDocumentDetail {
     const document = readDocumentDetail(value);
     if (
+      document.companyId !== companyId ||
+      (expectedId !== undefined && document.id !== expectedId) ||
       familyCaptures[document.type] !==
         currentFamilyCaptures.current[document.type] ||
       !hasDocumentFamilyAccess(actor.activeCompany, document.type)
@@ -616,7 +633,7 @@ function DocumentSession({
           return;
         }
         if (reopened.status !== 'ok') throw new Error('Refresh failed');
-        const reloaded = readVisibleDetail(reopened.value);
+        const reloaded = readVisibleDetail(reopened.value, documentId);
         setDetail((current) =>
           current?.id === reloaded.id ? reloaded : current,
         );
@@ -685,21 +702,59 @@ function DocumentSession({
     }
     if (requestedDocument.requestId === acceptedRequestId.current) return;
     acceptedRequestId.current = requestedDocument.requestId;
-    setHeldRequest(requestedDocument);
+    setHeldRequest(
+      requestedDocument.sourceSignal?.aborted ? undefined : requestedDocument,
+    );
   }, [requestedDocument]);
+  useEffect(() => {
+    const source = heldRequest?.sourceSignal;
+    if (!source) return;
+    const retire = () =>
+      setHeldRequest((current) =>
+        current?.requestId === heldRequest.requestId ? undefined : current,
+      );
+    if (source.aborted) retire();
+    else source.addEventListener('abort', retire, { once: true });
+    return () => source.removeEventListener('abort', retire);
+  }, [heldRequest]);
   // The held request opens once nothing it would abort remains: a registration
   // command in flight or a protected correction keeps its body, key and draft.
   // Opening is choosing that Document's row, with one fresh detail read.
   useEffect(() => {
     if (!heldRequest || registrationInFlight || protectedWorkActive) return;
     setHeldRequest(undefined);
-    if (companyId && canRead) void open(heldRequest.documentId);
+    if (companyId && canRead) void open(heldRequest.documentId, heldRequest);
   }, [heldRequest, registrationInFlight, protectedWorkActive]);
-  async function open(id: string) {
+  useEffect(() => {
+    if (
+      !detail ||
+      focusRequest === undefined ||
+      focusedRequest.current === focusRequest
+    )
+      return;
+    const frame = window.requestAnimationFrame(() => {
+      if (!detailHeading.current?.isConnected) return;
+      focusedRequest.current = focusRequest;
+      detailHeading.current.scrollIntoView?.({ block: 'start' });
+      detailHeading.current.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [detail, focusRequest]);
+  async function open(id: string, intent?: RequestedDocument) {
+    const source = intent?.sourceSignal;
+    if (source?.aborted) return;
     pending.current?.abort();
     const request = new AbortController();
     pending.current = request;
     detailRead.current = request;
+    const retireSource = () => {
+      request.abort();
+      if (detailRead.current === request) {
+        detailRead.current = undefined;
+        setMutation('idle');
+      }
+    };
+    source?.addEventListener('abort', retireSource, { once: true });
     const startedUnderRevision = identityRevision.current;
     setDetail(undefined);
     setMutation('pending');
@@ -721,8 +776,11 @@ function DocumentSession({
         return;
       }
       if (result.status !== 'ok') throw new Error('Read failed');
-      const opened = readVisibleDetail(result.value);
+      const opened = readVisibleDetail(result.value, id);
       setDetail(opened);
+      setFocusRequest(
+        intent?.focus === 'document' ? intent.requestId : undefined,
+      );
       settleDetailRead(opened, startedUnderRevision);
       setEditing(false);
       setCorrection('idle');
@@ -731,6 +789,7 @@ function DocumentSession({
     } catch {
       if (!request.signal.aborted) setMutation('error');
     } finally {
+      source?.removeEventListener('abort', retireSource);
       if (detailRead.current === request) detailRead.current = undefined;
     }
   }
@@ -775,7 +834,7 @@ function DocumentSession({
       }
       if (documentResult.status !== 'ok' || documentsResult.status !== 'ok')
         throw new Error('Refresh failed');
-      const refreshed = readVisibleDetail(documentResult.value);
+      const refreshed = readVisibleDetail(documentResult.value, documentId);
       const documents = readVisibleDocuments(documentsResult.value);
       setDetail((current) =>
         current?.id === refreshed.id ? refreshed : current,
@@ -899,7 +958,7 @@ function DocumentSession({
       if (request.signal.aborted) return;
       if (documentResult.status !== 'ok' || documentsResult.status !== 'ok')
         throw new Error('Reload failed');
-      const saved = readVisibleDetail(documentResult.value);
+      const saved = readVisibleDetail(documentResult.value, detail.id);
       const documents = readVisibleDocuments(documentsResult.value);
       setDetail(saved);
       settleDetailRead(saved, startedUnderRevision);
@@ -1223,7 +1282,9 @@ function DocumentSession({
                 </form>
               ) : (
                 <>
-                  <h3>{detail.title}</h3>
+                  <h3 ref={detailHeading} tabIndex={-1}>
+                    {detail.title}
+                  </h3>
                   <p>
                     {detail.type === 'received-contract'
                       ? receivedCopy.t(detail.version.status)
@@ -1330,7 +1391,11 @@ function DocumentSession({
                 </>
               )}
               {heldRequest && protectedWorkActive && (
-                <p role="status">{copy.requestedDocumentHeld}</p>
+                <p role="status">
+                  {versionWorkProtected
+                    ? copy.requestedDocumentWorkHeld
+                    : copy.requestedDocumentHeld}
+                </p>
               )}
               <DocumentVersions
                 actor={actor}
@@ -1338,6 +1403,7 @@ function DocumentSession({
                 documentId={detail.id}
                 documentType={detail.type}
                 workingRevision={detail.workingRevision}
+                onProtectedWorkChange={setVersionWorkProtected}
                 onRefresh={async () => {
                   await refreshOpenDetail(detail.id);
                   await onActivityRecorded();

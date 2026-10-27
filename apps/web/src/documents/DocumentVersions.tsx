@@ -4,6 +4,7 @@ import { useReceivedContractCopy } from './received-contract.copy';
 import { useMissionDeliverableCopy } from './mission-deliverable.copy';
 import { hasMissionDeliverableAccess } from './mission-deliverable-access';
 import { DocumentPdfContent } from './DocumentPdfContent';
+import { useDocumentNavigationProtection } from './document-navigation-protection';
 import {
   useCallback,
   useEffect,
@@ -109,6 +110,7 @@ export function DocumentVersions({
   documentType = 'questionnaire',
   workingRevision,
   onRefresh,
+  onProtectedWorkChange,
   onCompanyContextRejected = () => undefined,
   onActorRevalidated = () => undefined,
   onWorkspaceAccessRejected = () => undefined,
@@ -121,6 +123,8 @@ export function DocumentVersions({
   workingRevision: number;
   /** Re-reads the open Document and its list after a confirmed or stale command. */
   onRefresh: () => Promise<void> | void;
+  /** Navigation observes protection, never the command, payload or retry key. */
+  onProtectedWorkChange?: (protectedWork: boolean) => void;
 } & Partial<AccessRejection>) {
   const company = actor.activeCompany;
   const permissions = company?.documentPermissions ?? [];
@@ -182,6 +186,7 @@ export function DocumentVersions({
         permissions.includes('document.version.manage')
       }
       onRefresh={onRefresh}
+      onProtectedWorkChange={onProtectedWorkChange}
       rejection={{
         onCompanyContextRejected,
         onActorRevalidated,
@@ -201,6 +206,7 @@ function VersionsSection({
   canStartDraft,
   canUploadContent,
   onRefresh,
+  onProtectedWorkChange,
   rejection,
 }: {
   identity: BrowserIdentity;
@@ -212,6 +218,7 @@ function VersionsSection({
   canStartDraft: boolean;
   canUploadContent: boolean;
   onRefresh: () => Promise<void> | void;
+  onProtectedWorkChange?: (protectedWork: boolean) => void;
   rejection: AccessRejection;
 }) {
   const copy = useDocumentVersionsCopy();
@@ -220,6 +227,27 @@ function VersionsSection({
   const [read, setRead] = useState<ReadState>({ status: 'loading' });
   const [reloads, setReloads] = useState(0);
   const [command, setCommand] = useState<CommandState>({ status: 'idle' });
+  const [protectedPdfVersions, setProtectedPdfVersions] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const reportPdfProtection = useCallback(
+    ({
+      versionId,
+      protectedWork,
+    }: {
+      versionId: string;
+      protectedWork: boolean;
+    }) => {
+      setProtectedPdfVersions((current) => {
+        if (current.has(versionId) === protectedWork) return current;
+        const next = new Set(current);
+        if (protectedWork) next.add(versionId);
+        else next.delete(versionId);
+        return next;
+      });
+    },
+    [],
+  );
   /** Versions reads only; a command is never aborted here. */
   const readRequest = useRef<AbortController | undefined>(undefined);
   /** Late command outcomes of a retired section never render. */
@@ -461,6 +489,10 @@ function VersionsSection({
     command.status === 'pending' ||
     command.status === 'uncertain' ||
     command.status === 'confirming';
+  useDocumentNavigationProtection(
+    busy || protectedPdfVersions.size > 0,
+    onProtectedWorkChange,
+  );
 
   return (
     <section
@@ -514,6 +546,12 @@ function VersionsSection({
                     !busy
                   }
                   workingRevision={read.read.workingRevision}
+                  onProtectedWorkChange={(protectedWork) =>
+                    reportPdfProtection({
+                      versionId: version.id,
+                      protectedWork,
+                    })
+                  }
                   onConfirmed={() => {
                     setRead({ status: 'loading' });
                     setReloads((count) => count + 1);

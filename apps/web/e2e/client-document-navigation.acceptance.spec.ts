@@ -86,6 +86,13 @@ test('navigates between one Client dossier and its working Documents through the
   await expect(
     dossier.getByRole('heading', { name: clientName, exact: true }),
   ).toBeVisible();
+  const inlineDocuments = dossier.getByRole('region', {
+    name: 'Client Documents',
+    exact: true,
+  });
+  await expect(inlineDocuments.getByRole('listitem')).toHaveCount(1);
+  // The new inline owner reads once; the existing shortcut reuses its own current list.
+  expect(documentListReads).toHaveLength(1);
   await dossier
     .getByRole('button', { name: 'Open Client working Documents' })
     .click();
@@ -93,6 +100,7 @@ test('navigates between one Client dossier and its working Documents through the
   await expect(page.locator('#documents')).toBeFocused();
   await expectValue(documentFilter, clientName);
   await expect(workingDocuments.getByRole('listitem')).toHaveCount(1);
+  expect(documentListReads).toHaveLength(1);
   await expect(
     workingDocuments.getByRole('button', { name: documentTitle, exact: true }),
   ).toBeVisible();
@@ -127,7 +135,9 @@ test('navigates between one Client dossier and its working Documents through the
   ).toBeVisible();
   page.off('request', recordRequest);
   expect(mutations).toEqual([]);
-  expect(documentListReads).toEqual([]);
+  // Returning to the same ready dossier preserves both owners and adds no read.
+  await expect(inlineDocuments.getByRole('listitem')).toHaveCount(1);
+  expect(documentListReads).toHaveLength(1);
 
   if (narrow)
     await page.getByRole('button', { name: 'Open navigation' }).click();

@@ -49,6 +49,8 @@ export const documentsCopy = {
   retryCorrection: 'Retry same correction',
   requestedDocumentHeld:
     'The requested Document opens after this correction is saved or cancelled.',
+  requestedDocumentWorkHeld:
+    'The requested Document opens when the current Version or PDF work is resolved.',
   activityTarget: 'Working Document',
   activity: 'registered a working Document reference',
   correctionActivity: 'corrected a working Document reference',
@@ -102,6 +104,7 @@ const keys = [
   'retryCorrection',
   'confirmedRefreshFailed',
   'requestedDocumentHeld',
+  'requestedDocumentWorkHeld',
 ] as const;
 
 export const documentsMessages = defineMessages(keys, {
@@ -156,6 +159,8 @@ export const documentsMessages = defineMessages(keys, {
     retryCorrection: 'Reîncearcă aceeași corectare',
     requestedDocumentHeld:
       'Documentul solicitat se deschide după salvarea sau anularea acestei corectări.',
+    requestedDocumentWorkHeld:
+      'Documentul solicitat se deschide după rezolvarea lucrului curent la Versiune sau PDF.',
   },
   ru: {
     confirmedRefreshFailed:
@@ -207,6 +212,8 @@ export const documentsMessages = defineMessages(keys, {
     retryCorrection: 'Повторить то же исправление',
     requestedDocumentHeld:
       'Запрошенный Документ откроется после сохранения или отмены этого исправления.',
+    requestedDocumentWorkHeld:
+      'Запрошенный Документ откроется после завершения текущей работы с версией или PDF.',
   },
   fr: {
     confirmedRefreshFailed:
@@ -260,6 +267,8 @@ export const documentsMessages = defineMessages(keys, {
     retryCorrection: 'Réessayer la même correction',
     requestedDocumentHeld:
       'Le Document demandé s’ouvre après l’enregistrement ou l’annulation de cette correction.',
+    requestedDocumentWorkHeld:
+      'Le document demandé s’ouvre après résolution du travail en cours sur la version ou le PDF.',
   },
   en: {
     confirmedRefreshFailed:
@@ -311,6 +320,8 @@ export const documentsMessages = defineMessages(keys, {
     retryCorrection: 'Retry same correction',
     requestedDocumentHeld:
       'The requested Document opens after this correction is saved or cancelled.',
+    requestedDocumentWorkHeld:
+      'The requested Document opens when the current Version or PDF work is resolved.',
   },
 });
 
@@ -360,5 +371,6 @@ export function useDocumentsCopy() {
     uncertain: message('uncertain'),
     retryCorrection: message('retryCorrection'),
     requestedDocumentHeld: message('requestedDocumentHeld'),
+    requestedDocumentWorkHeld: message('requestedDocumentWorkHeld'),
   };
 }

@@ -81,7 +81,11 @@ const otherCompanyDocument = {
   title: 'Other Company questionnaire',
 };
 
-function actorFor(companyId: string, administrator: boolean): ActorContext {
+function actorFor(
+  companyId: string,
+  administrator: boolean,
+  overview = false,
+): ActorContext {
   return {
     internalUserId: 'resolver',
     workspaceMembershipId: membershipId,
@@ -104,6 +108,8 @@ function actorFor(companyId: string, administrator: boolean): ActorContext {
       clientPermissionAssignmentId: 'assignment-1',
       clientPermissionSetVersion: 'v2',
       documentPermissions: ['document.read'],
+      documentPermissionAssignmentId: overview ? 'document-capture' : undefined,
+      documentPermissionSetVersion: overview ? 'v1' : undefined,
     },
   };
 }
@@ -113,7 +119,11 @@ function respond(value: unknown, status = 200) {
 }
 
 function installTransport(
-  options: { united?: boolean; administrator?: boolean } = {},
+  options: {
+    united?: boolean;
+    administrator?: boolean;
+    overview?: boolean;
+  } = {},
 ) {
   const state = {
     united: options.united ?? false,
@@ -140,7 +150,11 @@ function installTransport(
       );
       if (path.endsWith('/access/current-actor'))
         return respond(
-          actorFor(companyContextId ?? companyA.id, state.administrator),
+          actorFor(
+            companyContextId ?? companyA.id,
+            state.administrator,
+            options.overview,
+          ),
         );
       if (path.endsWith('/companies')) return respond([companyA, companyB]);
       if (path.endsWith('/activity-log')) return respond({ events: [] });
@@ -333,6 +347,27 @@ describe('Client dossier and working Document navigation through App', () => {
     vi.unstubAllGlobals();
     scrollable.scrollIntoView = nativeScrollIntoView;
     window.history.replaceState(null, '', '/');
+  });
+
+  it('continues an inline exact Client Document into its focused existing detail', async () => {
+    installTransport({ overview: true });
+    render(<App identity={deterministicBrowserIdentity()} />);
+    await screen.findByRole('navigation', { name: 'Primary navigation' });
+    const dossier = await openDossier(firstClient.displayName);
+    const overview = await within(dossier).findByRole('region', {
+      name: 'Client Documents',
+    });
+    expect(await within(overview).findAllByRole('listitem')).toHaveLength(1);
+    expect(overview).toHaveTextContent(workingDocument.title);
+    expect(overview).not.toHaveTextContent(secondDocument.title);
+    fireEvent.click(
+      within(overview).getByRole('button', { name: 'Open Document' }),
+    );
+    const heading = await within(documentsRegion()).findByRole('heading', {
+      name: workingDocument.title,
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(window.location.href).not.toContain(workingDocument.id);
   });
 
   it('shows the united Client its loaded Documents without remounting the workspace', async () => {
