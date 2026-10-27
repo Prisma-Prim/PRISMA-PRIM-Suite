@@ -10,7 +10,8 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
-import { ProjectWorkspace, type RequestedProject } from './ProjectWorkspace';
+import { ProjectWorkspace } from './ProjectWorkspace';
+import type { ProjectNavigationRequest } from './use-project-navigation';
 import {
   isLifecycleRead,
   preparatoryLifecycle,
@@ -123,7 +124,6 @@ type ServerRequest = {
   body: string | undefined;
   signal: AbortSignal | undefined;
 };
-type ProjectRequest = RequestedProject;
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -282,13 +282,13 @@ function renderWorkspace() {
   let identity = deterministicBrowserIdentity();
   let currentActor = actor;
   let revision = 0;
-  let current: ProjectRequest | undefined;
+  let current: ProjectNavigationRequest | undefined;
   const workspace = () => (
     <ProjectWorkspace
       actor={currentActor}
       identity={identity}
       clientIdentityRevision={revision}
-      requestedProject={current}
+      navigation={current}
     />
   );
   const view = render(workspace());
@@ -300,6 +300,7 @@ function renderWorkspace() {
       sourceSignal?: AbortSignal,
     ) {
       current = {
+        kind: 'project',
         projectId: owner.id,
         taskId: task.id,
         requestId,

@@ -102,6 +102,13 @@ describe('Corresponding Contract component command ownership', () => {
       const form = await screen.findByRole('form', {
         name: 'Prepare a complete successor',
       });
+      await waitFor(() =>
+        expect(
+          within(form).getByRole('button', {
+            name: 'Prepare full non-official Contract',
+          }),
+        ).toBeEnabled(),
+      );
       await selectOption(
         within(form).getByLabelText('Select the exact source Offer Version'),
         source.version.sourceOfferVersionId,

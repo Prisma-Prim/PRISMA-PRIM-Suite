@@ -496,8 +496,7 @@ it('retires an older Mine reply before it can reject the session or replace a ne
   choose('mine_open');
   view.rerender(
     element(identity, actor, {
-      projectOpenRequestId: 2,
-      projectDirectoryRequestId: 2,
+      navigation: { kind: 'directory', requestId: 2 },
     }),
   );
   await waitFor(() =>
@@ -654,7 +653,7 @@ it('opens an independent readable Project outside Mine without expanding or repl
   );
   view.rerender(
     element(identity, actor, {
-      requestedProject: { projectId: colleague.id, requestId: 1 },
+      navigation: { kind: 'project', projectId: colleague.id, requestId: 1 },
     }),
   );
   expect(
@@ -700,11 +699,13 @@ it('retains All closed inclusion across local view changes and restores All open
   );
   view.rerender(
     element(identity, actor, {
-      projectOpenRequestId: 1,
-      projectDirectoryRequestId: 1,
-      clientFilter: {
-        clientDossierId: mine.clientDossierId,
-        displayName: mine.clientDisplayName,
+      navigation: {
+        kind: 'directory',
+        requestId: 1,
+        client: {
+          clientDossierId: mine.clientDossierId,
+          displayName: mine.clientDisplayName,
+        },
       },
     }),
   );
@@ -877,14 +878,19 @@ it('retires the old Mine rows and draft before late success after current Projec
   expect(screen.queryByRole('list', { name: 'Projects' })).toBeNull();
 });
 
-it('re-reads Mine under the new Client identity before applying its exact dossier restriction', async () => {
+it('retires an obsolete dossier restriction while re-reading Mine under the new Client identity', async () => {
   const transport = server();
   const identity = deterministicBrowserIdentity();
   const oldFilter = {
     clientDossierId: mine.clientDossierId,
     displayName: mine.clientDisplayName,
   };
-  const view = render(element(identity, actor, { clientFilter: oldFilter }));
+  const oldNavigation = {
+    kind: 'directory',
+    requestId: 1,
+    client: oldFilter,
+  } satisfies NonNullable<Parameters<typeof ProjectWorkspace>[0]['navigation']>;
+  const view = render(element(identity, actor, { navigation: oldNavigation }));
   await ready();
   choose('mine_open');
   await waitFor(() =>
@@ -898,23 +904,30 @@ it('re-reads Mine under the new Client identity before applying its exact dossie
   transport.setMine([{ ...mine, clientDossierId: 'canonical-client' }]);
   view.rerender(
     element(identity, actor, {
-      clientFilter: oldFilter,
+      navigation: oldNavigation,
       clientIdentityRevision: 1,
     }),
   );
   await transport.pending(minePath);
   expect(rows().queryByRole('button')).toBeNull();
   await transport.release(minePath);
-  await screen.findByText('No Project matches this search.');
+  await ready();
   expect(control('project-directory-view')).toHaveTextContent(
     'My open Projects',
   );
+  transport.setAll([{ ...mine, clientDossierId: 'canonical-client' }]);
+  choose('all');
+  await ready();
   const before = transport.requests.length;
   view.rerender(
     element(identity, actor, {
-      clientFilter: {
-        clientDossierId: 'canonical-client',
-        displayName: mine.clientDisplayName,
+      navigation: {
+        kind: 'directory',
+        requestId: 2,
+        client: {
+          clientDossierId: 'canonical-client',
+          displayName: mine.clientDisplayName,
+        },
       },
       clientIdentityRevision: 1,
     }),
@@ -952,7 +965,7 @@ it('keeps a pending registration intact while Mine changes and defers an indepen
   );
   view.rerender(
     element(identity, actor, {
-      requestedProject: { projectId: colleague.id, requestId: 1 },
+      navigation: { kind: 'project', projectId: colleague.id, requestId: 1 },
     }),
   );
   expect(pending.signal?.aborted).toBe(false);
@@ -1254,7 +1267,8 @@ it('opens an exact readable Task in a Project outside Mine without requiring dir
   );
   view.rerender(
     element(identity, taskReader, {
-      requestedProject: {
+      navigation: {
+        kind: 'project',
         projectId: colleague.id,
         taskId: outsideTask.id,
         requestId: 1,

@@ -459,6 +459,58 @@ describe('Opening an assigned Task from My Tasks through App', () => {
     ).toBeChecked();
   });
 
+  it.each(['all', 'mine_open'] as const)(
+    'reads each repeated exact activation once from %s and preserves its directory semantics',
+    async (selectedView) => {
+      window.history.replaceState(null, '', '/?frame=prisme#projects');
+      const server = installServer();
+      render(<App identity={deterministicBrowserIdentity()} />);
+      await projectRow(atelierRow);
+      const view = within(projectsRegion()).getByRole('combobox', {
+        name: 'Project view',
+      });
+      fireEvent.click(
+        within(projectsRegion()).getByRole('checkbox', {
+          name: 'Include closed Projects',
+        }),
+      );
+      if (selectedView === 'mine_open') {
+        changeValue(view, selectedView);
+        await waitFor(() =>
+          expect(
+            within(projectsRegion()).queryByRole('button', {
+              name: `${sharedTitle} Client: ${beta.displayName}`,
+            }),
+          ).toBeNull(),
+        );
+      }
+      const allReads = server.count('GET /api/projects');
+      const mineReads = server.count('GET /api/projects?view=mine_open');
+      for (const activation of [1, 2]) {
+        navigateTo(taskCopy.myTasks.title);
+        fireEvent.click(await openAction(betaTask));
+        await openedProject(beta);
+        await openedTask(betaTask);
+        await waitFor(() =>
+          expect(server.count(taskRead(betaTask))).toBe(activation),
+        );
+        expect(server.count(betaProjectRead)).toBe(activation);
+        expect(view).toHaveTextContent(
+          selectedView === 'all' ? 'All Projects' : 'My open Projects',
+        );
+      }
+      expect(server.count('GET /api/projects')).toBe(allReads);
+      expect(server.count('GET /api/projects?view=mine_open')).toBe(mineReads);
+      if (selectedView === 'mine_open') changeValue(view, 'all');
+      expect(
+        await within(projectsRegion()).findByRole('checkbox', {
+          name: 'Include closed Projects',
+        }),
+      ).toHaveProperty('checked', selectedView === 'mine_open');
+      expect(server.commands()).toEqual([]);
+    },
+  );
+
   it('preserves Mine and focuses the exact overdue Task outside its directory through App', async () => {
     window.history.replaceState(null, '', '/?frame=prisme#projects');
     const server = installServer({ showOverdue: true });

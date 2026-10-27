@@ -15,6 +15,7 @@ import {
 import type { ActorContext } from '../access-types';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import type { ProjectNavigationRequest } from './use-project-navigation';
 import {
   isLifecycleRead,
   preparatoryLifecycle,
@@ -90,11 +91,6 @@ type ServerRequest = {
   key: string | null;
   body: string | undefined;
   signal: AbortSignal | undefined;
-};
-type ProjectRequest = {
-  projectId: string;
-  requestId: number;
-  sourceSignal?: AbortSignal;
 };
 
 afterEach(() => {
@@ -182,20 +178,23 @@ function projectServer() {
 function renderWorkspace(
   options: {
     identity?: BrowserIdentity;
-    initialRequest?: ProjectRequest;
+    initialRequest?: ProjectNavigationRequest;
     prisme?: boolean;
   } = {},
 ) {
   const identity = options.identity ?? deterministicBrowserIdentity();
   const openDossier = vi.fn();
-  const workspace = (revision: number, requestedProject?: ProjectRequest) => {
+  const workspace = (
+    revision: number,
+    navigation?: ProjectNavigationRequest,
+  ) => {
     const owner = (
       <ProjectWorkspace
         actor={actor}
         identity={identity}
         clientIdentityRevision={revision}
         onOpenClientDossier={openDossier}
-        requestedProject={requestedProject}
+        navigation={navigation}
       />
     );
     return options.prisme ? (
@@ -210,7 +209,15 @@ function renderWorkspace(
   return {
     openDossier,
     request(projectId: string, requestId: number, sourceSignal?: AbortSignal) {
-      current = { projectId, requestId, sourceSignal };
+      current = { kind: 'project', projectId, requestId, sourceSignal };
+      view.rerender(workspace(revision, current));
+    },
+    directory(client: typeof atelier, requestId: number) {
+      current = {
+        kind: 'directory',
+        client: { clientDossierId: client.id, displayName: client.displayName },
+        requestId,
+      };
       view.rerender(workspace(revision, current));
     },
     deliver(nextRevision: number) {
@@ -290,31 +297,35 @@ describe('Requested Project opens', () => {
     },
   );
 
-  it('abandons a queued inline target without cancelling registration or changing its uncertain retry', async () => {
-    const server = projectServer();
-    const workspace = renderWorkspace();
-    const registration = await startRegistration(server);
-    const source = new AbortController();
-    workspace.request(atelierProject.id, 1, source.signal);
-    await act(async () => source.abort());
-    expect(registration.signal?.aborted).toBe(false);
-    await server.release(
-      'POST /api/projects',
-      new Response(null, { status: 500 }),
-    );
-    await settle();
-    expect(server.count(atelierDetail)).toBe(0);
-    expect(screen.getByLabelText('Project title')).toHaveValue(
-      registeredProject.title,
-    );
-    expect(screen.getByLabelText('Client')).toHaveValue(beta.id);
-    fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
-    await waitFor(() => expect(server.count('POST /api/projects')).toBe(2));
-    const [first, retry] = server.requests('POST /api/projects');
-    expect(first?.key).toBeTruthy();
-    expect(retry?.key).toBe(first?.key);
-    expect(retry?.body).toBe(first?.body);
-  });
+  it.each([false, true])(
+    'abandons a queued inline target without cancelling registration or changing its uncertain retry (later directory: %s)',
+    async (laterDirectory) => {
+      const server = projectServer();
+      const workspace = renderWorkspace();
+      const registration = await startRegistration(server);
+      const source = new AbortController();
+      workspace.request(atelierProject.id, 1, source.signal);
+      if (laterDirectory) workspace.directory(beta, 2);
+      await act(async () => source.abort());
+      expect(registration.signal?.aborted).toBe(false);
+      await server.release(
+        'POST /api/projects',
+        new Response(null, { status: 500 }),
+      );
+      await settle();
+      expect(server.count(atelierDetail)).toBe(0);
+      expect(screen.getByLabelText('Project title')).toHaveValue(
+        registeredProject.title,
+      );
+      expect(screen.getByLabelText('Client')).toHaveValue(beta.id);
+      fireEvent.click(screen.getByRole('button', { name: 'Create Project' }));
+      await waitFor(() => expect(server.count('POST /api/projects')).toBe(2));
+      const [first, retry] = server.requests('POST /api/projects');
+      expect(first?.key).toBeTruthy();
+      expect(retry?.key).toBe(first?.key);
+      expect(retry?.body).toBe(first?.body);
+    },
+  );
 
   it('opens a directly requested closed Project while its row stays hidden by the default filter', async () => {
     projectServer();
@@ -410,6 +421,31 @@ describe('Requested Project opens', () => {
     expect(first?.key).toBeTruthy();
     expect(retried?.key).toBe(first?.key);
     expect(retried?.body).toBe(first?.body);
+  });
+
+  it('preserves a queued exact open and its independent dossier restriction when directory presentation changes', async () => {
+    const server = projectServer();
+    const workspace = renderWorkspace();
+    const registration = await startRegistration(server);
+    workspace.request(atelierProject.id, 1);
+    workspace.directory(beta, 2);
+    await settle();
+    expect(
+      screen.getByRole('searchbox', { name: 'Find Projects' }),
+    ).toHaveValue(beta.displayName);
+    expect(listedRows()).toEqual([betaRow]);
+    expect(server.count(atelierDetail)).toBe(0);
+    expect(registration.signal?.aborted).toBe(false);
+
+    await server.release('POST /api/projects');
+    await waitFor(() =>
+      expect(detailClient()).toBe(`Client: ${atelier.displayName}`),
+    );
+    expect(server.count(atelierDetail)).toBe(1);
+    expect(
+      screen.getByRole('searchbox', { name: 'Find Projects' }),
+    ).toHaveValue(beta.displayName);
+    expect(listedRows()).not.toContain(atelierRow);
   });
 
   it.each([
@@ -594,7 +630,11 @@ describe('Requested Project opens', () => {
   it('never replays a request that was already present when the owner mounted', async () => {
     const server = projectServer();
     renderWorkspace({
-      initialRequest: { projectId: atelierProject.id, requestId: 1 },
+      initialRequest: {
+        kind: 'project',
+        projectId: atelierProject.id,
+        requestId: 1,
+      },
     });
     await screen.findByRole('button', { name: betaRow });
     await settle();

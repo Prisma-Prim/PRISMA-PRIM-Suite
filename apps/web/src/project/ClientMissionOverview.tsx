@@ -9,7 +9,7 @@ import {
   readClientProjectPage,
   type ClientProjectPage,
 } from './client-mission-response';
-import type { ProjectOpenTarget } from './ProjectWorkspace';
+import type { ProjectOpenTarget } from './use-project-navigation';
 import { ProjectStatusLabel } from './ProjectLifecycle';
 import { useProjectCopy } from './project-localized.copy';
 import { useProjectResponsibleCopy } from './project-responsible-localized.copy';
