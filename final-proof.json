@@ -1,0 +1,664 @@
+{
+  "issue": 920,
+  "pr": 921,
+  "source": "b2fc32eddad6e08ce56b7be9cd706be0760c18b8",
+  "base": "7d1d74fe40d6886abbd868f8c6efa202b004b2b1",
+  "tree": "4e1bd71d3bbfebf846772655e686773aa1ec1e52",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40588180606,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606",
+    "attempt": 1,
+    "providerLatestJobAttempts": {
+      "checks": 1,
+      "scope": 1,
+      "postgres_image": 1,
+      "web_unit": 1,
+      "api (3/3)": 1,
+      "build": 1,
+      "browser (3)": 1,
+      "packaging": 1,
+      "acceptance (2)": 1,
+      "api (2/3)": 1,
+      "api (1/3)": 1,
+      "acceptance (1)": 1,
+      "browser (2)": 1,
+      "api (serial)": 1,
+      "browser (1)": 1,
+      "quality": 1
+    },
+    "actualExecutionOrigins": {
+      "checks": {
+        "actualJobId": 122485145493,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122485145493"
+      },
+      "scope": {
+        "actualJobId": 122485145965,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122485145965"
+      },
+      "postgres_image": {
+        "actualJobId": 122485244602,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122485244602"
+      },
+      "web_unit": {
+        "actualJobId": 122486326280,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326280"
+      },
+      "api (3/3)": {
+        "actualJobId": 122486326291,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326291"
+      },
+      "build": {
+        "actualJobId": 122486326304,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326304"
+      },
+      "browser (3)": {
+        "actualJobId": 122486326320,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326320"
+      },
+      "packaging": {
+        "actualJobId": 122486326327,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326327"
+      },
+      "acceptance (2)": {
+        "actualJobId": 122486326347,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326347"
+      },
+      "api (2/3)": {
+        "actualJobId": 122486326357,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326357"
+      },
+      "api (1/3)": {
+        "actualJobId": 122486326363,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326363"
+      },
+      "acceptance (1)": {
+        "actualJobId": 122486326382,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326382"
+      },
+      "browser (2)": {
+        "actualJobId": 122486326393,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326393"
+      },
+      "api (serial)": {
+        "actualJobId": 122486326427,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326427"
+      },
+      "browser (1)": {
+        "actualJobId": 122486326460,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122486326460"
+      },
+      "quality": {
+        "actualJobId": 122491235161,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40588180606/job/122491235161"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 920,
+    "doctor": "standard web-postgres PASS before original source edits; prerequisites restored and standard profile PASS before resumed correction edits",
+    "frozenInstall": "PASS",
+    "targetedStatic": "format, lint, strict API/Web types PASS",
+    "featurePostgres": {
+      "passed": 32,
+      "seam": "public REST/disposable PostgreSQL, including eight observed-lock authorization order cases and genuine preceding0085 rich migration",
+      "afterFinalIndex": true,
+      "resumedPrerequisites": true
+    },
+    "affectedPostgres": {
+      "passed": 198,
+      "qualification": "native and feature tests before catalogue-index-only schema addition; unchanged native material retained, feature32 rerun on final migration"
+    },
+    "affectedUIAfterCorrection": {
+      "passed": 68,
+      "seam": "public HTTP/UI, exact retry, direct denied creation retirement, late revalidationA-B-A, Activity all134actions/19targettypes/fourlocales, administration and existing native Project owner"
+    },
+    "registeredActualPostgresApp": {
+      "passed": 2,
+      "viewports": [
+        1440,
+        390
+      ],
+      "keyboard": true,
+      "sourcePublicationAndExactProjectTaskCopy": true,
+      "lostConfirmationIdenticalRetry": true,
+      "nativeTaskEditAndChangedSuccessorPreserveOriginal": true,
+      "nativeDirectoryReopen": true,
+      "directCreatorAndCopiedReadDenials": true,
+      "preservedNativeDraftsAndNativeSave": true,
+      "noOverflow": true,
+      "originalSyntheticScreenshotsInspected": true
+    },
+    "broader": {
+      "command": "pnpm verify",
+      "status": "PASS",
+      "qualification": "Broader development on prepared source before the final focused directory-reload correction. Later corrections have fresh affected checks; complete independentCI40588180606 passes on the final exact source/base/tree.",
+      "scriptTestsPassed": 488,
+      "apiUnitPassed": 1520,
+      "apiPostgresExplicitlySkipped": 1969,
+      "webUnitPassed": 3384,
+      "apiAndWebBuilds": "PASS"
+    },
+    "retainedEarlierDevelopmentOutcomes": [
+      "Initial fixture setup errors were isolated before the actual public new-route red assertion, then source green.",
+      "Generated FK targets initially used unique indexes created after constraints; replaced referenced keys with unique table constraints and regenerated owned migration.",
+      "First broader run exposed new parser method missing in a framework mock and an ineligible Activity source query; fixed and focused4PASS.",
+      "Second broader run passed488scripts and1520API units, skipped1969database cases on normal host, and passed3375Web cases; four stale exhaustive Activity-count assertions failed after five actions/one target were added. Counts were corrected and targeted all-locale Activity tests passed.",
+      "Managed execution transport interrupted work; restored owned disposable PostgreSQL and doctor before resuming. No product/tooling workaround.",
+      "Complete CI40582645063 on34c6e7c found four desktop locale assertions whose exhaustive administration fixture omitted two approved new roles;232browser cases passed in that shard. Added the two independent role expectations without weakening assertions.26owning browser and81unit cases, formatting, lint and strict types pass. Original run and artifacts retained; final gate requires a fresh complete run on corrected source.",
+      "Second complete CI40584934689 passed API/browser/actualPGacceptance but failed one unchanged native Contract continuation test before its history request started;3387Web tests passed. Corrected only public request-readiness waiting in68d1584.28owning and complete3388Web cases, format/lint/strict types PASS. Main then advanced independently through860; clean composition and45affected API/PG cases plus API types PASS. No third full run before this identified cause was corrected."
+    ],
+    "excluded": [
+      "actual business data or assignments",
+      "external provider or deployment",
+      "user manual test",
+      "certification or mission closure-policy decision",
+      "whole-MVP completion claim"
+    ],
+    "openingCorrection": {
+      "publicUIRed": 2,
+      "affectedUIPassed": 84,
+      "registeredActualPostgresAppPassed": 2,
+      "lintAndTypes": "PASS",
+      "scope": "preserve immutable retry through directory pending/error reads; complete real reload between lost confirmation and identical replay"
+    },
+    "ciFixtureCorrection": {
+      "source": "8b7ab36145803f79f29c68ae3ac4d846346bdd4d",
+      "configuredReviewSource": "34c6e7c6b53013e17bdb803cc2bf4b2fd84cb725",
+      "changedPath": "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+      "scope": "Add independently specified Configuration/User v1 labels to exhaustive administration expectations. No production behavior, timing, assertions or retry policy changes.",
+      "rootInspectedBothAxes": true,
+      "affectedBrowserPassed": 26,
+      "affectedUnitPassed": 81,
+      "formatLintStrictTypes": "PASS",
+      "reviewReuse": "Prior completed configured review still covers identical production material. Root inspected the one test-fixture delta under the existing bounded review rules; no duplicate or post-green trigger."
+    },
+    "readinessCorrection": {
+      "source": "68d1584c8f8f763bdab917e03dd289bd8e790f5b",
+      "reviewedSource": "8b7ab36145803f79f29c68ae3ac4d846346bdd4d",
+      "changedPath": "apps/web/src/contract/ContractDecisionQueue.test.tsx",
+      "added": 7,
+      "removed": 5,
+      "rootInspectedBothAxes": true,
+      "scope": "Await the exact three-request public readiness in PRECONTRACT/ADDENDUM continuation; unchanged path/order/count assertions and no product/deadline/retry change.",
+      "owningUnitPassed": 28,
+      "completeWebUnitPassed": 3388,
+      "formatLintStrictTypes": "PASS",
+      "samePatternAudit": "Other exact native queue continuation already awaits its positive request list; malformed/foreign continuation stops before history. Separate ContractPanel follow-up844not broadened or closed."
+    },
+    "baseAdvance": {
+      "oldBase": "410c49884fd369009c30028c117368c0c0c45525",
+      "currentBase": "7d1d74fe40d6886abbd868f8c6efa202b004b2b1",
+      "mergeSource": "b2fc32eddad6e08ce56b7be9cd706be0760c18b8",
+      "preIntegrationSource": "68d1584c8f8f763bdab917e03dd289bd8e790f5b",
+      "mechanicalCleanMerge": true,
+      "reviewedFeaturePatchUnchangedExcludingInspectedTestOnlyDelta": true,
+      "reviewedFeaturePatchSha256": "0f3f5e565bce136890b9d7af7defb525f2954a03c9f77339a972efeeed75f0a2",
+      "inspection": "Main860moves Client drift recovery from DatabaseContext to explicit caller transaction owner. Plan publication uses no Client; copied-plan and receipt Project reads use nonlocking native readProjectReferences; new Project/Tasks retain active-original Client locking rather than locked canonical resolution. No new recovery wrapper required. Source/Project/Task/Access/Web feature material unchanged; no conflict resolution.",
+      "targetedIntegrationCasesPassed": 45,
+      "apiStrictTypes": "PASS"
+    }
+  },
+  "review": {
+    "issue": 920,
+    "source": "b2fc32eddad6e08ce56b7be9cd706be0760c18b8",
+    "base": "7d1d74fe40d6886abbd868f8c6efa202b004b2b1",
+    "tree": "4e1bd71d3bbfebf846772655e686773aa1ec1e52",
+    "complete": true,
+    "independentStandards": "twoP2identified; corrected before publication, affected checks passed",
+    "independentSpec": "same twoP2independently identified; corrected before publication, affected checks passed",
+    "rootStandardsAndSpec": "PASS: bounded source correction, both diagnosed test-only CI corrections and clean actual-base composition inspected under existing review rules.",
+    "structuralReview": "PASS: separate immutable source/copy owners and scoped UI lifetimes; existing native owners retained",
+    "blockingFindingsRemaining": 0,
+    "reports": {
+      "standards-review.md": "Independent Standards and structural preparation before initial publication, base410c498.\nTwo blocking in-scope findings, also independently found by Spec: exact Version error lacked a read.load control; Project creator/copy omitted existing App access callbacks so observed403 refreshed authority into no-op callbacks. Both violate mission-plan\u00a76/issueAC7; callback omission also violates ADR6 server-authoritative context.\nNo other material TypeScript or structural breach. Separate source/copy owners, native caller transaction, scoped immutable/deferred guards, and test decomposition appropriate. Large existing owners receive canonical projections/composition. Snapshot inspection: six additive tables, no removals, only expected assignment-table CHECK change, correct lineage. Reviewer ran git diff --check only, no behavioral rerun.\nNonblocking heuristic: identical waitForQuery observer in two concurrency cases; retain as follow-up, no scope expansion.\nRoot correction in final public805403f: explicit four-locale Reload Version; scoped access lifetime retires consuming work on denial while separately revalidating within its live scope; App\u2192ProjectWorkspace\u2192creator/copy callbacks forwarded. Three public red regression failures reproduced; corrected affected68UI and actualPGApp2 PASS, including late access revalidationA-B-A and direct nested403 paths preserving native drafts/save. Original architecture/schema/API unchanged. Root checked both axes on correction; no new review round requested. Configured opening review and bounded correction were later completed; see configuredOpeningReview and openingFinding.\n",
+      "spec-review.md": "Independent Spec preparation before initial publication, base410c498.\nP2 exact-Version failure had no usable retry: same selection/path/key does not reload; canonical\u00a76 unavailable/retry and issueAC7 explicit current-page retry.\nP2 nested creator/copy discard current-actor callbacks: denied creation retained selected source and stale authority until separate Configuration refresh; canonical\u00a76 consumed-grant retirement and\u00a77 no stale-UI access leak.\nNo other actionable scope expansion or backend contract defect. Source/test inspection only; no independent behavioral rerun.\nRoot fixed both in final public805403f in one bounded prepublication batch. Public tests reproduce both defects then corrected68UI PASS; actual PostgreSQL App1440/390 directly revokes User then submits through creator, then revokes Configuration and refreshes copy, proving App authority update and preserved native Task/manual drafts plus native save. Explicit source-retry covers transport and malformed200; late access revalidation200/403 duringA-B-A suppressed. Canonical contract and native owners preserved. Configured opening review and bounded correction were later completed; see configuredOpeningReview and openingFinding.\n"
+    },
+    "configuredOpeningReview": {
+      "source": "b2fc32eddad6e08ce56b7be9cd706be0760c18b8",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-27T21:35:04.623944Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/921#issuecomment-6453146313",
+      "trigger": "Configured opening review, bounded correction, automatic test-only/base updates; latest exact source completed. No manually requested duplicate or post-green trigger."
+    },
+    "openingFinding": {
+      "reviewedSource": "805403f5bb43502408f7abe624c00883e98e3cca",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/921#discussion_r4393982127",
+      "severity": "P2",
+      "disposition": "Fixed in one focused correction34c6e7c. Preserve authority-keyed creator and protected Client choices across directory loading/errors; native denial still retires. Public regressions RED2 then affected84UI/actualPGApp2/lint/typesPASS. Thread resolved; automatic confirmation current source0findings."
+    },
+    "finalIntegration": "Complete independentCI40588180606 PASS on exact published source, actual base and integration tree; validated complete canonical-local execution is not claimed. Owner-authorized runtime alternative applies.",
+    "ciCorrection": {
+      "source": "8b7ab36145803f79f29c68ae3ac4d846346bdd4d",
+      "configuredReviewSource": "34c6e7c6b53013e17bdb803cc2bf4b2fd84cb725",
+      "changedPath": "apps/web/src/access/company-assignment-localization.test-fixtures.ts",
+      "scope": "Add independently specified Configuration/User v1 labels to exhaustive administration expectations. No production behavior, timing, assertions or retry policy changes.",
+      "rootInspectedBothAxes": true,
+      "affectedBrowserPassed": 26,
+      "affectedUnitPassed": 81,
+      "formatLintStrictTypes": "PASS",
+      "reviewReuse": "Prior completed configured review still covers identical production material. Root inspected the one test-fixture delta under the existing bounded review rules; no duplicate or post-green trigger."
+    },
+    "priorConfiguredCorrectionConfirmation": {
+      "source": "34c6e7c6b53013e17bdb803cc2bf4b2fd84cb725",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-27T20:56:32.795673Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/921#issuecomment-6453146313",
+      "trigger": "One configured PR-opening review on805403f with one focused correction; automatic New commits confirmation on34c6e7c, zero findings. No manual duplicate/post-green trigger."
+    },
+    "readinessCorrection": {
+      "source": "68d1584c8f8f763bdab917e03dd289bd8e790f5b",
+      "reviewedSource": "8b7ab36145803f79f29c68ae3ac4d846346bdd4d",
+      "changedPath": "apps/web/src/contract/ContractDecisionQueue.test.tsx",
+      "added": 7,
+      "removed": 5,
+      "rootInspectedBothAxes": true,
+      "scope": "Await the exact three-request public readiness in PRECONTRACT/ADDENDUM continuation; unchanged path/order/count assertions and no product/deadline/retry change.",
+      "owningUnitPassed": 28,
+      "completeWebUnitPassed": 3388,
+      "formatLintStrictTypes": "PASS",
+      "samePatternAudit": "Other exact native queue continuation already awaits its positive request list; malformed/foreign continuation stops before history. Separate ContractPanel follow-up844not broadened or closed."
+    },
+    "baseAdvance": {
+      "oldBase": "410c49884fd369009c30028c117368c0c0c45525",
+      "currentBase": "7d1d74fe40d6886abbd868f8c6efa202b004b2b1",
+      "mergeSource": "b2fc32eddad6e08ce56b7be9cd706be0760c18b8",
+      "preIntegrationSource": "68d1584c8f8f763bdab917e03dd289bd8e790f5b",
+      "mechanicalCleanMerge": true,
+      "reviewedFeaturePatchUnchangedExcludingInspectedTestOnlyDelta": true,
+      "reviewedFeaturePatchSha256": "0f3f5e565bce136890b9d7af7defb525f2954a03c9f77339a972efeeed75f0a2",
+      "inspection": "Main860moves Client drift recovery from DatabaseContext to explicit caller transaction owner. Plan publication uses no Client; copied-plan and receipt Project reads use nonlocking native readProjectReferences; new Project/Tasks retain active-original Client locking rather than locked canonical resolution. No new recovery wrapper required. Source/Project/Task/Access/Web feature material unchanged; no conflict resolution.",
+      "targetedIntegrationCasesPassed": 45,
+      "apiStrictTypes": "PASS"
+    },
+    "reviewReuse": {
+      "reviewedSource": "8b7ab36145803f79f29c68ae3ac4d846346bdd4d",
+      "reviewedBase": "410c49884fd369009c30028c117368c0c0c45525",
+      "correctionSource": "68d1584c8f8f763bdab917e03dd289bd8e790f5b",
+      "currentSource": "b2fc32eddad6e08ce56b7be9cd706be0760c18b8",
+      "currentBase": "7d1d74fe40d6886abbd868f8c6efa202b004b2b1",
+      "testOnlyPath": "apps/web/src/contract/ContractDecisionQueue.test.tsx",
+      "productionPatchSha256": "0f3f5e565bce136890b9d7af7defb525f2954a03c9f77339a972efeeed75f0a2",
+      "rootCompleteAt": "2026-10-27T21:34:47.735271+00:00",
+      "reason": "Completed configured review still covers identical feature material. Test-only readiness correction separately inspected; main advance alone does not request a new review. Consume automatic updates without manual duplicate triggers."
+    },
+    "priorConfiguredFixtureConfirmation": {
+      "source": "8b7ab36145803f79f29c68ae3ac4d846346bdd4d",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-27T21:12:25.689723Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/921#issuecomment-6453146313",
+      "trigger": "Configured opening review, bounded correction confirmation and automatic fixture-only CI-correction refresh. No manual duplicate or post-green trigger."
+    }
+  },
+  "priorFailedCompleteCI": {
+    "runs": [
+      {
+        "run": 40582645063,
+        "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40582645063",
+        "source": "34c6e7c6b53013e17bdb803cc2bf4b2fd84cb725",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "failure",
+        "jobs": [
+          {
+            "id": 122465832696,
+            "name": "checks",
+            "conclusion": "success"
+          },
+          {
+            "id": 122465833089,
+            "name": "scope",
+            "conclusion": "success"
+          },
+          {
+            "id": 122465945243,
+            "name": "postgres_image",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027716,
+            "name": "web_unit",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027741,
+            "name": "acceptance (2)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027772,
+            "name": "browser (1)",
+            "conclusion": "failure"
+          },
+          {
+            "id": 122467027804,
+            "name": "packaging",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027831,
+            "name": "browser (3)",
+            "conclusion": "cancelled"
+          },
+          {
+            "id": 122467027857,
+            "name": "api (3/3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027858,
+            "name": "api (serial)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027865,
+            "name": "build",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027878,
+            "name": "api (2/3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027892,
+            "name": "acceptance (1)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027893,
+            "name": "api (1/3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122467027913,
+            "name": "browser (2)",
+            "conclusion": "cancelled"
+          },
+          {
+            "id": 122472903336,
+            "name": "quality",
+            "conclusion": "failure"
+          }
+        ],
+        "cause": "Four exhaustive desktop administration option-label assertions omit the two new approved roles;232browser cases passed in that shard. Updated independent fixture only;26owning browser and81unit tests pass without assertion/timing/retry weakening. A fresh complete run is required on corrected head.",
+        "artifacts": [
+          {
+            "id": 12771555676,
+            "name": "browser-evidence-part-acceptance-2-40582645063",
+            "size_in_bytes": 66784520,
+            "digest": "sha256:f23ababcb78be323f81882b311f95e0ae62c17cafada345abc3807b05ec7edea",
+            "expires_at": "2026-11-10T21:11:31Z"
+          },
+          {
+            "id": 12770995997,
+            "name": "browser-evidence-part-acceptance-1-40582645063",
+            "size_in_bytes": 77436468,
+            "digest": "sha256:1f09728ea23723b9dcd5d03b9d6d3591a2e105ef1950cab56a6d7f1f5b7bfac9",
+            "expires_at": "2026-11-10T21:09:31Z"
+          },
+          {
+            "id": 12770950610,
+            "name": "browser-evidence-part-browser-2-40582645063",
+            "size_in_bytes": 76314976,
+            "digest": "sha256:84e4c8584a91ad37ae9778bf72f2d6bff72d4e381a9889ce860bdf61099122a3",
+            "expires_at": "2026-11-10T21:05:11Z"
+          },
+          {
+            "id": 12770538412,
+            "name": "browser-evidence-part-browser-3-40582645063",
+            "size_in_bytes": 71153154,
+            "digest": "sha256:af200ed8dcd3ab6a4a8f4fc096df277fbed0a1d271e26013da9124b63029c02a",
+            "expires_at": "2026-11-10T21:04:53Z"
+          },
+          {
+            "id": 12770484669,
+            "name": "browser-evidence-pr-40582645063",
+            "size_in_bytes": 403736969,
+            "digest": "sha256:85260c2d7fc7940d0f52719185d8b474392f0fc5f2d590dcf9fe775fdcd3379e",
+            "expires_at": "2026-11-10T21:11:54Z"
+          },
+          {
+            "id": 12770453757,
+            "name": "browser-evidence-part-browser-1-40582645063",
+            "size_in_bytes": 112047939,
+            "digest": "sha256:dd58031a194fb3a0462def6157eaf37afd9ad42cb50785ae9b31c5ee910134da",
+            "expires_at": "2026-11-10T21:04:46Z"
+          }
+        ]
+      },
+      {
+        "run": 40584934689,
+        "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40584934689",
+        "source": "8b7ab36145803f79f29c68ae3ac4d846346bdd4d",
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "failure",
+        "jobs": [
+          {
+            "id": 122473774371,
+            "name": "checks",
+            "conclusion": "success"
+          },
+          {
+            "id": 122473774904,
+            "name": "scope",
+            "conclusion": "success"
+          },
+          {
+            "id": 122473890375,
+            "name": "postgres_image",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951652,
+            "name": "acceptance (1)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951703,
+            "name": "acceptance (2)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951716,
+            "name": "build",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951723,
+            "name": "browser (2)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951738,
+            "name": "api (2/3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951765,
+            "name": "browser (3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951825,
+            "name": "api (serial)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951829,
+            "name": "packaging",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951831,
+            "name": "browser (1)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951887,
+            "name": "api (1/3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122474951898,
+            "name": "web_unit",
+            "conclusion": "failure"
+          },
+          {
+            "id": 122474951958,
+            "name": "api (3/3)",
+            "conclusion": "success"
+          },
+          {
+            "id": 122480980112,
+            "name": "quality",
+            "conclusion": "failure"
+          }
+        ],
+        "cause": "Unchanged native ContractDecisionQueue PRECONTRACT continuation test synchronously asserts all three GET paths after sibling content appears, before asynchronously authenticated history GET starts.3387Web tests passed; one failed. The history owner awaits authenticated-client creation before its GET. Existing count/order/endpoints remain exact; await their actual public readiness instead of sibling DOM. No product change, fixed sleep, retry/deadline increase or weaker assertion.At diagnosis28owning tests passed; complete3388Web validation then passed before the fresh final run.",
+        "relatedSeparateFollowup": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/844",
+        "relatedSeparateFollowupQualification": "Same asynchronous readiness pattern, different test file.844is not implemented or closed by this CI correction.",
+        "artifacts": [
+          {
+            "id": 12772572519,
+            "name": "browser-evidence-part-acceptance-2-40584934689",
+            "size_in_bytes": 66711547,
+            "digest": "sha256:6c6513fb84e6cf90719779abd1c5488e8618ff56cbf3a7545b4f7361392c4506",
+            "expires_at": "2026-11-10T21:27:42Z"
+          },
+          {
+            "id": 12772150847,
+            "name": "browser-evidence-part-browser-2-40584934689",
+            "size_in_bytes": 77536689,
+            "digest": "sha256:d479747a86b10168a72fde6bc54b37db590a98e7a3e9fe442f5c3bfd12510b77",
+            "expires_at": "2026-11-10T21:20:40Z"
+          },
+          {
+            "id": 12771667193,
+            "name": "browser-evidence-pr-40584934689",
+            "size_in_bytes": 406676142,
+            "digest": "sha256:6569d91aa7a45c40be7a469fc279a164206d9365864d924be294e6903de7b1b4",
+            "expires_at": "2026-11-10T21:28:06Z"
+          },
+          {
+            "id": 12771242096,
+            "name": "browser-evidence-part-browser-3-40584934689",
+            "size_in_bytes": 71123219,
+            "digest": "sha256:4bc17d56a7a865b122a4e17cd69701a1c3035a36c204b24a9cecb92c56c5b6a7",
+            "expires_at": "2026-11-10T21:20:30Z"
+          },
+          {
+            "id": 12771192727,
+            "name": "browser-evidence-part-acceptance-1-40584934689",
+            "size_in_bytes": 77532782,
+            "digest": "sha256:6181615ce3f05a13d0d049b23457b883b8ab19c4578f42ad2dec72600cebdf61",
+            "expires_at": "2026-11-10T21:26:27Z"
+          },
+          {
+            "id": 12770679642,
+            "name": "browser-evidence-part-browser-1-40584934689",
+            "size_in_bytes": 113771993,
+            "digest": "sha256:a6cd6ce83d08ac2dd067a41e4c2a9f17df4dfa34a90a398f0482cbeb39dda86a",
+            "expires_at": "2026-11-10T21:20:07Z"
+          }
+        ],
+        "correction": "68d1584:28owning tests and complete3388Web tests PASS; format/lint/strict types PASS. Cause corrected before resuming final verification."
+      }
+    ],
+    "fullRunStoppingRule": "Two complete failures paused full runs. The identified native history-readiness cause was corrected and28owning/complete3388Web tests passed before fresh completeCI40588180606. No blind rerun."
+  },
+  "artifacts": [
+    {
+      "id": 12774385252,
+      "name": "browser-evidence-part-acceptance-2-40588180606",
+      "size_in_bytes": 66774324,
+      "digest": "sha256:bd4e8e77068bd8ea345093c379b2b7ba461af76c978c73f22ec5ccecd7979544",
+      "expires_at": "2026-11-10T21:49:17Z"
+    },
+    {
+      "id": 12774095541,
+      "name": "browser-evidence-pr-40588180606",
+      "size_in_bytes": 406943628,
+      "digest": "sha256:77c48bdf84bdca1b32af0d8004be6e15c980876aa55639f334023e6702996c34",
+      "expires_at": "2026-11-10T21:49:38Z"
+    },
+    {
+      "id": 12774085226,
+      "name": "browser-evidence-part-browser-2-40588180606",
+      "size_in_bytes": 77569568,
+      "digest": "sha256:bda91877ecf0ff45b3b49f0d9d7a944ac10cc45e15d5ae801526888253fda353",
+      "expires_at": "2026-11-10T21:43:50Z"
+    },
+    {
+      "id": 12774046287,
+      "name": "browser-evidence-part-acceptance-1-40588180606",
+      "size_in_bytes": 77685201,
+      "digest": "sha256:03d59124baf904061c850121d41b07f0ca76d84bf42e61693536b77bff2de658",
+      "expires_at": "2026-11-10T21:49:03Z"
+    },
+    {
+      "id": 12773032381,
+      "name": "browser-evidence-part-browser-1-40588180606",
+      "size_in_bytes": 113756527,
+      "digest": "sha256:a4e2321ba690a2f06b7bf32bcd9e1df0d9859caff60a0415e8ebee0734f3723b",
+      "expires_at": "2026-11-10T21:44:49Z"
+    },
+    {
+      "id": 12771958865,
+      "name": "browser-evidence-part-browser-3-40588180606",
+      "size_in_bytes": 71158096,
+      "digest": "sha256:7bde2dc2c798fd7a1a67efa51166c4139c89bf083c98dbc52e8a568b872bd02a",
+      "expires_at": "2026-11-10T21:43:41Z"
+    }
+  ],
+  "scope": "Issue920: Company-configured immutable mission plans and exact native Project/Task copies; explicit opt-in captures, strict pagination and source/mapping guards; native lifecycle/results and fixed pilot/legacy preserved. No actual data/grants/providers/deployment or closure-policy decision.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-13T23:59:59Z"
+}
