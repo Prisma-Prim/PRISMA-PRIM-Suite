@@ -1,0 +1,343 @@
+{
+  "issue": 915,
+  "pr": 916,
+  "source": "520ed99ecb7b1a57b7aa7b35fede666c479212ed",
+  "base": "333c6583d186ef50dcd5b33b1138485a2e3744bf",
+  "tree": "a814007c14495f3e7aa1d242342e33a2bdfe8513",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40500280318,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318",
+    "attempt": 1,
+    "providerLatestJobAttempts": {
+      "scope": 1,
+      "checks": 1,
+      "postgres_image": 1,
+      "acceptance (2)": 1,
+      "build": 1,
+      "packaging": 1,
+      "api (3/3)": 1,
+      "browser (1)": 1,
+      "api (2/3)": 1,
+      "web_unit": 1,
+      "browser (2)": 1,
+      "acceptance (1)": 1,
+      "browser (3)": 1,
+      "api (serial)": 1,
+      "api (1/3)": 1,
+      "quality": 1
+    },
+    "actualExecutionOrigins": {
+      "scope": {
+        "actualJobId": 122175973190,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122175973190"
+      },
+      "checks": {
+        "actualJobId": 122175973431,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122175973431"
+      },
+      "postgres_image": {
+        "actualJobId": 122176038177,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176038177"
+      },
+      "acceptance (2)": {
+        "actualJobId": 122176816297,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816297"
+      },
+      "build": {
+        "actualJobId": 122176816338,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816338"
+      },
+      "packaging": {
+        "actualJobId": 122176816357,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816357"
+      },
+      "api (3/3)": {
+        "actualJobId": 122176816358,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816358"
+      },
+      "browser (1)": {
+        "actualJobId": 122176816375,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816375"
+      },
+      "api (2/3)": {
+        "actualJobId": 122176816388,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816388"
+      },
+      "web_unit": {
+        "actualJobId": 122176816392,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816392"
+      },
+      "browser (2)": {
+        "actualJobId": 122176816393,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816393"
+      },
+      "acceptance (1)": {
+        "actualJobId": 122176816434,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816434"
+      },
+      "browser (3)": {
+        "actualJobId": 122176816443,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816443"
+      },
+      "api (serial)": {
+        "actualJobId": 122176816570,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816570"
+      },
+      "api (1/3)": {
+        "actualJobId": 122176816655,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122176816655"
+      },
+      "quality": {
+        "actualJobId": 122182170028,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40500280318/job/122182170028"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 915,
+    "source": "520ed99ecb7b1a57b7aa7b35fede666c479212ed",
+    "base": "333c6583d186ef50dcd5b33b1138485a2e3744bf",
+    "tree": "a814007c14495f3e7aa1d242342e33a2bdfe8513",
+    "frozenInstall": "passed",
+    "doctor": {
+      "profile": "web-postgres",
+      "beforeEdits": true,
+      "status": "passed",
+      "log": "doctor.log"
+    },
+    "static": {
+      "format": "passed",
+      "lint": "passed",
+      "apiAndWebStrictTypes": "passed"
+    },
+    "focusedPostgres": {
+      "status": "passed",
+      "contractCases": 12,
+      "offerRegressionCases": 8,
+      "log": "focused-pg.log",
+      "database": "owned disposable numeric-loopback PostgreSQL17, isolated per fixture",
+      "effects": "read-only checks leave business facts/events unchanged"
+    },
+    "focusedUI": {
+      "status": "passed",
+      "cases": 262,
+      "files": 7,
+      "contractQueueCases": 28,
+      "offerQueueRegressionCases": 26,
+      "log": "affected-ui-corrected.log",
+      "workers": 1
+    },
+    "mockBrowser": {
+      "status": "passed",
+      "cases": 56,
+      "files": 5,
+      "viewports": [
+        1440,
+        390
+      ],
+      "locales": [
+        "ro",
+        "ru",
+        "fr",
+        "en"
+      ],
+      "log": "affected-browser.log"
+    },
+    "actualRegisteredPostgresApp": {
+      "status": "passed",
+      "cases": 2,
+      "viewports": [
+        1440,
+        390
+      ],
+      "locales": [
+        "ro",
+        "ru",
+        "fr",
+        "en"
+      ],
+      "log": "actual-app.log",
+      "sourceCreation": "27modelContracts through public synthetic APIs",
+      "journey": "page2\u2192exactnative17checks/2warningacks/literalbasis\u2192committedapproval/lostconfirmation\u2192protectedBack/locale\u2192identicalbody/keyexplicitretry\u2192refreshedremoval",
+      "privacyAndState": "Client403; sourceOfferPENDING; exactfrozeniframe13rows; nooverflow; liveContractrevocationleavesOfferavailable",
+      "originalScreenshotsRootInspected": 4,
+      "retainedLocally": "targeted-test-results/acceptance"
+    },
+    "broaderDevelopment": {
+      "command": "pnpm verify",
+      "status": "passed",
+      "scriptTestsPassed": 488,
+      "apiUnitPassed": 1510,
+      "webUnitPassed": 3343,
+      "apiPostgresExplicitlySkipped": 1937,
+      "skipReason": "normal host has no TEST_DATABASE_URL; independent realPG evidence above, never count skips as passed",
+      "completeLocalIntegrationGate": false,
+      "log": "broader-verify.log",
+      "exitCode": 0,
+      "builds": "API+Web passed"
+    },
+    "developmentFailures": [
+      {
+        "seam": "initial public Contract REST",
+        "outcome": "expected red404; implemented then9firstverticaltests passed"
+      },
+      {
+        "seam": "initial public native-owner UI",
+        "outcome": "expected red missing feature module; implemented then27firstverticaltests passed"
+      },
+      {
+        "seam": "expanded nativelegacy fixture",
+        "outcome": "transmission403 fixed to nativePreparer; acceptedresponse400 fixed unsupportedreason:null omission; flatQCresponse fixture fixed; productionowners unchanged; complete12then20PGpass"
+      },
+      {
+        "seam": "sandbox prerequisite",
+        "outcome": "one no-networkPGlaunch EPERM beforeall12cases; authorizednetworkprofile restored, realcases passed"
+      },
+      {
+        "seam": "nativeUIhistory fixture",
+        "outcome": "2newkind assertions missed legitimate historyGET; corrected to strict explicit3GETandresponse, then262pass"
+      },
+      {
+        "seam": "existing nativeUIreadiness",
+        "outcome": "one combined run under concurrent builds hit1s sourceenabled wait; baseline/current isolated3casespass, serialized262pass; no assertion/deadline/source workaround, full3343Webunitspassed"
+      }
+    ],
+    "finalCompleteIntegration": {
+      "run": 40500280318,
+      "status": "passed",
+      "attempt": 1,
+      "all16Jobs": "passed",
+      "all10ActualTestSteps": "passed",
+      "authority": "owner-authorized747 runtime alternative; no canonicalcomplete-localgateclaim"
+    },
+    "supplementalKeyboard": {
+      "status": "passed",
+      "cases": 2,
+      "viewports": [
+        1440,
+        390
+      ],
+      "focusAndActivation": "focus exact Review control, assert focus, pressEnter; remainder of exact native checks/uncertainretry/removal journey unchanged",
+      "harness": "temporary independent copy of registered scenario, imports rebased one directory, retained privately then removed from repo",
+      "harnessSha256": "6dd906dcbee2a905bfb4e883b13bee28b2c54e8c1239c5c49ee8c5897dcc9d24",
+      "runtimeSourceUnchanged": "520ed99ecb7b1a57b7aa7b35fede666c479212ed",
+      "log": "keyboard-probe.log",
+      "resultsRetainedLocally": "keyboard-probe-results",
+      "notPartOfPublishedSourceOrIndependentCI": true
+    }
+  },
+  "review": {
+    "issue": 915,
+    "source": "520ed99ecb7b1a57b7aa7b35fede666c479212ed",
+    "base": "333c6583d186ef50dcd5b33b1138485a2e3744bf",
+    "tree": "a814007c14495f3e7aa1d242342e33a2bdfe8513",
+    "complete": true,
+    "independentStandards": "pass,0blockers",
+    "independentSpec": "pass,0blockers",
+    "blockingFindingsRemaining": 0,
+    "rootStandardsAndSpec": "pass",
+    "structuralReview": "pass:actualtwo-family281linepassivelifetime and closed-family80linecursor; nativecommandsunchanged; no new giantfile/dependency/schema",
+    "reports": {
+      "standards-review.md": "# Independent Standards and structural preparation\n\nPASS: no material Standards violation or blocking structural regression found.\n\nPinned source520ed99ecb7b1a57b7aa7b35fede666c479212ed; base333c6583d186ef50dcd5b33b1138485a2e3744bf; treea814007c14495f3e7aa1d242342e33a2bdfe8513; requested three-dot diff contains only the feature commit.\n\nPendingDecisionQueue and family wrappers centralize passive paging, retirement and selection lifetime for two actual families, with explicit family authorization/parsing/native mutation owners. Native elements preserve React identity across locale changes. The closed-family cursor preserves Offer encoding and exact microsecond boundary; scope/family/calendar/canonical encoding remain validated. Contract query/authority/parser enforce current boundary evidence and a read-only repeatable-read authorization/query snapshot; optional model rights preserve legacy discovery. No unchecked casts or widened mutation contract.\n\nNative Legacy/ModelContract panels expose only their established lock boolean; intent/key/payload remain private. Legacy1377lines triggers structural scrutiny, but seven cohesive report lines do not warrant unrelated decomposition. Strict fixtures admit the new legitimate Contract GET; Activity preserves exact request multiplicity while allowing sibling completion order. Smell baseline considered as heuristics; no high-confidence in-scope finding or speculative refactor proposed.\n\nReviewer inspected supplied logs20PG/262UI/56browser/2actualApp, without rerunning or independently viewing screenshots. Broader development and final integration remain root-owned. Read-only independent source review; no code, GitHub or monitoring changes. Report delivered by agent /root/contract915_standards.\n",
+      "spec-review.md": "# Independent Spec preparation\n\nPASS: no blocking findings on base333c6583d186ef50dcd5b33b1138485a2e3744bf to source520ed99ecb7b1a57b7aa7b35fede666c479212ed, treea814007c14495f3e7aa1d242342e33a2bdfe8513.\n\nIssue915 and Commercial32/Dashboard22 match: live native authority with optional model/source rights, coherent read-only snapshot, supported pending heads and exact timestamp/UUID pagination; bounded metadata and legacy discovery without Offer/Client read; exact native owner continuation with immutable history/literal-key retry/protected pending work. Actual two-family passive queue/cursor extraction preserves Offer behavior and explicit family authorization/parsing/mutation ownership. Locale identity/state persists while consumed scope/session/authority changes retire queue work and late responses. Full-App mocks admit explicit new GET and retain assertions. No business-policy expansion or MISSION-CLOSE-01 duplication.\n\nIndependent read-only source/spec review by /root/contract915_spec. Acceptance test implementation inspected and root-supplied execution evidence considered; reviewer did not rerun checks or monitor CI. No edits or external actions.\n"
+    },
+    "configuredOpeningReview": {
+      "source": "520ed99ecb7b1a57b7aa7b35fede666c479212ed",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-27T11:58:18.908185Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/916#issuecomment-6441278191",
+      "trigger": "PR opened; reused once; no duplicate or post-green request"
+    },
+    "finalIntegration": "complete independentCI40500280318attempt1PASS after configuredreview0, exactsource/base/tree unchanged"
+  },
+  "artifacts": [
+    {
+      "id": 12733805972,
+      "name": "browser-evidence-part-acceptance-1-40500280318",
+      "size_in_bytes": 76963709,
+      "digest": "sha256:d102ed5e0fc3113c2ad37222b030ccbcdcf3070a7de7807a145e4a67c4e0a109",
+      "expires_at": "2026-11-10T12:13:48Z"
+    },
+    {
+      "id": 12733220665,
+      "name": "browser-evidence-part-browser-2-40500280318",
+      "size_in_bytes": 77557336,
+      "digest": "sha256:36f920f0be0e0c24b73c20a8f3cd2b6e0dd134727109843e0c384281dabc6524",
+      "expires_at": "2026-11-10T12:05:25Z"
+    },
+    {
+      "id": 12733102265,
+      "name": "browser-evidence-part-acceptance-2-40500280318",
+      "size_in_bytes": 66072844,
+      "digest": "sha256:6c7c92ca5ab5c6ed965e6e0f315c94d176b2b693800337047af42d832837e52f",
+      "expires_at": "2026-11-10T12:12:58Z"
+    },
+    {
+      "id": 12732788229,
+      "name": "browser-evidence-pr-40500280318",
+      "size_in_bytes": 405520491,
+      "digest": "sha256:254d417f75eddbf6b576a3692de1a46cd49bdb9c258ecbeae98282f341783f19",
+      "expires_at": "2026-11-10T12:14:09Z"
+    },
+    {
+      "id": 12732319437,
+      "name": "browser-evidence-part-browser-1-40500280318",
+      "size_in_bytes": 113774629,
+      "digest": "sha256:c3e9408c7dfa952daa794fa16a07950ef071ecfee0c9b7f8d3a0de0e9187eda9",
+      "expires_at": "2026-11-10T12:06:48Z"
+    },
+    {
+      "id": 12732159674,
+      "name": "browser-evidence-part-browser-3-40500280318",
+      "size_in_bytes": 71152061,
+      "digest": "sha256:5f5502b9040c61fa6608f5873f3acae1df1d2466cac8b18b9c939695b631b608",
+      "expires_at": "2026-11-10T12:05:40Z"
+    }
+  ],
+  "scope": "Issue915: pending Contract/Precontract/Addendum discovery and exact native continuation. Narrow actual two-family passive lifetime/cursor reuse preserves Offer behavior; no Estimate rewrite, new mutation/grant/schema/business/legal policy/provider/deployment.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-13T23:59:59Z"
+}
