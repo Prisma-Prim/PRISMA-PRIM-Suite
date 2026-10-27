@@ -410,6 +410,20 @@ const scrollable: {
 } = Element.prototype;
 const nativeScrollIntoView = scrollable.scrollIntoView;
 
+function holdSectionFrames() {
+  const scheduledFrames: FrameRequestCallback[] = [];
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    scheduledFrames.push(callback);
+    return scheduledFrames.length;
+  });
+  return async () => {
+    await act(async () => {
+      for (const callback of scheduledFrames.splice(0))
+        callback(performance.now());
+    });
+  };
+}
+
 describe('Client dossier and Client Request navigation through App', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -440,37 +454,141 @@ describe('Client dossier and Client Request navigation through App', () => {
     window.history.replaceState(null, '', '/');
   });
 
-  it('shows Client commercial affairs inline and opens the exact existing Request', async () => {
-    const transport = installTransport();
+  it.each(['section-first', 'detail-first'] as const)(
+    'shows Client commercial affairs inline and opens the exact existing Request (%s)',
+    async (ordering) => {
+      const flushFrames = holdSectionFrames();
+      const transport = installTransport();
+      render(<App identity={deterministicBrowserIdentity()} />);
+      const dossier = await openDossier(firstClient.id, 'Alex');
+      const commercial = await within(dossier).findByRole('region', {
+        name: 'Commercial affairs',
+      });
+      expect(within(commercial).getByText('Company A')).toBeVisible();
+      expect(
+        await within(commercial).findByText('Follow up First Client Request'),
+      ).toBeVisible();
+      expect(within(commercial).getByText('Resolver')).toBeVisible();
+      expect(
+        within(commercial).queryByText('Second Client Request'),
+      ).not.toBeInTheDocument();
+      fireEvent.click(
+        within(commercial).getByRole('button', {
+          name: 'Open Request: First Client Request',
+        }),
+      );
+      if (ordering === 'section-first') await flushFrames();
+      expect(
+        await within(requestsRegion()).findByText(
+          'Original source of First Client Request',
+        ),
+      ).toBeVisible();
+      if (ordering === 'detail-first') await flushFrames();
+      expect(
+        within(requestsRegion()).getByRole('heading', {
+          name: 'First Client Request',
+        }),
+      ).toHaveFocus();
+      expect(transport.mutations).toEqual([]);
+    },
+  );
+
+  it('focuses the visible Requests section while its exact detail is still loading', async () => {
+    const flushFrames = holdSectionFrames();
+    let release: ((response: Response) => void) | undefined;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const read = vi.fn(() => held);
+    installTransport({ readFirstRequest: read });
     render(<App identity={deterministicBrowserIdentity()} />);
     const dossier = await openDossier(firstClient.id, 'Alex');
-    const commercial = await within(dossier).findByRole('region', {
-      name: 'Commercial affairs',
-    });
-    expect(within(commercial).getByText('Company A')).toBeVisible();
-    expect(
-      await within(commercial).findByText('Follow up First Client Request'),
-    ).toBeVisible();
-    expect(within(commercial).getByText('Resolver')).toBeVisible();
-    expect(
-      within(commercial).queryByText('Second Client Request'),
-    ).not.toBeInTheDocument();
     fireEvent.click(
-      within(commercial).getByRole('button', {
+      await within(dossier).findByRole('button', {
         name: 'Open Request: First Client Request',
       }),
     );
-    expect(
-      await within(requestsRegion()).findByText(
-        'Original source of First Client Request',
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(1));
+    await flushFrames();
+    expect(requestsRegion()).toHaveFocus();
+    if (!release) throw new Error('Missing held Request response');
+    await act(async () =>
+      release?.(
+        respond(requestDetail('request-first', 'First Client Request')),
       ),
-    ).toBeVisible();
+    );
+    await within(requestsRegion()).findByText(
+      'Original source of First Client Request',
+    );
     expect(
       within(requestsRegion()).getByRole('heading', {
         name: 'First Client Request',
       }),
     ).toHaveFocus();
-    expect(transport.mutations).toEqual([]);
+  });
+
+  it.each(['Company', 'Company return', 'session'] as const)(
+    'ignores an old section frame after %s retirement',
+    async (retirement) => {
+      const flushFrames = holdSectionFrames();
+      installTransport();
+      const { rerender } = render(
+        <App identity={deterministicBrowserIdentity()} />,
+      );
+      const dossier = await openDossier(firstClient.id, 'Alex');
+      openClientRequests(dossier);
+      await waitFor(() =>
+        expect(listedRequests()).toEqual(['First Client Request']),
+      );
+      if (retirement !== 'session') {
+        changeValue(
+          screen.getByLabelText('Active Company', { exact: true }),
+          companyB.id,
+        );
+        await waitFor(() =>
+          expect(listedRequests()).toEqual(['Company B Request']),
+        );
+        if (retirement === 'Company return') {
+          changeValue(
+            screen.getByLabelText('Active Company', { exact: true }),
+            companyA.id,
+          );
+          await waitFor(() => expect(listedRequests()).toHaveLength(3));
+        }
+      } else {
+        rerender(<App identity={deterministicBrowserIdentity()} />);
+        await waitFor(() => expect(listedRequests()).toHaveLength(3));
+      }
+      const currentControl = screen.getByLabelText('Active Company', {
+        exact: true,
+      });
+      currentControl.focus();
+      await flushFrames();
+      expect(currentControl).toHaveFocus();
+    },
+  );
+
+  it('does not restore queued focus after the originating Client dossier is replaced', async () => {
+    const flushFrames = holdSectionFrames();
+    installTransport();
+    render(<App identity={deterministicBrowserIdentity()} />);
+    const dossier = await openDossier(firstClient.id, 'Alex');
+    fireEvent.click(
+      await within(dossier).findByRole('button', {
+        name: 'Open Request: First Client Request',
+      }),
+    );
+    await within(requestsRegion()).findByText(
+      'Original source of First Client Request',
+    );
+    await openDossier(secondClient.id, 'Dana');
+    navigateTo('Client Requests');
+    const currentControl = screen.getByLabelText('Active Company', {
+      exact: true,
+    });
+    currentControl.focus();
+    await flushFrames();
+    expect(currentControl).toHaveFocus();
   });
 
   it.each([200, 403])(
