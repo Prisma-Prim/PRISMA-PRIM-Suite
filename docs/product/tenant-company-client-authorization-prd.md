@@ -484,6 +484,23 @@ revocation/suspension. Its lifecycle is
 existing Company administration, bundle-label-only metadata and one-event-per-actual-
 state-change convention. It adds no standalone Activity grant.
 
+The [Company mission-plan contract](release-1-configurable-mission-plans-prd.md)
+adds independent opt-in **Company Mission Plan Configuration v1** with exactly
+`project.mission_plan.read` and `project.mission_plan.publish`, and **Company
+Mission Plan User v1** with exactly `project.mission_plan.read` and
+`project.mission_plan.instantiate`. Either known captured v1 supplies source read;
+publication requires Configuration and instantiation requires User. Null/unknown
+captures fail closed. Neither bundle expands an existing capture or grants Company
+context, Client, Project, Task, Document, Activity, stage, lifecycle or result review.
+Configuration alone needs no Project/Task/Client authority merely to author content.
+New copy creation and historical copied-plan/receipt reads retain the contract's
+independent native requirements. No old Template User/Configuration or title is a
+substitute. Existing `company.assignment.manage` explicitly administers active
+same-Workspace/Company assignments; migration/bootstrap creates no actual grant.
+`company_mission_plan_configuration_assignment.granted`/`.revoked` and
+`company_mission_plan_user_assignment.granted`/`.revoked` use this section's
+bundle-label-only metadata and one-event-per-actual-transition convention.
+
 For the [Company Ideas intake journey](company-ideas-intake-prd.md),
 [Dan's 2026-10-19 decision](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6273448507)
 separates reading, recording and defer/reject review per Company. The bounded
