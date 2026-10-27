@@ -286,6 +286,28 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'mission-plan-configuration',
+    canonical: 'Company Mission Plan Configuration',
+    version: 'v1',
+    labels: {
+      ro: 'Configurare planuri de misiune ale companiei',
+      ru: 'Настройка планов миссий компании',
+      fr: 'Configuration des plans de mission de la société',
+      en: 'Company Mission Plan Configuration',
+    },
+  },
+  {
+    value: 'mission-plan-user',
+    canonical: 'Company Mission Plan User',
+    version: 'v1',
+    labels: {
+      ro: 'Utilizator planuri de misiune ale companiei',
+      ru: 'Пользователь планов миссий компании',
+      fr: 'Utilisateur des plans de mission de la société',
+      en: 'Company Mission Plan User',
+    },
+  },
+  {
     value: 'offer-model-editor',
     canonical: 'Company Offer Model Editor',
     version: 'v1',
