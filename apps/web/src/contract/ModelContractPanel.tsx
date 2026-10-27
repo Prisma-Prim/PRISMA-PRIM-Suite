@@ -72,6 +72,10 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
     props.actor.workspacePermissions.includes('client.manage'),
   ]);
   const { contract, locked } = journey;
+  useEffect(() => {
+    props.onProtectedWorkChange?.(locked);
+    return () => props.onProtectedWorkChange?.(false);
+  }, [locked, props.onProtectedWorkChange]);
   const [selectedPdf, setSelectedPdf] = useState<SigningPdfReference | null>(
     null,
   );

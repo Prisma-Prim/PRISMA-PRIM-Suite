@@ -249,6 +249,12 @@ async function install(page: Page) {
   });
   return state;
 }
+function orderedReads(reads: Array<{ path: string; companyId: string }>) {
+  return [...reads].sort(
+    (a, b) =>
+      a.companyId.localeCompare(b.companyId) || a.path.localeCompare(b.path),
+  );
+}
 for (const locale of locales) {
   test(`reads localized Activity and opens exact historical versions with keyboard in ${locale.code}`, async ({
     page,
@@ -391,8 +397,24 @@ for (const locale of locales) {
     expect(state.activityReads).toBe(1);
     await capture(page, testInfo, `activity-exact-contract-${locale.code}`);
     await go(page, 'activity', locale);
-    const beforeFrame = state.gets.length;
+    const beforeFrame = [...state.gets];
+    const expectedFrameReads = [
+      ...beforeFrame,
+      {
+        path: '/api/offer-decision-queue',
+        companyId: activityLocaleIds.company,
+      },
+      {
+        path: '/api/contract-decision-queue',
+        companyId: activityLocaleIds.company,
+      },
+    ];
     await enterClassicCompatibility(page, locale.optIn);
+    // Classic compatibility mounts Home alongside the retained Activity owner.
+    // Each independently authorized family reads once; Activity does not reload.
+    await expect
+      .poll(() => orderedReads(state.gets))
+      .toEqual(orderedReads(expectedFrameReads));
     await expect(ledger).toBeVisible();
     await expect(rows).toHaveCount(11);
     for (const original of originalRows)
@@ -401,7 +423,7 @@ for (const locale of locales) {
       );
     await page.getByRole('button', { name: locale.optIn, exact: true }).click();
     await expect(page).toHaveURL(/\/#activity$/u);
-    expect(state.gets).toHaveLength(beforeFrame);
+    expect(orderedReads(state.gets)).toEqual(orderedReads(expectedFrameReads));
     expect(state.commands).toEqual([]);
   });
 

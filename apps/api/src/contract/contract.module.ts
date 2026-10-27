@@ -4,6 +4,7 @@ import { ModelContractService } from './model-contract.service.js';
 import { ContractModelModule } from '../contract-model/contract-model.module.js';
 import { ContractVersionReader } from './contract-version-reader.js';
 import { Module } from '@nestjs/common';
+import { ContractDecisionQueueService } from './contract-decision-queue.service.js';
 import { AccessModule } from '../access/access.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
 import { ClientModule } from '../client/client.module.js';
@@ -32,6 +33,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
     ServerClockModule,
   ],
   providers: [
+    ContractDecisionQueueService,
     ContractVersionReader,
     ReportedContractSigningService,
     ModelContractService,
@@ -41,6 +43,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
     ContractProjectCreationService,
   ],
   exports: [
+    ContractDecisionQueueService,
     ReportedContractSigningService,
     ModelContractService,
     ContractService,

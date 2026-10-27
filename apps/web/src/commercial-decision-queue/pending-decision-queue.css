@@ -1,0 +1,43 @@
+.pending-decision-queue {
+  margin-block: 1.5rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  background: #fff;
+  color: #15233b;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pending-decision-queue button {
+  min-height: 44px;
+  max-width: 100%;
+  border: 1px solid #b7a8df;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: #faf8ff;
+  color: #493084;
+  cursor: pointer;
+  white-space: normal;
+}
+.pending-decision-queue button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.pending-decision-queue button:focus-visible {
+  outline: 3px solid #6950bd;
+  outline-offset: 3px;
+}
+.decision-queue-items {
+  display: grid;
+  gap: 1rem;
+  padding-inline-start: 1.5rem;
+}
+.decision-queue-items li {
+  min-width: 0;
+}
+.decision-queue-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-block-start: 1rem;
+}

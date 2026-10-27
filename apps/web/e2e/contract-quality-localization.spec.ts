@@ -106,6 +106,8 @@ async function installRoutes(page: Page, readOnly = false) {
     const path = url.pathname;
     const headers = request.headers();
     state.calls.push(`${request.method()} ${path}${url.search}`);
+    if (request.method() === 'GET' && path === '/api/contract-decision-queue')
+      return route.fulfill({ json: { items: [] } });
     if (path === '/api/access/current-actor') {
       const actor = qualityActor(readOnly ? 'reader' : 'approver');
       const { activeCompany, ...base } = actor;

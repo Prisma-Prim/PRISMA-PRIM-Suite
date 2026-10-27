@@ -1269,6 +1269,9 @@ export function readActivityJourneyFixture({
 }): unknown {
   if (path === '/api/access/current-actor')
     return activityLocaleActor({ companyId, requests });
+  // Home composes this independent read even while Activity is selected.
+  if (path === '/api/offer-decision-queue') return { items: [] };
+  if (path === '/api/contract-decision-queue') return { items: [] };
   if (path === '/api/companies')
     return [
       { id: activityLocaleIds.company, displayName: activityLiteral },

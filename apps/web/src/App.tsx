@@ -55,6 +55,8 @@ import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalog
 import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
 import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { ProfitabilityDecisionQueue } from './profitability-estimate/ProfitabilityDecisionQueue';
+import { OfferDecisionQueue } from './offer/OfferDecisionQueue';
+import { ContractDecisionQueue } from './contract/ContractDecisionQueue';
 import { OperationalHome } from './operational-home/OperationalHome';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 
@@ -97,6 +99,17 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   >();
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
+  const sectionNavigation = useRef({
+    requestId: 0,
+    context: 'inactive',
+    identity,
+  });
+  useEffect(
+    () => () => {
+      sectionNavigation.current.requestId += 1;
+    },
+    [],
+  );
   const navigateToSection = useCallback(
     (
       section:
@@ -106,15 +119,30 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         | 'requests'
         | 'my-tasks'
         | 'activity',
+      sourceSignal?: AbortSignal,
     ) => {
+      const requestId = ++sectionNavigation.current.requestId;
       const nextUrl = new URL(window.location.href);
       nextUrl.hash = section;
       window.history.pushState(window.history.state, '', nextUrl);
       window.dispatchEvent(new PopStateEvent('popstate'));
       window.requestAnimationFrame(() => {
+        if (
+          sourceSignal?.aborted ||
+          requestId !== sectionNavigation.current.requestId ||
+          window.location.hash !== `#${section}`
+        )
+          return;
         const destination = document.getElementById(section);
-        destination?.scrollIntoView({ block: 'start' });
-        destination?.focus();
+        // Native detail readiness may already own focus inside this section.
+        if (
+          !destination ||
+          destination.closest('[hidden]') ||
+          destination.contains(document.activeElement)
+        )
+          return;
+        destination.scrollIntoView({ block: 'start' });
+        destination.focus();
       });
     },
     [],
@@ -148,6 +176,15 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.status === 'active'
       ? `${navigationContext}:${requestNavigationAuthority(access.actor)}`
       : 'inactive';
+  if (
+    sectionNavigation.current.context !== requestNavigationContext ||
+    sectionNavigation.current.identity !== identity
+  )
+    sectionNavigation.current = {
+      requestId: sectionNavigation.current.requestId + 1,
+      context: requestNavigationContext,
+      identity,
+    };
   useEffect(() => {
     setRequestClientFilter(undefined);
   }, [requestNavigationContext]);
@@ -276,7 +313,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           sourceSignal: navigation?.sourceSignal,
           requestId: (current?.requestId ?? 0) + 1,
         }));
-        navigateToSection('requests');
+        navigateToSection('requests', navigation?.sourceSignal);
       }
     : undefined;
   // Offered only where the shell offers the Documents section, whose own detail
@@ -356,6 +393,22 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       {operationalSummary}
       <ProfitabilityDecisionQueue
         key={`profitability-queue:${access.sessionGeneration}`}
+        actor={access.actor}
+        identity={identity}
+        onActorRevalidated={acceptRevalidatedActor}
+        onCompanyContextRejected={rejectCompanyContext}
+        onWorkspaceAccessRejected={rejectWorkspaceAccess}
+      />
+      <OfferDecisionQueue
+        key={`offer-queue:${access.sessionGeneration}`}
+        actor={access.actor}
+        identity={identity}
+        onActorRevalidated={acceptRevalidatedActor}
+        onCompanyContextRejected={rejectCompanyContext}
+        onWorkspaceAccessRejected={rejectWorkspaceAccess}
+      />
+      <ContractDecisionQueue
+        key={`contract-queue:${access.sessionGeneration}`}
         actor={access.actor}
         identity={identity}
         onActorRevalidated={acceptRevalidatedActor}

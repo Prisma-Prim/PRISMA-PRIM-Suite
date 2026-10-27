@@ -25,6 +25,7 @@ import { ProjectTemplateController } from './project-template/project-template.c
 import { CompanyProjectTemplateUserAssignmentController } from './access/company-project-template-user-assignment.controller.js';
 import { ContractAgreementsController } from './contract/contract-agreements.controller.js';
 import { ContractModule } from './contract/contract.module.js';
+import { ContractDecisionQueueController } from './contract/contract-decision-queue.controller.js';
 import {
   ContractController,
   ProjectContractsController,
@@ -123,6 +124,7 @@ import { CompanySalesStageConfigurationAssignmentController } from './access/com
 import { CompanyProjectApproverAssignmentController } from './access/company-project-approver-assignment.controller.js';
 import { OperationalHomeModule } from './operational-home/operational-home.module.js';
 import { OperationalHomeController } from './operational-home/operational-home.controller.js';
+import { OfferDecisionQueueController } from './offer/offer-decision-queue.controller.js';
 import { OfferController } from './offer/offer.controller.js';
 import { OfferModule } from './offer/offer.module.js';
 import { ProfitabilityEstimateModule } from './profitability-estimate/profitability-estimate.module.js';
@@ -233,6 +235,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanySalesStageConfigurationAssignmentController,
     OperationalHomeController,
     OfferController,
+    OfferDecisionQueueController,
+    ContractDecisionQueueController,
     ContractController,
     ContractAgreementsController,
     ProfitabilityEstimateController,
