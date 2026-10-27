@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { ClientOperationalReferenceService } from '../client/client-operational-reference.service.js';
 import { DocumentSigningReferenceService } from '../documents/document-signing-reference.service.js';
 import { readReportedSigningDeclaration } from './reported-contract-signing-view.js';
@@ -53,70 +54,81 @@ export class ContractVersionReader {
     contractId?: string;
     versionId?: string;
   }) {
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireContractAccess(
-        input.actor,
-        ['commercial.contract.read'],
-        true,
-      );
-      const opportunity = await this.intake.requireReadableOfferOpportunity(
-        input.actor,
-        input.opportunityId,
-        false,
-      );
-      const found = await this.find({
-        actor: input.actor,
-        companyId,
-        opportunityId: opportunity.id,
-        ...(input.contractId === undefined
-          ? {}
-          : { contractId: input.contractId }),
-        versionId: input.versionId,
-      });
-      if (!found) {
-        if (input.versionId || input.contractId) throw new NotFoundException();
-        return null;
-      }
-      if (input.versionId !== undefined && input.versionId !== found.version.id)
-        throw new NotFoundException();
-      return this.view(input.actor, found.contract, found.version);
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId = await this.authorization.requireContractAccess(
+          input.actor,
+          ['commercial.contract.read'],
+          true,
+        );
+        const opportunity = await this.intake.requireReadableOfferOpportunity(
+          input.actor,
+          input.opportunityId,
+          false,
+        );
+        const found = await this.find({
+          actor: input.actor,
+          companyId,
+          opportunityId: opportunity.id,
+          ...(input.contractId === undefined
+            ? {}
+            : { contractId: input.contractId }),
+          versionId: input.versionId,
+        });
+        if (!found) {
+          if (input.versionId || input.contractId)
+            throw new NotFoundException();
+          return null;
+        }
+        if (
+          input.versionId !== undefined &&
+          input.versionId !== found.version.id
+        )
+          throw new NotFoundException();
+        return this.view(input.actor, found.contract, found.version);
+      },
     });
   }
 
   /** Both main agreements of one Opportunity for the Request detail (PRD 19.13). */
   async readOpportunity(input: { actor: ActorContext; opportunityId: string }) {
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireContractAccess(
-        input.actor,
-        ['commercial.contract.read'],
-        true,
-      );
-      const opportunity = await this.intake.requireReadableOfferOpportunity(
-        input.actor,
-        input.opportunityId,
-        false,
-      );
-      const target = {
-        actor: input.actor,
-        companyId,
-        opportunityId: opportunity.id,
-      };
-      const contract = await this.find(target);
-      const precontract = await this.findPrecontract(target);
-      return {
-        contract: contract
-          ? await this.view(input.actor, contract.contract, contract.version)
-          : null,
-        precontract: precontract
-          ? {
-              id: precontract.contract.id,
-              illustrativeReference: precontract.contract.illustrativeReference,
-              versionNumber: precontract.version.versionNumber,
-              decisionState: precontract.version.decisionState,
-              executionState: precontract.version.executionState,
-            }
-          : null,
-      };
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId = await this.authorization.requireContractAccess(
+          input.actor,
+          ['commercial.contract.read'],
+          true,
+        );
+        const opportunity = await this.intake.requireReadableOfferOpportunity(
+          input.actor,
+          input.opportunityId,
+          false,
+        );
+        const target = {
+          actor: input.actor,
+          companyId,
+          opportunityId: opportunity.id,
+        };
+        const contract = await this.find(target);
+        const precontract = await this.findPrecontract(target);
+        return {
+          contract: contract
+            ? await this.view(input.actor, contract.contract, contract.version)
+            : null,
+          precontract: precontract
+            ? {
+                id: precontract.contract.id,
+                illustrativeReference:
+                  precontract.contract.illustrativeReference,
+                versionNumber: precontract.version.versionNumber,
+                decisionState: precontract.version.decisionState,
+                executionState: precontract.version.executionState,
+              }
+            : null,
+        };
+      },
     });
   }
 
@@ -135,67 +147,88 @@ export class ContractVersionReader {
       (input.limit !== undefined && !/^\d+$/u.test(input.limit))
     )
       throw new BadRequestException({ field: 'limit' });
-    return this.databaseContext.transaction(async () => {
-      const companyId = await this.authorization.requireContractAccess(
-        input.actor,
-        ['commercial.contract.read'],
-        true,
-      );
-      await this.intake.requireReadableOfferOpportunity(
-        input.actor,
-        input.opportunityId,
-        false,
-      );
-      const current = await this.find({
-        actor: input.actor,
-        companyId,
-        opportunityId: input.opportunityId,
-        ...(input.contractId === undefined
-          ? {}
-          : { contractId: input.contractId }),
-      });
-      if (!current) {
-        if (input.contractId !== undefined) throw new NotFoundException();
-        if (input.cursor !== undefined)
-          throw new BadRequestException({ field: 'cursor' });
-        return { items: [], nextCursor: null };
-      }
-      if (
-        current.contract.origin === 'COMPANY_MODEL_OFFER' &&
-        current.version.executionState === 'EXECUTED'
-      )
-        await this.clients.readReferenceClient(
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: async () => {
+        const companyId = await this.authorization.requireContractAccess(
           input.actor,
-          current.contract.originalClientAccountId,
+          ['commercial.contract.read'],
+          true,
         );
-      const scope = and(
-        eq(contractVersions.workspaceId, input.actor.workspaceId),
-        eq(contractVersions.companyId, companyId),
-        eq(contractVersions.contractId, current.contract.id),
-      );
-      let before: number | undefined;
-      if (input.cursor !== undefined) {
-        const cursor = await this.find({
+        await this.intake.requireReadableOfferOpportunity(
+          input.actor,
+          input.opportunityId,
+          false,
+        );
+        const current = await this.find({
           actor: input.actor,
           companyId,
           opportunityId: input.opportunityId,
           ...(input.contractId === undefined
             ? {}
             : { contractId: input.contractId }),
-          versionId: input.cursor,
         });
-        if (!cursor) throw new BadRequestException({ field: 'cursor' });
-        before = cursor.version.versionNumber;
-      }
-      // New-mode history is a bounded index. Exact reads own the complete
-      // copied model/representation; listing never materializes fifty copies.
-      if (current.contract.origin === 'COMPANY_MODEL_OFFER') {
+        if (!current) {
+          if (input.contractId !== undefined) throw new NotFoundException();
+          if (input.cursor !== undefined)
+            throw new BadRequestException({ field: 'cursor' });
+          return { items: [], nextCursor: null };
+        }
+        if (
+          current.contract.origin === 'COMPANY_MODEL_OFFER' &&
+          current.version.executionState === 'EXECUTED'
+        )
+          await this.clients.readReferenceClient(
+            input.actor,
+            current.contract.originalClientAccountId,
+          );
+        const scope = and(
+          eq(contractVersions.workspaceId, input.actor.workspaceId),
+          eq(contractVersions.companyId, companyId),
+          eq(contractVersions.contractId, current.contract.id),
+        );
+        let before: number | undefined;
+        if (input.cursor !== undefined) {
+          const cursor = await this.find({
+            actor: input.actor,
+            companyId,
+            opportunityId: input.opportunityId,
+            ...(input.contractId === undefined
+              ? {}
+              : { contractId: input.contractId }),
+            versionId: input.cursor,
+          });
+          if (!cursor) throw new BadRequestException({ field: 'cursor' });
+          before = cursor.version.versionNumber;
+        }
+        // New-mode history is a bounded index. Exact reads own the complete
+        // copied model/representation; listing never materializes fifty copies.
+        if (current.contract.origin === 'COMPANY_MODEL_OFFER') {
+          const rows = await this.databaseContext.connection
+            .select({
+              id: contractVersions.id,
+              versionNumber: contractVersions.versionNumber,
+              provenance: contractVersions.provenance,
+            })
+            .from(contractVersions)
+            .where(
+              and(
+                scope,
+                before === undefined
+                  ? undefined
+                  : lt(contractVersions.versionNumber, before),
+              ),
+            )
+            .orderBy(desc(contractVersions.versionNumber))
+            .limit(limit + 1);
+          const items = rows.slice(0, limit);
+          return {
+            items,
+            nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null,
+          };
+        }
         const rows = await this.databaseContext.connection
-          .select({
-            id: contractVersions.id,
-            versionNumber: contractVersions.versionNumber,
-            provenance: contractVersions.provenance,
-          })
+          .select()
           .from(contractVersions)
           .where(
             and(
@@ -207,34 +240,16 @@ export class ContractVersionReader {
           )
           .orderBy(desc(contractVersions.versionNumber))
           .limit(limit + 1);
-        const items = rows.slice(0, limit);
+        const items = [];
+        for (const version of rows.slice(0, limit))
+          items.push(
+            (await this.view(input.actor, current.contract, version)).version,
+          );
         return {
           items,
           nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null,
         };
-      }
-      const rows = await this.databaseContext.connection
-        .select()
-        .from(contractVersions)
-        .where(
-          and(
-            scope,
-            before === undefined
-              ? undefined
-              : lt(contractVersions.versionNumber, before),
-          ),
-        )
-        .orderBy(desc(contractVersions.versionNumber))
-        .limit(limit + 1);
-      const items = [];
-      for (const version of rows.slice(0, limit))
-        items.push(
-          (await this.view(input.actor, current.contract, version)).version,
-        );
-      return {
-        items,
-        nextCursor: rows.length > limit ? (items.at(-1)?.id ?? null) : null,
-      };
+      },
     });
   }
 

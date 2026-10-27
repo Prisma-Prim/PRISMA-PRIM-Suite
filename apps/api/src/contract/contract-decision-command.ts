@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { contractSource } from './contract-source.js';
 import { qualityRunView } from './contract-quality-view.js';
 import {
@@ -74,8 +75,9 @@ export async function decideContractVersion(
     'commercial.contract.approve',
   ]);
   const key = requireIdempotencyKey(input.idempotencyKey);
-  return dependencies.databaseContext
-    .transaction(async () => {
+  return runClientReferenceTransaction({
+    database: dependencies.databaseContext,
+    work: async () => {
       const { actor } = input;
       const companyId = await dependencies.authorization.requireContractAccess(
         actor,
@@ -355,16 +357,16 @@ export async function decideContractVersion(
       );
       if (!recorded) throw new Error('Missing committed Contract decision.');
       return recorded;
-    })
-    .catch((error: unknown) => {
-      if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException({
-        code: 'CONTRACT_DECISION_UNCERTAIN',
-        correlationId: randomUUID(),
-        message:
-          'The Contract decision outcome is uncertain. Retry the identical command.',
-      });
+    },
+  }).catch((error: unknown) => {
+    if (error instanceof HttpException) throw error;
+    throw new InternalServerErrorException({
+      code: 'CONTRACT_DECISION_UNCERTAIN',
+      correlationId: randomUUID(),
+      message:
+        'The Contract decision outcome is uncertain. Retry the identical command.',
     });
+  });
 }
 
 export async function readContractDecision(

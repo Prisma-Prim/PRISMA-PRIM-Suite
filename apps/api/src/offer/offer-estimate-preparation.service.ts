@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   ConflictException,
   ForbiddenException,
@@ -116,433 +117,444 @@ export class EstimateOfferPreparationService {
     await this.requireAccess(actor, kind);
     const idempotencyKey = requireIdempotencyKey(key);
     try {
-      return await this.database.transaction(async () => {
-        const companyId = await this.requireAccess(actor, kind, true);
-        await this.authorization.requireProfitabilityEstimateAccess(
-          actor,
-          'read',
-          true,
-        );
-        const opportunity = await this.intake.requireReadableOfferOpportunity(
-          actor,
-          opportunityId,
-          true,
-        );
-        const fingerprint = commandFingerprint({
-          kind,
-          opportunityId: opportunity.id,
-          payload,
-        });
-        await this.commands.lock({ actor, companyId, idempotencyKey });
-        const receipt = await this.commands.find({
-          actor,
-          companyId,
-          idempotencyKey,
-        });
-        if (
-          receipt &&
-          (receipt.kind !== kind ||
-            receipt.opportunityId !== opportunity.id ||
-            receipt.fingerprint !== fingerprint)
-        )
-          throw conflict(
-            'IDEMPOTENCY_CONFLICT',
-            'The key belongs to another Offer command.',
-          );
-        if (
-          !receipt &&
-          (kind === 'CREATE_ESTIMATE_OFFER' || kind === 'CREATE_MODEL_OFFER') &&
-          opportunity.status !== 'OPEN'
-        )
-          throw conflict(
-            'OPPORTUNITY_NOT_OPEN',
-            'The Opportunity is not open.',
-          );
-        if (!opportunity.originalClientAccountId)
-          throw conflict(
-            'OFFER_CLIENT_REQUIRED',
-            'The Request needs a readable Client.',
-          );
-        const [existing] = await this.database.connection
-          .select()
-          .from(offers)
-          .where(
-            and(
-              eq(offers.workspaceId, actor.workspaceId),
-              eq(offers.companyId, companyId),
-              eq(offers.opportunityId, opportunity.id),
-            ),
-          );
-        const originalClientAccountId =
-          existing?.originalClientAccountId ??
-          opportunity.originalClientAccountId;
-        let command: PreparationCommand;
-        switch (kind) {
-          case 'CREATE_ESTIMATE_OFFER':
-            command = { kind, ...readCreateEstimateOfferCommand(payload) };
-            break;
-          case 'CREATE_MODEL_OFFER':
-            command = { kind, ...readCreateModelOfferCommand(payload) };
-            break;
-          case 'CREATE_ESTIMATE_OFFER_VERSION':
-            if (!existing) throw new NotFoundException();
-            command = {
-              kind,
-              offer: existing,
-              ...readCreateEstimateOfferVersionCommand(payload),
-            };
-            break;
-          case 'CREATE_MODEL_OFFER_VERSION':
-            if (!existing) throw new NotFoundException();
-            command = {
-              kind,
-              offer: existing,
-              ...readCreateModelOfferVersionCommand(payload),
-            };
-            break;
-          default: {
-            const exhaustive: never = kind;
-            return exhaustive;
-          }
-        }
-        // Acquire the write fence before a source read can borrow Client shares.
-        const recipient = await this.clients.lockOfferRecipient(
-          actor,
-          originalClientAccountId,
-          command.recipient,
-        );
-        const source =
-          await this.estimates.readApprovedOfferPriceWithinTransaction({
+      return await runClientReferenceTransaction({
+        database: this.database,
+        work: async () => {
+          const companyId = await this.requireAccess(actor, kind, true);
+          await this.authorization.requireProfitabilityEstimateAccess(
             actor,
+            'read',
+            true,
+          );
+          const opportunity = await this.intake.requireReadableOfferOpportunity(
+            actor,
+            opportunityId,
+            true,
+          );
+          const fingerprint = commandFingerprint({
+            kind,
             opportunityId: opportunity.id,
-            versionId: command.estimateVersionId,
-            versionNumber: command.estimateVersionNumber,
+            payload,
           });
-        if (receipt) {
-          if (!receipt.resultVersionId || receipt.resultOfferRevision === null)
-            throw new Error(
-              'The stored Offer preparation receipt is incomplete.',
+          await this.commands.lock({ actor, companyId, idempotencyKey });
+          const receipt = await this.commands.find({
+            actor,
+            companyId,
+            idempotencyKey,
+          });
+          if (
+            receipt &&
+            (receipt.kind !== kind ||
+              receipt.opportunityId !== opportunity.id ||
+              receipt.fingerprint !== fingerprint)
+          )
+            throw conflict(
+              'IDEMPOTENCY_CONFLICT',
+              'The key belongs to another Offer command.',
             );
-          const [offer] = await this.database.connection
+          if (
+            !receipt &&
+            (kind === 'CREATE_ESTIMATE_OFFER' ||
+              kind === 'CREATE_MODEL_OFFER') &&
+            opportunity.status !== 'OPEN'
+          )
+            throw conflict(
+              'OPPORTUNITY_NOT_OPEN',
+              'The Opportunity is not open.',
+            );
+          if (!opportunity.originalClientAccountId)
+            throw conflict(
+              'OFFER_CLIENT_REQUIRED',
+              'The Request needs a readable Client.',
+            );
+          const [existing] = await this.database.connection
             .select()
             .from(offers)
             .where(
               and(
                 eq(offers.workspaceId, actor.workspaceId),
                 eq(offers.companyId, companyId),
-                eq(offers.id, receipt.resultOfferId),
+                eq(offers.opportunityId, opportunity.id),
               ),
             );
-          const [version] = await this.database.connection
-            .select()
-            .from(offerVersions)
-            .where(
-              and(
-                eq(offerVersions.workspaceId, actor.workspaceId),
-                eq(offerVersions.companyId, companyId),
-                eq(offerVersions.offerId, receipt.resultOfferId),
-                eq(offerVersions.id, receipt.resultVersionId),
-              ),
-            );
-          if (!offer || !version) throw new NotFoundException();
-          const expectedProvenance =
-            'modelVersionId' in command
-              ? MODEL_ESTIMATE_OFFER_PROVENANCE
-              : INTERNAL_ESTIMATE_OFFER_PROVENANCE;
-          const expectedRevision =
-            'expectedOfferRevision' in command
-              ? command.expectedOfferRevision + 1
-              : 1;
-          if (
-            offer.opportunityId !== opportunity.id ||
-            version.opportunityId !== opportunity.id ||
-            version.offerId !== offer.id ||
-            offer.originalClientAccountId !== originalClientAccountId ||
-            version.originalClientAccountId !== originalClientAccountId ||
-            version.createdByWorkspaceMembershipId !==
-              actor.workspaceMembershipId ||
-            version.createdByInternalUserId !== actor.internalUserId ||
-            version.provenance !== expectedProvenance ||
-            receipt.resultOfferRevision !== expectedRevision ||
-            offer.revision < expectedRevision ||
-            (!('expectedOfferRevision' in command) &&
-              version.versionNumber !== 1) ||
-            version.estimateSourceVersionId !== command.estimateVersionId ||
-            version.estimateSourceVersionNumber !==
-              command.estimateVersionNumber ||
-            version.estimateSourceDecisionId !== source.approvalDecisionId ||
-            version.estimateSourceAmount !== source.amount ||
-            version.estimateSourceCurrency !== source.currency ||
-            version.recipientKind !== command.recipient.kind ||
-            (command.recipient.kind === 'ADDITIONAL' &&
-              version.recipientAdditionalLegalEntityId !==
-                command.recipient.legalEntityId) ||
-            version.validityDays !== command.validityDays ||
-            version.scopeNote !== command.scopeNote ||
-            version.commercialConditions !== command.commercialConditions
-          )
-            throw new Error(
-              'The stored Offer preparation receipt has an invalid binding.',
-            );
-          const prepared = await this.readPrepared({
+          const originalClientAccountId =
+            existing?.originalClientAccountId ??
+            opportunity.originalClientAccountId;
+          let command: PreparationCommand;
+          switch (kind) {
+            case 'CREATE_ESTIMATE_OFFER':
+              command = { kind, ...readCreateEstimateOfferCommand(payload) };
+              break;
+            case 'CREATE_MODEL_OFFER':
+              command = { kind, ...readCreateModelOfferCommand(payload) };
+              break;
+            case 'CREATE_ESTIMATE_OFFER_VERSION':
+              if (!existing) throw new NotFoundException();
+              command = {
+                kind,
+                offer: existing,
+                ...readCreateEstimateOfferVersionCommand(payload),
+              };
+              break;
+            case 'CREATE_MODEL_OFFER_VERSION':
+              if (!existing) throw new NotFoundException();
+              command = {
+                kind,
+                offer: existing,
+                ...readCreateModelOfferVersionCommand(payload),
+              };
+              break;
+            default: {
+              const exhaustive: never = kind;
+              return exhaustive;
+            }
+          }
+          // Acquire the write fence before a source read can borrow Client shares.
+          const recipient = await this.clients.lockOfferRecipient(
             actor,
-            offer,
-            version,
-            revision: receipt.resultOfferRevision,
-          });
-          if ('modelVersionId' in command) {
-            const content = prepared.version;
+            originalClientAccountId,
+            command.recipient,
+          );
+          const source =
+            await this.estimates.readApprovedOfferPriceWithinTransaction({
+              actor,
+              opportunityId: opportunity.id,
+              versionId: command.estimateVersionId,
+              versionNumber: command.estimateVersionNumber,
+            });
+          if (receipt) {
             if (
-              content.provenance !== MODEL_ESTIMATE_OFFER_PROVENANCE ||
-              content.modelSource.versionId !== command.modelVersionId ||
-              content.modelSource.versionNumber !==
-                command.modelVersionNumber ||
-              content.financialDeclaration.taxAmount !==
-                command.financialDeclaration.taxAmount ||
-              content.financialDeclaration.taxLabel !==
-                command.financialDeclaration.taxLabel ||
-              content.financialDeclaration.basis !==
-                command.financialDeclaration.basis
+              !receipt.resultVersionId ||
+              receipt.resultOfferRevision === null
             )
               throw new Error(
-                'The stored Offer model receipt has an invalid binding.',
+                'The stored Offer preparation receipt is incomplete.',
               );
+            const [offer] = await this.database.connection
+              .select()
+              .from(offers)
+              .where(
+                and(
+                  eq(offers.workspaceId, actor.workspaceId),
+                  eq(offers.companyId, companyId),
+                  eq(offers.id, receipt.resultOfferId),
+                ),
+              );
+            const [version] = await this.database.connection
+              .select()
+              .from(offerVersions)
+              .where(
+                and(
+                  eq(offerVersions.workspaceId, actor.workspaceId),
+                  eq(offerVersions.companyId, companyId),
+                  eq(offerVersions.offerId, receipt.resultOfferId),
+                  eq(offerVersions.id, receipt.resultVersionId),
+                ),
+              );
+            if (!offer || !version) throw new NotFoundException();
+            const expectedProvenance =
+              'modelVersionId' in command
+                ? MODEL_ESTIMATE_OFFER_PROVENANCE
+                : INTERNAL_ESTIMATE_OFFER_PROVENANCE;
+            const expectedRevision =
+              'expectedOfferRevision' in command
+                ? command.expectedOfferRevision + 1
+                : 1;
+            if (
+              offer.opportunityId !== opportunity.id ||
+              version.opportunityId !== opportunity.id ||
+              version.offerId !== offer.id ||
+              offer.originalClientAccountId !== originalClientAccountId ||
+              version.originalClientAccountId !== originalClientAccountId ||
+              version.createdByWorkspaceMembershipId !==
+                actor.workspaceMembershipId ||
+              version.createdByInternalUserId !== actor.internalUserId ||
+              version.provenance !== expectedProvenance ||
+              receipt.resultOfferRevision !== expectedRevision ||
+              offer.revision < expectedRevision ||
+              (!('expectedOfferRevision' in command) &&
+                version.versionNumber !== 1) ||
+              version.estimateSourceVersionId !== command.estimateVersionId ||
+              version.estimateSourceVersionNumber !==
+                command.estimateVersionNumber ||
+              version.estimateSourceDecisionId !== source.approvalDecisionId ||
+              version.estimateSourceAmount !== source.amount ||
+              version.estimateSourceCurrency !== source.currency ||
+              version.recipientKind !== command.recipient.kind ||
+              (command.recipient.kind === 'ADDITIONAL' &&
+                version.recipientAdditionalLegalEntityId !==
+                  command.recipient.legalEntityId) ||
+              version.validityDays !== command.validityDays ||
+              version.scopeNote !== command.scopeNote ||
+              version.commercialConditions !== command.commercialConditions
+            )
+              throw new Error(
+                'The stored Offer preparation receipt has an invalid binding.',
+              );
+            const prepared = await this.readPrepared({
+              actor,
+              offer,
+              version,
+              revision: receipt.resultOfferRevision,
+            });
+            if ('modelVersionId' in command) {
+              const content = prepared.version;
+              if (
+                content.provenance !== MODEL_ESTIMATE_OFFER_PROVENANCE ||
+                content.modelSource.versionId !== command.modelVersionId ||
+                content.modelSource.versionNumber !==
+                  command.modelVersionNumber ||
+                content.financialDeclaration.taxAmount !==
+                  command.financialDeclaration.taxAmount ||
+                content.financialDeclaration.taxLabel !==
+                  command.financialDeclaration.taxLabel ||
+                content.financialDeclaration.basis !==
+                  command.financialDeclaration.basis
+              )
+                throw new Error(
+                  'The stored Offer model receipt has an invalid binding.',
+                );
+            }
+            return prepared;
           }
-          return prepared;
-        }
-        const modelSource =
-          'modelVersionId' in command
-            ? await this.models.requireSelectedForOfferWithinTransaction({
-                actor,
-                versionId: command.modelVersionId,
-                versionNumber: command.modelVersionNumber,
-              })
-            : null;
-        if (
-          (kind === 'CREATE_ESTIMATE_OFFER' || kind === 'CREATE_MODEL_OFFER') &&
-          existing
-        )
-          throw conflict(
-            'OFFER_ALREADY_EXISTS',
-            'An Offer already exists for this Opportunity.',
+          const modelSource =
+            'modelVersionId' in command
+              ? await this.models.requireSelectedForOfferWithinTransaction({
+                  actor,
+                  versionId: command.modelVersionId,
+                  versionNumber: command.modelVersionNumber,
+                })
+              : null;
+          if (
+            (kind === 'CREATE_ESTIMATE_OFFER' ||
+              kind === 'CREATE_MODEL_OFFER') &&
+            existing
+          )
+            throw conflict(
+              'OFFER_ALREADY_EXISTS',
+              'An Offer already exists for this Opportunity.',
+            );
+          let predecessor: typeof offerVersions.$inferSelect | undefined;
+          let current = existing;
+          if ('offer' in command) {
+            const [locked] = await this.database.connection
+              .select()
+              .from(offers)
+              .where(
+                and(
+                  eq(offers.workspaceId, actor.workspaceId),
+                  eq(offers.companyId, companyId),
+                  eq(offers.id, command.offer.id),
+                ),
+              )
+              .for('update');
+            if (!locked) throw new NotFoundException();
+            current = locked;
+            if (locked.revision !== command.expectedOfferRevision)
+              throw conflict(
+                'STALE_OFFER_REVISION',
+                'The Offer changed. Reload it before creating a Version.',
+              );
+            const [accepted] = await this.database.connection
+              .select({ id: offerClientResponses.id })
+              .from(offerClientResponses)
+              .where(
+                and(
+                  eq(offerClientResponses.workspaceId, actor.workspaceId),
+                  eq(offerClientResponses.companyId, companyId),
+                  eq(offerClientResponses.offerId, locked.id),
+                  eq(offerClientResponses.outcome, 'ACCEPTED'),
+                ),
+              )
+              .limit(1);
+            if (accepted)
+              throw conflict(
+                'OFFER_ACCEPTED',
+                'The accepted Offer cannot receive another Version.',
+              );
+            const [head] = await this.database.connection
+              .select()
+              .from(offerVersions)
+              .where(
+                and(
+                  eq(offerVersions.workspaceId, actor.workspaceId),
+                  eq(offerVersions.companyId, companyId),
+                  eq(offerVersions.offerId, locked.id),
+                ),
+              )
+              .orderBy(desc(offerVersions.versionNumber))
+              .limit(1);
+            if (!head) throw new Error('The Offer head is missing.');
+            predecessor = head;
+          }
+          const company = actor.activeCompany;
+          if (!company || company.id !== companyId)
+            throw new ForbiddenException();
+          const createdAt = this.clock.now();
+          const illustrativeReference =
+            current?.illustrativeReference ??
+            (await this.commands.allocateReference({
+              workspaceId: actor.workspaceId,
+              companyId,
+            }));
+          const [offer] = current
+            ? [current]
+            : await this.database.connection
+                .insert(offers)
+                .values({
+                  workspaceId: actor.workspaceId,
+                  companyId,
+                  opportunityId: opportunity.id,
+                  clientRequestId: opportunity.clientRequestId,
+                  originalClientAccountId,
+                  illustrativeReference,
+                  createdByInternalUserId: actor.internalUserId,
+                  createdByWorkspaceMembershipId: actor.workspaceMembershipId,
+                  createdAt,
+                })
+                .returning();
+          if (!offer) throw new Error('The internal Offer was not recorded.');
+          const versionNumber = predecessor ? predecessor.versionNumber + 1 : 1;
+          const validUntil = new Date(
+            createdAt.getTime() + command.validityDays * 86_400_000,
           );
-        let predecessor: typeof offerVersions.$inferSelect | undefined;
-        let current = existing;
-        if ('offer' in command) {
-          const [locked] = await this.database.connection
-            .select()
-            .from(offers)
-            .where(
-              and(
-                eq(offers.workspaceId, actor.workspaceId),
-                eq(offers.companyId, companyId),
-                eq(offers.id, command.offer.id),
-              ),
-            )
-            .for('update');
-          if (!locked) throw new NotFoundException();
-          current = locked;
-          if (locked.revision !== command.expectedOfferRevision)
-            throw conflict(
-              'STALE_OFFER_REVISION',
-              'The Offer changed. Reload it before creating a Version.',
-            );
-          const [accepted] = await this.database.connection
-            .select({ id: offerClientResponses.id })
-            .from(offerClientResponses)
-            .where(
-              and(
-                eq(offerClientResponses.workspaceId, actor.workspaceId),
-                eq(offerClientResponses.companyId, companyId),
-                eq(offerClientResponses.offerId, locked.id),
-                eq(offerClientResponses.outcome, 'ACCEPTED'),
-              ),
-            )
-            .limit(1);
-          if (accepted)
-            throw conflict(
-              'OFFER_ACCEPTED',
-              'The accepted Offer cannot receive another Version.',
-            );
-          const [head] = await this.database.connection
-            .select()
-            .from(offerVersions)
-            .where(
-              and(
-                eq(offerVersions.workspaceId, actor.workspaceId),
-                eq(offerVersions.companyId, companyId),
-                eq(offerVersions.offerId, locked.id),
-              ),
-            )
-            .orderBy(desc(offerVersions.versionNumber))
-            .limit(1);
-          if (!head) throw new Error('The Offer head is missing.');
-          predecessor = head;
-        }
-        const company = actor.activeCompany;
-        if (!company || company.id !== companyId)
-          throw new ForbiddenException();
-        const createdAt = this.clock.now();
-        const illustrativeReference =
-          current?.illustrativeReference ??
-          (await this.commands.allocateReference({
-            workspaceId: actor.workspaceId,
-            companyId,
-          }));
-        const [offer] = current
-          ? [current]
-          : await this.database.connection
-              .insert(offers)
-              .values({
-                workspaceId: actor.workspaceId,
-                companyId,
-                opportunityId: opportunity.id,
-                clientRequestId: opportunity.clientRequestId,
-                originalClientAccountId,
-                illustrativeReference,
-                createdByInternalUserId: actor.internalUserId,
-                createdByWorkspaceMembershipId: actor.workspaceMembershipId,
-                createdAt,
-              })
-              .returning();
-        if (!offer) throw new Error('The internal Offer was not recorded.');
-        const versionNumber = predecessor ? predecessor.versionNumber + 1 : 1;
-        const validUntil = new Date(
-          createdAt.getTime() + command.validityDays * 86_400_000,
-        );
-        const financialDeclaration =
-          'financialDeclaration' in command
-            ? modelOfferFinancials({
-                declaration: command.financialDeclaration,
-                netAmount: source.amount,
-                currency: source.currency,
-                actorWorkspaceMembershipId: actor.workspaceMembershipId,
-                actorInternalUserId: actor.internalUserId,
-                declaredAt: createdAt.toISOString(),
-              })
-            : null;
-        const modelGenerationSnapshot =
-          modelSource && financialDeclaration
-            ? {
-                modelSource,
-                financialDeclaration,
-                representation: renderModelOfferRepresentation({
+          const financialDeclaration =
+            'financialDeclaration' in command
+              ? modelOfferFinancials({
+                  declaration: command.financialDeclaration,
+                  netAmount: source.amount,
+                  currency: source.currency,
+                  actorWorkspaceMembershipId: actor.workspaceMembershipId,
+                  actorInternalUserId: actor.internalUserId,
+                  declaredAt: createdAt.toISOString(),
+                })
+              : null;
+          const modelGenerationSnapshot =
+            modelSource && financialDeclaration
+              ? {
                   modelSource,
                   financialDeclaration,
-                  priceSource: source,
-                  illustrativeReference,
-                  versionNumber,
-                  recipient: recipient.recipient,
-                  createdAt: createdAt.toISOString(),
-                  validUntil: validUntil.toISOString(),
-                  scopeNote: command.scopeNote,
-                  commercialConditions: command.commercialConditions,
-                }),
-              }
-            : null;
-        const [version] = await this.database.connection
-          .insert(offerVersions)
-          .values({
+                  representation: renderModelOfferRepresentation({
+                    modelSource,
+                    financialDeclaration,
+                    priceSource: source,
+                    illustrativeReference,
+                    versionNumber,
+                    recipient: recipient.recipient,
+                    createdAt: createdAt.toISOString(),
+                    validUntil: validUntil.toISOString(),
+                    scopeNote: command.scopeNote,
+                    commercialConditions: command.commercialConditions,
+                  }),
+                }
+              : null;
+          const [version] = await this.database.connection
+            .insert(offerVersions)
+            .values({
+              workspaceId: actor.workspaceId,
+              companyId,
+              offerId: offer.id,
+              opportunityId: opportunity.id,
+              clientRequestId: opportunity.clientRequestId,
+              originalClientAccountId,
+              versionNumber,
+              predecessorVersionId: predecessor?.id ?? null,
+              pricingSnapshotId: null,
+              estimateSourceId: source.estimateId,
+              estimateSourceVersionId: source.estimateVersionId,
+              estimateSourceVersionNumber: source.estimateVersionNumber,
+              estimateSourceDecisionId: source.approvalDecisionId,
+              estimateSourceDecisionCode: 'APPROVE',
+              estimateSourceApprovedAt: new Date(source.approvedAt),
+              estimateSourceAmount: source.amount,
+              estimateSourceCurrency: source.currency,
+              recipientClientAccountId: recipient.currentClientAccountId,
+              recipientKind: recipient.recipient.kind,
+              recipientAdditionalLegalEntityId:
+                recipient.recipient.kind === 'ADDITIONAL'
+                  ? recipient.recipient.additionalLegalEntityId
+                  : null,
+              recipientLegalName: recipient.recipient.legalName,
+              recipientTaxId: recipient.recipient.taxId,
+              recipientLegalAddress: recipient.recipient.legalAddress,
+              issuingCompanyLabel: company.displayName,
+              validityDays: command.validityDays,
+              validUntil,
+              scopeNote: command.scopeNote,
+              commercialConditions: command.commercialConditions,
+              templateCode: null,
+              templateVersion: null,
+              provenance: modelSource
+                ? MODEL_ESTIMATE_OFFER_PROVENANCE
+                : INTERNAL_ESTIMATE_OFFER_PROVENANCE,
+              ...(modelSource
+                ? {
+                    modelSourceId: modelSource.modelId,
+                    modelSourceVersionId: modelSource.versionId,
+                    modelSourceVersionNumber: modelSource.versionNumber,
+                    modelSourceDecisionId: modelSource.approvalDecisionId,
+                    modelSourceDecisionOutcome: 'APPROVE',
+                    modelGenerationSnapshot,
+                  }
+                : {}),
+              createdByInternalUserId: actor.internalUserId,
+              createdByWorkspaceMembershipId: actor.workspaceMembershipId,
+              createdAt,
+            })
+            .returning();
+          if (!version)
+            throw new Error('The internal Offer Version was not recorded.');
+          const revision = predecessor ? offer.revision + 1 : 1;
+          if (predecessor) {
+            await this.database.connection
+              .update(offerVersions)
+              .set({
+                supersededByVersionId: version.id,
+                supersededAt: createdAt,
+              })
+              .where(eq(offerVersions.id, predecessor.id));
+            await this.database.connection
+              .update(offers)
+              .set({ revision })
+              .where(eq(offers.id, offer.id));
+          }
+          await this.clients.recordLockedReferenceUse(actor, recipient);
+          await this.database.connection.insert(offerCommands).values({
             workspaceId: actor.workspaceId,
             companyId,
-            offerId: offer.id,
+            actorWorkspaceMembershipId: actor.workspaceMembershipId,
+            idempotencyKey,
+            fingerprint,
             opportunityId: opportunity.id,
-            clientRequestId: opportunity.clientRequestId,
-            originalClientAccountId,
-            versionNumber,
-            predecessorVersionId: predecessor?.id ?? null,
-            pricingSnapshotId: null,
-            estimateSourceId: source.estimateId,
-            estimateSourceVersionId: source.estimateVersionId,
-            estimateSourceVersionNumber: source.estimateVersionNumber,
-            estimateSourceDecisionId: source.approvalDecisionId,
-            estimateSourceDecisionCode: 'APPROVE',
-            estimateSourceApprovedAt: new Date(source.approvedAt),
-            estimateSourceAmount: source.amount,
-            estimateSourceCurrency: source.currency,
-            recipientClientAccountId: recipient.currentClientAccountId,
-            recipientKind: recipient.recipient.kind,
-            recipientAdditionalLegalEntityId:
-              recipient.recipient.kind === 'ADDITIONAL'
-                ? recipient.recipient.additionalLegalEntityId
-                : null,
-            recipientLegalName: recipient.recipient.legalName,
-            recipientTaxId: recipient.recipient.taxId,
-            recipientLegalAddress: recipient.recipient.legalAddress,
-            issuingCompanyLabel: company.displayName,
-            validityDays: command.validityDays,
-            validUntil,
-            scopeNote: command.scopeNote,
-            commercialConditions: command.commercialConditions,
-            templateCode: null,
-            templateVersion: null,
-            provenance: modelSource
-              ? MODEL_ESTIMATE_OFFER_PROVENANCE
-              : INTERNAL_ESTIMATE_OFFER_PROVENANCE,
+            resultOfferId: offer.id,
+            kind,
+            resultVersionId: version.id,
+            resultOfferRevision: revision,
+            createdAt,
+          });
+          await this.accountability.recordEstimateOfferPrepared({
             ...(modelSource
               ? {
-                  modelSourceId: modelSource.modelId,
-                  modelSourceVersionId: modelSource.versionId,
-                  modelSourceVersionNumber: modelSource.versionNumber,
-                  modelSourceDecisionId: modelSource.approvalDecisionId,
-                  modelSourceDecisionOutcome: 'APPROVE',
-                  modelGenerationSnapshot,
+                  provenance: MODEL_ESTIMATE_OFFER_PROVENANCE,
+                  modelVersionId: modelSource.versionId,
+                  modelVersionNumber: modelSource.versionNumber,
+                  modelApprovalDecisionId: modelSource.approvalDecisionId,
                 }
-              : {}),
-            createdByInternalUserId: actor.internalUserId,
-            createdByWorkspaceMembershipId: actor.workspaceMembershipId,
-            createdAt,
-          })
-          .returning();
-        if (!version)
-          throw new Error('The internal Offer Version was not recorded.');
-        const revision = predecessor ? offer.revision + 1 : 1;
-        if (predecessor) {
-          await this.database.connection
-            .update(offerVersions)
-            .set({ supersededByVersionId: version.id, supersededAt: createdAt })
-            .where(eq(offerVersions.id, predecessor.id));
-          await this.database.connection
-            .update(offers)
-            .set({ revision })
-            .where(eq(offers.id, offer.id));
-        }
-        await this.clients.recordLockedReferenceUse(actor, recipient);
-        await this.database.connection.insert(offerCommands).values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey,
-          fingerprint,
-          opportunityId: opportunity.id,
-          resultOfferId: offer.id,
-          kind,
-          resultVersionId: version.id,
-          resultOfferRevision: revision,
-          createdAt,
-        });
-        await this.accountability.recordEstimateOfferPrepared({
-          ...(modelSource
-            ? {
-                provenance: MODEL_ESTIMATE_OFFER_PROVENANCE,
-                modelVersionId: modelSource.versionId,
-                modelVersionNumber: modelSource.versionNumber,
-                modelApprovalDecisionId: modelSource.approvalDecisionId,
-              }
-            : { provenance: INTERNAL_ESTIMATE_OFFER_PROVENANCE }),
-          actor,
-          companyId,
-          offerId: offer.id,
-          offerVersionId: version.id,
-          versionNumber: version.versionNumber,
-          illustrativeReference,
-          recipientKind: recipient.recipient.kind,
-          estimateVersionId: source.estimateVersionId,
-          estimateVersionNumber: source.estimateVersionNumber,
-          approvalDecisionId: source.approvalDecisionId,
-          occurredAt: createdAt,
-        });
-        return this.readPrepared({ actor, offer, version, revision });
+              : { provenance: INTERNAL_ESTIMATE_OFFER_PROVENANCE }),
+            actor,
+            companyId,
+            offerId: offer.id,
+            offerVersionId: version.id,
+            versionNumber: version.versionNumber,
+            illustrativeReference,
+            recipientKind: recipient.recipient.kind,
+            estimateVersionId: source.estimateVersionId,
+            estimateVersionNumber: source.estimateVersionNumber,
+            approvalDecisionId: source.approvalDecisionId,
+            occurredAt: createdAt,
+          });
+          return this.readPrepared({ actor, offer, version, revision });
+        },
       });
     } catch (error) {
       if (error instanceof HttpException) throw error;
