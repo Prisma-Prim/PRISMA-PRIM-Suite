@@ -267,6 +267,33 @@ test('offline restore rejects damaged or missing proof and archive, and a differ
   }
 });
 
+test('an intact older archive cannot satisfy a different current Dockerfile pin', () => {
+  const setup = fixture();
+  try {
+    const cold = setup.invoke('acquire');
+    assert.equal(cold.status, 0, cold.stdout + cold.stderr);
+    const original = setup.images[0].source;
+    const successor = original.replace(
+      /sha256:[a-f0-9]{64}$/,
+      'sha256:' + '0'.repeat(64),
+    );
+    for (const owner of ['api', 'web']) {
+      const path = join(setup.root, `deploy/railway/${owner}.Dockerfile`);
+      writeFileSync(
+        path,
+        readFileSync(path, 'utf8').replaceAll(original, successor),
+      );
+    }
+    writeFileSync(setup.log, '');
+    const restored = setup.invoke('load');
+    assert.equal(restored.status, 1, restored.stdout + restored.stderr);
+    assert.match(restored.stderr, /node index: digest mismatch/);
+    assert.equal(readFileSync(setup.log, 'utf8'), '');
+  } finally {
+    setup.cleanup();
+  }
+});
+
 test('a cache miss requires explicit acquisition and unavailable registry fails without fallback or archive', () => {
   const setup = fixture({ registryError: true });
   try {
