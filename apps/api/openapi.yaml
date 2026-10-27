@@ -3,6 +3,110 @@ info:
   title: PRISMA-PRIM Suite API
   version: 0.1.0
 paths:
+  /api/contracts/opportunities/{opportunityId}/projects/create-from-mission-plan:
+    post:
+      operationId: createContractMissionFromPlan
+      summary: Create a preparatory Project and exact plan Tasks linked to an eligible agreement
+      description: >-
+        Requires independent live Contract read/link, Opportunity and Client visibility,
+        known-v1 Mission Plan User read/instantiate, Project read/create and Task read/manage.
+        The server resolves the agreement's original Client through the native Client owner;
+        no Client override is accepted. One transaction creates the Project, exact ordinary
+        Tasks, immutable source mapping, native events/fence, Contract link/revision and receipt.
+        Native CONTRACT/PRECONTRACT execution and Company-model signing qualification,
+        complete candidate acknowledgement, capacity and optimistic revision still apply.
+        The existing Workspace/Company/actor Contract command-key namespace distinguishes
+        this intent from manual creation/linking. An identical committed retry requires current
+        Contract/Opportunity/Client visibility, User use and Project/Task read; it precedes
+        fresh creation, candidate, active-Client and original-revision gates and never retargets
+        the stored Project or source after closure or Client union. No activation is performed.
+      tags: [Contract]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: opportunityId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractMissionPlanCreationInput'
+      responses:
+        '201':
+          description: One complete native creation and link, or its original readable receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractMissionPlanCreationReceipt'
+        '400':
+          description: Malformed input, supplied Client override or mismatched exact source number.
+        '401':
+          description: No verified External Principal.
+        '403':
+          description: A required live independent grant or Company context is unavailable.
+        '404':
+          description: Uniform unavailable agreement, Client, Project or exact source, without hidden metadata.
+        '409':
+          description: Native agreement eligibility, candidate limit/change, capacity, revision or command-intent conflict; no partial creation.
+        '500':
+          description: Uncertain outcome; retry the identical command explicitly.
+  /api/contracts/opportunities/{opportunityId}/agreements/{contractId}/projects/create-from-mission-plan:
+    post:
+      operationId: createAgreementMissionFromPlan
+      summary: Create a preparatory Project and exact plan Tasks linked to an eligible agreement
+      description: >-
+        Requires independent live Contract read/link, Opportunity and Client visibility,
+        known-v1 Mission Plan User read/instantiate, Project read/create and Task read/manage.
+        The server resolves the agreement's original Client through the native Client owner;
+        no Client override is accepted. One transaction creates the Project, exact ordinary
+        Tasks, immutable source mapping, native events/fence, Contract link/revision and receipt.
+        Native CONTRACT/PRECONTRACT execution and Company-model signing qualification,
+        complete candidate acknowledgement, capacity and optimistic revision still apply.
+        The existing Workspace/Company/actor Contract command-key namespace distinguishes
+        this intent from manual creation/linking. An identical committed retry requires current
+        Contract/Opportunity/Client visibility, User use and Project/Task read; it precedes
+        fresh creation, candidate, active-Client and original-revision gates and never retargets
+        the stored Project or source after closure or Client union. No activation is performed.
+      tags: [Contract]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: opportunityId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: contractId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractMissionPlanCreationInput'
+      responses:
+        '201':
+          description: One complete native creation and link, or its original readable receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractMissionPlanCreationReceipt'
+        '400':
+          description: Malformed input, supplied Client override or mismatched exact source number.
+        '401':
+          description: No verified External Principal.
+        '403':
+          description: A required live independent grant or Company context is unavailable.
+        '404':
+          description: Uniform unavailable agreement, Client, Project or exact source, without hidden metadata.
+        '409':
+          description: Native agreement eligibility, candidate limit/change, capacity, revision or command-intent conflict; no partial creation.
+        '500':
+          description: Uncertain outcome; retry the identical command explicitly.
   /api/access/current-actor:
     get:
       operationId: getCurrentActor
@@ -3060,6 +3164,75 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    ContractMissionPlanCreationInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          title,
+          expectedContractRevision,
+          acknowledgedCandidateProjectIds,
+          missionPlan,
+        ]
+      properties:
+        title:
+          type: string
+          pattern: \S
+          description: Trimmed by the native Project owner to 1–200 characters.
+        expectedContractRevision:
+          type: integer
+          minimum: 1
+          maximum: 2147483646
+        acknowledgedCandidateProjectIds:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items: { type: string, format: uuid }
+        missionPlan:
+          type: object
+          additionalProperties: false
+          required: [planId, versionId, versionNumber]
+          properties:
+            planId: { type: string, format: uuid }
+            versionId: { type: string, format: uuid }
+            versionNumber: { type: integer, minimum: 1, maximum: 2147483647 }
+    ContractMissionPlanCreationReceipt:
+      type: object
+      additionalProperties: false
+      required: [project, link]
+      properties:
+        project:
+          type: object
+          additionalProperties: false
+          required: [id, companyId, clientAccountId, title, status, createdAt]
+          properties:
+            id: { type: string, format: uuid }
+            companyId: { type: string, format: uuid }
+            clientAccountId: { type: string, format: uuid }
+            title: { type: string, minLength: 1, maxLength: 200 }
+            status: { const: preparatory }
+            createdAt: { type: string, format: date-time }
+        link:
+          type: object
+          additionalProperties: false
+          required:
+            [
+              id,
+              contractId,
+              projectId,
+              revision,
+              created,
+              actorWorkspaceMembershipId,
+              linkedAt,
+            ]
+          properties:
+            id: { type: string, format: uuid }
+            contractId: { type: string, format: uuid }
+            projectId: { type: string, format: uuid }
+            revision: { type: integer, minimum: 4, maximum: 2147483647 }
+            created: { const: true }
+            actorWorkspaceMembershipId: { type: string, format: uuid }
+            linkedAt: { type: string, format: date-time }
     OfferDetail:
       type: object
       additionalProperties: false

@@ -1,3 +1,7 @@
+import {
+  ContractMissionPlanCreatePanel,
+  type ContractMissionPlanContext,
+} from './ContractMissionPlanCreatePanel';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ApiResult } from '../api/authenticated-api-client';
@@ -15,6 +19,7 @@ import {
   readContractProjectLink,
   type ContractProjectCandidate,
   type ContractProjectLink,
+  type ProjectSummary,
 } from './contract-projects-response';
 
 type Load =
@@ -47,7 +52,9 @@ export function ContractProjectsPanel({
   onProtectionChange,
   onReload,
   onOpenProject,
+  missionPlan,
 }: {
+  missionPlan?: ContractMissionPlanContext;
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
@@ -77,7 +84,8 @@ export function ContractProjectsPanel({
   const [load, setLoad] = useState<Load>({ kind: 'loading' }),
     [selected, setSelected] = useState(''),
     [feedback, setFeedback] = useState<Feedback>('idle');
-  const [creationProtected, setCreationProtected] = useState(false),
+  const [plannedProtected, setPlannedProtected] = useState(false),
+    [creationProtected, setCreationProtected] = useState(false),
     [candidateRefresh, setCandidateRefresh] = useState(0);
   const read = useRef<AbortController | undefined>(undefined),
     pending = useRef<AbortController | undefined>(undefined),
@@ -95,7 +103,8 @@ export function ContractProjectsPanel({
     feedback === 'running' ||
     feedback === 'uncertain' ||
     protectedCommand ||
-    creationProtected;
+    creationProtected ||
+    plannedProtected;
   const terminal = [
     'denied',
     'unavailable',
@@ -140,9 +149,12 @@ export function ContractProjectsPanel({
   }, [identity, companyId, opportunityId, eligible, candidateRefresh]);
   useEffect(() => {
     onProtectionChange(
-      feedback === 'running' || feedback === 'uncertain' || creationProtected,
+      feedback === 'running' ||
+        feedback === 'uncertain' ||
+        creationProtected ||
+        plannedProtected,
     );
-  }, [feedback, creationProtected, onProtectionChange]);
+  }, [feedback, creationProtected, plannedProtected, onProtectionChange]);
   useEffect(
     () => () => {
       read.current?.abort();
@@ -159,6 +171,7 @@ export function ContractProjectsPanel({
       feedback === 'running' ||
       protectedCommand ||
       creationProtected ||
+      plannedProtected ||
       terminal
     )
       return;
@@ -261,6 +274,21 @@ export function ContractProjectsPanel({
     } catch {
       if (!controller.signal.aborted) setFeedback('uncertain');
     }
+  }
+  function created(link: ContractProjectLink, project: ProjectSummary) {
+    const candidate = { ...project, alreadyLinked: true, otherContracts: [] };
+    setLoad((current) =>
+      current.kind === 'ready'
+        ? {
+            kind: 'ready',
+            items: [
+              candidate,
+              ...current.items.filter((item) => item.id !== project.id),
+            ].slice(0, 50),
+          }
+        : current,
+    );
+    onLinked(link, candidate);
   }
   if (!eligible && contract.linkedProjects.length === 0) return null;
   return (
@@ -378,37 +406,52 @@ export function ContractProjectsPanel({
               protectedCommand={
                 protectedCommand ||
                 feedback === 'running' ||
-                feedback === 'uncertain'
+                feedback === 'uncertain' ||
+                plannedProtected
               }
               reject={reject}
               onProtectionChange={setCreationProtected}
               onCandidatesChanged={() =>
                 setCandidateRefresh((current) => current + 1)
               }
-              onCreated={(link, project) => {
-                setLoad((current) =>
-                  current.kind === 'ready'
-                    ? {
-                        kind: 'ready',
-                        items: [
-                          {
-                            ...project,
-                            alreadyLinked: true,
-                            otherContracts: [],
-                          },
-                          ...current.items,
-                        ].slice(0, 50),
-                      }
-                    : current,
-                );
-                onLinked(link, {
-                  ...project,
-                  alreadyLinked: true,
-                  otherContracts: [],
-                });
-              }}
+              onCreated={created}
             />
           )}
+          {mayCreate && missionPlan && (
+            <ContractMissionPlanCreatePanel
+              missionPlan={missionPlan}
+              identity={identity}
+              companyId={companyId}
+              opportunityId={opportunityId}
+              contractId={contract.id}
+              contractKind={contract.kind}
+              revision={contract.revision}
+              initialTitle={opportunityTitle}
+              candidates={load.kind === 'ready' ? load.items : undefined}
+              protectedCommand={
+                protectedCommand ||
+                creationProtected ||
+                feedback === 'running' ||
+                feedback === 'uncertain'
+              }
+              onProtectionChange={setPlannedProtected}
+              onCandidatesChanged={() => setCandidateRefresh((n) => n + 1)}
+              onCreated={created}
+            />
+          )}
+          <button
+            type="button"
+            disabled={
+              protectedCommand ||
+              creationProtected ||
+              feedback === 'running' ||
+              feedback === 'uncertain' ||
+              load.kind === 'loading'
+            }
+            onClick={() => setCandidateRefresh((n) => n + 1)}
+          >
+            {copy('refreshCandidates')}
+          </button>
           {feedback === 'uncertain' && (
             <button
               type="button"

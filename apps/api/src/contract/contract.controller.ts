@@ -53,6 +53,19 @@ export class ContractController {
       idempotencyKey,
     });
   }
+  @Post('projects/create-from-mission-plan') createProjectFromMissionPlan(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Body() payload: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.projectCreation.createFromMissionPlan({
+      actor: actorFrom(request),
+      opportunityId,
+      payload,
+      idempotencyKey,
+    });
+  }
   @Post('projects/create') createProject(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,

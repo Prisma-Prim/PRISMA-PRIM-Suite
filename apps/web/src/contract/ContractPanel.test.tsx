@@ -1,3 +1,8 @@
+import {
+  actor as planActor,
+  source as planSource,
+  cataloguePage as planCatalogue,
+} from '../mission-plan/mission-plan.fixture';
 import { contractRecordedLocales } from '../test/contract-recorded-values-fixture';
 import { contractDirectMessages } from './contract-direct.copy';
 import { contractQualityLocales } from '../test/contract-quality-localization-fixture';
@@ -5898,3 +5903,91 @@ function qualityRun() {
     ],
   };
 }
+
+it('wires scoped plan rejection through the actual Legacy Contract parent without replacing the manual draft', async () => {
+  const native = projectActor(),
+    current: ActorContext = {
+      ...native,
+      internalUserId: planActor.internalUserId,
+      workspaceMembershipId: planActor.workspaceMembershipId,
+      workspaceId: planActor.workspaceId,
+      activeCompany: {
+        ...native.activeCompany,
+        id: planSource.companyId,
+        displayName: 'Synthetic Company',
+        missionPlanGrants: planActor.activeCompany?.missionPlanGrants,
+        taskPermissions: ['task.read', 'task.manage'],
+      },
+    };
+  const revised = {
+      ...current,
+      activeCompany: {
+        ...current.activeCompany,
+        id: planSource.companyId,
+        displayName: 'Synthetic Company',
+        missionPlanGrants: [],
+      },
+    },
+    revalidated = vi.fn();
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const path = String(input);
+    if (path.endsWith('/access/current-actor')) return response(revised);
+    if (init?.method === 'POST' && path.endsWith('/create-from-mission-plan'))
+      return response({}, 403);
+    if (path.endsWith('/project-candidates')) return response({ items: [] });
+    if (path.endsWith('/versions/' + planSource.id))
+      return response({ version: planSource });
+    if (path.endsWith('/mission-plans')) return response(planCatalogue);
+    if (path.includes('/offers/')) return acceptedOfferResponse();
+    if (path.endsWith('/versions'))
+      return response({ items: [], nextCursor: null });
+    return response({
+      contract: { ...executedUiFixture(), companyId: planSource.companyId },
+    });
+  });
+  const component = (value: ActorContext) => (
+    <ContractPanel
+      actor={value}
+      identity={identity}
+      opportunityId="opportunity-one"
+      onCompanyContextRejected={() => undefined}
+      onActorRevalidated={revalidated}
+    />
+  );
+  const view = renderWithEnglishLocale(component(current));
+  const manual = await screen.findByRole('region', {
+      name: 'Create a preparatory Project',
+    }),
+    field = within(manual).getByRole('textbox');
+  fireEvent.change(field, {
+    target: { value: 'Independent native manual work' },
+  });
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'Open Version: Synthetic reusable plan',
+    }),
+  );
+  fireEvent.click(
+    await screen.findByRole('button', {
+      name: 'Open Version: Synthetic reusable plan · Version 1',
+    }),
+  );
+  const planned = screen.getByRole('region', {
+    name: 'Create a mission from a plan',
+  });
+  fireEvent.change(within(planned).getByRole('textbox'), {
+    target: { value: 'Configured mission' },
+  });
+  fireEvent.click(within(planned).getByRole('checkbox'));
+  fireEvent.click(
+    within(planned).getByRole('button', { name: 'Create and link mission' }),
+  );
+  await waitFor(() => expect(revalidated).toHaveBeenCalledWith(revised));
+  view.rerender(component(revised));
+  expect(
+    screen.queryByRole('region', { name: 'Create a mission from a plan' }),
+  ).not.toBeInTheDocument();
+  expect(within(manual).getByRole('textbox')).toBe(field);
+  expect(field).toHaveValue('Independent native manual work');
+  expect(field).toBeEnabled();
+});

@@ -1,3 +1,4 @@
+import { MissionPlanModule } from '../mission-plan/mission-plan.module.js';
 import { ReportedContractSigningService } from './reported-contract-signing.service.js';
 import { DocumentsModule } from '../documents/documents.module.js';
 import { ModelContractService } from './model-contract.service.js';
@@ -20,6 +21,7 @@ import { ContractProjectLinkStore } from './contract-project-link.store.js';
 import { ContractProjectCreationService } from './contract-project-creation.service.js';
 @Module({
   imports: [
+    MissionPlanModule,
     DocumentsModule,
     AccessModule,
     ContractModelModule,

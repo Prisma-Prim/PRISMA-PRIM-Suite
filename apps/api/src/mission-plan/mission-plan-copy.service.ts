@@ -27,7 +27,11 @@ import {
   readProjectTitle,
 } from '../project/project.service.js';
 import { TaskService } from '../task/task.service.js';
-import { exactRecord, versionNumber } from './mission-plan.content.js';
+import { exactRecord } from './mission-plan.content.js';
+import {
+  readMissionPlanSelection,
+  type MissionPlanSelection,
+} from './mission-plan-selection.js';
 import { MissionPlanService } from './mission-plan.service.js';
 
 @Injectable()
@@ -59,9 +63,11 @@ export class MissionPlanCopyService {
     const input = {
       title: readProjectTitle(body.title),
       clientAccountId: requireUuid(body.clientAccountId),
-      planId: requireUuid(body.planId),
-      versionId: requireUuid(body.versionId),
-      versionNumber: versionNumber(body.versionNumber),
+      ...readMissionPlanSelection({
+        planId: body.planId,
+        versionId: body.versionId,
+        versionNumber: body.versionNumber,
+      }),
     };
     const idempotencyKey = requireIdempotencyKey(key);
     return runIdempotentCommand(this.database, {
@@ -69,15 +75,7 @@ export class MissionPlanCopyService {
         companyId: actor.activeCompany?.id,
         ...input,
       }),
-      authorize: async () => {
-        const companyId = await this.access.requireActor({
-          actor,
-          operation: 'instantiate',
-          lock: true,
-        });
-        await this.taskAccess.requireActor(actor, false, true);
-        return companyId;
-      },
+      authorize: () => this.requireUseWithinTransaction(actor),
       lockParts: () => projectCreationLock(actor, idempotencyKey),
       findReceipt: async () => {
         const [row] = await this.database.connection
@@ -98,62 +96,89 @@ export class MissionPlanCopyService {
       conflict: () => idempotencyConflict(),
       replay: async (_scope, receipt) =>
         this.projects.read(actor, receipt.projectId),
-      execute: async (companyId) => {
-        // New creation alone needs create/manage rights and an active Client.
-        if (
-          !actor.activeCompany?.projectPermissions?.includes('project.create')
-        )
-          throw new ForbiddenException();
-        await this.taskAccess.requireActor(actor, true, true);
-        const version = await this.sources.versionWithinTransaction({
+      execute: (companyId) =>
+        this.createWithinTransaction({
           actor,
           companyId,
-          planId: input.planId,
-          versionId: input.versionId,
-        });
-        if (version.versionNumber !== input.versionNumber)
-          throw new BadRequestException(
-            'The exact mission-plan Version is required.',
-          );
-        const project = await this.projects.createNewWithinTransaction(
-          actor,
-          { title: input.title, clientAccountId: input.clientAccountId },
-          idempotencyKey,
-        );
-        const tasks = await this.tasks.createTemplateCopiesWithinTransaction({
-          actor,
-          projectId: project.id,
-          titles: version.activities.map((a) => a.title),
-        });
-        await this.database.connection.insert(missionPlanInstances).values({
+          input,
+          key: idempotencyKey,
+        }),
+    });
+  }
+  /** Hold live User and Task read authority before the caller locks Client/Contract state. */
+  async requireUseWithinTransaction(actor: ActorContext) {
+    const companyId = await this.access.requireActor({
+      actor,
+      operation: 'instantiate',
+      lock: true,
+    });
+    await this.taskAccess.requireActor(actor, false, true);
+    return companyId;
+  }
+
+  /** Caller owns the transaction/receipt and holds live use authority in this Company. */
+  async createWithinTransaction({
+    actor,
+    companyId,
+    input,
+    key,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    input: MissionPlanSelection & { title: string; clientAccountId: string };
+    key: string;
+  }) {
+    // New creation alone needs create/manage rights and an active Client.
+    if (!actor.activeCompany?.projectPermissions?.includes('project.create'))
+      throw new ForbiddenException();
+    await this.taskAccess.requireActor(actor, true, true);
+    const version = await this.sources.versionWithinTransaction({
+      actor,
+      companyId,
+      planId: input.planId,
+      versionId: input.versionId,
+    });
+    if (version.versionNumber !== input.versionNumber)
+      throw new BadRequestException(
+        'The exact mission-plan Version is required.',
+      );
+    const project = await this.projects.createNewWithinTransaction(
+      actor,
+      { title: input.title, clientAccountId: input.clientAccountId },
+      key,
+    );
+    const tasks = await this.tasks.createTemplateCopiesWithinTransaction({
+      actor,
+      projectId: project.id,
+      titles: version.activities.map((a) => a.title),
+    });
+    await this.database.connection.insert(missionPlanInstances).values({
+      workspaceId: actor.workspaceId,
+      companyId,
+      projectId: project.id,
+      clientAccountId: input.clientAccountId,
+      actorMembershipId: actor.workspaceMembershipId,
+      idempotencyKey: key,
+      fingerprint: commandFingerprint({ companyId, ...input }),
+      planId: input.planId,
+      versionId: input.versionId,
+    });
+    await this.database.connection.insert(missionPlanTaskCopies).values(
+      version.activities.map((activity, position) => {
+        const task = tasks[position];
+        if (!task) throw new Error('Incomplete native Task creation.');
+        return {
           workspaceId: actor.workspaceId,
           companyId,
           projectId: project.id,
-          clientAccountId: input.clientAccountId,
-          actorMembershipId: actor.workspaceMembershipId,
-          idempotencyKey,
-          fingerprint: commandFingerprint({ companyId, ...input }),
-          planId: input.planId,
-          versionId: input.versionId,
-        });
-        await this.database.connection.insert(missionPlanTaskCopies).values(
-          version.activities.map((activity, position) => {
-            const task = tasks[position];
-            if (!task) throw new Error('Incomplete native Task creation.');
-            return {
-              workspaceId: actor.workspaceId,
-              companyId,
-              projectId: project.id,
-              versionId: version.id,
-              activityKey: activity.key,
-              position,
-              taskId: task.id,
-            };
-          }),
-        );
-        return project;
-      },
-    });
+          versionId: version.id,
+          activityKey: activity.key,
+          position,
+          taskId: task.id,
+        };
+      }),
+    );
+    return project;
   }
   read({ actor, projectId }: { actor: ActorContext; projectId: string }) {
     return this.database.transaction(

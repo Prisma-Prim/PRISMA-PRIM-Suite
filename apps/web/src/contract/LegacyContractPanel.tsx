@@ -962,6 +962,12 @@ export function LegacyContractPanel({
             {view.contract.kind !== 'ADDENDUM' && (
               <ContractProjectsPanel
                 key={stamp + ':projects:' + view.contract.id}
+                missionPlan={{
+                  actor,
+                  onActorRevalidated,
+                  onCompanyContextRejected,
+                  onWorkspaceAccessRejected,
+                }}
                 identity={identity}
                 companyId={companyId}
                 opportunityId={opportunityId}

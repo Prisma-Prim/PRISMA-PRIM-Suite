@@ -8,6 +8,7 @@ const keys = [
   'link',
   'retry',
   'reload',
+  'refreshCandidates',
   'openProject',
   'contracts',
   'openContract',
@@ -30,6 +31,7 @@ const keys = [
 ] as const;
 export const contractProjectsMessages = defineMessages(keys, {
   en: {
+    refreshCandidates: 'Refresh eligible Projects',
     title: 'Contract Projects',
     candidates: 'Choose an existing Project',
     linked: 'Linked Projects',
@@ -61,6 +63,7 @@ export const contractProjectsMessages = defineMessages(keys, {
     error: 'Project links could not be loaded. Try again.',
   },
   fr: {
+    refreshCandidates: 'Actualiser les Projets admissibles',
     title: 'Projets du Contrat',
     candidates: 'Choisir un Projet existant',
     linked: 'Projets liés',
@@ -92,6 +95,7 @@ export const contractProjectsMessages = defineMessages(keys, {
     error: 'Les liens de Projet n’ont pas pu être chargés. Réessayez.',
   },
   ro: {
+    refreshCandidates: 'Actualizați Proiectele eligibile',
     title: 'Proiectele Contractului',
     candidates: 'Alegeți un Proiect existent',
     linked: 'Proiecte asociate',
@@ -123,6 +127,7 @@ export const contractProjectsMessages = defineMessages(keys, {
     error: 'Asocierile de Proiect nu au putut fi încărcate. Reîncercați.',
   },
   ru: {
+    refreshCandidates: 'Обновить подходящие Проекты',
     title: 'Проекты Договора',
     candidates: 'Выберите существующий Проект',
     linked: 'Связанные Проекты',
