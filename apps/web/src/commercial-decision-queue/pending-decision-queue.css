@@ -1,4 +1,4 @@
-.offer-decision-queue {
+.pending-decision-queue {
   margin-block: 1.5rem;
   border: 1px solid #e6eaf1;
   border-radius: 1rem;
@@ -8,7 +8,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.offer-decision-queue button {
+.pending-decision-queue button {
   min-height: 44px;
   max-width: 100%;
   border: 1px solid #b7a8df;
@@ -19,23 +19,23 @@
   cursor: pointer;
   white-space: normal;
 }
-.offer-decision-queue button:disabled {
+.pending-decision-queue button:disabled {
   opacity: 0.6;
   cursor: default;
 }
-.offer-decision-queue button:focus-visible {
+.pending-decision-queue button:focus-visible {
   outline: 3px solid #6950bd;
   outline-offset: 3px;
 }
-.offer-decision-items {
+.decision-queue-items {
   display: grid;
   gap: 1rem;
   padding-inline-start: 1.5rem;
 }
-.offer-decision-items li {
+.decision-queue-items li {
   min-width: 0;
 }
-.offer-decision-pages {
+.decision-queue-pages {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;

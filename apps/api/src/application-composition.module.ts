@@ -25,6 +25,7 @@ import { ProjectTemplateController } from './project-template/project-template.c
 import { CompanyProjectTemplateUserAssignmentController } from './access/company-project-template-user-assignment.controller.js';
 import { ContractAgreementsController } from './contract/contract-agreements.controller.js';
 import { ContractModule } from './contract/contract.module.js';
+import { ContractDecisionQueueController } from './contract/contract-decision-queue.controller.js';
 import {
   ContractController,
   ProjectContractsController,
@@ -235,6 +236,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalHomeController,
     OfferController,
     OfferDecisionQueueController,
+    ContractDecisionQueueController,
     ContractController,
     ContractAgreementsController,
     ProfitabilityEstimateController,

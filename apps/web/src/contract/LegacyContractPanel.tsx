@@ -92,6 +92,8 @@ export type ContractPanelProps = {
   onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   onOpenProject?: (projectId: string) => void;
+  /** Reports native pending/uncertain work without exposing its intent or key. */
+  onProtectedWorkChange?: (locked: boolean) => void;
 };
 export function LegacyContractPanel({
   initialRead,
@@ -105,6 +107,7 @@ export function LegacyContractPanel({
   onWorkspaceAccessRejected = ignoreActor,
   onOpenProject,
   requestedVersion,
+  onProtectedWorkChange,
 }: ContractPanelProps & {
   initialRead?: { contract: unknown; offer?: unknown };
 }) {
@@ -253,6 +256,10 @@ export function LegacyContractPanel({
     projectLinkProtected ||
     feedback === 'uncertain' ||
     qualityProtected;
+  useEffect(() => {
+    onProtectedWorkChange?.(locked);
+    return () => onProtectedWorkChange?.(false);
+  }, [locked, onProtectedWorkChange]);
   async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
     return handleAuthenticatedAccessRejection({
       result,
