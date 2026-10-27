@@ -1,3 +1,5 @@
+import { configureMissionPlanTransport } from '../mission-plan/mission-plan-http.js';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import {
   IDENTITY_SESSION_REVOKER,
   type IdentitySessionRevoker,
@@ -101,12 +103,13 @@ export async function createPostgresRestTestHarness({
     if (serverClock)
       builder.overrideProvider(SERVER_CLOCK).useValue(serverClock);
     const moduleRef = await builder.compile();
-    const app = moduleRef.createNestApplication();
+    const app = moduleRef.createNestApplication<NestExpressApplication>();
     ownedResources.unshift({
       name: 'Nest application',
       cleanup: () => app.close(),
     });
 
+    configureMissionPlanTransport(app);
     app.setGlobalPrefix('api');
     await app.init();
     await app.listen(listenPort, '127.0.0.1');

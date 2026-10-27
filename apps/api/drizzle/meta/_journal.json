@@ -603,6 +603,13 @@
       "when": 1793012272669,
       "tag": "0085_mission_result_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1793129097564,
+      "tag": "0086_company_mission_plans",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,5 @@
+import { projectCreationLock } from './project-creation-lock.js';
+import { missionPlanInstances } from '../database/schema/mission-plan.js';
 import {
   BadRequestException,
   ConflictException,
@@ -194,12 +196,7 @@ export class ProjectService {
       actor,
       true,
     );
-    const lockKey = JSON.stringify([
-      'project.create',
-      actor.workspaceId,
-      actor.workspaceMembershipId,
-      idempotencyKey,
-    ]);
+    const lockKey = JSON.stringify(projectCreationLock(actor, idempotencyKey));
     await this.databaseContext.connection.execute(
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
     );
@@ -235,7 +232,19 @@ export class ProjectService {
           )
           .limit(1);
         // A Template intent cannot be replayed as a manual creation command.
-        if (!templateInstance) return this.view(actor, existing);
+        const [missionPlanInstance] = await this.databaseContext.connection
+          .select({ projectId: missionPlanInstances.projectId })
+          .from(missionPlanInstances)
+          .where(
+            and(
+              eq(missionPlanInstances.workspaceId, actor.workspaceId),
+              eq(missionPlanInstances.companyId, companyId),
+              eq(missionPlanInstances.projectId, existing.id),
+            ),
+          )
+          .limit(1);
+        if (!templateInstance && !missionPlanInstance)
+          return this.view(actor, existing);
       }
       throw new ConflictException(
         'Idempotency-Key was already used for another Project.',

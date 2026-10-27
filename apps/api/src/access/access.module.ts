@@ -1,3 +1,4 @@
+import { MissionPlanAccessService } from './mission-plan-access.service.js';
 import { TaskAccessService } from './task-access.service.js';
 import { OperationalRiskAccessService } from './operational-risk-access.service.js';
 import { ContractModelAccessService } from './contract-model-access.service.js';
@@ -16,6 +17,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
 @Module({
   imports: [DatabaseModule],
   providers: [
+    MissionPlanAccessService,
     ContractModelAccessService,
     OfferModelAccessService,
     OperationalRiskAccessService,
@@ -50,6 +52,7 @@ import { CompanyContextAuthorization } from './company-context-authorization.js'
     },
   ],
   exports: [
+    MissionPlanAccessService,
     ContractModelAccessService,
     OfferModelAccessService,
     OperationalRiskAccessService,

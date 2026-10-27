@@ -1,3 +1,5 @@
+import { MissionPlanWorkspace } from './mission-plan/MissionPlanWorkspace';
+import { missionPlanAuthority } from './mission-plan/mission-plan-authority';
 import { IdeasWorkspace } from './ideas/IdeasWorkspace';
 import { ideasAuthority, ideasContextKey } from './ideas/ideas-contract';
 import { useIdeasCopy } from './ideas/ideas.copy';
@@ -700,7 +702,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ),
     });
   if (
-    (canAccessProjects || canReadProjectTemplateCatalogue(access.actor)) &&
+    (canAccessProjects ||
+      canReadProjectTemplateCatalogue(access.actor) ||
+      missionPlanAuthority(access.actor, 'configure')) &&
     access.actor.activeCompany
   )
     sections.push({
@@ -710,6 +714,9 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         <>
           {canAccessProjects && (
             <ProjectWorkspace
+              onActorRevalidated={acceptRevalidatedActor}
+              onCompanyContextRejected={rejectCompanyContext}
+              onWorkspaceAccessRejected={rejectWorkspaceAccess}
               catalogueRevision={templateCatalogueRevision}
               onOpenContract={openRequest}
               key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
@@ -722,6 +729,24 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               navigation={projectNavigation.request}
             />
           )}
+          <div
+            id={
+              !canAccessProjects &&
+              !canReadProjectTemplateCatalogue(access.actor)
+                ? 'projects'
+                : undefined
+            }
+            tabIndex={-1}
+          >
+            <MissionPlanWorkspace
+              actor={access.actor}
+              identity={identity}
+              onActivityRecorded={refreshActivityLog}
+              onActorRevalidated={acceptRevalidatedActor}
+              onCompanyContextRejected={rejectCompanyContext}
+              onWorkspaceAccessRejected={rejectWorkspaceAccess}
+            />
+          </div>
           {canReadProjectTemplateCatalogue(access.actor) && (
             <div
               id={canAccessProjects ? undefined : 'projects'}

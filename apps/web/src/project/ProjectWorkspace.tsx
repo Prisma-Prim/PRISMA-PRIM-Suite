@@ -1,3 +1,7 @@
+import {
+  MissionPlanProjectCreator,
+  MissionPlanProjectCopy,
+} from '../mission-plan/MissionPlanProject';
 import { ProjectStage } from './ProjectStage';
 import {
   ProjectTemplateSelector,
@@ -107,6 +111,9 @@ export function ProjectWorkspace({
   onOpenContract,
   navigation,
   catalogueRevision = 0,
+  onActorRevalidated,
+  onCompanyContextRejected,
+  onWorkspaceAccessRejected,
 }: {
   actor: ActorContext;
   identity: BrowserIdentity;
@@ -124,6 +131,9 @@ export function ProjectWorkspace({
    */
   navigation?: ProjectNavigationRequest;
   catalogueRevision?: number;
+  onActorRevalidated?: (actor: ActorContext) => void | Promise<void>;
+  onCompanyContextRejected?: (companyId: string) => void;
+  onWorkspaceAccessRejected?: () => void | Promise<void>;
 }) {
   const copy = useProjectCopy();
   const documentsCopy = useProjectDocumentsCopy();
@@ -893,6 +903,25 @@ export function ProjectWorkspace({
           )}
         </>
       )}
+      {load.kind !== 'denied' && (
+        <MissionPlanProjectCreator
+          actor={actor}
+          identity={identity}
+          clients={load.kind === 'ready' ? load.clients : null}
+          onActivityRecorded={onActivityRecorded}
+          onActorRevalidated={onActorRevalidated}
+          onCompanyContextRejected={onCompanyContextRejected}
+          onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          onCreated={(project) => {
+            directory.confirmRegistration(project);
+            setSelected({
+              project,
+              identityRevision: identityRevision.current,
+            });
+            setDetailPanel('tasks');
+          }}
+        />
+      )}
       {feedback && (
         <p role="alert">
           {typeof feedback === 'string'
@@ -1058,6 +1087,26 @@ export function ProjectWorkspace({
               </button>
             </div>
           )}
+          <MissionPlanProjectCopy
+            actor={actor}
+            identity={identity}
+            projectId={selected.project.id}
+            onActorRevalidated={onActorRevalidated}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+            onOpenTask={(taskId) => {
+              const requestId = --planTaskRequestId.current;
+              setDetailPanel('tasks');
+              setSelected((current) =>
+                current?.project.id === selected.project.id
+                  ? {
+                      ...current,
+                      requestedTask: { taskId, requestId, focus: 'task' },
+                    }
+                  : current,
+              );
+            }}
+          />
           {canUseProjectTemplate(actor) &&
             actor.activeCompany?.taskPermissions?.includes('task.read') && (
               <ProjectTemplatePlan

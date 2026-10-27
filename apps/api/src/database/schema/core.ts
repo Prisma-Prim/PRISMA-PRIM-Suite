@@ -83,6 +83,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_contract_model_editor',
   'company_offer_model_approver',
   'company_contract_model_approver',
+  'company_mission_plan_configuration',
+  'company_mission_plan_user',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -830,6 +832,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_contract_model_approver_assignment.granted',
   'company_offer_model_approver_assignment.revoked',
   'company_contract_model_approver_assignment.revoked',
+  'company_mission_plan_configuration_assignment.granted',
+  'company_mission_plan_configuration_assignment.revoked',
+  'company_mission_plan_user_assignment.granted',
+  'company_mission_plan_user_assignment.revoked',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
@@ -878,6 +884,8 @@ export const activityLogEvents = pgTable(
               | 'Company Document Approver'
               | 'Company Document Content Reader'
               | 'Company Mission Deliverable Access'
+              | 'Company Mission Plan Configuration'
+              | 'Company Mission Plan User'
               | 'Company Contract Signature Declarer'
               | 'Company Received Contract Access'
               | 'Company Task Result Recorder'

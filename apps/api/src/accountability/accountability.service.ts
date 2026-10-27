@@ -1,3 +1,6 @@
+import { missionPlanVersions } from '../database/schema/mission-plan.js';
+import { readMemberAuthority } from '../access/member-authority.js';
+import type { MissionPlanVersionPublishedActivityEvent } from '../mission-plan/mission-plan.activity.js';
 import { receivedContractAssignment } from '../access/received-contract-access.js';
 import { CONTRACT_MODEL_CODE } from '../contract-model/contract-model.content.js';
 import { contractModelEvents } from '../database/schema/contract-model.js';
@@ -820,6 +823,98 @@ export class AccountabilityService {
       },
     }));
   }
+  /** Immutable publication is its one Activity event, in the caller's transaction. */
+  async recordMissionPlanVersionCreated(input: {
+    actor: ActorContext;
+    companyId: string;
+    planId: string;
+    versionNumber: number;
+    title: string;
+    activityCount: number;
+    publishedAt: Date;
+  }) {
+    const { actor, ...fields } = input;
+    const [row] = await this.databaseContext.connection
+      .insert(missionPlanVersions)
+      .values({
+        ...fields,
+        workspaceId: actor.workspaceId,
+        actorInternalUserId: actor.internalUserId,
+        actorMembershipId: actor.workspaceMembershipId,
+        actorDisplayName: actor.displayName,
+      })
+      .returning();
+    if (!row) throw new Error('Mission-plan publication was not recorded.');
+    return row;
+  }
+  private missionPlanVersionEvents(
+    actor: ActorContext,
+  ): Promise<MissionPlanVersionPublishedActivityEvent[]> {
+    // Snapshot eligibility avoids querying a source the actor does not consume;
+    // the owning read still rechecks live captures inside its coherent snapshot.
+    if (
+      !actor.activeCompany?.missionPlanGrants?.some((grant) =>
+        grant.permissions.includes('project.mission_plan.read'),
+      )
+    )
+      return Promise.resolve([]);
+    return this.databaseContext.transaction(
+      async () => {
+        const companyId = actor.activeCompany?.id;
+        if (!companyId) return [];
+        const authority = await readMemberAuthority(
+          this.databaseContext.connection,
+          {
+            workspaceId: actor.workspaceId,
+            companyId,
+            membershipId: actor.workspaceMembershipId,
+            lock: false,
+          },
+        );
+        if (
+          !authority ||
+          authority.internalUserId !== actor.internalUserId ||
+          !authority.missionPlanReader
+        )
+          return [];
+        const rows = await this.databaseContext.connection
+          .select()
+          .from(missionPlanVersions)
+          .where(
+            and(
+              eq(missionPlanVersions.workspaceId, actor.workspaceId),
+              eq(missionPlanVersions.companyId, companyId),
+            ),
+          )
+          .orderBy(
+            desc(missionPlanVersions.publishedAt),
+            desc(missionPlanVersions.id),
+          )
+          .limit(INITIAL_PAGE_SIZE);
+        return rows.map((v): MissionPlanVersionPublishedActivityEvent => ({
+          id: v.id,
+          action: 'mission_plan.version.published',
+          occurredAt: v.publishedAt.toISOString(),
+          actor: {
+            internalUserId: v.actorInternalUserId,
+            displayName: v.actorDisplayName,
+          },
+          target: {
+            type: 'mission_plan_version',
+            companyId,
+            planId: v.planId,
+            versionId: v.id,
+          },
+          metadata: {
+            versionNumber: v.versionNumber,
+            activityCount: v.activityCount,
+          },
+        }));
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
+  }
+
   /** Immutable Version creation is also its single attributable event source. */
   async recordProjectTemplateVersionCreated(input: {
     actor: ActorContext;
@@ -3353,6 +3448,7 @@ export class AccountabilityService {
       ...(await this.projectLifecycleEvents(actor)),
       ...(await this.projectStageEvents(actor)),
       ...(await this.projectTemplateVersionEvents(actor)),
+      ...(await this.missionPlanVersionEvents(actor)),
       ...(await this.documentEvents(actor)),
       ...(await this.documentCorrectionEvents(actor)),
       ...(await this.documentVersionEvents(actor)),
@@ -3423,6 +3519,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
         targetClientCompanyRelationshipId: null,
         idempotencyKey: `${event.action}:${event.target.companyId}`,
       };
+    case 'company_mission_plan_configuration_assignment.granted':
+    case 'company_mission_plan_configuration_assignment.revoked':
+    case 'company_mission_plan_user_assignment.granted':
+    case 'company_mission_plan_user_assignment.revoked':
     case 'company_task_manager_assignment.granted':
     case 'company_task_manager_assignment.revoked':
     case 'company_document_project_organizer_assignment.granted':

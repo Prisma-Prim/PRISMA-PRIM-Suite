@@ -408,6 +408,18 @@ export const COMPANY_ROLE_BUNDLES = {
       ],
     },
   },
+  company_mission_plan_configuration: {
+    label: 'Company Mission Plan Configuration',
+    versions: {
+      v1: ['project.mission_plan.read', 'project.mission_plan.publish'],
+    },
+  },
+  company_mission_plan_user: {
+    label: 'Company Mission Plan User',
+    versions: {
+      v1: ['project.mission_plan.read', 'project.mission_plan.instantiate'],
+    },
+  },
 } as const satisfies Readonly<
   Record<
     string,
@@ -1073,3 +1085,8 @@ export function operationalRiskRecorderPermissionsFor(version: unknown) {
     version,
   );
 }
+
+export const COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE =
+  'company_mission_plan_configuration' satisfies CompanyRoleBundle;
+export const COMPANY_MISSION_PLAN_USER_BUNDLE =
+  'company_mission_plan_user' satisfies CompanyRoleBundle;

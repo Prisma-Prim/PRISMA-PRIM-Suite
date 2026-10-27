@@ -1,3 +1,4 @@
+import type { MissionPlanActorProjection } from './mission-plan-captured-grants.js';
 import type {
   CompanyClientPermission,
   DocumentPermission,
@@ -50,7 +51,8 @@ export interface ActiveCompanyContext
   extends
     IdeasActorProjection,
     OfferModelActorProjection,
-    ContractModelActorProjection {
+    ContractModelActorProjection,
+    MissionPlanActorProjection {
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];

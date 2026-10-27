@@ -1,3 +1,4 @@
+import { captureMissionPlanGrant } from './mission-plan-captured-grants.js';
 import { receivedContractAssignment } from './received-contract-access.js';
 import { missionDeliverableAssignment } from './mission-deliverable-access.js';
 import {
@@ -75,6 +76,8 @@ import {
   COMPANY_PRICING_USER_BUNDLE,
   pricingUserPermissionsFor,
   type CompanyPricingUserPermission,
+  COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
+  COMPANY_MISSION_PLAN_USER_BUNDLE,
   COMPANY_OFFER_PREPARER_BUNDLE,
   COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
   COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
@@ -1544,6 +1547,8 @@ export class CompanyContextAuthorization {
         COMPANY_SERVICE_CATALOGUE_BUNDLE,
         COMPANY_PRICING_CONFIGURATION_BUNDLE,
         COMPANY_PRICING_USER_BUNDLE,
+        COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
+        COMPANY_MISSION_PLAN_USER_BUNDLE,
         COMPANY_OFFER_PREPARER_BUNDLE,
         COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
         COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
@@ -1619,6 +1624,12 @@ export class CompanyContextAuthorization {
         company.contractSignatureDeclarerPermissionSetVersion = 'v1';
       }
       Object.assign(company, projectIdeasAssignment(row));
+      const planGrant = captureMissionPlanGrant(row);
+      if (planGrant)
+        company.missionPlanGrants = [
+          ...(company.missionPlanGrants ?? []),
+          planGrant,
+        ];
       const modelGrant = captureOfferModelGrant(row);
       if (modelGrant)
         company.offerModelGrants = [

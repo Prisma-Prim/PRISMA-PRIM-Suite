@@ -6,6 +6,7 @@ export function companyAuthorityWithoutProjectTemplate(
 ):
   | Omit<
       NonNullable<ActorContext['activeCompany']>,
+      | 'missionPlanGrants'
       | 'missionResultReviewPermissions'
       | 'missionResultReviewerAssignmentId'
       | 'missionResultReviewerPermissionSetVersion'
@@ -22,6 +23,7 @@ export function companyAuthorityWithoutProjectTemplate(
   | undefined {
   if (!company) return;
   const authority = { ...company };
+  delete authority.missionPlanGrants;
   delete authority.missionResultReviewPermissions;
   delete authority.missionResultReviewerAssignmentId;
   delete authority.missionResultReviewerPermissionSetVersion;

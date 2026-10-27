@@ -351,6 +351,42 @@ export const activityEventsByAction = {
     action: 'company_offer_model_approver_assignment.revoked',
     target: targets.company_role_assignment,
   },
+  'company_mission_plan_configuration_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_mission_plan_configuration_assignment.granted',
+    action: 'company_mission_plan_configuration_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_mission_plan_configuration_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_mission_plan_configuration_assignment.revoked',
+    action: 'company_mission_plan_configuration_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_mission_plan_user_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_mission_plan_user_assignment.granted',
+    action: 'company_mission_plan_user_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_mission_plan_user_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_mission_plan_user_assignment.revoked',
+    action: 'company_mission_plan_user_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'mission_plan.version.published': {
+    ...ordinary,
+    id: 'event-mission-plan',
+    action: 'mission_plan.version.published',
+    target: {
+      type: 'mission_plan_version',
+      companyId: activityLocaleIds.company,
+      planId: '10000000-0000-4000-8000-000000000920',
+      versionId: '20000000-0000-4000-8000-000000000920',
+    },
+    metadata: { versionNumber: 2, activityCount: 13 },
+  },
   'company_contract_model_editor_assignment.granted': {
     ...ordinary,
     id: 'event-contract-model-editor-granted',

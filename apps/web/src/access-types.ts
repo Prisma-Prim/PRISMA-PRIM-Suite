@@ -16,6 +16,7 @@ export interface ActorContext {
     id: string;
     displayName: string;
     /** This additional wire projection is proved by the Offer-model boundary. */
+    missionPlanGrants?: unknown;
     offerModelGrants?: unknown;
     contractModelGrants?: unknown;
     taskPermissions?: Array<'task.read' | 'task.manage'>;

@@ -9,6 +9,7 @@ const boundaries = vi.hoisted(() => {
   };
   const database = { $client: applicationPool };
   const app = {
+    useBodyParser: vi.fn(),
     setGlobalPrefix: vi.fn(),
     init: vi.fn(async () => undefined),
     listen: vi.fn(async () => undefined),

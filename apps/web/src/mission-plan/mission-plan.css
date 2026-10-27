@@ -1,0 +1,87 @@
+.mission-plan-region {
+  min-width: 0;
+  max-width: 100%;
+}
+.mission-plan-region section {
+  margin-block: 1.2rem;
+  padding: 1rem;
+  border: 1px solid var(--prisme-border, #d5dfeb);
+  border-radius: 0.75rem;
+}
+.mission-plan-region fieldset {
+  min-width: 0;
+  margin-block: 0.8rem;
+  padding: 0.8rem;
+  border: 1px solid var(--prisme-border, #d5dfeb);
+  border-radius: 0.5rem;
+}
+.mission-plan-region input,
+.mission-plan-region textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-block: 0.4rem 0.8rem;
+}
+.mission-plan-region textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+.mission-plan-region button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin: 0.25rem;
+}
+.mission-plan-region li,
+.mission-plan-region h4,
+.mission-plan-region h5,
+.mission-plan-region p {
+  overflow-wrap: anywhere;
+}
+.mission-plan-content dd {
+  margin: 0.4rem 0 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mission-plan-content ol,
+.mission-plan-picker ul {
+  padding-inline-start: 1.3rem;
+}
+.mission-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.mission-plan-region input,
+.mission-plan-region textarea {
+  border: 1px solid var(--shell-line, #dce1eb);
+  border-radius: 0.5rem;
+  padding: 0.65rem;
+  font: inherit;
+  color: inherit;
+  background: white;
+}
+.mission-plan-region button:not(:where(.shared-select__trigger)) {
+  min-height: 2.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--shell-line, #dce1eb);
+  border-radius: 0.5rem;
+  font: inherit;
+  color: var(--shell-ink, #15233b);
+  background: white;
+  cursor: pointer;
+}
+.mission-plan-region button[type='submit'] {
+  background: var(--shell-focus, #7355da);
+  border-color: var(--shell-focus, #7355da);
+  color: white;
+}
+.mission-plan-region button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.mission-plan-region :is(button, input, textarea):focus-visible {
+  outline: 3px solid
+    color-mix(in srgb, var(--shell-focus, #7355da) 50%, transparent);
+  outline-offset: 2px;
+}

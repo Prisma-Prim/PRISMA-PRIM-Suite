@@ -421,11 +421,13 @@ it.each(['PRECONTRACT', 'ADDENDUM'] as const)(
         ? 'Synthetic initial scope'
         : 'Synthetic exact amendment',
     );
-    expect(fetch.mock.calls.map(([path]) => path)).toEqual([
-      '/api/contract-decision-queue',
-      exact,
-      exact.slice(0, exact.lastIndexOf('/')),
-    ]);
+    await waitFor(() =>
+      expect(fetch.mock.calls.map(([path]) => path)).toEqual([
+        '/api/contract-decision-queue',
+        exact,
+        exact.slice(0, exact.lastIndexOf('/')),
+      ]),
+    );
   },
 );
 
