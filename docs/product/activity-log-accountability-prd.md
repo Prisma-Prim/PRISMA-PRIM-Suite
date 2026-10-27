@@ -184,6 +184,16 @@ the existing Company assignment transition convention. No new event family,
 stage progress, Task completion, actual-result declaration or certification
 fact is inferred by copying.
 
+For [Company-configured mission plans](release-1-configurable-mission-plans-prd.md),
+each actual publication records one `mission_plan.version.published`, targeting
+the responsible Company and exact plan/Version with only identifiers, Version
+number and activity count. Text, Client data, command keys and author email are
+excluded. Reading this event requires independent Activity access, current Company
+scope and dedicated mission-plan read. Exact retries, reads and rollbacks add no
+event. Native Project/Task creation events retain their existing owner and privacy;
+the immutable source/mapping supplies copy attribution without a duplicate event.
+New bundle grant/revoke events use authorization §8's existing minimal convention.
+
 For [compatible illustrative Template successors](release-1-project-task-prd.md#compatible-immutable-successor-versions-695),
 each committed publication records one `project.template.version.created` event
 targeting the immutable Template Version in its responsible Company. Version

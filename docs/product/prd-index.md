@@ -120,6 +120,11 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 | 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft           | Company/RBAC; Shared Client; Project/Task; Governed Documents |
 | 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft           | All earlier Release 1 capabilities; UX                        |
 
+The bounded [Company mission-plan contract](release-1-configurable-mission-plans-prd.md)
+under #917 / #918 extends Project/Task with reusable flat plans and exact native
+Task copies. Its own status governs readiness; it preserves the fixed illustrative
+sources and defines no obligation, certification or closure policy.
+
 ## 6. Release 3 capability PRDs
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |

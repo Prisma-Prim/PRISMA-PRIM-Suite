@@ -1286,3 +1286,14 @@ require complete bounded contracts. The same PRD's
 [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
 retains unanswered `MISSION-CLOSE-01` across handoffs for Dan's single consolidated
 email to Iurie. No certificate, waiver, actual grant or external message follows.
+
+## 30. Company-configured mission plans
+
+The [Company mission-plan contract](release-1-configurable-mission-plans-prd.md)
+under #917 / #918 owns reusable Company flat plans, immutable Versions and exact
+Project/Task copies. Its status controls product readiness; runtime follows a
+separate issue after contract merge. Existing manual, four-Task illustrative and
+thirteen-activity pilot journeys retain their source, grants, histories and rules.
+Custom planning content does not expand the pilot-only readiness/review policy,
+introduce stages or decide obligations, certification or closure. Native Project,
+Task, Client and Document owners remain independent.
