@@ -29,6 +29,7 @@ Sections 1–15 are below. Each later section is its own file, with its original
 - [Section 29. Company consulting Contract model (#862)](release-3-commercial-29-company-contract-model.md)
 - [Section 30. Corresponding model-based Contract generation (#866)](release-3-commercial-30-model-contract-generation.md)
 - [Section 31. Reported signing and case acceptance with existing Project continuation (#874)](release-3-commercial-31-reported-signing-case-acceptance.md)
+- [Section 32. Pending Offer and Contract decisions (#909)](release-3-commercial-32-pending-decisions.md)
 
 ## 1. Authority and purpose
 
