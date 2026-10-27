@@ -55,6 +55,7 @@ import { ServiceCatalogueWorkspace } from './commercial-catalogue/ServiceCatalog
 import { PricingConfigurationWorkspace } from './pricing-configuration/PricingConfigurationWorkspace';
 import { TariffVersionPanel } from './pricing-configuration/TariffVersionPanel';
 import { ProfitabilityDecisionQueue } from './profitability-estimate/ProfitabilityDecisionQueue';
+import { OfferDecisionQueue } from './offer/OfferDecisionQueue';
 import { OperationalHome } from './operational-home/OperationalHome';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
 
@@ -356,6 +357,14 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       {operationalSummary}
       <ProfitabilityDecisionQueue
         key={`profitability-queue:${access.sessionGeneration}`}
+        actor={access.actor}
+        identity={identity}
+        onActorRevalidated={acceptRevalidatedActor}
+        onCompanyContextRejected={rejectCompanyContext}
+        onWorkspaceAccessRejected={rejectWorkspaceAccess}
+      />
+      <OfferDecisionQueue
+        key={`offer-queue:${access.sessionGeneration}`}
         actor={access.actor}
         identity={identity}
         onActorRevalidated={acceptRevalidatedActor}

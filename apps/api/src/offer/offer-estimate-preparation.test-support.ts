@@ -22,7 +22,7 @@ export async function openEstimateOfferFixture(
       DOCUMENT_MALWARE_SCANNER_PORT: string;
     };
     legacyPreparer?: boolean;
-    historicalOfferCaptures?: { preparer: 'v1' | 'v2'; approver: 'v1' };
+    historicalOfferCaptures?: { preparer: 'v1' | 'v2' | 'v3'; approver: 'v1' };
     serverClock?: ServerClock;
   } = {},
 ) {
@@ -156,7 +156,7 @@ export async function openEstimateOfferFixture(
     companyId: string;
     membershipId: string;
     bundle: 'company_offer_preparer' | 'company_offer_approver';
-    version: 'v1' | 'v2';
+    version: 'v1' | 'v2' | 'v3';
   }) {
     const owner = responseRecord(await read({ path: '/access/current-actor' }));
     await harness.pool.query(

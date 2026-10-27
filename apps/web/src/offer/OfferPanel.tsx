@@ -1,5 +1,6 @@
 import { useModelOfferCopy } from './model-offer.copy';
 import { OfferSummary } from './OfferSummary';
+import { useOfferCommandLock } from './use-offer-command-lock';
 import {
   useCallback,
   useMemo,
@@ -85,6 +86,7 @@ export function OfferPanel(props: Parameters<typeof OfferPanelOwner>[0]) {
     offerAuthorityStamp(props.actor),
     props.opportunityId,
     props.requestedVersionId,
+    props.expectedOfferId,
     props.currentClientId,
     generation.current.value,
   ]);
@@ -120,6 +122,8 @@ function OfferPanelOwner({
   identity,
   opportunityId,
   requestedVersionId,
+  expectedOfferId,
+  onProtectedWorkChange,
   currentClientId,
   clientDisplayName,
   onCompanyContextRejected,
@@ -134,6 +138,9 @@ function OfferPanelOwner({
    * The Offer read decides what is shown; nothing else is requested.
    */
   requestedVersionId?: string;
+  /** Optional identity guard for an exact record selected by discovery. */
+  expectedOfferId?: string;
+  onProtectedWorkChange?: (protectedWork: boolean) => void;
   currentClientId?: string;
   clientDisplayName?: string;
   onCompanyContextRejected: (companyId: string) => void;
@@ -191,6 +198,10 @@ function OfferPanelOwner({
   const [workflowCommand, setWorkflowCommand] =
     useState<WorkflowCommand | null>(null);
   const workflowCommandRef = useRef<WorkflowCommand | null>(null);
+  useOfferCommandLock(
+    contentLocked || workflowCommand !== null,
+    onProtectedWorkChange,
+  );
   const commandLocks = useMemo(() => {
     const update = (command: WorkflowCommand, locked: boolean) => {
       if (locked) workflowCommandRef.current = command;
@@ -262,7 +273,16 @@ function OfferPanelOwner({
         setView({ kind: 'error' });
         return;
       }
-      const offer = readOfferDetail(offerResult.value);
+      const offer = readOfferDetail(
+        offerResult.value,
+        expectedOfferId
+          ? {
+              companyId,
+              opportunityId,
+              offerId: expectedOfferId,
+            }
+          : undefined,
+      );
       if (
         offer &&
         !isIllustrativeOffer(offer) &&
@@ -329,6 +349,7 @@ function OfferPanelOwner({
     opportunityId,
     reject,
     requestedVersionId,
+    expectedOfferId,
   ]);
 
   useEffect(() => {

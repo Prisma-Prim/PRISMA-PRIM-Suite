@@ -123,6 +123,7 @@ import { CompanySalesStageConfigurationAssignmentController } from './access/com
 import { CompanyProjectApproverAssignmentController } from './access/company-project-approver-assignment.controller.js';
 import { OperationalHomeModule } from './operational-home/operational-home.module.js';
 import { OperationalHomeController } from './operational-home/operational-home.controller.js';
+import { OfferDecisionQueueController } from './offer/offer-decision-queue.controller.js';
 import { OfferController } from './offer/offer.controller.js';
 import { OfferModule } from './offer/offer.module.js';
 import { ProfitabilityEstimateModule } from './profitability-estimate/profitability-estimate.module.js';
@@ -233,6 +234,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanySalesStageConfigurationAssignmentController,
     OperationalHomeController,
     OfferController,
+    OfferDecisionQueueController,
     ContractController,
     ContractAgreementsController,
     ProfitabilityEstimateController,
