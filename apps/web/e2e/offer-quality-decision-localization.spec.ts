@@ -189,6 +189,8 @@ async function installRoutes(
         json: actor(request.headers()['x-company-context-id'] === company.id),
       });
     if (path === '/api/companies') return route.fulfill({ json: [company] });
+    if (request.method() === 'GET' && path === '/api/offer-decision-queue')
+      return route.fulfill({ json: { items: [] } });
     if (path === '/api/operational-home')
       return route.fulfill({
         json: operationalHomeFixture(company.id, { active_clients: 1 }),
