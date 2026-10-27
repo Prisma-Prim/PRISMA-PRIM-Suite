@@ -327,17 +327,30 @@ jobs:
           path: ${{ runner.temp }}/postgres-image/postgres.tar
           key: ${{ needs.postgres_image.outputs.cache_key }}
 
-      # Like PostgreSQL, main's cache is readable by later PRs. The key owns
-      # the reviewed FROM digests and the offline provenance verifier together.
+      # Reverify older main archives against the current FROM pins before reuse;
+      # a verifier-only key change need not reacquire unchanged official images.
       - name: Restore pinned packaging base images
         id: packaging_images
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/packaging-images
           key: packaging-images-linux-amd64-${{ hashFiles('deploy/railway/api.Dockerfile', 'deploy/railway/web.Dockerfile', 'scripts/ci-packaging-images.mjs') }}
+          restore-keys: packaging-images-linux-amd64-
+
+      - name: Verify restored packaging base images
+        id: verified_packaging_cache
+        if: ${{ steps.packaging_images.outputs.cache-matched-key != '' }}
+        env:
+          PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
+        run: |
+          if node scripts/ci-packaging-images.mjs load; then
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Acquire pinned packaging base images
-        if: ${{ steps.packaging_images.outputs.cache-hit != 'true' }}
+        if: ${{ steps.verified_packaging_cache.outputs.verified != 'true' }}
         env:
           PACKAGING_IMAGE_DIRECTORY: ${{ runner.temp }}/packaging-images
         run: node scripts/ci-packaging-images.mjs acquire

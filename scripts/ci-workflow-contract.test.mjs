@@ -557,9 +557,10 @@ test('the scope job supplies exact PR or main-push revisions and safety metadata
   assert.doesNotMatch(classify, /\bif:/);
 });
 
-test('packaging restores a digest-bound verified base-image cache and bootstraps only a miss', async () => {
+test('packaging accepts a restored cache only after current pinned-image verification', async () => {
   const { packaging } = jobsIn(await readWorkflow());
   const restore = stepBody(packaging, 'Restore pinned packaging base images');
+  const verify = stepBody(packaging, 'Verify restored packaging base images');
   const acquire = stepBody(packaging, 'Acquire pinned packaging base images');
   const save = stepBody(packaging, 'Save pinned packaging base images');
   const key =
@@ -567,17 +568,36 @@ test('packaging restores a digest-bound verified base-image cache and bootstraps
   assert.match(restore, /id: packaging_images/);
   assert.match(restore, /uses: actions\/cache\/restore@v4/);
   assert.match(restore, key);
+  assert.match(restore, /restore-keys: packaging-images-linux-amd64-\n/);
+  assert.match(verify, /id: verified_packaging_cache\n/);
+  assert.match(
+    verify,
+    /if: \$\{\{ steps\.packaging_images\.outputs\.cache-matched-key != '' \}\}/,
+  );
+  assert.match(
+    verify,
+    /run: \|\n {10}if node scripts\/ci-packaging-images\.mjs load; then\n {12}echo "verified=true" >> "\$GITHUB_OUTPUT"\n {10}else\n {12}echo "verified=false" >> "\$GITHUB_OUTPUT"\n {10}fi\n/,
+  );
+  assert.match(
+    acquire,
+    /if: \$\{\{ steps\.verified_packaging_cache\.outputs\.verified != 'true' \}\}/,
+  );
   assert.match(save, /uses: actions\/cache\/save@v4/);
   assert.match(save, key);
-  for (const body of [acquire, save])
-    assert.match(
-      body,
-      /if: \$\{\{ steps\.packaging_images\.outputs\.cache-hit != 'true' \}\}/,
-    );
+  assert.match(
+    save,
+    /if: \$\{\{ steps\.packaging_images\.outputs\.cache-hit != 'true' \}\}/,
+  );
   assert.match(acquire, /run: node scripts\/ci-packaging-images\.mjs acquire/);
-  assert.doesNotMatch(restore, /restore-keys:/);
+  for (const body of [
+    acquire,
+    save,
+    stepBody(packaging, 'Prove production image packaging'),
+  ])
+    assert.doesNotMatch(body, /continue-on-error:/);
   for (const body of [
     restore,
+    verify,
     acquire,
     save,
     stepBody(packaging, 'Prove production image packaging'),
@@ -585,6 +605,7 @@ test('packaging restores a digest-bound verified base-image cache and bootstraps
     assert.match(body, /\$\{\{ runner\.temp \}\}\/packaging-images/);
   const positions = [
     'Restore pinned packaging base images',
+    'Verify restored packaging base images',
     'Acquire pinned packaging base images',
     'Save pinned packaging base images',
     'Prove production image packaging',
