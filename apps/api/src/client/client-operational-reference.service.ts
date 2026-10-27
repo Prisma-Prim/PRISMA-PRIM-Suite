@@ -8,7 +8,7 @@ import { and, asc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE } from '../access/company-permissions.js';
 import { DatabaseContext } from '../database/database-context.js';
-import { ClientReferenceStateDrift } from '../database/client-reference-state-drift.js';
+import { ClientReferenceStateDrift } from './client-reference-state-drift.js';
 import {
   clientAccounts,
   clientCompanyRelationships,
@@ -50,7 +50,13 @@ export interface LockedClientLegalRecipient {
       };
 }
 
-/** Client owns the identity and relationship checks used by operational records. */
+/**
+ * Client owns the identity and relationship checks used by operational records.
+ * Locked canonical reads (`readProjectReferences` with authority locking,
+ * `resolveProjectLinkClients` with locking, and `lockOfferRecipient`) require
+ * runClientReferenceTransaction around the complete command/read so drift can
+ * release all old locks before retrying.
+ */
 @Injectable()
 export class ClientOperationalReferenceService {
   constructor(private readonly databaseContext: DatabaseContext) {}

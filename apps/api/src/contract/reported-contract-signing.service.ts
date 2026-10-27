@@ -1,3 +1,4 @@
+import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   ConflictException,
   HttpException,
@@ -156,21 +157,24 @@ export class ReportedContractSigningService {
     return { ...current, quality, resolution };
   }
   candidates(input: SigningTarget & { cursor: string | undefined }) {
-    return this.database.transaction(async () => {
-      const found = await this.readableTarget(input);
-      const current = await this.newUse(input, found);
-      const page = await this.documents.eligibleWithinTransaction({
-        actor: input.actor,
-        context: found.context,
-        cursor: input.cursor,
-      });
-      return {
-        ...page,
-        warningCodes: current.quality.results
-          .filter((r) => r.status === 'WARNING')
-          .map((r) => r.code)
-          .sort(),
-      };
+    return runClientReferenceTransaction({
+      database: this.database,
+      work: async () => {
+        const found = await this.readableTarget(input);
+        const current = await this.newUse(input, found);
+        const page = await this.documents.eligibleWithinTransaction({
+          actor: input.actor,
+          context: found.context,
+          cursor: input.cursor,
+        });
+        return {
+          ...page,
+          warningCodes: current.quality.results
+            .filter((r) => r.status === 'WARNING')
+            .map((r) => r.code)
+            .sort(),
+        };
+      },
     });
   }
   async declare(
@@ -181,8 +185,9 @@ export class ReportedContractSigningService {
   ) {
     const key = requireIdempotencyKey(input.idempotencyKey);
     const command = readReportedContractSigning(input.payload);
-    return this.database
-      .transaction(async () => {
+    return runClientReferenceTransaction({
+      database: this.database,
+      work: async () => {
         const { actor } = input;
         const found = await this.readableTarget(input);
         const fingerprint = commandFingerprint({
@@ -355,16 +360,16 @@ export class ReportedContractSigningService {
         if (!recorded || recorded.pdf.access !== 'granted')
           throw new Error('Missing declaration result.');
         return recorded;
-      })
-      .catch((error: unknown) => {
-        if (error instanceof HttpException) throw error;
-        throw new InternalServerErrorException({
-          code: 'CONTRACT_DECLARATION_UNCERTAIN',
-          correlationId: randomUUID(),
-          message:
-            'The declaration outcome is uncertain. Retry the identical command.',
-        });
+      },
+    }).catch((error: unknown) => {
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException({
+        code: 'CONTRACT_DECLARATION_UNCERTAIN',
+        correlationId: randomUUID(),
+        message:
+          'The declaration outcome is uncertain. Retry the identical command.',
       });
+    });
   }
 }
 function conflict(code: string) {
