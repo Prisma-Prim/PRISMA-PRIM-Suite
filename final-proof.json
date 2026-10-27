@@ -1,0 +1,53 @@
+{
+  "issue": 918,
+  "pr": 919,
+  "source": "de449cb94689cfafe83cb75f308f400f5a53a07a",
+  "base": "2e6e3e820228c0debf5520091cc5285279590a2e",
+  "tree": "5527a54f2ee02f1394d239d713986bd21a53db7d",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1752,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "de449cb94689cfafe83cb75f308f400f5a53a07a",
+    "reviewedBase": "2e6e3e820228c0debf5520091cc5285279590a2e",
+    "tree": "5527a54f2ee02f1394d239d713986bd21a53db7d",
+    "blockingFindingsRemaining": 0,
+    "rootStandardsSpec": "complete",
+    "ordered": true,
+    "standardsSource": "757c0a48e9c930936fbfc54dde62a347404d65fe",
+    "specProductSource": "ba17fe0af242e442e4f9c0ee69163106dad1fe7a",
+    "rootDelegatedApprovalSource": "de449cb94689cfafe83cb75f308f400f5a53a07a",
+    "reports": {
+      "standards-review.md": "# Independent Standards preparation\n\nPASS0blockingdefects on2e6e3e8...757c0a4, tree9d8065c. Five-document change preserves explicit authority ownership, fixed-source compatibility, dedicated captured grants, immutable history, correction/retry, privacy, migration and public acceptance proof. Entry-point references agree with the canonical owner. Product approval/runtime delivery were correctly pending at review.\n\nReviewer noted a nonblocking organization gap: no numbered user-story index as specified by specification-and-ticketing-standard5(6), while all substantive actor outcomes were already present. Root's mandatory-format self-check added only an index of thirteen already specified stories before the following Product pass; no new business behavior or right. That transparent prepublication delta was inspected by root and included in Product-reviewed ba17fe0; no repeated Standards round.\n\nRead-only review /root/mission918_standards; no edits, implementation, external writes or CI monitoring. Supplied checks are root-owned execution evidence.\n",
+      "spec-review.md": "# Independent Spec/Product preparation\n\nPASS0blockingfindings onba17fe0af242e442e4f9c0ee69163106dad1fe7a, tree1ae53ab018206207090607fd27849353ce5da926, against2e6e3e820228c0debf5520091cc5285279590a2e. Five-file contract matches917/918: independent opt-in configuration/use authority, immutable bounded content/successors, complete history, exactVersion nativeProjectTaskcreation, preservedmapping, historicalreplay/crossintentcollision, concurrency/rollback/privacy/publicproof. Fixedpilot/legacy sources and captures unchanged; no inherited readiness/review/stage/obligation/certification semantics. MISSION-CLOSE-01 solelyMissionObligations12.\n\nNative caller-owned Project and Task-copy seams support the separate owner without relaxing old immutableguards. Eligibleforrootdelegatedcontractapproval; runtime remainsunreadyuntilcontractmerge/freshfit/readiness, no runtime/test-successcredit. Thirteenstories index already-specifiedbehavior withoutnewpolicy. No furtherproductcorrectionorpersonalPRDreviewrequired.\n\nRead-only review /root/mission918_spec; no edits, implementation, externalwrites or CImonitoring. Root owns execution evidence.\n"
+    },
+    "disposition": "Independent0blockers. Rootmandatory-formatselfcheck added only13already-specifiedstoryindex beforeProductreview, whosepasscoversit. Subsequentapprovedstatusheaderisrootdelegateddispositiononly; no newrule/right or runtime. No repeatedreviewrequested.",
+    "automatedReview": "notrequired forPRD; consumeconfiguredopeningiftriggered, no manualduplicate",
+    "scope": "fiveproductMarkdownfiles; noruntimecode/schema/actualgrant/provider",
+    "configuredOpeningActivity": {
+      "commit_sha": "de449cb94689cfafe83cb75f308f400f5a53a07a",
+      "has_any_findings": false,
+      "has_unresolved_findings": false,
+      "status": "completed",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/919#issuecomment-6450297237",
+      "completedAt": "2026-10-27T18:28:16.031138Z",
+      "applicability": "Additional configured opening activity; docs mandatory ordered agent preparation was already complete before gate. No duplicate or post-green request."
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only Company mission-plan contract: new explicit opt-in configuration/use authority, immutable flat activity/intended-result Versions and exact native ProjectTaskcopy/history/retry/privacy/preservation. Existing captured grants and fixedpilot/legacy remain unchanged. No runtime/schema/actualassignment/content/provider/deployment/wholeMVPclaim. MISSION-CLOSE-01 solely MissionObligations12; runtime fit/readiness remains gated after contractmerge.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-13T23:59:59Z"
+}
