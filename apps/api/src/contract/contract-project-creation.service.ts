@@ -1,3 +1,8 @@
+import { MissionPlanCopyService } from '../mission-plan/mission-plan-copy.service.js';
+import {
+  readMissionPlanSelection,
+  type MissionPlanSelection,
+} from '../mission-plan/mission-plan-selection.js';
 import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import {
   BadRequestException,
@@ -27,6 +32,15 @@ import {
 } from './contract-project-link.store.js';
 import { ContractProjectsService } from './contract-projects.service.js';
 
+type CreationRequest = {
+  actor: ActorContext;
+  opportunityId: string;
+  contractId?: string;
+  payload: unknown;
+  idempotencyKey: string | undefined;
+};
+type CreationKind = 'manual' | 'missionPlan';
+
 const PERMISSIONS = [
   'commercial.contract.read',
   'commercial.contract.project.link',
@@ -41,15 +55,16 @@ export class ContractProjectCreationService {
     private readonly projects: ProjectService,
     private readonly relationships: ContractProjectsService,
     private readonly links: ContractProjectLinkStore,
+    private readonly missionPlans: MissionPlanCopyService,
   ) {}
 
-  async create(input: {
-    actor: ActorContext;
-    opportunityId: string;
-    contractId?: string;
-    payload: unknown;
-    idempotencyKey: string | undefined;
-  }) {
+  create(input: CreationRequest) {
+    return this.createCommand(input, 'manual');
+  }
+  createFromMissionPlan(input: CreationRequest) {
+    return this.createCommand(input, 'missionPlan');
+  }
+  private async createCommand(input: CreationRequest, kind: CreationKind) {
     await this.authorization.requireContractAccess(input.actor, PERMISSIONS);
     const key = requireIdempotencyKey(input.idempotencyKey);
     return runClientReferenceTransaction({
@@ -61,24 +76,31 @@ export class ContractProjectCreationService {
           PERMISSIONS,
           true,
         );
+        if (kind === 'missionPlan')
+          await this.missionPlans.requireUseWithinTransaction(actor);
         await this.intake.requireReadableOfferOpportunity(
           actor,
           input.opportunityId,
           true,
         );
-        await this.projects.requireCreationAccess(actor);
+        if (kind === 'manual') await this.projects.requireCreationAccess(actor);
+        else await this.authorization.requireProjectAccess(actor, true);
         const found = await this.links.find({
           actor,
           companyId,
           opportunityId: input.opportunityId,
           ...agreementTarget(input),
         });
-        const command = readCommand(input.payload);
+        const command = readCommand(input.payload, kind);
         const fingerprint = commandFingerprint({
-          kind: 'CREATE_PROJECT',
+          kind:
+            command.kind === 'manual'
+              ? 'CREATE_PROJECT'
+              : 'CREATE_PROJECT_FROM_MISSION_PLAN',
           opportunityId: input.opportunityId,
           ...agreementTarget(input),
-          payload: command,
+          ...(command.kind === 'missionPlan' ? { companyId } : {}),
+          payload: command.body,
         });
         const receipt = await this.links.command({ actor, companyId, key });
         if (receipt) {
@@ -120,7 +142,7 @@ export class ContractProjectCreationService {
           ...agreementTarget(input),
           lock: true,
         });
-        if (current.contract.revision !== command.expectedContractRevision)
+        if (current.contract.revision !== command.body.expectedContractRevision)
           throw projectLinkConflict('STALE_CONTRACT_REVISION');
         await this.links.requireExecuted(current);
         const candidates = await this.relationships.currentCandidates(
@@ -131,10 +153,10 @@ export class ContractProjectCreationService {
           throw projectLinkConflict('PROJECT_CANDIDATE_LIMIT');
         const ids = candidates.map((project) => project.id).sort();
         if (
-          ids.length !== command.acknowledgedCandidateProjectIds.length ||
+          ids.length !== command.body.acknowledgedCandidateProjectIds.length ||
           ids.some(
             (id, index) =>
-              id !== command.acknowledgedCandidateProjectIds[index],
+              id !== command.body.acknowledgedCandidateProjectIds[index],
           )
         )
           throw projectLinkConflict('PROJECT_CANDIDATES_CHANGED');
@@ -143,11 +165,21 @@ export class ContractProjectCreationService {
           companyId,
           contractId: current.contract.id,
         });
-        const project = await this.projects.createWithinTransaction(
-          actor,
-          { title: command.title, clientAccountId },
-          randomUUID(),
-        );
+        const creationKey = randomUUID();
+        const fields = { title: command.body.title, clientAccountId };
+        const project =
+          command.kind === 'manual'
+            ? await this.projects.createWithinTransaction(
+                actor,
+                fields,
+                creationKey,
+              )
+            : await this.missionPlans.createWithinTransaction({
+                actor,
+                companyId,
+                input: { ...fields, ...command.body.missionPlan },
+                key: creationKey,
+              });
         const link = await this.links.append({
           actor,
           companyId,
@@ -171,23 +203,36 @@ export class ContractProjectCreationService {
   }
 }
 
-function readCommand(value: unknown) {
+type ParsedCreation =
+  | { kind: 'manual'; body: ReturnType<typeof readCreationFields> }
+  | {
+      kind: 'missionPlan';
+      body: ReturnType<typeof readCreationFields> & {
+        missionPlan: MissionPlanSelection;
+      };
+    };
+function readCommand(value: unknown, kind: CreationKind): ParsedCreation {
   if (typeof value !== 'object' || value === null || Array.isArray(value))
     throw invalid('body');
   const row: Record<string, unknown> = Object.fromEntries(
     Object.entries(value),
   );
-  if (
-    Object.keys(row).some(
-      (key) =>
-        ![
-          'title',
-          'acknowledgedCandidateProjectIds',
-          'expectedContractRevision',
-        ].includes(key),
-    )
-  )
+  const allowed = [
+    'title',
+    'acknowledgedCandidateProjectIds',
+    'expectedContractRevision',
+    ...(kind === 'missionPlan' ? ['missionPlan'] : []),
+  ];
+  if (Object.keys(row).some((key) => !allowed.includes(key)))
     throw invalid('body');
+  const fields = readCreationFields(row);
+  if (kind === 'manual') return { kind, body: fields };
+  return {
+    kind,
+    body: { ...fields, missionPlan: readMissionPlanSelection(row.missionPlan) },
+  };
+}
+function readCreationFields(row: Record<string, unknown>) {
   const title = readProjectTitle(row.title);
   if (
     !Array.isArray(row.acknowledgedCandidateProjectIds) ||

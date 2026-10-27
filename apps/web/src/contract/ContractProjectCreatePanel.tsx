@@ -1,3 +1,4 @@
+import type { PlanVersion } from '../mission-plan/mission-plan-response';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import {
@@ -39,7 +40,10 @@ export function ContractProjectCreatePanel({
   onCreated,
   onCandidatesChanged,
   onProtectionChange,
+  source = { kind: 'empty' },
 }: {
+  source?:
+    { kind: 'empty' } | { kind: 'missionPlan'; selected: PlanVersion | null };
   identity: BrowserIdentity;
   companyId: string;
   opportunityId: string;
@@ -67,11 +71,15 @@ export function ContractProjectCreatePanel({
     candidates === undefined
       ? undefined
       : JSON.stringify(candidates.map((project) => project.id).sort());
-  const acknowledged = setStamp !== undefined && acknowledgedSet === setStamp;
   const attempt = useRef<
-      { body: string; key: string; revision: number } | undefined
+      { body: string; key: string; revision: number; path: string } | undefined
     >(undefined),
     pending = useRef<AbortController | undefined>(undefined);
+  const acknowledged =
+    attempt.current !== undefined ||
+    (setStamp !== undefined && acknowledgedSet === setStamp);
+  const sourceMissing =
+    source.kind === 'missionPlan' && source.selected === null;
   const busy =
     feedback === 'running' || feedback === 'uncertain' || protectedCommand;
   const terminal = [
@@ -99,7 +107,8 @@ export function ContractProjectCreatePanel({
     if (feedback === 'running' || protectedCommand || terminal) return;
     if (
       !attempt.current &&
-      (!acknowledged ||
+      (sourceMissing ||
+        !acknowledged ||
         !title.trim() ||
         title.trim().length > 200 ||
         !candidates)
@@ -110,11 +119,21 @@ export function ContractProjectCreatePanel({
     const command = attempt.current ?? {
       key: crypto.randomUUID(),
       revision,
+      path: `${contractPath(opportunityId, { id: contractId, kind: contractKind })}/projects/${source.kind === 'empty' ? 'create' : 'create-from-mission-plan'}`,
       body: JSON.stringify({
         title,
         acknowledgedCandidateProjectIds:
           candidates?.map((project) => project.id) ?? [],
         expectedContractRevision: revision,
+        ...(source.kind === 'missionPlan' && source.selected
+          ? {
+              missionPlan: {
+                planId: source.selected.planId,
+                versionId: source.selected.id,
+                versionNumber: source.selected.versionNumber,
+              },
+            }
+          : {}),
       }),
     };
     attempt.current = command;
@@ -124,19 +143,16 @@ export function ContractProjectCreatePanel({
     try {
       const api = await createAuthenticatedApiClient(identity);
       if (controller.signal.aborted) return;
-      const result = await api.request<unknown>(
-        `${contractPath(opportunityId, { id: contractId, kind: contractKind })}/projects/create`,
-        {
-          method: 'POST',
-          companyContextId: companyId,
-          signal: controller.signal,
-          headers: {
-            'content-type': 'application/json',
-            'idempotency-key': command.key,
-          },
-          body: command.body,
+      const result = await api.request<unknown>(command.path, {
+        method: 'POST',
+        companyContextId: companyId,
+        signal: controller.signal,
+        headers: {
+          'content-type': 'application/json',
+          'idempotency-key': command.key,
         },
-      );
+        body: command.body,
+      });
       if (controller.signal.aborted) return;
       const denied = await reject(result, controller.signal);
       if (controller.signal.aborted) return;
@@ -185,10 +201,16 @@ export function ContractProjectCreatePanel({
     }
   }
   return (
-    <section aria-label={copy('title')}>
-      <h6>{copy('title')}</h6>
+    <section
+      aria-label={copy(source.kind === 'empty' ? 'title' : 'plannedTitle')}
+    >
+      <h6>{copy(source.kind === 'empty' ? 'title' : 'plannedTitle')}</h6>
       <form onSubmit={(event) => void execute(event)}>
-        <fieldset disabled={busy || terminal || candidates === undefined}>
+        <fieldset
+          disabled={
+            busy || terminal || candidates === undefined || sourceMissing
+          }
+        >
           <label>
             {copy('projectTitle')}
             <input
@@ -209,11 +231,19 @@ export function ContractProjectCreatePanel({
             {copy('acknowledge')}
           </label>
           <button type="submit" disabled={!acknowledged || !title.trim()}>
-            {copy('confirm')}
+            {copy(source.kind === 'empty' ? 'confirm' : 'plannedConfirm')}
           </button>
         </fieldset>
       </form>
-      {feedback !== 'idle' && <p role="status">{copy(feedback)}</p>}
+      {feedback !== 'idle' && (
+        <p role="status">
+          {copy(
+            feedback === 'uncertain' && source.kind === 'missionPlan'
+              ? 'plannedUncertain'
+              : feedback,
+          )}
+        </p>
+      )}
       {feedback === 'uncertain' && (
         <button
           type="button"

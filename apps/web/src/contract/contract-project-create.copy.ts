@@ -1,6 +1,9 @@
 import { defineMessages, useMessages } from '../localization/messages';
 const keys = [
   'title',
+  'plannedTitle',
+  'plannedConfirm',
+  'plannedUncertain',
   'projectTitle',
   'acknowledge',
   'confirm',
@@ -19,6 +22,10 @@ const keys = [
 ] as const;
 export const contractProjectCreateMessages = defineMessages(keys, {
   en: {
+    plannedUncertain:
+      'The mission creation outcome is uncertain. Retry sends the same title, exact plan Version, candidates, revision and key.',
+    plannedTitle: 'Create a mission from a plan',
+    plannedConfirm: 'Create and link mission',
     capacity: 'This Contract already has 50 linked Projects.',
     title: 'Create a preparatory Project',
     projectTitle: 'New Project title',
@@ -43,6 +50,10 @@ export const contractProjectCreateMessages = defineMessages(keys, {
     success: 'Preparatory Project created and linked.',
   },
   fr: {
+    plannedUncertain:
+      'Le résultat de la création de mission est incertain. La reprise envoie le même titre, la même Version exacte du plan, les mêmes choix, la même révision et la même clé.',
+    plannedTitle: 'Créer une mission à partir d’un plan',
+    plannedConfirm: 'Créer et lier la mission',
     capacity: 'Ce Contrat a déjà 50 Projets liés.',
     title: 'Créer un Projet en préparation',
     projectTitle: 'Titre du nouveau Projet',
@@ -66,6 +77,10 @@ export const contractProjectCreateMessages = defineMessages(keys, {
     success: 'Projet en préparation créé et lié.',
   },
   ro: {
+    plannedUncertain:
+      'Rezultatul creării misiunii este incert. Reîncercarea trimite același titlu, aceeași Versiune exactă a planului, aceleași opțiuni, revizie și cheie.',
+    plannedTitle: 'Creați o misiune dintr-un plan',
+    plannedConfirm: 'Creați și asociați misiunea',
     capacity: 'Acest Contract are deja 50 de Proiecte asociate.',
     title: 'Creați un Proiect în pregătire',
     projectTitle: 'Titlul noului Proiect',
@@ -90,6 +105,10 @@ export const contractProjectCreateMessages = defineMessages(keys, {
     success: 'Proiect în pregătire creat și asociat.',
   },
   ru: {
+    plannedUncertain:
+      'Результат создания миссии неизвестен. Повтор отправляет то же название, точную Версию плана, варианты, ревизию и ключ.',
+    plannedTitle: 'Создать миссию по плану',
+    plannedConfirm: 'Создать и связать миссию',
     capacity: 'С этим Договором уже связаны 50 Проектов.',
     title: 'Создать подготовительный Проект',
     projectTitle: 'Название нового Проекта',

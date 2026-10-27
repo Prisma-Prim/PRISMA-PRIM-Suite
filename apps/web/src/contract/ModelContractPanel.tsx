@@ -228,6 +228,12 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
           {company && (
             <ContractProjectsPanel
               key={contract.id + projectKey}
+              missionPlan={{
+                actor: props.actor,
+                onActorRevalidated: props.onActorRevalidated,
+                onCompanyContextRejected: props.onCompanyContextRejected,
+                onWorkspaceAccessRejected: props.onWorkspaceAccessRejected,
+              }}
               identity={props.identity}
               companyId={company.id}
               opportunityId={props.opportunityId}

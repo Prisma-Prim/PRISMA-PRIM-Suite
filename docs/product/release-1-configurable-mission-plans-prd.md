@@ -481,10 +481,10 @@ candidate, Contract, Task or count. No new file, provider, polling or AI is adde
    and edit a native Task, publish a changed successor and reopen the unchanged
    original source. Inspect original synthetic screenshots and overflow.
 
-Product preparation and delegated approval are complete. Runtime still requires
-this contract on main, then fresh ownership, seam fit and all readiness gates
-for one vertical child. No real operational plan,
-actual assignment, provider setup, manual user test or Iurie answer is required.
+Product preparation and delegated approval are complete. Runtime delivery and
+verification are tracked by [#925](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/925),
+under #922; the approved behavior above remains its authority. No real operational
+plan, actual assignment, provider setup, manual user test or Iurie answer is required.
 MISSION-CLOSE-01 remains solely Mission Obligations§12, for the consolidated email.
 
 Excluded: attach/replace a plan on an existing Project, auto-create on signature,
