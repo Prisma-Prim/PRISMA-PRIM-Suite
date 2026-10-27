@@ -215,13 +215,38 @@ test('continues an older Client affair from the inline dossier through exact ind
       `client-commercial-older-${suffix.toLowerCase()}.png`,
     ),
   });
-  await commercial
-    .getByRole('button', { name: `Open Request: ${subject}`, exact: true })
-    .click();
+  // Hold only the browser scheduling boundary: native exact readiness must win
+  // even when App's generic section frame completes afterwards.
+  await page.evaluate(() => {
+    const original = window.requestAnimationFrame;
+    const frames: FrameRequestCallback[] = [];
+    window.requestAnimationFrame = (callback) => {
+      frames.push(callback);
+      return -frames.length;
+    };
+    window.addEventListener(
+      'test-release-section-frames',
+      () => {
+        window.requestAnimationFrame = original;
+        for (const callback of frames.splice(0)) callback(performance.now());
+      },
+      { once: true },
+    );
+  });
+  const openExact = commercial.getByRole('button', {
+    name: `Open Request: ${subject}`,
+    exact: true,
+  });
+  await openExact.focus();
+  await openExact.press('Enter');
   const intake = page.locator('.commercial-intake-workspace');
   await expect(
     intake.getByText(`Synthetic original source: ${subject}`, { exact: true }),
   ).toBeVisible();
+  await expect(intake.locator('#commercial-intake-detail-title')).toBeFocused();
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('test-release-section-frames'));
+  });
   await expect(intake.locator('#commercial-intake-detail-title')).toBeFocused();
   const economics = intake.getByRole('region', {
     name: 'Profitability Estimate',
