@@ -1,0 +1,51 @@
+{
+  "issue": 923,
+  "pr": 924,
+  "source": "887e7e8e732a10bc6581e86d0fa8ecced07f0e27",
+  "base": "2433304b0ba292c874f3de43e5bfe99ae471f3e8",
+  "tree": "095d32b11d2d9b963aa416902a0eb8ba369a67b9",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1791,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "887e7e8e732a10bc6581e86d0fa8ecced07f0e27",
+    "reviewedBase": "2433304b0ba292c874f3de43e5bfe99ae471f3e8",
+    "tree": "095d32b11d2d9b963aa416902a0eb8ba369a67b9",
+    "blockingFindingsRemaining": 0,
+    "rootStandardsSpec": "PASS on complete final diff",
+    "ordered": true,
+    "reports": {
+      "standards-review.md": "Independent read-only Standards preparation PASS0blockers/0follow-ups before publication. Complete authority route including decision record read; one canonical owner, bounded explicit rights/atomicity/receipt/history/UI/public-proof contract and documentation economy conform. Original six added file/anchor links resolve. No behavioral tests/CI run by reviewer.",
+      "spec-review.md": "Independent ordered Spec/Product preparation PASS0blockers/0follow-ups before publication, after Standards. All six issue criteria covered: exact source, server-resolved Client, independent existing grants, atomic native Project/Task/copy/link, preserved manual receipts, Company-scoped key namespace, historical replay, protected actual-parent UI recovery and autonomous publicREST/PG/App1440/390 proof. Both root compatibility corrections covered; no unsupported policy or scope expansion. Eligible for delegated root approval; no runtime/CI success claim."
+    },
+    "disposition": "Root self-check after Standards clarified the existing Workspace/Company/actor key scope and added the narrow31.7pointer; the following Spec pass covers both. Final approval/status/readiness metadata records that completed preparation without a new business rule or repeated review. Root final Standards/Spec self-review and seven added file/anchor pointer checks PASS.",
+    "delegatedApproval": "Root approval2026-10-27 under https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237; no personal owner confirmation required.",
+    "automatedReview": "Not required for documentation; consume configured opening activity without a duplicate/manual/post-green trigger.",
+    "scope": "Four product Markdown files; no runtime/schema/new or actualgrant/businesscontent/provider/deployment.",
+    "configuredOpeningActivity": {
+      "source": "887e7e8e732a10bc6581e86d0fa8ecced07f0e27",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-27T22:12:31.493213Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/924#issuecomment-6454871896",
+      "applicability": "Additional configured opening activity. Mandatory ordered agent preparation/delegated approval were complete before the canonical docs gate; no duplicate/manual/post-green request."
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only optional Contract-to-configured-mission contract: exact selected Company plan creates native preparatory Project/Tasks/copy and existing Contract link atomically, preserving independent authority, candidate/Client rules, old manual/link receipts, historical replay, privacy and protected UI recovery. No runtime/schema/new grant/actual business content/provider/deployment/whole-MVP claim. MISSION-CLOSE-01 solely Mission Obligations12; runtime remains gated after contract merge and fresh readiness.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-13T23:59:59Z"
+}
