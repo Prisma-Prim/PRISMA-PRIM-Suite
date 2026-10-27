@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Select } from '../presentation/Select';
 import {
   isProject,
@@ -21,7 +21,7 @@ import {
 import { useMissionPlanCopy } from './mission-plan.copy';
 export function MissionPlanProjectCreator(
   props: MissionPlanProps & {
-    clients: readonly ClientChoice[];
+    clients: readonly ClientChoice[] | null;
     onCreated: (v: ProjectView) => void;
   },
 ) {
@@ -39,7 +39,7 @@ function Creator({
   ...props
 }: MissionPlanProps & {
   authority: PlanAuthority;
-  clients: readonly ClientChoice[];
+  clients: readonly ClientChoice[] | null;
   onCreated: (v: ProjectView) => void;
 }) {
   const [selected, setSelected] = useState<PlanVersion | null>(null),
@@ -56,6 +56,9 @@ function Creator({
     },
     'created',
   );
+  // Choices belong to this authority-keyed creator, not a transient directory read.
+  const choices = useRef<readonly ClientChoice[]>(clients ?? []);
+  if (clients !== null && !command.blocked) choices.current = clients;
   return (
     <section aria-label={c('createHeading')}>
       <h3>{c('createHeading')}</h3>
@@ -103,7 +106,7 @@ function Creator({
             id={prefix + 'client'}
             value={client}
             placeholder={c('chooseClient')}
-            options={clients.map((c) => ({
+            options={choices.current.map((c) => ({
               value: c.id,
               label: c.displayName,
             }))}

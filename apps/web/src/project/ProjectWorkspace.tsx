@@ -903,11 +903,11 @@ export function ProjectWorkspace({
           )}
         </>
       )}
-      {load.kind === 'ready' && (
+      {load.kind !== 'denied' && (
         <MissionPlanProjectCreator
           actor={actor}
           identity={identity}
-          clients={load.clients}
+          clients={load.kind === 'ready' ? load.clients : null}
           onActivityRecorded={onActivityRecorded}
           onActorRevalidated={onActorRevalidated}
           onCompanyContextRejected={onCompanyContextRejected}

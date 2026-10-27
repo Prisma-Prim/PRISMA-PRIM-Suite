@@ -192,6 +192,21 @@ test('configures a Company-only plan, creates exact native Tasks with a lost-con
   await expect(
     native.getByRole('textbox', { name: 'Project title', exact: true }),
   ).toHaveValue('Independent manual draft DEMO');
+  await native
+    .getByRole('button', { name: 'Reload Projects', exact: true })
+    .click();
+  await expect(
+    creator.getByRole('textbox', { name: 'New Project title', exact: true }),
+  ).toHaveValue(projectName);
+  await expect(
+    creator.getByRole('combobox', { name: 'New Project Client', exact: true }),
+  ).toContainText(clientName);
+  await expect(
+    creator.getByRole('button', { name: 'Retry identical command' }),
+  ).toBeVisible();
+  await native
+    .getByRole('textbox', { name: 'Project title', exact: true })
+    .fill('Independent manual draft DEMO');
   await creator
     .getByRole('button', { name: 'Retry identical command' })
     .click();
