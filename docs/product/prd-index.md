@@ -122,8 +122,10 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 
 The bounded [Company mission-plan contract](release-1-configurable-mission-plans-prd.md)
 under #917 / #918 extends Project/Task with reusable flat plans and exact native
-Task copies. Its own status governs readiness; it preserves the fixed illustrative
-sources and defines no obligation, certification or closure policy.
+Task copies, delivered by #920 / PR #921. Its [Contract continuation §10](release-1-configurable-mission-plans-prd.md#10-contract-to-configured-mission-continuation)
+under #922 / #923 owns the separately bounded optional Contract-to-plan creation.
+Each section’s status governs its readiness; fixed illustrative sources and
+obligation, certification and closure owners remain unchanged.
 
 ## 6. Release 3 capability PRDs
 
