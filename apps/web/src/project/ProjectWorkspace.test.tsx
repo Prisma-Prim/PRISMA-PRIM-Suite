@@ -107,7 +107,7 @@ it('shows open Projects by default, includes closed Projects on request and rese
     <ProjectWorkspace
       actor={actor}
       identity={identity}
-      projectOpenRequestId={1}
+      navigation={{ kind: 'directory', requestId: 1 }}
     />,
   );
   await waitFor(() =>
@@ -588,9 +588,13 @@ it('uses an authorized dossier identity for navigation and an exact loaded filte
     <ProjectWorkspace
       actor={actor}
       identity={deterministicBrowserIdentity()}
-      clientFilter={{
-        clientDossierId: 'canonical-client',
-        displayName: 'Canonical Client',
+      navigation={{
+        kind: 'directory',
+        requestId: 1,
+        client: {
+          clientDossierId: 'canonical-client',
+          displayName: 'Canonical Client',
+        },
       }}
       onOpenClientDossier={openDossier}
     />,
@@ -1322,12 +1326,21 @@ describe('Client identity changes', () => {
   function renderWorkspace(options: { actor?: ActorContext } = {}) {
     const identity = deterministicBrowserIdentity();
     const openDossier = vi.fn();
+    let requestId = 0;
     const workspace = (revision: number, clientFilter?: ClientFilter) => (
       <ProjectWorkspace
         actor={options.actor ?? actor}
         identity={identity}
         clientIdentityRevision={revision}
-        clientFilter={clientFilter}
+        navigation={
+          clientFilter
+            ? {
+                kind: 'directory',
+                requestId: ++requestId,
+                client: clientFilter,
+              }
+            : undefined
+        }
         onOpenClientDossier={openDossier}
       />
     );

@@ -20,11 +20,11 @@ import { useContractModelCopy } from './contract-model/contract-model.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
 import { UnassignedTasks } from './project/UnassignedTasks';
 import { useUnassignedTasksCopy } from './project/unassigned-tasks.copy';
+import { ProjectWorkspace } from './project/ProjectWorkspace';
 import {
-  ProjectWorkspace,
+  useProjectNavigation,
   type ProjectOpenTarget,
-  type RequestedProject,
-} from './project/ProjectWorkspace';
+} from './project/use-project-navigation';
 import {
   ApplicationContentSurface,
   ApplicationShell,
@@ -65,11 +65,6 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const unassignedCopy = useUnassignedTasksCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [templateCatalogueRevision, setTemplateCatalogueRevision] = useState(0);
-  const [projectClientFilter, setProjectClientFilter] = useState<{
-    navigationContext: string;
-    clientDossierId: string;
-    displayName: string;
-  }>();
   const [clientIdentityGeneration, setClientIdentityGeneration] = useState(0);
   const [documentClientFilter, setDocumentClientFilter] = useState<{
     navigationContext: string;
@@ -100,11 +95,6 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   >();
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
-  const [requestedProject, setRequestedProject] = useState<
-    RequestedProject & { context: string }
-  >();
-  const [projectOpenRequestId, setProjectOpenRequestId] = useState(0);
-  const [projectDirectoryRequestId, setProjectDirectoryRequestId] = useState(0);
   const navigateToSection = useCallback(
     (
       section:
@@ -138,17 +128,16 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     refreshActivityLog,
   } = useProductionShellContext(identity);
 
-  // One authorized navigation intent belongs to exactly one Company, session,
+  // An exact dossier restriction belongs to exactly one Company, session,
   // Client authority and Client identity generation. Any change retires it
   // instead of masking it, so a dossier identity that a union or reversal
-  // superseded can never keep restricting the Projects or Documents a member
-  // sees.
+  // superseded can never keep restricting the Documents a member sees.
+  // Projects owns its corresponding restriction and identity retirement.
   const navigationContext =
     access.status === 'active'
       ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
       : 'inactive';
   useEffect(() => {
-    setProjectClientFilter(undefined);
     setDocumentClientFilter(undefined);
   }, [navigationContext]);
   // A Requests restriction also belongs to the Commercial Intake assignment
@@ -190,9 +179,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     access.status === 'active' && canAccessProjectsSection(access.actor)
       ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
       : 'unavailable';
-  useEffect(() => {
-    setRequestedProject(undefined);
-  }, [projectRequestContext]);
+  const projectNavigation = useProjectNavigation(projectRequestContext);
 
   if (!identity.loaded)
     return (
@@ -314,12 +301,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // Task; no Project or Task identity reaches the URL or history state.
   const openProject = canAccessProjects
     ? (target: ProjectOpenTarget) => {
-        setProjectOpenRequestId((value) => value + 1);
-        setRequestedProject((current) => ({
-          ...target,
-          context: projectRequestContext,
-          requestId: (current?.requestId ?? 0) + 1,
-        }));
+        projectNavigation.navigate({ kind: 'project', ...target });
         navigateToSection('projects');
       }
     : undefined;
@@ -348,9 +330,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         onRevalidateAuthority={() => selectCompany(activeCompany.id)}
         onOpenClients={() => navigateToSection('clients')}
         onOpenProjects={() => {
-          setProjectOpenRequestId((value) => value + 1);
-          setProjectDirectoryRequestId((value) => value + 1);
-          setProjectClientFilter(undefined);
+          projectNavigation.navigate({ kind: 'directory' });
           navigateToSection('projects');
         }}
         onOpenMyTasks={() => navigateToSection('my-tasks')}
@@ -589,12 +569,12 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           onOpenProjects={
             canAccessProjects && activeCompanyId
               ? (client) => {
-                  setProjectOpenRequestId((value) => value + 1);
-                  setProjectDirectoryRequestId((value) => value + 1);
-                  setProjectClientFilter({
-                    navigationContext,
-                    clientDossierId: client.id,
-                    displayName: client.displayName,
+                  projectNavigation.navigate({
+                    kind: 'directory',
+                    client: {
+                      clientDossierId: client.id,
+                      displayName: client.displayName,
+                    },
                   });
                   navigateToSection('projects');
                 }
@@ -665,21 +645,10 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               actor={access.actor}
               identity={identity}
               onActivityRecorded={refreshActivityLog}
-              clientFilter={
-                projectClientFilter?.navigationContext === navigationContext
-                  ? projectClientFilter
-                  : undefined
-              }
               clientIdentityRevision={clientIdentityGeneration}
               onOpenClientDossier={openClientDossier}
               onOpenDocument={openDocument}
-              requestedProject={
-                requestedProject?.context === projectRequestContext
-                  ? requestedProject
-                  : undefined
-              }
-              projectOpenRequestId={projectOpenRequestId}
-              projectDirectoryRequestId={projectDirectoryRequestId}
+              navigation={projectNavigation.request}
             />
           )}
           {canReadProjectTemplateCatalogue(access.actor) && (
