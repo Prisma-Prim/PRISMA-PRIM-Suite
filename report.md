@@ -1,0 +1,9 @@
+# Verified packaging cache recovery — PR907 final proof
+
+Source `ea661825a568c31301748cdc9749dc3d328c58b6`; actual base `a286cd9cee7bccb56ccea4681b5da6a99e351d41`; clean exact integration tree `3d7c22f3195452ca706004ed9249448dec10bb95`.
+
+Owner-authorized complete independent [CI 40459206013](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40459206013) passed all16 logical jobs and all10 actual Test steps, actual production packaging, failure-evidence probe, five evidence uploads and complete quality retrieval/aggregation. No tests are replaced by a cache. Current-verifier success, restored archive key, skipped registry acquisition and actual packaging success are recorded separately in final-proof.json. Original905's failed429 runs are not relabeled.
+
+Standard doctor, frozen install, format/lint/types and all488 script tests passed. One public CLI regression refuses an intact older archive after a current Dockerfile pin changes before any Docker call. Existing proof/archive/config and cold-registry refusal cases remain required. No product behavior changed; no new local business/browser/PG acceptance or canonical complete local gate is claimed. Independent Standards/Spec and configured opening review are complete with0remaining blockers/threads; no post-green review requested.
+
+Only reviewed compact public technical metadata/report is selected. Provider artifact digests, positive sizes, expiry and upload/retrieval steps were inspected; raw archive bytes were not downloaded or locally verified. No raw logs/images/traces/archives/client material, credentials or environment dumps are selected. Keep through 2026-11-12T00:00:00Z; provider artifacts retain their recorded expiry. After this prerequisite merges,905 requires renewed integration and complete CI against actual main, reusing its unchanged product review. No product/MVP or deployment completion is implied.
