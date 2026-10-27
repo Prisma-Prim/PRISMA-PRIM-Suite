@@ -1,3 +1,4 @@
+import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
@@ -42,6 +43,8 @@ import './access-administration.css';
 
 type Submission = 'grant' | 'revoke';
 type AssignmentBundle =
+  | 'mission-plan-configuration'
+  | 'mission-plan-user'
   | 'contract-model-editor'
   | 'contract-model-approver'
   | 'offer-model-editor'
@@ -87,6 +90,9 @@ type AssignmentBundle =
 // Indexing by the selected bundle makes a new bundle a type error until its
 // route and label are decided here.
 const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
+  'mission-plan-configuration':
+    '/company-mission-plan-configuration-assignments',
+  'mission-plan-user': '/company-mission-plan-user-assignments',
   'contract-model-editor': '/company-contract-model-editor-assignments',
   'contract-model-approver': '/company-contract-model-approver-assignments',
   'offer-model-editor': '/company-offer-model-editor-assignments',
@@ -167,6 +173,7 @@ export function CompanyContextAccess({
 }) {
   const copy = useCompanyAssignmentCopy();
   const ideasCopy = useIdeasCopy();
+  const missionPlanCopy = useMissionPlanCopy();
   const modelCopy = useOfferModelCopy();
   const contractModelCopy = useContractModelCopy();
   const profitabilityCopy = useProfitabilityCopy();
@@ -591,6 +598,14 @@ export function CompanyContextAccess({
               },
               { value: 'pricing-user', label: copy('pricingUserBundle') },
               { value: 'offer-preparer', label: copy('offerPreparerBundle') },
+              {
+                value: 'mission-plan-configuration',
+                label: missionPlanCopy('configBundle'),
+              },
+              {
+                value: 'mission-plan-user',
+                label: missionPlanCopy('userBundle'),
+              },
               { value: 'offer-model-editor', label: modelCopy('editorBundle') },
               {
                 value: 'offer-model-approver',
@@ -705,6 +720,8 @@ export function CompanyContextAccess({
                 value === 'pricing-configuration' ||
                 value === 'pricing-user' ||
                 value === 'offer-preparer' ||
+                value === 'mission-plan-configuration' ||
+                value === 'mission-plan-user' ||
                 value === 'contract-model-editor' ||
                 value === 'contract-model-approver' ||
                 value === 'offer-model-editor' ||
@@ -799,6 +816,12 @@ export function CompanyContextAccess({
           )}
           {bundle === 'offer-preparer' && (
             <p>{copy('offerPreparerPrerequisites')}</p>
+          )}
+          {bundle === 'mission-plan-configuration' && (
+            <p>{missionPlanCopy('configHelp')}</p>
+          )}
+          {bundle === 'mission-plan-user' && (
+            <p>{missionPlanCopy('userHelp')}</p>
           )}
           {bundle === 'offer-model-editor' && (
             <p>{modelCopy('editorPrerequisites')}</p>
@@ -914,6 +937,8 @@ export function CompanyContextAccess({
 
 function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
   const labels = {
+    'mission-plan-configuration': 'Company Mission Plan Configuration',
+    'mission-plan-user': 'Company Mission Plan User',
     'contract-model-editor': 'Company Contract Model Editor',
     'contract-model-approver': 'Company Contract Model Approver',
     'offer-model-editor': 'Company Offer Model Editor',

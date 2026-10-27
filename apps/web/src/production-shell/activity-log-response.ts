@@ -141,6 +141,13 @@ const targetTypes = {
   'project.responsible.changed': 'project',
   'project.lifecycle.changed': 'project',
   'project.stage.changed': 'project',
+  'mission_plan.version.published': 'mission_plan_version',
+  'company_mission_plan_configuration_assignment.granted':
+    'company_role_assignment',
+  'company_mission_plan_configuration_assignment.revoked':
+    'company_role_assignment',
+  'company_mission_plan_user_assignment.granted': 'company_role_assignment',
+  'company_mission_plan_user_assignment.revoked': 'company_role_assignment',
   'project.template.version.created': 'project_template_version',
   'company_project_template_configuration_assignment.granted':
     'company_role_assignment',
@@ -259,6 +266,24 @@ function activityLogEvent(value: unknown): ActivityLogEvent | undefined {
         },
         metadata: responsibleChange(value.metadata),
       };
+    case 'mission_plan.version.published': {
+      const m = value.metadata;
+      if (!isRecord(m) || Object.keys(m).length !== 2) invalid();
+      const versionNumber = positiveInteger(m.versionNumber),
+        activityCount = positiveInteger(m.activityCount);
+      if (activityCount > 50) invalid();
+      return {
+        ...recorded(value),
+        action,
+        target: {
+          type: 'mission_plan_version',
+          companyId: identifier(target.companyId),
+          planId: identifier(target.planId),
+          versionId: identifier(target.versionId),
+        },
+        metadata: { versionNumber, activityCount },
+      };
+    }
     case 'project.template.version.created': {
       const metadata = value.metadata;
       if (

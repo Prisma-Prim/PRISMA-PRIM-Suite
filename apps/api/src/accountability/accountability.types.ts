@@ -1,3 +1,4 @@
+import type { MissionPlanVersionPublishedActivityEvent } from '../mission-plan/mission-plan.activity.js';
 import {
   COMPANY_IDEAS_READER_BUNDLE_LABEL,
   COMPANY_IDEAS_RECORDER_BUNDLE_LABEL,
@@ -172,6 +173,10 @@ export type CanonicalActivityEvent =
   | {
       actor: ActorContext;
       action:
+        | 'company_mission_plan_configuration_assignment.granted'
+        | 'company_mission_plan_configuration_assignment.revoked'
+        | 'company_mission_plan_user_assignment.granted'
+        | 'company_mission_plan_user_assignment.revoked'
         | 'company_task_manager_assignment.granted'
         | 'company_task_manager_assignment.revoked'
         | 'company_document_project_organizer_assignment.granted'
@@ -285,6 +290,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | 'Company Mission Plan Configuration'
+          | 'Company Mission Plan User'
           | 'Company Contract Signature Declarer'
           | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
@@ -378,6 +385,10 @@ export interface OrdinaryActivityLogEvent {
     | 'workspace_sessions.revoked'
     | 'workspace_sessions.revocation_retry_required'
     | typeof COMPANY_REGISTERED_ACTION
+    | 'company_mission_plan_configuration_assignment.granted'
+    | 'company_mission_plan_configuration_assignment.revoked'
+    | 'company_mission_plan_user_assignment.granted'
+    | 'company_mission_plan_user_assignment.revoked'
     | 'company_task_manager_assignment.granted'
     | 'company_task_manager_assignment.revoked'
     | 'company_document_project_organizer_assignment.granted'
@@ -538,6 +549,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_OFFER_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_PREPARER_BUNDLE_LABEL
           | typeof COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE_LABEL
+          | 'Company Mission Plan Configuration'
+          | 'Company Mission Plan User'
           | 'Company Contract Signature Declarer'
           | typeof COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_OFFER_MODEL_EDITOR_BUNDLE_LABEL
@@ -737,7 +750,8 @@ export type ActivityLogEvent =
   | ProjectResponsibleChangedActivityEvent
   | ProjectLifecycleChangedActivityEvent
   | ProjectStageChangedActivityEvent
-  | ProjectTemplateVersionCreatedActivityEvent;
+  | ProjectTemplateVersionCreatedActivityEvent
+  | MissionPlanVersionPublishedActivityEvent;
 
 export interface ProjectCreatedActivityEvent {
   id: string;

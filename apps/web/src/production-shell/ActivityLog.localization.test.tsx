@@ -156,15 +156,15 @@ afterEach(() => {
 });
 
 it.each(locales)(
-  'renders all 129 admitted actions and 18 target types in %s without exposing canonical codes',
+  'renders all 134 admitted actions and 19 target types in %s without exposing canonical codes',
   (locale) => {
     present({ state: { status: 'ready', events: allActivityEvents }, locale });
     const region = screen.getByRole('region', { name: words[locale].title });
     const rows = within(region).getAllByRole('listitem');
-    expect(rows).toHaveLength(129);
+    expect(rows).toHaveLength(134);
     expect(
       new Set(allActivityEvents.map((event) => event.target.type)).size,
-    ).toBe(18);
+    ).toBe(19);
     for (const [index, event] of allActivityEvents.entries()) {
       const row = rows[index];
       if (!row) throw new Error('Missing canonical Activity row.');

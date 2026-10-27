@@ -1,3 +1,4 @@
+import type { ServerClock } from '../clock/server-clock.js';
 import { randomUUID } from 'node:crypto';
 import { expect } from 'vitest';
 import { createIsolatedPostgresTestDatabase } from '../database/isolated-postgres-test-database.js';
@@ -31,7 +32,10 @@ interface Options {
   subject?: string;
   workspaceId?: string;
 }
-export async function createPilotPlanFixture(baseDatabaseUrl: string) {
+export async function createPilotPlanFixture(
+  baseDatabaseUrl: string,
+  options: { migrationsFolder?: string; serverClock?: ServerClock } = {},
+) {
   const workspaceId = '00000000-0000-4000-8000-000000000838';
   const database = await createIsolatedPostgresTestDatabase({
     baseDatabaseUrl,
@@ -39,6 +43,7 @@ export async function createPilotPlanFixture(baseDatabaseUrl: string) {
   });
   const harness = await createPostgresRestTestHarness({
     databaseUrl: database.targetUrl,
+    ...options,
     environment: {
       NODE_ENV: 'test',
       ACCESS_IDENTITY_MODE: 'test',

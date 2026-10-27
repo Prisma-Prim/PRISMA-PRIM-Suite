@@ -1,4 +1,8 @@
 import {
+  COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
+  COMPANY_MISSION_PLAN_USER_BUNDLE,
+} from './company-permissions.js';
+import {
   COMPANY_IDEAS_READER_BUNDLE,
   COMPANY_IDEAS_RECORDER_BUNDLE,
   COMPANY_IDEAS_REVIEWER_BUNDLE,
@@ -109,6 +113,13 @@ const OPERATIONAL_RISK_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE,
   permissionSetVersion: 'v1',
 };
+const MISSION_PLAN_BUNDLES = {
+  configuration: {
+    value: COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
+    permissionSetVersion: 'v1',
+  },
+  user: { value: COMPANY_MISSION_PLAN_USER_BUNDLE, permissionSetVersion: 'v1' },
+} as const satisfies Record<string, BundleDefinition>;
 const TASK_MANAGER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_MANAGER_BUNDLE,
   permissionSetVersion: 'v1',
@@ -600,6 +611,40 @@ export class CompanyContextAssignmentService {
     );
   }
 
+  grantMissionPlan({
+    actor,
+    role,
+    ...command
+  }: GrantCompanyContextAssignmentCommand & {
+    actor: ActorContext;
+    role: keyof typeof MISSION_PLAN_BUNDLES;
+  }) {
+    return this.mutate(
+      actor,
+      MISSION_PLAN_BUNDLES[role],
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeMissionPlan({
+    actor,
+    role,
+    ...command
+  }: GrantCompanyContextAssignmentCommand & {
+    actor: ActorContext;
+    role: keyof typeof MISSION_PLAN_BUNDLES;
+  }) {
+    return this.mutate(
+      actor,
+      MISSION_PLAN_BUNDLES[role],
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   async grantOfferModel({
     actor,
     role,
@@ -2062,6 +2107,14 @@ function assignmentAction(
       return granted
         ? 'company_offer_preparer_assignment.granted'
         : 'company_offer_preparer_assignment.revoked';
+    case COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE:
+      return granted
+        ? 'company_mission_plan_configuration_assignment.granted'
+        : 'company_mission_plan_configuration_assignment.revoked';
+    case COMPANY_MISSION_PLAN_USER_BUNDLE:
+      return granted
+        ? 'company_mission_plan_user_assignment.granted'
+        : 'company_mission_plan_user_assignment.revoked';
     case COMPANY_OFFER_MODEL_EDITOR_BUNDLE:
       return granted
         ? 'company_offer_model_editor_assignment.granted'

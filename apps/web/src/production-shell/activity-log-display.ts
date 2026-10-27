@@ -1,3 +1,4 @@
+import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
 import { useMissionDeliverableCopy } from '../documents/mission-deliverable.copy';
@@ -40,6 +41,7 @@ const stageOperationKeys = {
 export function useActivityLogDisplay() {
   const message = useActivityLogCopy();
   const ideas = useIdeasCopy();
+  const missionPlan = useMissionPlanCopy();
   const model = useOfferModelCopy();
   const contractModel = useContractModelCopy();
   const invitationActions = useWorkspaceInvitationsCopy().activityActionLabels;
@@ -291,6 +293,13 @@ export function useActivityLogDisplay() {
       projectStage('revoked'),
     'company_project_template_user_assignment.granted': template('granted'),
     'company_project_template_user_assignment.revoked': template('revoked'),
+    'mission_plan.version.published': missionPlan('publishedEvent'),
+    'company_mission_plan_configuration_assignment.granted':
+      missionPlan('configGranted'),
+    'company_mission_plan_configuration_assignment.revoked':
+      missionPlan('configRevoked'),
+    'company_mission_plan_user_assignment.granted': missionPlan('userGranted'),
+    'company_mission_plan_user_assignment.revoked': missionPlan('userRevoked'),
     'project.template.version.created': templateVersion('activity'),
     'company_project_template_configuration_assignment.granted':
       templateVersion('granted'),
@@ -375,6 +384,8 @@ export function useActivityLogDisplay() {
   function targetDescription(event: ActivityLogEvent): string {
     // The resulting catalogue Version remains the source for Project copies.
     // sourceVersion is its publication predecessor; no identity is substituted.
+    if (event.action === 'mission_plan.version.published')
+      return `${missionPlan('version')} ${formatNumber(event.metadata.versionNumber)} · ${formatNumber(event.metadata.activityCount)}`;
     if (event.action === 'project.template.version.created')
       return formatMessage(templateVersion('source'), {
         version: formatNumber(event.metadata.version),

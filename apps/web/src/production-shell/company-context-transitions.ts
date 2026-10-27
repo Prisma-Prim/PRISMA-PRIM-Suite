@@ -73,6 +73,10 @@ export interface OrdinaryActivityLogEvent {
     | 'company_pricing_user_assignment.revoked'
     | 'company_offer_preparer_assignment.granted'
     | 'company_offer_model_editor_assignment.granted'
+    | 'company_mission_plan_configuration_assignment.granted'
+    | 'company_mission_plan_configuration_assignment.revoked'
+    | 'company_mission_plan_user_assignment.granted'
+    | 'company_mission_plan_user_assignment.revoked'
     | 'company_contract_model_editor_assignment.granted'
     | 'company_offer_model_editor_assignment.revoked'
     | 'company_contract_model_editor_assignment.revoked'
@@ -534,7 +538,22 @@ export interface ProjectTemplateVersionCreatedActivityEvent {
   };
   metadata: { templateKey: string; version: number; sourceVersion: number };
 }
+interface MissionPlanPublicationEvent {
+  id: string;
+  action: 'mission_plan.version.published';
+  occurredAt: string;
+  actor: { internalUserId: string; displayName: string };
+  target: {
+    type: 'mission_plan_version';
+    companyId: string;
+    planId: string;
+    versionId: string;
+  };
+  metadata: { versionNumber: number; activityCount: number };
+}
+
 export type ActivityLogEvent =
+  | MissionPlanPublicationEvent
   | ProjectTemplateVersionCreatedActivityEvent
   | TaskActivityLogEvent
   | ProjectResponsibleChangedActivityLogEvent

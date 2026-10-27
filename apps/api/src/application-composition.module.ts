@@ -1,3 +1,7 @@
+import { MissionPlanCopyController } from './mission-plan/mission-plan-copy.controller.js';
+import { MissionPlanModule } from './mission-plan/mission-plan.module.js';
+import { MissionPlanController } from './mission-plan/mission-plan.controller.js';
+import { CompanyMissionPlanAssignmentController } from './access/company-mission-plan-assignment.controller.js';
 import { CompanyIdeasReaderAssignmentController } from './access/company-ideas-reader-assignment.controller.js';
 import { CompanyIdeasRecorderAssignmentController } from './access/company-ideas-recorder-assignment.controller.js';
 import { CompanyIdeasReviewerAssignmentController } from './access/company-ideas-reviewer-assignment.controller.js';
@@ -133,6 +137,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    MissionPlanModule,
     ContractModelModule,
     OfferModelModule,
     IdeasModule,
@@ -158,6 +163,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    MissionPlanController,
+    MissionPlanCopyController,
+    CompanyMissionPlanAssignmentController,
     ContractModelController,
     OfferModelController,
     CompanyIdeasReaderAssignmentController,

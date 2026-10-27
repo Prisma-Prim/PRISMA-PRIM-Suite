@@ -1,3 +1,7 @@
+import {
+  COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
+  COMPANY_MISSION_PLAN_USER_BUNDLE,
+} from './company-permissions.js';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
@@ -48,6 +52,9 @@ export interface MemberAuthority {
   offerModelReader: boolean;
   offerModelEditor: boolean;
   offerModelApprover: boolean;
+  missionPlanReader: boolean;
+  missionPlanConfigurator: boolean;
+  missionPlanUser: boolean;
 }
 
 /**
@@ -136,6 +143,8 @@ export async function readMemberAuthority(
     contractApprover = false;
   let modelEditor = false,
     modelApprover = false;
+  let missionConfiguration = false,
+    missionUser = false;
   for (const assignment of assignments) {
     switch (assignment.bundle) {
       case COMPANY_CONTEXT_ACCESS_BUNDLE:
@@ -189,6 +198,12 @@ export async function readMemberAuthority(
         break;
       case 'company_document_project_organizer':
         break;
+      case COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE:
+        missionConfiguration = assignment.version === 'v1';
+        break;
+      case COMPANY_MISSION_PLAN_USER_BUNDLE:
+        missionUser = assignment.version === 'v1';
+        break;
       case COMPANY_OFFER_MODEL_EDITOR_BUNDLE:
         modelEditor =
           assignment.version === 'v1' &&
@@ -238,6 +253,9 @@ export async function readMemberAuthority(
     offerModelReader: context && (modelEditor || modelApprover),
     offerModelEditor: context && modelEditor,
     offerModelApprover: context && modelApprover,
+    missionPlanReader: context && (missionConfiguration || missionUser),
+    missionPlanConfigurator: context && missionConfiguration,
+    missionPlanUser: context && missionUser,
   };
 }
 
