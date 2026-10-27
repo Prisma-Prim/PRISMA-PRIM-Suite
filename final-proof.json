@@ -1,0 +1,282 @@
+{
+  "issue": 912,
+  "pr": 914,
+  "source": "19a1c8a31e584e8a17bdb52fafc9126243eff8b9",
+  "base": "653f2233b3b63aafd660347f569ccf31f0ec2121",
+  "tree": "a5b0b6b1065e668dacc55306332c780d4f420b67",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40488379418,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418",
+    "attempt": 1,
+    "providerLatestJobAttempts": {
+      "checks": 1,
+      "scope": 1,
+      "postgres_image": 1,
+      "packaging": 1,
+      "browser (1)": 1,
+      "build": 1,
+      "api (serial)": 1,
+      "acceptance (2)": 1,
+      "api (2/3)": 1,
+      "web_unit": 1,
+      "browser (2)": 1,
+      "browser (3)": 1,
+      "api (3/3)": 1,
+      "acceptance (1)": 1,
+      "api (1/3)": 1,
+      "quality": 1
+    },
+    "actualExecutionOrigins": {
+      "checks": {
+        "actualJobId": 122135804748,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122135804748"
+      },
+      "scope": {
+        "actualJobId": 122135804851,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122135804851"
+      },
+      "postgres_image": {
+        "actualJobId": 122135877077,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122135877077"
+      },
+      "packaging": {
+        "actualJobId": 122136831832,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136831832"
+      },
+      "browser (1)": {
+        "actualJobId": 122136831859,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136831859"
+      },
+      "build": {
+        "actualJobId": 122136831866,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136831866"
+      },
+      "api (serial)": {
+        "actualJobId": 122136831901,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136831901"
+      },
+      "acceptance (2)": {
+        "actualJobId": 122136831949,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136831949"
+      },
+      "api (2/3)": {
+        "actualJobId": 122136831973,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136831973"
+      },
+      "web_unit": {
+        "actualJobId": 122136831997,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136831997"
+      },
+      "browser (2)": {
+        "actualJobId": 122136832068,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136832068"
+      },
+      "browser (3)": {
+        "actualJobId": 122136832078,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136832078"
+      },
+      "api (3/3)": {
+        "actualJobId": 122136832088,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136832088"
+      },
+      "acceptance (1)": {
+        "actualJobId": 122136832149,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136832149"
+      },
+      "api (1/3)": {
+        "actualJobId": 122136832242,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122136832242"
+      },
+      "quality": {
+        "actualJobId": 122141127985,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40488379418/job/122141127985"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "issue": 912,
+    "finalSource": "19a1c8a31e584e8a17bdb52fafc9126243eff8b9",
+    "doctor": {
+      "web": "doctor.log passed before edits",
+      "webPostgres": "doctor-web-postgres.log passed before publication"
+    },
+    "frozenInstall": "passed",
+    "broaderDevelopment": {
+      "source": "0f1eeb9bb8364d86e56f11059136dc13383cc477",
+      "command": "pnpm verify",
+      "status": "passed",
+      "log": "development-verify.log",
+      "scriptTestsPassed": 488,
+      "apiUnitPassed": 1510,
+      "webUnitPassed": 3288,
+      "apiPostgresExplicitlySkipped": 1917,
+      "builds": "API+Web passed",
+      "completeLocalIntegrationGate": false,
+      "provenance": "Before narrow generation-retirement correction. No relabel as execution on final head. Corrected affected static/navigation/browser checks separately pass; final independent CI must test current head/base/tree."
+    },
+    "correctedTargeted": {
+      "navigationPassed": 61,
+      "exactRequestCases": 18,
+      "navigationLog": "roundtrip-navigation-green.log",
+      "actualAppPassed": 2,
+      "actualAppLog": "corrected-acceptance.log",
+      "viewports": [
+        1440,
+        390
+      ],
+      "formatLintTypes": "passed",
+      "extraReviewRequested": false,
+      "correctionScope": "Only focus-generation retirement and public Company roundtrip regression; no authorization/grant/tenancy-data/migration/Activity code change. Amended one focused first-publication commit.",
+      "originalScreenshotsInspected": 2,
+      "screenshotReport": "corrected-screenshot-review.json"
+    },
+    "red": "focus-order-red.log detail-firstfails/section-firstpasses; roundtrip-red.log failureconfirmsindependentfinding on0f via privatepublicApp,baselinebytesrestored",
+    "reviews": {
+      "standards": "oneP2roundtrip",
+      "spec": "sameoneP2roundtrip",
+      "remainingBlockers": 0
+    },
+    "retainedFailures": [
+      "focus-expanded.log:assumedRefreshretiredorigin, butexistingdossierlifetime retained andnativeRefreshfocus occurs; revisedgenuinesource-retirementcaseusesdossierreplacement,notprodchange",
+      "navigation-green.log sameincorrectRefreshlifetimeassumption; correctedpublic61pass"
+    ],
+    "publication": "Synthetic technical evidence only, no real data/credentials. No manual user test, provider/deploy or fullMVPclaim."
+  },
+  "review": {
+    "issue": 912,
+    "reviewedSource": "0f1eeb9bb8364d86e56f11059136dc13383cc477",
+    "base": "653f2233b3b63aafd660347f569ccf31f0ec2121",
+    "standardsReport": "standards-review.md",
+    "specReport": "spec-review.md",
+    "uniqueBlockingDefects": 1,
+    "rootValidated": "Controlled actual public App roundtrip-red.log confirms CompanyA\u2192B\u2192A stale frame revives; private baseline source/test bytes restored.",
+    "correction": "Increment navigation generation permanently whenever context/identity changes, not just on navigation/unmount; retain source/hash/visibility/descendant focus guards. Add actual public App Company roundtrip case.",
+    "blockingFindingsRemaining": 0,
+    "pendingAffectedVerification": false,
+    "complete": true,
+    "additionalReviewRequested": false,
+    "source": "19a1c8a31e584e8a17bdb52fafc9126243eff8b9",
+    "tree": "a5b0b6b1065e668dacc55306332c780d4f420b67",
+    "finalCurrentSource": "19a1c8a31e584e8a17bdb52fafc9126243eff8b9",
+    "resolvedBlockingDefects": 1,
+    "rootCorrectionVerification": {
+      "navigationPassed": 61,
+      "exactRequestCases": 18,
+      "navigationLog": "roundtrip-navigation-green.log",
+      "actualAppPassed": 2,
+      "actualAppLog": "corrected-acceptance.log",
+      "viewports": [
+        1440,
+        390
+      ],
+      "formatLintTypes": "passed",
+      "extraReviewRequested": false,
+      "correctionScope": "Only focus-generation retirement and public Company roundtrip regression; no authorization/grant/tenancy-data/migration/Activity code change. Amended one focused first-publication commit."
+    },
+    "status": "complete before final CI",
+    "configuredOpeningReview": {
+      "source": "19a1c8a31e584e8a17bdb52fafc9126243eff8b9",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-27T10:24:02.787741Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/914#issuecomment-6439353737",
+      "trigger": "PR opened; reused once, no duplicate request"
+    },
+    "unresolvedThreads": 0
+  },
+  "discovery": {
+    "relatedPR": 913,
+    "failedRun": 40483956358,
+    "baseline": "653f2233b3b63aafd660347f569ccf31f0ec2121",
+    "cause": "Existing exact Request heading focus stolen by delayed generic section RAF, independently reproduced on baseline and Offer branch. This issue fixes that baseline prerequisite separately; related Offer CI remains failed and paused."
+  },
+  "artifacts": [
+    {
+      "id": 12728725831,
+      "name": "browser-evidence-part-acceptance-1-40488379418",
+      "size_in_bytes": 75884738,
+      "digest": "sha256:058457632b8e2a427ee2f1c86cf9f6c665c5c9c65f750bfaf65d57cfd867424f",
+      "expires_at": "2026-11-10T10:37:43Z"
+    },
+    {
+      "id": 12728435964,
+      "name": "browser-evidence-pr-40488379418",
+      "size_in_bytes": 403714317,
+      "digest": "sha256:2aef4d60e3f8d24aa16761b3f268a33962456d36d543470b259e75fa2a677fd5",
+      "expires_at": "2026-11-10T10:38:16Z"
+    },
+    {
+      "id": 12727870030,
+      "name": "browser-evidence-part-browser-2-40488379418",
+      "size_in_bytes": 77556590,
+      "digest": "sha256:7116b6bb76e93e7b3fce3c151a70f1c2b26c20553639e9f32639140d0209b8f4",
+      "expires_at": "2026-11-10T10:32:19Z"
+    },
+    {
+      "id": 12727795765,
+      "name": "browser-evidence-part-acceptance-2-40488379418",
+      "size_in_bytes": 65302726,
+      "digest": "sha256:cb551ea414dc71881474da0d60ef681277f5a9c58afacd7007ff9693083635cd",
+      "expires_at": "2026-11-10T10:36:36Z"
+    },
+    {
+      "id": 12727760157,
+      "name": "browser-evidence-part-browser-3-40488379418",
+      "size_in_bytes": 71168019,
+      "digest": "sha256:afdf8e2d9bf29aa8cb7f71cf670b6142231dd616c7d1b17b6ea5dd496760740a",
+      "expires_at": "2026-11-10T10:32:48Z"
+    },
+    {
+      "id": 12727240443,
+      "name": "browser-evidence-part-browser-1-40488379418",
+      "size_in_bytes": 113802332,
+      "digest": "sha256:c78d0d91b1bbff9d2e3a2c066b87649a93dfa3edfd7d4763a3ca02e9ca045eb7",
+      "expires_at": "2026-11-10T10:32:35Z"
+    }
+  ],
+  "scope": "Issue912 only: preserve exact native Request focus across delayed generic section frames; retain ordinary visible-section fallback and retire stale context/identity/source/hash/navigation/unmount frames. No permissions, business mutation, schema, general router, queue behavior, actual data, provider or deployment. Offer913 remains separate.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-13T23:59:59Z"
+}
