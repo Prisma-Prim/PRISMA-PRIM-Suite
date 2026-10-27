@@ -33,8 +33,10 @@ import {
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   DocumentWorkspace,
+  type DocumentOpenTarget,
   type RequestedDocument,
 } from './documents/DocumentWorkspace';
+import { ClientDocumentOverview } from './documents/ClientDocumentOverview';
 import { usePrismeCopy } from './production-shell/prisme/prisme.copy';
 import type { BrowserIdentity } from './access-composition';
 import type { ActorContext } from './access-types';
@@ -281,11 +283,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   // read decides what is shown.
   const openDocument =
     access.actor.activeCompany && canAccessClients
-      ? (documentId: string) => {
+      ? (target: DocumentOpenTarget) => {
           documentRequests.current += 1;
           setRequestedDocument({
             documentsContext,
-            documentId,
+            ...(typeof target === 'string' ? { documentId: target } : target),
             requestId: documentRequests.current,
           });
           navigateToSection('documents');
@@ -608,6 +610,22 @@ export function App({ identity }: { identity: BrowserIdentity }) {
                   });
                   navigateToSection('documents');
                 }
+              : undefined
+          }
+          renderDocumentWork={
+            openDocument
+              ? (clientDossierId) => (
+                  <ClientDocumentOverview
+                    actor={access.actor}
+                    identity={identity}
+                    clientDossierId={clientDossierId}
+                    clientIdentityRevision={clientIdentityGeneration}
+                    onOpenDocument={openDocument}
+                    onCompanyContextRejected={rejectCompanyContext}
+                    onActorRevalidated={acceptRevalidatedActor}
+                    onWorkspaceAccessRejected={rejectWorkspaceAccess}
+                  />
+                )
               : undefined
           }
           onOpenRequests={
