@@ -1,0 +1,425 @@
+{
+  "issue": 911,
+  "pr": 913,
+  "source": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+  "base": "167ec009e0e9743f8753976425e33f3d4925f8c0",
+  "tree": "51e8d5e0e98ab8cd6928d0a27c0ff81a558cd30f",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40491483170,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170",
+    "attempt": 1,
+    "providerLatestJobAttempts": {
+      "checks": 1,
+      "scope": 1,
+      "postgres_image": 1,
+      "browser (2)": 1,
+      "web_unit": 1,
+      "packaging": 1,
+      "browser (3)": 1,
+      "build": 1,
+      "acceptance (1)": 1,
+      "api (serial)": 1,
+      "browser (1)": 1,
+      "api (1/3)": 1,
+      "acceptance (2)": 1,
+      "api (2/3)": 1,
+      "api (3/3)": 1,
+      "quality": 1
+    },
+    "actualExecutionOrigins": {
+      "checks": {
+        "actualJobId": 122146242635,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122146242635"
+      },
+      "scope": {
+        "actualJobId": 122146243008,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122146243008"
+      },
+      "postgres_image": {
+        "actualJobId": 122146312397,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122146312397"
+      },
+      "browser (2)": {
+        "actualJobId": 122147305039,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305039"
+      },
+      "web_unit": {
+        "actualJobId": 122147305040,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305040"
+      },
+      "packaging": {
+        "actualJobId": 122147305064,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305064"
+      },
+      "browser (3)": {
+        "actualJobId": 122147305080,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305080"
+      },
+      "build": {
+        "actualJobId": 122147305085,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305085"
+      },
+      "acceptance (1)": {
+        "actualJobId": 122147305138,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305138"
+      },
+      "api (serial)": {
+        "actualJobId": 122147305167,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305167"
+      },
+      "browser (1)": {
+        "actualJobId": 122147305170,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305170"
+      },
+      "api (1/3)": {
+        "actualJobId": 122147305205,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305205"
+      },
+      "acceptance (2)": {
+        "actualJobId": 122147305241,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305241"
+      },
+      "api (2/3)": {
+        "actualJobId": 122147305276,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305276"
+      },
+      "api (3/3)": {
+        "actualJobId": 122147305339,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122147305339"
+      },
+      "quality": {
+        "actualJobId": 122151980149,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40491483170/job/122151980149"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "doctor": {
+      "profile": "web-postgres",
+      "status": "passed",
+      "log": "doctor.log"
+    },
+    "frozenInstall": "passed",
+    "finalSource": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+    "broaderDevelopment": {
+      "command": "pnpm verify",
+      "status": "passed",
+      "log": "development-verify-corrected.log",
+      "scriptTests": 488,
+      "apiUnitPassed": 1510,
+      "apiPostgresExplicitlySkipped": 1925,
+      "webUnitPassed": 3309,
+      "builds": "API+Web passed",
+      "completeLocalIntegrationGate": false,
+      "executedSource": "30a9890897e18ab5d22b76466e6c045f66452416"
+    },
+    "currentTargeted": {
+      "apiPostgresPassed": 8,
+      "apiLog": "calendar-rest-green.log",
+      "publicUIPassed": 26,
+      "uiLog": "calendar-ui-green.log"
+    },
+    "affectedPostgres": {
+      "initialFiles": 19,
+      "initialCases": 393,
+      "initialPassed": 391,
+      "initialFailures": "two5000msloadtimeouts,new27Offerscenarioandunchangedmigration",
+      "diagnosedRerunPassed": 8,
+      "existingMigrationDeadlineUnchanged": true,
+      "newPaginationTestScenarioOwnDeadline": 15000,
+      "log": "affected-timeout-diagnosis.log"
+    },
+    "actualApp": {
+      "log": "acceptance-verified.log",
+      "passed": 2,
+      "viewports": [
+        [
+          1440,
+          900
+        ],
+        [
+          390,
+          844
+        ]
+      ],
+      "locales": [
+        "ro",
+        "ru",
+        "fr",
+        "en"
+      ],
+      "page2ExactNativeChecksAndImmutableUncertainApprovalRetry": true,
+      "queueRefreshRemoval": true,
+      "noClientRead": true,
+      "exactFrozenRepresentationAndVisibleHeading": true,
+      "originalsInspected": 4,
+      "screenshots": "screenshot-review.json",
+      "sourceProvenance": "Executedbeforecalendar-onlydecoderbatch; no relabelonnewsource. Normalpositive2026datepath/nativeUIcommandsunchanged; currentcorrected8API/26UItests green. FinalindependentCIwilltestpublishedexactsource."
+    },
+    "reviews": {
+      "independentReviewedSource": "54a32360bd74602d160db2ca125ed4325bc5f971",
+      "calendarDefect": "PG22008andREST500red+UIforgedrowred, batchyear0rejectionbothnewreaders8API26UIgreen",
+      "followup": 912
+    },
+    "retainedFailures": [
+      "development-verify.log:existingbaselineClientRequestfocusrace",
+      "#912:baseline/currentforcedRAFordermatchesandoriginalbytesrestored",
+      "development-verify-restored.log:earlynativehistorycountassertbeforepublichistoryready;fixedawait readiness andcurrent26+3309webpass",
+      "acceptance-original.log:syntheticpast-tariffsetup400;clockownerfixed,noappchange",
+      "acceptance-final.log:addediframeassertwasincorrectlyplacedafterBack; movedwhileselected,noappchange,actualAppverified2pass",
+      "Initial complete CI40480511097 failed browser2 strict Activity fixture unknown new queue GET; browser1cancelled failfast/qualityfailed. Targeted first correction28cases20pass8fail exposed exact frame all-read assertion; unchanged runtime. Exact expectation now includes sole legitimate Home read; all28 pass before one correction publication.",
+      "CompleteCI40483956358 failed known baselinefocus912:3308/3309Webpass/allotheractualtestfamiliespass. Baselinecause corrected separatelyby914, fullCI40488379418PASS; identicalfeaturepatchmechanicallycomposed+102affectedcasespass before freshfullCI. Oldrunremainsfailed."
+    ],
+    "boundedFixtureCorrection": {
+      "priorSource": "30a9890897e18ab5d22b76466e6c045f66452416",
+      "source": "13d107292262a4ce6181620000269db24d284be4",
+      "failedRun": 40480511097,
+      "files": 3,
+      "scope": "Only strict existing Activity/Offer E2E HTTP fixtures and exact Activity full-read assertion. Classic compatibility legitimately mounts Home once; retain exact all-reads assertion with one explicit scoped queue read; Activity/native rows and all other reads/commands remain unchanged. No runtime, authorization, tenancy, migration or Activity business-code correction.",
+      "targeted": {
+        "browserCases": 28,
+        "viewports": [
+          1440,
+          390
+        ],
+        "locales": [
+          "ro",
+          "ru",
+          "fr",
+          "en"
+        ],
+        "unitCases": 41,
+        "webTypecheck": "passed",
+        "formatAndLint": "passed"
+      },
+      "reviewReuse": "Configured opening review on30a989 completed0; runtime byte-unchanged, root inspected bounded fixture-only correction and affected passing checks. No duplicate or post-green review trigger.",
+      "remainingBlockers": 0
+    },
+    "currentBase": "167ec009e0e9743f8753976425e33f3d4925f8c0",
+    "currentTree": "51e8d5e0e98ab8cd6928d0a27c0ff81a558cd30f",
+    "mainAdvanceComposition": {
+      "oldSource": "13d107292262a4ce6181620000269db24d284be4",
+      "oldBase": "653f2233b3b63aafd660347f569ccf31f0ec2121",
+      "newSource": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+      "newBase": "167ec009e0e9743f8753976425e33f3d4925f8c0",
+      "newTree": "51e8d5e0e98ab8cd6928d0a27c0ff81a558cd30f",
+      "featurePatchId": "2cdad87fb3f826890830aa5dadc4d9a4f5b1089f",
+      "identicalFeaturePatch": true,
+      "composition": "Clean mechanical merge of independently reviewed/tested baseline focus fix914; no conflict or second Offer correction. Native Offer review remains applicable.",
+      "baselineFixPR": 914,
+      "baselineFixCI": 40488379418,
+      "baselineFixProof": "2bbdf9b777e606248676c63e3e0aa3acd4c56641",
+      "affectedComposition": {
+        "webCasesPassed": 102,
+        "files": 9,
+        "doctorWebPostgres": "passed",
+        "formatLintTypes": "passed",
+        "log": "resumed-navigation.log"
+      }
+    }
+  },
+  "review": {
+    "issue": 911,
+    "source": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+    "base": "167ec009e0e9743f8753976425e33f3d4925f8c0",
+    "tree": "51e8d5e0e98ab8cd6928d0a27c0ff81a558cd30f",
+    "reviewedSource": "54a32360bd74602d160db2ca125ed4325bc5f971",
+    "standardsReport": "standards-review.md",
+    "specReport": "spec-review.md",
+    "independentBlockingDefects": 1,
+    "resolvedBlockingDefects": 1,
+    "blockingFindingsRemaining": 0,
+    "rootValidated": "PublicPGcalendarprobe22008, publicRESTcalendar-red500versus400 andUIforgedmetadatared; batchrejectyear0000 bothnewboundaries; eightRESTand26UIpass. Reviewsource54datecorrection4files39linesinspectedroot; firstconfiguredproductreviewwillseecorrectedsourceafterpublication.",
+    "structuralReview": "Favorableisolatedreadmodel andnarrowexistingownerinterfaces; no newgiantfile or genericapprovalengine",
+    "nonblocking": [
+      "Possible pure cursor-codec duplication remains a nonblocking candidate for actual later Contract reuse; existing Estimate unchanged.",
+      "Baseline focus followup912 is now delivered separately by PR914/squash167ec009; its business fix is only in the base, not the identical Offer feature patch."
+    ],
+    "status": "complete and reused after mechanical main advance, before resumed final CI",
+    "complete": true,
+    "configuredOpeningReview": {
+      "source": "30a9890897e18ab5d22b76466e6c045f66452416",
+      "state": "completed",
+      "findings": false,
+      "unresolved": false,
+      "completedAt": "2026-10-27T09:23:10.798942Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/913#issuecomment-6438141740",
+      "trigger": "PR opened, reused once; no duplicate request"
+    },
+    "finalCurrentSource": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+    "boundedCICorrection": {
+      "priorSource": "30a9890897e18ab5d22b76466e6c045f66452416",
+      "source": "13d107292262a4ce6181620000269db24d284be4",
+      "failedRun": 40480511097,
+      "files": 3,
+      "scope": "Only strict existing Activity/Offer E2E HTTP fixtures and exact Activity full-read assertion. Classic compatibility legitimately mounts Home once; retain exact all-reads assertion with one explicit scoped queue read; Activity/native rows and all other reads/commands remain unchanged. No runtime, authorization, tenancy, migration or Activity business-code correction.",
+      "targeted": {
+        "browserCases": 28,
+        "viewports": [
+          1440,
+          390
+        ],
+        "locales": [
+          "ro",
+          "ru",
+          "fr",
+          "en"
+        ],
+        "unitCases": 41,
+        "webTypecheck": "passed",
+        "formatAndLint": "passed"
+      },
+      "reviewReuse": "Configured opening review on30a989 completed0; runtime byte-unchanged, root inspected bounded fixture-only correction and affected passing checks. No duplicate or post-green review trigger.",
+      "remainingBlockers": 0
+    },
+    "mainAdvanceReuse": {
+      "oldSource": "13d107292262a4ce6181620000269db24d284be4",
+      "oldBase": "653f2233b3b63aafd660347f569ccf31f0ec2121",
+      "newSource": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+      "newBase": "167ec009e0e9743f8753976425e33f3d4925f8c0",
+      "newTree": "51e8d5e0e98ab8cd6928d0a27c0ff81a558cd30f",
+      "featurePatchId": "2cdad87fb3f826890830aa5dadc4d9a4f5b1089f",
+      "identicalFeaturePatch": true,
+      "composition": "Clean mechanical merge of independently reviewed/tested baseline focus fix914; no conflict or second Offer correction. Native Offer review remains applicable.",
+      "baselineFixPR": 914,
+      "baselineFixCI": 40488379418,
+      "baselineFixProof": "2bbdf9b777e606248676c63e3e0aa3acd4c56641",
+      "affectedComposition": {
+        "webCasesPassed": 102,
+        "files": 9,
+        "doctorWebPostgres": "passed",
+        "formatLintTypes": "passed",
+        "log": "resumed-navigation.log"
+      }
+    },
+    "automaticReviewRefresh": {
+      "source": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+      "state": "completed",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/913#issuecomment-6438141740",
+      "trigger": "Existing configured review automatically refreshed on pushed main-integration commit; no manual review request. Root freshness guard observed running and did not dispatch CI.",
+      "findings": false,
+      "unresolved": false,
+      "completedAt": "2026-10-27T10:48:03.259776Z"
+    },
+    "originalConfiguredOpeningReview": {
+      "source": "30a9890897e18ab5d22b76466e6c045f66452416",
+      "state": "completed",
+      "findings": false,
+      "unresolved": false,
+      "completedAt": "2026-10-27T09:23:10.798942Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/913#issuecomment-6438141740",
+      "trigger": "PR opened, reused once; no duplicate request"
+    },
+    "currentConfiguredReview": {
+      "source": "b5e2a5adc49cf670bb7285182975e51cc5ad2486",
+      "state": "completed",
+      "findings": false,
+      "unresolved": false,
+      "completedAt": "2026-10-27T10:48:03.259776Z",
+      "comment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/913#issuecomment-6438141740",
+      "trigger": "Existing configured summary refreshed automatically for New commits; root did not request another review. Fresh CI only after completion."
+    }
+  },
+  "priorFailedCompleteCIRuns": [
+    {
+      "run": 40480511097,
+      "source": "30a9890897e18ab5d22b76466e6c045f66452416",
+      "conclusion": "failure",
+      "cause": "Strict Activity browser fixture lacked newly authorized Home queue GET; browser1 failfastcancelled and qualityfailed. Three-file fixture-only correction13d107 validated28browser/41unit/types/format/lint before secondCI."
+    },
+    {
+      "run": 40483956358,
+      "source": "13d107292262a4ce6181620000269db24d284be4",
+      "conclusion": "failure",
+      "cause": "Existing independently baseline-reproduced Request focus race912 in Web unit; allotheractualfamiliespassed. FullOfferrepeats paused. Cause corrected separatelybyPR914/squash167ec009 with fullCI40488379418PASS and retrievedproof2bbdf9b. Clean mechanical merge has identicalstableOfferfeaturepatch and102affectedcompositioncasespass. FreshcurrentintegrationCIabove; oldpasses/failuresnotrelabeled."
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 12729730387,
+      "name": "browser-evidence-part-acceptance-2-40491483170",
+      "size_in_bytes": 65902156,
+      "digest": "sha256:ef1bc360849b674478c52a52965e937591c8b38d40917cf00e49f264e20cf458",
+      "expires_at": "2026-11-10T11:02:58Z"
+    },
+    {
+      "id": 12729565637,
+      "name": "browser-evidence-pr-40491483170",
+      "size_in_bytes": 405042853,
+      "digest": "sha256:baf16a07d697162b3f79d96a15ec2376b3cbebe6407e4d665dd25f4c35eabcd2",
+      "expires_at": "2026-11-10T11:03:22Z"
+    },
+    {
+      "id": 12728659235,
+      "name": "browser-evidence-part-browser-3-40491483170",
+      "size_in_bytes": 71103808,
+      "digest": "sha256:4084f9d3f6dcce59411a991c1465eff6c6b53960b094209e0c76a13a22115d78",
+      "expires_at": "2026-11-10T10:56:09Z"
+    },
+    {
+      "id": 12727899293,
+      "name": "browser-evidence-part-browser-2-40491483170",
+      "size_in_bytes": 77556940,
+      "digest": "sha256:ddddcdf074ce33a3d9a58a994d68c1f0b790eaeb4c532f5e237272c5e168cc9a",
+      "expires_at": "2026-11-10T10:56:12Z"
+    },
+    {
+      "id": 12727819881,
+      "name": "browser-evidence-part-acceptance-1-40491483170",
+      "size_in_bytes": 76723235,
+      "digest": "sha256:7beed13d02a31d4dbfa3280f143cb74436dab8a5921264b68b112af091f34602",
+      "expires_at": "2026-11-10T11:01:33Z"
+    },
+    {
+      "id": 12727634794,
+      "name": "browser-evidence-part-browser-1-40491483170",
+      "size_in_bytes": 113756802,
+      "digest": "sha256:244ff9133da9067320ee9ad9595ff576a2f6ed307a027960d4f9f97bc6db8d1b",
+      "expires_at": "2026-11-10T10:57:55Z"
+    }
+  ],
+  "scope": "Issue911 only: Company pending Offer discovery through current native read/approve and Intake authority, v1/model-v2 compatibility, current undecided supported heads, complete25-row microsecond cursor pages, exact existing owner continuation and protected pending/uncertain decisions. No new grant, schema, business mutation/policy, Estimate/Contract behavior, actual data, provider or deployment. MISSION-CLOSE-01 remains solely in Mission Obligations12.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-13T23:59:59Z"
+}
