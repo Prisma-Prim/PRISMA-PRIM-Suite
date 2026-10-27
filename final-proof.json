@@ -1,0 +1,35 @@
+{
+  "issue": 909,
+  "pr": 910,
+  "source": "96e8c79e9e6903884acaa68b31773837a5eee4c6",
+  "base": "20f65a74347fc5ebf4846c20db2c48b830801ec9",
+  "tree": "486e3ec1f2f7dd7807db6218bb461d01061885a1",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1727,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "source": "96e8c79e9e6903884acaa68b31773837a5eee4c6",
+    "reviewedBase": "20f65a74347fc5ebf4846c20db2c48b830801ec9",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "orderedStandards": "queue909_standards: missing explicitOwner/inheritance+numberedstories corrected before publication; ordered Spec confirms correction",
+    "orderedSpecProduct": "queue909_spec PASS0; actual root bounded product approval2026-10-27 under51comment6283507237 delegation",
+    "scope": "Commercial32 pending Offer/Contract discovery contract and composition/exclusion/index pointers only; no runtime",
+    "noAdditionalReviewRequested": true
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only Commercial32 pending Offer/Contract decision discovery: existing independent native authority and exact current-head decision owners, coherent scoped25pages, frozen provisional metadata, exact protected continuation. No runtime, new grant, business policy, provider, actual data or manual user test. MISSION-CLOSE-01 remains solely in Mission Obligations12.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-12T23:59:59Z"
+}
