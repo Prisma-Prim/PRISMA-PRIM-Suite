@@ -4,6 +4,7 @@ const uuid =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 type Scope = { workspaceId: string; companyId: string };
 type Boundary = { createdAt: string; versionId: string };
+type Family = 'OFFER' | 'CONTRACT';
 function invalid(): never {
   throw new BadRequestException('Invalid decision queue cursor.');
 }
@@ -11,10 +12,15 @@ function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) invalid();
   return Object.fromEntries(Object.entries(value));
 }
-export function readOfferDecisionCursor(
-  query: unknown,
-  scope: Scope,
-): Boundary | undefined {
+export function readDecisionQueueCursor({
+  query,
+  scope,
+  family,
+}: {
+  query: unknown;
+  scope: Scope;
+  family: Family;
+}): Boundary | undefined {
   const body = object(query);
   if (Object.keys(body).some((key) => key !== 'cursor')) invalid();
   if (body.cursor === undefined) return undefined;
@@ -35,7 +41,7 @@ export function readOfferDecisionCursor(
   const cursor = object(value);
   if (
     Object.keys(cursor).length !== 5 ||
-    cursor.family !== 'OFFER' ||
+    cursor.family !== family ||
     cursor.workspaceId !== scope.workspaceId ||
     cursor.companyId !== scope.companyId ||
     typeof cursor.versionId !== 'string' ||
@@ -53,13 +59,22 @@ export function readOfferDecisionCursor(
     invalid();
   return { createdAt: cursor.createdAt, versionId: cursor.versionId };
 }
-export function offerDecisionCursor(scope: Scope, boundary: Boundary): string {
+export function decisionQueueCursor({
+  scope,
+  boundary,
+  family,
+}: {
+  scope: Scope;
+  boundary: Boundary;
+  family: Family;
+}): string {
   return Buffer.from(
     JSON.stringify({
-      ...scope,
+      workspaceId: scope.workspaceId,
+      companyId: scope.companyId,
       createdAt: boundary.createdAt,
       versionId: boundary.versionId,
-      family: 'OFFER',
+      family,
     }),
   ).toString('base64url');
 }

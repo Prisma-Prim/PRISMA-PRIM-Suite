@@ -11,9 +11,9 @@ import {
   offerVersions,
 } from '../database/schema/index.js';
 import {
-  offerDecisionCursor,
-  readOfferDecisionCursor,
-} from './offer-decision-queue.pagination.js';
+  decisionQueueCursor,
+  readDecisionQueueCursor,
+} from '../commercial-decision-queue/decision-queue-cursor.js';
 
 @Injectable()
 export class OfferDecisionQueueService {
@@ -31,7 +31,11 @@ export class OfferDecisionQueueService {
         ]);
         await this.authorization.requireCommercialIntakeAccess(actor, 'read');
         const scope = { workspaceId: actor.workspaceId, companyId };
-        const cursor = readOfferDecisionCursor(query, scope);
+        const cursor = readDecisionQueueCursor({
+          query,
+          scope,
+          family: 'OFFER',
+        });
         let modelDecision = false;
         try {
           await this.authorization.requireOfferAccess(actor, [
@@ -115,7 +119,13 @@ export class OfferDecisionQueueService {
         return {
           items: page.map((row) => ({ ...scope, ...row })),
           ...(rows.length > 25 && last
-            ? { nextCursor: offerDecisionCursor(scope, last) }
+            ? {
+                nextCursor: decisionQueueCursor({
+                  scope,
+                  boundary: last,
+                  family: 'OFFER',
+                }),
+              }
             : {}),
         };
       },

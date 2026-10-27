@@ -229,6 +229,8 @@ for (const locale of interfaceLocales)
         calls.push(path);
         if (path.endsWith('/access/current-actor'))
           return route.fulfill({ json: actor });
+        if (sent.method() === 'GET' && path === '/api/contract-decision-queue')
+          return route.fulfill({ json: { items: [] } });
         if (path.endsWith('/companies'))
           return route.fulfill({ json: [company] });
         if (path.endsWith('/commercial-intake/requests'))

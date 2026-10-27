@@ -215,6 +215,8 @@ function installTransport(): Transport {
       if ((init?.method ?? 'GET') !== 'GET')
         throw new Error(`Unexpected mutation: ${path}`);
       if (path.endsWith('/access/current-actor')) return respond(reader());
+      if (path.endsWith('/contract-decision-queue'))
+        return respond({ items: [] });
       if (path.endsWith('/companies'))
         return respond([{ id: companyId, displayName: 'Company A' }]);
       if (path.endsWith('/activity-log'))
