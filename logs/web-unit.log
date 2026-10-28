@@ -1,0 +1,657 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/workspace/worktrees/integration-model-952/apps/web[39m
+
+ [32m✓[39m src/documents/DocumentWorkspace.test.tsx [2m([22m[2m100 tests[22m[2m)[22m[33m 10315[2mms[22m[39m
+   [33m[2m✓[22m[39m never matches rows from a correction reload that began before a Client union and landed after the failed identity refresh [33m 383[2mms[22m[39m
+   [33m[2m✓[22m[39m never matches rows from a correction reload that began before a Client union and landed before the failed identity refresh [33m 384[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps the current rows and outcome when an identity refresh superseded by a newer correction reload succeeds late [33m 392[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps the current rows and outcome when an identity refresh superseded by a newer correction reload is denied late [33m 384[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps the current rows and outcome when an identity refresh superseded by a newer correction reload fails late [33m 390[2mms[22m[39m
+ [32m✓[39m src/contract/ContractPanel.test.tsx [2m([22m[2m179 tests[22m[2m)[22m[33m 10001[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves the direct Snapshot selection, literal draft and exact uncertain command across locales [33m 359[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves the addendum Snapshot selection, literal draft and exact uncertain command across locales [33m 348[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.test.tsx [2m([22m[2m71 tests[22m[2m)[22m[33m 3793[2mms[22m[39m
+ [32m✓[39m src/project/ProjectTasks.test.tsx [2m([22m[2m66 tests[22m[2m)[22m[33m 8159[2mms[22m[39m
+   [33m[2m✓[22m[39m creates an unassigned Task, reloads, edits, completes and reopens with attributable history while the Project stays preparatory [33m 519[2mms[22m[39m
+   [33m[2m✓[22m[39m starts, blocks with a validated reason, resumes, cancels with a reason and reopens with state labels and reasoned history [33m 356[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.test.tsx [2m([22m[2m66 tests[22m[2m)[22m[33m 4783[2mms[22m[39m
+     [33m[2m✓[22m[39m pages past the newest 25 Requests and reopens an older one [33m 348[2mms[22m[39m
+     [33m[2m✓[22m[39m associates an older loaded Request without replacing either loaded page [33m 455[2mms[22m[39m
+ [32m✓[39m src/offer/OfferPanel.test.tsx [2m([22m[2m89 tests[22m[2m)[22m[33m 3591[2mms[22m[39m
+ [32m✓[39m src/pricing-configuration/PricingSnapshotPanel.test.tsx [2m([22m[2m54 tests[22m[2m)[22m[33m 3546[2mms[22m[39m
+     [33m[2m✓[22m[39m limits a calculation to 20 selected offerings and lets the user replace one [33m 465[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.client-navigation.test.tsx [2m([22m[2m43 tests[22m[2m)[22m[33m 3677[2mms[22m[39m
+ [32m✓[39m src/offer/OfferPanel.localization.test.tsx [2m([22m[2m50 tests[22m[2m)[22m[33m 2931[2mms[22m[39m
+   [33m[2m✓[22m[39m translates a held initial preparation without changing its literal draft, I/O or exact uncertain retry [33m 336[2mms[22m[39m
+ [32m✓[39m src/client/ClientWorkspace.test.tsx [2m([22m[2m44 tests[22m[2m)[22m[33m 4103[2mms[22m[39m
+ [32m✓[39m src/project/ProjectWorkspace.test.tsx [2m([22m[2m42 tests[22m[2m)[22m[33m 3027[2mms[22m[39m
+ [32m✓[39m src/App.client-legal-entities.test.tsx [2m([22m[2m48 tests[22m[2m)[22m[33m 7205[2mms[22m[39m
+     [33m[2m✓[22m[39m retires an uncertain legal-entity command and suppresses late mutation success at the real App Company boundary [33m 508[2mms[22m[39m
+     [33m[2m✓[22m[39m retires an uncertain legal-entity command and suppresses late mutation success at the real App session boundary [33m 411[2mms[22m[39m
+     [33m[2m✓[22m[39m retires an uncertain legal-entity command and suppresses late mutation success at the real App assignment boundary [33m 515[2mms[22m[39m
+     [33m[2m✓[22m[39m retires an uncertain legal-entity command and suppresses late mutation success at the real App version boundary [33m 481[2mms[22m[39m
+     [33m[2m✓[22m[39m retires an uncertain legal-entity command and suppresses late mutation success at the real App permission boundary [33m 431[2mms[22m[39m
+     [33m[2m✓[22m[39m retires an uncertain legal-entity command and suppresses late mutation success at the real App Client boundary [33m 439[2mms[22m[39m
+ [32m✓[39m src/client/ClientUnionPanel.test.tsx [2m([22m[2m48 tests[22m[2m)[22m[33m 5106[2mms[22m[39m
+     [33m[2m✓[22m[39m requires deliberate choices, confirms a union, reads attributable history and reverses it [33m 330[2mms[22m[39m
+ [32m✓[39m src/project/ProjectWorkspace.my-open.lifecycle.test.tsx [2m([22m[2m46 tests[22m[2m)[22m[33m 5952[2mms[22m[39m
+   [33m[2m✓[22m[39m retains real Task, Document and registration drafts through a pending and unavailable Mine read [33m 441[2mms[22m[39m
+ [32m✓[39m src/pricing-configuration/PricingConfigurationWorkspace.test.tsx [2m([22m[2m25 tests[22m[2m)[22m[33m 2041[2mms[22m[39m
+     [33m[2m✓[22m[39m stops collecting successors at the first version already in effect and keeps paging the history on request [33m 381[2mms[22m[39m
+ [32m✓[39m src/pricing-configuration/TariffVersionPanel.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 3311[2mms[22m[39m
+     [33m[2m✓[22m[39m refuses each value outside its grammar before sending, keeping every entered value, and shows a named server refusal on its field [33m 993[2mms[22m[39m
+ [32m✓[39m src/contract-model/ContractModelWorkspace.test.tsx [2m([22m[2m29 tests[22m[2m)[22m[33m 6818[2mms[22m[39m
+   [33m[2m✓[22m[39m submits complete literal human-entered content and reloads the current pending version [33m 5277[2mms[22m[39m
+   [33m[2m✓[22m[39m opens exact history and only an editor copies it against the current root revision (true) [33m 401[2mms[22m[39m
+ [32m✓[39m src/client/ClientWorkspace.registration-localization.test.tsx [2m([22m[2m47 tests[22m[2m)[22m[33m 11955[2mms[22m[39m
+   [33m[2m✓[22m[39m reactively translates required and Contact guidance without changing drafts, field associations or sending a command [33m 686[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves the complete enriched command through draft, pending, Close and exact uncertain retry from 'ro' [33m 1233[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves the complete enriched command through draft, pending, Close and exact uncertain retry from 'ru' [33m 1256[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves the complete enriched command through draft, pending, Close and exact uncertain retry from 'fr' [33m 1224[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves the complete enriched command through draft, pending, Close and exact uncertain retry from 'en' [33m 1181[2mms[22m[39m
+ [32m✓[39m src/project/ProjectTasks.localization.test.tsx [2m([22m[2m78 tests[22m[2m)[22m[33m 8534[2mms[22m[39m
+ [32m✓[39m src/offer/OfferPanel.transmission-response-localization.test.tsx [2m([22m[2m47 tests[22m[2m)[22m[33m 5407[2mms[22m[39m
+   [33m[2m✓[22m[39m translates the approved exact Offer transmission while retaining its literal note, new warning, focus and HTTP identity [33m 311[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.responsible.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 1819[2mms[22m[39m
+     [33m[2m✓[22m[39m protects a saving and uncertain next-action command from Client association, then preserves its confirmed result [33m 403[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.requested-request.test.tsx [2m([22m[2m24 tests[22m[2m)[22m[33m 2593[2mms[22m[39m
+ [32m✓[39m src/project/ProjectWorkspace.requested-task.test.tsx [2m([22m[2m29 tests[22m[2m)[22m[33m 4916[2mms[22m[39m
+     [33m[2m✓[22m[39m abandons an inline Task queued behind a command while preserving its exact uncertain retry [33m 341[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a Task’s unsaved title through its own status move 'recovered by an unchanged retry after…', then saves it at the moved version [33m 344[2mms[22m[39m
+ [32m✓[39m src/offer-model/OfferModelWorkspace.test.tsx [2m([22m[2m26 tests[22m[2m)[22m[33m 8203[2mms[22m[39m
+   [33m[2m✓[22m[39m submits complete literal human-entered content and reloads the current pending version [33m 7007[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/offer/OfferPanel.quality-decision-localization.test.tsx [2m([22m[2m42 tests[22m[2m)[22m[33m 4731[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/production-shell/authenticated-production-shell-transport.test.ts [2m([22m[2m92 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.attention-lifecycle.test.tsx [2m([22m[2m35 tests[22m[2m)[22m[33m 7755[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the complete lazy page, traverses the last row and restores focus on close [33m 726[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the exact Task from the last page through the owning Project panel [33m 346[2mms[22m[39m
+     [33m[2m✓[22m[39m clears failed later pages, retries their offset, refreshes zero and restarts zero at server-date rollover [33m 461[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held page on Company change and does not reuse its rows in the new Company [33m 380[2mms[22m[39m
+     [33m[2m✓[22m[39m retires replies after captured authority or membership changes and after a new session owner [33m 427[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a pending page when the current Home read withdraws Task access [33m 322[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a held later page after a newer refresh on the same panel [33m 375[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves the last page, literal nodes, focus and every HTTP owner across all four locales [33m 449[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a pending read alive through four-locale changes and renders its result in the current locale [33m 348[2mms[22m[39m
+ [32m✓[39m src/App.client-request-navigation.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 6493[2mms[22m[39m
+     [33m[2m✓[22m[39m shows Client commercial affairs inline and opens the exact existing Request (section-first) [33m 421[2mms[22m[39m
+     [33m[2m✓[22m[39m ignores an old section frame after Company return retirement [33m 391[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held inline Request reply after Client union (200) [33m 539[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held inline Request reply after Client union (403) [33m 512[2mms[22m[39m
+     [33m[2m✓[22m[39m opens one dossier its loaded Requests by identity and returns to that dossier [33m 437[2mms[22m[39m
+     [33m[2m✓[22m[39m follows a union to the canonical dossier and never keeps the superseded restriction [33m 719[2mms[22m[39m
+     [33m[2m✓[22m[39m follows a reversal back to the original dossier [33m 662[2mms[22m[39m
+     [33m[2m✓[22m[39m does not restore a previous Company restriction when the member returns to that Company [33m 406[2mms[22m[39m
+     [33m[2m✓[22m[39m retires the restriction and both actions when Company Client read is lost [33m 358[2mms[22m[39m
+     [33m[2m✓[22m[39m does not reapply a restriction after Commercial Intake read is lost and granted again [33m 334[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.ideas.test.tsx [2m([22m[2m21 tests[22m[2m)[22m[33m 2212[2mms[22m[39m
+ [32m✓[39m src/operational-home/OperationalHome.test.tsx [2m([22m[2m42 tests[22m[2m)[22m[33m 2853[2mms[22m[39m
+     [33m[2m✓[22m[39m browses every one of 107 Tasks in bounded pages, then goes back and restarts [33m 689[2mms[22m[39m
+[90mstderr[2m | src/commercial-intake/CommercialIntakeWorkspace.stage.test.tsx[2m > [22m[2mSales Stage settings[2m > [22m[2mshows the ordered stages read-only to a Commercial Intake reader without the configuration bundle
+[22m[39mThe current testing environment is not configured to support act(...)
+
+[90mstderr[2m | src/commercial-intake/CommercialIntakeWorkspace.stage.test.tsx[2m > [22m[2mSales Stage settings[2m > [22m[2mlets a configuration holder create the first stage of an empty Company at revision 0
+[22m[39mThe current testing environment is not configured to support act(...)
+
+[90mstderr[2m | src/commercial-intake/CommercialIntakeWorkspace.stage.test.tsx[2m > [22m[2mSales Stage settings[2m > [22m[2mkeeps a taken label for correction, refuses blank labels locally and retries an uncertain create with its key
+[22m[39mThe current testing environment is not configured to support act(...)
+
+[90mstderr[2m | src/commercial-intake/CommercialIntakeWorkspace.stage.test.tsx[2m > [22m[2mSales Stage settings[2m > [22m[2maccepts an 80-emoji label, counted in characters, and refuses 81 without a request
+[22m[39mThe current testing environment is not configured to support act(...)
+
+[90mstderr[2m | src/commercial-intake/CommercialIntakeWorkspace.stage.test.tsx[2m > [22m[2mSales Stage settings[2m > [22m[2mrequires an explicit reload after a stale revision and states the 30-stage limit
+[22m[39mThe current testing environment is not configured to support act(...)
+
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.stage.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 1363[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.localization-behavior.test.tsx [2m([22m[2m80 tests[22m[2m)[22m[33m 7193[2mms[22m[39m
+   [33m[2m✓[22m[39m recognizes canonical 'Company Ideas Reader' in every non-English locale without translating its identity or captured version [33m 340[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentVersions.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 1210[2mms[22m[39m
+ [32m✓[39m src/contract/ContractPanel.quality-localization.test.tsx [2m([22m[2m59 tests[22m[2m)[22m[33m 4820[2mms[22m[39m
+ [32m✓[39m src/pricing-configuration/TariffVersionPanel.localization.test.tsx [2m([22m[2m26 tests[22m[2m)[22m[33m 3323[2mms[22m[39m
+   [33m[2m✓[22m[39m retains the captured uncertain publication through language changes, invalid edits and explicit reload, then resolves a named refusal before a new intention [33m 511[2mms[22m[39m
+ [32m✓[39m src/project/ProjectWorkspace.template.test.tsx [2m([22m[2m20 tests[22m[2m)[22m[33m 2218[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves the exact model creation command and entered business content through uncertainty and locale changes [33m 381[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.operational-home.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 3025[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the exact Task from the next overdue page through the real App Project intent [33m 532[2mms[22m[39m
+     [33m[2m✓[22m[39m ignores a held next-page response after switching Company and restarts from zero on return [33m 486[2mms[22m[39m
+     [33m[2m✓[22m[39m never renders a previous Company reply after a switch and closes the overdue panel [33m 340[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.my-task-navigation.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 4481[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the first exact Task and its history cold in 'classic' with root StrictMode=false [33m 458[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves Mine through the real App exact outside-Project Task intent [33m 311[2mms[22m[39m
+     [33m[2m✓[22m[39m reads each repeated exact activation once from all and preserves its directory semantics [33m 337[2mms[22m[39m
+     [33m[2m✓[22m[39m reads each repeated exact activation once from mine_open and preserves its directory semantics [33m 410[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves Mine and focuses the exact overdue Task outside its directory through App [33m 425[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the exact Project and Task of a same-titled row by their own reads and keeps another Project’s Task draft [33m 575[2mms[22m[39m
+ [32m✓[39m src/project/TaskPlanning.test.tsx [2m([22m[2m24 tests[22m[2m)[22m[33m 3748[2mms[22m[39m
+   [33m[2m✓[22m[39m retains an exact lost-reply attempt across close and locale changes, protects the independent native draft and distinguishes confirmed write from read failure [33m 313[2mms[22m[39m
+   [33m[2m✓[22m[39m bounds explicit selection to 50 and keeps closed Tasks out of the planning set [33m 992[2mms[22m[39m
+ [32m✓[39m src/App.project-pdf-bundle.test.tsx [2m([22m[2m23 tests[22m[2m)[22m[33m 6699[2mms[22m[39m
+     [33m[2m✓[22m[39m requires deliberate Version discovery and exact selection before an explicit download [33m 466[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps literal selection, focus and held reads through every locale without I/O [33m 550[2mms[22m[39m
+     [33m[2m✓[22m[39m never clicks a held late200 download after Company A→B→A [33m 397[2mms[22m[39m
+     [33m[2m✓[22m[39m never clicks a held late403 download after Company A→B→A [33m 381[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves an independent native Task pending exact intent while collecting [33m 301[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held late200 response permanently across a consumed grant A→B→A [33m 675[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held late403 response permanently across a consumed grant A→B→A [33m 700[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held late200 response across Project A→B→A [33m 393[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held late403 response across Project A→B→A [33m 359[2mms[22m[39m
+ [32m✓[39m src/App.test.tsx [2m([22m[2m21 tests[22m[2m)[22m[33m 695[2mms[22m[39m
+ [32m✓[39m src/production-shell/useProductionShellContext.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 1147[2mms[22m[39m
+ [32m✓[39m src/client/ClientDuplicateReviewPanel.feedback-localization.test.tsx [2m([22m[2m28 tests[22m[2m)[22m[33m 3245[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps the authorized comparison and literal ordered Contacts while changing to 'ro' [33m 438[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentPdfContent.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 965[2mms[22m[39m
+ [32m✓[39m src/pricing-configuration/PricingConfigurationWorkspace.localization.test.tsx [2m([22m[2m24 tests[22m[2m)[22m[33m 1531[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves literal drafts and the exact pending or uncertain command while the interface language changes [33m 306[2mms[22m[39m
+ [32m✓[39m src/project/ProjectDocuments.test.tsx [2m([22m[2m20 tests[22m[2m)[22m[33m 800[2mms[22m[39m
+ [32m✓[39m src/project/ProjectLifecycle.test.tsx [2m([22m[2m22 tests[22m[2m)[22m[33m 1701[2mms[22m[39m
+   [33m[2m✓[22m[39m activates with a start exception through an inline form with field-level validation and no preselected item [33m 500[2mms[22m[39m
+ [32m✓[39m src/App.activity-localization.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 3214[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps the exact historical offer intent through locale changes and a delayed read [33m 307[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves a literal protected draft and pending/uncertain command while the latest held Version intent wins [33m 988[2mms[22m[39m
+ [32m✓[39m src/App.project-template.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 2114[2mms[22m[39m
+   [33m[2m✓[22m[39m returns from the final historical page to unselected newer Versions before and after exact Project creation [33m 1116[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentWorkspace.correction-history.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 1424[2mms[22m[39m
+ [32m✓[39m src/profitability-estimate/ProfitabilityEstimatePanel.test.tsx [2m([22m[2m21 tests[22m[2m)[22m[33m 2382[2mms[22m[39m
+     [33m[2m✓[22m[39m completes version → MODIFY → fresh-confirmed correction → APPROVE → immutable reload [33m 379[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves every entered field through validation, stale reload failure and a refreshed head, then requires fresh confirmation and a new command key [33m 306[2mms[22m[39m
+ [32m✓[39m src/client/ClientUnionPanel.history-states.localization.test.tsx [2m([22m[2m59 tests[22m[2m)[22m[33m 5740[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/operational-risk/OperationalRiskWorkspace.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 1501[2mms[22m[39m
+ [32m✓[39m src/App.recent-changes.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 2252[2mms[22m[39m
+   [33m[2m✓[22m[39m shows the latest five publicly dated changes in server order and opens full Activity [33m 388[2mms[22m[39m
+ [32m✓[39m src/commercial-catalogue/ServiceCatalogueWorkspace.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 846[2mms[22m[39m
+ [32m✓[39m src/production-shell/production-shell-session.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 1440[2mms[22m[39m
+ [32m✓[39m src/client/ClientDossierPanel.contact-localization.test.tsx [2m([22m[2m36 tests[22m[2m)[22m[33m 13863[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps name Contact correction feedback reactive from ro without changing the literal draft or sending commands [33m 633[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps position Contact correction feedback reactive from ro without changing the literal draft or sending commands [33m 368[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps preferences Contact correction feedback reactive from ro without changing the literal draft or sending commands [33m 352[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps name Contact correction feedback reactive from ru without changing the literal draft or sending commands [33m 345[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps position Contact correction feedback reactive from ru without changing the literal draft or sending commands [33m 348[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps preferences Contact correction feedback reactive from ru without changing the literal draft or sending commands [33m 345[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps name Contact correction feedback reactive from fr without changing the literal draft or sending commands [33m 336[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps position Contact correction feedback reactive from fr without changing the literal draft or sending commands [33m 337[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps preferences Contact correction feedback reactive from fr without changing the literal draft or sending commands [33m 334[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps name Contact correction feedback reactive from en without changing the literal draft or sending commands [33m 341[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps position Contact correction feedback reactive from en without changing the literal draft or sending commands [33m 342[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps preferences Contact correction feedback reactive from en without changing the literal draft or sending commands [33m 344[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contacts must be a bounded lis…' [33m 490[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Each Client contact must be an object.' [33m 468[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Unknown Client contact field.' [33m 477[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact name is required.' [33m 464[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact name is too long.' [33m 467[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact telephone must be text…' [33m 473[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact telephone is too long.' [33m 459[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact email must be text or …' [33m 467[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact email is too long.' [33m 500[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact email is invalid.' [33m 456[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact position must be text.' [33m 460[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact position is too long.' [33m 465[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact decision roles must be…' [33m 467[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Unknown Client contact decision role.' [33m 469[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact communication preferen…' [33m 459[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps fixed Contact server feedback reactive without changing its correction command: 'Client contact communication preferen…' [33m 452[2mms[22m[39m
+ [32m✓[39m src/access/WorkspaceMembershipSuspension.localization.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 1322[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves selection, open confirmation, cancellation and delayed success through all four locales without implicit work [33m 336[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.outcome-localization.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1350[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves a loss draft, required Other note, exact uncertain retry and older-history recovery through four languages [33m 644[2mms[22m[39m
+ [32m✓[39m src/project/ProjectWorkspace.requested-project.test.tsx [2m([22m[2m21 tests[22m[2m)[22m[33m 2306[2mms[22m[39m
+ [32m✓[39m src/App.client-contact-preferences.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 1601[2mms[22m[39m
+ [32m✓[39m src/project/ProjectDocuments.localization.test.tsx [2m([22m[2m32 tests[22m[2m)[22m[33m 1517[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.upcoming-deadlines.test.tsx [2m([22m[2m22 tests[22m[2m)[22m[33m 5235[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the complete lazy page, traverses the last row and restores focus on close [33m 657[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the exact Task from the last page through the owning Project panel [33m 348[2mms[22m[39m
+     [33m[2m✓[22m[39m clears failed later pages, retries their offset, refreshes zero and restarts zero at server-date rollover [33m 434[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held page on Company change and does not reuse its rows in the new Company [33m 329[2mms[22m[39m
+     [33m[2m✓[22m[39m retires replies after captured authority or membership changes and after a new session owner [33m 329[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a pending page when the current Home read withdraws Task access [33m 311[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a held later page after a newer refresh on the same panel [33m 425[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps genuine empty, out-of-range and forbidden states distinct [33m 337[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentVersions.localization.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 1439[2mms[22m[39m
+   [33m[2m✓[22m[39m translates a late 'drafted' receipt in all four locales without repeating its command [33m 306[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.outcome.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 2022[2mms[22m[39m
+ [32m✓[39m src/client/ClientDossierPanel.feedback-localization.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 1943[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps pending and uncertain correction semantics in every locale and explicitly retries the exact full Contact command [33m 851[2mms[22m[39m
+ [32m✓[39m src/project/TaskResults.test.tsx [2m([22m[2m27 tests[22m[2m)[22m[33m 826[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.follow-up-localization.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1189[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves the exact next-action draft and uncertain command while feedback changes through all four locales [33m 397[2mms[22m[39m
+ [32m✓[39m src/App.project-template-version.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1119[2mms[22m[39m
+   [33m[2m✓[22m[39m publishes only the four previewed literal Task titles and keeps exact Version selection explicit in the real App [33m 418[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.blocked-task-lifecycle.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 2894[2mms[22m[39m
+   [33m[2m✓[22m[39m opens the exact current Task through fresh Project and Task reads, preserves focus and returns to a fresh queue [33m 521[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves the exact pending and uncertain native creation across discovery/opening and retries only its original intent [33m 413[2mms[22m[39m
+ [32m✓[39m src/production-shell/company-context-transitions.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m src/App.client-project-navigation.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 5430[2mms[22m[39m
+     [33m[2m✓[22m[39m discovers recorded Client missions inline and opens the exact existing Project [33m 575[2mms[22m[39m
+     [33m[2m✓[22m[39m retires the actual inline opening on union before a late 200 can affect the newer dossier [33m 725[2mms[22m[39m
+     [33m[2m✓[22m[39m retires the actual inline opening on union before a late 403 can affect the newer dossier [33m 673[2mms[22m[39m
+     [33m[2m✓[22m[39m lists the superseded Client’s Project from the canonical dossier and returns there, keeping the Task draft [33m 851[2mms[22m[39m
+     [33m[2m✓[22m[39m lists the Project again under the restored Client after a reversal, keeping the Task draft [33m 821[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a Project restriction applied before the union and adds no read for navigation alone [33m 559[2mms[22m[39m
+     [33m[2m✓[22m[39m does not restore a previous Company’s Project restriction when the member returns to that Company [33m 392[2mms[22m[39m
+ [32m✓[39m src/App.team-task-lifetime.test.tsx [2m([22m[2m44 tests[22m[2m)[22m[33m 61910[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps connected native Task pending intent through workboard Apply/read failure and fresh return [33m 5826[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps connected native Task uncertain intent through workboard Apply/read failure and fresh return [33m 5046[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps connected native Task confirmed intent through workboard Apply/read failure and fresh return [33m 4100[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps connected native result pending target/version/body/key and confirmed outcome through workboard failure [33m 628[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps connected native result uncertain target/version/body/key and confirmed outcome through workboard failure [33m 549[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps connected native result confirmed target/version/body/key and confirmed outcome through workboard failure [33m 540[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery200 across actual administrative 'document-registrar' revalidation with no stale shared effect [33m 1592[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery403 across actual administrative 'document-registrar' revalidation with no stale shared effect [33m 1454[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery200 across actual administrative 'document-registrar' revalidation with no stale shared effect [33m 1694[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery403 across actual administrative 'document-registrar' revalidation with no stale shared effect [33m 1810[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery200 across actual administrative 'document-content-reader' revalidation with no stale shared effect [33m 1541[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery403 across actual administrative 'document-content-reader' revalidation with no stale shared effect [33m 1504[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery200 across actual administrative 'document-content-reader' revalidation with no stale shared effect [33m 1672[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery403 across actual administrative 'document-content-reader' revalidation with no stale shared effect [33m 1460[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery200 across actual administrative 'task-result-recorder' revalidation with no stale shared effect [33m 1437[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery403 across actual administrative 'task-result-recorder' revalidation with no stale shared effect [33m 1491[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery200 across actual administrative 'task-result-recorder' revalidation with no stale shared effect [33m 1402[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery403 across actual administrative 'task-result-recorder' revalidation with no stale shared effect [33m 1441[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery200 across actual administrative 'mission-result-reviewer' revalidation with no stale shared effect [33m 2019[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery403 across actual administrative 'mission-result-reviewer' revalidation with no stale shared effect [33m 1564[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery200 across actual administrative 'mission-result-reviewer' revalidation with no stale shared effect [33m 1490[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery403 across actual administrative 'mission-result-reviewer' revalidation with no stale shared effect [33m 1818[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery200 across actual administrative 'mission-plan-user' revalidation with no stale shared effect [33m 1838[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'company' recovery403 across actual administrative 'mission-plan-user' revalidation with no stale shared effect [33m 1430[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery200 across actual administrative 'mission-plan-user' revalidation with no stale shared effect [33m 1538[2mms[22m[39m
+   [33m[2m✓[22m[39m retires whole Actor 'workspace' recovery403 across actual administrative 'mission-plan-user' revalidation with no stale shared effect [33m 1356[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires held200/403 across consumed task revoke/regrant with equal captures [33m 1166[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires held200/403 across consumed project revoke/regrant with equal captures [33m 1280[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires held200/403 across consumed client revoke/regrant with equal captures [33m 1293[2mms[22m[39m
+   [33m[2m✓[22m[39m does not start recovery for an old403 after an unconsumed full Actor snapshot changed during its read [33m 399[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves connected native Project pending observation/body/key/outcome across workboard filters and failure [33m 312[2mms[22m[39m
+   [33m[2m✓[22m[39m retires held late200 through actual Company A→B→A and equal-Actor browser identity replacement [33m 569[2mms[22m[39m
+   [33m[2m✓[22m[39m retires held late403 through actual Company A→B→A and equal-Actor browser identity replacement [33m 592[2mms[22m[39m
+   [33m[2m✓[22m[39m loads and opens team work under the actual StrictMode root, then permanently retires a later consumed owner [33m 1446[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires a cold native Task read with late200 after actual 'task' revoke/regrant under root StrictMode [33m 926[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires a cold native Task read with late403 after actual 'task' revoke/regrant under root StrictMode [33m 1298[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires a cold native Task read with late200 after actual 'project' revoke/regrant under root StrictMode [33m 742[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires a cold native Task read with late403 after actual 'project' revoke/regrant under root StrictMode [33m 749[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires a cold native Task read with late200 after actual 'client' revoke/regrant under root StrictMode [33m 754[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires a cold native Task read with late403 after actual 'client' revoke/regrant under root StrictMode [33m 686[2mms[22m[39m
+   [33m[2m✓[22m[39m suppresses the held App focus frame after a team Open loses only consumed Task authority [33m 683[2mms[22m[39m
+ [32m✓[39m src/commercial-catalogue/ServiceCatalogueWorkspace.localization.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 1804[2mms[22m[39m
+ [32m✓[39m src/project/ProjectResponsible.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 863[2mms[22m[39m
+ [32m✓[39m src/project/MissionResultReview.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 1174[2mms[22m[39m
+ [32m✓[39m src/contract/ModelContractPanel.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 1640[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a held preparation command and literal draft when its consumed client capture changes, preserving ordinary Contract reads [33m 461[2mms[22m[39m
+ [32m✓[39m src/App.document-project-navigation.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 2347[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves Mine through the real App exact outside-Project Document intent [33m 560[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the linked one of two same-titled Projects by its own read and keeps the other Project’s Task draft [33m 448[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps an uncertain Task command in the previously opened Project for an unchanged retry [33m 461[2mms[22m[39m
+     [33m[2m✓[22m[39m retires the open requested while 'a Project registration is pending' when the Company changes, and never replays it on return [33m 350[2mms[22m[39m
+ [32m✓[39m src/project/ClientMissionOverview.test.tsx [2m([22m[2m32 tests[22m[2m)[22m[33m 1693[2mms[22m[39m
+   [33m[2m✓[22m[39m pages matching Projects then reads only the deliberately selected Project and opens its exact Task [33m 326[2mms[22m[39m
+ [32m✓[39m src/App.client-correction-history.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 1234[2mms[22m[39m
+     [33m[2m✓[22m[39m never renders a previous Client response and clears the section on a Company switch [33m 423[2mms[22m[39m
+ [32m✓[39m src/offer/OfferPanel.estimate.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 1238[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/RequestClientAssociation.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 759[2mms[22m[39m
+ [32m✓[39m src/App.current-work.test.tsx [2m([22m[2m31 tests[22m[2m)[22m[33m 27934[2mms[22m[39m
+     [33m[2m✓[22m[39m loads every local window, preserves all four locales/literals/focus with no I/O, opens the exact native Task and returns freshly at the retained window [33m 1833[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held late200 across Company A→B→A before callbacks or content [33m 743[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held late403 across Company A→B→A before callbacks or content [33m 724[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves native Task pending payload and key through overview failure and locale changes [33m 2071[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves native Task uncertain payload and key through overview failure and locale changes [33m 2068[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves native Task confirmed payload and key through overview failure and locale changes [33m 1770[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves focus and every held read through all four locales without extra I/O [33m 1102[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves native result pending literal, observations and exact retry through independent overview result denial/failure [33m 870[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves native result uncertain literal, observations and exact retry through independent overview result denial/failure [33m 812[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves native result confirmed literal, observations and exact retry through independent overview result denial/failure [33m 777[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps native Task draft and retires late200 result-only generations through actual access revalidation A→B→A [33m 1190[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps native Task draft and retires late403 result-only generations through actual access revalidation A→B→A [33m 1348[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held read across actual App selection A→B→A before any late403 revalidation [33m 702[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held read across actual App session A→B→A before any late403 revalidation [33m 568[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held read across actual App source A→B→A before any late403 revalidation [33m 1174[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held read across actual App task A→B→A before any late403 revalidation [33m 1162[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held read across actual App project A→B→A before any late403 revalidation [33m 649[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves connected independent native Task drafts after actual App mission-plan-user revalidation [33m 927[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves connected independent native Task drafts after actual App document-registrar revalidation [33m 761[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves connected independent native Task drafts after actual App document-content-reader revalidation [33m 782[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves connected independent native Task drafts after actual App mission-deliverable-access revalidation [33m 895[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves connected independent native Task drafts after actual App task-result-recorder revalidation [33m 781[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves connected independent native Task drafts after actual App mission-result-reviewer revalidation [33m 738[2mms[22m[39m
+     [33m[2m✓[22m[39m retires connected native work and a held late200 reply across actual Client-read revoke/regrant with equal captures [33m 1201[2mms[22m[39m
+     [33m[2m✓[22m[39m retires connected native work and a held late403 reply across actual Client-read revoke/regrant with equal captures [33m 1307[2mms[22m[39m
+ [32m✓[39m src/project/MyTasks.test.tsx [2m([22m[2m36 tests[22m[2m)[22m[33m 1136[2mms[22m[39m
+ [32m✓[39m src/project/BlockedTasks.test.tsx [2m([22m[2m31 tests[22m[2m)[22m[33m 1926[2mms[22m[39m
+   [33m[2m✓[22m[39m uses explicit pages and refresh zero, exposes out-of-range recovery and never reads members or writes [33m 401[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.pricing-user.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 1108[2mms[22m[39m
+   [33m[2m✓[22m[39m shows a Pricing User alone the configuration read-only in both frames [33m 326[2mms[22m[39m
+   [33m[2m✓[22m[39m remounts the whole section when Pricing User is granted, granted again or revoked [33m 316[2mms[22m[39m
+ [32m✓[39m src/mission-plan/MissionPlanWorkspace.test.tsx [2m([22m[2m19 tests[22m[2m)[22m[33m 1093[2mms[22m[39m
+ [32m✓[39m src/contract/ReportedSigningForm.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1947[2mms[22m[39m
+   [33m[2m✓[22m[39m locks sibling revision writes and retries the exact unchanged body/key after unavailable and mismatched successful responses [33m 575[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps confirmed declaration history after a held pre-declaration Contract reload arrives [33m 401[2mms[22m[39m
+ [32m✓[39m src/App.activity-request-navigation.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 1368[2mms[22m[39m
+ [32m✓[39m src/App.client-document-navigation.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 3234[2mms[22m[39m
+     [33m[2m✓[22m[39m continues an inline exact Client Document into its focused existing detail [33m 468[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the united Client its loaded Documents without remounting the workspace [33m 537[2mms[22m[39m
+     [33m[2m✓[22m[39m restores the original Client its loaded Documents after a union reversal [33m 458[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a superseded dossier restriction when the Client identity changes [33m 502[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a dossier restriction when the member merely opens the canonical dossier from union history [33m 513[2mms[22m[39m
+     [33m[2m✓[22m[39m does not restore a previous Company restriction when the member returns to that Company [33m 330[2mms[22m[39m
+     [33m[2m✓[22m[39m does not reapply a previous restriction when Client authority changes [33m 425[2mms[22m[39m
+ [32m✓[39m src/App.request-client-association.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 2678[2mms[22m[39m
+     [33m[2m✓[22m[39m withdraws loaded Client identity immediately on read loss while keeping Request evidence and the Opportunity draft [33m 592[2mms[22m[39m
+     [33m[2m✓[22m[39m clears a selected Client on replacement read authority while preserving the Request and Opportunity draft [33m 363[2mms[22m[39m
+     [33m[2m✓[22m[39m retains exact uncertain retry under unchanged authority, then retires it on a still-readable replacement [33m 502[2mms[22m[39m
+     [33m[2m✓[22m[39m aborts and suppresses a late command response from the replaced Client assignment [33m 350[2mms[22m[39m
+ [32m✓[39m src/App.client-unions.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 7496[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves an uncertain mixed-source command across navigation and frames and reports success in the second canonical dossier [33m 877[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a late union confirmation across the real Client boundary [33m 481[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a late union confirmation across the real Company boundary [33m 502[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a late union confirmation across the real session boundary [33m 392[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a late union confirmation across the real identity boundary [33m 385[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a late union confirmation across the real assignment boundary [33m 499[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a late union confirmation across the real version boundary [33m 522[2mms[22m[39m
+     [33m[2m✓[22m[39m suppresses a late union confirmation across the real permission boundary [33m 523[2mms[22m[39m
+     [33m[2m✓[22m[39m clears confirmed completion at the real Company boundary [33m 501[2mms[22m[39m
+     [33m[2m✓[22m[39m clears confirmed completion at the real session boundary [33m 350[2mms[22m[39m
+     [33m[2m✓[22m[39m clears confirmed completion at the real identity boundary [33m 388[2mms[22m[39m
+     [33m[2m✓[22m[39m clears confirmed completion at the real assignment boundary [33m 468[2mms[22m[39m
+     [33m[2m✓[22m[39m clears confirmed completion at the real version boundary [33m 445[2mms[22m[39m
+     [33m[2m✓[22m[39m clears confirmed completion at the real permission boundary [33m 493[2mms[22m[39m
+ [32m✓[39m src/App.client-union-confirmation-localization.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 4069[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps second-canonical mixed-source intent through locale changes, pending uncertainty and exact retry with truthful localized completion [33m 1159[2mms[22m[39m
+   [33m[2m✓[22m[39m localizes saved comparison values, attempted validation, late feedback and canonical completion in ro [33m 779[2mms[22m[39m
+   [33m[2m✓[22m[39m localizes saved comparison values, attempted validation, late feedback and canonical completion in ru [33m 749[2mms[22m[39m
+   [33m[2m✓[22m[39m localizes saved comparison values, attempted validation, late feedback and canonical completion in fr [33m 723[2mms[22m[39m
+   [33m[2m✓[22m[39m localizes saved comparison values, attempted validation, late feedback and canonical completion in en [33m 657[2mms[22m[39m
+ [32m✓[39m src/client/ClientWorkspace.response-contract.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 607[2mms[22m[39m
+ [32m✓[39m src/documents/ClientDocumentOverview.test.tsx [2m([22m[2m28 tests[22m[2m)[22m[33m 2330[2mms[22m[39m
+ [32m✓[39m src/offer/OfferDecisionQueue.test.tsx [2m([22m[2m26 tests[22m[2m)[22m[33m 1083[2mms[22m[39m
+   [33m[2m✓[22m[39m reaches the next page, recovers an empty later page and preserves all locales without reads [33m 348[2mms[22m[39m
+ [32m✓[39m src/presentation/Select.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 334[2mms[22m[39m
+ [32m✓[39m src/contract/ContractDecisionQueue.test.tsx [2m([22m[2m28 tests[22m[2m)[22m[33m 1016[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentWorkspace.scoped-opening.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 1211[2mms[22m[39m
+ [32m✓[39m src/production-shell/ActivityLog.localization.test.tsx [2m([22m[2m22 tests[22m[2m)[22m[33m 1821[2mms[22m[39m
+   [33m[2m✓[22m[39m renders all 134 admitted actions and 19 target types in ro without exposing canonical codes [33m 416[2mms[22m[39m
+   [33m[2m✓[22m[39m changes the complete loaded ledger in place without a callback, lost focus or reordered node [33m 507[2mms[22m[39m
+ [32m✓[39m src/client/ClientCorrectionHistory.localization.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 556[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps expanded history, literal snapshots and pending opaque continuation while translating a late older page into the current language [33m 361[2mms[22m[39m
+ [32m✓[39m src/access/WorkspaceSessionRevocations.localization.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 798[2mms[22m[39m
+ [32m✓[39m src/App.client-corrections.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 4122[2mms[22m[39m
+     [33m[2m✓[22m[39m invalidates the correction draft and unchanged retry command across a Company boundary [33m 834[2mms[22m[39m
+     [33m[2m✓[22m[39m invalidates the correction draft and unchanged retry command across a session boundary [33m 442[2mms[22m[39m
+     [33m[2m✓[22m[39m invalidates the correction draft and unchanged retry command across a assignment boundary [33m 534[2mms[22m[39m
+     [33m[2m✓[22m[39m invalidates the correction draft and unchanged retry command across a version boundary [33m 553[2mms[22m[39m
+     [33m[2m✓[22m[39m invalidates the correction draft and unchanged retry command across a Client boundary [33m 537[2mms[22m[39m
+     [33m[2m✓[22m[39m aborts a pending correction at a Company boundary and suppresses its late success [33m 306[2mms[22m[39m
+     [33m[2m✓[22m[39m aborts a pending correction at a Client boundary and suppresses its late success [33m 408[2mms[22m[39m
+ [32m✓[39m src/project/MyTasks.localization.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1086[2mms[22m[39m
+   [33m[2m✓[22m[39m changes locale during a pending read and then translates every loaded fact without another read or changing order/content [33m 434[2mms[22m[39m
+ [32m✓[39m src/client/ClientWorkspace.directory-localization.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1512[2mms[22m[39m
+   [33m[2m✓[22m[39m localizes loading, validation and empty search recovery in 'ro' [33m 329[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves the exact search and pending Company link through all locales and explicit failure recovery [33m 479[2mms[22m[39m
+ [32m✓[39m src/App.team-tasks.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 2405[2mms[22m[39m
+   [33m[2m✓[22m[39m enters the actual App and applies literal criteria only deliberately [33m 327[2mms[22m[39m
+   [33m[2m✓[22m[39m retains literal draft/applied criteria/page through actual hidden classic panels and reads freshly on return [33m 507[2mms[22m[39m
+   [33m[2m✓[22m[39m retains literal draft/applied criteria/page through actual hidden prisme panels and reads freshly on return [33m 390[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps invalid/hidden drafts separate, resets offset deliberately and preserves all four locale controls/focus without I/O [33m 340[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves an uncertain exact native edit body/key and a confirmed outcome through workboard failure and filter changes [33m 327[2mms[22m[39m
+ [32m✓[39m src/contract/ContractMissionPlan.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1705[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps the exact configured command and acknowledgement through actual native candidate refresh before explicit retry [33m 411[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires planned work after a company round trip and suppresses late success and denial [33m 330[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires planned work after a session round trip and suppresses late success and denial [33m 307[2mms[22m[39m
+   [33m[2m✓[22m[39m permanently retires planned work after a grant round trip and suppresses late success and denial [33m 302[2mms[22m[39m
+ [32m✓[39m src/App.client-contact-roles.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1217[2mms[22m[39m
+ [32m✓[39m src/App.clients.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 2820[2mms[22m[39m
+     [33m[2m✓[22m[39m invalidates the Client draft and retry key across a Company boundary [33m 600[2mms[22m[39m
+ [32m✓[39m src/project/TaskResults.project-context.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1361[2mms[22m[39m
+   [33m[2m✓[22m[39m retires a hidden Project result draft and late PDF while preserving the ordinary Task cache [33m 455[2mms[22m[39m
+ [32m✓[39m src/App.project-document-navigation.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1385[2mms[22m[39m
+     [33m[2m✓[22m[39m opens the exact linked Document from its own read and keeps the Task draft [33m 524[2mms[22m[39m
+     [33m[2m✓[22m[39m never applies a request its Company retired, even after returning to that Company [33m 417[2mms[22m[39m
+     [33m[2m✓[22m[39m never applies a request after a Client authority change [33m 443[2mms[22m[39m
+ [32m✓[39m src/project/UnassignedTasks.test.tsx [2m([22m[2m19 tests[22m[2m)[22m[33m 1280[2mms[22m[39m
+   [33m[2m✓[22m[39m uses explicit pages and refresh zero, exposes out-of-range recovery and never reads members or writes [33m 363[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/ApplicationRoot.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 617[2mms[22m[39m
+ [32m✓[39m src/company-model/ModelAccessLifetime.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 743[2mms[22m[39m
+ [32m✓[39m src/App.contract-activity.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 580[2mms[22m[39m
+ [32m✓[39m src/App.client-duplicate-reviews.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 2843[2mms[22m[39m
+     [33m[2m✓[22m[39m clears a confirmed attachment on a real Company boundary [33m 442[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentWorkspace.localization.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 561[2mms[22m[39m
+   [33m[2m✓[22m[39m retains a held Document and the exact uncertain correction across locale changes and a late acknowledgement [33m 414[2mms[22m[39m
+ [32m✓[39m src/App.unassigned-task-lifecycle.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1285[2mms[22m[39m
+   [33m[2m✓[22m[39m opens the exact current Task through fresh Project and Task reads, preserves focus and returns to a fresh queue [33m 498[2mms[22m[39m
+ [32m✓[39m src/project/ProjectTemplate.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 470[2mms[22m[39m
+ [32m✓[39m src/App.offer-activity.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 562[2mms[22m[39m
+ [32m✓[39m src/access/workspace-invitations.localization.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 466[2mms[22m[39m
+ [32m✓[39m src/profitability-estimate/ProfitabilityDecisionQueue.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 657[2mms[22m[39m
+ [32m✓[39m src/offer/OfferPanel.model.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 798[2mms[22m[39m
+     [33m[2m✓[22m[39m retires a submitted model declaration and ignores its late success on identity replacement [33m 329[2mms[22m[39m
+ [32m✓[39m src/App.project-lifecycle.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 556[2mms[22m[39m
+   [33m[2m✓[22m[39m mounts the Lifecycle section above the responsible member and refreshes the detail status and the list row together in classic [33m 339[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/ClientCommercialOverview.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 1135[2mms[22m[39m
+ [32m✓[39m src/access/WorkspaceInvitations.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 335[2mms[22m[39m
+ [32m✓[39m src/App.contract-localization.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1205[2mms[22m[39m
+   [33m[2m✓[22m[39m retires a locale-preserved representation on session loss through the real App and suppresses the late bytes [33m 745[2mms[22m[39m
+ [32m✓[39m src/offer/OfferPanel.command-lock.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1601[2mms[22m[39m
+     [33m[2m✓[22m[39m retains quality as the only retry across lost and malformed confirmation and unlocks siblings only after resolution [33m 426[2mms[22m[39m
+ [32m✓[39m src/production-shell/useProductionShellContext.stale-recovery.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 1242[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentWorkspace.received.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 420[2mms[22m[39m
+ [32m✓[39m src/access/WorkspaceInvitationAuthentication.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 647[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.template.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 419[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentWorkspace.family-retirement.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 840[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps questionnaire uncertain PDF bytes/key while unrelated mission-deliverable access is lost and replaced [33m 310[2mms[22m[39m
+ [32m✓[39m src/client/ClientUnionPanel.localization.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 288[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentWorkspace.open-project.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 437[2mms[22m[39m
+ [32m✓[39m src/client/ClientWorkspace.duplicate-review-localization.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 391[2mms[22m[39m
+   [33m[2m✓[22m[39m translates an open exact-ID review from English to Romanian while retaining its nodes, literal values, focus and HTTP state [33m 390[2mms[22m[39m
+ [32m✓[39m src/project/ProjectStage.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 236[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/CommercialIntakeWorkspace.localization.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 415[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves every entered capture field and the editable Client selection across all four locales [33m 361[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentVersionReferences.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 316[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentCorrectionHistory.localization.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 376[2mms[22m[39m
+ [32m✓[39m src/App.blocked-tasks.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 584[2mms[22m[39m
+   [33m[2m✓[22m[39m discovers future and undated blocked Tasks and their literal reasons/responsible members through actual Company navigation while My Tasks stays personal (prisme) [33m 454[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/opportunity-outcome.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.attention-tasks.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 574[2mms[22m[39m
+     [33m[2m✓[22m[39m opens all attention matches from the ready ten-row Home preview and pages beyond twenty-five [33m 573[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.localization.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 271[2mms[22m[39m
+ [32m✓[39m src/api/latest-authenticated-request.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+ [32m✓[39m src/App.commercial-activity.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 323[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentWorkspace.mission.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 414[2mms[22m[39m
+ [32m✓[39m src/contract/ContractProjectCreatePanel.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 325[2mms[22m[39m
+ [32m✓[39m src/App.contract.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 420[2mms[22m[39m
+   [33m[2m✓[22m[39m opens a recorded Contract from its Request without Offer or Client authority [33m 419[2mms[22m[39m
+ [32m✓[39m src/operational-home/MyAttention.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 199[2mms[22m[39m
+ [32m✓[39m src/App.unassigned-tasks.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 376[2mms[22m[39m
+   [33m[2m✓[22m[39m discovers future and undated unassigned Tasks through the real Company navigation while My Tasks stays personal [33m 375[2mms[22m[39m
+ [32m✓[39m src/project/MissionReadiness.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 475[2mms[22m[39m
+   [33m[2m✓[22m[39m retires held evidence across revoke/regrant while keeping independent Task facts [33m 335[2mms[22m[39m
+ [32m✓[39m src/App.pricing-configuration.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 422[2mms[22m[39m
+   [33m[2m✓[22m[39m offers the configuration screen in both frames to a configuration reader [33m 343[2mms[22m[39m
+ [32m✓[39m src/project/ProjectTemplate.independent-owners.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 374[2mms[22m[39m
+ [32m✓[39m src/contract/ContractPanel.context-localization.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 510[2mms[22m[39m
+   [33m[2m✓[22m[39m preserves an explicitly selected Workspace UUID and complete exact retry with literal draft=false [33m 330[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.document-approver.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 360[2mms[22m[39m
+ [32m✓[39m src/client/ClientDossierPanel.localization.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 373[2mms[22m[39m
+   [33m[2m✓[22m[39m translates the public English dossier correction to Romanian without replacing its input, draft, focus, selection or issuing HTTP [33m 307[2mms[22m[39m
+ [32m✓[39m src/test/commercial-journey-confidentiality.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m src/access/WorkspaceSessionRevocations.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[32m 266[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentVersions.mission.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 218[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.document-content.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 713[2mms[22m[39m
+ [32m✓[39m src/mission-plan/MissionPlanCurrentWork.test.tsx [2m([22m[2m17 tests[22m[2m)[22m[33m 1898[2mms[22m[39m
+ [32m✓[39m src/App.project-responsible.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 477[2mms[22m[39m
+   [33m[2m✓[22m[39m shows the responsible member in Project detail to a Project Access v1 reader with change controls only for project.update [32m 300[2mms[22m[39m
+ [32m✓[39m src/production-shell/ApplicationShell.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 231[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/company/CompanyRegistration.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 245[2mms[22m[39m
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+ [32m✓[39m src/App.my-tasks.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 721[2mms[22m[39m
+   [33m[2m✓[22m[39m offers My Tasks in both frames when the active Company satisfies the Task-read predicate [33m 355[2mms[22m[39m
+ [32m✓[39m src/project/MyTasks.open-task.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 194[2mms[22m[39m
+ [32m✓[39m src/access/WorkspaceInvitationStorage.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 280[2mms[22m[39m
+ [32m✓[39m src/contract/model-contract-response.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.offer-approver.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 260[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.profitability.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 352[2mms[22m[39m
+     [33m[2m✓[22m[39m grants and revokes Contributor and Director independently through existing administration [33m 351[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.ideas.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 399[2mms[22m[39m
+     [33m[2m✓[22m[39m grants and revokes Reader, Recorder and Reviewer independently through existing administration [33m 397[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.mission-plan.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m grants and revokes Configuration and User independently through existing administration [33m 317[2mms[22m[39m
+ [32m✓[39m src/client/client-correction-history.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.contract-model.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 320[2mms[22m[39m
+     [33m[2m✓[22m[39m grants and revokes Editor and Approver independently through existing administration [33m 318[2mms[22m[39m
+ [32m✓[39m src/access/CompanyContextAccess.offer-model.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 309[2mms[22m[39m
+     [33m[2m✓[22m[39m grants and revokes Editor and Approver independently through existing administration [33m 307[2mms[22m[39m
+ [32m✓[39m src/App.document-versions.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[32m 281[2mms[22m[39m
+ [32m✓[39m src/presentation/Select.position.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+ [32m✓[39m src/project/project-template-response.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/profitability-estimate/profitability-contract.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m src/project/project-localized.copy.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m src/contract/contract-quality-response.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/App.operational-risk.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 305[2mms[22m[39m
+     [33m[2m✓[22m[39m offers explicit Reader and Recorder grants after Company administration is ready [33m 304[2mms[22m[39m
+ [32m✓[39m src/project/ProjectWorkspace.mission-plan.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 671[2mms[22m[39m
+   [33m[2m✓[22m[39m keeps the immutable mission-plan retry through a pending directory reload and its200 result [33m 451[2mms[22m[39m
+ [32m✓[39m src/project/ProjectWorkspace.my-open.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 225[2mms[22m[39m
+ [32m✓[39m src/App.contract-model.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 167[2mms[22m[39m
+ [32m✓[39m src/documents/DocumentAdministration.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 329[2mms[22m[39m
+ [32m✓[39m src/App.offer-model.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 203[2mms[22m[39m
+ [32m✓[39m src/localization/interface-locale.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 153[2mms[22m[39m
+ [32m✓[39m src/operational-home/operational-home-response.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/operational-risk/operational-risk.response.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m src/production-shell/fiber/FiberMotion.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 158[2mms[22m[39m
+ [32m✓[39m src/localization/messages.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/documents/document-version-references-response.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/mission-plan/mission-plan-response.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/offer/offer-estimate-response.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/access/WorkspaceInvitationAcceptance.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 145[2mms[22m[39m
+ [32m✓[39m src/App.current-work-rejection.test.tsx [2m([22m[2m20 tests[22m[2m)[22m[33m 29162[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor200 after 'document-registrar' A→B→A without stale shared effects or lost connected drafts [33m 1945[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor403 after 'document-registrar' A→B→A without stale shared effects or lost connected drafts [33m 1660[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor200 after 'document-registrar' A→B→A without stale shared effects or lost connected drafts [33m 1466[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor403 after 'document-registrar' A→B→A without stale shared effects or lost connected drafts [33m 1540[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor200 after 'mission-deliverable-access' A→B→A without stale shared effects or lost connected drafts [33m 1804[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor403 after 'mission-deliverable-access' A→B→A without stale shared effects or lost connected drafts [33m 1597[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor200 after 'mission-deliverable-access' A→B→A without stale shared effects or lost connected drafts [33m 1610[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor403 after 'mission-deliverable-access' A→B→A without stale shared effects or lost connected drafts [33m 1482[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor200 after 'document-content-reader' A→B→A without stale shared effects or lost connected drafts [33m 1554[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor403 after 'document-content-reader' A→B→A without stale shared effects or lost connected drafts [33m 1421[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor200 after 'document-content-reader' A→B→A without stale shared effects or lost connected drafts [33m 1443[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor403 after 'document-content-reader' A→B→A without stale shared effects or lost connected drafts [33m 1471[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor200 after 'task-result-recorder' A→B→A without stale shared effects or lost connected drafts [33m 1212[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor403 after 'task-result-recorder' A→B→A without stale shared effects or lost connected drafts [33m 1327[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor200 after 'task-result-recorder' A→B→A without stale shared effects or lost connected drafts [33m 1418[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor403 after 'task-result-recorder' A→B→A without stale shared effects or lost connected drafts [33m 1328[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor200 after 'mission-result-reviewer' A→B→A without stale shared effects or lost connected drafts [33m 1078[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'company' actor403 after 'mission-result-reviewer' A→B→A without stale shared effects or lost connected drafts [33m 1233[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor200 after 'mission-result-reviewer' A→B→A without stale shared effects or lost connected drafts [33m 1248[2mms[22m[39m
+     [33m[2m✓[22m[39m retires held 'workspace' actor403 after 'mission-result-reviewer' A→B→A without stale shared effects or lost connected drafts [33m 1322[2mms[22m[39m
+ [32m✓[39m src/documents/document-pdf-response.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/company/CompanyContextSelector.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 129[2mms[22m[39m
+ [32m✓[39m src/test/equivalent-actor.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/operational-home/operational-home-localized.copy.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32m✓[39m src/production-shell/company-context-preference.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m src/production-build.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 1228[2mms[22m[39m
+   [33m[2m✓[22m[39m omits local-demo identity injection from a normal production build [33m 1227[2mms[22m[39m
+ [32m✓[39m src/ideas/ideas-activity-response.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/client/client-union-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/clerk-access-composition.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m src/presentation/Select.localization.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32m✓[39m src/contract/contract-model-source.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/production-shell/application-presentation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/documents/received-contract-response.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m src/access-composition.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 135[2mms[22m[39m
+ [32m✓[39m src/api/idempotent-display-name-command.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/commercial-intake/sales-stage.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/pricing-configuration/datetime-local-test-helper.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m src/welcome/PublicWelcome.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 130[2mms[22m[39m
+ [32m✓[39m src/access/company-assignment-localization.copy.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m217 passed[39m[22m[90m (217)[39m
+[2m      Tests [22m [1m[32m3648 passed[39m[22m[90m (3648)[39m
+[2m   Start at [22m 21:23:08
+[2m   Duration [22m 349.53s[2m (transform 6.78s, setup 26.15s, import 37.82s, tests 494.08s, environment 115.05s)[22m
+

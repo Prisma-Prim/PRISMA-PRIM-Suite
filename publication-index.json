@@ -1,0 +1,328 @@
+{
+  "schema": "prisma-prim-evidence-publication/v1",
+  "pr": 952,
+  "run": "006",
+  "ref": "local-evidence/pr-952/12924cb4fed71ada909caccb6249cd4298452589-006",
+  "source": "12924cb4fed71ada909caccb6249cd4298452589",
+  "base": "e356bbfe4a6dc09727f50f922363ada5931e4e26",
+  "integration_commit": "8a07996775a7bcdb60043a4bb175676110e63402",
+  "integration_tree": "5ade0c06e665b2adb71633165c37054ae69ffd01",
+  "canonical_status": "passed",
+  "canonical_mode": "complete",
+  "canonical_artifact_count": 2504,
+  "complete_originals": "Retained locally; selected publication is not the full inventory",
+  "limits": {
+    "total_bytes": 20971520,
+    "blob_bytes": 5242880
+  },
+  "retention": "At least 14 days after merge; only owned evidence refs may be deleted",
+  "index_self_hash": "Recorded in SHA256SUMS and the PR publication receipt",
+  "files": [
+    {
+      "path": "report.md",
+      "bytes": 3599,
+      "sha256": "db413826b297d6550161c08625f43bf3f37f5f9bf3e47e6a528c643111aca57c",
+      "copy_kind": "selected-exact-original",
+      "original_path": "report.md",
+      "original_bytes": 3599,
+      "original_sha256": "db413826b297d6550161c08625f43bf3f37f5f9bf3e47e6a528c643111aca57c",
+      "selection_reason": "Canonical compact report/manifest"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 969785,
+      "sha256": "284a854609303f953d9cc6bbe2950681c40f7b1a48741e914f559adc0d535fa0",
+      "copy_kind": "selected-exact-original",
+      "original_path": "manifest.json",
+      "original_bytes": 969785,
+      "original_sha256": "284a854609303f953d9cc6bbe2950681c40f7b1a48741e914f559adc0d535fa0",
+      "selection_reason": "Canonical compact report/manifest"
+    },
+    {
+      "path": "logs/doctor.log",
+      "bytes": 749,
+      "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/doctor.log",
+      "original_bytes": 749,
+      "original_sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/format.log",
+      "bytes": 87,
+      "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/format.log",
+      "original_bytes": 87,
+      "original_sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/lint.log",
+      "bytes": 11,
+      "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/lint.log",
+      "original_bytes": 11,
+      "original_sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/types.log",
+      "bytes": 187,
+      "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/types.log",
+      "original_bytes": 187,
+      "original_sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/scripts.log",
+      "bytes": 45470,
+      "sha256": "7dc1a66d6ff30ac9651886715712760d3d8a5a36ae83dc17eea0e01e2db8e4bd",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/scripts.log",
+      "original_bytes": 45470,
+      "original_sha256": "7dc1a66d6ff30ac9651886715712760d3d8a5a36ae83dc17eea0e01e2db8e4bd",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/documentation.log",
+      "bytes": 7336,
+      "sha256": "2fe63f2c16d79d13f84b5690f1ec5c75d3692f85f70ea3aab2c3ed1bd0bcf31d",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/documentation.log",
+      "original_bytes": 7336,
+      "original_sha256": "2fe63f2c16d79d13f84b5690f1ec5c75d3692f85f70ea3aab2c3ed1bd0bcf31d",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/api-parallel.log",
+      "bytes": 706152,
+      "sha256": "d34c2eab01d56884c0d9b8a55c9d52f5600ac169164c32ace40b409c2d9e8a2c",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/api-parallel.log",
+      "original_bytes": 706152,
+      "original_sha256": "d34c2eab01d56884c0d9b8a55c9d52f5600ac169164c32ace40b409c2d9e8a2c",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/api-serial.log",
+      "bytes": 53798,
+      "sha256": "992a826b895faa0b48c64e1e80d6f667ec4ab9c84db6b134acb8744257820f75",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/api-serial.log",
+      "original_bytes": 53798,
+      "original_sha256": "992a826b895faa0b48c64e1e80d6f667ec4ab9c84db6b134acb8744257820f75",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/web-unit.log",
+      "bytes": 88513,
+      "sha256": "060f79a86e28b7e4cc92456617823984ba6108251dd8e3168e6bc1a3ffbe8808",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/web-unit.log",
+      "original_bytes": 88513,
+      "original_sha256": "060f79a86e28b7e4cc92456617823984ba6108251dd8e3168e6bc1a3ffbe8808",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/browser.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/browser.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/acceptance.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/acceptance.log",
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/acceptance-evidence.log",
+      "bytes": 118,
+      "sha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/acceptance-evidence.log",
+      "original_bytes": 118,
+      "original_sha256": "a23f243142a3260c79bbedac3aaa2535c0739be26ed0583c4bce34f5ee851577",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/build.log",
+      "bytes": 1480,
+      "sha256": "ea1f4ddcd005862765e5687ac0d49b567cefad075d9e523261aa926513e9f3f3",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/build.log",
+      "original_bytes": 1480,
+      "original_sha256": "ea1f4ddcd005862765e5687ac0d49b567cefad075d9e523261aa926513e9f3f3",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/railway-types.log",
+      "bytes": 637,
+      "sha256": "b1f4af50a054181e971ac0a88997608c815188d2ae612c040ad0f31585310951",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/railway-types.log",
+      "original_bytes": 637,
+      "original_sha256": "b1f4af50a054181e971ac0a88997608c815188d2ae612c040ad0f31585310951",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/railway-tests.log",
+      "bytes": 238,
+      "sha256": "517538170925b1ee0b1ffeb3e77caab493eae283ee1f870a06c43cf6359f695a",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/railway-tests.log",
+      "original_bytes": 238,
+      "original_sha256": "517538170925b1ee0b1ffeb3e77caab493eae283ee1f870a06c43cf6359f695a",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "logs/packaging.log",
+      "bytes": 6311,
+      "sha256": "4e1174b753d7700e1b60040d0e94ea3e0fd6b55144ff54685671abf71b54ef55",
+      "copy_kind": "selected-exact-original",
+      "original_path": "logs/packaging.log",
+      "original_bytes": 6311,
+      "original_sha256": "4e1174b753d7700e1b60040d0e94ea3e0fd6b55144ff54685671abf71b54ef55",
+      "selection_reason": "Complete canonical family log"
+    },
+    {
+      "path": "local-browser/browser/build-0.log",
+      "bytes": 1086,
+      "sha256": "f2c6c46584695103006362fbc191b729a0d09b1197cea2dbb76d0f23f2de99ae",
+      "copy_kind": "selected-exact-original",
+      "original_path": "local-browser/browser/build-0.log",
+      "original_bytes": 1086,
+      "original_sha256": "f2c6c46584695103006362fbc191b729a0d09b1197cea2dbb76d0f23f2de99ae",
+      "selection_reason": "Fresh-build and original Playwright startup execution evidence"
+    },
+    {
+      "path": "local-browser/browser/manifest.json",
+      "bytes": 1090578,
+      "sha256": "05ab776492bced1e45df0fdcab57a2e21ca4551ebde1f3905373e146ba785fba",
+      "copy_kind": "selected-exact-original",
+      "original_path": "local-browser/browser/manifest.json",
+      "original_bytes": 1090578,
+      "original_sha256": "05ab776492bced1e45df0fdcab57a2e21ca4551ebde1f3905373e146ba785fba",
+      "selection_reason": "Fresh-build and original Playwright startup execution evidence"
+    },
+    {
+      "path": "local-browser/browser/playwright.log",
+      "bytes": 1558,
+      "sha256": "e4cea7168b280ffdcdd0268d47f820441d0a814641adb7d1cc4e44b52fe21cbd",
+      "copy_kind": "selected-exact-original",
+      "original_path": "local-browser/browser/playwright.log",
+      "original_bytes": 1558,
+      "original_sha256": "e4cea7168b280ffdcdd0268d47f820441d0a814641adb7d1cc4e44b52fe21cbd",
+      "selection_reason": "Fresh-build and original Playwright startup execution evidence"
+    },
+    {
+      "path": "local-browser/acceptance/build-0.log",
+      "bytes": 13,
+      "sha256": "9aba080a04d36f3c5b3e64cf2e200d70a422c78297ff80bac5f5551def846538",
+      "copy_kind": "selected-exact-original",
+      "original_path": "local-browser/acceptance/build-0.log",
+      "original_bytes": 13,
+      "original_sha256": "9aba080a04d36f3c5b3e64cf2e200d70a422c78297ff80bac5f5551def846538",
+      "selection_reason": "Fresh-build and original Playwright startup execution evidence"
+    },
+    {
+      "path": "local-browser/acceptance/build-1.log",
+      "bytes": 1086,
+      "sha256": "06a464b3ef3bcba86b93da67213427a2754349c91f3696339fa910404f96b7fb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "local-browser/acceptance/build-1.log",
+      "original_bytes": 1086,
+      "original_sha256": "06a464b3ef3bcba86b93da67213427a2754349c91f3696339fa910404f96b7fb",
+      "selection_reason": "Fresh-build and original Playwright startup execution evidence"
+    },
+    {
+      "path": "local-browser/acceptance/manifest.json",
+      "bytes": 1320286,
+      "sha256": "aecf7a4f9b9609f34e865775fc9b5d5c7b0a9ee47772f6c312a3b20ca3a4712c",
+      "copy_kind": "selected-exact-original",
+      "original_path": "local-browser/acceptance/manifest.json",
+      "original_bytes": 1320286,
+      "original_sha256": "aecf7a4f9b9609f34e865775fc9b5d5c7b0a9ee47772f6c312a3b20ca3a4712c",
+      "selection_reason": "Fresh-build and original Playwright startup execution evidence"
+    },
+    {
+      "path": "local-browser/acceptance/playwright.log",
+      "bytes": 402,
+      "sha256": "a81245c10e669c8828f4ad3a60fecd55dc29df91a56699fce1f683f92bf48ff1",
+      "copy_kind": "selected-exact-original",
+      "original_path": "local-browser/acceptance/playwright.log",
+      "original_bytes": 402,
+      "original_sha256": "a81245c10e669c8828f4ad3a60fecd55dc29df91a56699fce1f683f92bf48ff1",
+      "selection_reason": "Fresh-build and original Playwright startup execution evidence"
+    },
+    {
+      "path": "screenshots/contract-model-approved-Desktop.png",
+      "bytes": 85746,
+      "sha256": "a058a3d9e9332577fad6902c9db325554319fbdbdf9af41dc5b5cc37e249e3ed",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/contract-model.acceptance--bfa88-s-access-and-Company-drafts-operational-acceptance-desktop/contract-model-approved-Desktop.png",
+      "original_bytes": 85746,
+      "original_sha256": "a058a3d9e9332577fad6902c9db325554319fbdbdf9af41dc5b5cc37e249e3ed",
+      "selection_reason": "Root visually inspected; synthetic DEMO Company, illustrative Contract version, example.test demonstration identity only."
+    },
+    {
+      "path": "screenshots/offer-model-approved-Desktop.png",
+      "bytes": 84627,
+      "sha256": "1338c92817993304e564117caa92440469eeeb8c64660d13179a15d096640c08",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/offer-model.acceptance-adm-36473-s-access-and-Company-drafts-operational-acceptance-desktop/offer-model-approved-Desktop.png",
+      "original_bytes": 84627,
+      "original_sha256": "1338c92817993304e564117caa92440469eeeb8c64660d13179a15d096640c08",
+      "selection_reason": "Root visually inspected; synthetic DEMO Company, illustrative Offer version and pricing, example.test demonstration identity only."
+    },
+    {
+      "path": "screenshots/contract-model-approved-Narrow.png",
+      "bytes": 49635,
+      "sha256": "fea4af85082da3172d5a5709a7ef38268d85a485f3f0dd9556d27f73d85dbccb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/contract-model.acceptance--bfa88-s-access-and-Company-drafts-operational-acceptance-narrow/contract-model-approved-Narrow.png",
+      "original_bytes": 49635,
+      "original_sha256": "fea4af85082da3172d5a5709a7ef38268d85a485f3f0dd9556d27f73d85dbccb",
+      "selection_reason": "Root visually inspected narrow viewport; synthetic DEMO Company and illustrative approved Contract version only."
+    },
+    {
+      "path": "screenshots/offer-model-approved-Narrow.png",
+      "bytes": 49319,
+      "sha256": "5de9d866da1ac52bc5e79ce3526f9c66dd5ccd5e3b6e42110b449fa01091a5ec",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/offer-model.acceptance-adm-36473-s-access-and-Company-drafts-operational-acceptance-narrow/offer-model-approved-Narrow.png",
+      "original_bytes": 49319,
+      "original_sha256": "5de9d866da1ac52bc5e79ce3526f9c66dd5ccd5e3b6e42110b449fa01091a5ec",
+      "selection_reason": "Root visually inspected narrow viewport; synthetic DEMO Company and illustrative approved Offer version only."
+    },
+    {
+      "path": "screenshots/acceptance-evidence-probe.png",
+      "bytes": 9319,
+      "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/test-failed-1.png",
+      "original_bytes": 9319,
+      "original_sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "selection_reason": "Root visually inspected mandatory intentional-failure proof: white synthetic page with Client evidence probe heading only."
+    },
+    {
+      "path": "README.md",
+      "bytes": 863,
+      "sha256": "2362aa512dd60874dbba0785d734b205683e2eeec58602ad69bb4c254af67bec",
+      "copy_kind": "publication-generated-context"
+    }
+  ]
+}

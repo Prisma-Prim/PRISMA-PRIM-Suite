@@ -1,0 +1,19 @@
+Recreating /workspace/worktrees/integration-model-952/.railway/node_modules
+? Verifying lockfile against supply-chain policies (33 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +7
++++++++
+Progress: resolved 7, reused 1, downloaded 6, added 7, done
+✓ Lockfile passes supply-chain policies (33 entries in 1.3s)
+.../esbuild@0.28.2/node_modules/esbuild postinstall$ node install.js
+.../esbuild@0.28.2/node_modules/esbuild postinstall: Done
+
+dependencies:
++ railway 3.13.0
+
+devDependencies:
++ typescript 5.9.3
+
+Done in 1.8s using pnpm v11.20.0
+$ tsc --noEmit

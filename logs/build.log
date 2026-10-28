@@ -1,0 +1,23 @@
+$ pnpm --recursive build
+Scope: 2 of 3 workspace projects
+apps/api build$ nest build
+apps/web build$ tsc -b && vite build
+apps/api build: Done
+apps/web build: [36mvite v8.2.1 [32mbuilding client environment for production...[36m[39m
+apps/web build: [2K
+apps/web build: transforming...✓ 2018 modules transformed.
+apps/web build: rendering chunks...
+apps/web build: computing gzip size...
+apps/web build: dist/index.html                                    0.50 kB │ gzip:   0.31 kB
+apps/web build: dist/assets/PrismaCertUiBaseline-DM0fZBM-.css     54.19 kB │ gzip:  10.19 kB
+apps/web build: dist/assets/index-Cw_RoBEs.css                   175.04 kB │ gzip:  25.76 kB
+apps/web build: dist/assets/PrismaCertUiBaseline-iec5MLel.js     259.83 kB │ gzip: 139.88 kB
+apps/web build: dist/assets/fiber-renderer-C0o1c45X.js           484.48 kB │ gzip: 121.91 kB
+apps/web build: dist/assets/index-RpFtkv1e.js                  2,311.04 kB │ gzip: 579.32 kB
+apps/web build: [33m[plugin builtin:vite-reporter] 
+apps/web build: (!) Some chunks are larger than 500 kB after minification. Consider:
+apps/web build: - Using dynamic import() to code-split the application
+apps/web build: - Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+apps/web build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+apps/web build: [32m✓ built in 1.21s[39m
+apps/web build: Done

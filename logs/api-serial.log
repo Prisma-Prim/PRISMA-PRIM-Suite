@@ -1,0 +1,495 @@
+$ vitest run --no-file-parallelism src/access/access.rest.test.ts src/access/company-context-assignment.rest.test.ts src/access/workspace-membership-suspension.rest.test.ts src/access/workspace-membership.migration.test.ts src/client/client.rest.test.ts src/company/company.rest.test.ts src/company/company-idempotency.rest.test.ts src/database/previous-schema.migration.test.ts --testTimeout=15000
+[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/workspace/worktrees/integration-model-952/apps/api[39m
+
+[31m[Nest] 365561  - [39m10/28/2026, 9:22:24 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000111,43ae81b5-fbf6-4ed5-92fe-612414ee1288,7102e7cc-2a8c-458f-8116-203c0dfcbb10,client_company_relationship.established,client_company_relationship,,,b88fd45f-7de8-4748-b36c-1588225519f4,,77698d92-7f64-4d94-8b23-c18f5cdf04cc,908eed6c-af3b-43de-9506-48f5c09a6a81,{},client_company_relationship.established:908eed6c-af3b-43de-9506-48f5c09a6a81
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 3 lines matching cause stack trace ...[39m
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000111'[39m,
+    [32m'43ae81b5-fbf6-4ed5-92fe-612414ee1288'[39m,
+    [32m'7102e7cc-2a8c-458f-8116-203c0dfcbb10'[39m,
+    [32m'client_company_relationship.established'[39m,
+    [32m'client_company_relationship'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'b88fd45f-7de8-4748-b36c-1588225519f4'[39m,
+    [1mnull[22m,
+    [32m'77698d92-7f64-4d94-8b23-c18f5cdf04cc'[39m,
+    [32m'908eed6c-af3b-43de-9506-48f5c09a6a81'[39m,
+    [32m'{}'[39m,
+    [32m'client_company_relationship.established:908eed6c-af3b-43de-9506-48f5c09a6a81'[39m
+  ],
+  cause: error: forced Client relationship Activity Log failure
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/client/client.service.ts:533:9
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:47:62
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+    length: [33m182[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_client_relationship_activity() line 4 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+[31m[Nest] 365561  - [39m10/28/2026, 9:22:24 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000111,125a17ef-0c33-428e-9429-650efa3e7d91,1c5a81ba-6995-4243-ad92-0b3a37231bd9,client_company_relationship.established,client_company_relationship,,,85135084-fa8e-45c2-9d83-0bc85c3bb871,,f4f78fec-18d9-4b4a-a180-4bd9d8813ebd,a0318f34-4d07-4e4a-b872-dc752204a002,{},client_company_relationship.established:a0318f34-4d07-4e4a-b872-dc752204a002
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000111'[39m,
+    [32m'125a17ef-0c33-428e-9429-650efa3e7d91'[39m,
+    [32m'1c5a81ba-6995-4243-ad92-0b3a37231bd9'[39m,
+    [32m'client_company_relationship.established'[39m,
+    [32m'client_company_relationship'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'85135084-fa8e-45c2-9d83-0bc85c3bb871'[39m,
+    [1mnull[22m,
+    [32m'f4f78fec-18d9-4b4a-a180-4bd9d8813ebd'[39m,
+    [32m'a0318f34-4d07-4e4a-b872-dc752204a002'[39m,
+    [32m'{}'[39m,
+    [32m'client_company_relationship.established:a0318f34-4d07-4e4a-b872-dc752204a002'[39m
+  ],
+  cause: error: forced Client creation Activity Log failure
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/client/client.service.ts:394:7
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at ClientService.register [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/client/client.service.ts:318:21[90m)[39m
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:47:62
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+    length: [33m174[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_client_creation_activity() line 4 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+[31m[Nest] 365561  - [39m10/28/2026, 9:22:27 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000111,b0b49f1a-4a7f-497a-ab16-aa51914fffdb,5eb77cea-2c7b-4509-9bd3-9c6eaf183027,client.corrected,client_account,,,19c15ee3-d678-47ee-aa03-7cb19415310c,,4efd51ae-1ff2-47e2-8a8a-f1de070e2404,,{"changes":{"telephone":{"before":null,"after":"+373 60 999 999"}}},client.corrected:4efd51ae-1ff2-47e2-8a8a-f1de070e2404:5ef0d7fb-f1db-4fa8-a9fb-075531ba603a
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000111'[39m,
+    [32m'b0b49f1a-4a7f-497a-ab16-aa51914fffdb'[39m,
+    [32m'5eb77cea-2c7b-4509-9bd3-9c6eaf183027'[39m,
+    [32m'client.corrected'[39m,
+    [32m'client_account'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'19c15ee3-d678-47ee-aa03-7cb19415310c'[39m,
+    [1mnull[22m,
+    [32m'4efd51ae-1ff2-47e2-8a8a-f1de070e2404'[39m,
+    [1mnull[22m,
+    [32m'{"changes":{"telephone":{"before":null,"after":"+373 60 999 999"}}}'[39m,
+    [32m'client.corrected:4efd51ae-1ff2-47e2-8a8a-f1de070e2404:5ef0d7fb-f1db-4fa8-a9fb-075531ba603a'[39m
+  ],
+  cause: error: reject correction history
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/client/client-dossier.service.ts:270:7
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at ClientDossierService.correct [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/client/client-dossier.service.ts:150:21[90m)[39m
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:47:62
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+    length: [33m158[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_client_correction_activity() line 4 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+ [32m✓[39m src/client/client.rest.test.ts [2m([22m[2m47 tests[22m[2m)[22m[33m 14174[2mms[22m[39m
+     [33m[2m✓[22m[39m registers one Client and reuses its shared identity across two active Companies [33m 392[2mms[22m[39m
+     [33m[2m✓[22m[39m orders active-Company Clients deterministically and bounds Workspace search [33m 434[2mms[22m[39m
+     [33m[2m✓[22m[39m replays registration safely and rejects an idempotency key with changed intent [33m 379[2mms[22m[39m
+     [33m[2m✓[22m[39m combines a Company Director Client grant with Company management permissions [33m 322[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps legacy client.manage on the minimal interface until the Owner has a Director grant [33m 355[2mms[22m[39m
+     [33m[2m✓[22m[39m denies Client access without the dedicated permission and without leaking metadata [33m 306[2mms[22m[39m
+     [33m[2m✓[22m[39m collapses concurrent attachment into one relationship and one event [33m 336[2mms[22m[39m
+     [33m[2m✓[22m[39m grants a narrow Company Director bundle for enriched Client create and read, then revokes it immediately [33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m shows involved provider names and records one attributable correction with optimistic concurrency [33m 349[2mms[22m[39m
+     [33m[2m✓[22m[39m queues corrections that both reserved a receipt before either locked the Client [33m 321[2mms[22m[39m
+     [33m[2m✓[22m[39m replays a same-key correction that waited on the reserved receipt and refuses changed intent [33m 325[2mms[22m[39m
+     [33m[2m✓[22m[39m paginates more than one durable duplicate-review page within a fixed query budget [33m 979[2mms[22m[39m
+     [33m[2m✓[22m[39m returns one opaque exact-ID review reference and reveals it only with complete live v2 authority [33m 470[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks an exact-ID correction without changing the dossier or success history [33m 345[2mms[22m[39m
+     [33m[2m✓[22m[39m revalidates relationship, lifecycle, actor, Company and assignment state for every review read [33m 735[2mms[22m[39m
+[31m[Nest] 366755  - [39m10/28/2026, 9:22:35 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000091,3619a188-7ec0-4180-9d23-7c128b1afa58,9b991c5e-cf5c-4a83-aa61-70ce8e6e39b9,company_context_assignment.granted,company_role_assignment,31e1dfa7-94cf-4191-805e-2db7cafc3fdb,9bc37934-1917-4886-bf69-05a54234eabe,6c252f75-b9b7-4279-88c4-049aa996616f,79c99bae-7691-4a4b-8768-8818996620e4,,,{"bundle":"Company Context Access"},company_context_assignment.granted:79c99bae-7691-4a4b-8768-8818996620e4:96e15d73-1e93-48b9-9804-0a2bfbf2bb0d
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 3 lines matching cause stack trace ...[39m
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000091'[39m,
+    [32m'3619a188-7ec0-4180-9d23-7c128b1afa58'[39m,
+    [32m'9b991c5e-cf5c-4a83-aa61-70ce8e6e39b9'[39m,
+    [32m'company_context_assignment.granted'[39m,
+    [32m'company_role_assignment'[39m,
+    [32m'31e1dfa7-94cf-4191-805e-2db7cafc3fdb'[39m,
+    [32m'9bc37934-1917-4886-bf69-05a54234eabe'[39m,
+    [32m'6c252f75-b9b7-4279-88c4-049aa996616f'[39m,
+    [32m'79c99bae-7691-4a4b-8768-8818996620e4'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'{"bundle":"Company Context Access"}'[39m,
+    [32m'company_context_assignment.granted:79c99bae-7691-4a4b-8768-8818996620e4:96e15d73-1e93-48b9-9804-0a2bfbf2bb0d'[39m
+  ],
+  cause: error: forced assignment Activity Log failure
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/access/company-context-assignment.service.ts:1787:9
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:47:62
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+    length: [33m175[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_assignment_activity_log_insert() line 4 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+[31m[Nest] 366755  - [39m10/28/2026, 9:22:35 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000091,3619a188-7ec0-4180-9d23-7c128b1afa58,9b991c5e-cf5c-4a83-aa61-70ce8e6e39b9,company_context_assignment.revoked,company_role_assignment,31e1dfa7-94cf-4191-805e-2db7cafc3fdb,9bc37934-1917-4886-bf69-05a54234eabe,6c252f75-b9b7-4279-88c4-049aa996616f,080c3ac7-efe9-40b1-8517-92a0e8f64185,,,{"bundle":"Company Context Access"},company_context_assignment.revoked:080c3ac7-efe9-40b1-8517-92a0e8f64185:e48fbc5a-0a27-48d8-becd-6357bb8c27cc
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 3 lines matching cause stack trace ...[39m
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000091'[39m,
+    [32m'3619a188-7ec0-4180-9d23-7c128b1afa58'[39m,
+    [32m'9b991c5e-cf5c-4a83-aa61-70ce8e6e39b9'[39m,
+    [32m'company_context_assignment.revoked'[39m,
+    [32m'company_role_assignment'[39m,
+    [32m'31e1dfa7-94cf-4191-805e-2db7cafc3fdb'[39m,
+    [32m'9bc37934-1917-4886-bf69-05a54234eabe'[39m,
+    [32m'6c252f75-b9b7-4279-88c4-049aa996616f'[39m,
+    [32m'080c3ac7-efe9-40b1-8517-92a0e8f64185'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'{"bundle":"Company Context Access"}'[39m,
+    [32m'company_context_assignment.revoked:080c3ac7-efe9-40b1-8517-92a0e8f64185:e48fbc5a-0a27-48d8-becd-6357bb8c27cc'[39m
+  ],
+  cause: error: forced assignment Activity Log failure
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/access/company-context-assignment.service.ts:1787:9
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:47:62
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+    length: [33m175[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_assignment_activity_log_insert() line 4 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+ [32m✓[39m src/access/company-context-assignment.rest.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 4070[2mms[22m[39m
+     [33m[2m✓[22m[39m grants and revokes only the fixed Company Context Access assignment [33m 395[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a historical grant receipt unchanged after an explicit revoke and fresh capture [33m 313[2mms[22m[39m
+     [33m[2m✓[22m[39m holds active target rows stable until a grant commits [33m 576[2mms[22m[39m
+     [33m[2m✓[22m[39m replays delayed commands without changing a newer assignment generation [33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m uses one metadata-safe denial for unauthorized actors and invalid grant targets [33m 317[2mms[22m[39m
+ [32m✓[39m src/database/previous-schema.migration.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 4981[2mms[22m[39m
+     [33m[2m✓[22m[39m starts the current application after migration without promoting a membership outside bootstrap resolution [33m 4980[2mms[22m[39m
+[31m[Nest] 367580  - [39m10/28/2026, 9:22:46 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000071,ba56497b-b8a9-43b6-a35d-19ce5b783082,8538f5cb-50ed-4494-a868-9481e3c8a153,internal_user.provisioned,internal_user,ba56497b-b8a9-43b6-a35d-19ce5b783082,8538f5cb-50ed-4494-a868-9481e3c8a153,,,,,{"identityProvider":"deterministic-test"},internal_user.provisioned:ba56497b-b8a9-43b6-a35d-19ce5b783082
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at canActivateFn (/workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:138:33)
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:42:31
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000071'[39m,
+    [32m'ba56497b-b8a9-43b6-a35d-19ce5b783082'[39m,
+    [32m'8538f5cb-50ed-4494-a868-9481e3c8a153'[39m,
+    [32m'internal_user.provisioned'[39m,
+    [32m'internal_user'[39m,
+    [32m'ba56497b-b8a9-43b6-a35d-19ce5b783082'[39m,
+    [32m'8538f5cb-50ed-4494-a868-9481e3c8a153'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'{"identityProvider":"deterministic-test"}'[39m,
+    [32m'internal_user.provisioned:ba56497b-b8a9-43b6-a35d-19ce5b783082'[39m
+  ],
+  cause: error: forced Activity Log failure
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/access/access.service.ts:190:9
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at ActorContextAdapter.canActivate [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/access/actor-context.adapter.ts:27:28[90m)[39m
+      at GuardsConsumer.tryActivate (/workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/guards/guards-consumer.js:22:17)
+      at canActivateFn (/workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:138:33) {
+    length: [33m153[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_activity_log_insert() line 3 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+ [32m✓[39m src/access/access.rest.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 6341[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects local-demo identity injection when NODE_ENV is production [33m 328[2mms[22m[39m
+     [33m[2m✓[22m[39m provisions one persistent actor for repeated and concurrent requests [33m 499[2mms[22m[39m
+     [33m[2m✓[22m[39m denies a verified principal that is not the configured bootstrap actor without creating state [33m 365[2mms[22m[39m
+     [33m[2m✓[22m[39m admits an explicitly accepted invitation into an existing Workspace without duplicate state [33m 362[2mms[22m[39m
+     [33m[2m✓[22m[39m resolves an existing global Internal User through the explicitly invited Workspace Membership [33m 357[2mms[22m[39m
+     [33m[2m✓[22m[39m denies an invitation whose configured Workspace does not exist without orphan state [33m 304[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects an Activity Log insert without required Workspace Membership references [33m 486[2mms[22m[39m
+     [33m[2m✓[22m[39m protects Activity Log reads and exposes no mutation endpoint [33m 377[2mms[22m[39m
+     [33m[2m✓[22m[39m synchronizes profile attributes without changing local identity [33m 352[2mms[22m[39m
+     [33m[2m✓[22m[39m returns 403 for an inactive Internal User [33m 334[2mms[22m[39m
+     [33m[2m✓[22m[39m returns the same safe 403 for an inactive Workspace Membership [33m 326[2mms[22m[39m
+     [33m[2m✓[22m[39m server-selects one active membership without assuming the Internal User is global to one Workspace [33m 310[2mms[22m[39m
+[31m[Nest] 368113  - [39m10/28/2026, 9:22:54 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000131,a4406a5f-eed6-4382-aaae-d19de90ff6d9,858eca6d-dcb6-4060-aa37-1c4f0ab9c400,company.registered,company,,,fa36b2fe-b69d-4e8d-bae0-fa1f7ad4d2ad,,,,{},company.registered:fa36b2fe-b69d-4e8d-bae0-fa1f7ad4d2ad
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 3 lines matching cause stack trace ...[39m
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000131'[39m,
+    [32m'a4406a5f-eed6-4382-aaae-d19de90ff6d9'[39m,
+    [32m'858eca6d-dcb6-4060-aa37-1c4f0ab9c400'[39m,
+    [32m'company.registered'[39m,
+    [32m'company'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'fa36b2fe-b69d-4e8d-bae0-fa1f7ad4d2ad'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'{}'[39m,
+    [32m'company.registered:fa36b2fe-b69d-4e8d-bae0-fa1f7ad4d2ad'[39m
+  ],
+  cause: error: forced Company Activity Log failure
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/company/company.service.ts:66:9
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:47:62
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+    length: [33m169[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_company_activity_log_insert() line 4 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+ [32m✓[39m src/company/company.rest.test.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 5546[2mms[22m[39m
+     [33m[2m✓[22m[39m lets the authorized Workspace owner register and read one active provider Company [33m 333[2mms[22m[39m
+     [33m[2m✓[22m[39m lets the Workspace owner select one active Company from the visible Company query [33m 321[2mms[22m[39m
+     [33m[2m✓[22m[39m uses one metadata-safe denial for invalid, inactive, foreign, and unauthorized Company selections [33m 330[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a malformed Company identifier at the HTTP boundary [33m 371[2mms[22m[39m
+     [33m[2m✓[22m[39m denies unauthenticated Company registration and reads [33m 415[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects an omitted Company display name without partial persistence [33m 398[2mms[22m[39m
+     [33m[2m✓[22m[39m records one attributable Company registration event across a retried command [33m 389[2mms[22m[39m
+     [33m[2m✓[22m[39m denies Company registration and read without permission without leaking record metadata [33m 366[2mms[22m[39m
+     [33m[2m✓[22m[39m uses only the actor Workspace when a request supplies another Workspace id [33m 301[2mms[22m[39m
+     [33m[2m✓[22m[39m collapses concurrent retries into one Company and one registration event [33m 337[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects cross-Workspace Company creator and Activity Log target associations [33m 394[2mms[22m[39m
+[31m[Nest] 368606  - [39m10/28/2026, 9:22:59 PM [31m  ERROR[39m [38;5;3m[ExceptionsHandler] [39mDrizzleQueryError: Failed query: insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing
+params: 00000000-0000-4000-8000-000000000101,a063ba8b-6805-4f8e-9149-3e7865dd0e5c,739acaaf-633e-4887-98dc-b8798b4ce54e,workspace_membership.suspended,workspace_membership,be17e21d-970a-4b68-a5b7-3f7a5367c2ff,80324a66-3e52-4982-b37b-7e88149c712a,,,,,{},workspace_membership.suspended:80324a66-3e52-4982-b37b-7e88149c712a:b4703627-7adf-46d8-bffb-a193050ad3f5
+    at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:41:15)
+[90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+    at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+  query: [32m'insert into "activity_log_events" ("id", "workspace_id", "actor_internal_user_id", "actor_workspace_membership_id", "action", "target_type", "target_workspace_invitation_id", "target_internal_user_id", "target_workspace_membership_id", "target_company_id", "target_company_role_assignment_id", "target_client_account_id", "target_client_company_relationship_id", "occurred_at", "metadata", "idempotency_key") values (default, $1, $2, $3, $4, $5, default, $6, $7, $8, $9, $10, $11, default, $12, $13) on conflict ("idempotency_key") do nothing'[39m,
+  params: [
+    [32m'00000000-0000-4000-8000-000000000101'[39m,
+    [32m'a063ba8b-6805-4f8e-9149-3e7865dd0e5c'[39m,
+    [32m'739acaaf-633e-4887-98dc-b8798b4ce54e'[39m,
+    [32m'workspace_membership.suspended'[39m,
+    [32m'workspace_membership'[39m,
+    [32m'be17e21d-970a-4b68-a5b7-3f7a5367c2ff'[39m,
+    [32m'80324a66-3e52-4982-b37b-7e88149c712a'[39m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [1mnull[22m,
+    [32m'{}'[39m,
+    [32m'workspace_membership.suspended:80324a66-3e52-4982-b37b-7e88149c712a:b4703627-7adf-46d8-bffb-a193050ad3f5'[39m
+  ],
+  cause: error: forced suspension Activity Log failure
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/pg@8.22.0/node_modules/[4mpg[24m/lib/client.js:652:17
+  [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+      at file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:113:20
+      at NodePgPreparedQuery.queryWithCache (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/pg-core/session.js:39:16)
+      at AccountabilityService.record [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/accountability/accountability.service.ts:3179:5[90m)[39m
+      at [90m/workspace/worktrees/integration-model-952/apps/api/[39msrc/access/workspace-membership-suspension.service.ts:99:7
+      at NodePgSession.transaction (file:///workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/drizzle-orm@0.45.2_@types+pg@8.20.0_pg@8.22.0/node_modules/[4mdrizzle-orm[24m/node-postgres/session.js:186:22)
+      at WorkspaceMembershipSuspensionService.suspend [90m(/workspace/worktrees/integration-model-952/apps/api/[39msrc/access/workspace-membership-suspension.service.ts:48:20[90m)[39m
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-execution-context.js:47:62
+      at /workspace/worktrees/integration-model-952/node_modules/[4m.pnpm[24m/@nestjs+core@11.1.28_@nestjs+common@11.1.28_reflect-metadata@0.2.2_rxjs@7.8.2_supports-_a9ad34e07cfe4587612721a6f9f81272/node_modules/[4m@nestjs/core[24m/router/router-proxy.js:9:17 {
+    length: [33m175[39m,
+    severity: [32m'ERROR'[39m,
+    code: [32m'P0001'[39m,
+    detail: [90mundefined[39m,
+    hint: [90mundefined[39m,
+    position: [90mundefined[39m,
+    internalPosition: [90mundefined[39m,
+    internalQuery: [90mundefined[39m,
+    where: [32m'PL/pgSQL function reject_suspension_activity_log_insert() line 4 at RAISE'[39m,
+    schema: [90mundefined[39m,
+    table: [90mundefined[39m,
+    column: [90mundefined[39m,
+    dataType: [90mundefined[39m,
+    constraint: [90mundefined[39m,
+    file: [32m'pl_exec.c'[39m,
+    line: [32m'3897'[39m,
+    routine: [32m'exec_stmt_raise'[39m
+  }
+}
+ [32m✓[39m src/access/workspace-membership-suspension.rest.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 3065[2mms[22m[39m
+     [33m[2m✓[22m[39m suspends non-destructively, denies the next request, and collapses exact retries into one event [33m 575[2mms[22m[39m
+     [33m[2m✓[22m[39m protects the last active holder of access-administration authority under concurrent suspensions [33m 400[2mms[22m[39m
+     [33m[2m✓[22m[39m shows suspension events only to actors who can administer Workspace access [33m 377[2mms[22m[39m
+     [33m[2m✓[22m[39m serializes distinct commands that concurrently target the same Membership [33m 345[2mms[22m[39m
+     [33m[2m✓[22m[39m denies an actor whose Membership or Internal User is inactive [33m 304[2mms[22m[39m
+     [33m[2m✓[22m[39m uses one safe denial for unauthorized, inactive, unknown, and cross-Workspace targets [33m 335[2mms[22m[39m
+ [32m✓[39m src/access/workspace-membership.migration.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 4846[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves membership authority and public reads through expand, backfill, and contract [33m 2348[2mms[22m[39m
+ [32m✓[39m src/company/company-idempotency.rest.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 526[2mms[22m[39m
+     [33m[2m✓[22m[39m replays the same registration command but rejects a different command using the same key [33m 355[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+[2m      Tests [22m [1m[32m106 passed[39m[22m[90m (106)[39m
+[2m   Start at [22m 21:22:13
+[2m   Duration [22m 53.56s[2m (transform 1.75s, setup 0ms, import 9.12s, tests 43.55s, environment 1ms)[22m
+

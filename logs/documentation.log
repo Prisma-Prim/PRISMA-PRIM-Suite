@@ -1,0 +1,58 @@
+[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/workspace/worktrees/integration-model-952/apps/api[39m
+
+ [32m✓[39m src/demonstration/demonstration-scenario.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-seed.command.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 11070[2mms[22m[39m
+     [33m[2m✓[22m[39m refuses a markerless persisted persona before creating its Workspace Membership [33m 2695[2mms[22m[39m
+     [33m[2m✓[22m[39m refuses every non-demonstration target, then converges idempotently through the public API [33m 7995[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-target-concurrency.rest.test.ts [2m([22m[2m6 tests[22m[2m)[22m[33m 13456[2mms[22m[39m
+     [33m[2m✓[22m[39m revalidates a concurrent insert after classification and before the owner bootstrap [33m 1581[2mms[22m[39m
+     [33m[2m✓[22m[39m revalidates a concurrent rename after classification and before the owner bootstrap [33m 1464[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks an uncooperating Workspace INSERT during a write to 'workspace_memberships' and preserves committed steps [33m 1374[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks an uncooperating Workspace INSERT during a write to 'companies' and preserves committed steps [33m 1451[2mms[22m[39m
+     [33m[2m✓[22m[39m publishes after a Workspace wait, exactly retries a lost reply and converges without another publication [33m 6305[2mms[22m[39m
+     [33m[2m✓[22m[39m closes the application and releases protection when manifest output throws [33m 1280[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-register.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-identity.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-runner.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-application.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 222[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-boundary.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 483[2mms[22m[39m
+     [33m[2m✓[22m[39m stays outside the served application import graph [33m 459[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-target-guard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/demonstration/demonstration-runner.rest.test.ts [2m([22m[2m27 tests[22m[2m)[22m[33m 149500[2mms[22m[39m
+     [33m[2m✓[22m[39m reproduces exact commercial versions prepared by Ana and separately approved by Ion [33m 3813[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers a lost committed response at every commercial step without duplicates, even after expiry [33m 15806[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves operator successor versions, decisions and later Quality Checks while replaying the original commercial results [33m 5459[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps preparation, approval and denied profiles distinct and hides commercial results from valid foreign readers [33m 3547[2mms[22m[39m
+     [33m[2m✓[22m[39m never restores any of the five revoked commercial fixture grants [33m 9684[2mms[22m[39m
+     [33m[2m✓[22m[39m revalidates approval authority after the grant phase even on an exact committed replay [33m 5732[2mms[22m[39m
+     [33m[2m✓[22m[39m refuses new unacknowledged identity warnings instead of changing an unfinished approval payload [33m 3781[2mms[22m[39m
+     [33m[2m✓[22m[39m deduplicates concurrent commercial commands before either caller receives its first acknowledgement [33m 5881[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed at each commercial response boundary before another step can write [33m 28747[2mms[22m[39m
+     [33m[2m✓[22m[39m reproduces five tariffs and reopens the exact illustrative pricing results in their own Companies [33m 3604[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers a committed tariff whose response was lost, without duplicating it [33m 4481[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers a committed snapshot whose response was lost, without duplicating it [33m 4760[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves the exact original Snapshot after an operator publishes successor configuration [33m 3661[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves an operator tariff and evaluates its validity at calculation time: {"effectiveFrom":"2027-01-01T00:00:00.000Z","total":null} [33m 3460[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves an operator tariff and evaluates its validity at calculation time: {"effectiveFrom":"2026-09-26T12:00:01.000Z","total":"1554.00"} [33m 3486[2mms[22m[39m
+     [33m[2m✓[22m[39m never re-grants revoked pricing authority [33m 3490[2mms[22m[39m
+     [33m[2m✓[22m[39m stops before tariff writes on malformed or non-provisional configuration: {"provisional":false,"headVersionNumber":null} [33m 2035[2mms[22m[39m
+     [33m[2m✓[22m[39m stops before tariff writes on malformed or non-provisional configuration: {"provisional":true,"headVersionNumber":"invalid"} [33m 1982[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects malformed pricing publication or history responses: {"family":"rule","malformed":"outcome"} [33m 2148[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects malformed pricing publication or history responses: {"family":"tariff","malformed":"outcome"} [33m 2160[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects malformed pricing publication or history responses: {"family":"rule","malformed":"version"} [33m 3545[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects malformed pricing publication or history responses: {"family":"tariff","malformed":"version"} [33m 3501[2mms[22m[39m
+     [33m[2m✓[22m[39m seeds demo-v1 through the public commands with normal, attributed events and isolated personas [33m 2250[2mms[22m[39m
+     [33m[2m✓[22m[39m replays as a no-op and keeps a user correction [33m 3374[2mms[22m[39m
+     [33m[2m✓[22m[39m converges after an interrupted run to the state of an uninterrupted run [33m 12169[2mms[22m[39m
+     [33m[2m✓[22m[39m stops at the refused step and never grants revoked authority again [33m 2125[2mms[22m[39m
+     [33m[2m✓[22m[39m reports an operator-published rule head and never supersedes it [33m 3152[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m10 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[32m83 passed[39m[22m[90m (83)[39m
+[2m   Start at [22m 20:47:59
+[2m   Duration [22m 152.55s[2m (transform 3.77s, setup 0ms, import 8.17s, tests 174.83s, environment 1ms)[22m
+

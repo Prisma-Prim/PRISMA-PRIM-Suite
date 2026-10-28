@@ -1,0 +1,18 @@
+$ tsc -b && vite build --mode local-demo
+[36mvite v8.2.1 [32mbuilding client environment for local-demo...[36m[39m
+[2Ktransforming...✓ 2018 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                    0.50 kB │ gzip:   0.31 kB
+dist/assets/PrismaCertUiBaseline-DM0fZBM-.css     54.19 kB │ gzip:  10.19 kB
+dist/assets/index-Cw_RoBEs.css                   175.04 kB │ gzip:  25.76 kB
+dist/assets/PrismaCertUiBaseline-l4ofPN2h.js     259.83 kB │ gzip: 139.88 kB
+dist/assets/fiber-renderer-C0o1c45X.js           484.48 kB │ gzip: 121.91 kB
+dist/assets/index-1OBVx3da.js                  2,312.52 kB │ gzip: 579.75 kB
+
+[32m✓ built in 628ms[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
