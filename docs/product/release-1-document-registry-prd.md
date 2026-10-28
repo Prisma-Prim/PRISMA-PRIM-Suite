@@ -1,6 +1,6 @@
 # PRD — Release 1 Document Registry
 
-**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; typed references in #401; stored questionnaire PDFs in #633; mission PDFs in #825 and received Contract PDFs in #870; wider governance remains Draft
+**Status:** Partially approved — working references, their correction, Project association and correction history approved in #239, #250, #245 and #369; provisional official Versions in #400; typed references in #401; stored questionnaire PDFs in #633; mission PDFs in #825, received Contract PDFs in #870 and selected Project PDF bundles in #935; wider governance remains Draft
 **Version:** 1.0
 **Owner:** Dan Popescu
 **Parent authorities:** Product Vision; Governed Documents PRD; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
@@ -754,3 +754,207 @@ owns the complete separate family, exact declared Contract-Version relation,
 source attribution, independent access and immutable PDF/Version journey.
 Preservation declares no signing, equivalence or acceptance; runtime follows its
 merged contract under #820's D9 frontier.
+
+## 25. Bounded selected Project PDF bundle (#935)
+
+**Status:** Approved — bounded contract, following ordered Standards then Spec
+PASS and [root's delegated product disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/935#issuecomment-6465803935).
+Runtime requires a separate ready implementation child after contract merge.
+Dan's 28 October 2026 instruction continues useful autonomous business delivery
+under [#51](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51).
+This is reversible agent product synthesis for collecting existing files, not
+new first-tenant evidence, a new official Document family or Release 6 export.
+Sections 18,21–24, [Authorization §8](tenant-company-client-authorization-prd.md#8-initial-permission-families),
+[Governed Documents](governed-documents-prd.md),
+[Activity §7](activity-log-accountability-prd.md#7-authorization-and-privacy),
+[UX](ux-localization-configuration-prd.md) and
+[ADR 0008](../adr/0008-bounded-document-content-storage.md) retain their owners.
+
+### Problem, outcome and user stories
+
+A reader currently downloads a Project's stored PDFs one at a time. The reader
+may explicitly collect a bounded selection in one ZIP with a factual index,
+retaining the exact selected Version and immutable PDF Representation. The result
+is **selected Project PDFs**, never a claim of a complete dossier, accepted work,
+official export, Client delivery, valid signature or mission completion.
+
+1. As a Project reader, I open its existing Documents region to collect files.
+2. As a metadata/content reader, I inspect readable associated Documents and
+   explicitly choose stored PDF Versions without borrowing Project authority.
+3. As a reader, I see the Version number, native status and original PDF filename
+   before selection; no latest or official Version is selected automatically.
+4. As a reader, I may select a readable historical Version alongside another
+   Version, without changing the current official designation.
+5. As a reader, I retain a fixed PDF Representation even if a draft receives a
+   later upload; nothing silently substitutes its successor.
+6. As a reader, I review, remove or clear the exact selection before downloading.
+7. As a reader, I receive one archive with every selected original and an index
+   that identifies each file and its size and SHA-256.
+8. As a reader, I get a refusal rather than a partial archive if any item is
+   inaccessible, unlinked, stale, missing, damaged or beyond the resource bound.
+9. As a read-only user, I collect existing files without registration, upload,
+   approval, association-management or Task authority.
+10. As a reader of a closed or historical original-Client Project, I retain the
+    existing read-only download path while native mutations stay protected.
+11. As a multilingual user, I retain exact selections, literal names and focus
+    when switching locale, without another read or download.
+12. As a user changing Company, session or captured authority, I never receive
+    a held old archive or restore a consumed selection after returning.
+13. As a user editing other Project/Document work, I preserve independent drafts,
+    pending commands and uncertain exact retries while collecting files.
+14. As a reviewer, I can reproduce every bundled PDF from its native identity
+    and distinguish current metadata from the file's preserved history.
+
+### Scope, authority and exact selection
+
+Document owns one authenticated bounded read:
+`POST /projects/:projectId/pdf-bundle`, returning `200 application/zip`.
+POST carries an explicit selection; it creates no business resource or command
+receipt and needs no idempotency key. Repeating it rechecks current authority;
+PDF bytes remain immutable, while the new index has its actual preparation time.
+
+Require active same-Workspace/Company context, current membership, Project and
+original Client read, Document metadata read, each selected family's independent
+access, and Content Reader authority. Reuse native captured-version and live
+assignment checks; responsibility, Workspace administration, metadata/reference
+read, selection and archive identity grant no content access. No new bundle or
+real assignment is introduced. Missing/unknown captured versions fail closed.
+
+The body has only `items`, an ordered array of 1–20 objects, each containing only
+`documentId`, `versionId`, `representationId` (UUIDs) and
+`expectedProjectRevision` (the selected association's nonnegative safe integer
+within its native revision range). Reject unknown/missing fields, duplicate
+Document/Version pairs, invalid identifiers/revisions, empty or oversized arrays.
+Different Versions of one Document are allowed; only one PDF per Version is
+selected. No caller-supplied path, filename, checksum, Company or storage URL.
+
+Every Document must still be explicitly associated with this exact Project,
+same original Client, Company and Workspace. Reuse the Document boundary and
+association facts, not a canonical-Client substitution or title match. Check
+the observed association revision to reject unlink/relink A→B→A staleness.
+After read authorization, a changed revision conflicts; an unrelated/inaccessible
+record is not found without exposing its metadata. A historical superseded
+original Client and a readable closed Project retain native download rights.
+
+The chosen Version must belong to the chosen Document, and the exact clean stored
+Representation must belong to that Version. Draft, official and superseded
+Versions keep their native meanings. An earlier draft upload remains eligible
+when deliberately addressed; a later upload/designation never retargets it.
+The first interface chooses PDFs exposed by the native Version list; native
+individual upload-history download remains available independently.
+External references, absent/denied content and generated commercial bytes not
+registered through these owners cannot be bundled or fetched externally.
+
+### Snapshot, archive and resource boundaries
+
+Use one repeatable-read, read-only snapshot for live authorization, Project,
+original Client, association revisions, Version facts and preserved content.
+Expose narrow caller-owned-transaction participants in native readers where
+necessary; nested independent transactions do not establish this guarantee.
+Do not change the global DatabaseContext contract or copy authorization policy.
+Concurrent changes follow native snapshot semantics; a later request observes
+them. UI authority retirement separately suppresses already-held responses.
+
+Authorize and validate the complete selection before releasing any bytes. Each
+PDF retains its native 5 MiB maximum, structure/clean-scan provenance and immutable
+storage. The selected PDF byte sum is at most 20 MiB; the complete ZIP is at most
+21 MiB. Bounds are reversible processing limits, not a commercial entitlement.
+Use stored/uncompressed entries, no recursive traversal, remote fetch, new scan,
+PDF rewriting, signing, watermark, encryption or background processing. A small
+explicit pinned ZIP dependency is allowed if needed; do not hand-write a general
+archive framework or add another runtime/storage provider.
+
+Include only selected original PDFs and UTF-8 `manifest.json`. Server-generated
+ASCII paths combine selection position and exact Document/Version identities;
+they have no separators/traversal, collision, executable suffix or user-supplied
+path. Original filenames remain literal metadata. Preserve PDF bytes and verify
+their actual length/SHA-256 through the native content owner before encoding.
+
+The manifest has format Version 1, purpose `SELECTED_PROJECT_PDFS`, server UTC
+preparation time, original Project/Company/Client identities and one entry per
+selection in its explicit order. Each entry names archive path, Document identity
+and current title, Version identity/number/native status at preparation, exact
+Representation identity, original filename, byte size and SHA-256. Current title
+or Version status is not claimed to be frozen file content. It contains no
+reference URL, storage key, credential, Contract/signature fact, hidden family,
+user permission inventory, evidence review or completion assertion. Registered
+received-Contract PDFs retain their family gate without borrowing Contract read.
+
+Return an attachment with a safe fixed ZIP filename, `nosniff` and
+`private, no-store`; expose no public URL or persisted archive. Any invalid,
+denied, stale, oversized, missing or corrupted item refuses the whole request
+before a file response. Use native refusal semantics and safe messages; do not
+silently skip an item or return a successful empty/partial archive. Native storage
+failure remains unavailable, never absent content. No event, Version, history,
+command receipt, association revision or Client fence changes on any outcome.
+
+### Production interaction and lifetime
+
+In the existing Project Documents region in both frames, provide an explicit
+selection panel. Existing authorized associated-Document and Version reads own
+discovery; use bounded local display windows for the existing complete Document
+response and deliberate per-Document Version loading, not a new all-Company read
+or automatic N+1 scan. Validate complete consumed HTTP values before exposing
+selections or download; additive HTTP metadata may be accepted deliberately.
+
+Nothing is preselected. Show the exact selected entries/count and processing
+limits, allow removal/clear, and download only after an explicit action. Do not
+change native Document opening, individual PDF download, association or Version
+commands. One pending download disables duplicate activation; no automatic
+retry. A failed request preserves its selection for deliberate retry; stale
+association requires explicit reload/reselection, not implicit substitution.
+
+Distinguish no Documents, no stored PDF, content denied, loading, malformed read,
+selection limit, pending download, stale association, oversized batch and server
+failure. Explain that the archive is selected files only and does not send or
+approve anything. Preserve literal titles/filenames and selection/focus/pending
+reads across ro/ru/fr/en without I/O; localization readiness is part of this
+business slice, not a separate translation project.
+
+Company, Project, identity/session or relevant consumed captured-grant changes
+permanently retire held reads/selections/downloads, including late200/403 after
+A→B→A. No stale Blob becomes an anchor/download; release object URLs normally.
+Locale changes do not retire the current scope. Independent native drafts,
+pending commands and uncertain exact retries retain their owning identities.
+
+### Acceptance, readiness and exclusions
+
+**AC1:** Real PostgreSQL public REST proves exact multiple originals, order,
+manifest facts, safe unique paths, all native PDF families under independent
+grants, historical Versions/older draft uploads, later upload/designation,
+closed/historical reads and unchanged native individual downloads. Unzip and
+compare every length/hash/byte with independently known PDF input.
+
+**AC2:** Prove strict malformed/duplicate/empty/20/21 selection bounds, exact
+20 MiB and over-limit outcomes, association revision/link changes, missing or
+foreign Version/Representation, Company/Workspace mismatch, current revocation,
+membership suspension, unsupported captured versions and family/content denial.
+One bad later item yields no successful ZIP or protected partial metadata.
+Deterministically exercise concurrent association/authority changes at the
+snapshot boundary; prove all read/event/receipt/fence footprints unchanged.
+
+**AC3:** Actual App/HTTP proves deliberate discovery and exact selection,
+no preselection/automatic download, truthful failure/retry/clear, whole-response
+validation, independent draft/uncertain-command preservation, four-locale
+continuity, and consumed Company/session/grant A→B→A late200/403 suppression.
+
+**AC4:** Registered actual App/disposable PostgreSQL at 1440×900 and 390×844
+creates, uploads and associates synthetic mission PDFs, retains a historical
+Version, selects several exact originals by keyboard, downloads/unzips the ZIP,
+verifies its index and original bytes and reloads unchanged native history.
+Inspect original screenshots and horizontal fit. Existing PDF/association/
+Version/Client and Project read/closed-lifecycle regressions remain required.
+
+After ordered independent Standards then Spec PASS with zero remaining findings,
+the coordinating root may approve this bounded contract under delegated product
+review. Merge documentation before creating its separate ready runtime child.
+Runtime readiness requires the exact public seam/fit assessment, fresh
+web-postgres doctor, RED→GREEN, targeted checks, broader sensitive verification,
+one applicable code review before complete exact-source/base/tree integration
+proof, reviewed evidence publication/retrieval/hash checks and guarded squash.
+
+No full dossier completeness claim, all-Client/Company export, external fetching,
+new permission/schema/Document, officialization, mail/sharing, policy adoption,
+Task result/review change, legal/financial/certification decision, real data/grant,
+provider activation or deployment. `MISSION-CLOSE-01` stays solely in
+[Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email).

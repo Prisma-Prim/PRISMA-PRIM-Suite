@@ -80,6 +80,13 @@ and their intended results. Explicit captured Template User v2 adds pilot access
 without widening oldv1; the flat plan defines no stage or completion obligation.
 Its runtime child follows the merged contract, after delivered D3/D4 under #820.
 
+The [selected Project PDF bundle contract](release-1-document-registry-prd.md#25-bounded-selected-project-pdf-bundle-935)
+under #935 prepares an explicit bounded collection of already-associated exact
+stored PDFs and a factual index, preserving independent metadata/family/content
+authority. It is approved under delegated agent product review; runtime requires
+its merged contract and separate implementation child. A collection is not
+a complete dossier, officialization, external delivery or accepted mission work.
+
 The [mission-obligation contract](release-1-mission-obligations-prd.md)
 owns delivered read-only §13 (#883 / PR #884) and the complete approved next
 attributable human-review contract in §14 under #885, applying Dan's established
