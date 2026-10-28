@@ -132,6 +132,11 @@ under #927 bounds explicit per-Task responsibility/date entry and one atomic sav
 within a Project, reusing native Task authority/history. Its status controls
 readiness; it adds no automatic scheduling, real assignment or closure policy.
 
+The [Company blocked-Task supervision contract](release-1-project-task-prd.md#32-bounded-company-blocked-task-supervision-931)
+under #931 owns complete bounded discovery of recorded Task blockages and exact
+native continuation. Current reason/assignee/date facts reuse existing readers;
+its status controls readiness, with no new mutation or closure authority.
+
 ## 6. Release 3 capability PRDs
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |

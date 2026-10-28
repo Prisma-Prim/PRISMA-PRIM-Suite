@@ -1,6 +1,6 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927; remaining capability Draft\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927 and Company blocked-Task supervision (§32) approved by #931; remaining capability Draft\
 **Version:** 0.13\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
@@ -1455,3 +1455,158 @@ certification, legal/financial decisions, actual tenant grants/data/configuratio
 deployment and whole-MVP approval. Mission Obligations §12 retains unanswered
 `MISSION-CLOSE-01` for the single consolidated email; this planning mechanism
 neither depends on nor decides that policy.
+
+## 32. Bounded Company blocked-Task supervision (#931)
+
+**Status: Approved bounded contract; runtime not delivered.** Dan approved this
+next feature on 2026-10-28 after grouped planning #929 / PR #930: see all recorded
+Task blockages in the active Company with reason, responsible member and date,
+then open the exact native Task to act. This is a bounded product synthesis,
+not a new Iurie answer. Sections 18–20, 23 and 31 remain the mutation authorities;
+this section owns only read-only discovery and continuation.
+
+### Problem, outcome and user stories
+
+Personal attention shows only the reader's own Tasks; Company overdue excludes
+undated and future-dated Tasks; unassigned discovery excludes assigned Tasks.
+A coordinator must otherwise open every Project to find the remaining recorded
+blockages. This view makes all currently readable blocked Tasks discoverable in
+bounded pages without inventing a Project blockage, obligation or automatic action.
+
+1. As an authorized Company Task reader, I want all readable Tasks currently
+   `blocked`, whoever is responsible, so that I can find the recorded obstacles.
+2. As that reader, I want the exact current reason, declaring person and time,
+   so that a recorded explanation is distinguishable from an inferred diagnosis.
+3. As that reader, I want the recorded responsible member or unassigned state,
+   exact due date or No due date, priority, Project and Client labels, so that I
+   can identify the work and the person to contact.
+4. As that reader, I want dated and undated blocks and complete bounded pages,
+   so that future dates or a preview limit do not hide remaining work.
+5. As that reader, I want explicit Previous, Next and Refresh, so that I control
+   when current facts replace the page I am reading.
+6. As that reader, I want failed, malformed, denied, empty and out-of-range reads
+   distinguished, so that unavailable work is never presented as no blockages.
+7. As that reader, I want to open the exact Task and its native history, so that
+   I can examine its explanation without a second editable copy.
+8. As a separately authorized Task manager, I want to resume or edit it through
+   the existing native command, so that version, authority and retry rules apply.
+9. As that reader, I want returning to the view to read fresh facts, so that a
+   resumed or closed Task disappears and a newly declared blockage appears.
+10. As that reader, I want historical-original Client and closed-Project Tasks
+    to remain discoverable when readable, so that their facts are preserved
+    without reopening the Project or enabling a forbidden mutation.
+11. As a user changing Company, session or authority, I want old rows and replies
+    permanently retired, so that another context cannot disclose or navigate them.
+12. As a keyboard or narrow-screen user, I want usable controls and complete
+    literal reasons, so that layout or locale never hides operational facts.
+
+### Reader, records and authority
+
+Use the exact current Task-read prerequisites of §18: active Workspace membership,
+active authorized Company context, captured Company Task Manager v1 `task.read`,
+Project read and original-Client read/active Company relationship. Access and the
+native Project reader revalidate those requirements on every request. Ownership,
+Company context, responsibility or a view entry never grants permission.
+
+The set is exactly native Tasks whose stored state is `blocked`, in readable
+Projects of that Workspace/Company. Include assigned-to-self, assigned-to-other
+and unassigned Tasks, with past/current/future/null dates. Do not filter by
+assignee eligibility, date, priority or Project lifecycle. Readable historical
+original Clients keep their original labels; readable closed Projects keep their
+existing read-only continuation. No canonical Client union detail or other Company
+information is added. A Task not currently blocked is absent, even if its history
+contains an earlier blockage.
+
+Rows preserve the native Task identity/version and current blockage declaration
+(reason, actor and server time), native recorded assignee or null, date, priority,
+and the readable Project/Client labels. Historical recorded assignee labels are
+facts, not proof of current eligibility. Render reasons as complete literal text,
+including long/untrusted text, never HTML, a guessed summary or a generated cause.
+Native detail/history remain the authoritative explanation and mutation owners.
+
+### Bounded read, consistency and compatibility
+
+One authenticated Task-owned Company read accepts only an optional single
+nonnegative safe-integer offset, default zero. Unknown, repeated, array,
+fractional, negative and unsafe query inputs refuse. Return Company, requested
+offset, fixed page size 25, next-page presence and at most 25 complete Task rows;
+use at most 25+1 matching-row lookahead. There is no total/count/urgency metric.
+Order by exact due date ascending, null last, then creation time and identifier,
+reusing the unassigned-discovery ordering rather than adding a priority ranking.
+
+Establish current authority, readable Projects and page selection in one
+repeatable-read snapshot. Cross-page reads need not share a frozen snapshot;
+resumption, new blocks and other concurrent native changes may change later
+pages. No Task/version/history/Activity event, command receipt or Client reversal
+fence is written. No schema, dependency, provider or new permission is needed.
+Existing My Tasks, personal attention, overdue, unassigned, grouped planning and
+Task response/fingerprint/receipt contracts remain compatible and unchanged.
+
+### Production interaction and failure states
+
+Offer a separate Company-scoped **Blocked Tasks** view only under the existing
+Task-read entry predicate, in both supported frames. Mount/read on deliberate
+entry and refresh on return; do not poll or infer facts from another list. Use
+the accepted Prisme controls and existing responsive layout.
+
+Previous/Next read their explicit fixed page; Refresh starts at zero; Retry repeats
+the failed page. An out-of-range page offers Back/Refresh without auto-traversal.
+Loading or a new page withholds old rows. Genuine empty, out-of-range, network
+unavailable, refused/retired authority and malformed/foreign response stay
+separate; no unavailable read becomes a false empty result. Validate the complete
+page and native Task/blockage/Project context before rendering or offering Open.
+Preserve server order and accept additive HTTP metadata deliberately; unknown
+or inconsistent required fields fail closed.
+
+Open continues into the exact existing Task-in-Project journey and its fresh
+owning reads/history. Preserve its protected pending/uncertain native commands,
+independent drafts, conflict/reload and read-only state. The discovery list never
+resumes, assigns, edits or marks success itself. After a separately authorized
+native change, returning re-reads: a resumed/completed/cancelled Task is absent;
+a new current blockage may appear. No update is inferred before that read.
+
+Current Company, Internal User/membership, identity/session and captured authority
+changes retire rows, pending reads and callbacks. Newer requests, unmount and
+consumed A→B→A transitions permanently suppress late200/403 and stale navigation,
+even if transport ignores abort. The existing native destination owns continuation
+recovery; its lost authority cannot be bypassed by a cached list row.
+
+Romanian, Russian, French and English copy follows the localization owner.
+Changing locale preserves the exact page, literal reason/name/date data, focused
+control and pending read without I/O. Keyboard controls, visible focus, complete
+wrapped reasons and horizontal fit are required at desktop1440/narrow390.
+
+### Acceptance and implementation readiness
+
+1. Real PostgreSQL REST proves exact current blocked set, any/null assignee and
+   all date cases, current reason/attribution, native Project/Client labels,
+   fixed25 boundaries/lookahead/order, strict inputs and no duplicates/omissions
+   on an unchanged data set. Unrelated native reads remain compatible.
+2. Public negative cases prove current Company/Workspace/Task/Project/Client
+   authority and live revocation/suspension, no scope leakage, readable
+   closed/historical behavior and the absence of read side effects. Native
+   resumption/closure removes a row; a new blockage shows only its new declaration.
+3. Production App/HTTP tests prove the authorized entry and exact native
+   continuation, protected native intent/drafts, failed reads/retry, malformed
+   scope/state/declaration/page, empty/out-of-range and explicit paging/refresh.
+   Verify Company/session/grant A→B→A retirement, late200/403 suppression and
+   four-locale page/literal/focus continuity without extra I/O.
+4. A registered actual App/disposable PostgreSQL journey at1440/390 creates
+   synthetic dated and undated blocks across readable Projects and assignees,
+   discovers an undated block beyond page one by keyboard, inspects its exact
+   native explanation/history, deliberately resumes that Task through the existing
+   command, reloads its history and returns to a fresh list. Other blockers and
+   original source facts remain unchanged. Inspect original screenshots and
+   assert horizontal fit; a fixture/import/404-only test is insufficient.
+
+After ordered Standards then Spec preparation and approval/merge, a separate
+vertical runtime child may become ready with these seams and no human manual test.
+No Iurie answer or real tenant setup is required for this read projection.
+MISSION-CLOSE-01 remains solely in Mission Obligations §12 for one consolidated
+email; this view neither depends on nor decides that completion policy.
+
+Excluded: automatic diagnosis/unblocking/escalation or assignment, notifications,
+new states/reasons/vocabularies or metrics, all-Companies/member directory/general
+team register, Task mutations on this view, obligation/evidence assessment,
+financial/legal/certification/closure decisions, exports, actual data/grants,
+external setup/deployment and whole-MVP approval.
