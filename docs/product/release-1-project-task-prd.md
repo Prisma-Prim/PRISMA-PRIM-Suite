@@ -2314,6 +2314,12 @@ creates a new owner; abort alone is insufficient. Unconsumed Document/result/
 configuration grants preserve independent Task description work; those owners
 retire their own consumed state separately.
 
+A canonical Client union or reversal alone leaves immutable native Project,
+Task and original-Client targets stable. Revalidate current visibility and
+mutability and retain independently authorized native work; dossier-scoped
+reads and openings retire their consumed Client-identity generation, as in
+[Shared Client §22.2](release-1-shared-client-prd.md#222-stories-membership-and-bounded-discovery).
+
 Guard before and after every await and before render, focus, navigation, session/
 Company rejection, Actor acceptance, Activity refresh or any shared callback.
 403 recovery through selected-Company current-Actor, Workspace fallback and

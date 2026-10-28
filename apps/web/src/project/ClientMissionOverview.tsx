@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
-import {
-  handleAuthenticatedAccessRejection,
-  runLatestAuthenticatedRequest,
-} from '../api/latest-authenticated-request';
+import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useClientMissionRejection } from './use-client-mission-rejection';
 import {
   readClientProjectPage,
   type ClientProjectPage,
@@ -76,6 +74,7 @@ export function ClientMissionOverview(props: Props) {
 function MissionOwner(
   props: Props & { company: NonNullable<ActorContext['activeCompany']> },
 ) {
+  const reject = useClientMissionRejection(props);
   const copy = useClientMissionCopy(),
     projectCopy = useProjectCopy(),
     responsibleCopy = useProjectResponsibleCopy(),
@@ -92,6 +91,7 @@ function MissionOwner(
   const heading = useRef<HTMLHeadingElement>(null);
   const load = useCallback(
     (nextOffset: number, focus = false) => {
+      const startedUnder = callbacks.current.actor;
       lifetime.current?.abort();
       lifetime.current = undefined;
       setOffset(nextOffset);
@@ -112,17 +112,7 @@ function MissionOwner(
             result.status === 'notFound'
           ) {
             setView({ kind: 'denied' });
-            await handleAuthenticatedAccessRejection({
-              result,
-              signal,
-              identity: callbacks.current.identity,
-              companyContextId: props.company.id,
-              onCompanyContextRejected:
-                callbacks.current.onCompanyContextRejected,
-              onActorRevalidated: callbacks.current.onActorRevalidated,
-              onWorkspaceAccessRejected:
-                callbacks.current.onWorkspaceAccessRejected,
-            });
+            await reject({ result, signal, startedUnder });
           } else if (result.status === 'ok') {
             const page = readClientProjectPage(result.value, {
               companyId: props.company.id,
@@ -135,7 +125,8 @@ function MissionOwner(
         },
         onError: () => setView({ kind: 'error' }),
         onSettled: () => {
-          if (focus) heading.current?.focus();
+          if (focus && callbacks.current.actor === startedUnder)
+            heading.current?.focus();
         },
       });
     },

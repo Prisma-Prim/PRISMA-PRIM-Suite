@@ -148,6 +148,34 @@
 .task-result-text {
   white-space: pre-wrap;
 }
+.task-description {
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.task-description dd {
+  margin: 0.35rem 0 0;
+}
+.project-tasks form > textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+  font: inherit;
+  padding: 0.65rem;
+  border: 1px solid #9ca8bb;
+  border-radius: 6px;
+  color: #15233b;
+  background: #fff;
+}
+.project-tasks textarea:focus-visible {
+  outline: 3px solid #4b36b5;
+  outline-offset: 2px;
+}
+.prisme-shell .project-tasks form > textarea {
+  border-color: #d4cedf;
+  border-radius: 8px;
+}
 .task-panel > p {
   margin: 0;
 }

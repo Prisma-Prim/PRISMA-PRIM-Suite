@@ -59,6 +59,7 @@ const assignedTask = (
   id: string,
   due: string,
 ) => ({
+  description: null,
   id,
   companyId: companyA.id,
   projectId: owner.id,

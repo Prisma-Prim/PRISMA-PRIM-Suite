@@ -30,6 +30,7 @@ import type {
   ProjectLifecycleTransitionRecord,
 } from '../project/project-lifecycle.types.js';
 import { readTaskMeaning } from '../task/task.validation.js';
+import { taskPrivatePersistence } from '../task/task-private-persistence.js';
 import { Injectable } from '@nestjs/common';
 import {
   and,
@@ -730,17 +731,19 @@ export class AccountabilityService {
     occurredAt: Date;
     meaning: TaskEventMeaning;
   }): Promise<void> {
-    await this.databaseContext.connection.insert(taskEvents).values({
-      workspaceId: input.actor.workspaceId,
-      companyId: input.companyId,
-      taskId: input.taskId,
-      version: input.meaning.metadata.version,
-      actorInternalUserId: input.actor.internalUserId,
-      actorMembershipId: input.actor.workspaceMembershipId,
-      actorDisplayName: input.actor.displayName,
-      occurredAt: input.occurredAt,
-      meaning: input.meaning,
-    });
+    await taskPrivatePersistence(async () =>
+      this.databaseContext.connection.insert(taskEvents).values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        taskId: input.taskId,
+        version: input.meaning.metadata.version,
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorDisplayName: input.actor.displayName,
+        occurredAt: input.occurredAt,
+        meaning: input.meaning,
+      }),
+    );
   }
   async readTaskHistory(
     actor: ActorContext,
@@ -798,6 +801,10 @@ export class AccountabilityService {
           eq(taskEvents.workspaceId, actor.workspaceId),
           eq(taskEvents.companyId, actor.activeCompany.id),
           taskId ? eq(taskEvents.taskId, taskId) : undefined,
+          // Exclude private text-only corrections before the generic bounded page.
+          taskId
+            ? undefined
+            : sql`NOT (${taskEvents.meaning}->>'action' = 'task.updated' AND (${taskEvents.meaning}->'metadata'->'changes') ? 'description' AND ((${taskEvents.meaning}->'metadata'->'changes') - 'description') = '{}'::jsonb)`,
         ),
       )
       .orderBy(
@@ -807,7 +814,9 @@ export class AccountabilityService {
       );
     const rows = taskId ? await query : await query.limit(INITIAL_PAGE_SIZE);
     return rows.map(({ event, taskTitle }) => ({
-      ...readTaskMeaning(event.meaning),
+      ...(taskId
+        ? readTaskMeaning(event.meaning)
+        : genericTaskMeaning(readTaskMeaning(event.meaning))),
       id: event.id,
       occurredAt: event.occurredAt.toISOString(),
       actor: {
@@ -3472,6 +3481,21 @@ export class AccountabilityService {
       ],
     };
   }
+}
+
+/** Native history owns instructions. Generic Activity preserves only its existing facts. */
+function genericTaskMeaning(meaning: TaskEventMeaning): TaskEventMeaning {
+  if (meaning.action === 'task.created') {
+    const initial = { ...meaning.metadata.initial };
+    delete initial.description;
+    return { ...meaning, metadata: { ...meaning.metadata, initial } };
+  }
+  if (meaning.action === 'task.updated') {
+    const changes = { ...meaning.metadata.changes };
+    delete changes.description;
+    return { ...meaning, metadata: { ...meaning.metadata, changes } };
+  }
+  return meaning;
 }
 
 function persistenceFor(event: CanonicalActivityEvent) {

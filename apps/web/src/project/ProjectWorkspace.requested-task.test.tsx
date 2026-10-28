@@ -68,6 +68,7 @@ const taskOf = (
   title: string,
   dueDate: string,
 ) => ({
+  description: null,
   id,
   companyId: company.id,
   projectId: owner.id,

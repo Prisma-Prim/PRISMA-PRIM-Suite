@@ -30,6 +30,7 @@ const project = {
 };
 function task(index: number) {
   return {
+    description: null,
     id: `attention-task-${String(index).padStart(2, '0')}`,
     title: `Attention ${String(index).padStart(2, '0')} — Literal`,
     companyId: company.id,

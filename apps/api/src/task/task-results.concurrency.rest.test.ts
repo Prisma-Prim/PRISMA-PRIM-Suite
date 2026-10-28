@@ -93,6 +93,65 @@ withPostgres('D4 concurrent Task result transactions REST', () => {
     ]);
   });
 
+  it.each(['result-first', 'instructions-first'])(
+    'serializes ordinary instructions and independent results at the native Task row: %s',
+    async (order) => {
+      const description = 'Literal concurrent instructions\r\n  Ș / Я / 😀';
+      const edit = () =>
+        fixture.call(`/tasks/${context.taskId}`, {
+          method: 'PATCH',
+          key: 'concurrent-instructions',
+          body: { expectedVersion: 1, description },
+        });
+      const gate = await hold('task');
+      let pendingRecord: Promise<Response> | undefined;
+      let pendingEdit: Promise<Response> | undefined;
+      try {
+        if (order === 'result-first') {
+          pendingRecord = submit();
+          const pid = await blockedBy(gate.pid);
+          pendingEdit = edit();
+          await blockedBy(pid);
+        } else {
+          pendingEdit = edit();
+          const pid = await blockedBy(gate.pid);
+          pendingRecord = submit();
+          await blockedBy(pid);
+        }
+        await gate.release();
+        if (!pendingEdit || !pendingRecord)
+          throw new Error('Expected both native commands.');
+        expect((await pendingEdit).status).toBe(200);
+        expect((await pendingRecord).status).toBe(
+          order === 'result-first' ? 201 : 409,
+        );
+        const task = await json(await fixture.call(`/tasks/${context.taskId}`));
+        expect(task).toMatchObject({ task: { version: 2, description } });
+        const result = await json(
+          await fixture.call(`/tasks/${context.taskId}/results`),
+        );
+        expect(result).toMatchObject({
+          taskVersion: 2,
+          revision: order === 'result-first' ? 1 : 0,
+        });
+        expect(JSON.stringify(result)).not.toContain(
+          'Literal concurrent instructions',
+        );
+        expect(await counts()).toEqual([
+          {
+            declarations: order === 'result-first' ? 1 : 0,
+            events: order === 'result-first' ? 1 : 0,
+            commands: order === 'result-first' ? 1 : 0,
+          },
+        ]);
+      } finally {
+        await gate.release();
+        await pendingRecord?.catch(() => undefined);
+        await pendingEdit?.catch(() => undefined);
+      }
+    },
+  );
+
   it.each(['record-first', 'complete-first'])(
     'serializes Task completion with a result at the owning Task row: %s',
     async (order) => {

@@ -56,6 +56,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('creates an unassigned Task, reloads, edits, completes and reopens with attributable history while the Project stays preparatory', async () => {
   let task = {
+    description: null,
     id: 'task',
     companyId: 'company',
     projectId: 'project',
@@ -245,6 +246,7 @@ it('creates an unassigned Task, reloads, edits, completes and reopens with attri
 });
 
 const savedTask = {
+  description: null,
   id: 'task',
   companyId: 'company',
   projectId: 'project',
@@ -2727,6 +2729,7 @@ it('fails closed for an unknown Task state', async () => {
 });
 
 const priorityTask: TaskView = {
+  description: null,
   id: 'task',
   companyId: 'company',
   projectId: 'project',

@@ -1,4 +1,5 @@
 import { nativeTaskView as view } from './native-task-view.js';
+import { taskPrivatePersistence } from './task-private-persistence.js';
 import { nativeTaskPage } from './native-task-page.query.js';
 import {
   ConflictException,
@@ -50,7 +51,7 @@ import {
   dueSoonTasksQuery,
   isOpenTaskState,
   overdueTasksQuery,
-  readTaskView,
+  readTaskOutcome,
   statusInput,
   transitionInput,
   type TaskEdit,
@@ -711,6 +712,7 @@ export class TaskService {
         project,
         fields: {
           title: input.title,
+          description: input.description ?? null,
           assignee,
           dueDate: input.dueDate,
           priority: input.priority ?? DEFAULT_TASK_PRIORITY,
@@ -750,6 +752,7 @@ export class TaskService {
           project,
           fields: {
             title: value.title,
+            description: null,
             assignee: null,
             dueDate: null,
             priority: DEFAULT_TASK_PRIORITY,
@@ -768,23 +771,26 @@ export class TaskService {
   }): Promise<TaskView> {
     const { actor, companyId, project, fields: initial } = input;
     await this.clients.recordReferenceUse(actor, project.clientAccountId);
-    const [created] = await this.database.connection
-      .insert(tasks)
-      .values({
-        workspaceId: actor.workspaceId,
-        companyId,
-        projectId: project.id,
-        clientAccountId: project.clientAccountId,
-        title: initial.title,
-        assigneeMembershipId: initial.assignee?.workspaceMembershipId ?? null,
-        assigneeDisplayLabel: initial.assignee?.displayLabel ?? null,
-        dueDate: initial.dueDate,
-        priority: initial.priority,
-        createdByInternalUserId: actor.internalUserId,
-        createdByMembershipId: actor.workspaceMembershipId,
-        createdByDisplayName: actor.displayName,
-      })
-      .returning();
+    const [created] = await taskPrivatePersistence(async () =>
+      this.database.connection
+        .insert(tasks)
+        .values({
+          workspaceId: actor.workspaceId,
+          companyId,
+          projectId: project.id,
+          clientAccountId: project.clientAccountId,
+          title: initial.title,
+          description: initial.description,
+          assigneeMembershipId: initial.assignee?.workspaceMembershipId ?? null,
+          assigneeDisplayLabel: initial.assignee?.displayLabel ?? null,
+          dueDate: initial.dueDate,
+          priority: initial.priority,
+          createdByInternalUserId: actor.internalUserId,
+          createdByMembershipId: actor.workspaceMembershipId,
+          createdByDisplayName: actor.displayName,
+        })
+        .returning(),
+    );
     if (!created) throw new Error('Task creation was not recorded.');
     const result = view(created);
     await this.accountability.recordTaskEvent({
@@ -989,22 +995,24 @@ export class TaskService {
     if (current.version >= 2147483647)
       throw new ConflictException('Task version is exhausted.');
     await this.clients.recordReferenceUse(actor, current.clientAccountId);
-    const [changed] = await this.database.connection
-      .update(tasks)
-      .set({
-        ...change.updates,
-        version: current.version + 1,
-        updatedAt: occurredAt,
-      })
-      .where(
-        and(
-          eq(tasks.workspaceId, actor.workspaceId),
-          eq(tasks.companyId, companyId),
-          eq(tasks.id, taskId),
-          eq(tasks.version, current.version),
-        ),
-      )
-      .returning();
+    const [changed] = await taskPrivatePersistence(async () =>
+      this.database.connection
+        .update(tasks)
+        .set({
+          ...change.updates,
+          version: current.version + 1,
+          updatedAt: occurredAt,
+        })
+        .where(
+          and(
+            eq(tasks.workspaceId, actor.workspaceId),
+            eq(tasks.companyId, companyId),
+            eq(tasks.id, taskId),
+            eq(tasks.version, current.version),
+          ),
+        )
+        .returning(),
+    );
     if (!changed)
       throw new ConflictException(
         'The Task changed. Reload before choosing another action.',
@@ -1042,6 +1050,10 @@ export class TaskService {
       dueDate: input.dueDate === undefined ? before.dueDate : input.dueDate,
       assignee,
       priority: input.priority ?? before.priority,
+      description:
+        input.description === undefined
+          ? before.description
+          : input.description,
     };
     const changes: TaskChanges = {};
     if (before.title !== after.title)
@@ -1052,10 +1064,16 @@ export class TaskService {
       changes.assignee = { before: before.assignee, after: after.assignee };
     if (before.priority !== after.priority)
       changes.priority = { before: before.priority, after: after.priority };
+    if (before.description !== after.description)
+      changes.description = {
+        before: before.description,
+        after: after.description,
+      };
     if (Object.keys(changes).length === 0) return 'unchanged';
     return {
       updates: {
         title: after.title,
+        description: after.description,
         dueDate: after.dueDate,
         assigneeMembershipId: after.assignee?.workspaceMembershipId ?? null,
         assigneeDisplayLabel: after.assignee?.displayLabel ?? null,
@@ -1092,7 +1110,7 @@ export class TaskService {
   }
   private async replay(actor: ActorContext, key: string, command: string) {
     const result = await this.commands.read({ actor, key, command });
-    return result === undefined ? undefined : readTaskView(result);
+    return result === undefined ? undefined : readTaskOutcome(result);
   }
   private async recordCommand(
     actor: ActorContext,
@@ -1124,6 +1142,7 @@ function calendarDateAfter(date: string, days: number): string {
 function fields(task: TaskView): TaskFields {
   return {
     title: task.title,
+    description: task.description,
     assignee: task.assignee,
     dueDate: task.dueDate,
     priority: task.priority,

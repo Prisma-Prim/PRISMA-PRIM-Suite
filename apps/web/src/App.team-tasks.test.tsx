@@ -377,9 +377,21 @@ it('preserves an uncertain exact native edit body/key and a confirmed outcome th
   const projects = await screen.findByRole('region', { name: 'Projects' });
   const title = await within(projects).findByDisplayValue(f.task.title);
   fireEvent.change(title, { target: { value: 'Native edit exact literal' } });
+  const instructions = within(projects).getByLabelText(
+    'Task instructions (optional)',
+  );
+  fireEvent.change(instructions, {
+    target: { value: '  Native instructions Ж / é / 😀\n  <b>literal</b>  ' },
+  });
   fireEvent.click(within(projects).getByRole('button', { name: 'Save Task' }));
   await waitFor(() => expect(api.state.writes).toHaveLength(1));
   const original = api.state.writes[0];
+  if (!original) throw new Error('Expected saved native intent.');
+  expect(JSON.parse(original.body)).toEqual({
+    expectedVersion: 1,
+    title: 'Native edit exact literal',
+    description: 'Native instructions Ж / é / 😀\n  <b>literal</b>',
+  });
   navigate('Team Tasks');
   api.state.status = 503;
   fireEvent.click(
@@ -388,12 +400,16 @@ it('preserves an uncertain exact native edit body/key and a confirmed outcome th
   await within(region()).findByRole('alert');
   expect(title).toBeInTheDocument();
   expect(title).toHaveValue('Native edit exact literal');
+  expect(instructions).toHaveValue(
+    '  Native instructions Ж / é / 😀\n  <b>literal</b>  ',
+  );
   expect(api.state.writes).toHaveLength(1);
   navigate('Projects');
   api.state.writeStatus = 200;
   api.state.currentTask = {
     ...f.task,
     title: 'Native edit exact literal',
+    description: 'Native instructions Ж / é / 😀\n  <b>literal</b>',
     version: 2,
   };
   fireEvent.click(
@@ -411,4 +427,59 @@ it('preserves an uncertain exact native edit body/key and a confirmed outcome th
     within(projects).getByText('Task change recorded.'),
   ).toBeInTheDocument();
   expect(api.state.writes).toHaveLength(2);
+});
+
+it('omits untouched textarea CRLF on an unrelated edit and clears only through the ordinary explicit save', async () => {
+  const api = server();
+  api.state.currentTask = {
+    ...f.task,
+    description: 'Original\r\n  Ș / Я / 😀\rLiteral',
+  };
+  api.state.writeStatus = 200;
+  render(<App identity={deterministicBrowserIdentity()} />);
+  await ready();
+  fireEvent.click(
+    within(region()).getByRole('button', { name: /^Open Exact team work/ }),
+  );
+  const projects = await screen.findByRole('region', { name: 'Projects' });
+  const instructions = await within(projects).findByLabelText(
+    'Task instructions (optional)',
+  );
+  expect(instructions).toHaveValue('Original\n  Ș / Я / 😀\nLiteral');
+  fireEvent.change(within(projects).getByLabelText('Task title'), {
+    target: { value: 'Unrelated title correction' },
+  });
+  api.state.currentTask = {
+    ...api.state.currentTask,
+    title: 'Unrelated title correction',
+    version: 2,
+  };
+  fireEvent.click(within(projects).getByRole('button', { name: 'Save Task' }));
+  await waitFor(() => expect(api.state.writes).toHaveLength(1));
+  expect(JSON.parse(api.state.writes[0]?.body ?? '{}')).toEqual({
+    expectedVersion: 1,
+    title: 'Unrelated title correction',
+  });
+  await within(projects).findByText('Task change recorded.');
+  const clear = within(projects).getByRole('button', {
+    name: 'Clear instructions',
+  });
+  await waitFor(() => expect(clear).toBeEnabled());
+  fireEvent.click(clear);
+  expect(api.state.writes).toHaveLength(1);
+  expect(
+    within(projects).getByLabelText('Task instructions (optional)'),
+  ).toHaveValue('');
+  api.state.currentTask = {
+    ...api.state.currentTask,
+    description: null,
+    version: 3,
+  };
+  fireEvent.click(within(projects).getByRole('button', { name: 'Save Task' }));
+  await waitFor(() => expect(api.state.writes).toHaveLength(2));
+  expect(JSON.parse(api.state.writes[1]?.body ?? '{}')).toEqual({
+    expectedVersion: 2,
+    description: null,
+  });
+  await within(projects).findByText('No description');
 });

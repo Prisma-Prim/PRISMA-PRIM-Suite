@@ -9,13 +9,15 @@ export const taskPriorities = ['normal', 'important', 'critical'] as const;
 export type TaskPriority = (typeof taskPriorities)[number];
 export type TaskFields = {
   title: string;
+  description: string | null;
   assignee: Assignee | null;
   dueDate: string | null;
   priority: TaskPriority;
 };
 /** A creation recorded before priority existed has none; it is never shown as Normal. */
-export type TaskInitialFields = Omit<TaskFields, 'priority'> & {
+export type TaskInitialFields = Omit<TaskFields, 'priority' | 'description'> & {
   priority?: TaskPriority;
+  description?: string | null;
 };
 export const taskStates = [
   'todo',
@@ -49,6 +51,10 @@ export type TaskView = TaskFields & {
     | { status: 'done'; completion: { actor: TaskActor; occurredAt: string } }
     | { status: 'cancelled'; completion: null; cancellation: TaskDeclaration }
   );
+type RecordedTask<T> = T extends TaskView
+  ? Omit<T, 'description'> & { description?: string | null }
+  : never;
+export type TaskOutcome = RecordedTask<TaskView>;
 export function isOpenTaskState(value: unknown): value is OpenTaskState {
   return openTaskStates.some((state) => state === value);
 }
@@ -105,6 +111,7 @@ export type TaskEvent = {
           assignee?: Change<Assignee | null>;
           dueDate?: Change<string | null>;
           priority?: Change<TaskPriority>;
+          description?: Change<string | null>;
         };
       };
     }
@@ -204,6 +211,7 @@ function fields(value: unknown): TaskFields {
   const row = record(value);
   return {
     title: title(row.title),
+    description: readTaskDescription(row.description),
     assignee: assignee(row.assignee),
     dueDate: date(row.dueDate),
     priority: readTaskPriority(row.priority),
@@ -216,14 +224,23 @@ function initialFields(value: unknown): TaskInitialFields {
     assignee: assignee(row.assignee),
     dueDate: date(row.dueDate),
     ...('priority' in row ? { priority: readTaskPriority(row.priority) } : {}),
+    ...('description' in row
+      ? { description: readTaskDescription(row.description) }
+      : {}),
   };
 }
 export function readTask(value: unknown, scope: TaskScope): TaskView {
   const row = record(value);
+  return { ...readTaskOutcome(value, scope), ...fields(row) };
+}
+/** Immutable command confirmation preserves legacy absence, separately from fresh reads. */
+export function readTaskOutcome(value: unknown, scope: TaskScope): TaskOutcome {
+  const row = record(value);
   if (row.companyId !== scope.companyId || row.projectId !== scope.projectId)
     throw new Error('Invalid Task context');
   const common = {
-    ...fields(row),
+    ...initialFields(row),
+    priority: readTaskPriority(row.priority),
     id: string(row.id),
     companyId: scope.companyId,
     projectId: scope.projectId,
@@ -272,6 +289,30 @@ export function readTask(value: unknown, scope: TaskScope): TaskView {
     }
   }
   throw new Error('Invalid Task status');
+}
+/** Validates the original scalars before trimming; no UTF-16 maxlength approximation. */
+export function validTaskDescription(value: string): boolean {
+  for (const character of value) {
+    const point = character.codePointAt(0);
+    if (
+      point === undefined ||
+      point === 0 ||
+      (point >= 0xd800 && point <= 0xdfff)
+    )
+      return false;
+  }
+  return Array.from(value.trim()).length <= 2000;
+}
+export function readTaskDescription(value: unknown): string | null {
+  if (value === null) return null;
+  if (
+    typeof value !== 'string' ||
+    !value ||
+    value !== value.trim() ||
+    !validTaskDescription(value)
+  )
+    throw new Error('Invalid Task description');
+  return value;
 }
 function reason(value: unknown): string {
   const result = string(value);
@@ -411,7 +452,14 @@ export function readTaskHistory(
       if (
         !Object.keys(changes).length ||
         Object.keys(changes).some(
-          (key) => !['title', 'assignee', 'dueDate', 'priority'].includes(key),
+          (key) =>
+            ![
+              'title',
+              'assignee',
+              'dueDate',
+              'priority',
+              'description',
+            ].includes(key),
         )
       )
         throw new Error('Invalid Task changes');
@@ -433,6 +481,9 @@ export function readTaskHistory(
             ...(changes.priority === undefined
               ? {}
               : { priority: change(changes.priority, readTaskPriority) }),
+            ...('description' in changes
+              ? { description: descriptionChange(changes.description) }
+              : {}),
           },
         },
       };
@@ -496,4 +547,17 @@ export function readTaskHistory(
       };
     throw new Error('Invalid Task event');
   });
+}
+function descriptionChange(value: unknown): Change<string | null> {
+  const row = record(value);
+  if (
+    Object.keys(row).length !== 2 ||
+    !Object.hasOwn(row, 'before') ||
+    !Object.hasOwn(row, 'after')
+  )
+    throw new Error('Invalid Task description correction');
+  const result = change(value, readTaskDescription);
+  if (result.before === result.after)
+    throw new Error('Invalid Task description correction');
+  return result;
 }

@@ -16,13 +16,15 @@ export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 export const DEFAULT_TASK_PRIORITY = 'normal' satisfies TaskPriority;
 export interface TaskFields {
   title: string;
+  description: string | null;
   assignee: TaskAssignee | null;
   dueDate: string | null;
   priority: TaskPriority;
 }
 /** Creation facts; a creation recorded before priority existed has none, never `normal`. */
-export type TaskInitialFields = Omit<TaskFields, 'priority'> & {
+export type TaskInitialFields = Omit<TaskFields, 'priority' | 'description'> & {
   priority?: TaskPriority;
+  description?: string | null;
 };
 export const OPEN_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
 export type OpenTaskState = (typeof OPEN_TASK_STATES)[number];
@@ -53,6 +55,11 @@ export type TaskView = TaskFields & {
         cancellation: TaskDeclaration;
       }
   );
+/** Immutable outcomes retain legacy absence rather than inventing historical text. */
+type RecordedTask<T> = T extends TaskView
+  ? Omit<T, 'description'> & { description?: string | null }
+  : never;
+export type TaskOutcome = RecordedTask<TaskView>;
 /** The Project list's own labels for a Task row. */
 export interface TaskProjectLabels {
   id: string;

@@ -17,6 +17,7 @@ import {
 
 export type Draft = {
   title: string;
+  description: { kind: 'untouched' | 'changed'; text: string };
   assigneeMembershipId: string;
   dueDate: string;
   priority: TaskPriority;
@@ -27,6 +28,7 @@ export function TaskFieldsForm({
   current,
   disabled,
   editing,
+  descriptionInvalid,
   onChange,
   onSubmit,
 }: {
@@ -35,6 +37,7 @@ export function TaskFieldsForm({
   current: TaskView | null;
   disabled: boolean;
   editing: boolean;
+  descriptionInvalid: boolean;
   onChange: (draft: Draft) => void;
   onSubmit: (event: FormEvent) => void;
 }) {
@@ -62,6 +65,40 @@ export function TaskFieldsForm({
           }
         />
       </label>
+      <label htmlFor={fieldId + '-description'}>{copy.descriptionLabel}</label>
+      <textarea
+        id={fieldId + '-description'}
+        rows={5}
+        value={draft.description.text}
+        disabled={disabled}
+        aria-describedby={
+          fieldId +
+          '-description-help' +
+          (descriptionInvalid ? ` ${fieldId}-description-error` : '')
+        }
+        aria-invalid={descriptionInvalid || undefined}
+        onChange={(event) =>
+          onChange({
+            ...draft,
+            description: { kind: 'changed', text: event.target.value },
+          })
+        }
+      />
+      <p id={fieldId + '-description-help'}>{copy.descriptionHelp}</p>
+      {descriptionInvalid && (
+        <p id={fieldId + '-description-error'} className="task-reason-error">
+          {copy.descriptionValidation}
+        </p>
+      )}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() =>
+          onChange({ ...draft, description: { kind: 'changed', text: '' } })
+        }
+      >
+        {copy.clearDescription}
+      </button>
       <label htmlFor={fieldId + '-assignee'}>
         {copy.assignee}
         <Select
@@ -186,6 +223,12 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
                     {copy.priorities[event.metadata.initial.priority]}
                   </p>
                 )}
+                <p className="task-description">
+                  {copy.description}:{' '}
+                  {'description' in event.metadata.initial
+                    ? (event.metadata.initial.description ?? copy.noDescription)
+                    : copy.unrecordedDescription}
+                </p>
               </>
             )}
             {event.action === 'task.updated' && (
@@ -238,6 +281,21 @@ export function TaskHistory({ events }: { events: TaskEvent[] }) {
                             event.metadata.changes.priority.after
                           ],
                       })}
+                    </dd>
+                  </div>
+                )}
+                {event.metadata.changes.description && (
+                  <div className="task-description">
+                    <dt>{copy.description}</dt>
+                    <dd>
+                      {copy.before}:{' '}
+                      {event.metadata.changes.description.before ??
+                        copy.noDescription}
+                    </dd>
+                    <dd>
+                      {copy.after}:{' '}
+                      {event.metadata.changes.description.after ??
+                        copy.noDescription}
                     </dd>
                   </div>
                 )}

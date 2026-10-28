@@ -43,6 +43,7 @@ const attribution = {
 };
 function task(id: string): TaskView {
   return {
+    description: null,
     id,
     companyId: 'company',
     projectId: 'project',

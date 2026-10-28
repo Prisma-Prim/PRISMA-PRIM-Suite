@@ -53,6 +53,7 @@ function task(
   dueDate: string | null,
 ): TaskView {
   return {
+    description: null,
     id,
     companyId: company.id,
     projectId: owner.id,

@@ -1,3 +1,7 @@
+import {
+  restoreFrozenTaskSetup,
+  applyHistoricalTaskTarget,
+} from '../task/frozen-task-migration.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -95,49 +99,17 @@ it.skipIf(!databaseUrl)(
         const body: unknown = await response.json();
         return record(body);
       }
-      const membershipId = text(
-        (await request('/access/current-actor')).workspaceMembershipId,
+      const frozen = await restoreFrozenTaskSetup(
+        database.targetPool,
+        'project-template',
       );
-      const companyId = text(
-        (await request('/companies', { displayName: 'Existing Company' })).id,
-      );
+      const membershipId = text(frozen.membershipId),
+        companyId = text(frozen.companyId),
+        projectId = text(frozen.projectId),
+        taskId = text(frozen.taskId);
       function requestInCompany(path: string, value?: unknown) {
         return request(path, value, { companyId });
       }
-      for (const path of [
-        '/company-director-client-assignments',
-        '/company-project-assignments',
-        '/company-task-manager-assignments',
-      ])
-        await requestInCompany(path, {
-          workspaceMembershipId: membershipId,
-          companyId,
-        });
-      const clientId = text(
-        (await requestInCompany('/clients', { displayName: 'Existing Client' }))
-          .id,
-      );
-      const projectId = text(
-        (
-          await requestInCompany('/projects', {
-            title: 'Independent manual Project',
-            clientAccountId: clientId,
-          })
-        ).id,
-      );
-      const taskId = text(
-        (
-          await requestInCompany(`/projects/${projectId}/tasks`, {
-            title: 'Existing notes {literal}',
-            dueDate: '2026-12-01',
-            priority: 'important',
-            assigneeMembershipId: membershipId,
-          })
-        ).id,
-      );
-      await requestInCompany(`/tasks/${taskId}/complete`, {
-        expectedVersion: 1,
-      });
       const tables = (
         await database.targetPool.query<{ name: string }>(
           `SELECT table_name AS name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`,
@@ -150,7 +122,7 @@ it.skipIf(!databaseUrl)(
               table,
               (
                 await database.targetPool.query<{ row: string }>(
-                  `SELECT to_jsonb(preserved)::text AS row FROM "${table}" AS preserved`,
+                  `SELECT (to_jsonb(preserved) ${table === 'tasks' ? "- 'description'" : ''})::text AS row FROM "${table}" AS preserved`,
                 )
               ).rows
                 .map((row) => row.row)
@@ -165,10 +137,17 @@ it.skipIf(!databaseUrl)(
       expect(before.task_commands).toHaveLength(2);
       expect(before.task_events).toHaveLength(2);
       expect(before.project_creation_events).toHaveLength(1);
+      await applyHistoricalTaskTarget({
+        pool: database.targetPool,
+        previous,
+        journal,
+        entries,
+        index,
+      });
+      expect(await snapshot()).toEqual(before);
       await migrate(drizzle(database.targetPool), {
         migrationsFolder: resolve('drizzle'),
       });
-      expect(await snapshot()).toEqual(before);
       expect(
         (
           await database.targetPool.query(

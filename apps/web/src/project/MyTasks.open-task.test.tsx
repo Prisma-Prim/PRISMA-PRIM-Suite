@@ -44,6 +44,7 @@ const beta = {
 };
 function assigned(id: string, project: typeof atelier, dueDate: string) {
   return {
+    description: null,
     id,
     companyId: 'company',
     projectId: project.id,

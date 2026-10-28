@@ -290,6 +290,7 @@ const member = {
   displayLabel: 'Mira {literal} — Vérification',
 };
 const task: TaskView = {
+  description: null,
   id: 'task',
   companyId: 'company',
   projectId: 'project',

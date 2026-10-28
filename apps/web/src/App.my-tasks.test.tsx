@@ -31,6 +31,7 @@ const project = {
   clientDisplayName: 'Synthetic Client',
 };
 const assigned = {
+  description: null,
   id: 'task-1',
   companyId: company.id,
   projectId: project.id,

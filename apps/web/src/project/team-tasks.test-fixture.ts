@@ -31,6 +31,7 @@ export function teamTasksQueryFixture() {
     },
   };
   const task: TaskDiscoveryRow = {
+    description: null,
     id: id('8'),
     companyId: company.id,
     projectId: id('9'),

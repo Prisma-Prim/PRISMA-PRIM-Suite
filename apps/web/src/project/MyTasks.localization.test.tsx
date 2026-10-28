@@ -34,6 +34,7 @@ const actor: ActorContext = {
   },
 };
 const task: AssignedTask = {
+  description: null,
   id: 'task-one',
   companyId: 'company',
   projectId: 'project-one',

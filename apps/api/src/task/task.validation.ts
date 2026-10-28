@@ -12,6 +12,7 @@ import {
   type TaskEventMeaning,
   type TaskFields,
   type TaskInitialFields,
+  type TaskOutcome,
   type TaskPriority,
   type TaskView,
 } from './task.types.js';
@@ -21,6 +22,7 @@ export interface TaskInput {
   dueDate: string | null;
   /** Present only when submitted, so a pre-priority receipt keeps its fingerprint. */
   priority?: TaskPriority;
+  description?: string | null;
 }
 export type TaskEdit = Partial<TaskInput> & { expectedVersion: number };
 export function object(value: unknown): Record<string, unknown> {
@@ -86,12 +88,21 @@ function version(value: unknown): number {
 }
 export function createInput(value: unknown): TaskInput {
   const row = object(value);
-  keys(row, ['title', 'assigneeMembershipId', 'dueDate', 'priority']);
+  keys(row, [
+    'title',
+    'assigneeMembershipId',
+    'dueDate',
+    'priority',
+    'description',
+  ]);
   return {
     title: title(row.title),
     assigneeMembershipId: membership(row.assigneeMembershipId),
     dueDate: calendarDate(row.dueDate),
     ...('priority' in row ? { priority: priority(row.priority) } : {}),
+    ...('description' in row
+      ? { description: descriptionInput(row.description) }
+      : {}),
   };
 }
 export function editInput(value: unknown): TaskEdit {
@@ -102,6 +113,7 @@ export function editInput(value: unknown): TaskEdit {
     'assigneeMembershipId',
     'dueDate',
     'priority',
+    'description',
   ]);
   return {
     expectedVersion: version(row.expectedVersion),
@@ -111,7 +123,48 @@ export function editInput(value: unknown): TaskEdit {
       : {}),
     ...('dueDate' in row ? { dueDate: calendarDate(row.dueDate) } : {}),
     ...('priority' in row ? { priority: priority(row.priority) } : {}),
+    ...('description' in row
+      ? { description: descriptionInput(row.description) }
+      : {}),
   };
+}
+function validDescriptionScalars(value: string): boolean {
+  for (const character of value) {
+    const point = character.codePointAt(0);
+    if (
+      point === undefined ||
+      point === 0 ||
+      (point >= 0xd800 && point <= 0xdfff)
+    )
+      return false;
+  }
+  return true;
+}
+function descriptionInput(value: unknown): string | null {
+  if (value === null) return null;
+  if (typeof value !== 'string' || !validDescriptionScalars(value))
+    throw new BadRequestException(
+      'Task description must be valid plain text of at most 2000 Unicode code points.',
+    );
+  const text = value.trim();
+  if (Array.from(text).length > 2000)
+    throw new BadRequestException(
+      'Task description must be valid plain text of at most 2000 Unicode code points.',
+    );
+  return text || null;
+}
+/** Strict current/present historical values are never repaired during decoding. */
+export function storedTaskDescription(value: unknown): string | null {
+  if (value === null) return null;
+  if (
+    typeof value !== 'string' ||
+    !value ||
+    value !== value.trim() ||
+    !validDescriptionScalars(value) ||
+    Array.from(value).length > 2000
+  )
+    throw new Error('Invalid stored Task description.');
+  return value;
 }
 export function transitionInput(value: unknown) {
   const row = object(value);
@@ -221,15 +274,29 @@ function initialFields(value: unknown): TaskInitialFields {
     assignee: assignee(row.assignee),
     dueDate: calendarDate(row.dueDate),
     ...('priority' in row ? { priority: storedPriority(row.priority) } : {}),
+    ...('description' in row
+      ? { description: storedTaskDescription(row.description) }
+      : {}),
   };
 }
 /** A result recorded before priority existed describes a Task backfilled as normal. */
-function resultFields(value: unknown): TaskFields {
+function resultFields(
+  value: unknown,
+): Omit<TaskFields, 'description'> & { description?: string | null } {
   const fields = initialFields(value);
   return { ...fields, priority: fields.priority ?? DEFAULT_TASK_PRIORITY };
 }
 /** Stored JSON is an external boundary; reconstruct the checked public result. */
 export function readTaskView(value: unknown): TaskView {
+  const row = object(value);
+  return {
+    ...readTaskOutcome(value),
+    priority: storedPriority(row.priority),
+    description: storedTaskDescription(row.description),
+  };
+}
+/** Compatible immutable reader: preserve unrecorded description, including nested receipts. */
+export function readTaskOutcome(value: unknown): TaskOutcome {
   const row = object(value);
   const common = {
     ...resultFields(row),
@@ -308,7 +375,7 @@ export function readTaskMeaning(value: unknown): TaskEventMeaning {
       };
     case 'task.updated': {
       const stored = object(metadata.changes);
-      keys(stored, ['title', 'assignee', 'dueDate', 'priority']);
+      keys(stored, ['title', 'assignee', 'dueDate', 'priority', 'description']);
       const changes: TaskChanges = {};
       if (stored.title !== undefined) {
         const change = object(stored.title);
@@ -337,6 +404,15 @@ export function readTaskMeaning(value: unknown): TaskEventMeaning {
           before: storedPriority(change.before),
           after: storedPriority(change.after),
         };
+      }
+      if ('description' in stored) {
+        const change = object(stored.description);
+        keys(change, ['before', 'after']);
+        const before = storedTaskDescription(change.before);
+        const after = storedTaskDescription(change.after);
+        if (before === after)
+          throw new Error('Invalid stored Task description correction.');
+        changes.description = { before, after };
       }
       return {
         action: row.action,

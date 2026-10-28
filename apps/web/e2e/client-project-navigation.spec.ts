@@ -583,6 +583,7 @@ for (const frame of ['classic', 'prisme'] as const) {
       displayName: actorContextFixture.displayName,
     };
     const collect = {
+      description: null,
       id: 'task-collect-procedures',
       companyId: company.id,
       projectId: project.id,

@@ -5,6 +5,7 @@ import {
   editInput,
   readTaskMeaning,
   readTaskView,
+  readTaskOutcome,
 } from './task.validation.js';
 
 const actor = {
@@ -86,12 +87,88 @@ describe('Task priority command validation', () => {
 });
 
 describe('stored Task results and history', () => {
+  it('requires exact current description while preserving legacy absence in immutable outcomes and history', () => {
+    expect(readTaskOutcome(storedResult)).not.toHaveProperty('description');
+    expect(() =>
+      readTaskView({ ...storedResult, priority: 'normal' }),
+    ).toThrow();
+    const current = {
+      ...storedResult,
+      priority: 'normal',
+      description: 'Ș / Я / 😀\r\n  <b>literal</b>',
+    };
+    expect(readTaskView(current)).toEqual(current);
+    expect(readTaskOutcome(current)).toEqual(current);
+    const creation = {
+      action: 'task.created',
+      metadata: {
+        version: 1,
+        initial: { title: storedResult.title, assignee: null, dueDate: null },
+      },
+    };
+    expect(readTaskMeaning(creation)).toEqual(creation);
+    const correction = {
+      action: 'task.updated',
+      metadata: {
+        version: 2,
+        changes: { description: { before: current.description, after: null } },
+      },
+    };
+    expect(readTaskMeaning(correction)).toEqual(correction);
+    for (const description of [
+      undefined,
+      '',
+      ' leading',
+      'trailing\n',
+      '\0',
+      '\ud800',
+      '\udfff',
+      '😀'.repeat(2001),
+      3,
+      [],
+      {},
+    ]) {
+      expect(() => readTaskView({ ...current, description })).toThrow();
+      expect(() => readTaskOutcome({ ...current, description })).toThrow();
+      expect(() =>
+        readTaskMeaning({
+          ...creation,
+          metadata: {
+            version: 1,
+            initial: { ...creation.metadata.initial, description },
+          },
+        }),
+      ).toThrow();
+    }
+    for (const description of [
+      { before: null },
+      { after: 'x' },
+      { before: null, after: null },
+      { before: null, after: 'x', unknown: 1 },
+      { before: ' unnormalized', after: null },
+    ])
+      expect(() =>
+        readTaskMeaning({
+          action: 'task.updated',
+          metadata: { version: 2, changes: { description } },
+        }),
+      ).toThrow();
+    expect(() =>
+      readTaskMeaning({
+        action: 'task.updated',
+        metadata: {
+          version: 2,
+          changes: { narrative: { before: null, after: 'x' } },
+        },
+      }),
+    ).toThrow();
+  });
   it('returns a pre-priority receipt result as normal and keeps a recorded priority', () => {
-    expect(readTaskView(storedResult)).toEqual({
+    expect(readTaskOutcome(storedResult)).toEqual({
       ...storedResult,
       priority: 'normal',
     });
-    expect(readTaskView({ ...storedResult, priority: 'critical' })).toEqual({
+    expect(readTaskOutcome({ ...storedResult, priority: 'critical' })).toEqual({
       ...storedResult,
       priority: 'critical',
     });
@@ -115,8 +192,11 @@ describe('stored Task results and history', () => {
       version: 2,
       cancellation: declaration,
     };
-    expect(readTaskView(blocked)).toEqual({ ...blocked, priority: 'normal' });
-    expect(readTaskView(cancelled)).toEqual({
+    expect(readTaskOutcome(blocked)).toEqual({
+      ...blocked,
+      priority: 'normal',
+    });
+    expect(readTaskOutcome(cancelled)).toEqual({
       ...cancelled,
       priority: 'normal',
     });
@@ -125,7 +205,7 @@ describe('stored Task results and history', () => {
   it.each(invalidPriorities)(
     'fails closed for the stored result priority %j',
     (priority) => {
-      expect(() => readTaskView({ ...storedResult, priority })).toThrow();
+      expect(() => readTaskOutcome({ ...storedResult, priority })).toThrow();
     },
   );
 

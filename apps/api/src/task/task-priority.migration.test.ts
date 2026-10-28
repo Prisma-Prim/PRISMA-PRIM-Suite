@@ -306,7 +306,11 @@ it.skipIf(!databaseUrl)(
       expect(after.commands).toEqual(before.commands);
       expect(after.events).toEqual(before.events);
       expect(after.tasks).toEqual(
-        before.tasks.map((row) => ({ ...row, priority: 'normal' })),
+        before.tasks.map((row) => ({
+          ...row,
+          priority: 'normal',
+          description: null,
+        })),
       );
 
       for (const rejected of ['urgent', 'Critical', 'critic', ''])

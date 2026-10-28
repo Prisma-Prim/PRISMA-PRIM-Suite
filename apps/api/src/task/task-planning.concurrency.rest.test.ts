@@ -58,7 +58,11 @@ withPostgres('Grouped Task planning serialized public commands', () => {
       const individual = (asColleague = false) =>
         f.request(`/tasks/${row.taskId}`, {
           method: 'PATCH',
-          body: { expectedVersion: 1, title: 'Separate native edit' },
+          body: {
+            expectedVersion: 1,
+            title: 'Separate native edit',
+            description: 'Separate native instructions\r\n  Ș / Я / 😀',
+          },
           ...(asColleague
             ? { subject: colleague.subject, workspaceId: f.workspaceId }
             : {}),
@@ -115,6 +119,10 @@ withPostgres('Grouped Task planning serialized public commands', () => {
           order === 'individual_first'
             ? 'Separate native edit'
             : s.originals[0]?.title,
+        description:
+          order === 'individual_first'
+            ? 'Separate native instructions\r\n  Ș / Я / 😀'
+            : null,
       });
       const other = s.body.tasks[1];
       if (!other) throw new Error('Second Task required.');

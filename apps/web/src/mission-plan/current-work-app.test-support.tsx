@@ -192,6 +192,7 @@ export function installCurrentWorkApp() {
         return Response.json(
           state.taskStatus === 201
             ? {
+                description: null,
                 id: id(999),
                 companyId: company.id,
                 projectId: project.id,

@@ -610,6 +610,13 @@
       "when": 1793129097564,
       "tag": "0086_company_mission_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1793218365926,
+      "tag": "0087_task_description",
+      "breakpoints": true
     }
   ]
 }

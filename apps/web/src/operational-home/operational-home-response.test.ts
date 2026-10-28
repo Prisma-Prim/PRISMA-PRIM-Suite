@@ -14,6 +14,7 @@ const project = {
   clientDisplayName: 'GRUP Demo SA',
 };
 const task = {
+  description: null,
   id: 'task-collect',
   companyId,
   projectId: project.id,

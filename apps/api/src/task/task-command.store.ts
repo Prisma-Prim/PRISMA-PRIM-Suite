@@ -3,6 +3,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { DatabaseContext } from '../database/database-context.js';
 import { taskCommands } from '../database/schema/index.js';
+import { taskPrivatePersistence } from './task-private-persistence.js';
 
 /** Shared native Task namespace. The caller owns the transaction and receipt format. */
 @Injectable()
@@ -52,14 +53,16 @@ export class TaskCommandStore {
     taskId: string;
     result: unknown;
   }) {
-    await this.database.connection.insert(taskCommands).values({
-      workspaceId: input.actor.workspaceId,
-      companyId: input.companyId,
-      taskId: input.taskId,
-      actorMembershipId: input.actor.workspaceMembershipId,
-      idempotencyKey: input.key,
-      command: input.command,
-      result: input.result,
-    });
+    await taskPrivatePersistence(async () =>
+      this.database.connection.insert(taskCommands).values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        taskId: input.taskId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        idempotencyKey: input.key,
+        command: input.command,
+        result: input.result,
+      }),
+    );
   }
 }

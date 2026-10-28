@@ -2,6 +2,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type FormEvent,
@@ -22,7 +23,7 @@ import {
 import {
   isOpenTaskState,
   readAssignees,
-  readTask,
+  readTaskOutcome,
   readTaskDetail,
   readTaskHistory,
   readTaskList,
@@ -30,6 +31,7 @@ import {
   taskStates,
   validTaskDate,
   validTaskReason,
+  validTaskDescription,
   type Assignee,
   type TaskEvent,
   type TaskMove,
@@ -67,6 +69,7 @@ type Props = {
   identity: BrowserIdentity;
   projectId: string | null;
   projectStatus: ProjectStatus | null;
+  clientIdentityRevision?: number;
   onProjectChanged?: () => void | Promise<void>;
   onActivityRecorded?: () => void | Promise<void>;
   /** Opens this Task of the selected Project as choosing its row would; each new request id once. */
@@ -94,6 +97,7 @@ type Command = { key: string } & (
         assigneeMembershipId: string | null;
         dueDate: string | null;
         priority: TaskPriority;
+        description?: string | null;
       };
     }
   | {
@@ -105,6 +109,7 @@ type Command = { key: string } & (
         assigneeMembershipId?: string | null;
         dueDate?: string | null;
         priority?: TaskPriority;
+        description?: string | null;
       };
     }
   | {
@@ -135,6 +140,7 @@ type TaskFeedback =
   | 'rejected'
   | 'confirmed'
   | 'uncertain'
+  | 'descriptionValidation'
   | 'validation';
 type TaskFilter = 'all' | TaskState;
 
@@ -169,6 +175,7 @@ type ResolvedDateFilter =
   | { kind: 'range'; from: string | null; through: string | null };
 const emptyDraft: Draft = {
   title: '',
+  description: { kind: 'untouched', text: '' },
   assigneeMembershipId: '',
   dueDate: '',
   priority: 'normal',
@@ -284,7 +291,7 @@ export function ProjectTasks(props: Props) {
     actor.workspaceId,
     actor.workspaceMembershipId,
     actor.active,
-    actor.workspacePermissions,
+    actor.workspacePermissions.includes('client.manage'),
     projectTaskCompanyAuthority(actor.activeCompany),
   ]);
   return <TaskProjects key={authority} {...props} />;
@@ -348,6 +355,7 @@ function TaskProject({
   onActivityRecorded,
   requestedTask,
   active,
+  clientIdentityRevision = 0,
 }: Props & { projectId: string; active: boolean }) {
   const copy = useProjectTaskCopy();
   const { locale } = useInterfaceLocale();
@@ -373,6 +381,9 @@ function TaskProject({
     new Map<string, { version: number | null; draft: Draft }>(),
   );
   const request = useRef<AbortController | null>(null);
+  const clientReadRevision = useRef(clientIdentityRevision);
+  clientReadRevision.current = clientIdentityRevision;
+  const refreshedClientRevision = useRef(clientIdentityRevision);
   const mutationRequest = useRef<AbortController | null>(null);
   /** The latest requested open already applied. */
   const consumedTaskRequest = useRef<number | undefined>(undefined);
@@ -470,15 +481,20 @@ function TaskProject({
     controller: AbortController,
     read: { requestedOpenId?: number; onTargetReady?: () => void } = {},
   ) {
+    const startedUnder = clientReadRevision.current;
+    const live = () =>
+      !controller.signal.aborted && clientReadRevision.current === startedUnder;
     const api = await createAuthenticatedApiClient(identity);
-    if (controller.signal.aborted) return;
+    if (!live()) return false;
     const options = { companyContextId: companyId, signal: controller.signal };
     const listingResult = await api.request<unknown>(
       `/projects/${encodeURIComponent(projectId)}/tasks`,
       options,
     );
-    if (controller.signal.aborted) return;
-    const listing = readTaskList(await resultValue(listingResult), scope);
+    if (!live()) return false;
+    const listingValue = await resultValue(listingResult);
+    if (!live()) return false;
+    const listing = readTaskList(listingValue, scope);
     let nextDetail: Detail | null = null;
     if (taskId) {
       const [taskResult, historyResult] = await Promise.all([
@@ -488,18 +504,14 @@ function TaskProject({
           options,
         ),
       ]);
-      if (controller.signal.aborted) return;
+      if (!live()) return false;
       try {
-        const task = readTaskDetail(
-          await resultValue(taskResult, 'missing'),
-          scope,
-          taskId,
-        );
-        const events = readTaskHistory(
-          await resultValue(historyResult, 'missing'),
-          scope,
-          taskId,
-        );
+        const taskValue = await resultValue(taskResult, 'missing');
+        if (!live()) return false;
+        const historyValue = await resultValue(historyResult, 'missing');
+        if (!live()) return false;
+        const task = readTaskDetail(taskValue, scope, taskId);
+        const events = readTaskHistory(historyValue, scope, taskId);
         nextDetail = {
           kind: 'ready',
           ...task,
@@ -507,12 +519,13 @@ function TaskProject({
           requestedOpenId: read.requestedOpenId,
         };
       } catch (error: unknown) {
+        if (!live()) return false;
         if (!(error instanceof ReadFailure) || error.kind !== 'missing')
           throw error;
         nextDetail = { kind: 'missing' };
       }
     }
-    if (controller.signal.aborted) return;
+    if (!live()) return false;
     // Stable target facts are resolved here. An auxiliary member lookup stays
     // under this owner's authority and must not prolong the originating preview.
     read.onTargetReady?.();
@@ -549,6 +562,7 @@ function TaskProject({
         : task
           ? {
               title: task.title,
+              description: { kind: 'untouched', text: task.description ?? '' },
               assigneeMembershipId: task.assignee?.workspaceMembershipId ?? '',
               dueDate: task.dueDate ?? '',
               priority: task.priority,
@@ -567,14 +581,18 @@ function TaskProject({
           `/projects/${encodeURIComponent(projectId)}/eligible-task-assignees`,
           options,
         );
-        if (controller.signal.aborted) return;
-        setMembers(readAssignees(await resultValue(result)));
+        if (!live()) return false;
+        const membersValue = await resultValue(result);
+        if (!live()) return false;
+        setMembers(readAssignees(membersValue));
       } catch (error: unknown) {
+        if (!live()) return false;
         if (error instanceof ReadFailure && error.kind === 'denied')
           throw error;
         if (!controller.signal.aborted) setFeedback('membersError');
       }
     }
+    return live();
   }
   async function open(
     taskId: string | null,
@@ -583,6 +601,7 @@ function TaskProject({
       requestedOpenId?: number;
       sourceSignal?: AbortSignal;
       preserveReasonDraft?: boolean;
+      preserveFeedback?: boolean;
     } = {},
   ) {
     if (options.sourceSignal?.aborted) return;
@@ -595,7 +614,8 @@ function TaskProject({
     setDraft(emptyDraft);
     if (!options.preserveReasonDraft) setReasonDraft(null);
     setMembers(null);
-    if (mutation.kind !== 'uncertain') setFeedback(null);
+    if (mutation.kind !== 'uncertain' && !options.preserveFeedback)
+      setFeedback(null);
     if (options.reload) {
       drafts.current.delete(taskId ?? 'create');
       setMutation((previous) =>
@@ -639,6 +659,17 @@ function TaskProject({
       stopSourceRetirement();
     }
   }
+  useLayoutEffect(() => {
+    if (refreshedClientRevision.current === clientIdentityRevision) return;
+    refreshedClientRevision.current = clientIdentityRevision;
+    // Dossier projections changed; the native immutable target and exact commands remain owned here.
+    request.current?.abort();
+    if (mutation.kind !== 'pending' && mutation.kind !== 'uncertain')
+      void open(selected, {
+        preserveReasonDraft: true,
+        preserveFeedback: true,
+      });
+  }, [clientIdentityRevision]);
   useEffect(() => {
     // Effect replay cancels the first requested read before it can finish.
     // A genuinely replaced identity keeps that request consumed permanently.
@@ -746,7 +777,7 @@ function TaskProject({
         return;
       }
       if (result.status !== 'ok') throw new Error('Unconfirmed Task command');
-      const receipt = readTask(result.value, scope);
+      const receipt = readTaskOutcome(result.value, scope);
       if (command.taskId !== null && receipt.id !== command.taskId)
         throw new Error('Invalid Task receipt');
       // A confirmed move between open states changes no field, so a draft kept at the move's
@@ -770,7 +801,14 @@ function TaskProject({
       setLoad({ kind: 'loading' });
       // A replay receipt is historical. Only fresh detail and history authorize subsequent changes.
       try {
-        await refresh(receipt.id, controller);
+        // A union/reversal can retire a read while preserving this committed command.
+        // Settle only a current native read; never resubmit or rebase the saved command.
+        while (
+          !controller.signal.aborted &&
+          !(await refresh(receipt.id, controller))
+        ) {
+          // The next read captures the newest Client projection revision.
+        }
         if (!controller.signal.aborted) setMutation({ kind: 'idle' });
       } catch (error: unknown) {
         if (controller.signal.aborted) return;
@@ -798,6 +836,10 @@ function TaskProject({
     event.preventDefault();
     if (planningProtected) return;
     const title = draft.title.trim();
+    if (!validTaskDescription(draft.description.text)) {
+      setFeedback('descriptionValidation');
+      return;
+    }
     if (
       !title ||
       title.length > 200 ||
@@ -811,6 +853,9 @@ function TaskProject({
       assigneeMembershipId: draft.assigneeMembershipId || null,
       dueDate: draft.dueDate || null,
       priority: draft.priority,
+      ...(draft.description.kind === 'changed'
+        ? { description: draft.description.text.trim() || null }
+        : {}),
     };
     if (selected && current && isOpenTaskState(current.task.status))
       void run({
@@ -830,6 +875,7 @@ function TaskProject({
           ...(body.priority !== current.task.priority
             ? { priority: body.priority }
             : {}),
+          ...('description' in body ? { description: body.description } : {}),
         },
       });
     else if (!selected)
@@ -1128,6 +1174,10 @@ function TaskProject({
                   <h5 ref={taskHeading} tabIndex={-1}>
                     {current.task.title}
                   </h5>
+                  <dl className="task-description">
+                    <dt>{copy.description}</dt>
+                    <dd>{current.task.description ?? copy.noDescription}</dd>
+                  </dl>
                   <p className="task-status">
                     {copy.states[current.task.status]}
                   </p>
@@ -1182,6 +1232,7 @@ function TaskProject({
                   (current && isOpenTaskState(current.task.status))) && (
                   <TaskFieldsForm
                     draft={draft}
+                    descriptionInvalid={feedback === 'descriptionValidation'}
                     members={members}
                     current={current?.task ?? null}
                     disabled={!editable}

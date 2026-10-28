@@ -196,6 +196,22 @@ export async function createMissionDocumentFixture(
     grant,
     upload,
     reset,
+    /** Select an already seeded synthetic historical context after verifying its exact stored boundary. */
+    async resumeFrozenContext(input: {
+      companyId: string;
+      membershipId: string;
+      clientId: string;
+    }) {
+      const existing = await harness.pool.query(
+        `SELECT c.id FROM companies c JOIN workspace_memberships m ON m.workspace_id=c.workspace_id JOIN internal_users u ON u.id=m.internal_user_id JOIN client_accounts a ON a.workspace_id=c.workspace_id WHERE c.id=$1 AND m.id=$2 AND a.id=$3 AND c.workspace_id=$4 AND u.external_provider='deterministic-test' AND u.external_subject='mission-owner'`,
+        [input.companyId, input.membershipId, input.clientId, WORKSPACE_ID],
+      );
+      if (existing.rows.length !== 1)
+        throw new Error('Invalid frozen mission context.');
+      companyId = input.companyId;
+      membershipId = input.membershipId;
+      clientId = input.clientId;
+    },
     restart,
     close,
     measureApplicationQueries: <T>(work: () => Promise<T>) =>

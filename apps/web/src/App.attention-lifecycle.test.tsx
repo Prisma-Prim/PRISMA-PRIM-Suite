@@ -35,6 +35,7 @@ const author = {
 };
 function task(index: number, today = '2026-09-27') {
   return {
+    description: null,
     id: `task-${String(index).padStart(2, '0')}`,
     title: `Task ${String(index).padStart(2, '0')} — Literal`,
     companyId: company.id,

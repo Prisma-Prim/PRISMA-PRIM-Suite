@@ -59,6 +59,7 @@ function assigned(
   companyId = 'company',
 ) {
   return {
+    description: null,
     id,
     companyId,
     projectId: project.id,

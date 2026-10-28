@@ -1199,6 +1199,7 @@ export function ProjectWorkspace({
         <ProjectTasks
           actor={actor}
           identity={identity}
+          clientIdentityRevision={clientIdentityRevision}
           projectId={selected?.project.id ?? null}
           projectStatus={selected?.project.status ?? null}
           onProjectChanged={

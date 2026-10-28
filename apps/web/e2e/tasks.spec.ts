@@ -112,6 +112,7 @@ test('manages manual Tasks through the production shell with retained retry and 
           priority: 'critical',
         });
         task = {
+          description: null,
           id: 'manual-task',
           companyId: company.id,
           projectId: project.id,
@@ -471,6 +472,7 @@ test('tracks Task execution with reasoned blockage and cancellation across reloa
     projectId: project.id,
     clientAccountId: client.id,
     title: 'Collect signed questionnaire',
+    description: null,
     assignee,
     dueDate: '2026-10-15',
     priority,
