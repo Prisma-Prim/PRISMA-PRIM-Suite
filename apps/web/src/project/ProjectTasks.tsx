@@ -376,6 +376,7 @@ function TaskProject({
   const mutationRequest = useRef<AbortController | null>(null);
   /** The latest requested open already applied. */
   const consumedTaskRequest = useRef<number | undefined>(undefined);
+  const readIdentity = useRef(identity);
   const taskHeading = useRef<HTMLHeadingElement>(null);
   const focusedTaskRequest = useRef<number | undefined>(undefined);
   const companyId = actor.activeCompany?.id ?? '';
@@ -639,6 +640,11 @@ function TaskProject({
     }
   }
   useEffect(() => {
+    // Effect replay cancels the first requested read before it can finish.
+    // A genuinely replaced identity keeps that request consumed permanently.
+    if (readIdentity.current === identity && request.current?.signal.aborted)
+      consumedTaskRequest.current = undefined;
+    readIdentity.current = identity;
     drafts.current.clear();
     setMutation({ kind: 'idle' });
     void open(null);

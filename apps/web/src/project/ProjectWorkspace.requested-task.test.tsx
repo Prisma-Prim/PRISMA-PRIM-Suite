@@ -278,7 +278,7 @@ function taskServer() {
   };
 }
 
-function renderWorkspace() {
+function renderWorkspace(strict = false) {
   let identity = deterministicBrowserIdentity();
   let currentActor = actor;
   let revision = 0;
@@ -291,7 +291,7 @@ function renderWorkspace() {
       navigation={current}
     />
   );
-  const view = render(workspace());
+  const view = render(workspace(), { reactStrictMode: strict });
   return {
     request(
       owner: typeof atelierProject,
@@ -591,44 +591,47 @@ describe('Requested Task opens', () => {
     },
   );
 
-  it('waits for a pending Task command and the read of its result, never aborting it, then opens', async () => {
-    const server = taskServer();
-    const workspace = renderWorkspace();
-    const tasks = await chooseTask(betaRow, taskOne);
-    changeValue(
-      within(tasks).getByLabelText('Task title'),
-      'Corrected preparation notes',
-    );
-    server.hold(taskEdit(taskOne));
-    fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
-    const command = await server.requested(taskEdit(taskOne));
+  it.each([false, true])(
+    'waits for a pending Task command and the read of its result, never aborting it, then opens with root StrictMode=%s',
+    async (strict) => {
+      const server = taskServer();
+      const workspace = renderWorkspace(strict);
+      const tasks = await chooseTask(betaRow, taskOne);
+      changeValue(
+        within(tasks).getByLabelText('Task title'),
+        'Corrected preparation notes',
+      );
+      server.hold(taskEdit(taskOne));
+      fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+      const command = await server.requested(taskEdit(taskOne));
 
-    workspace.request(betaProject, taskTwo, 1);
-    await waitFor(() =>
-      expect(detailClient()).toBe(`Client: ${beta.displayName}`),
-    );
-    await settle();
-    expect(command.signal?.aborted).toBe(false);
-    expect(server.count(taskRead(taskTwo))).toBe(0);
+      workspace.request(betaProject, taskTwo, 1);
+      await waitFor(() =>
+        expect(detailClient()).toBe(`Client: ${beta.displayName}`),
+      );
+      await settle();
+      expect(command.signal?.aborted).toBe(false);
+      expect(server.count(taskRead(taskTwo))).toBe(0);
 
-    // The confirmed command's result is read before the requested Task opens.
-    server.hold(taskRead(taskOne));
-    await server.release(taskEdit(taskOne));
-    await server.requested(taskRead(taskOne));
-    await settle();
-    expect(server.count(taskRead(taskTwo))).toBe(0);
-    await server.release(taskRead(taskOne));
+      // The confirmed command's result is read before the requested Task opens.
+      server.hold(taskRead(taskOne));
+      await server.release(taskEdit(taskOne));
+      await server.requested(taskRead(taskOne));
+      await settle();
+      expect(server.count(taskRead(taskTwo))).toBe(0);
+      await server.release(taskRead(taskOne));
 
-    const opened = await openedTask(taskTwo);
-    expect(within(opened).getByLabelText('Task title')).toHaveValue(
-      taskTwo.title,
-    );
-    expect(
-      within(opened).getByRole('button', { name: 'Save Task' }),
-    ).toBeEnabled();
-    expect(server.count(taskEdit(taskOne))).toBe(1);
-    expect(server.count(taskRead(taskTwo))).toBe(1);
-  });
+      const opened = await openedTask(taskTwo);
+      expect(within(opened).getByLabelText('Task title')).toHaveValue(
+        taskTwo.title,
+      );
+      expect(
+        within(opened).getByRole('button', { name: 'Save Task' }),
+      ).toBeEnabled();
+      expect(server.count(taskEdit(taskOne))).toBe(1);
+      expect(server.count(taskRead(taskTwo))).toBe(1);
+    },
+  );
 
   it('keeps a requested Task waiting on a pending command across a Client identity refresh of its Project', async () => {
     const server = taskServer();
@@ -657,47 +660,50 @@ describe('Requested Task opens', () => {
     expect(server.count(taskRead(taskTwo))).toBe(1);
   });
 
-  it('keeps an uncertain command’s payload and key for an unchanged retry', async () => {
-    const server = taskServer();
-    const workspace = renderWorkspace();
-    const tasks = await chooseTask(betaRow, taskOne);
-    changeValue(
-      within(tasks).getByLabelText('Task title'),
-      'Corrected preparation notes',
-    );
-    server.replyOnce(
-      taskEdit(taskOne),
-      () => new Response(null, { status: 500 }),
-    );
-    fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
-    await within(tasks).findByRole('button', { name: taskCopy.retry });
+  it.each([false, true])(
+    'keeps an uncertain command’s payload and key for an unchanged retry with root StrictMode=%s',
+    async (strict) => {
+      const server = taskServer();
+      const workspace = renderWorkspace(strict);
+      const tasks = await chooseTask(betaRow, taskOne);
+      changeValue(
+        within(tasks).getByLabelText('Task title'),
+        'Corrected preparation notes',
+      );
+      server.replyOnce(
+        taskEdit(taskOne),
+        () => new Response(null, { status: 500 }),
+      );
+      fireEvent.click(within(tasks).getByRole('button', { name: 'Save Task' }));
+      await within(tasks).findByRole('button', { name: taskCopy.retry });
 
-    workspace.request(betaProject, taskTwo, 1);
-    const opened = await openedTask(taskTwo);
-    expect(within(opened).getByText(taskCopy.uncertain)).toBeVisible();
-    expect(
-      within(opened).getByRole('button', { name: 'Save Task' }),
-    ).toBeDisabled();
+      workspace.request(betaProject, taskTwo, 1);
+      const opened = await openedTask(taskTwo);
+      expect(within(opened).getByText(taskCopy.uncertain)).toBeVisible();
+      expect(
+        within(opened).getByRole('button', { name: 'Save Task' }),
+      ).toBeDisabled();
 
-    fireEvent.click(
-      within(opened).getByRole('button', { name: taskCopy.retry }),
-    );
-    await waitFor(() => expect(server.count(taskEdit(taskOne))).toBe(2));
-    const [first, retried] = server.requests(taskEdit(taskOne));
-    expect(first?.key).toBeTruthy();
-    expect(retried?.key).toBe(first?.key);
-    expect(retried?.body).toBe(first?.body);
-    expect(first?.body).toBe(
-      JSON.stringify({
-        expectedVersion: 1,
-        title: 'Corrected preparation notes',
-      }),
-    );
-    // The recovered command shows its own Task; the request is not replayed.
-    await openedTask({ ...taskOne, title: 'Corrected preparation notes' });
-    await settle();
-    expect(server.count(taskRead(taskTwo))).toBe(1);
-  });
+      fireEvent.click(
+        within(opened).getByRole('button', { name: taskCopy.retry }),
+      );
+      await waitFor(() => expect(server.count(taskEdit(taskOne))).toBe(2));
+      const [first, retried] = server.requests(taskEdit(taskOne));
+      expect(first?.key).toBeTruthy();
+      expect(retried?.key).toBe(first?.key);
+      expect(retried?.body).toBe(first?.body);
+      expect(first?.body).toBe(
+        JSON.stringify({
+          expectedVersion: 1,
+          title: 'Corrected preparation notes',
+        }),
+      );
+      // The recovered command shows its own Task; the request is not replayed.
+      await openedTask({ ...taskOne, title: 'Corrected preparation notes' });
+      await settle();
+      expect(server.count(taskRead(taskTwo))).toBe(1);
+    },
+  );
 
   it.each([
     { outcome: 'confirmed while the requested Task waits', uncertain: false },
@@ -870,25 +876,28 @@ describe('Requested Task opens', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('lets a newer request supersede a Task open still reading, so its late reply never renders', async () => {
-    const server = taskServer();
-    const workspace = renderWorkspace();
-    await screen.findByRole('button', { name: betaRow });
-    server.hold(taskRead(taskOne));
-    workspace.request(betaProject, taskOne, 1);
-    const earlier = await server.requested(taskRead(taskOne));
+  it.each([false, true])(
+    'lets a newer request supersede a Task open still reading, so its late reply never renders with root StrictMode=%s',
+    async (strict) => {
+      const server = taskServer();
+      const workspace = renderWorkspace(strict);
+      await screen.findByRole('button', { name: betaRow });
+      server.hold(taskRead(taskOne));
+      workspace.request(betaProject, taskOne, 1);
+      const earlier = await server.requested(taskRead(taskOne));
 
-    workspace.request(betaProject, taskTwo, 2);
-    await openedTask(taskTwo);
-    expect(earlier.signal?.aborted).toBe(true);
-    await server.release(taskRead(taskOne));
+      workspace.request(betaProject, taskTwo, 2);
+      await openedTask(taskTwo);
+      expect(earlier.signal?.aborted).toBe(true);
+      await server.release(taskRead(taskOne));
 
-    const tasks = await openedTask(taskTwo);
-    expect(
-      within(tasks).queryByRole('heading', { name: taskOne.title }),
-    ).not.toBeInTheDocument();
-    expect(server.count(betaProjectRead)).toBe(2);
-  });
+      const tasks = await openedTask(taskTwo);
+      expect(
+        within(tasks).queryByRole('heading', { name: taskOne.title }),
+      ).not.toBeInTheDocument();
+      expect(server.count(betaProjectRead)).toBe(2);
+    },
+  );
 
   it('waits with the Project open behind a pending registration, then opens the Task', async () => {
     const server = taskServer();
@@ -929,28 +938,31 @@ describe('Requested Task opens', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('drops a Task open still reading when the identity is replaced, and never replays it', async () => {
-    const server = taskServer();
-    const workspace = renderWorkspace();
-    await screen.findByRole('button', { name: betaRow });
-    server.hold(taskRead(taskTwo));
-    workspace.request(betaProject, taskTwo, 1);
-    const earlier = await server.requested(taskRead(taskTwo));
+  it.each([false, true])(
+    'drops a Task open still reading when the identity is replaced, and never replays it with root StrictMode=%s',
+    async (strict) => {
+      const server = taskServer();
+      const workspace = renderWorkspace(strict);
+      await screen.findByRole('button', { name: betaRow });
+      server.hold(taskRead(taskTwo));
+      workspace.request(betaProject, taskTwo, 1);
+      const earlier = await server.requested(taskRead(taskTwo));
 
-    workspace.replaceIdentity();
-    await waitFor(() => expect(openedDetail()).not.toBeInTheDocument());
-    await screen.findByRole('button', { name: betaRow });
-    expect(earlier.signal?.aborted).toBe(true);
-    server.serve(taskRead(taskTwo));
-    await server.release(taskRead(taskTwo));
-    workspace.rerenderSameRequest();
-    await settle();
+      workspace.replaceIdentity();
+      await waitFor(() => expect(openedDetail()).not.toBeInTheDocument());
+      await screen.findByRole('button', { name: betaRow });
+      expect(earlier.signal?.aborted).toBe(true);
+      server.serve(taskRead(taskTwo));
+      await server.release(taskRead(taskTwo));
+      workspace.rerenderSameRequest();
+      await settle();
 
-    expect(openedDetail()).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: taskTwo.title }),
-    ).not.toBeInTheDocument();
-    expect(server.count(betaProjectRead)).toBe(1);
-    expect(server.count(taskRead(taskTwo))).toBe(1);
-  });
+      expect(openedDetail()).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: taskTwo.title }),
+      ).not.toBeInTheDocument();
+      expect(server.count(betaProjectRead)).toBe(1);
+      expect(server.count(taskRead(taskTwo))).toBe(1);
+    },
+  );
 });
