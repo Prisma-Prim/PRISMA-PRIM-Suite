@@ -175,6 +175,55 @@ Administration emits
 transition under the existing minimal bundle-label convention. §14 owns protected
 business history and exact immutable replay, not a generic Activity permission.
 
+The [bounded mission-applicability contract (§15)](release-1-mission-obligations-prd.md#15-bounded-mission-applicability-proposals-and-decisions-969)
+is an **Approved bounded contract** under [root’s actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/969#issuecomment-6482673283),
+without runtime delivery or actual grants. It specifies two independent Company-scoped
+opt-in bundles:
+
+| Bundle / code                                                                           | Exact captured v1 permissions                                                   |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Company Mission Applicability Coordinator / `company_mission_applicability_coordinator` | `project.mission_applicability.propose`                                         |
+| Company Mission Applicability Approver / `company_mission_applicability_approver`       | `project.mission_applicability.decide`, `project.mission_applicability.restore` |
+
+Existing Company assignment administration explicitly grants/revokes captured v1
+through current `company.assignment.manage`, using
+`/company-mission-applicability-coordinator-assignments` and
+`/company-mission-applicability-approver-assignments` for active same-Workspace
+membership and Company. No old captured bundle/version, repeated grant, migration,
+bootstrap, title, responsibility or Workspace ownership acquires these rights.
+Null/unknown captures fail closed; Company Mission Result Reviewer v1 is unchanged
+and grants no scope authority. The two capabilities may be explicitly assigned
+to the same person; no mandatory two-person rule or real assignment is inferred.
+
+Both grant no context/read, result review/recording, Task/Project/Contract mutation,
+closing, certification, Activity or administration right. Section 15.2 owns all
+independent read prerequisites; Coordinator alone permits proposal/correction,
+Approver alone decision/restoration. Applicability reads/history need the combined
+read boundary without either write grant. Commands and identical committed
+confirmation require current combined reads and the action's live captured grant,
+serialized by Access against successful revocation or parent suspension. Iurie
+remains the known first-tenant principal approver through actual explicit
+application assignment, never a hard-coded runtime identity or grant from this PRD.
+
+The active-Company current-Actor projection exposes
+`missionApplicabilityProposalPermissions`,
+`missionApplicabilityCoordinatorAssignmentId`,
+`missionApplicabilityCoordinatorPermissionSetVersion`,
+`missionApplicabilityDecisionPermissions`,
+`missionApplicabilityApproverAssignmentId` and
+`missionApplicabilityApproverPermissionSetVersion`, recognizing captured v1 only.
+These facts support consumed-state retirement, never replace live server checks;
+one write capture's change preserves independently valid read/other-write owners.
+The full transitive Actor recovery guard remains required by §15.8.
+
+Actual transitions emit
+`company_mission_applicability_coordinator_assignment.granted` / `.revoked` or
+`company_mission_applicability_approver_assignment.granted` / `.revoked`, with the
+existing Company assignment target, administrator membership/server time and
+bundle-label-only metadata. Exactly one event per actual state change; no event
+for denied, failed, repeated-state or exact-replayed administration. Existing
+administration visibility supplies no protected applicability content/history.
+
 The [Project responsible member slice](release-1-project-task-prd.md#21-approved-project-responsible-member-367) adds `project.update`, listed among the initial permissions of the consolidated decision record §8.1. It exists only through captured **Company Project Access v2**, which is v1 (`project.read`, `project.create`) plus `project.update`. Project Access v1 remains exactly read and create. Existing v1 assignments never expand in place and receive no migration grant. A fresh grant after explicit revocation captures v2 through the existing Company assignment administration and its attributable grant/revoke events. Every delivered Project-read and Project-create check accepts captured v1 or v2; `project.update` requires a live v2; null or unknown versions fail closed. In this slice `project.update` authorizes only the responsible-member change defined by the Project/Task PRD. It grants no Task, Document, Client, Company context or administration authority. No other bundle, Workspace ownership, Company Context Access, Company Director Client Access or Task Manager assignment confers it.
 
 The [provisional Project lifecycle](release-1-project-task-prd.md#23-approved-provisional-project-lifecycle-406) adds the opt-in **Company Project Approver v1**. It contains exactly `project.lifecycle.transition` (activate, hold, resume) and `project.close` (complete, cancel): the separate lifecycle-transition and close permissions of Project/Task PRD section 8 and decision record §8.1.

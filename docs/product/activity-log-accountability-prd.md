@@ -148,6 +148,27 @@ history owns those fields under current combined read prerequisites. Native
 coupled integrity refuses partial audit/receipt/history commits. Separate Reviewer
 assignment events follow Authorization §8's minimal bundle-label convention.
 
+The [mission-applicability contract (§15)](release-1-mission-obligations-prd.md#15-bounded-mission-applicability-proposals-and-decisions-969)
+is approved under [root’s actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/969#issuecomment-6482673283). It specifies one internal event per
+material immutable fact: `project.mission_applicability.proposed`,
+`project.mission_applicability.proposal_corrected`,
+`project.mission_applicability.approved`, `project.mission_applicability.rejected`
+or `project.mission_applicability.restored`. The Company-owned applicability fact
+is the target; server actor/time and only `applicabilityRevision` metadata are
+retained. Fact/stream, immutable receipt/history, event and original Client
+operational-use fence commit together; native coupled integrity rejects partial
+commits. Read, denial, rollback, unchanged and exact confirmation add no event
+or fence advance.
+
+These events have no generic Activity, ordinary Task history/Home/search/count/
+filter/diagnostic projection. Native protected applicability current/history alone
+exposes proposal/decision IDs, states, reasons, reported scope/agreement sources
+and attribution under §15.2's combined current reads. No result-review event or
+Contract amendment is synthesized. Separate Coordinator/Approver assignment
+events retain Authorization §8's minimal bundle-label Company administration
+convention and existing visibility. This contract records no executed event,
+approved real scope decision or old-bundle permission expansion.
+
 For [exact mission Task results](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832),
 each committed first declaration or material correction records respectively
 `task.result.recorded` or `task.result.corrected`, targeting the Company-owned

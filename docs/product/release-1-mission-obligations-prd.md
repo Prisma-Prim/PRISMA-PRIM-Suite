@@ -1,14 +1,14 @@
 # Consulting mission obligations, exceptions and closure — D5/D13
 
-**Status:** Approved bounded readiness (§13) and attributable result-review (§14) contracts under Dan's 2026-10-26 instruction to apply established rules. Certification closure remains unresolved in §12.
+**Status:** Approved and delivered bounded readiness (§13) and attributable result-review (§14); §15 applicability is an Approved bounded contract under #969 and root’s actual delegated disposition. Certification closure remains unresolved in §12.
 
 **Owner:** Dan Popescu; source-backed preparation under [#879](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/879).
 
 **Parents:** [#820](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/820), Project/Task [#63](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/63).
 
-**Behavior baseline:** main `82a3796743777e89bf7c64efb1bb1f77912a8eab`; §13 delivered through #883 / PR #884. The earlier anonymous milestone proof retains its own recorded revision.
+**Preparation baseline:** main `7333e3a74c38c805dbb29d270f377bec621a2e57`; §13 delivered through #883 / PR #884 and §14 through #887 / PR #888. The earlier anonymous milestone proof retains its own recorded revision.
 
-Dan explicitly authorized applying the established rules after the source reassessment. This approval is a bounded product decision, not a new Iurie answer or proof of historical work. §13 specifies the delivered read-only outcome; §14 fully specifies the next attributable review outcome. Existing Project/Task §§23,27,28 retain delivered behavior; subsequent mutation outcomes require their own complete approved vertical contracts. No real assignment, operational model, certification policy or deployment is approved here.
+Dan explicitly authorized applying the established rules after the source reassessment. That bounded approval is not a new Iurie answer or proof of historical work. §§13–14 specify delivered outcomes; §15 specifies the next approved complete applicability journey after ordered independent Standards then Spec preparation and root’s actual delegated product disposition. Existing Project/Task §§23,27,28 retain delivered behavior; later outcomes require their own complete approved vertical contracts. No real assignment, operational model, certification policy or deployment is approved here.
 
 ## 1. Problem, value and current evidence
 
@@ -110,7 +110,8 @@ bounded completion record.
 ## 3. Proposed actors, scope and authority
 
 Sections 3–9 retain a non-executable mutation blueprint for later qualification.
-Only §§13–14 are complete approved runtime contracts. In particular, the proposed
+Sections 13–15 are complete approved runtime contracts; §15 specifies
+applicability without approving this broader blueprint. In particular, the proposed
 completion examples cannot resolve or bypass `MISSION-CLOSE-01`.
 
 All data remains inside one Workspace, Company, Project and its original
@@ -126,8 +127,8 @@ operator access and visible Company selection grant no mission authority.
 | Project closer                 | Commit the reviewed governed completion                 | Mission-approval opt-in plus existing `project.close`, Project/Client and all independently consumed evidence reads.                 |
 | Company access administrator   | Deliberately grant/revoke a new capability              | Existing assignment administration; no bootstrap/backfill or automatic Iurie assignment.                                             |
 
-Authorization §8 will own exact immutable bundle names/versions when the approved
-contract is normalized. Existing captured bundles never gain these capabilities
+Authorization §8 owns §15's approved exact applicability bundles; broader adoption,
+next-action and completion capabilities remain unqualified. Existing captured bundles never gain these capabilities
 silently. Membership, actor, Company, exact captured authority and mutable state
 are rechecked at each command and replay. Unknown versions fail closed.
 
@@ -335,7 +336,7 @@ runtime tests listed here are future requirements, not executed proof.
 
 The supplied dossier, email clarifications and existing Sarcina transcriptions are reused. No repeated questionnaire or upload is required. Known source facts, reasoned product synthesis and actual unproved outcomes remain distinct. The broader 105-page Sarcina is used through its existing controlled transcription, not claimed freshly reread; E08 is the different pricing specification.
 
-The read-only readiness outcome in §13 is delivered through #883 / PR #884. Attributable human review in §14 is implemented by #887, following the approved #885 contract and the established evidence rules. It needs no answer about closing without certification. Guarded opt-in completion and scoped applicability remain later separately qualified contracts; §§3–9 alone do not authorize their implementation. No unsupported source or unreviewed declaration automatically becomes accepted work. The pending certification policy never silently becomes permissive.
+The read-only readiness outcome in §13 is delivered through #883 / PR #884. Attributable human review in §14 is implemented by #887, following the approved #885 contract and the established evidence rules. Neither needs an answer about closing without certification. Section 15 supplies the approved complete scoped-applicability contract; canonical merge and fresh runtime readiness remain required. Guarded opt-in completion remains separately unqualified; §§3–9 alone do not authorize mutation implementation. No unsupported source or unreviewed declaration automatically becomes accepted work. The pending certification policy never silently becomes permissive.
 
 The owner's request to keep outstanding questions durably for one eventual email is recorded in §12. Another agent follows that register, retains its state and reminds Dan when assembling the consolidated request. There is no individual-answer prompt or scheduled email. The completed anonymous ordinary-lifecycle milestone remains delivered.
 
@@ -716,3 +717,533 @@ capture/identity/Project changes, independent work preservation and locale/frame
 behavior. Existing source/Task/result/ordinary closure regressions remain required.
 Targeted checks, bounded independent review and final exact-source/current-base/tree
 integration proof precede merge; proposed tests here are not execution evidence.
+
+## 15. Bounded mission applicability proposals and decisions (#969)
+
+### 15.1 Authority, problem and bounded value
+
+**Status:** Approved bounded contract. **Owner:** Dan Popescu; delegated product
+preparation/review by agents. **Consumers:** Authorization, Activity and one later
+fresh Project/Template runtime child of [#820](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/820).
+This section completely specifies proposal → exact decision → attributed restoration
+for one preserved activity. It delivers no runtime or actual business decision.
+
+Section 2B already establishes coordinator proposal, explicit mission-approver
+accept/reject, preserved reason/scope/agreement basis and attributed restoration.
+Section 1 locates the controlled E05/E06/E07 source observations and interview
+authority; [Project/Task §28](release-1-project-task-prd.md#28-approved-bounded-thirteen-activity-pilot-plan-836)
+owns the exact flat thirteen-activity copy. Those sources establish neither an
+approved stage graph nor a waiver of a contractual undertaking.
+[Dan's delegated PRD review](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237),
+[independent preparation](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283696600)
+and [autonomous continuation](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6465537888)
+authorize bounded source-backed synthesis. The exact captured interface, closed
+payloads, conservative read boundary, bounds, revisions, receipts and UI recovery
+below are explicit reversible agent product synthesis, not additional Iurie answers.
+Root’s [actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/969#issuecomment-6482673283)
+follows ordered independent Standards then Spec preparation. No personal Dan
+review or new Iurie answer is claimed.
+
+A reader can currently inspect intended results and human result reviews but
+cannot distinguish an actual proposed/decided exclusion from a cancelled Task.
+Success is one understandable, reloadable human journey with zero silent
+exclusions, zero overwritten decisions and zero claims that excluded work was
+performed. This is an applicability record, without policy adoption, completion
+guards or changes to ordinary Task/Project operation. Every source row starts
+`REQUIRED` only in this bounded applicability projection; it does not enroll an
+old Project in a new lifecycle policy.
+
+### 15.2 Actors, independent authority and stories
+
+[Authorization §8](tenant-company-client-authorization-prd.md#8-initial-permission-families)
+owns the exact two new independent captured v1 opt-ins. **Company Mission
+Applicability Coordinator** proposes/corrects; **Company Mission Applicability
+Approver** accepts, rejects and restores. Result Reviewer v1 remains unchanged
+and supplies neither capability. A person may hold both deliberate assignments;
+the sources separate capabilities and do not mandate two different people.
+Iurie is the known first-tenant principal approver only through an actual explicit
+application assignment. This contract creates no grant to him or anyone else.
+
+| Operation                                                          | Required current independent authority                                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ordinary Project/Task/copied-plan/readiness/result/review/PDF work | Its existing owner; applicability grants add none                                                                                                                                                                                                                                    |
+| Applicability current/history read and command confirmation        | Same-Workspace active Internal User/membership/Company context, Project and original Client/relationship read, Task read, complete copied-plan and captured Template User v2 pilot read; independent Document metadata, Mission Deliverable Access and Content Reader read as in §14 |
+| Propose or correct a pending proposal                              | All applicability reads plus captured Coordinator v1                                                                                                                                                                                                                                 |
+| Accept, reject or restore                                          | All applicability reads plus captured Approver v1                                                                                                                                                                                                                                    |
+| Grant/revoke either opt-in                                         | Existing `company.assignment.manage` administration, active same-Workspace member and Company; no business read/decision granted to the administrator                                                                                                                                |
+
+The combined evidence-read boundary protects literal source/agreement reasoning
+even when it reports external evidence. It grants no access to any referenced
+Document or result; opening/downloading uses that owner's live checks. No upload,
+designation, result Recorder/Reviewer, Task manage, Project close or Contract
+read is required merely to record this journey. A literal contractual reference
+is never resolved using borrowed Contract permission. Those independent owners
+retain their own drafts, pending/uncertain intents and history.
+
+1. As a reader, I see each exact copied activity and distinguish required work,
+   pending/rejected proposals, an approved exclusion and restored applicability.
+2. As a coordinator, I select one named activity and explain a concrete reason
+   and scope basis without cancelling its Task or changing its expected result.
+3. As a coordinator correcting a pending proposal, I append a motivated successor
+   while retaining the exact earlier text, proposing actor and time.
+4. As an approver, I read the exact pending Version and current app observations,
+   then explicitly accept or reject it with my decision basis.
+5. As an approver handling changed contractual scope, I preserve the reported
+   actual parties' agreement/source basis without claiming legal verification.
+6. As an approver, I restore the exact active exclusion with a new reasoned act;
+   the original proposal, decision and attribution remain visible.
+7. As a historical reader, I reopen decisions after Task/result changes, ordinary
+   closure, original Client supersession or API restarts without resuming work.
+8. As a caller after a lost reply, I retry the identical command and recover its
+   conserved receipt without duplicate decisions, events or Client-fence changes.
+9. As a user losing one grant, I immediately lose only its consumed protected
+   state; permitted independent native work and reads remain usable.
+10. As a keyboard user in either existing frame and any supported locale, I can
+    complete and recover the whole journey without entering opaque identifiers.
+
+### 15.3 Exact scope, immutable facts and transitions
+
+Only `CONSULTING_MISSION_PILOT_ILLUSTRATIVE` Version 1 and the complete preserved
+§28 source/mapping qualify. Every fact keeps Workspace, Company, original Client
+and relationship, Project, copied source/Version, stable activity key and exact
+mapped Task. Derive these on the server; do not join titles, use today's catalogue,
+retarget a canonical Client or enroll a Company-configured plan. All thirteen
+rows must be valid and one-to-one even though each command selects exactly one.
+Extra Tasks do not become activities. Unknown/corrupt/incomplete mappings fail
+as errors; legitimate no-plan/manual/legacy copies return unsupported reads.
+
+One Project-local applicability stream starts at revision 0. Each material fact
+advances it once, with a positive signed-32-bit revision, immutable ID, previous
+stream fact, per-activity predecessor, actor membership/Internal User/display
+attribution, exact consumed assignment ID/captured v1 and server UTC time.
+Revisions never wrap. Domain facts are closed variants:
+
+A proposal Version is identified by its immutable fact ID and Project-local fact
+revision; there is no mutable or independently reset proposal-Version counter.
+
+| Fact                 | Required immutable payload and derived consequence                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROPOSED`           | New proposal Version with concrete reason and complete scope basis; current applicability stays `REQUIRED`, proposal is pending                                      |
+| `PROPOSAL_CORRECTED` | Exact current pending proposal predecessor, replacement complete reason/basis and correction reason; predecessor is visibly superseded, new Version alone is pending |
+| `APPROVED`           | Exact current pending proposal ID/Version and approver decision basis; applicability becomes `EXCLUDED_BY_APPROVER`                                                  |
+| `REJECTED`           | Exact current pending proposal ID/Version and approver decision basis; applicability stays `REQUIRED`, rejection stays visible                                       |
+| `RESTORED`           | Exact active approval ID and approver restoration basis; applicability returns to `REQUIRED`, exclusion history is retained                                          |
+
+There is at most one pending proposal or active exclusion per activity. A new
+proposal after rejection/restoration links its per-activity predecessor and keeps
+the whole history. A coordinator with live authority may correct any current
+pending proposal, preserving both actors; proposing actor identity alone grants
+no continuing authority. An approved proposal cannot be edited or replaced by
+another exclusion: restore first, then propose anew. Rejected/approved/restored
+facts have no update/delete/withdraw route. A mistaken decision is corrected only
+through this explicit new journey; never rewrite its outcome, reason or actor.
+
+Pending, rejected and superseded proposals change no applicability. Approval
+does not complete a Task, accept a result, fulfill work, amend a Contract or remove
+the intended outcome. Restoration changes this record only; a future approved
+completion contract must consume it explicitly. Delayed work stays required;
+Task cancellation/reopening, removed evidence, a missing PDF or a changed review
+neither creates nor removes an exclusion. The current app-observation stamp is
+separate from historical decisions, never a claim about changed external facts.
+
+### 15.4 Scope and reported agreement basis
+
+Every proposal Version records a trimmed literal `reason` (1–1000 Unicode code
+points) and `scopeBasis` (1–2000), identifying why this exact activity falls outside
+the reported agreed case scope. The required `agreement` is exactly one variant:
+
+- `NO_CONTRACTUAL_CHANGE_REPORTED`, with `basis` (1–2000), explaining why the
+  proposal is reported not to alter an undertaking; this is a human statement.
+- `PARTIES_AGREEMENT_REPORTED`, with `reference` (1–2000), identifying the actual
+  parties' agreement and its reported source/version/date/location and parties
+  as known. Unknown details remain explicitly unknown; an internal permission
+  or approval is not that agreement. Preserve the actual agreement in its
+  governed source; this literal record identifies it and does not replace it.
+- `PARTIES_AGREEMENT_UNAVAILABLE`, with `basis` (1–2000), explicitly recording a
+  contractual change for which the parties' agreement is not available. This
+  supports pending/rejected history; approval of this variant is refused with 409.
+
+A known contractual change without an available actual parties' agreement basis
+cannot be approved. The unavailable variant makes that refusal deterministic;
+obtaining a reported source requires a corrected proposal Version. Record a
+pending proposal only with an honest reported basis;
+if sufficient agreement is unavailable the approver rejects or leaves it pending.
+Do not relabel a contractual change as the first variant to bypass that condition.
+The approver's mandatory `basis` (1–2000) states their reviewed reason and scope/
+agreement basis for acceptance or rejection. Acceptance of a reported reference
+does not verify agreement, parties, mandate, signatures, content concordance or
+legal validity. No background fetch, auto-link, Contract mutation, signature or
+payment record follows. Later correction uses a new preserved fact, not silent
+replacement of the reported original.
+
+Proposal correction has an additional `correctionReason` (1–500). Restoration
+has `basis` (1–2000), identifying why the exact excluded activity becomes required
+again, including the reported scope/agreement source where relevant. Store/display
+all text as literal plain text with visible line breaks, never executable markup.
+Use ECMAScript exterior trim, preserve interior characters/line endings, count
+Unicode code points, reject NUL and unpaired surrogates; normalize neither accents
+nor business wording. Empty, wrong-type, over-bound and unknown fields are 400.
+
+Regardless of any exclusion, including CT_AN13, the projection always retains
+`BUSINESS_CLARIFICATION_PENDING` / `MISSION-CLOSE-01`. An exclusion cannot answer
+or bypass the residual closure hold. Section 12 remains its sole question register.
+No handover/Client acceptance, certification, qualification, verified NC closure,
+legal or whole-D5/D13/MVP completion is asserted by this record.
+
+For a synthetic example, a coordinator proposes CT_AN07 with a `DEMO` reason and
+a literal `DEMO` parties-agreement source reference. Approval records that exact
+proposal as excluded while its ordinary todo Task stays todo; restoration returns
+the row to required and retains both decisions. A rejected CT_AN13 proposal leaves
+it required. Even an approved CT_AN13 exclusion retains the same pending closure
+question. These examples prove mechanics only, not an actual scope agreement.
+
+### 15.5 Narrow public commands, observations and recovery order
+
+Project/Template owns one narrow applicability interface composed with existing
+Access, Client, Project, Task/result and copied-plan public interfaces. Use
+`POST /projects/:projectId/mission-applicability` with a required existing-format
+`Idempotency-Key`. Its closed `action` is `PROPOSE`, `CORRECT_PROPOSAL`, `DECIDE`
+or `RESTORE`. All carry exact mapped `taskId`, nonnegative
+`expectedApplicabilityRevision`, positive `expectedTaskVersion`, nonnegative
+`expectedResultRevision` and nonnegative `expectedLifecycleRevision` observed in
+the current authorized read. Bound all revisions to 0–2147483647 as applicable.
+The action-specific payload is exactly:
+
+- `PROPOSE`: complete `reason`, `scopeBasis`, `agreement`.
+- `CORRECT_PROPOSAL`: exact `proposalId`, complete replacement fields above and
+  `correctionReason`; no partial field patch.
+- `DECIDE`: exact `proposalId`, `outcome` exactly `APPROVE` or `REJECT`, and `basis`.
+- `RESTORE`: exact `approvalId` and `basis`.
+
+The referenced proposal/approval is selected from the native current projection,
+not supplied by manual ID entry. Server facts preserve the exact source criterion,
+Task title/status/version, current result revision/ID (or authorized absence) and
+lifecycle revision observed for each new fact. They do not copy declaration/PDF
+content into applicability or borrow result-review authority. Review-stream changes
+are not consumed observations; the separate §14 judgment remains independently
+readable and unchanged. A decision may review a still-current proposal against
+fresh Task/result/lifecycle observations after an explicit reload; it records those
+new observations without changing the proposal's original content or stamp.
+
+Use a dedicated applicability command namespace: Workspace, actor membership and
+key identify a receipt; fingerprint Company, Project, target, action and every
+normalized input including observations and predecessor. Same-key changed intent,
+action, target or Company conflicts. The order is:
+
+1. Authenticate/establish current context; validate route, key and closed syntax.
+   Preserve owning 401/403/404 non-disclosure boundaries before target details.
+2. Under current combined reads and the action's live captured write authority,
+   resolve/serialize the actor/key and original target. A matching committed
+   receipt returns its original outcome only after current protected history and
+   any recorded result reference remain readable. This precedes new-write state
+   and stale-observation checks. Lost authority denies replay; a changed key-body
+   association is 409 without revealing its previous hidden target.
+3. With no matching receipt, require an open Project and active exact original
+   Client/relationship, complete supported source and the submitted current
+   applicability, lifecycle, mapped Task and result observations. Any Task status
+   may be proposed/decided; done or cancelled implies no exclusion. Stale facts,
+   or wrong mapped target are 409, with no writes.
+4. At current stream/app observations, a fresh key is `unchanged` only for these
+   closed cases: `PROPOSE` repeats the same actor's current pending complete
+   reason/basis/agreement; `CORRECT_PROPOSAL` targets the exact current pending
+   Version and leaves that complete normalized content unchanged (a correction
+   reason alone adds nothing); `DECIDE` repeats this activity's last decision by
+   the same actor against the same proposal/outcome/basis; `RESTORE` repeats this
+   activity's last restoration by the same actor against the same approval/basis.
+   Store only a new receipt pointing to the conserved fact, with no revision,
+   event or fence. A fresh-key correction naming the superseded Version conflicts;
+   only its original matching key can confirm the earlier correction.
+5. Otherwise validate the exact current predecessor and §15.3 transition, then
+   append one valid successor and its atomic effects; wrong predecessor/transition
+   is 409. Unknown states,
+   broken predecessors, missing coupled history or malformed stored receipts are
+   server errors, never empty success. Revision exhaustion is 409 without effects.
+
+Successful commands return 201 with exactly `action` (`recorded` or `unchanged`),
+`projectId`, `factId` and `applicabilityRevision`. The receipt
+uses the referenced fact's revision, including a no-op referring to an earlier
+fact than the latest Project-wide stream revision. Read current state separately.
+Its immutable original is returned on exact confirmation; replay is never a current projection and
+never restores old applicability. New writes on closed/historical originals fail
+409; current-authorized history and identical committed confirmation survive
+ordinary closure or original Client supersession. A response-construction failure
+inside the transaction rolls back all effects. A transport failure after commit
+is uncertain and recovered with the identical target/body/key; no automatic new
+intent or optimistic success is allowed. Confirmed then failed reload stays
+confirmed, with a separate current-state reload action.
+
+### 15.6 Current projection, history and privacy
+
+`GET /projects/:projectId/mission-applicability` and `/history` share the existing
+Project/Client/copied-plan/Task privacy boundary. Legitimately unsupported current
+read is `applicability: null`; unsupported history is `history: null`. For a valid
+copy with independently denied evidence read, return only an unavailable variant,
+without stream revision, states, IDs/counts, actors/times or reason/reference text,
+even for an empty stream. Other authorized source/Task regions remain available.
+No permission failure is presented as missing agreement or missing work.
+
+An available current read is one repeatable-read, read-only snapshot containing
+Project identity/status/lifecycle revision, immutable source identity, current
+applicability revision, mutation eligibility and all thirteen source-ordered rows.
+Each row has its stable key/criterion/Task, current Task/result observations,
+`REQUIRED` or `EXCLUDED_BY_APPROVER`, the exact pending proposal or none and last
+proposal/decision/restoration references with their preserved text/actors/time.
+It exposes the unconditional pending-certification marker. Empty means revision 0,
+all required and no recorded proposals, not proof about real work or agreement.
+No `fulfilled`, `canComplete`, acceptance total or derived obligation-completion
+flag exists. Existing §§13–14 responses/codes keep their meanings; display these
+as separate facts rather than relabel raw readiness or human result judgments.
+
+History returns at most 25 immutable facts newest first by Project-local revision,
+with `hasMore` and `nextBeforeRevision` (last returned revision only when more
+exists, otherwise null). The only query is an optional positive bounded
+`beforeRevision`; reject malformed/unknown parameters. A supplied cursor must name
+an existing fact revision in this Project or return 400 after the ordinary privacy
+gates; it carries no foreign resource ID. Apply all privacy gates before
+selection/lookahead. Preserve proposal Versions and all predecessors even when
+not on the current page. Selection focuses one of the thirteen named activities;
+history remains explicitly Project-wide and never silently fetches unbounded
+activity history. Missing linked history/corrupt records are errors.
+
+Resolve every returned recorded-result reference through Task/result and Document
+owners under current authority, including historical observations. An independently
+denied needed reference makes that protected projection unavailable; never select
+an older readable decision as current or erase a fact into an empty result. Missing
+referenced history remains corruption, distinct from an authorized empty stream.
+
+Only protected native applicability current/history exposes these facts. No new generic
+Activity, ordinary Task history/queues, Home, search, dashboard, count, filter,
+diagnostic or export projection contains applicability prose, references, fact IDs,
+states or hidden counts. Opening an exact Task/result/PDF retains its independent
+authority; a reported literal URL is inert text. Provider/server failures remain
+errors, not unavailable/empty successes. Logs/metrics may carry sanitized failure
+codes and opaque correlation IDs, never human basis, source/evidence text or
+protected target labels. PostgreSQL/NestJS remain authoritative; no provider,
+AI, background synchronization or certification lookup is introduced.
+
+### 15.7 Transactions, locks, events and compatibility
+
+One caller-owned PostgreSQL transaction includes fact/stream advance, immutable
+receipt/history, minimal Activity event and original Client operational-reference
+use fence. No nested transaction substitutes a different snapshot. Access owns
+the existing identity/membership/required-assignment/Company write fences; Client
+owns identity-before-relationship locks and operational-use/reversal fencing;
+Project owns lifecycle locking; Task/result and Document owners qualify and lock
+their consumed exact facts. Acquire those public guards in their canonical order
+(Access parents/roles, actor/key mutex, Client identity then relationship, Project, mapped Task and
+consumed result/evidence), then serialize the applicability stream. Do not reverse
+the owners' order or query their private tables to manufacture permission.
+Recheck observations after waiting and through commit. Dedicated actor/key
+serialization occurs after Access authority and before Client/resource locks,
+matching the existing review command discipline without an inverse dependency.
+
+Prove both serial and held contested orders: applicability versus Task/result
+change, Project closure, Client archive/union/reversal, required grant revocation
+and member/Internal User/Company suspension. If the competing invalidation wins,
+the new stale/unauthorized command fails with no partial fact/receipt/event/fence;
+if applicability wins, its complete attributable fact remains and the later
+ordinary operation follows its own rules. A result change makes observations old,
+not the prior exclusion disappear. Competing keys for one expected stream revision
+cannot both append; identical keys converge on one receipt. An unrelated grant
+or result-review write cannot invalidate a consumed fact it does not change.
+No applicability transaction writes Task status, result/review, Contract or closure.
+
+Reviewed additive Drizzle/SQL migration adds only bounded applicability storage,
+receipts/constraints and the two captured assignment kinds. Reserve no migration
+number in this contract. Native defense rejects cross-Workspace/Company/Project/
+original-Client/source/Task/actor/capture links, duplicate successor revisions,
+unmapped activity, forged predecessor/approval/proposal, impossible action payloads
+and partial event/receipt/history commits. Seal append-only facts and their
+attribution; historical Task/result versions must not prevent legitimate future
+ordinary changes. Fault injection at row, stream, event, receipt and response
+construction proves full rollback, including the Client fence.
+
+[Activity §7](activity-log-accountability-prd.md#7-authorization-and-privacy)
+owns one internal event per material fact, targeting the Company-owned applicability
+fact: `project.mission_applicability.proposed`, `.proposal_corrected`, `.approved`,
+`.rejected` or `.restored`. Metadata is only `applicabilityRevision`; server actor
+and time are conserved. Reads, denied/failed/no-op/exact-replayed commands emit
+none and advance no Client fence. Separate grant/revoke events use Authorization's
+existing bundle-label-only Company administration convention once per actual
+transition. There is no generic Activity-read expansion.
+
+The runtime must build a genuine immediate-predecessor database using all
+migrations before its new additive migration, populate representative open/closed,
+manual/legacy/pilot/configured Projects with old source mappings, Task/result/review/
+PDF history, receipts/events and active/revoked captures, then upgrade and repeat
+upgrade. Compare exact old IDs, values, versions/timestamps, fingerprint/receipt
+JSON, events and PDF hashes. No old row, bundle/capture, permission, receipt,
+source, signature declaration or lifecycle meaning changes. No inferred proposal,
+decision, policy adoption, assignment or result is backfilled. New runtime storage
+is additive; rollback/recovery follows the Platform owner without destructive
+rewriting of conserved facts. This documentation issue changes no schema/runtime.
+
+### 15.8 Native interface, lifetimes and complete recovery
+
+Extend the existing Project detail in Prisme and explicit legacy Classic, following
+the [UX owner](ux-localization-configuration-prd.md). Show the source criterion,
+ordinary Task state, separate result/review region, applicability state and history.
+The coordinator selects one named activity and enters reason/scope/agreement
+basis. Preparation shows the exact immutable proposal and observations before
+submission. The approver explicitly chooses approve/reject with basis against that
+Version; restoration shows the exact approval and asks for a restoration basis.
+Reload/history shows preserved predecessors, attribution and reported/unverified
+wording. No hidden control bypass, bulk decision, raw ID field or alternate editor.
+
+Centralized ro/ru/fr/en copy covers complete labels, bounds, non-applicability versus
+performed-work wording, reported agreement, decisions, restoration, history and
+every recovery state. Preserve literal source/reason/reference, dirty inputs,
+selection, control nodes/focus and exact command identity on locale/frame changes;
+locale-only change causes no Actor/Task/source/request I/O. Reuse native semantic
+forms and accepted shared Select/buttons. Keyboard select/type/submit/retry/reload/
+history/restore, visible focus, associated validation and live outcome announcements
+must work at 1440×900 and 390×844 with multiline, Cyrillic, diacritics, non-BMP and
+long unbroken content, without page overflow or relying on color alone.
+
+Distinguish loading, unsupported, available-empty, missing/not-found, denied/revoked,
+unavailable protected evidence, malformed input/response, server failure, stale/
+conflict, pending, uncertain, confirmed and closed/historical read-only states.
+Hold one owner-local command intent while pending/uncertain; disable conflicting
+applicability actions. Preserve exact target/path/payload/observations/key for
+explicit identical retry. A definite conflict requires explicit reload/review
+before a new intent. A read failure never manufactures missing/required state or
+turns an already confirmed decision uncertain. Unrelated Task/result/Project
+intents and exact native continuation survive sibling navigation/filter/reopen
+while their consumed scope lives; submission cannot mutate or retarget them.
+
+Bind owners to actual App parent identity/session generation, Internal User,
+Workspace/membership, Company-selection generation, Project/original-Client
+identity/authority generation and every consumed assignment identity/known Version.
+Source/Task/read authority changes permanently retire the protected read owner;
+Coordinator-only/Approver-only change retires only its write consumer, preserving
+independently valid history and other forms. Evidence-only change retires combined
+applicability reads/intents while permitted Project/Task/source owners survive.
+Parent removal/unmount, sign-out, suspension, true consumed-scope A→B→A and
+equal-permission revoke/regrant cannot revive old replies or saved intents.
+Fresh authority creates a fresh consumer. Abort is useful but insufficient.
+
+Guard before/after every await and before render, focus, navigation, Company/session
+rejection, Actor acceptance, Activity refresh or shared callback. Selected-Company
+403 current-Actor recovery, Workspace fallback and revalidation must capture the
+**full Actor snapshot consumed transitively by recovery**, separately from the
+local feature scope. A recovery-only consumed change invalidates that recovery's
+shared effects while preserving independently valid local work. Held old 200/403
+and already-started selected/Workspace recovery 200/403 must remain inert after
+retirement, including transports ignoring abort. Unrelated grants, locale and
+presentation-only changes preserve local work; they may invalidate broader recovery
+only if that recovery actually consumes the changed Actor fact. Prove production
+App/admin parent lifetimes, not just a child remount or permission-string comparison.
+
+### 15.9 Public acceptance, fit and readiness
+
+1. Begin a separate runtime with meaningful failing **actual public REST on
+   PostgreSQL**: read the thirteen preserved rows, propose, reload exact pending
+   Version, correct with retained predecessor, approve/reject, reload/history,
+   restore and repropose. Assert required/pending/rejected/excluded/restored
+   distinctions, exact criteria/Task identity, reported agreement variants,
+   actor/capture/time, no Task/result/review/source/lifecycle mutation and the
+   unconditional certification-pending marker, including CT_AN13 exclusion.
+2. Prove closed grammar/text bounds/Unicode, malformed route/key/query, unsupported
+   legacy/manual/configured versus corrupt copies, wrong predecessor/target,
+   revision exhaustion, current versus stale Task/result/lifecycle/applicability,
+   exact/changed-key/action/target/Company replay, new-key unchanged and correction-
+   reason-only no-op. Replay after later writes/closure/Client supersession must
+   preserve original receipt JSON while a fresh current read shows today's state.
+3. Prove independent grants in both directions, explicit public administration,
+   captured unknown/null/revoked refusal, same person with both grants allowed,
+   no responsibility/Owner/Result Reviewer substitution, and foreign Workspace/
+   Company/Project/original-Client/task/cursor refusal without hidden metadata.
+   Evidence denial, even on an empty stream, is unavailable with no revision/count/
+   text/attribution; ordinary Project/Task/source work stays independently usable.
+4. Hold real PG competing same/distinct-key writes, Task/result mutation, closure,
+   Client union/archive/reversal and required authority revoke/suspend in both
+   dangerous orders. Assert deterministic serial outcomes; inject fact/stream/
+   receipt/event/response failures and inspect full rollback/fence. Native SQL
+   negative attempts prove scoped links, predecessors, immutable coupled history
+   and no partial audit commit. Restart the API twice and re-read exact facts.
+5. Prove the genuine immediate-predecessor upgrade/repeat-upgrade comparison in
+   §15.7, no auto-grants/enrollment, all existing captures/receipts/bytes and ordinary
+   closure unchanged. Inspect generic Activity/Home/Task/history/search/counts/
+   diagnostics and every changed selector for the same confidentiality pattern.
+   Confirm §§13–14 response semantics and result/PDF historical navigation.
+6. Actual **App/HTTP/admin** tests prepare independent native Task/result/Project
+   draft, pending/uncertain/confirmed intents and applicability intent. Navigate,
+   filter/reopen, fail reads and switch all four locales/frames; assert continuity,
+   exact retry and confirmed-then-refresh-failure. Hold late 200/403 and already-
+   started selected/Workspace Actor recovery across each consumed retirement,
+   equal-string regrant, A→B→A, recovery-only Actor change and unrelated grants.
+   Assert no stale render/focus/navigation/shared Actor/Company/session/Activity
+   effect from the retired operation, with real production parent wiring.
+7. Register an **actual App/API/disposable PostgreSQL** acceptance journey in the
+   existing acceptance configuration, extending the registered Task-result/mission
+   journey or explicitly registering the new one. In both frames at both viewports,
+   use public synthetic role grants and keyboard proposal → exact decision → reload/
+   bounded history → restore. Include rejection/correction, reported agreement,
+   denied evidence, uncertain identical retry/no duplicate and exact native Task/
+   PDF continuation. Inspect original screenshots for complete content, focus,
+   localization and no overflow. Imports, intercepted DTOs, 404-only cases or seeded
+   child state alone are not this proof. No manual Dan/Iurie test is required.
+
+Existing public mission-readiness/review/result/lifecycle/Client/Access REST and
+real App Task-result acceptance seams are prior art, not evidence that §15 already
+works. Keep the new owner narrow and compose existing deep interfaces. One activity
+per command, thirteen fixed rows, 25-fact history and bounded literal references
+make this one complete fresh-session runtime journey; no generic workflow engine,
+batch decision, source editor or completion guard is needed. Bounds are resource
+limits, not a production latency SLA. If fresh current-source seam/ownership/fit
+checks show it exceeds one context, re-scope to a smaller **complete observable
+journey** before assignment; do not drop authorization, concurrency or acceptance.
+
+There is no missing external input for this documentation or synthetic journey.
+Actual real-case model adoption, named grants and actual agreement/authority stay
+unproved and are not needed for reusable mechanics. The sole known residual
+closure question remains §12. Technical design/testing and reversible interface
+choices belong to agents; no new durable architecture trade-off requires an ADR.
+Cross-cutting retention, security and recovery inherit the
+[Platform owner](platform-security-reliability-operations-prd.md); governed source
+preservation inherits [Documents](governed-documents-prd.md). No extra retention,
+deletion, provider, notification, legal clause, price, numbering or financial rule
+is introduced.
+
+Root completed ordered independent Standards **then** Spec preparation and
+recorded its actual delegated product approval. Canonical merge through the
+source-derived docs gate remains required before qualifying a separate fresh
+runtime issue. This approved contract is not runtime delivery or an
+implementation-ready issue. No automatic
+owner-confirmation gate or separate question/dossier request is implied. Runtime
+readiness still needs live closed dependencies/ownership, matching doctor, complete
+fresh-context fit and all ticketing gates. Sections 3–9 remain non-executable for
+other mission-governance outcomes; completion/policy adoption, explicit next action,
+stages, generalized waiver, real users/data/providers/deployment and whole-milestone
+credit stay outside #969.
+
+### 15.10 Mandatory PRD coverage and owning links
+
+This section consumes the [23-field standard](specification-and-ticketing-standard.md#5-mandatory-prd-content)
+without duplicating cross-cutting authorities:
+
+| Field                                                      | Owner within this bounded contract          |
+| ---------------------------------------------------------- | ------------------------------------------- |
+| 1. Authority/status/owner/consumers                        | §15.1 and header                            |
+| 2. User problem                                            | §15.1                                       |
+| 3. Outcome/measurable value                                | §15.1, §15.9                                |
+| 4. Solution/principles                                     | §§15.1–15.4                                 |
+| 5. Actors/Workspace/Company                                | §15.2; Authorization §8                     |
+| 6. Numbered stories                                        | §15.2                                       |
+| 7. Scope/exclusions/deferred                               | §§15.1,15.9 and §10                         |
+| 8. Concepts/relationships/vocabulary                       | §15.3; CONTEXT and Project/Task §28         |
+| 9. Lifecycle/versions/corrections/history                  | §§15.3–15.6                                 |
+| 10. Invariants/prohibited outcomes                         | §§15.3–15.7                                 |
+| 11. Permissions/approvals                                  | §15.2; Authorization §8                     |
+| 12. Documents/evidence/Activity                            | §§15.4,15.6–15.7; Documents and Activity §7 |
+| 13. Configuration/localization/accessibility               | §15.8; UX §§6–8                             |
+| 14. Integrations/authority/failure                         | §§15.4–15.7; Platform §§4–7                 |
+| 15. Migration/compatibility                                | §15.7                                       |
+| 16. Security/privacy/reliability/observability/performance | §§15.5–15.9; Platform                       |
+| 17. Happy path/exceptions/empty/error/permission           | §§15.3,15.5–15.6,15.8                       |
+| 18. Durable implementation decisions                       | §15.9; existing ADR-0006, no new ADR        |
+| 19. Highest stable testing seams                           | §15.9                                       |
+| 20. Acceptance/testable criteria                           | §15.9                                       |
+| 21. Iurie evidence still required                          | §12 and §15.9; no new question              |
+| 22. Agent technical/ADR dependencies                       | §§15.7,15.9                                 |
+| 23. Readiness/blockers                                     | §15.9                                       |

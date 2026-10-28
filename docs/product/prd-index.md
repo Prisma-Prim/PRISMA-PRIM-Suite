@@ -88,18 +88,23 @@ its merged contract and separate implementation child. A collection is not
 a complete dossier, officialization, external delivery or accepted mission work.
 
 The [mission-obligation contract](release-1-mission-obligations-prd.md)
-owns delivered read-only §13 (#883 / PR #884) and the complete approved next
-attributable human-review contract in §14 under #885, applying Dan's established
+owns delivered read-only §13 (#883 / PR #884) and attributable human-review
+§14 (#887 / PR #888), applying Dan's established
 rules instruction. §14 accepts exact declared-result evidence or a protected
 literal external/physical evidence reference, with human judgment and immutable
-history. Its runtime child follows documentation delivery and readiness checks.
-Guarded policy adoption/completion and scoped applicability remain separate;
+history. Its [bounded applicability contract §15](release-1-mission-obligations-prd.md#15-bounded-mission-applicability-proposals-and-decisions-969)
+under #969 is an Approved bounded contract: coordinator proposal/correction, exact
+approver accept/reject, reload/history and attributed restoration, with independent
+captured opt-ins and reported agreement boundaries. Ordered independent Standards
+then Spec preparation and [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/969#issuecomment-6482673283)
+are complete; canonical merge precedes a separate fresh runtime/readiness decision. Guarded policy adoption/
+completion remains unqualified;
 neither ordinary completion nor real operational activation is implied.
 
 Its [open-question register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
 owns pending first-tenant questions for Dan's single consolidated email. Preserve
 `MISSION-CLOSE-01` across handoffs; do not repeatedly ask individual questions or
-infer a certification-policy answer. The delivered readiness and next review outcome do not
+infer a certification-policy answer. Readiness, result review and scoped applicability do not
 require that answer.
 
 ## 4. Cross-cutting PRDs
