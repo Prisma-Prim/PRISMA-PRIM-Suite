@@ -248,8 +248,13 @@ Company consultation/recording assignments without expanding existing rights.
 Its status is Approved — bounded first journey, v1.0, following root's ordered
 Standards then Spec agent review on 2026-10-21; runtime delivery is not inferred. Authorization, Activity, UX and Platform retain their ownership.
 The capability's readiness section owns the local-work/publication boundary.
-Scoring, responsible-person assignment, structured journal correction, escalation
-and the broader Risk/improvement module remain outside this first journey.
+The [journal-correction extension §24](company-operational-risk-intake-prd.md#24-bounded-attributed-journal-corrections-956)
+under #956 is Approved following [coordinator disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/956#issuecomment-6479032648)
+and owns append-only motivated correction
+of existing observation/reassessment text/date, current projection and immutable
+history under the same Reader/Recorder v1. Approval, contract merge and fresh
+readiness precede a separate runtime child. Scoring, responsible-person assignment,
+escalation and the broader Risk/improvement module remain deferred.
 
 ## 8. Delivered foundation and live work routing
 

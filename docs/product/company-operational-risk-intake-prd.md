@@ -7,6 +7,8 @@
 **Product owner:** Dan Popescu  
 **Boundary:** Record/reopen an unassessed operational risk and preserve factual manual follow-up
 
+**Journal-correction extension:** [Section 24](#24-bounded-attributed-journal-corrections-956) — Ready for product review
+
 ## 1. Authority and consumers
 
 This bounded capability consumes [Product Vision](product-vision-prd.md),
@@ -78,9 +80,9 @@ inferred from Workspace ownership, another business role or Activity read exists
 21. As a Recorder without Reader or Company context, I receive no Risk access.
 22. As a user, I distinguish confirmed save plus refresh failure from an unconfirmed command.
 
-Saved journal entries are immutable in this first journey. Structured correction
-of a journal entry is explicitly deferred; adding another observation preserves
-both statements and never silently replaces the earlier one.
+Saved journal entries remain immutable. Section 24 specifies the separately
+scoped append-only journal-correction extension; it does not authorize editing
+an original or changing the meaning of the approved v1.0 first journey.
 
 ## 7. Scope and exclusions
 
@@ -88,7 +90,8 @@ In scope: intake, bounded Company list, detail/history, immutable observations a
 narrative reassessments, motivated append-only intake corrections, safe retries,
 stale recovery and explicit Reader/Recorder grant administration.
 
-Excluded: journal-entry correction/replacement, responsible-person assignment,
+Excluded from v1.0: journal-entry correction (separately specified in section 24),
+silent replacement, responsible-person assignment,
 probability/impact/scoring grids, residual calculation, criticality, status or
 closure, deletion, effectiveness approval, schedules, alerts/escalation,
 Tasks/Projects/Client/Document links, attachments, procurement/spending,
@@ -291,9 +294,10 @@ Dan's separate 2026-10-21 answer approves per-Company explicit consultation and
 recording/follow-up access, without automatic expansion, with actual people chosen
 later. Root's frozen-contract disposition owns reversible bounds, correction/
 revision/receipt conventions and this first partial scope. These are not new
-Iurie answers or a complete Risk module. Structured journal correction, scoring,
-responsibility assignment, thresholds, periodic reevaluation and escalation
-remain deferred. No further user answer is needed for this bounded first journey.
+Iurie answers or a complete Risk module. Section 24 separately specifies journal
+correction. Scoring, responsibility assignment, thresholds, periodic reevaluation
+and escalation remain deferred.
+No further user answer is needed for this bounded first journey.
 
 ## 22. Technical research and ADR dependencies
 
@@ -318,3 +322,340 @@ changes, complete exact-head/base/integration proof, public evidence and the bou
 final review remain required before merge.
 No `ready-for-agent` label, real assignment, release reorder or functional credit
 is conferred merely by this source preparation. Dan is not asked to review PRDs.
+
+## 24. Bounded attributed journal corrections (#956)
+
+**Status:** Approved — bounded journal-correction extension
+
+**Extension version:** 1.0
+
+**Owner:** Company Operational Risk
+
+**Contract issue:** [#956](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/956)
+
+### 24.1 Authority, outcome and boundary
+
+Under [Dan's selected-lot coordination](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6478554347),
+this extension fills only v1.0's explicit journal-correction gap. Sections 1–23
+retain their approved intake/follow-up meaning. This section owns the new
+observable behavior; Authorization section 8 still owns Reader/Recorder v1 and
+live authority, Accountability section 7 restricted recording, and UX/Platform
+their existing controls. No new permission, captured version, real assignment,
+member directory, actor-reader or shared model-lifetime change is required.
+
+A Recorder who discovers a factual error in a saved observation or narrative
+reassessment can append a motivated correction to its text and/or declared date,
+reopen the current corrected statement, and recover every predecessor. This is
+reversible product synthesis within the selected gap, not a new Iurie answer,
+assessment, approval, responsibility appointment, effectiveness or closure.
+Assessment stays `not-assessed`; responsibility stays `not-specified`.
+
+In addition to stories 1–22:
+
+23. As a Reader, I want to open the current statement from any original or correction in the complete Risk history, so that an old page cannot masquerade as current facts.
+24. As a Recorder, I want to correct literal text and/or its declared date with a reason, so that a factual mistake does not require overwriting the original.
+25. As a Reader, I want original author/time and each corrector/time separately, so that a correction does not reattribute the person's original statement.
+26. As a Recorder, I want to correct the latest successor again, including restoring an earlier value, so that every motivated change remains recoverable.
+27. As a Recorder, I want invalid/no-change and stale drafts preserved for explicit review, so that failure never silently replaces my intent.
+28. As a user, I want exact uncertain retry and safe scope/authority retirement, so that a late reply or a language change cannot create or disclose another correction.
+29. As a Reader or keyboard/phone user, I want the complete history and truthful current/original labels in all four locales, so that reading does not depend on mutation authority or screen size.
+
+Success means one correction/revision/event/receipt per deliberate accepted intent,
+all original and successor values recoverable, and zero tested cross-scope
+metadata disclosure. No performance or productivity target is invented.
+
+### 24.2 Original identity, successors and current facts
+
+The **original journal entry** is an existing immutable `observation` or
+`reassessment` under one Risk. Its identity, Workspace/Company/Risk, kind,
+narrative, `occurredOn`, actor snapshot, server time and revision never change.
+A correction has a new entry identity and aggregate revision, kind
+`journal-corrected`, that same original's `originalEntryId`, immutable `journalKind`
+(`observation` or `reassessment`), immediate `predecessorId`, full replacement
+`narrative` and `occurredOn`, nonblank `reason`, corrector snapshot and server time.
+It is a factual successor, not another observation/reassessment or an intake
+successor. Target, original kind and ownership cannot be relabelled or transferred.
+
+Initially the current journal entry is the original itself, and the first
+correction's predecessor is that original identity. Later corrections always
+name the last correction as predecessor while retaining the same original target.
+Only one committed successor follows each predecessor. Predecessors cannot come
+from another original, Risk, Company or Workspace. The revision order is strictly
+increasing, so the chain cannot cycle. No deletion, in-place update or rewriting
+of an earlier correction/reason is exposed.
+
+The current statement consists of the original kind and the latest successor's
+full narrative/date, or the original's values if never corrected. Original author
+and recording time stay labelled as original attribution; latest correction
+actor/time/reason are separately labelled. A current projection never changes
+an older history row or claims the correction time was the occurrence date.
+Correcting one target leaves other journal targets and current/original intake
+facts unchanged. It increments the existing Risk aggregate revision exactly once;
+there is no independent journal aggregate or assessment/status transition.
+
+Narrative uses the existing nonblank 5,000 JavaScript-string-unit bound; reason
+uses the existing nonblank 2,000-unit bound. Accepted whitespace, newlines,
+Romanian/French diacritics, Cyrillic and markup-like literal text are preserved
+without trimming, translation, interpretation or truncation. `occurredOn` is an
+explicit valid date-only `YYYY-MM-DD` or `null` meaning unknown, never server time,
+a timezone-converted instant or an inferred future-only date. A Recorder may
+change known to unknown, unknown to known, or one valid date to another.
+
+Compare proposed narrative/date literally with the selected current statement.
+If both are identical, a new command is invalid even with a changed reason; a
+reason alone creates no revision, receipt or event. Changing either is sufficient.
+Restoring original or earlier values after an intervening change is valid with a
+new reason and current predecessor. This is the existing intake-correction no-op
+principle applied to journal facts. An exact committed retry is resolved earlier
+and still returns its historical success.
+
+### 24.3 Narrow public command, current read and complete history
+
+Operational Risk owns these interfaces through its existing server-authorized
+Company context. Names here are the extension contract, not implemented endpoints.
+No client-supplied actor, Company ownership, kind or assessment is accepted.
+
+| Interface                                                             | Complete contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /operational-risks/:riskId/journal/:journalEntryId/corrections` | `journalEntryId` is always the original observation/reassessment identity. Requires `Idempotency-Key` and exactly `expectedRevision`, `predecessorId`, `narrative`, `occurredOn`, `reason`; all five fields are required, including explicit date or `null`. No partial patch or kind/owner field.                                                                                                                                                                                      |
+| Successful correction                                                 | HTTP 201 with the existing `{ risk, entry }` envelope: `risk` keeps its existing shape and original/current intake, at the resulting aggregate revision; `entry` is the immutable `journal-corrected` successor defined in 24.2. Common `id`, `revision`, `actor.workspaceMembershipId`, `actor.displayName`, `recordedAt` keep existing entry meaning. The additional exact fields are `kind`, `originalEntryId`, `journalKind`, `predecessorId`, `narrative`, `occurredOn`, `reason`. |
+| `GET /operational-risks/:riskId/journal/:journalEntryId`              | HTTP 200 with exactly `{ riskId, companyId, revision, originalEntry, currentEntry }` from one authorized consistent read. `originalEntry` retains the existing observation/reassessment shape. `currentEntry` is that identical original or its latest complete correction. `revision` is the Risk aggregate revision observed by this read. No query, nested collection or implicit latest-target selection.                                                                           |
+| Existing Risk history                                                 | `GET /operational-risks/:riskId/history` keeps `{ items, next_cursor }`, default 25/max 50, strictly descending aggregate revision and exclusive numeric revision continuation. It returns original intake/journal rows unchanged plus the new correction variant, including every predecessor/reason/attribution. Each original and correction offers the exact original-target current read.                                                                                          |
+| Existing Risk list/detail                                             | Existing list ordering/cursors/summary and detail shape remain. Detail revision advances; original/current intake fields keep their existing meaning. No unbounded journal array or journal facts hidden inside intake are added.                                                                                                                                                                                                                                                       |
+
+Complete journal discovery is the existing full aggregate history, including
+originals beyond the first page. The UI reaches every continuation and retains
+loaded history when an older-page request fails. It never filters only one loaded
+page and calls that the complete journal, nor derives current facts by finding a
+correction in incomplete history. The exact-target read returns a scalar pair,
+so it has no pagination; all collections retain the bounded history/list rules.
+There is no total count or generic discovery surface. Separate reads can observe
+later aggregate revisions: an older response is labelled historical and cannot
+seed a correction against a newer revision without reload/review.
+
+API, durable-receipt and web validators recognize the new variant constructively.
+They verify consumed scope/target identities, original journal kind, actor/time,
+positive safe revision, current revision at most the read aggregate, predecessor
+and exact consumed fields; original/current equality is required when uncorrected,
+and a correction's original target/kind must agree with the original. Unknown
+kinds, malformed/null required values, contradictory projection links and foreign
+successful targets fail closed without presenting them as valid current facts.
+No permissive HTTP decoder may discard persisted receipt information.
+
+### 24.4 Authority, ordering, concurrency and transaction
+
+Every new read requires current Reader v1, active Company context, membership,
+Internal User and Company. A correction, including replay, additionally requires
+Recorder v1. Any currently authorized Recorder may correct a readable original;
+author identity does not restrict or confer correction authority. Reader-only
+users see the complete read/history, without correction controls. Recorder without
+Reader/context receives no content or command access. Assignment administration
+continues to reveal no Risk text. Unknown/null captured versions fail closed.
+
+Use a distinct receipt command kind `journal-correct`, preserving `record`,
+`journal` and `correct` exactly. Its identity remains Workspace + Company + actor
+Membership + command kind + key; target identity is in the fingerprint, not a
+second key namespace. Fingerprint both route targets and the complete submitted
+body, including expected revision, predecessor, literal date/text and reason,
+using the existing stable JSON-key-order convention. Changing target or any input
+under a committed same-kind identity conflicts; changing object-key order alone
+does not. Old command kinds/keys cannot collide with the new kind.
+
+The transaction order is:
+
+1. Resolve live read/record authority through Access's existing identity-first transaction-aware locks. Hold required Internal User, membership, Company/context and captured Reader/Recorder authority consistently through commit, serializing against successful revocation/deactivation; Risk never queries Access tables or introduces another lock owner.
+2. Validate route/key representation and serialize the scoped command identity. Resolve a matching durable receipt under current authority **before** new-intent aggregate, current-target/predecessor and unchanged-fact checks. A changed fingerprint returns `IDEMPOTENCY_CONFLICT` (409); an exact match returns its original validated 201 result without an event, new revision or projection recomputation, even after later corrections or unrelated Risk revisions.
+3. For a new intent, validate the complete body, lock the scoped Risk aggregate and resolve the original journal target and latest predecessor. Expected revision must equal the locked Risk revision, and predecessor must equal that target's current entry. An obsolete expected revision or predecessor returns `STALE_RISK_REVISION` (409). Revision exhaustion keeps existing `RISK_REVISION_EXHAUSTED` behavior. No blind rebase or automatic new key occurs.
+4. Reject unchanged narrative/date with `UNCHANGED_RISK_JOURNAL_FACTS` (400). Append one validated correction, advance the aggregate once without changing current intake, record one restricted event, build/validate the complete response and persist its durable receipt in the same transaction. Commit only when the entire unit is valid.
+
+Concurrent same-key identical submissions converge to the same result. Distinct
+keys naming the same current aggregate can commit at most one new correction,
+even when they target different originals or race with append/intake correction.
+The loser reloads current facts before a deliberate new command. Stale, invalid,
+unchanged, denied, not-found, failed and replay outcomes add no success event and
+no new committed receipt/revision. An uncommitted refused key is not consumed.
+
+Missing verified identity is 401; lost required authority is 403, including cached
+receipt replay. Malformed input/UUID/key or unknown fields are 400
+(`INVALID_RISK_INPUT` for extension fields). A well-formed unavailable/foreign
+Risk or journal target is 404 after scope authorization; an intake or correction
+identity supplied as the original target has the same 404 outcome. A foreign or
+wrong-chain predecessor produces only the generic stale conflict, never its
+existence, current value or attribution. Errors include no confidential text.
+
+Failure to insert/advance, record Accountability, validate/build response or store
+receipt rolls back the entire unit, including any current-pointer change. A
+sanitized 5xx retains `RISK_OUTCOME_UNCONFIRMED`; acknowledgement loss or malformed
+successful output remains uncertain to the caller. Neither proves rollback.
+The server validates new success and historical receipt inside the transaction.
+A confirmed historical replay is not a claim that its result is still current.
+
+### 24.5 Restricted Activity and confidentiality
+
+Extend only the existing restricted Risk recording boundary with
+`operational_risk.journal.corrected`. Its server envelope records Workspace,
+Company, Risk, new correction entry, resulting aggregate revision, actor
+Membership/Internal User and recording time. Metadata is exactly
+`{ revision, kind }`, with `kind` the original observation/reassessment kind.
+The immutable Risk-owned correction links original and predecessor; no narrative,
+reason, date, source description, process/cause/effect or copied author name
+enters event metadata or diagnostics. Existing event rows/actions stay unchanged.
+
+Accountability owns recording; Risk owns authorized history/current reads. There
+is no generic Activity target/projection, Home result, search hit, count, facet,
+filter, export or link for the correction, including for administrators and
+Activity readers. All direct and continuation reads recheck the same current
+scope; a cursor or historical link confers no authority. Synthetic proof uses no
+real sources or confidential source artifacts. No URL is fetched or interpreted.
+
+### 24.6 Production editor, recovery and asynchronous lifetime
+
+Extend the existing production Risk workspace in the Prisme shell. From any
+original/correction history row, **View current statement** opens the exact
+original/current pair with separate original kind/author/time/text/date and current
+correction actor/time/reason. Preserve the full aggregate history and its paging;
+labels distinguish a historical correction from the selected current successor.
+Use loading, no-correction-yet, unavailable/denied, read failure and older-page
+failure states, with explicit safe read retry. Empty history is not a load failure.
+
+Only with Reader + Recorder does **Correct journal statement** open a styled
+editor prefilled from the freshly read current narrative/date, with reason blank.
+Kind, original identity/attribution and owning Company remain visible and read-only.
+The form carries that read's aggregate revision and current predecessor. Date can
+be explicitly cleared to unknown. Validation/no-change associates a localized
+error with the field/form and preserves literal drafts; there is no write until
+explicit save. Cancel before submit discards the unsaved editor without an event.
+Keyboard focus enters the editor, errors are announced, and cancel/success returns
+to a meaningful target control or current statement.
+
+One existing scoped owner holds selection, current read, history, editor,
+submitting/uncertain intent and conflict review. A stale response from another
+Risk/entry/read generation cannot replace it, restore a retired editor, or call
+shared identity rejection for a newer session, even if transport ignores abort.
+A successful read used to prepare a new intent must match the selected root and
+Company and still be current for that owner. This is local Risk work; it requires
+no shared actor-reader or model-lifetime refactor.
+
+Saving freezes exact serialized body, path, expected revision, predecessor and
+key. While submitting or uncertain, disable edits, cancel/replacement, target/Risk
+selection and sibling mutation actions that could discard or replace that intent.
+Keep the existing safe navigation lifetime: hiding/returning to the section or
+changing locale retains selection/draft/pending identity without another POST.
+A network/5xx failure, lost acknowledgement or malformed success shows **Outcome
+unconfirmed** and an explicit **Retry the same correction** using identical
+path/body/key. Reload is a read, never proof that an absent row rolled back, and
+never permission for an automatic fresh key. A safe scope retirement may discard
+in-memory intent but never claims to cancel the server transaction.
+
+A definite 400 keeps the editable draft and reason. A 409 blocks resubmission:
+reload the Risk, selected original/current pair and relevant history; show the
+latest values alongside the retained proposal. Only explicit review/continue may
+adopt the new expected revision/current predecessor for a new deliberate command
+and fresh key. Do not silently overwrite a concurrent correction. A same-key
+fingerprint conflict is identified separately from stale state; the occupied key
+is never reused for changed intent. A 404 retires the unavailable target and offers
+fresh authorized discovery without displaying hidden details. Reader/Recorder or
+Company/session loss immediately retires content, draft, pending/review and late
+callbacks; existing Access revalidation handles denial and independent Company
+context. A late 401/403 from a disposed owner cannot sign out a replacement user.
+
+A validated 201 confirms that exact correction, even if a following current/
+Risk/history refresh fails. Show **Saved; refresh failed** with read retry, no
+resubmit or new correction key. On successful refresh, show current state (which
+may already have a later successor) and retain the confirmed historical result in
+history. Opening another original never retargets a pending correction.
+
+All interface copy, accessible names, state labels, field errors, kind and
+original/current/history labels exist in `ro`, `ru`, `fr`, `en`, inheriting
+Romanian default/fallback. Locale changes preserve all literal values, page/
+selection, loaded history and exact uncertain command; only presentation changes.
+Use existing styled text/date controls and buttons, shared Select only if needed,
+visible focus and multiline wrapping. Prove actual desktop 1440 px/narrow 390 px
+reflow with long literal text, all four locales and no clipped history/actions.
+
+### 24.7 Additive genuine-upgrade compatibility
+
+Use reviewed additive Drizzle migration(s) after the actual current predecessor,
+not an edit to delivered migration 0072 or its snapshots. Extend the existing
+Risk-owned storage/constraints for the new entry/receipt/event variants and any
+bounded current-target index/pointer. Preserve original ownership/kind, immutable
+entry/event/receipt guards, monotonic aggregate head and complete-committed-history
+checks. Enforce same Workspace/Company/Risk/original/predecessor lineage, one
+successor per predecessor, positive ordered revisions and valid original kind
+with database constraints/transaction guards, not TypeScript annotations alone.
+
+No old entry, event, receipt response/fingerprint, actor snapshot, assignment,
+permission version or intake-head pointer is rewritten or backfilled as a
+correction. Old uncorrected originals project as their own current entry; any
+new current index/pointer is derived without inventing historical corrections.
+Retain exact legacy `record`/`journal`/`correct` receipt schemas and replay results;
+do not attach new fields to stored JSON or rebuild historical results from current
+state. New receipt validation dispatches deliberately by supported command/entry
+shape and fails closed on corrupt/unknown stored versions. Existing public intake,
+append, intake-correction, list/detail and all history variants keep their meaning.
+
+Prove a genuine upgrade: migrate a disposable database only through the real
+immediate predecessor of the new migration, populate it under that schema with
+intake, both journal kinds, motivated intake successors, all three old receipt
+kinds, restricted events, inactive/revoked and live grants plus representative
+unrelated data; capture their bytes/values. Apply the actual migration chain,
+compare preserved rows and receipt JSON/fingerprints, replay old commands through
+the current public API and then correct an old journal original. A fresh-schema
+fixture or merely asserting new tables exist is insufficient. Rollout recovery
+preserves appended history: use a compatible forward correction; an older reader
+must fail closed on unknown new variants, never delete or coerce them to restore
+compatibility. No environment/CI change or new dependency is included.
+
+### 24.8 Runtime test-first seam and required proof
+
+The first meaningful RED is public PostgreSQL REST, using the delivered isolated
+PostgreSQL REST harness. Bootstrap synthetic identities/Company and explicitly
+grant context + existing Reader/Recorder v1 through public Access commands.
+Through existing public routes record intake, append an observation, and confirm
+its returned identity, original values and aggregate revision 2. Then POST a
+valid motivated correction to that exact original with `expectedRevision: 2`,
+`predecessorId` equal to the original, changed literal narrative/date and a fresh
+key. Require HTTP 201 and the exact new result/root/predecessor/attribution. Before
+implementation the absent correction command is the intended RED (404); setup,
+import, identity, migration or connection failure is not. Run and inspect the
+actual failure before the smallest green; do not report a predicted result as
+executed evidence. This documentation task runs no runtime RED.
+
+Required runtime evidence, all through the smallest real public seam that proves
+it, covers:
+
+1. Original → first correction → repeated correction → restore an earlier value, for observation and reassessment, with fresh current reads and complete aggregate-history pages across the page boundary. Preserve exact original text/date/kind/attribution; known/unknown dates and unchanged intake/assessment/responsibility are asserted.
+2. Empty/blank/excess narrative/reason, exact Unicode string-unit bounds, malformed dates/UUID/revisions, omitted required date, unknown/owner/kind/score/status fields and both identical facts with changed reason. Rejection consumes no state/event/receipt; a corrected uncommitted intent can reuse its key.
+3. Exact same-key concurrent success and historical replay after later target/unrelated revisions; changed text/date/reason/target/expected/predecessor same-key conflicts. Legacy receipt replays remain exact after new corrections and upgrade.
+4. Deterministic database barriers prove two distinct-key corrections of the same predecessor, corrections to different originals at one expected aggregate, and correction racing append/intake correction: at most one transition succeeds; loser is stale. Prove both orderings of authority loss: command owns authority until commit and revocation waits, or revocation/deactivation owns the lock first and command/replay is denied. Include Reader, Recorder, context, Company, membership and Internal User loss and no authority from creator/admin/other-family/unknown versions.
+5. Direct foreign/missing Risk, original and predecessor identifiers, list/history/current read and continuation, plus generic Activity/Home/search/count/filter/export/target exclusion. Exercise Reader-only and Recorder-without-Reader/context independently; no real assignments or member directory.
+6. Real insertion/update failure at correction/current-index/head/event/receipt boundaries, invalid server clock, Accountability failure and response-construction/validation failure. Compare every affected row/revision before and after; remove only the synthetic failure and retry the same command successfully. Direct SQL cannot update/delete history, fork a predecessor, skip a head or cross scope. Execute the populated genuine upgrade in 24.7.
+7. Actual App composition tests establish admitted actor, visible Company, loaded Risk and selected original/current read before requiring the correction action. Exercise form and history via production controls, rather than replacing App/Risk with a mock. Targeted web tests prove malformed/foreign successful reads, invalid/no-op draft retention, stale review, distinct conflict recovery, uncertain exact retry, confirmed-save/refresh failure, four locales and late abort-ignoring read/write/401 replies after root/Company/session/authority retirement.
+8. Extend the registered real App/API/PostgreSQL acceptance journey at desktop 1440/narrow 390. Explicit real synthetic grants, observation and reassessment corrections, repeated history/current reopen after reload, Reader-only/denied behavior, keyboard/focus and all four locale views are required. A lost acknowledgement may be simulated only after the real command commits, never with a fake successful write/permission response. Inspect synthetic screenshots saved through `testInfo.outputPath(...)` and preserve the required browser-evidence directory.
+
+### 24.9 Acceptance and publication/readiness boundary
+
+The extension is acceptable only when all 24.8 cases and the complete production
+journey prove the contract in 24.2–24.7. Runtime must refresh the owning Risk,
+Access, Accountability, schema and registered App seams and demonstrate the whole
+bounded outcome fits one fresh session. ADR 0006 remains sufficient; an actual
+costly new architectural choice is surfaced before implementation. Scoring,
+thresholds, residual/effectiveness judgments, responsibility assignment, closure,
+deletion, scheduled reevaluation, alerts, Client/Project/Document links,
+attachments, exports, finance, AI and the broader Risk workflow remain deferred.
+
+Ordered independent Standards then Spec preparation passed with zero findings.
+The coordinator [approved this bounded contract](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/956#issuecomment-6479032648)
+on 2026-10-28 under delegated product authority. Only the coordinator publishes,
+runs/publishes exact integration evidence and merges this contract.
+No local author declaration constitutes that approval or runtime/MVP credit.
+
+A separate context-free vertical runtime issue follows only the approved merged
+contract and fresh live readiness/ownership/fit checks. Its outcome is this entire
+correction/current/history/recovery journey; schema/API/UI proof stays one slice.
+It names this section and inherited authorities, starts with 24.8's actual REST
+RED, and retains all exclusions. Run the matching web/PostgreSQL doctor before
+runtime edits, targeted strict format/lint/types and affected API/migration/web/
+registered acceptance checks, then the applicable review and exact-source/base/
+integration gate from [issue execution](../agents/issue-execution.md). No next
+issue, runtime implementation or heavy test process starts in this contract task.
