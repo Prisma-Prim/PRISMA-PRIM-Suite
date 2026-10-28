@@ -451,7 +451,7 @@ export class CompanyContextAuthorization {
   // `document.correct` exists in captured Registrar v2 and v3; a legacy v1
   // assignment fails closed.
   async requireDocumentCorrection(actor: ActorContext): Promise<string> {
-    return this.requireLockedDocumentAuthority(actor, 'document.correct', {
+    return this.requireDocumentAuthority(actor, 'document.correct', {
       bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
       versions: ['v2', 'v3'],
     });
@@ -459,11 +459,10 @@ export class CompanyContextAuthorization {
 
   // `document.version.manage` exists only in captured Registrar v3.
   async requireDocumentVersionManagement(actor: ActorContext): Promise<string> {
-    return this.requireLockedDocumentAuthority(
-      actor,
-      'document.version.manage',
-      { bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE, versions: ['v3'] },
-    );
+    return this.requireDocumentAuthority(actor, 'document.version.manage', {
+      bundle: COMPANY_DOCUMENT_REGISTRAR_BUNDLE,
+      versions: ['v3'],
+    });
   }
 
   // Designation requires a live captured Company Document Approver v1 in
@@ -472,7 +471,7 @@ export class CompanyContextAuthorization {
   async requireDocumentVersionDesignation(
     actor: ActorContext,
   ): Promise<string> {
-    return this.requireLockedDocumentAuthority(
+    return this.requireDocumentAuthority(
       actor,
       'document.version.designate_official',
       { bundle: COMPANY_DOCUMENT_APPROVER_BUNDLE, versions: ['v1'] },
@@ -480,19 +479,29 @@ export class CompanyContextAuthorization {
   }
 
   async requireDocumentContentRead(actor: ActorContext): Promise<string> {
-    return this.requireLockedDocumentAuthority(actor, 'document.content.read', {
+    return this.requireDocumentAuthority(actor, 'document.content.read', {
       bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE,
       versions: ['v1'],
     });
   }
+  /** Read-only caller-owned snapshot participant; shares native policy without write locks. */
+  async requireDocumentContentReadWithinReadTransaction(
+    actor: ActorContext,
+  ): Promise<string> {
+    return this.requireDocumentAuthority(
+      actor,
+      'document.content.read',
+      { bundle: COMPANY_DOCUMENT_CONTENT_READER_BUNDLE, versions: ['v1'] },
+      false,
+    );
+  }
   async requireDocumentContentUpload(actor: ActorContext): Promise<string> {
     await this.requireDocumentContentRead(actor);
     await this.requireDocumentVersionManagement(actor);
-    return this.requireLockedDocumentAuthority(
-      actor,
-      'document.content.upload',
-      { bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE, versions: ['v1'] },
-    );
+    return this.requireDocumentAuthority(actor, 'document.content.upload', {
+      bundle: COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
+      versions: ['v1'],
+    });
   }
   /** Current captured family authority; a write's shared lock fences revocation. */
   async hasMissionDeliverableAccess(
@@ -579,11 +588,12 @@ export class CompanyContextAuthorization {
   }
 
   /**
-   * A Document command's live authority: the locked Document read authority,
+   * Shared native Document authority. Commands lock assignments; a caller-owned read snapshot does not.
+   * A command's live authority includes locked Document read authority,
    * Representation read, the required permission and its captured assignment
    * locked `FOR SHARE`, which serializes the command against revocation.
    */
-  private async requireLockedDocumentAuthority(
+  private async requireDocumentAuthority(
     actor: ActorContext,
     permission: DocumentPermission,
     grant:
@@ -598,8 +608,9 @@ export class CompanyContextAuthorization {
             | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE;
           versions: readonly ['v1'];
         },
+    lockAssignment = true,
   ): Promise<string> {
-    const companyId = await this.requireDocumentAccess(actor, true);
+    const companyId = await this.requireDocumentAccess(actor, lockAssignment);
     if (
       !actor.activeCompany?.documentPermissions?.includes(permission) ||
       !actor.activeCompany.documentPermissions.includes(
@@ -607,7 +618,7 @@ export class CompanyContextAuthorization {
       )
     )
       throw new ForbiddenException();
-    const [assignment] = await this.databaseContext.connection
+    const query = this.databaseContext.connection
       .select({ id: companyRoleAssignments.id })
       .from(companyRoleAssignments)
       .where(
@@ -624,8 +635,10 @@ export class CompanyContextAuthorization {
           ]),
           isNull(companyRoleAssignments.revokedAt),
         ),
-      )
-      .for('share');
+      );
+    const [assignment] = lockAssignment
+      ? await query.for('share')
+      : await query;
     if (!assignment) throw new ForbiddenException();
     return companyId;
   }

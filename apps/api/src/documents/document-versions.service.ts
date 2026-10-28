@@ -108,6 +108,27 @@ export class DocumentVersionsService {
     private readonly scanner: DocumentMalwareScanner,
   ) {}
 
+  /** Exact scoped Version facts inside the caller's already-authorized Document read snapshot. */
+  async readExactWithinTransaction(scope: DocumentScope, versionId: string) {
+    const [version] = await this.database.connection
+      .select({
+        id: documentVersions.id,
+        number: documentVersions.number,
+        status: documentVersions.status,
+      })
+      .from(documentVersions)
+      .where(
+        and(
+          eq(documentVersions.workspaceId, scope.workspaceId),
+          eq(documentVersions.companyId, scope.companyId),
+          eq(documentVersions.documentId, scope.documentId),
+          eq(documentVersions.id, versionId),
+        ),
+      );
+    if (!version) throw new NotFoundException();
+    return version;
+  }
+
   /**
    * The one working-Version resolution shared by the Document list, detail,
    * Project lists and working correction. Every Document keeps a draft or an

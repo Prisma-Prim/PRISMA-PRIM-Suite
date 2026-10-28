@@ -67,6 +67,15 @@ export class ClientOperationalReferenceService {
     return companyId;
   }
 
+  /** Current Client authority inside the caller's read-only snapshot, without command locks. */
+  async requireReferenceReadAuthorityWithinReadTransaction(
+    actor: ActorContext,
+  ) {
+    const companyId = this.requireClientRead(actor);
+    await this.lockClientReadAuthority(actor, companyId, false);
+    return companyId;
+  }
+
   async readReferenceClient(actor: ActorContext, originalClientId: string) {
     const companyId = this.requireClientRead(actor);
     const [client] = await this.databaseContext.connection
@@ -877,9 +886,10 @@ export class ClientOperationalReferenceService {
   private async lockClientReadAuthority(
     actor: ActorContext,
     companyId: string,
+    lock = true,
   ): Promise<void> {
     if (actor.workspacePermissions.includes('client.manage')) {
-      const managerGrants = await this.databaseContext.connection
+      const query = this.databaseContext.connection
         .select({ id: workspacePermissionGrants.id })
         .from(workspacePermissionGrants)
         .where(
@@ -891,24 +901,25 @@ export class ClientOperationalReferenceService {
             ),
             eq(workspacePermissionGrants.permission, 'client.manage'),
           ),
-        )
-        .for('share');
+        );
+      const managerGrants = lock ? await query.for('share') : await query;
       if (managerGrants.length > 0) return;
     }
 
-    await this.lockCompanyClientReadAuthority(actor, companyId);
+    await this.lockCompanyClientReadAuthority(actor, companyId, lock);
   }
 
   private async lockCompanyClientReadAuthority(
     actor: ActorContext,
     companyId: string,
+    lock = true,
   ): Promise<void> {
     const assignmentId = actor.activeCompany?.clientPermissionAssignmentId;
     if (
       assignmentId &&
       actor.activeCompany?.clientPermissions.includes('client.read')
     ) {
-      const assignments = await this.databaseContext.connection
+      const query = this.databaseContext.connection
         .select({ id: companyRoleAssignments.id })
         .from(companyRoleAssignments)
         .where(
@@ -927,8 +938,8 @@ export class ClientOperationalReferenceService {
             inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
             sql`${companyRoleAssignments.revokedAt} IS NULL`,
           ),
-        )
-        .for('share');
+        );
+      const assignments = lock ? await query.for('share') : await query;
       if (assignments.length > 0) return;
     }
 

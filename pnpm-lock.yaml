@@ -50,6 +50,9 @@ importers:
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@types/pg@8.20.0)(pg@8.22.0)
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       pdf-lib:
         specifier: 1.17.1
         version: 1.17.1
@@ -127,6 +130,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 6.0.5
         version: 6.0.5(vite@8.2.1(@types/node@24.10.1)(esbuild@0.28.1)(terser@5.49.2)(tsx@4.23.9))
+      fflate:
+        specifier: 0.8.3
+        version: 0.8.3
       jsdom:
         specifier: 30.0.1
         version: 30.0.1

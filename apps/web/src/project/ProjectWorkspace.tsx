@@ -1,3 +1,4 @@
+import { ProjectPdfBundle } from './ProjectPdfBundle';
 import {
   MissionPlanProjectCreator,
   MissionPlanProjectCopy,
@@ -1155,6 +1156,12 @@ export function ProjectWorkspace({
               }
               onActivityRecorded={onActivityRecorded}
               onOpenDocument={onOpenDocument}
+            />
+            <ProjectPdfBundle
+              actor={actor}
+              identity={identity}
+              projectId={selected.project.id}
+              originalClientId={selected.project.clientAccountId}
             />
           </div>
         </article>

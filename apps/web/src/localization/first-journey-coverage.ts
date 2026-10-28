@@ -1,3 +1,4 @@
+import { projectPdfBundleMessages } from '../project/project-pdf-bundle.copy';
 import { ideasMessages } from '../ideas/ideas.copy';
 import { companyAssignmentMessages } from '../access/company-assignment-localization.copy';
 import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
@@ -59,6 +60,7 @@ import { interfaceLocaleMessages } from './interface-locale.copy';
 import { assertMessageCoverage } from './messages';
 
 export function assertFirstJourneyTranslationCoverage(): void {
+  assertMessageCoverage('projectPdfBundle', projectPdfBundleMessages);
   assertMessageCoverage('missionReview', missionReviewMessages);
   assertMessageCoverage('taskResult', taskResultMessages);
   assertMessageCoverage('ideas', ideasMessages);

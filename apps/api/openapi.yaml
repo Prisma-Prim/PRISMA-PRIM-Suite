@@ -1528,6 +1528,91 @@ paths:
           description: The actor lacks current Document read authority or a valid active Company context.
         '404':
           description: No working Document with a readable original Client is visible in the active Company.
+  /api/projects/{projectId}/pdf-bundle:
+    post:
+      operationId: downloadSelectedProjectPdfs
+      summary: Collect exact selected stored Project PDFs in one bounded factual ZIP
+      description: >-
+        Pure read with no command receipt or idempotency key. Requires native live Project,
+        original Client, Document metadata, independent family and Content Reader authority.
+        One repeatable-read read-only snapshot validates the complete ordered selection,
+        exact association revisions and Version/Representation identities before releasing bytes.
+        Historical Versions and earlier draft uploads remain exact; no latest substitution.
+        Contains only byte-identical stored PDFs and UTF-8 manifest.json formatVersion 1,
+        purpose SELECTED_PROJECT_PDFS, actual server UTC preparedAt, original projectId,
+        companyId, clientId and ordered entries (path, documentId, current title, versionId,
+        versionNumber, native versionStatus, representationId, originalFileName, byteSize, sha256).
+        Server ASCII paths combine position and exact Document/Version identities. Stored entries,
+        at most 20 MiB PDF sum and 21 MiB complete ZIP. No partial success, persistence,
+        new scan, external fetch, sending, approval or dossier-completeness assertion.
+      tags: [Document]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  description: Ordered unique Document/Version pairs; different Versions of one Document are allowed.
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      [
+                        documentId,
+                        versionId,
+                        representationId,
+                        expectedProjectRevision,
+                      ]
+                    properties:
+                      documentId: { type: string, format: uuid }
+                      versionId: { type: string, format: uuid }
+                      representationId: { type: string, format: uuid }
+                      expectedProjectRevision:
+                        { type: integer, minimum: 0, maximum: 2147483647 }
+      responses:
+        '200':
+          description: All exact selected originals and factual index; no business effects.
+          headers:
+            Content-Disposition:
+              schema:
+                {
+                  type: string,
+                  const: 'attachment; filename="selected-project-pdfs.zip"',
+                }
+            Cache-Control:
+              schema: { type: string, const: 'private, no-store' }
+            X-Content-Type-Options:
+              schema: { type: string, const: nosniff }
+          content:
+            application/zip:
+              schema: { type: string, format: binary }
+        '400':
+          description: Malformed body, identity, revision, repeated Document/Version pair or selection outside 1–20.
+        '401':
+          description: Verified current identity is required.
+        '403':
+          description: Current ordinary Project, Document, Client or Content Reader authority is missing.
+        '404':
+          description: A selected scoped association, Version, Representation or independently gated family is not readable.
+        '409':
+          description: An authorized association revision changed; explicitly reload and reselect.
+        '413':
+          description: PDF sum exceeds 20 MiB or complete ZIP exceeds 21 MiB.
+        '503':
+          description: Preserved content is damaged or unavailable; no partial archive.
   /api/documents/{documentId}/versions/{versionId}/content:
     parameters:
       - in: path
