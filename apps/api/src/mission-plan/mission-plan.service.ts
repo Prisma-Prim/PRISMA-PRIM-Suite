@@ -256,6 +256,21 @@ export class MissionPlanService {
       rows.some((r, n) => r.position !== n)
     )
       throw new Error('Incomplete stored mission-plan Version.');
+    const stored = {
+      title: v.title,
+      activities: rows.map(({ key, title, activity, intendedResult }) => ({
+        key,
+        title,
+        activity,
+        intendedResult,
+      })),
+    };
+    const validated = publicationContent(stored, false);
+    if (
+      JSON.stringify(stored) !== JSON.stringify(validated) ||
+      !v.actorDisplayName.trim()
+    )
+      throw new Error('Invalid stored mission-plan content.');
     return {
       ...metadata(v),
       activities: rows.map(({ key, title, activity, intendedResult }) => ({

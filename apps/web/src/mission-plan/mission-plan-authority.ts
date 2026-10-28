@@ -81,13 +81,21 @@ export function missionPlanAuthority(actor: ActorContext, purpose: Purpose) {
     purpose === 'configure'
       ? null
       : {
-          projectPermissions: c.projectPermissions,
+          projectPermissions:
+            purpose === 'copy'
+              ? c.projectPermissions?.filter((p) => p === 'project.read')
+              : c.projectPermissions,
           projectAssignment: c.projectPermissionAssignmentId,
           projectVersion: c.projectPermissionSetVersion,
-          taskPermissions: c.taskPermissions,
+          taskPermissions:
+            purpose === 'copy'
+              ? c.taskPermissions?.filter((p) => p === 'task.read')
+              : c.taskPermissions,
           taskAssignment: c.taskPermissionAssignmentId,
           taskVersion: c.taskPermissionSetVersion,
-          clientPermissions: c.clientPermissions,
+          clientPermissions: c.clientPermissions?.filter(
+            (p) => p === 'client.read',
+          ),
           clientAssignment: c.clientPermissionAssignmentId,
           clientVersion: c.clientPermissionSetVersion,
           clientManage: actor.workspacePermissions.includes('client.manage'),

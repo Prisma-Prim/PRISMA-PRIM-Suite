@@ -121,6 +121,51 @@ export class DocumentTaskResultReferenceService {
       context: input.context,
       lock,
     });
+    return this.resolve(input);
+  }
+
+  /** Explicit participant for a caller-owned read-only snapshot; command defaults remain locked. */
+  async requireReadWithinReadTransaction(input: {
+    actor: ActorContext;
+    context: TaskResultDocumentContext;
+  }) {
+    if (
+      requireDocumentPermission(input.actor, 'document.read') !==
+      input.context.companyId
+    )
+      throw new NotFoundException();
+    await this.authorization.requireDocumentContentReadWithinReadTransaction(
+      input.actor,
+    );
+    await this.clients.requireReferenceReadAuthorityWithinReadTransaction(
+      input.actor,
+    );
+    await this.clients.readReferenceClient(
+      input.actor,
+      input.context.clientAccountId,
+    );
+    if (!(await this.authorization.hasMissionDeliverableAccess(input.actor)))
+      throw new NotFoundException();
+  }
+
+  async exactWithinReadTransaction(input: {
+    actor: ActorContext;
+    context: TaskResultDocumentContext;
+    documentId: string;
+    versionId: string;
+    representationId: string;
+  }): Promise<TaskResultDocumentReference> {
+    await this.requireReadWithinReadTransaction(input);
+    return this.resolve({
+      ...input,
+      reference: { kind: 'declared', representationId: input.representationId },
+    });
+  }
+
+  private async resolve(
+    input: Parameters<DocumentTaskResultReferenceService['exact']>[0],
+  ): Promise<TaskResultDocumentReference> {
+    const lock = input.reference.kind === 'eligible' && input.reference.lock;
     const query = this.database.connection
       .select({
         id: workingDocuments.id,
@@ -162,7 +207,11 @@ export class DocumentTaskResultReferenceService {
     if (
       !version ||
       (version.status !== 'official' && version.status !== 'superseded') ||
-      version.title === null
+      version.title === null ||
+      !version.title.trim() ||
+      version.title.length > 200 ||
+      !Number.isInteger(version.number) ||
+      version.number < 1
     )
       throw new NotFoundException();
     const [pdf] = await this.database.connection

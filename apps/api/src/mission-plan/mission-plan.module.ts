@@ -7,8 +7,11 @@ import { AccountabilityModule } from '../accountability/accountability.module.js
 import { DatabaseModule } from '../database/database.module.js';
 import { ServerClockModule } from '../clock/server-clock.js';
 import { MissionPlanService } from './mission-plan.service.js';
+import { MissionPlanCurrentWorkService } from './mission-plan-current-work.service.js';
+import { ClientModule } from '../client/client.module.js';
 @Module({
   imports: [
+    ClientModule,
     ProjectModule,
     TaskModule,
     AccessModule,
@@ -16,7 +19,15 @@ import { MissionPlanService } from './mission-plan.service.js';
     DatabaseModule,
     ServerClockModule,
   ],
-  providers: [MissionPlanService, MissionPlanCopyService],
-  exports: [MissionPlanService, MissionPlanCopyService],
+  providers: [
+    MissionPlanService,
+    MissionPlanCopyService,
+    MissionPlanCurrentWorkService,
+  ],
+  exports: [
+    MissionPlanService,
+    MissionPlanCopyService,
+    MissionPlanCurrentWorkService,
+  ],
 })
 export class MissionPlanModule {}

@@ -71,7 +71,10 @@ export class TaskResultsService {
   async readinessWithinTransaction(actor: ActorContext, taskId: string) {
     const { task } = await this.tasks.readWithinTransaction({ actor, taskId });
     try {
-      await this.references.requireRead({ actor, context: task, lock: false });
+      await this.references.requireReadWithinReadTransaction({
+        actor,
+        context: task,
+      });
     } catch (error) {
       if (!(
         error instanceof ForbiddenException ||
@@ -86,7 +89,18 @@ export class TaskResultsService {
       task,
       result: {
         kind: 'available' as const,
-        current: latest ? await this.view(actor, task, latest) : null,
+        current: latest
+          ? this.declaration(
+              latest,
+              await this.references.exactWithinReadTransaction({
+                actor,
+                context: task,
+                documentId: latest.documentId,
+                versionId: latest.versionId,
+                representationId: latest.pdfId,
+              }),
+            )
+          : null,
       },
     };
   }
@@ -489,6 +503,27 @@ export class TaskResultsService {
       versionId: row.versionId,
       reference: { kind: 'declared', representationId: row.pdfId },
     });
+    return this.declaration(row, reference);
+  }
+
+  private declaration(
+    row: ResultRow,
+    reference: TaskResultDeclaration['reference'],
+  ): TaskResultDeclaration {
+    if (
+      !Number.isInteger(row.revision) ||
+      row.revision < 1 ||
+      row.revision > 2147483647 ||
+      !row.declaration.trim() ||
+      row.declaration !== row.declaration.trim() ||
+      Array.from(row.declaration).length > 2000 ||
+      !row.actorDisplayName.trim() ||
+      (row.reason !== null &&
+        (!row.reason.trim() ||
+          row.reason !== row.reason.trim() ||
+          Array.from(row.reason).length > 500))
+    )
+      throw new Error('Invalid persisted Task result content.');
     const base = {
       id: row.id,
       revision: row.revision,
