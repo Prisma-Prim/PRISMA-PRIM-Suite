@@ -2186,6 +2186,38 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/blocked-tasks:
+    get:
+      operationId: listCompanyBlockedTasks
+      summary: Discover current readable blocked Tasks in the active Company
+      description: >-
+        Requires current captured Task read, Project read and original Client authority.
+        Returns exactly current blocked Tasks of readable Projects, any recorded assignee
+        or date, including readable historical Clients and closed Projects. Current authority,
+        Project scope and the 25+1 matching-row lookahead share one repeatable-read snapshot.
+        Order is due date ascending/null last, then creation time and identifier. Pages are
+        not a frozen snapshot across requests. Unknown or repeated query fields are refused.
+        No count, write, event, command receipt or Client fence advance occurs.
+      tags: [Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - name: offset
+          in: query
+          required: false
+          schema:
+            { type: integer, minimum: 0, maximum: 9007199254740991, default: 0 }
+      responses:
+        '200':
+          description: One complete current-authority page of native blockage facts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BlockedTasksPage' }
+        '400':
+          description: The query is unsupported, repeated, fractional, negative or unsafe.
+        '401':
+          description: No verified External Principal is available.
+        '403':
+          description: Current Company/Workspace, membership or underlying read authority is unavailable.
   /api/projects/{projectId}/tasks/planning:
     post:
       operationId: planSelectedProjectTasks
@@ -4377,6 +4409,49 @@ components:
         taskId: { type: string, format: uuid }
         resultId: { type: string, format: uuid }
         resultRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+    BlockedTasksPage:
+      type: object
+      additionalProperties: false
+      required: [companyId, offset, pageSize, hasNextPage, tasks]
+      properties:
+        companyId: { type: string, format: uuid }
+        offset: { type: integer, minimum: 0, maximum: 9007199254740991 }
+        pageSize: { const: 25 }
+        hasNextPage: { type: boolean }
+        tasks:
+          type: array
+          maxItems: 25
+          description: Complete native current blockages in server order; no total or urgency metric.
+          items:
+            allOf:
+              - $ref: '#/components/schemas/NativeTask'
+              - type: object
+                required: [blockage, project]
+                properties:
+                  status: { const: blocked }
+                  completion: { type: 'null' }
+                  assignee:
+                    oneOf:
+                      - type: 'null'
+                      - type: object
+                        required: [workspaceMembershipId, displayLabel]
+                        properties:
+                          workspaceMembershipId: { type: string, format: uuid }
+                          displayLabel: { type: string, minLength: 1 }
+                  blockage:
+                    type: object
+                    required: [reason, actor, occurredAt]
+                    properties:
+                      reason: { type: string, minLength: 1, maxLength: 500 }
+                      actor: { $ref: '#/components/schemas/TaskActor' }
+                      occurredAt: { type: string, format: date-time }
+                  project:
+                    type: object
+                    required: [id, title, clientDisplayName]
+                    properties:
+                      id: { type: string, format: uuid }
+                      title: { type: string, minLength: 1 }
+                      clientDisplayName: { type: string, minLength: 1 }
     TaskPlanningInput:
       type: object
       additionalProperties: false
@@ -4413,49 +4488,48 @@ components:
           maxItems: 50
           description: Complete ordinary Task receipts in input order, including unchanged fields/declarations and attribution. A replay describes the historical outcome; fresh reads authorize subsequent work.
           items:
-            type: object
-            required:
-              [
-                id,
-                companyId,
-                projectId,
-                clientAccountId,
-                title,
-                status,
-                priority,
-                assignee,
-                dueDate,
-                version,
-                completion,
-                createdBy,
-                createdAt,
-                updatedAt,
-              ]
-            properties:
-              id: { type: string, format: uuid }
-              companyId: { type: string, format: uuid }
-              projectId: { type: string, format: uuid }
-              clientAccountId: { type: string, format: uuid }
-              title: { type: string }
-              status:
-                {
-                  type: string,
-                  enum: [todo, in_progress, blocked, done, cancelled],
-                }
-              priority: { type: string, enum: [normal, important, critical] }
-              version: { type: integer, minimum: 1, maximum: 2147483647 }
-              dueDate: { type: [string, 'null'], format: date }
-              assignee:
-                type: [object, 'null']
-                properties:
-                  workspaceMembershipId: { type: string, format: uuid }
-                  displayLabel: { type: string }
-              createdBy: { $ref: '#/components/schemas/TaskActor' }
-              createdAt: { type: string, format: date-time }
-              updatedAt: { type: string, format: date-time }
-              completion:
-                type: [object, 'null']
-                description: The native completion declaration; no completion is created by this command.
+            $ref: '#/components/schemas/NativeTask'
+    NativeTask:
+      type: object
+      required:
+        [
+          id,
+          companyId,
+          projectId,
+          clientAccountId,
+          title,
+          status,
+          priority,
+          assignee,
+          dueDate,
+          version,
+          completion,
+          createdBy,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        clientAccountId: { type: string, format: uuid }
+        title: { type: string }
+        status:
+          { type: string, enum: [todo, in_progress, blocked, done, cancelled] }
+        priority: { type: string, enum: [normal, important, critical] }
+        version: { type: integer, minimum: 1, maximum: 2147483647 }
+        dueDate: { type: [string, 'null'], format: date }
+        assignee:
+          type: [object, 'null']
+          properties:
+            workspaceMembershipId: { type: string, format: uuid }
+            displayLabel: { type: string }
+        createdBy: { $ref: '#/components/schemas/TaskActor' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        completion:
+          type: [object, 'null']
+          description: The native completion declaration; no completion is created by this command.
     TaskActor:
       type: object
       additionalProperties: false

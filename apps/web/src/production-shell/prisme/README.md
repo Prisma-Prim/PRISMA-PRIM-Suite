@@ -4,7 +4,7 @@
 
 ## Entry and composition
 
-The production default for an admitted user is Prisme. `?frame=classic` is a reload-stable legacy Classic compatibility URL, while existing `?frame=prisme` links remain compatible. Prisme no longer offers a Classic switch (UX PRD section 2, #426). Explicit legacy Classic URLs remain supported for compatibility. **Try Prisme** removes only `frame`, preserving every other URL parameter, the current section, the URL fragment and opaque history state. In-frame links carry that state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. The preference is presentation-only and is not persisted as account or Company data. Recognized fragments are `#overview`, `#documents`, `#clients`, `#projects`, `#my-tasks`, `#unassigned-tasks`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
+The production default for an admitted user is Prisme. `?frame=classic` is a reload-stable legacy Classic compatibility URL, while existing `?frame=prisme` links remain compatible. Prisme no longer offers a Classic switch (UX PRD section 2, #426). Explicit legacy Classic URLs remain supported for compatibility. **Try Prisme** removes only `frame`, preserving every other URL parameter, the current section, the URL fragment and opaque history state. In-frame links carry that state through pushState so the Workspace recovery hint from invitation acceptance survives navigation, Back/Forward and refresh when storage is unavailable; modified clicks keep native link behavior. The frame never interprets that state as authorization. The preference is presentation-only and is not persisted as account or Company data. Recognized fragments are `#overview`, `#documents`, `#clients`, `#projects`, `#my-tasks`, `#unassigned-tasks`, `#blocked-tasks`, `#access`, `#companies`, `#activity` and `#invitations`; only authorized sections are rendered as navigation.
 
 `App` still owns `useProductionShellContext(identity)` and the existing permission gates, callbacks and feature keys. `ApplicationShell` receives real identity/context, the existing Company selector and an authorized section composition. Section panels remain mounted when hidden or when changing presentation, so drafts and idempotent retry commands survive navigation. Identity, session, Company and permission-version changes still use the existing feature keys and session owner. No API transport, authorization or business workflow is implemented by the frame.
 
@@ -223,3 +223,20 @@ withdrawal and historical reads use the accepted frame and shared Select. The
 registered `contract-model.acceptance.spec.ts` exercises the actual App and isolated
 PostgreSQL at 1440/390, including exact retries and real authority retirement.
 Configuration approval records human intent; it creates no Contract or signature.
+
+## Company blocked Task supervision — issue #933
+
+The separately authorized Task-read entry `#blocked-tasks` composes the bounded
+[Project/Task §32](../../../../../docs/product/release-1-project-task-prd.md#32-bounded-company-blocked-task-supervision-931)
+read and existing exact Task-in-Project continuation. Recorded reason/actor/time,
+responsible member, date and original Project/Client labels stay with their native
+owners; this list adds no write, diagnosis or closure decision. The shared Task
+discovery owner also preserves Unassigned Tasks' existing page/retirement contract.
+Both frames use the existing styled controls; Prisme wraps long literal reasons
+in its restrained gold panel and stacks metadata at narrow widths.
+
+The registered `company-blocked-tasks.acceptance.spec.ts` proves actual App/API/
+disposable PostgreSQL discovery beyond page one, exact native resumption/history,
+four locales and fresh return at1440/390, with other blockages/source facts
+unchanged. The existing registered Company-unassigned journey proves compatibility.
+Original screenshots use `testInfo.outputPath` and remain outside product history.

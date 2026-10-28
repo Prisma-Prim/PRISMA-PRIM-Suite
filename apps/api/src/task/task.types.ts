@@ -69,13 +69,20 @@ export type UnassignedTaskView = Extract<
   assignee: null;
   project: TaskProjectLabels;
 };
-export interface UnassignedTasksPage {
+/** Exact metadata shared by the two fixed-size native Company discovery reads. */
+export interface TaskDiscoveryPage<TTask extends TaskView> {
   companyId: string;
   offset: number;
   pageSize: 25;
   hasNextPage: boolean;
-  tasks: UnassignedTaskView[];
+  tasks: TTask[];
 }
+export type UnassignedTasksPage = TaskDiscoveryPage<UnassignedTaskView>;
+/** One current native blockage, independent of assignment or due date. */
+export type BlockedTaskView = Extract<TaskView, { status: 'blocked' }> & {
+  project: TaskProjectLabels;
+};
+export type BlockedTasksPage = TaskDiscoveryPage<BlockedTaskView>;
 /** One current, complete page of the reader's dated open Tasks. */
 export type DueSoonTaskView = Extract<
   AssignedTaskView,

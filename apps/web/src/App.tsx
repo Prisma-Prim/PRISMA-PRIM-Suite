@@ -20,6 +20,8 @@ import { ContractModelWorkspace } from './contract-model/ContractModelWorkspace'
 import { contractModelAuthority } from './contract-model/contract-model-authority';
 import { useContractModelCopy } from './contract-model/contract-model.copy';
 import { MyTasks, canReadTasks } from './project/MyTasks';
+import { BlockedTasks } from './project/BlockedTasks';
+import { useBlockedTasksCopy } from './project/blocked-tasks.copy';
 import { UnassignedTasks } from './project/UnassignedTasks';
 import { useUnassignedTasksCopy } from './project/unassigned-tasks.copy';
 import { ProjectWorkspace } from './project/ProjectWorkspace';
@@ -69,6 +71,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const ideasCopy = useIdeasCopy();
   const prismeCopy = usePrismeCopy();
   const unassignedCopy = useUnassignedTasksCopy();
+  const blockedCopy = useBlockedTasksCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [templateCatalogueRevision, setTemplateCatalogueRevision] = useState(0);
   const [clientIdentityGeneration, setClientIdentityGeneration] = useState(0);
@@ -791,6 +794,21 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       content: (
         <UnassignedTasks
           key={`unassigned-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
+          actor={access.actor}
+          identity={identity}
+          onOpenTask={openProject}
+        />
+      ),
+    });
+  if (canReadTasks(access.actor))
+    sections.push({
+      id: 'blocked-tasks',
+      label: blockedCopy('title'),
+      description: blockedCopy('description'),
+      mountWhenSelected: true,
+      content: (
+        <BlockedTasks
+          key={`blocked-tasks:${access.sessionGeneration}:${clientAuthorityGeneration}:${activeCompanyId ?? 'no-company'}`}
           actor={access.actor}
           identity={identity}
           onOpenTask={openProject}
