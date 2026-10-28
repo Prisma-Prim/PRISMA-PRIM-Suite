@@ -1,0 +1,75 @@
+{
+  "issue": 969,
+  "pr": 971,
+  "source": "f3fcc191f6101f95c2069af86cdae0446051b78c",
+  "base": "f9ce3d52af14400623bf962869cf94aa9ed2f868",
+  "tree": "e8bcf3632ec342522566a44955ecc144d7219695",
+  "canonicalLocalGate": {
+    "attempt": 1,
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1885,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "issue": 969,
+    "source": "f3fcc191f6101f95c2069af86cdae0446051b78c",
+    "reviewedBase": "f9ce3d52af14400623bf962869cf94aa9ed2f868",
+    "tree": "e8bcf3632ec342522566a44955ecc144d7219695",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0,
+    "preparation": {
+      "ordered": true,
+      "standards": {
+        "result": "PASS",
+        "blocking": 0,
+        "nonblocking": 0,
+        "sha256": "b0bdc0dae2425cc49cf82eebd63e4e16ab9e7892632e42f64960bfe3b0afc6e8"
+      },
+      "spec": {
+        "result": "PASS",
+        "blocking": 0,
+        "nonblocking": 0,
+        "sha256": "b27b7c44f957e63d01362593f881506fe7b9074a3d55449084e498febb655beb"
+      },
+      "reviewedSource": "311d26b9aad110f775c230555156e3a119f852cb",
+      "reviewedBase": "7333e3a74c38c805dbb29d270f377bec621a2e57",
+      "reviewedTree": "adf1329268ba028d6b9a0c4728b206b06870a0fe"
+    },
+    "actualDelegatedProductApproval": {
+      "comment": 6482673283,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/969#issuecomment-6482673283",
+      "authority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237",
+      "personalDanReview": false
+    },
+    "approvalOnlySubstitutions": 16,
+    "approvalOnlyEvidenceSHA256": "0a94d60c90ab63dfb7f2a0f8592ef22203bf5d58aff9d9b95b6b95e982db771b",
+    "normativeReviewedBytesRecoverableExactly": true,
+    "canonicalGate": "PASS: canonical docs_only gate and fresh validate on exactsource f3fcc191f6101f95c2069af86cdae0446051b78c/base f9ce3d52af14400623bf962869cf94aa9ed2f868/tree e8bcf3632ec342522566a44955ecc144d7219695; six required passed, ten not_required, not runtime execution",
+    "mainMerge": "pending inspected/retrieved proof and final guarded merge",
+    "automaticReviewTriggerRequired": false,
+    "compositionApplicability": {
+      "fromSource": "d63ffef18a9d867ab534e11124592893ea8e5f0d",
+      "fromBase": "7333e3a74c38c805dbb29d270f377bec621a2e57",
+      "toSource": "f3fcc191f6101f95c2069af86cdae0446051b78c",
+      "toBase": "f9ce3d52af14400623bf962869cf94aa9ed2f868",
+      "allFourApprovedDOCBlobsIdentical": true,
+      "baseDelta": "Delivered960 native literal Task instructions/additive0087 and test-only correction; inspected byroot, no source/copy-plan/result-review/permission/closure contract change. Applicability current Task-version observations already consume ordinary Task edits. No conflict resolution or normative DOC change.",
+      "reviewPolicy": "Main-only advance needs fresh canonical integration gate, no new review."
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "priorFailedCanonicalGate": null,
+  "scope": "Documentation-only bounded mission applicability proposal/decision/restoration contract under MissionObligations2B, with explicit new independent captured coordinator/approver opt-ins, exact immutable activity/source/Task and attributed history/legacy/transaction/privacy/lifetime semantics. No actual grant, oldbundleexpansion, performed-work/legal-agreement/Contract-amendment/certification/closure/adoption claim. Separate fresh runtime follows approved canonical merge/readiness. MISSION-CLOSE-01 remains solely its existing register.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-18T00:00:00Z"
+}
