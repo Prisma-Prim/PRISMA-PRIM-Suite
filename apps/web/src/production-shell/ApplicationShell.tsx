@@ -34,6 +34,7 @@ export interface ApplicationSection {
     | 'projects'
     | 'my-tasks'
     | 'unassigned-tasks'
+    | 'blocked-tasks'
     | 'clients'
     | 'access'
     | 'companies'
@@ -60,6 +61,7 @@ const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
     'requests',
     'my-tasks',
     'unassigned-tasks',
+    'blocked-tasks',
     'activity',
   ]);
 
@@ -312,7 +314,8 @@ export function ApplicationShell({
                   isPrisme ||
                   section.id === 'clients' ||
                   section.id === 'projects' ||
-                  section.id === 'unassigned-tasks',
+                  section.id === 'unassigned-tasks' ||
+                  section.id === 'blocked-tasks',
               )
               .map((section) => (
                 <li key={section.id}>

@@ -42,6 +42,7 @@ export function SectionIcon({
     projects: FolderKanban,
     'my-tasks': ListTodo,
     'unassigned-tasks': ClipboardList,
+    'blocked-tasks': ClipboardList,
     clients: Users,
     access: ShieldCheck,
     companies: Building2,

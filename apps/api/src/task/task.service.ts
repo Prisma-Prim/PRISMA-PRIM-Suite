@@ -41,6 +41,7 @@ import {
   assignedTasksQuery,
   attentionTasksQuery,
   unassignedTasksQuery,
+  blockedTasksQuery,
   cancelInput,
   createInput,
   editInput,
@@ -59,6 +60,8 @@ import {
   type AssignedTaskView,
   type UnassignedTaskView,
   type UnassignedTasksPage,
+  type BlockedTaskView,
+  type BlockedTasksPage,
   type AttentionRule,
   type AttentionTasksPage,
   type CompanyOverdueTasks,
@@ -199,17 +202,61 @@ export class TaskService {
       { isolationLevel: 'repeatable read' },
     );
   }
-  /** Current authority and the 25+1 matching-row lookahead share one snapshot. */
   async listUnassigned(
     actor: ActorContext,
     query: unknown,
   ): Promise<UnassignedTasksPage> {
-    const { offset } = unassignedTasksQuery(query);
+    const page = await this.discoveryPage(actor, {
+      ...unassignedTasksQuery(query),
+      kind: 'unassigned',
+    });
+    return {
+      ...page,
+      tasks: page.tasks.map((task): UnassignedTaskView => {
+        if (task.assignee !== null)
+          throw new Error('Invalid unassigned Task projection.');
+        switch (task.status) {
+          case 'todo':
+          case 'in_progress':
+          case 'blocked':
+            return { ...task, assignee: null };
+          case 'done':
+          case 'cancelled':
+            throw new Error('Invalid unassigned Task state.');
+          default: {
+            const exhaustive: never = task;
+            return exhaustive;
+          }
+        }
+      }),
+    };
+  }
+  async listBlocked(
+    actor: ActorContext,
+    query: unknown,
+  ): Promise<BlockedTasksPage> {
+    const page = await this.discoveryPage(actor, {
+      ...blockedTasksQuery(query),
+      kind: 'blocked',
+    });
+    return {
+      ...page,
+      tasks: page.tasks.map((task): BlockedTaskView => {
+        if (task.status !== 'blocked')
+          throw new Error('Invalid blocked Task projection.');
+        return task;
+      }),
+    };
+  }
+  /** The two bounded Company discovery reads share live authority, scope and 25+1 selection. */
+  private async discoveryPage(
+    actor: ActorContext,
+    input: { offset: number; kind: 'unassigned' | 'blocked' },
+  ) {
     return this.database.transaction(
       async () => {
         const companyId = await this.access.requireActor(actor);
-        // Project owns original-Client visibility, including historical labels and
-        // readable closed Projects. No Project lifecycle filter belongs here.
+        // Project owns original-Client visibility, historical labels and readable closed Projects.
         const readableProjects = new Map(
           (await this.projects.list(actor)).map((project) => [
             project.id,
@@ -220,7 +267,7 @@ export class TaskService {
             },
           ]),
         );
-        const page = { companyId, offset, pageSize: 25 as const };
+        const page = { companyId, offset: input.offset, pageSize: 25 as const };
         if (readableProjects.size === 0)
           return { ...page, hasNextPage: false, tasks: [] };
         const rows = await this.database.connection
@@ -230,8 +277,12 @@ export class TaskService {
             and(
               eq(tasks.workspaceId, actor.workspaceId),
               eq(tasks.companyId, companyId),
-              isNull(tasks.assigneeMembershipId),
-              inArray(tasks.status, [...OPEN_TASK_STATES]),
+              input.kind === 'blocked'
+                ? eq(tasks.status, 'blocked')
+                : and(
+                    isNull(tasks.assigneeMembershipId),
+                    inArray(tasks.status, [...OPEN_TASK_STATES]),
+                  ),
               inArray(tasks.projectId, [...readableProjects.keys()]),
             ),
           )
@@ -241,28 +292,15 @@ export class TaskService {
             asc(tasks.id),
           )
           .limit(26)
-          .offset(offset);
+          .offset(input.offset);
         return {
           ...page,
           hasNextPage: rows.length > page.pageSize,
-          tasks: rows.slice(0, page.pageSize).map((row): UnassignedTaskView => {
-            const task = view(row);
-            const project = readableProjects.get(task.projectId);
-            if (!project || task.assignee !== null)
-              throw new Error('Invalid unassigned Task projection.');
-            switch (task.status) {
-              case 'todo':
-              case 'in_progress':
-              case 'blocked':
-                return { ...task, assignee: null, project };
-              case 'done':
-              case 'cancelled':
-                throw new Error('Invalid unassigned Task state.');
-              default: {
-                const exhaustive: never = task;
-                return exhaustive;
-              }
-            }
+          tasks: rows.slice(0, page.pageSize).map((row) => {
+            const task = view(row),
+              project = readableProjects.get(task.projectId);
+            if (!project) throw new Error('Invalid Task discovery Project.');
+            return { ...task, project };
           }),
         };
       },

@@ -1458,7 +1458,7 @@ neither depends on nor decides that policy.
 
 ## 32. Bounded Company blocked-Task supervision (#931)
 
-**Status: Approved bounded contract; runtime not delivered.** Dan approved this
+**Status: Approved bounded contract; runtime delivery tracked by #933.** Dan approved this
 next feature on 2026-10-28 after grouped planning #929 / PR #930: see all recorded
 Task blockages in the active Company with reason, responsible member and date,
 then open the exact native Task to act. This is a bounded product synthesis,
