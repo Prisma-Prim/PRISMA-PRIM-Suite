@@ -201,6 +201,18 @@ test('plans selected mission Tasks by keyboard, recovers a lost committed respon
   });
   await expect(nativeDraft).toBeEnabled();
   await nativeDraft.fill('Independent manual draft DEMO');
+  await tasks
+    .getByRole('navigation', { name: 'Tasks', exact: true })
+    .getByRole('button', { name: text(untouched.title), exact: true })
+    .click();
+  await tasks
+    .getByRole('button', { name: 'Mark blocked', exact: true })
+    .click();
+  const independentReason = tasks.getByRole('textbox', {
+    name: 'Blockage reason',
+    exact: true,
+  });
+  await independentReason.fill('Independent blockage explanation DEMO');
   const open = tasks.getByRole('button', {
     name: 'Plan selected Tasks',
     exact: true,
@@ -284,6 +296,30 @@ test('plans selected mission Tasks by keyboard, recovers a lost committed respon
     group.getByText('Selected planning saved.', { exact: true }),
   ).toBeVisible();
   await expect(nativeDraft).toBeEnabled();
+  await expect(independentReason).toHaveValue(
+    'Independent blockage explanation DEMO',
+  );
+  const refreshedIndependentTask = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname ===
+        `/api/tasks/${text(untouched.taskId)}`,
+  );
+  await group
+    .getByRole('button', { name: 'Reload planning', exact: true })
+    .click();
+  expect((await refreshedIndependentTask).status()).toBe(200);
+  await expect(nativeDraft).toBeEnabled();
+  await expect(independentReason).toHaveValue(
+    'Independent blockage explanation DEMO',
+  );
+  await tasks
+    .locator('.task-panel')
+    .screenshot({ path: info.outputPath('preserved-reason-draft.png') });
+  await tasks
+    .getByRole('button', { name: 'Keep current state', exact: true })
+    .click();
+  await tasks.getByRole('button', { name: 'New Task', exact: true }).click();
   await expect(nativeDraft).toHaveValue('Independent manual draft DEMO');
   expect(writes).toHaveLength(2);
   expect(writes[1]).toEqual(writes[0]);

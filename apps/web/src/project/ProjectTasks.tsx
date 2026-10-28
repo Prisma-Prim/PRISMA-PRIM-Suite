@@ -359,7 +359,9 @@ function TaskProject({
   const [members, setMembers] = useState<Assignee[] | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
   const [planningProtected, setPlanningProtected] = useState(false);
-  const [reasonDraft, setReasonDraft] = useState<ReasonDraft | null>(null);
+  const [reasonDraft, setReasonDraft] = useState<
+    (ReasonDraft & { taskId: string; version: number }) | null
+  >(null);
   const [feedback, setFeedback] = useState<TaskFeedback | null>(null);
   const [taskSearch, setTaskSearch] = useState('');
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
@@ -526,6 +528,18 @@ function TaskProject({
         : previous,
     );
     setDetail(nextDetail);
+    // A grouped refresh preserves an independent explanation only while its exact native Task is unchanged.
+    setReasonDraft((previous) =>
+      previous &&
+      listing.mutable &&
+      !projectClosed &&
+      nextDetail?.kind === 'ready' &&
+      nextDetail.mutable &&
+      previous.taskId === nextDetail.task.id &&
+      previous.version === nextDetail.task.version
+        ? previous
+        : null,
+    );
     const saved = drafts.current.get(taskId ?? 'create');
     const task = nextDetail?.kind === 'ready' ? nextDetail.task : null;
     setDraft(
@@ -567,6 +581,7 @@ function TaskProject({
       reload?: boolean;
       requestedOpenId?: number;
       sourceSignal?: AbortSignal;
+      preserveReasonDraft?: boolean;
     } = {},
   ) {
     if (options.sourceSignal?.aborted) return;
@@ -577,7 +592,7 @@ function TaskProject({
     setSelected(taskId);
     setDetail(taskId ? { kind: 'loading' } : null);
     setDraft(emptyDraft);
-    setReasonDraft(null);
+    if (!options.preserveReasonDraft) setReasonDraft(null);
     setMembers(null);
     if (mutation.kind !== 'uncertain') setFeedback(null);
     if (options.reload) {
@@ -827,7 +842,13 @@ function TaskProject({
     switch (move) {
       case 'blocked':
       case 'cancelled':
-        setReasonDraft({ kind: move, text: '', invalid: false });
+        setReasonDraft({
+          kind: move,
+          text: '',
+          invalid: false,
+          taskId,
+          version: expectedVersion,
+        });
         return;
       case 'todo':
       case 'in_progress':
@@ -925,9 +946,10 @@ function TaskProject({
           onProtectionChange={setPlanningProtected}
           onDenied={deny}
           onReloaded={() =>
-            Promise.all([open(selected), onProjectChanged?.()]).then(
-              () => undefined,
-            )
+            Promise.all([
+              open(selected, { preserveReasonDraft: true }),
+              onProjectChanged?.(),
+            ]).then(() => undefined)
           }
           onConfirmed={() => onActivityRecorded?.()}
         />
@@ -1165,7 +1187,11 @@ function TaskProject({
               {current && canManage && mutable && reasonDraft && (
                 <TaskReasonForm
                   draft={reasonDraft}
-                  onChange={setReasonDraft}
+                  onChange={(next) =>
+                    setReasonDraft((previous) =>
+                      previous ? { ...previous, ...next } : null,
+                    )
+                  }
                   onSubmit={declare}
                   onDismiss={() => setReasonDraft(null)}
                 />

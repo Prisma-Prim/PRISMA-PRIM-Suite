@@ -756,3 +756,117 @@ it.each(['closed', 'unavailable'])(
     expect(http.writes).toHaveLength(0);
   },
 );
+
+it.each([
+  ['Mark blocked', 'Blockage reason', 'reload'],
+  ['Cancel Task', 'Cancellation reason', 'reload'],
+  ['Mark blocked', 'Blockage reason', 'save-other'],
+  ['Cancel Task', 'Cancellation reason', 'save-other'],
+  ['Mark blocked', 'Blockage reason', 'save-same'],
+  ['Cancel Task', 'Cancellation reason', 'save-same'],
+])(
+  'keeps the independent %s explanation through %s %s only for its unchanged native Task',
+  async (action, label, operation) => {
+    let rows = [task('first'), task('second')];
+    const reply = deferred<Response>();
+    const writes: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit = {}) => {
+        const path = new URL(url, window.location.href).pathname;
+        if (init.method === 'POST') {
+          writes.push(path);
+          const changedId = operation === 'save-same' ? 'first' : 'second';
+          rows = rows.map((row) =>
+            row.id === changedId
+              ? { ...row, version: 2, dueDate: '2026-11-03' }
+              : row,
+          );
+          return reply.promise;
+        }
+        if (path.endsWith('/eligible-task-assignees'))
+          return Response.json({ members: [] });
+        if (path.endsWith('/tasks'))
+          return Response.json({ mutable: true, tasks: rows });
+        if (path.endsWith('/history')) return Response.json({ events: [] });
+        const row = rows.find((row) => path === `/api/tasks/${row.id}`);
+        return row
+          ? Response.json({ mutable: true, task: row })
+          : new Response(null, { status: 404 });
+      }),
+    );
+    render(
+      <ProjectTasks
+        actor={actor}
+        identity={deterministicBrowserIdentity()}
+        projectId="project"
+        projectStatus="preparatory"
+      />,
+    );
+    const navigation = await screen.findByRole('navigation', { name: 'Tasks' });
+    fireEvent.click(
+      await within(navigation).findByRole('button', {
+        name: 'Activity first DEMO',
+      }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: action }));
+    fireEvent.change(screen.getByLabelText(label), {
+      target: { value: 'Independent explanation DEMO' },
+    });
+    const group = await openPlanning();
+    if (operation === 'reload') {
+      fireEvent.click(
+        within(group).getByRole('button', { name: 'Reload planning' }),
+      );
+    } else {
+      if (operation === 'save-other') {
+        fireEvent.click(
+          within(group).getByRole('checkbox', { name: 'Activity first DEMO' }),
+        );
+        fireEvent.click(
+          within(group).getByRole('checkbox', { name: 'Activity second DEMO' }),
+        );
+      }
+      const title = operation === 'save-same' ? 'first' : 'second';
+      fireEvent.change(
+        within(group).getByLabelText(`Due date — Activity ${title} DEMO`),
+        { target: { value: '2026-11-03' } },
+      );
+      fireEvent.click(
+        within(group).getByRole('button', { name: 'Save selected planning' }),
+      );
+      await waitFor(() => expect(writes).toHaveLength(1));
+      // A reason remains an independent literal draft, including edits made while the group is pending.
+      fireEvent.change(screen.getByLabelText(label), {
+        target: { value: 'Latest independent explanation DEMO' },
+      });
+      const changed = rows.find((row) => row.id === title);
+      if (!changed) throw new Error('Selected Task required.');
+      await act(async () =>
+        reply.resolve(
+          Response.json(
+            {
+              schema: 'task-planning/v1',
+              projectId: 'project',
+              tasks: [changed],
+            },
+            { status: 201 },
+          ),
+        ),
+      );
+      await within(group).findByText('Selected planning saved.');
+    }
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Task title' })).toBeEnabled(),
+    );
+    if (operation === 'save-same')
+      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+    else
+      expect(screen.getByLabelText(label)).toHaveValue(
+        operation === 'reload'
+          ? 'Independent explanation DEMO'
+          : 'Latest independent explanation DEMO',
+      );
+    expect(writes).toHaveLength(operation === 'reload' ? 0 : 1);
+  },
+);
