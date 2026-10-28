@@ -1,0 +1,56 @@
+{
+  "issue": 944,
+  "pr": 945,
+  "source": "3b90937da4ccc157ba7d7ec86be7e24d37d39384",
+  "base": "a76bbcccdacd392231061fa764f54d225acba3d6",
+  "tree": "4bcd616b4c24736b808dc7ddc9bd5f4e1c24d84d",
+  "canonicalLocalGate": {
+    "attempt": 2,
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1847,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "3b90937da4ccc157ba7d7ec86be7e24d37d39384",
+    "reviewedBase": "a76bbcccdacd392231061fa764f54d225acba3d6",
+    "preparationSource": "ce9db6fd0e10c3faa5bdb3ce4c95c13020cee03a",
+    "standards": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "spec": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "reviewOrder": "Standards then Spec",
+    "blockingFindingsRemaining": 0,
+    "rootDisposition": "Actual delegated approval944comment6473889873 under51comment6283507237/autonomy6465537888. Root inspected complete contract/reports and only3exact approval/status/index substitutions; reverse transformations recover original reviewed bytes and entire normative body is unchanged. No runtime or new approval round."
+  },
+  "independentGitHubCIExecuted": false,
+  "priorFailedCanonicalGate": {
+    "attempt": 1,
+    "sameSource": "3b90937da4ccc157ba7d7ec86be7e24d37d39384",
+    "sameBase": "a76bbcccdacd392231061fa764f54d225acba3d6",
+    "sameTree": "4bcd616b4c24736b808dc7ddc9bd5f4e1c24d84d",
+    "family": "doctor",
+    "failure": "pnpm readiness ETIMEDOUT at unchanged10000ms; later5required families unexecuted",
+    "failedManifestRetainedPrivately": true,
+    "identifiedCondition": "Canonical allowlist selected a different package store from normal setup; targeted same-environment probe observed automatic graph installation and658entry supply-chain validation.",
+    "restoration": "Normal explicit frozen installation into canonical expectedstore, dependencyinputhashes unchanged; same canonical doctor thenPASS0.52s under originalbudget before freshcompletegate2. No timeout/profile/dependencyverification setting changed."
+  },
+  "scope": "Documentation-only ProjectTask33 contract for a bounded currentCompany teamTask workboard: deliberate stored-state, recorded-name and stored-date criteria, existing native Task/Project/originalClient read authority, one caller-owned coherent readonly snapshot, complete strict25+1 pages/echo, exact native Task continuation and protected intent/Actor recovery lifetime. No new grant/schema/dependency/provider, metric/automation or business fulfillment/closure policy. Runtime follows separately after approved contract delivery. MISSION-CLOSE-01 remains solely its existing register.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-16T00:00:00Z"
+}
