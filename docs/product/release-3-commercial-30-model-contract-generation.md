@@ -239,7 +239,10 @@ withdrawal of a Contract decision is introduced.
 
 Store deterministic escaped Romanian HTML with renderer code
 `COMPANY_CONSULTING_CONTRACT_RO` v1 and SHA256. Reuse sandboxed preview/exact HTML
-download; no PDF converter, dependency or Document Registry record is required.
+download; the original generation slice requires no PDF converter, dependency or
+Document Registry record. [§33](release-3-commercial-33-non-official-pdf-download.md)
+separately owns the bounded derived PDF download contract without changing these
+bytes, historical reads or decisions.
 Render the complete model title/place, nine sections, issuer/provider requisites,
 Client identity/entered requisites, framework editions, entered document/term
 dates, copied scope/conditions and explicit net/tax/gross/currency, added conditions,

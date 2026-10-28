@@ -240,7 +240,10 @@ The HTML uses Romanian labels and language, escaped literal text with readable
 line breaks, semantic headings/table cells, responsive and print styles, and no
 script, resource fetch, active links, executable markup or template expressions.
 Use the existing sandboxed representation viewer and exact HTML download seam;
-no new package, provider, PDF conversion or Document Registry entry is required.
+the original generation slice requires no new package, provider, PDF conversion
+or Document Registry entry. [§33](release-3-commercial-33-non-official-pdf-download.md)
+separately owns the bounded derived PDF download contract; it preserves this
+exact HTML and grants no additional commercial or Document authority.
 The internal view shows current workflow state outside the immutable bytes.
 
 The fixed content order is:
