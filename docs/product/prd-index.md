@@ -133,6 +133,11 @@ Task copies, delivered by #920 / PR #921. Its [Contract continuation §10](relea
 under #922 / #923 owns the separately bounded optional Contract-to-plan creation.
 Each section’s status governs its readiness; fixed illustrative sources and
 obligation, certification and closure owners remain unchanged.
+Its [current-work overview §11](release-1-configurable-mission-plans-prd.md#11-current-work-for-a-configured-mission-plan)
+under #939 is Approved and separately composes preserved source
+with current native Task/independently readable result facts and exact Task
+continuation. It does not expand fixed-pilot readiness/review; runtime follows
+approval, contract merge and a separate readiness check.
 
 The separate [grouped Task planning contract](release-1-project-task-prd.md#31-bounded-grouped-task-responsibility-and-due-date-planning-927)
 under #927 bounds explicit per-Task responsibility/date entry and one atomic save
