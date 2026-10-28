@@ -1,5 +1,6 @@
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { readCurrentActor } from '../access/current-actor';
 import {
   createAuthenticatedApiClient,
   type AuthenticatedApiClient,
@@ -68,10 +69,11 @@ export async function handleAuthenticatedAccessRejection({
   if (signal?.aborted) return 'forbidden';
   let selectedContextWasForbidden = false;
   if (companyContextId) {
-    const selectedContext = await api.request<ActorContext>(
-      '/access/current-actor',
-      { companyContextId, signal },
-    );
+    const selectedContext = await readCurrentActor({
+      api,
+      companyContextId,
+      signal,
+    });
     if (signal?.aborted) return 'forbidden';
     if (selectedContext.status === 'unauthorized') {
       await identity.rejectSession();
@@ -89,10 +91,7 @@ export async function handleAuthenticatedAccessRejection({
     selectedContextWasForbidden = selectedContext.status === 'forbidden';
   }
 
-  const workspaceContext = await api.request<ActorContext>(
-    '/access/current-actor',
-    { signal },
-  );
+  const workspaceContext = await readCurrentActor({ api, signal });
   if (signal?.aborted) return 'forbidden';
   if (workspaceContext.status === 'unauthorized') {
     await identity.rejectSession();

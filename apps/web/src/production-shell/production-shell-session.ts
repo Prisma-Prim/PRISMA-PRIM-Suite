@@ -194,19 +194,21 @@ export function createProductionShellSession({
     return true;
   }
 
-  async function rejectRevokedWorkspaceAccess(
+  async function revalidateWorkspaceAccess(
     transport: ProductionShellTransport,
     candidate: RequestOperation,
-  ): Promise<boolean> {
+  ): Promise<'handled' | 'readable' | 'unreadable'> {
     const workspaceActor = await transport.loadActor({
       signal: candidate.controller.signal,
     });
-    if (!isCurrent(candidate)) return true;
-    if (await rejectUnauthorized(workspaceActor, candidate)) return true;
-    if (!isCurrent(candidate)) return true;
-    if (workspaceActor.status !== 'forbidden') return false;
-    dispatch({ type: 'access-forbidden' });
-    return true;
+    if (!isCurrent(candidate)) return 'handled';
+    if (await rejectUnauthorized(workspaceActor, candidate)) return 'handled';
+    if (!isCurrent(candidate)) return 'handled';
+    if (workspaceActor.status === 'forbidden') {
+      dispatch({ type: 'access-forbidden' });
+      return 'handled';
+    }
+    return workspaceActor.status === 'ok' ? 'readable' : 'unreadable';
   }
 
   async function loadActivityLog(
@@ -223,8 +225,20 @@ export function createProductionShellSession({
     if (await rejectUnauthorized(result, candidate)) return;
     if (!isCurrent(candidate)) return;
     if (result.status === 'forbidden') {
-      if (await rejectRevokedWorkspaceAccess(transport, candidate)) return;
+      const workspaceAccess = await revalidateWorkspaceAccess(
+        transport,
+        candidate,
+      );
+      if (workspaceAccess === 'handled') return;
       if (!isCurrent(candidate)) return;
+      if (workspaceAccess === 'unreadable') {
+        dispatch({
+          type: 'activity-resolved',
+          origin,
+          activityLog: { status: 'error' },
+        });
+        return;
+      }
       if (actor.activeCompany) {
         dispatch({
           type: 'company-rejected',
@@ -316,8 +330,16 @@ export function createProductionShellSession({
       if (await rejectUnauthorized(selectedResult, candidate)) return;
       if (!isCurrent(candidate)) return;
       if (selectedResult.status === 'forbidden') {
-        if (await rejectRevokedWorkspaceAccess(transport, candidate)) return;
+        const workspaceAccess = await revalidateWorkspaceAccess(
+          transport,
+          candidate,
+        );
+        if (workspaceAccess === 'handled') return;
         if (!isCurrent(candidate)) return;
+        if (workspaceAccess === 'unreadable') {
+          dispatch({ type: 'selection-failed', origin, companyId });
+          return;
+        }
         dispatch({ type: 'selection-denied', origin, companyId });
         return;
       }
