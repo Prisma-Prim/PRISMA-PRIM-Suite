@@ -115,6 +115,14 @@ require that answer.
 | [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft           | Equivalent-work qualification, processing resource bounds and evidence    |
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
+The separately selected [offline comparative pilot-evaluation contract](ai-knowledge-governance-prd.md#17-bounded-offline-comparative-pilot-evaluation--957)
+under [#957](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957) is **Approved** following [coordinator disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957#issuecomment-6479172511) within the existing AI/Knowledge owner.
+It specifies a provider-free local command over declared case/reference inputs and
+captured observations, with deterministic per-case and paired metrics and explicit
+synthetic provenance. Its bounded readiness gate does not promote the wider Draft
+PRD, approve a real pilot or change Release 7 sequencing. A separate runtime child
+follows actual product approval, canonical contract merge and readiness checks.
+
 ## 5. Release 1 capability PRDs
 
 Release 1 is a sequence of integrated capability slices, not five parallel horizontal projects. Capability PRDs may remain Draft while named evidence is collected. Their implementation children are created only when the readiness gates pass.
