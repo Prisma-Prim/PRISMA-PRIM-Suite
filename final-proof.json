@@ -1,0 +1,556 @@
+{
+  "issue": 946,
+  "pr": 948,
+  "source": "022bc9eabb9ada6d4ed1214b6a8c9ac06f656519",
+  "base": "ee46c414320200cfda287f6bb60be94440831a10",
+  "tree": "78b34fa7229f8ba9568bde68140cfefd49273de0",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40742090712,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712",
+    "attempt": 1,
+    "providerLatestJobAttempts": {
+      "scope": 1,
+      "checks": 1,
+      "postgres_image": 1,
+      "web_unit": 1,
+      "packaging": 1,
+      "acceptance (1)": 1,
+      "browser (2)": 1,
+      "api (3/3)": 1,
+      "api (2/3)": 1,
+      "build": 1,
+      "browser (3)": 1,
+      "api (serial)": 1,
+      "acceptance (2)": 1,
+      "api (1/3)": 1,
+      "browser (1)": 1,
+      "quality": 1
+    },
+    "actualExecutionOrigins": {
+      "scope": {
+        "actualJobId": 123006091303,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123006091303"
+      },
+      "checks": {
+        "actualJobId": 123006092099,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123006092099"
+      },
+      "postgres_image": {
+        "actualJobId": 123006214749,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123006214749"
+      },
+      "web_unit": {
+        "actualJobId": 123007531430,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531430"
+      },
+      "packaging": {
+        "actualJobId": 123007531525,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531525"
+      },
+      "acceptance (1)": {
+        "actualJobId": 123007531539,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531539"
+      },
+      "browser (2)": {
+        "actualJobId": 123007531543,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531543"
+      },
+      "api (3/3)": {
+        "actualJobId": 123007531672,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531672"
+      },
+      "api (2/3)": {
+        "actualJobId": 123007531701,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531701"
+      },
+      "build": {
+        "actualJobId": 123007531752,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531752"
+      },
+      "browser (3)": {
+        "actualJobId": 123007531807,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531807"
+      },
+      "api (serial)": {
+        "actualJobId": 123007531817,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531817"
+      },
+      "acceptance (2)": {
+        "actualJobId": 123007531826,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007531826"
+      },
+      "api (1/3)": {
+        "actualJobId": 123007532040,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007532040"
+      },
+      "browser (1)": {
+        "actualJobId": 123007532427,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123007532427"
+      },
+      "quality": {
+        "actualJobId": 123014991913,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40742090712/job/123014991913"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "source": "022bc9eabb9ada6d4ed1214b6a8c9ac06f656519",
+    "base": "ee46c414320200cfda287f6bb60be94440831a10",
+    "tree": "78b34fa7229f8ba9568bde68140cfefd49273de0",
+    "qualification": "Development self-reported execution; complete final independent CI follows review. No canonical complete local16-family gate, real Clerk/tenant adoption or production activation is claimed. Historical test counts overlap and are never summed.",
+    "normalVerifyBeforeUICorrection": {
+      "command": [
+        "pnpm",
+        "verify"
+      ],
+      "log": "verify-development-final-2.log",
+      "exit": 0,
+      "scriptsPass": 490,
+      "apiPass": 1520,
+      "apiParallelSkip": 1989,
+      "apiSerialSkip": 106,
+      "webPass": 3610,
+      "webFiles": 216,
+      "formatLintTypesBuilds": "PASS",
+      "scope": "Stable1864inputs source-verify-development-final-2.json verified before only REST test additions. Every skip is unexecuted. This is not complete local16family evidence.",
+      "failureBefore": "verify-development-final exit1 format only; no tests/builds executed; corrected2files with Prettier"
+    },
+    "featureRealPostgres": {
+      "command": [
+        "pnpm",
+        "--filter",
+        "@prisma-prim/api",
+        "exec",
+        "vitest",
+        "run",
+        "src/task/team-tasks.rest.test.ts"
+      ],
+      "log": "rest-final-2.log",
+      "exit": 0,
+      "passed": 16,
+      "files": 1,
+      "durationSeconds": 16.65,
+      "sourceSnapshot": "source-final-acceptance.json",
+      "reuse": "API and feature REST blobs are byte-identical in original prepared3469 and published022bc9; execution retains original working-input snapshot, no final clean-commit execution claimed.",
+      "logSHA256": "6af3083634d401a9863427bf80eff20f7b600fd575b48b85266db8a88e3db9f4"
+    },
+    "retainedNativeRegression": {
+      "log": "native-regression-final.log",
+      "exit": 0,
+      "passed": 263,
+      "files": 15,
+      "durationSeconds": 180.19,
+      "provenance": "Previous issue author reported on final extracted/wired production; original log/exit retained, no embedded literal argv/sourceSHA; browser4snapshot covers succeeding settled source. Earlier205preextraction is NOT final-source proof."
+    },
+    "retainedEarlierWebRegression": {
+      "log": "web-regression-final.log",
+      "exit": 0,
+      "passed": 280,
+      "files": 9,
+      "durationSeconds": 143.56,
+      "provenance": "Previous issue author original log/exit; overlaps normalverify and other checks, never summed"
+    },
+    "correction": {
+      "originalIndependentPreparation": "StandardsFAIL1P2/SpecFAIL1P2 on3469, both preserved; root dispositions scoped fixes on022bc9.",
+      "finalTypedCausalPair": {
+        "receipts": [
+          {
+            "name": "correction-final-tests-typed-red",
+            "argv": [
+              "pnpm",
+              "--filter",
+              "@prisma-prim/web",
+              "exec",
+              "vitest",
+              "run",
+              "src/App.team-task-lifetime.test.tsx",
+              "-t",
+              "actual StrictMode root|held App focus frame"
+            ],
+            "startedAt": "2026-10-28T17:53:21.143735+00:00",
+            "exit": 1,
+            "production": "Exact2old blobs3469; final correctlytyped test unchanged",
+            "testSHA256": "ff9fe12fb729dc0899c2478d0c43c8ddb5f7cad9592a9f12cee16d69576f2e10"
+          },
+          {
+            "name": "correction-final-tests-typed-green",
+            "argv": [
+              "pnpm",
+              "--filter",
+              "@prisma-prim/web",
+              "exec",
+              "vitest",
+              "run",
+              "src/App.team-task-lifetime.test.tsx",
+              "-t",
+              "actual StrictMode root|held App focus frame"
+            ],
+            "startedAt": "2026-10-28T17:53:29.448359+00:00",
+            "exit": 0,
+            "production": "Exact corrected blobs restored in finally; final correctlytyped test unchanged",
+            "testSHA256": "ff9fe12fb729dc0899c2478d0c43c8ddb5f7cad9592a9f12cee16d69576f2e10"
+          }
+        ],
+        "restoredCorrectedProduction": [
+          {
+            "path": "apps/web/src/App.tsx",
+            "sha256": "83cd07dab0116e0989ef2b4b8713e3942516d6bc733f28b878a74aecde6e396a"
+          },
+          {
+            "path": "apps/web/src/project/TeamTasks.tsx",
+            "sha256": "3a4c8727ba9a1ecdb13a9df1d1f393413e7ccdd1e5191bd50eae2861087989d8"
+          }
+        ]
+      },
+      "affectedWebRegression": {
+        "argv": [
+          "pnpm",
+          "--filter",
+          "@prisma-prim/web",
+          "exec",
+          "vitest",
+          "run",
+          "--maxWorkers=2",
+          "src/App.team-tasks.test.tsx",
+          "src/App.team-task-lifetime.test.tsx",
+          "src/App.current-work.test.tsx",
+          "src/App.current-work-rejection.test.tsx",
+          "src/App.blocked-task-lifecycle.test.tsx",
+          "src/App.blocked-tasks.test.tsx",
+          "src/App.unassigned-task-lifecycle.test.tsx",
+          "src/App.unassigned-tasks.test.tsx",
+          "src/production-shell/ApplicationShell.test.tsx",
+          "src/App.client-project-navigation.test.tsx",
+          "src/App.document-project-navigation.test.tsx",
+          "src/project/ProjectWorkspace.requested-project.test.tsx",
+          "src/project/ProjectWorkspace.requested-task.test.tsx",
+          "src/project/ProjectTasks.test.tsx",
+          "src/App.my-tasks.test.tsx"
+        ],
+        "startedAt": "2026-10-28T17:49:18.303432+00:00",
+        "finishedAt": "2026-10-28T17:51:28.816846+00:00",
+        "exit": 0,
+        "inputSnapshot": "source-correction-before-regression.json",
+        "inputCount": 1864,
+        "sourceDrift": []
+      },
+      "testOnlyOptionQualification": {
+        "changedAt": "2026-10-28T17:52:53.154696+00:00",
+        "path": "apps/web/src/App.team-task-lifetime.test.tsx",
+        "beforeSHA256": "9da417f075b9ca96715b19e28a0677ac3ff70cc10820cc905e64c053bb21f2fd",
+        "afterSHA256": "ff9fe12fb729dc0899c2478d0c43c8ddb5f7cad9592a9f12cee16d69576f2e10",
+        "change": "Delete unsupported TestingLibrary findByRole exact:true option from the native-readiness test. ByRole string-name matching is exact by default; name/assertion/budget unchanged. Applied only after15file regression exit0; no production delta or retroactive final-source claim."
+      },
+      "finalFormatLintTypes": [
+        {
+          "name": "correction-format-2",
+          "argv": [
+            "pnpm",
+            "exec",
+            "prettier",
+            "--check",
+            "apps/web/src/App.tsx",
+            "apps/web/src/project/TeamTasks.tsx",
+            "apps/web/src/App.team-task-lifetime.test.tsx"
+          ],
+          "startedAt": "2026-10-28T17:53:37.844237+00:00",
+          "finishedAt": "2026-10-28T17:53:38.722056+00:00",
+          "exit": 0
+        },
+        {
+          "name": "correction-lint-2",
+          "argv": [
+            "pnpm",
+            "exec",
+            "eslint",
+            "apps/web/src/App.tsx",
+            "apps/web/src/project/TeamTasks.tsx",
+            "apps/web/src/App.team-task-lifetime.test.tsx"
+          ],
+          "startedAt": "2026-10-28T17:53:38.722073+00:00",
+          "finishedAt": "2026-10-28T17:53:40.000713+00:00",
+          "exit": 0
+        },
+        {
+          "name": "correction-web-types-2",
+          "argv": [
+            "pnpm",
+            "--filter",
+            "@prisma-prim/web",
+            "typecheck"
+          ],
+          "startedAt": "2026-10-28T17:53:40.000731+00:00",
+          "finishedAt": "2026-10-28T17:54:00.786903+00:00",
+          "exit": 0
+        }
+      ],
+      "registeredActualAppApiPG": {
+        "argv": [
+          "pnpm",
+          "--filter",
+          "@prisma-prim/web",
+          "exec",
+          "playwright",
+          "test",
+          "--config",
+          "playwright.acceptance.config.ts",
+          "e2e/company-team-tasks.acceptance.spec.ts"
+        ],
+        "startedAt": "2026-10-28T17:54:47.833597+00:00",
+        "finishedAt": "2026-10-28T17:55:45.431768+00:00",
+        "exit": 0,
+        "inputSnapshot": "source-correction-before-browser.json",
+        "inputCount": 1864,
+        "sourceDrift": [],
+        "allOutputFiles": 9,
+        "registeredConfiguration": "unchanged startup60s and scenario120s, actualApp/API/PG desktop1440x900+narrow390x844; no heavy regression overlap",
+        "completeRetainedOutput": "correction-browser-1-originals (private originals; not selected for publication)"
+      },
+      "preparedInputEquality": {
+        "capturedAt": "2026-10-28T17:54:47.829016+00:00",
+        "matchingTrackedSourceInputs": 1864,
+        "cleanPreparedSource": "022bc9eabb9ada6d4ed1214b6a8c9ac06f656519",
+        "qualification": "Root verified every original pre-run input hash against the final clean prepared source. The browser ran before commit amendment; this records byte equality, not a relabelled Git HEAD execution."
+      },
+      "originalScreenshots": {
+        "count": 8,
+        "completeOriginalOutputFiles": 9,
+        "all9SHA256VerifiedAgainstLiveOutputs": true,
+        "directlyViewedByRoot": true,
+        "publishedBinaryImages": false
+      }
+    },
+    "nativeFollowup": {
+      "issue": 947,
+      "publicProofComment": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/947#issuecomment-6476429880",
+      "baseline": "Detached actual main ee46, existing MyTasks cold native Open: nonStrict1PASS/rootStrict1FAIL exit1. Unchanged native ProjectTasks owner SHA256c7ff198c668607ea77c5ff90c5780ce3fcafdb463880478ef8d6a036fef3cbfc; no946 production input.",
+      "notFixedOrClaimedHere": true,
+      "finalStrictModeFeatureTest": "Actual App rootStrictMode with native Project/list readiness throughUI before first workboard entry, then exact Task/history Open and true access retirement. Cold initial native Open remains947."
+    },
+    "historicalNonzeroLocalExits": [
+      {
+        "name": "app-expanded-1",
+        "exit": 1
+      },
+      {
+        "name": "app-expanded-2",
+        "exit": 1
+      },
+      {
+        "name": "app-expanded-3",
+        "exit": 1
+      },
+      {
+        "name": "app-lifetime-1",
+        "exit": 1
+      },
+      {
+        "name": "app-red-corrected",
+        "exit": 1
+      },
+      {
+        "name": "app-red",
+        "exit": 1
+      },
+      {
+        "name": "browser-team-1",
+        "exit": 1
+      },
+      {
+        "name": "browser-team-2",
+        "exit": 1
+      },
+      {
+        "name": "browser-team-3",
+        "exit": 1
+      },
+      {
+        "name": "lint-targeted-1",
+        "exit": 1
+      },
+      {
+        "name": "newer-read-recovery-red",
+        "exit": 1
+      },
+      {
+        "name": "old-403-red",
+        "exit": 1
+      },
+      {
+        "name": "rest-expanded-1",
+        "exit": 1
+      },
+      {
+        "name": "rest-expanded-3",
+        "exit": 1
+      },
+      {
+        "name": "rest-red",
+        "exit": 1
+      },
+      {
+        "name": "timing-probe",
+        "exit": 127
+      },
+      {
+        "name": "verify-development-final",
+        "exit": 1
+      },
+      {
+        "name": "web-build-1",
+        "exit": 1
+      },
+      {
+        "name": "web-types-1",
+        "exit": 2
+      }
+    ],
+    "historicalQualification": "Original logs/receipts and both hash-bound author handoffs remain unchanged. Earlier263/280 logs lack embedded literal argv/sourceSHA and remain qualified original self-report; original browser4 is not relabelled. Earlier normal verification and all DB/optional skips are unexecuted where recorded. Correction partialGREEN/nativeCold diagnostic/test-option failures are retained separately.",
+    "evidenceHashes": {
+      "initialHandoff": "8a53991666eafdbeaa97ad31452d7b28cb905d40d16a4156181ccc64162213c3",
+      "initialIndex": "d9dfadd77f286a451fa7d0168c80675a1207b5eb12b78490ca973a9dd7ec7548",
+      "correctedHandoff": "ee26ceed1b96ea6a9d2d0e73cdf87c7be148d74392d52220ff3b10e3521f595c",
+      "correctedIndex": "8d9642a17d7d5a3c80ae5520eebb975c8920f7316b7f2794dde5ab0d02911bf1",
+      "actualBrowserLog": "1727d9abd0417c1f0a66b5e0ef9151454504ddb3a4b41e987702dfe956ce348f",
+      "globalDevelopmentLog": "269aa5ecb8e4e16f2aa33eedf927df0ae0db31fd02a74838f04798862d146469"
+    },
+    "publicSelection": "Technical metadata only; no credentials, raw logs/archives/images/traces or real client/model/financial text."
+  },
+  "review": {
+    "source": "022bc9eabb9ada6d4ed1214b6a8c9ac06f656519",
+    "base": "ee46c414320200cfda287f6bb60be94440831a10",
+    "tree": "78b34fa7229f8ba9568bde68140cfefd49273de0",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0,
+    "configuredOpeningReview": {
+      "status": "completed",
+      "source": "022bc9eabb9ada6d4ed1214b6a8c9ac06f656519",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "comment": 6476710718,
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/948#issuecomment-6476710718",
+      "completedAt": "2026-10-28T18:04:46.940564Z",
+      "trigger": "PR opened, consumed exactly once; no duplicate request"
+    },
+    "preparation": {
+      "reviewedSource": "3469ca34ba0643cecb52d8132765194bb760bd4d",
+      "standards": {
+        "initial": "FAIL",
+        "blocking": 1,
+        "nonblocking": 0,
+        "reportSHA256": "175590cf180321213e1c23ae71f61e3104789d3196af069617585ffe1032cd9d",
+        "finding": "Root StrictMode workboard effect cleanup disabled initial read/lifetime",
+        "disposition": "Resolved by fresh per-setup owner, immutable captured signals and actual App causal regression"
+      },
+      "spec": {
+        "initial": "FAIL",
+        "blocking": 1,
+        "nonblocking": 0,
+        "reportSHA256": "7c3c8f636b4e3bdd3ebf513c7c28c2252035b3b10d2f756eb98644677941f609",
+        "finding": "App deferred Project focus lost originating Task sourceSignal",
+        "disposition": "Resolved by forwarding sourceSignal and actual App held-frame retirement regression"
+      },
+      "boundedCorrectionSource": "022bc9eabb9ada6d4ed1214b6a8c9ac06f656519",
+      "rootInspectedMinimalThreeFileDelta": true,
+      "sameFinalTypedTestsOldProduction": "2FAIL exit1",
+      "sameFinalTypedTestsCorrectedProduction": "2PASS exit0",
+      "affectedRegression": "268PASS/15files; final test-only unsupported option removal separately2causal tests/types/formatlint PASS",
+      "registeredRealBrowser": "2PASS desktop6.5s/narrow6.1s/56.4s,1864sourceinputs exactly match finalsource,8originalPNGs rootviewed/9outputpairsSHA verified",
+      "reviewReuse": "25 of28 feature blobs unchanged from independent preparation. Only the2scoped production corrections and2public regression tests differ; complete original FAILs preserved. No second full independent round.",
+      "followup947": "Cold native StrictMode initial Task opening independently reproduced on detached main via existing MyTasks, nonStrictPASS/StrictFAIL, nativefile unchanged. Public947/comment6476429880, not fixed or claimed in946."
+    }
+  },
+  "priorFailedCompleteCI": {
+    "completeCIRunsBeforeFinal": [],
+    "qualification": "No earlier complete GitHub CI failed for946. Run40742090712 was the sole complete final dispatch, after review, and passed at attempt1. Historical local targeted/browser/development failures remain separate self-reported development evidence."
+  },
+  "artifacts": [
+    {
+      "id": 12841571240,
+      "name": "browser-evidence-pr-40742090712",
+      "size_in_bytes": 419051992,
+      "digest": "sha256:422036d5c4d0edad8c14e3e943f01ddf61b1e4208e99ed87155e50be7f53ef42",
+      "expires_at": "2026-11-11T18:23:29Z"
+    },
+    {
+      "id": 12841475164,
+      "name": "browser-evidence-part-acceptance-2-40742090712",
+      "size_in_bytes": 71018634,
+      "digest": "sha256:7418d4da602aa2e00515b1f4f5a6be0235d00ec2609fc0043b287d5f8a05a6e9",
+      "expires_at": "2026-11-11T18:20:34Z"
+    },
+    {
+      "id": 12840975193,
+      "name": "browser-evidence-part-browser-3-40742090712",
+      "size_in_bytes": 72250798,
+      "digest": "sha256:88c13e5ae6f2854a251b03f12073f7e086c150e73982461e0174664af322085d",
+      "expires_at": "2026-11-11T18:13:12Z"
+    },
+    {
+      "id": 12840848146,
+      "name": "browser-evidence-part-acceptance-1-40742090712",
+      "size_in_bytes": 82889777,
+      "digest": "sha256:77561173b8db02d911d429a6919d3a86875ab03631cb250f04bf507c99023df5",
+      "expires_at": "2026-11-11T18:23:05Z"
+    },
+    {
+      "id": 12840192223,
+      "name": "browser-evidence-part-browser-2-40742090712",
+      "size_in_bytes": 78744044,
+      "digest": "sha256:e3ebd40ea8864f1edd5df345714314c6728835ac17e57ab2c2422fc584e3823c",
+      "expires_at": "2026-11-11T18:13:38Z"
+    },
+    {
+      "id": 12839274036,
+      "name": "browser-evidence-part-browser-1-40742090712",
+      "size_in_bytes": 114148827,
+      "digest": "sha256:b07498f6018ac568ddf75c2bef5cbf532e4110b049c96906b07dd14d5a622fd5",
+      "expires_at": "2026-11-11T18:15:43Z"
+    }
+  ],
+  "scope": "Issue946: complete currentCompany team Task workboard across already-readable Projects, strict stored-state/recorded-name/manualdate predicates before25+1 pages, normalized echo/complete native projection, one coherent caller-owned readonly snapshot and protected exact native Task continuation/fresh return. Native Task/Project/originalClient owners and command defaults remain authoritative. No new business mutation, permission/schema/dependency/extension/provider, metric/automation, fulfillment/acceptance/certification/closure or whole-MVP claim.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-16T00:00:00Z"
+}
