@@ -1,0 +1,65 @@
+{
+  "issue": 949,
+  "pr": 953,
+  "source": "ad1e24b19aafcf73399c0d35c4cc39aeff5605a1",
+  "base": "6854c68c90e3ed9545181aa445d3af204fe54131",
+  "tree": "c8563b0897231fd0711ae0e3cb78620b5a96c9b7",
+  "canonicalLocalGate": {
+    "attempt": 1,
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1864,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "source": "ad1e24b19aafcf73399c0d35c4cc39aeff5605a1",
+    "reviewedBase": "6854c68c90e3ed9545181aa445d3af204fe54131",
+    "tree": "c8563b0897231fd0711ae0e3cb78620b5a96c9b7",
+    "preparationSource": "fb61859d9a2e9920939b5dccd387eb1a21fb64cf",
+    "preparationTree": "0ea260410e7217628ee6de7d8e0d281dd3311c7d",
+    "axes": {
+      "Standards": {
+        "result": "PASS",
+        "blocking": 0,
+        "nonblocking": 0,
+        "reportSHA256": "a0c03d2287b65e5bdb3cc64449b2e66ef2806ac31cab814f5d93308fff171610"
+      },
+      "Spec": {
+        "result": "PASS",
+        "blocking": 0,
+        "nonblocking": 0,
+        "reportSHA256": "ee0c369b7435e9f3ef7f539b41bf2a49e2c14ab17f7fdd82a568c126928d2d8c"
+      }
+    },
+    "orderedStandardsThenSpec": true,
+    "actualDelegatedApproval": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/949#issuecomment-6478182578",
+    "approvalOnlySubstitutions": 3,
+    "reversibleToExactReviewedBytes": true,
+    "fullNormativeBodyUnchanged": true,
+    "noSeparateOwnerOrAutomaticReviewRequired": true,
+    "incidentalConfiguredOpeningReview": {
+      "comment": 6478226070,
+      "state": {
+        "commit_sha": "ad1e24b19aafcf73399c0d35c4cc39aeff5605a1",
+        "has_any_findings": false,
+        "has_unresolved_findings": false,
+        "status": "completed"
+      }
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "priorFailedCanonicalGate": null,
+  "scope": "Documentation-only ProjectTask34 contract for optional plain multiline ordinary Task instructions, native create/read/edit/clear/attributed history, exact legacy fingerprints/receipt preservation, existing Task/Project/originalClient guards and independent intents. No journal, permission/provider, result/evidence/closure or actual adoption claim. Separate runtime waits approved contract delivery and946/947. MISSION-CLOSE-01 remains solely its existing register.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-16T00:00:00Z"
+}
