@@ -434,7 +434,8 @@ describe('ContractPanel', () => {
       let finish: (value: Response) => void = () => {
         throw new Error('No pending creation');
       };
-      vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const fetch = vi.spyOn(globalThis, 'fetch');
+      fetch.mockImplementation(async (input, init) => {
         if (String(input).endsWith('/preparation') && init?.method === 'POST')
           return new Promise<Response>((resolve) => {
             finish = resolve;
@@ -463,6 +464,12 @@ describe('ContractPanel', () => {
       await screen.findByRole('button', {
         name: resolveMessage(contractMessages, 'en', 'running'),
       });
+      await waitFor(() =>
+        expect(fetch).toHaveBeenCalledWith(
+          expect.stringMatching(/\/preparation$/u),
+          expect.objectContaining({ method: 'POST' }),
+        ),
+      );
       const company = member.activeCompany;
       if (!company) throw new Error('Missing Company');
       const next: ActorContext =
@@ -1247,6 +1254,12 @@ describe('ContractPanel', () => {
         </InterfaceLocaleProvider>,
       );
       const field = await screen.findByLabelText('Revised special conditions');
+      await waitFor(() =>
+        expect(fetch).toHaveBeenCalledWith(
+          expect.stringMatching(/\/versions$/u),
+          expect.any(Object),
+        ),
+      );
       const literal = '  Preserve {date} Договор\n2028-02-29  ';
       fireEvent.change(field, { target: { value: literal } });
       field.focus();
@@ -1720,6 +1733,12 @@ describe('ContractPanel', () => {
       }),
     );
     await screen.findByText('Loading exact Contract document…');
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/representation$/u),
+        expect.any(Object),
+      ),
+    );
     const callsWhileLoading = fetch.mock.calls.length;
     fireEvent.click(screen.getByRole('button', { name: 'Choose fr' }));
     expect(
