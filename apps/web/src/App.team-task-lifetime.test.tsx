@@ -529,17 +529,11 @@ it('loads and opens team work under the actual StrictMode root, then permanently
   const mounted = render(<App identity={deterministicBrowserIdentity()} />, {
     reactStrictMode: true,
   });
-  // Settle the existing native owner through its UI before this first workboard entry.
-  // Its separate cold requested-open StrictMode limitation is retained in review evidence.
-  await openCurrentWork();
-  const projects = await screen.findByRole('region', { name: 'Projects' });
-  await within(projects).findByRole('button', {
-    name: 'Current Task 1',
-  });
   const panel = await team();
   fireEvent.click(
     within(panel).getByRole('button', { name: /^Open Current Task 1 in / }),
   );
+  const projects = await screen.findByRole('region', { name: 'Projects' });
   await within(projects).findByDisplayValue('Current Task 1');
   await within(projects).findByRole('region', { name: 'Task history' });
   navigate('Team Tasks');
@@ -586,6 +580,75 @@ it('loads and opens team work under the actual StrictMode root, then permanently
   expect(within(fresh).queryByRole('alert')).toBeNull();
   mounted.unmount();
 });
+
+it.each(
+  ['task', 'project', 'client'].flatMap((kind) =>
+    [200, 403].map((status) => ({ kind, status })),
+  ),
+)(
+  'permanently retires a cold native Task read with late$status after actual $kind revoke/regrant under root StrictMode',
+  async ({ kind, status }) => {
+    const { native } = install();
+    const transport = fetch;
+    const held = deferred();
+    let taskReads = 0;
+    let signal: AbortSignal | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL, init: RequestInit = {}) => {
+        const path = new URL(String(input), window.location.origin).pathname;
+        if (path === `/api/tasks/${id(200)}`) {
+          taskReads++;
+          signal = init.signal ?? undefined;
+          return held.promise;
+        }
+        return transport(input, init);
+      }),
+    );
+    render(<App identity={deterministicBrowserIdentity()} />, {
+      reactStrictMode: true,
+    });
+    const panel = await team();
+    fireEvent.click(
+      within(panel).getByRole('button', { name: /^Open Current Task 1 in / }),
+    );
+    await waitFor(() => expect(taskReads).toBe(1));
+    if (kind === 'task') native.taskRead = false;
+    if (kind === 'project') native.projectRead = false;
+    if (kind === 'client') native.clientRead = false;
+    const bundle =
+      kind === 'task'
+        ? 'task-manager'
+        : kind === 'project'
+          ? 'project'
+          : 'director-client';
+    await grant(bundle);
+    expect(signal?.aborted).toBe(true);
+    native.taskRead = true;
+    native.projectRead = true;
+    native.clientRead = true;
+    await grant(bundle);
+    navigate('Projects');
+    const projects = await screen.findByRole('region', { name: 'Projects' });
+    const target = currentOverview().overview.activities[0];
+    if (!target) throw new Error('Missing first Task fixture');
+    await act(async () =>
+      held.resolve(
+        Response.json(
+          status === 200 ? { mutable: true, task: target.task } : {},
+          { status },
+        ),
+      ),
+    );
+    expect(taskReads).toBe(1);
+    expect(
+      within(projects).queryByRole('heading', { name: 'Current Task 1' }),
+    ).toBeNull();
+    expect(within(projects).queryByDisplayValue('Current Task 1')).toBeNull();
+    expect(native.posts).toEqual([]);
+    expect(native.resultPosts).toEqual([]);
+  },
+);
 
 it('suppresses the held App focus frame after a team Open loses only consumed Task authority', async () => {
   const { native } = install();

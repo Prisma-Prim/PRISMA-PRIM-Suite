@@ -405,6 +405,34 @@ describe('Opening an assigned Task from My Tasks through App', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it.each([
+    { frame: 'classic', strict: false },
+    { frame: 'classic', strict: true },
+    { frame: 'prisme', strict: false },
+    { frame: 'prisme', strict: true },
+  ])(
+    'opens the first exact Task and its history cold in $frame with root StrictMode=$strict',
+    async ({ frame, strict }) => {
+      window.history.replaceState(null, '', `/?frame=${frame}#my-tasks`);
+      const server = installServer();
+      render(<App identity={deterministicBrowserIdentity()} />, {
+        reactStrictMode: strict,
+      });
+      fireEvent.click(await openAction(betaTask));
+      await openedProject(beta);
+      const tasks = await openedTask(betaTask);
+      expect(taskTitleField()).toHaveValue(taskTitle);
+      expect(
+        within(tasks).getByRole('region', { name: taskCopy.history }),
+      ).toBeVisible();
+      expect(server.count(betaProjectRead)).toBe(1);
+      expect(server.count(taskRead(betaTask))).toBe(1);
+      expect(server.count(`${taskRead(betaTask)}/history`)).toBe(1);
+      expect(server.count(taskRead(atelierTask))).toBe(0);
+      expect(server.commands()).toEqual([]);
+    },
+  );
+
   it('preserves Mine through the real App exact outside-Project Task intent', async () => {
     window.history.replaceState(null, '', '/?frame=prisme#projects');
     const server = installServer();
