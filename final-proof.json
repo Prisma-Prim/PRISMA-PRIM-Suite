@@ -1,0 +1,44 @@
+{
+  "issue": 931,
+  "pr": 932,
+  "source": "6b526149f0a5dbbbea3c0173aa1793f97a006cdb",
+  "base": "9cecf96b17d848775ba98b5a05a8acff01bafa55",
+  "tree": "a7f1c85653dfd5eb8c4374ae8a05c39f4557bc9a",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1813,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "6b526149f0a5dbbbea3c0173aa1793f97a006cdb",
+    "reviewedBase": "9cecf96b17d848775ba98b5a05a8acff01bafa55",
+    "preparationSource": "2db1f1d66ecde659463b38d61f1fc1cf752f0c0c",
+    "standards": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "spec": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "reviewOrder": "Standards then Spec",
+    "blockingFindingsRemaining": 0,
+    "rootDisposition": "Approved under explicit feature direction and #51comment6283507237; final delta only approved status/summary, inspected on both axes. No runtime/closure-policy credit."
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only Company blocked-Task supervision in Project/Task32: exact current blocked set, literal reason/attribution/assignee/date and native Task continuation, strict25-row pages and existing authority/lifetimes. No mutation/schema/grant/metric/automatic action/provider/deployment or closure-policy change. MISSION-CLOSE-01 stays in its existing register; runtime follows contract merge.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-16T00:00:00Z"
+}
