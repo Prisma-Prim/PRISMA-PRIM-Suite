@@ -20,6 +20,8 @@ export async function restoreFrozenTaskSetup(
     | 'project-pilot-plan'
     | 'mission-result-review'
     | 'mission-plan'
+    | 'received-contract'
+    | 'reported-contract-signing'
     | 'task-description',
 ) {
   const sql = await readFile(

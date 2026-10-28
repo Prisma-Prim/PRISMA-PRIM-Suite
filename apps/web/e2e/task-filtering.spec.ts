@@ -260,6 +260,14 @@ test('finds loaded Tasks locally and keeps detail state through authoritative st
   await expect(saveTask).toHaveCSS('color', 'rgb(255, 255, 255)');
   await region.getByLabel('Task title').focus();
   await page.keyboard.press('Tab');
+  await expect(
+    taskForm.getByLabel('Task instructions (optional)'),
+  ).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(
+    taskForm.getByRole('button', { name: 'Clear instructions', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(taskAssignee).toBeFocused();
   expect(
     await taskAssignee.evaluate(

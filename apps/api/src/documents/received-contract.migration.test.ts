@@ -1,9 +1,12 @@
+import {
+  restoreFrozenTaskSetup,
+  applyHistoricalTaskTarget,
+} from '../task/frozen-task-migration.test-support.js';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { expect, it } from 'vitest';
-import { prepareModelContractSource } from '../contract/model-contract.test-fixture.js';
 import {
   ESTIMATE_OFFER_PREPARER,
   openEstimateOfferFixture,
@@ -55,27 +58,30 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           )
         ).rows,
       ).toEqual([{ relation: null }]);
-      const ready = await prepareModelContractSource(f),
-        s = ready.source;
-      const contract = responseRecord(
-        await ready.invoke(ready.path + '/from-approved-model', ready.intent),
-      );
-      for (const path of [
-        '/company-document-registrar-assignments',
-        '/company-mission-deliverable-access-assignments',
-        '/company-document-content-reader-assignments',
-        '/company-document-content-uploader-assignments',
-        '/company-document-approver-assignments',
-        '/company-document-project-organizer-assignments',
-        '/company-project-assignments',
-        '/company-task-manager-assignments',
-        '/company-task-result-recorder-assignments',
-      ])
-        await f.grant({
-          path,
-          companyId: s.companyId,
-          membershipId: s.preparerMembershipId,
-        });
+      const frozen = await restoreFrozenTaskSetup(f.pool, 'received-contract');
+      const source = responseRecord(frozen.source);
+      const s = {
+        companyId: responseString(source, 'companyId'),
+        opportunityId: responseString(source, 'opportunityId'),
+        preparerMembershipId: responseString(source, 'preparerMembershipId'),
+      };
+      const contract = responseRecord(frozen.contract);
+      if (!Array.isArray(frozen.preserved))
+        throw new Error('Missing preserved historical Documents.');
+      const preserved = frozen.preserved.map((value: unknown) => {
+        const item = responseRecord(value);
+        return {
+          documentId: responseString(item, 'documentId'),
+          firstVersionId: responseString(item, 'firstVersionId'),
+          versionId: responseString(item, 'versionId'),
+          before: item.before,
+          body: item.body,
+          key: responseString(item, 'key'),
+        };
+      });
+      const mission = preserved[1];
+      if (!mission) throw new Error('Missing prior mission');
+      const taskId = responseString(frozen, 'taskId');
       const command = (
         path: string,
         body: unknown,
@@ -95,120 +101,10 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           companyId: s.companyId,
           headers: ESTIMATE_OFFER_PREPARER,
         });
-      const project = responseRecord(
-        await command('/projects', {
-          title: 'Prior received migration Project DEMO',
-          clientAccountId: s.clientId,
-        }),
-      );
-      const projectId = responseString(project, 'id');
-      const task = responseRecord(
-        await command(`/projects/${projectId}/tasks`, {
-          title: 'Prior ordinary result Task DEMO',
-        }),
-      );
-      const registrations = [
-        {
-          clientId: s.clientId,
-          title: 'Prior questionnaire DEMO',
-          purpose: 'Conserve ordinary reference',
-          url: 'https://example.test/received-upgrade',
-        },
-        {
-          type: 'mission-deliverable',
-          clientId: s.clientId,
-          title: 'Prior mission output DEMO',
-          purpose: 'Conserve ordinary result',
-        },
-      ];
-      const preserved: Array<{
-        documentId: string;
-        firstVersionId: string;
-        versionId: string;
-        before: unknown;
-        body: unknown;
-        key: string;
-      }> = [];
-      for (const [index, body] of registrations.entries()) {
-        const key = 'prior-received-upgrade-' + index;
-        const document = responseRecord(await command('/documents', body, key));
-        const documentId = responseString(document, 'id'),
-          firstVersionId = responseString(
-            responseRecord(document.version),
-            'id',
-          );
-        const upload = async (
-          versionId: string,
-          revision: number,
-          bytes: Buffer,
-        ) => {
-          const result = await request(
-            `/documents/${documentId}/versions/${versionId}/content?expectedRevision=${revision}&fileName=prior-demo.pdf`,
-            {
-              method: 'POST',
-              headers: {
-                'content-type': 'application/pdf',
-                'idempotency-key': 'prior-upgrade-pdf-' + versionId,
-              },
-              body: new Uint8Array(bytes),
-            },
-          );
-          expect(result.status).toBe(201);
-        };
-        const designate = async (versionId: string, revision: number) => {
-          const result = await request(
-            `/documents/${documentId}/versions/${versionId}/official-designation`,
-            {
-              method: 'POST',
-              headers: {
-                'content-type': 'application/json',
-                'idempotency-key': 'prior-upgrade-official-' + versionId,
-              },
-              body: JSON.stringify({ expectedRevision: revision }),
-            },
-          );
-          expect(result.status).toBe(200);
-        };
-        await upload(firstVersionId, 1, PDF_A);
-        await designate(firstVersionId, 2);
-        const drafted = responseRecord(
-          await command(`/documents/${documentId}/versions`, {
-            expectedRevision: 3,
-          }),
-        );
-        const versionId = responseString(drafted, 'versionId');
-        await upload(versionId, 4, PDF_B);
-        await designate(versionId, 5);
-        await command(`/documents/${documentId}/project-association`, {
-          action: 'link',
-          projectId,
-          expectedRevision: 0,
-        });
-        const read = await request(`/documents/${documentId}`);
-        expect(read.status).toBe(200);
-        preserved.push({
-          documentId,
-          firstVersionId,
-          versionId,
-          before: await read.json(),
-          body,
-          key,
-        });
-      }
-      const mission = preserved[1];
-      if (!mission) throw new Error('Missing prior mission');
-      const taskId = responseString(task, 'id');
-      await command(`/tasks/${taskId}/results`, {
-        expectedTaskVersion: 1,
-        expectedResultRevision: 0,
-        documentId: mission.documentId,
-        versionId: mission.versionId,
-        declaration: 'Prior declared synthetic mission result',
-      });
       const actorBefore = await (await request('/access/current-actor')).json();
       const before = await receivedContractEffects(f.pool, false);
       // Compare existing business rows outside the Document-owned effects too.
-      const domainSnapshot = async () => {
+      const domainSnapshot = async (descriptionAdded = false) => {
         const rows: Record<string, unknown> = {};
         for (const table of [
           'company_role_assignments',
@@ -228,13 +124,19 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         ])
           rows[table] = (
             await f.pool.query<{ facts: unknown }>(
-              `SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb) AS facts FROM ${table} t`,
+              `SELECT coalesce(jsonb_agg(to_jsonb(t) ${descriptionAdded && table === 'tasks' ? "- 'description'" : ''} ORDER BY to_jsonb(t)::text),'[]'::jsonb) AS facts FROM ${table} t`,
             )
           ).rows[0]?.facts;
         return rows;
       };
       const domainBefore = await domainSnapshot();
-      await f.applyCurrentMigrations();
+      await applyHistoricalTaskTarget({
+        pool: f.pool,
+        previous,
+        journal,
+        entries,
+        index,
+      });
       expect(await receivedContractEffects(f.pool)).toEqual({
         ...before,
         received_contract_document_relations: [],
@@ -257,6 +159,11 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
             [capture, s.companyId, s.preparerMembershipId],
           ),
         ).rejects.toHaveProperty('code', '23514');
+      await f.applyCurrentMigrations();
+      expect(await domainSnapshot(true)).toEqual(domainBefore);
+      expect(
+        (await f.pool.query('SELECT description FROM tasks')).rows,
+      ).toEqual([{ description: null }]);
       const receivedBody = {
         type: 'received-contract',
         opportunityId: s.opportunityId,
@@ -306,7 +213,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         },
       });
       await f.applyCurrentMigrations();
-      expect(await domainSnapshot()).toEqual(domainBefore);
+      expect(await domainSnapshot(true)).toEqual(domainBefore);
       await f.grant({
         path: '/company-received-contract-access-assignments',
         companyId: s.companyId,
