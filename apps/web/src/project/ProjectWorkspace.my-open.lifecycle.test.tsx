@@ -63,6 +63,7 @@ const registered = {
   title: 'Literal {draft} — Демо',
 };
 const outsideTask = {
+  description: null,
   id: 'outside-task',
   companyId: 'company',
   projectId: colleague.id,

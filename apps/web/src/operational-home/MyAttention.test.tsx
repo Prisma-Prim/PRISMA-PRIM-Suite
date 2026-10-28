@@ -33,6 +33,7 @@ function task(
   changes: Record<string, unknown>,
 ) {
   return {
+    description: null,
     id,
     companyId: company.id,
     projectId: project.id,

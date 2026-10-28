@@ -112,6 +112,7 @@ test('manages manual Tasks through the production shell with retained retry and 
           priority: 'critical',
         });
         task = {
+          description: null,
           id: 'manual-task',
           companyId: company.id,
           projectId: project.id,

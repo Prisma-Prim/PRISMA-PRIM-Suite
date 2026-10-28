@@ -140,6 +140,11 @@ it.each(['pending', 'uncertain', 'confirmed'] as const)(
     await openCurrentWork();
     const title = await screen.findByLabelText('Task title');
     changeValue(title, 'Protected native Task exact Ж / é');
+    const instructions = screen.getByLabelText('Task instructions (optional)');
+    changeValue(
+      instructions,
+      'Protected native instructions Ж / é / 😀\n  exact intent',
+    );
     if (mode === 'pending') native.taskHold = deferred();
     if (mode === 'confirmed') native.taskStatus = 201;
     fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
@@ -156,12 +161,18 @@ it.each(['pending', 'uncertain', 'confirmed'] as const)(
       );
     if (mode !== 'confirmed') expect(title).toBeInTheDocument();
     expect(native.posts).toHaveLength(1);
+    expect(JSON.parse(native.posts[0]?.body ?? '{}')).toMatchObject({
+      description: 'Protected native instructions Ж / é / 😀\n  exact intent',
+    });
     navigate('Projects');
     if (mode === 'confirmed') {
       expect(screen.getByText('Task change recorded.')).toBeInTheDocument();
       return;
     }
     expect(title).toHaveValue('Protected native Task exact Ж / é');
+    expect(instructions).toHaveValue(
+      'Protected native instructions Ж / é / 😀\n  exact intent',
+    );
     if (native.taskHold) {
       await act(async () =>
         native.taskHold?.resolve(Response.json({}, { status: 503 })),
@@ -256,6 +267,11 @@ it.each(
     await openCurrentWork();
     const title = await screen.findByLabelText('Task title');
     changeValue(title, 'Connected native work during recovery');
+    const instructions = screen.getByLabelText('Task instructions (optional)');
+    changeValue(
+      instructions,
+      'Independent instructions during full Actor recovery\n  Ș / Я / 😀',
+    );
     const panel = await team();
     const draft = within(panel).getByRole('combobox', { name: 'Task state' });
     const selected = deferred(),
@@ -282,6 +298,10 @@ it.each(
     expect(draft).toBeInTheDocument();
     expect(title).toBeInTheDocument();
     expect(title).toHaveValue('Connected native work during recovery');
+    expect(instructions).toBeInTheDocument();
+    expect(instructions).toHaveValue(
+      'Independent instructions during full Actor recovery\n  Ș / Я / 😀',
+    );
     const before = {
       reads: state.reads,
       actors: native.actorReads,
@@ -303,6 +323,10 @@ it.each(
     expect(screen.queryByText('Retired team recovery Actor')).toBeNull();
     expect(title).toBeInTheDocument();
     expect(draft).toBeInTheDocument();
+    expect(instructions).toBeInTheDocument();
+    expect(instructions).toHaveValue(
+      'Independent instructions during full Actor recovery\n  Ș / Я / 😀',
+    );
   },
 );
 it.each(['task', 'project', 'client'] as const)(

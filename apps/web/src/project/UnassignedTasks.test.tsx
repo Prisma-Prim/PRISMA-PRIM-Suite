@@ -37,6 +37,7 @@ const actor: ActorContext = {
 };
 function task(index: number): UnassignedTask {
   return {
+    description: null,
     id: `task-${String(index).padStart(2, '0')}`,
     title: `Literal {Task} — Știință ${index}`,
     companyId: 'company',

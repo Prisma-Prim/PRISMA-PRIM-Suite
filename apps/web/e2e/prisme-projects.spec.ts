@@ -58,6 +58,7 @@ test('creates and opens a Project, then switches local panels without reloading 
   const transitions: unknown[] = [];
   let taskCreated = false;
   let task: TaskView = {
+    description: null,
     id: 'task-project-completion',
     companyId: company.id,
     projectId: createdProject.id,

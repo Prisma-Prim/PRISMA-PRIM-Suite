@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { Logger } from '@nestjs/common';
 import {
   afterAll,
   beforeAll,
@@ -9,6 +10,8 @@ import {
   vi,
 } from 'vitest';
 import { AccountabilityService } from '../accountability/accountability.service.js';
+import { TaskCommandStore } from './task-command.store.js';
+import * as nativeViews from './native-task-view.js';
 import {
   createIsolatedPostgresTestDatabase,
   type IsolatedPostgresTestDatabase,
@@ -279,6 +282,26 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
         typeof event.action === 'string' && event.action.startsWith('task.'),
     );
   }
+  /** Expected pre-description Activity facts; native history additionally owns private instructions. */
+  function genericFacts(events: Record<string, unknown>[]) {
+    return events.map((event) => {
+      if (event.action !== 'task.created') return event;
+      const metadata = object(event.metadata),
+        initial = object(metadata.initial);
+      return {
+        ...event,
+        metadata: {
+          ...metadata,
+          initial: {
+            title: initial.title,
+            assignee: initial.assignee,
+            dueDate: initial.dueDate,
+            ...('priority' in initial ? { priority: initial.priority } : {}),
+          },
+        },
+      };
+    });
+  }
   async function assigned(options: Parameters<typeof request>[1] = {}) {
     const page = await read('/assigned-tasks', options);
     expect(Object.keys(page)).toEqual(['tasks']);
@@ -336,6 +359,498 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       );
     }
   }
+
+  it('creates, reloads, corrects and clears literal instructions with attributable immutable history', async () => {
+    await grant('task');
+    const initial =
+      'Citiți dosarul.\r\n  Проверьте <b>originalul</b> 😀.\nKeep  both spaces.';
+    const corrected = 'Corecție: păstrați originalul.\r  Следующий шаг 🧭.';
+    const created = await create({
+      title: 'Literal instructions',
+      description: `  ${initial}  `,
+    });
+    const id = string(created.id);
+    expect(created).toMatchObject({ description: initial, version: 1 });
+    expect(await detail(id)).toEqual(created);
+    const actor = {
+      internalUserId,
+      workspaceMembershipId: membershipId,
+      displayName: 'Task Manager',
+    };
+    expect(await history(id)).toMatchObject([
+      {
+        action: 'task.created',
+        actor,
+        metadata: { version: 1, initial: { description: initial } },
+      },
+    ]);
+    const changed = await edit(id, {
+      expectedVersion: 1,
+      description: corrected,
+    });
+    expect(changed).toMatchObject({ description: corrected, version: 2 });
+    expect(await detail(id)).toMatchObject({
+      description: corrected,
+      version: 2,
+    });
+    await edit(id, { expectedVersion: 2, description: null });
+    expect(await detail(id)).toMatchObject({ description: null, version: 3 });
+    expect(await history(id)).toMatchObject([
+      {
+        action: 'task.created',
+        actor,
+        metadata: { version: 1, initial: { description: initial } },
+      },
+      {
+        action: 'task.updated',
+        actor,
+        metadata: {
+          version: 2,
+          changes: { description: { before: initial, after: corrected } },
+        },
+      },
+      {
+        action: 'task.updated',
+        actor,
+        metadata: {
+          version: 3,
+          changes: { description: { before: corrected, after: null } },
+        },
+      },
+    ]);
+  });
+
+  it('carries exact current instructions through every native queue and Home preview without extending summary or name predicates', async () => {
+    await grant('task');
+    const description = 'DESCRIPTION_ONLY_SENTINEL\r\n  Ș / Я / 😀';
+    const today = string((await read('/due-soon-tasks')).today);
+    const overdue = await create({
+      title: 'Overdue native work',
+      description,
+      assigneeMembershipId: membershipId,
+      dueDate: '2000-01-01',
+    });
+    const upcoming = await create({
+      title: 'Upcoming native work',
+      description,
+      assigneeMembershipId: membershipId,
+      dueDate: today,
+    });
+    const unassigned = await create({
+      title: 'Unassigned native work',
+      description,
+    });
+    await move(string(unassigned.id), 'blocked', 1, 'Recorded native blockage');
+    for (const [path, id] of [
+      ['/assigned-tasks', overdue.id],
+      ['/due-soon-tasks', upcoming.id],
+      ['/attention-tasks', overdue.id],
+      ['/overdue-tasks', overdue.id],
+      ['/unassigned-tasks', unassigned.id],
+      ['/blocked-tasks', unassigned.id],
+      ['/team-tasks', upcoming.id],
+      [`/projects/${projectId}/tasks`, unassigned.id],
+    ]) {
+      const page = await read(string(path));
+      expect(
+        objects(page.tasks).find((row) => row.id === id),
+        string(path),
+      ).toMatchObject({ description });
+    }
+    const home = await read('/operational-home');
+    expect(objects(object(home.attention).tasks)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: overdue.id, description }),
+        expect.objectContaining({ id: upcoming.id, description }),
+      ]),
+    );
+    expect(JSON.stringify(home.summaries)).not.toContain(
+      'DESCRIPTION_ONLY_SENTINEL',
+    );
+    expect(
+      (
+        await read(
+          '/team-tasks?responsibility=name&assigneeName=DESCRIPTION_ONLY_SENTINEL',
+        )
+      ).tasks,
+    ).toEqual([]);
+    expect(JSON.stringify(await read('/activity-log'))).not.toContain(
+      'DESCRIPTION_ONLY_SENTINEL',
+    );
+  });
+
+  it('normalizes only exterior whitespace, counts scalar code points and rejects invalid complete edits before writes', async () => {
+    await grant('task');
+    const exterior =
+      '\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+    const literal = 'ă a\u0306 Я 😀\r\n  <b>Check</b>\t X\rY\nZ\u0085\u200b';
+    const created = await create({
+      title: 'Scalar instructions',
+      description: exterior + literal + exterior,
+    });
+    const id = string(created.id);
+    expect(created.description).toBe(literal);
+    const before = await detail(id),
+      events = await history(id),
+      fence = await clientVersion(),
+      receipts = await commandCount();
+    for (const description of [
+      '😀'.repeat(2001),
+      'a\u0306'.repeat(1000) + 'x',
+      '\0',
+      '\ud800',
+      '\udfff',
+      ' \ud800 ',
+      'text\0text',
+      42,
+      true,
+      [],
+      {},
+      { text: 'No' },
+    ]) {
+      expect(
+        (
+          await request(`/projects/${projectId}/tasks`, {
+            method: 'POST',
+            value: { title: 'Rejected', description },
+          })
+        ).status,
+      ).toBe(400);
+      expect(
+        (
+          await request(`/tasks/${id}`, {
+            method: 'PATCH',
+            value: {
+              expectedVersion: 1,
+              title: 'Must not change',
+              description,
+            },
+          })
+        ).status,
+      ).toBe(400);
+    }
+    expect(
+      (
+        await request(`/tasks/${id}`, {
+          method: 'PATCH',
+          value: {
+            expectedVersion: 1,
+            description: 'Valid',
+            narrative: 'Unknown',
+          },
+        })
+      ).status,
+    ).toBe(400);
+    await assertUnchanged(id, before, events);
+    expect(await clientVersion()).toBe(fence);
+    expect(await commandCount()).toBe(receipts);
+    for (const description of [
+      '😀'.repeat(2000),
+      'a\u0306'.repeat(1000),
+      '\ud800\udc00',
+      '\u180e',
+      '\u0085',
+      '\u200b',
+    ]) {
+      const accepted = await create({
+        title: 'Accepted scalar instructions',
+        description: exterior + description + exterior,
+      });
+      expect(accepted.description).toBe(description);
+      expect((await detail(string(accepted.id))).description).toBe(description);
+    }
+  });
+
+  it('preserves omission, normalized no-op times/history/fence and exact supplied-null command identity', async () => {
+    await grant('task');
+    const key = randomUUID();
+    const created = await create(
+      { title: 'Exact intent', description: 'Line one\r\n  Line two 😀' },
+      { key },
+    );
+    const id = string(created.id);
+    const beforeEvents = await history(id),
+      fence = await clientVersion();
+    expect(
+      await edit(id, {
+        expectedVersion: 1,
+        description: `  ${string(created.description)}\n`,
+      }),
+    ).toEqual(created);
+    expect(await edit(id, { expectedVersion: 1 })).toEqual(created);
+    await assertUnchanged(id, created, beforeEvents);
+    expect(await clientVersion()).toBe(fence);
+    const mixed = await edit(id, {
+      expectedVersion: 1,
+      title: 'Mixed correction',
+      dueDate: '2026-10-29',
+      description: 'New\n  literal',
+    });
+    expect(mixed).toMatchObject({
+      title: 'Mixed correction',
+      description: 'New\n  literal',
+      version: 2,
+    });
+    const unrelated = await edit(id, {
+      expectedVersion: 2,
+      priority: 'critical',
+    });
+    expect(unrelated).toMatchObject({
+      description: 'New\n  literal',
+      version: 3,
+    });
+    const clearKey = randomUUID(),
+      clear = { expectedVersion: 3, description: null };
+    const cleared = await edit(id, clear, { key: clearKey });
+    expect(
+      await edit(
+        id,
+        { expectedVersion: 3, description: '\t \r\n' },
+        { key: clearKey },
+      ),
+    ).toEqual(cleared);
+    expect(
+      (
+        await request(`/tasks/${id}`, {
+          method: 'PATCH',
+          value: { expectedVersion: 3 },
+          key: clearKey,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      await create(
+        { title: 'Exact intent', description: 'Line one\r\n  Line two 😀' },
+        { key },
+      ),
+    ).toEqual(created);
+    expect((await detail(id)).description).toBeNull();
+    const omittedKey = randomUUID();
+    await create({ title: 'Old fingerprint' }, { key: omittedKey });
+    const fingerprint = await harness.pool.query<{ command: string }>(
+      'SELECT command FROM task_commands WHERE idempotency_key=$1',
+      [omittedKey],
+    );
+    expect(fingerprint.rows[0]?.command).toBe(
+      JSON.stringify({
+        action: 'create',
+        companyId,
+        projectId,
+        title: 'Old fingerprint',
+        assigneeMembershipId: null,
+        dueDate: null,
+      }),
+    );
+    expect(
+      (
+        await request(`/projects/${projectId}/tasks`, {
+          method: 'POST',
+          value: { title: 'Old fingerprint', description: null },
+          key: omittedKey,
+        })
+      ).status,
+    ).toBe(409);
+  });
+
+  it('preserves legacy receipt bytes and absent description after later edits and closure, and permits exhausted-version no-op and replay', async () => {
+    await grant('task');
+    const key = randomUUID(),
+      legacyKey = randomUUID();
+    const created = await create(
+      { title: 'Legacy instruction format' },
+      { key },
+    );
+    const id = string(created.id);
+    await harness.pool.query(
+      `INSERT INTO task_commands (workspace_id, company_id, task_id, actor_membership_id, idempotency_key, command, result) SELECT workspace_id, company_id, task_id, actor_membership_id, $2, command, result - 'description' FROM task_commands WHERE idempotency_key=$1`,
+      [key, legacyKey],
+    );
+    const snapshot = () =>
+      harness.pool.query(
+        'SELECT command, result::text FROM task_commands WHERE idempotency_key=$1',
+        [legacyKey],
+      );
+    const legacyBefore = (await snapshot()).rows;
+    await edit(id, { expectedVersion: 1, description: 'Today’s instructions' });
+    expect((await transition(id, 'complete', 2)).status).toBe(201);
+    const replay = await create(
+      { title: 'Legacy instruction format' },
+      { key: legacyKey },
+    );
+    expect(replay).not.toHaveProperty('description');
+    expect(replay).toMatchObject({ id, version: 1 });
+    expect((await detail(id)).description).toBe('Today’s instructions');
+    expect((await snapshot()).rows).toEqual(legacyBefore);
+    expect((await transition(id, 'reopen', 3)).status).toBe(201);
+    await harness.pool.query(
+      'UPDATE tasks SET version=2147483647 WHERE id=$1',
+      [id],
+    );
+    const current = await detail(id),
+      events = await history(id),
+      fence = await clientVersion();
+    expect(
+      await edit(id, {
+        expectedVersion: 2147483647,
+        description: 'Today’s instructions',
+      }),
+    ).toEqual(current);
+    expect(
+      (
+        await request(`/tasks/${id}`, {
+          method: 'PATCH',
+          value: { expectedVersion: 2147483647, description: 'Material' },
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      await create({ title: 'Legacy instruction format' }, { key: legacyKey }),
+    ).toEqual(replay);
+    await assertUnchanged(id, current, events);
+    expect(await clientVersion()).toBe(fence);
+  });
+
+  it('keeps complete native text history while excluding prose and text-only corrections before generic Activity selection', async () => {
+    await grant('task');
+    const created = await create({
+      title: 'Safe title',
+      description: 'CONFIDENTIAL_ONLY_INITIAL',
+    });
+    const id = string(created.id);
+    const genericBefore = await taskEvents();
+    expect(JSON.stringify(genericBefore)).not.toContain(
+      'CONFIDENTIAL_ONLY_INITIAL',
+    );
+    expect(genericBefore).toHaveLength(1);
+    for (let version = 1; version <= 55; version++)
+      await edit(id, {
+        expectedVersion: version,
+        description: `CONFIDENTIAL_ONLY_${version}`,
+      });
+    expect(await taskEvents()).toEqual(genericBefore);
+    await edit(id, {
+      expectedVersion: 56,
+      title: 'Safe corrected title',
+      description: 'CONFIDENTIAL_ONLY_MIXED',
+    });
+    const generic = await taskEvents();
+    expect(generic).toHaveLength(2);
+    expect(JSON.stringify(generic)).not.toContain('CONFIDENTIAL_ONLY');
+    expect(generic[0]).toMatchObject({
+      action: 'task.updated',
+      metadata: {
+        changes: {
+          title: { before: 'Safe title', after: 'Safe corrected title' },
+        },
+      },
+    });
+    const native = await history(id);
+    expect(native).toHaveLength(57);
+    expect(native[56]).toMatchObject({
+      metadata: {
+        changes: {
+          description: {
+            before: 'CONFIDENTIAL_ONLY_55',
+            after: 'CONFIDENTIAL_ONLY_MIXED',
+          },
+        },
+      },
+    });
+  });
+
+  it('rolls back an actual row persistence failure without exposing instruction parameters to diagnostics', async () => {
+    await grant('task');
+    const current = await create({
+      title: 'Private instructions',
+      description: 'Before',
+    });
+    const id = string(current.id),
+      events = await history(id),
+      fence = await clientVersion(),
+      receipts = await commandCount();
+    await harness.pool.query(
+      `CREATE FUNCTION fail_description_write() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RAISE EXCEPTION 'Synthetic row persistence failure'; END$$; CREATE TRIGGER fail_description_write BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION fail_description_write()`,
+    );
+    const diagnostics = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    try {
+      const response = await request(`/tasks/${id}`, {
+        method: 'PATCH',
+        value: {
+          expectedVersion: 1,
+          description: 'PRIVATE_DIAGNOSTIC_SENTINEL_Ș_Я_😀',
+        },
+      });
+      expect(response.status).toBe(500);
+      expect(await response.text()).not.toContain(
+        'PRIVATE_DIAGNOSTIC_SENTINEL',
+      );
+      expect(JSON.stringify(diagnostics.mock.calls)).not.toContain(
+        'PRIVATE_DIAGNOSTIC_SENTINEL',
+      );
+    } finally {
+      diagnostics.mockRestore();
+      await harness.pool.query(
+        'DROP TRIGGER fail_description_write ON tasks; DROP FUNCTION fail_description_write()',
+      );
+    }
+    await assertUnchanged(id, current, events);
+    expect(await clientVersion()).toBe(fence);
+    expect(await commandCount()).toBe(receipts);
+  });
+
+  it.each(['history', 'receipt', 'response'] as const)(
+    'rolls back instructions, version, time, history, receipt and fence after %s failure',
+    async (failure) => {
+      await grant('task');
+      const created = await create({
+        title: 'Atomic instructions',
+        description: 'Before',
+      });
+      const id = string(created.id),
+        key = randomUUID(),
+        events = await history(id),
+        fence = await clientVersion(),
+        receipts = await commandCount();
+      const nativeView = nativeViews.nativeTaskView;
+      const injection =
+        failure === 'history'
+          ? vi
+              .spyOn(AccountabilityService.prototype, 'recordTaskEvent')
+              .mockRejectedValueOnce(new Error('Synthetic history failure'))
+          : failure === 'receipt'
+            ? vi
+                .spyOn(TaskCommandStore.prototype, 'record')
+                .mockRejectedValueOnce(new Error('Synthetic receipt failure'))
+            : vi
+                .spyOn(nativeViews, 'nativeTaskView')
+                .mockImplementation((row) => {
+                  if (row.id === id && row.version === 2)
+                    throw new Error('Synthetic response failure');
+                  return nativeView(row);
+                });
+      try {
+        expect(
+          (
+            await request(`/tasks/${id}`, {
+              method: 'PATCH',
+              key,
+              value: { expectedVersion: 1, description: 'After' },
+            })
+          ).status,
+        ).toBe(500);
+      } finally {
+        injection.mockRestore();
+      }
+      await assertUnchanged(id, created, events);
+      expect(await clientVersion()).toBe(fence);
+      expect(await commandCount()).toBe(receipts);
+      expect(
+        await edit(id, { expectedVersion: 1, description: 'After' }, { key }),
+      ).toMatchObject({ description: 'After', version: 2 });
+    },
+  );
 
   it('requires an explicit grant, then creates, edits, completes and reopens with immutable attributable history', async () => {
     await grant('document');
@@ -476,7 +991,9 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       });
       expect(Number.isNaN(Date.parse(string(event.occurredAt)))).toBe(false);
     }
-    expect(await taskEvents()).toEqual(expect.arrayContaining(events));
+    expect(await taskEvents()).toEqual(
+      expect.arrayContaining(genericFacts(events)),
+    );
     expect(await read(`/projects/${projectId}`)).toMatchObject({
       status: 'preparatory',
       companyId,
@@ -791,7 +1308,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       createdAt: '2020-01-01',
       updatedAt: '2020-01-01',
       completion: {},
-      description: 'Out of scope',
+      narrative: 'Out of scope',
     };
     for (const [field, value] of Object.entries(controlled))
       expect(
@@ -1359,7 +1876,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       task: created,
     });
     expect(await history(id)).toEqual(events);
-    expect(await taskEvents()).toEqual(events);
+    expect(await taskEvents()).toEqual(genericFacts(events));
     for (const response of [
       await request(`/projects/${projectId}/tasks`, {
         method: 'POST',
@@ -1868,7 +2385,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     ])
       expect(JSON.stringify(attention)).not.toContain(hidden);
     expect(await snapshot()).toEqual(before);
-    expect(await taskEvents()).toEqual(events);
+    expect(await taskEvents()).toEqual(genericFacts(events));
     expect((await reverse(string(confirmed.projectionReference))).status).toBe(
       201,
     );
@@ -1924,7 +2441,9 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
         reason: "Waiting for the Client's signed questionnaire",
       },
     });
-    expect(await taskEvents()).toEqual(expect.arrayContaining(events));
+    expect(await taskEvents()).toEqual(
+      expect.arrayContaining(genericFacts(events)),
+    );
     expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
   });
 
@@ -2157,7 +2676,9 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       ['task.status.changed', blockage],
       ['task.cancelled', cancellation],
     ]);
-    expect(await taskEvents()).toEqual(expect.arrayContaining(recorded));
+    expect(await taskEvents()).toEqual(
+      expect.arrayContaining(genericFacts(recorded)),
+    );
   });
 
   it.each(['in_progress', 'blocked'] satisfies ExecutionState[])(
@@ -2379,7 +2900,9 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       ],
       ['task.reopened', { version: 4, before: 'cancelled', after: 'todo' }],
     ]);
-    expect(await taskEvents()).toEqual(expect.arrayContaining(events));
+    expect(await taskEvents()).toEqual(
+      expect.arrayContaining(genericFacts(events)),
+    );
     expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
   });
 
@@ -2668,6 +3191,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       });
       expect(object(object(created).metadata).initial).toEqual({
         title: task.title,
+        description: null,
         assignee: null,
         dueDate: null,
         priority,
@@ -2836,7 +3360,9 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       'task.reopened',
       'task.updated',
     ]);
-    expect(await taskEvents()).toEqual(expect.arrayContaining(events));
+    expect(await taskEvents()).toEqual(
+      expect.arrayContaining(genericFacts(events)),
+    );
     expect((await read(`/projects/${projectId}`)).status).toBe('preparatory');
   });
 
@@ -3146,8 +3672,8 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
              )
              INSERT INTO task_events (workspace_id, company_id, task_id, version, actor_internal_user_id, actor_membership_id, actor_display_name, occurred_at, meaning)
              SELECT e.workspace_id, e.company_id, i.id, 1, e.actor_internal_user_id, e.actor_membership_id, e.actor_display_name, e.occurred_at,
-               CASE WHEN $2::text IS NULL THEN e.meaning #- '{metadata,initial,priority}'
-                 ELSE jsonb_set(e.meaning, '{metadata,initial,priority}', to_jsonb($2::text)) END
+               CASE WHEN $2::text IS NULL THEN e.meaning #- '{metadata,initial,priority}' #- '{metadata,initial,description}'
+                 ELSE jsonb_set(e.meaning #- '{metadata,initial,description}', '{metadata,initial,priority}', to_jsonb($2::text)) END
              FROM inserted i JOIN task_events e ON e.task_id = $1::uuid AND e.version = 1
              RETURNING task_id AS id`,
             [string(created.id), initialPriority],
@@ -3257,7 +3783,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
       'critical',
       'important',
     ]);
-    expect(await taskEvents()).toEqual(events);
+    expect(await taskEvents()).toEqual(genericFacts(events));
     expect(await clientVersion()).toBe(fence);
     expect(await commandCount()).toBe(receipts);
   });
@@ -3421,7 +3947,7 @@ describe.skipIf(!databaseUrl)('Manual preparation Task REST contract', () => {
     expect([replayedBlock.status, replayedCancel.status]).toEqual([201, 201]);
     expect(await body(replayedBlock)).toEqual(blocked);
     expect(await body(replayedCancel)).toEqual(cancelled);
-    expect(await taskEvents()).toEqual(events);
+    expect(await taskEvents()).toEqual(genericFacts(events));
     expect(await clientVersion()).toBe(fence);
     expect(await commandCount()).toBe(receipts);
   });

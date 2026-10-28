@@ -59,6 +59,7 @@ function project(index = 0): ClientProjectPage['items'][number] {
 }
 function task(index = 0, projectId = 'project-25'): TaskView {
   return {
+    description: null,
     id: `task-${index}`,
     companyId: company.id,
     projectId,

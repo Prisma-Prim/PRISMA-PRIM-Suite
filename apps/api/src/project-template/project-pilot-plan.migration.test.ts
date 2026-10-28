@@ -1,3 +1,7 @@
+import {
+  restoreFrozenTaskSetup,
+  applyHistoricalTaskTarget,
+} from '../task/frozen-task-migration.test-support.js';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -11,12 +15,7 @@ import {
   text,
   type MissionDocumentFixture,
 } from '../documents/mission-document.test-support.js';
-import { prepareTaskResult } from '../task/task-results.test-support.js';
-import {
-  objects,
-  pilotKey,
-  legacyKey,
-} from './project-pilot-plan.test-support.js';
+import { objects, pilotKey } from './project-pilot-plan.test-support.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
   'upgrades genuine 0076 data with captured v1, advanced four-Task plan and frozen declared result unchanged; bounds the new pilot independently',
@@ -46,29 +45,35 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
       }
       fixture = await createMissionDocumentFixture(url, previous);
-      const context = await prepareTaskResult(fixture),
-        f = fixture;
-      await f.grant('/company-task-result-recorder-assignments');
-      const resultIntent = {
-        expectedTaskVersion: 1,
-        expectedResultRevision: 0,
-        documentId: context.documentId,
-        versionId: context.versionId,
-        declaration: 'Preserved delivered output DEMO',
-      };
-      const result = await f.call(`/tasks/${context.taskId}/results`, {
-        method: 'POST',
-        key: 'preserved-result',
-        body: resultIntent,
-      });
-      expect(result.status).toBe(201);
-      const resultReceipt = await json(result);
-      const actor = await json(await f.call('/access/current-actor')),
-        workspaceId = text(actor.workspaceId);
-      await f.pool.query(
-        "INSERT INTO company_role_assignments(workspace_id,company_id,workspace_membership_id,bundle,permission_set_version) VALUES($1,$2,$3,'company_project_template_user','v1')",
-        [workspaceId, context.companyId, context.membershipId],
+      const frozen = await restoreFrozenTaskSetup(
+        fixture.pool,
+        'project-pilot-plan',
       );
+      const rawContext = record(frozen.context);
+      const context = {
+        companyId: text(rawContext.companyId),
+        membershipId: text(rawContext.membershipId),
+        clientId: text(rawContext.clientId),
+        projectId: text(rawContext.projectId),
+        taskId: text(rawContext.taskId),
+        documentId: text(rawContext.documentId ?? frozen.documentId),
+        versionId: text(rawContext.versionId ?? frozen.versionId),
+        path: text(rawContext.path ?? '/unused'),
+        body: rawContext.body,
+      };
+      await fixture.resumeFrozenContext(context);
+      const f = fixture,
+        workspaceId = text(frozen.workspaceId),
+        projectId = text(frozen.projectId);
+      const intent = record(frozen.intent),
+        project = frozen.project,
+        sourceBefore = frozen.sourceBefore,
+        stageBefore = frozen.stageBefore,
+        resultBefore = frozen.resultBefore,
+        stageIntent = frozen.stageIntent,
+        stageReceipt = frozen.stageReceipt,
+        resultIntent = frozen.resultIntent,
+        resultReceipt = frozen.resultReceipt;
       async function read(path: string) {
         const response = await f.call(path);
         expect(response.status).toBe(200);
@@ -79,39 +84,6 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         expect(response.status).toBe(201);
         return json(response);
       }
-      const intent = {
-        title: 'Preserved legacy Project DEMO',
-        clientAccountId: context.clientId,
-        templateKey: legacyKey,
-        templateVersion: 1,
-      };
-      const project = await command(
-          '/projects/from-template',
-          intent,
-          'preserved-legacy',
-        ),
-        projectId = text(project.id);
-      const progress = record(
-        (await read(`/projects/${projectId}/stage-progress`)).progress,
-      );
-      for (const row of objects(progress.requiredTasks))
-        await command(`/tasks/${text(row.taskId)}/complete`, {
-          expectedVersion: 1,
-        });
-      await f.grant('/company-project-stage-advancer-assignments');
-      const stageIntent = {
-        expectedStageRevision: 0,
-        expectedStageKey: 'scoping',
-        targetStageKey: 'preparation',
-      };
-      const stageReceipt = await command(
-        `/projects/${projectId}/stage-advance`,
-        stageIntent,
-        'preserved-stage',
-      );
-      const sourceBefore = await read(`/projects/${projectId}/template`),
-        stageBefore = await read(`/projects/${projectId}/stage-progress`),
-        resultBefore = await read(`/tasks/${context.taskId}/results/history`);
       // Test-owned table inventory proves row preservation across the actual upgrade.
       const tables = (
         await f.pool.query<{ name: string }>(
@@ -124,7 +96,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           if (!/^[a-z_]+$/.test(table)) throw new Error('Invalid table name');
           rows[table] = (
             await f.pool.query<{ row: string }>(
-              `SELECT to_jsonb(preserved)::text row FROM "${table}" preserved`,
+              `SELECT (to_jsonb(preserved) ${table === 'tasks' ? "- 'description'" : ''})::text row FROM "${table}" preserved`,
             )
           ).rows
             .map((row) => row.row)
@@ -133,8 +105,15 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         return rows;
       }
       const before = await snapshot();
-      await migrate(drizzle(f.pool), { migrationsFolder: resolve('drizzle') });
+      await applyHistoricalTaskTarget({
+        pool: f.pool,
+        previous,
+        journal,
+        entries,
+        index,
+      });
       expect(await snapshot()).toEqual(before);
+      await migrate(drizzle(f.pool), { migrationsFolder: resolve('drizzle') });
       expect(await read(`/projects/${projectId}/template`)).toEqual(
         sourceBefore,
       );

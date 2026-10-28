@@ -110,6 +110,7 @@ const actor = {
   displayName: actorContextFixture.displayName,
 };
 const first: AssignedTask = {
+  description: null,
   id: 'task-exact',
   companyId: company.id,
   projectId: project.id,

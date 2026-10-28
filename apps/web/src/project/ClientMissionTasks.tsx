@@ -13,10 +13,8 @@ import { readTaskList, type TaskView } from './task-response';
 import { TaskCalendarDate } from './TaskPresentation';
 import { useProjectTaskCopy } from './task.copy';
 import { useClientMissionCopy } from './client-mission.copy';
-import {
-  handleAuthenticatedAccessRejection,
-  runLatestAuthenticatedRequest,
-} from '../api/latest-authenticated-request';
+import { runLatestAuthenticatedRequest } from '../api/latest-authenticated-request';
+import { useClientMissionRejection } from './use-client-mission-rejection';
 
 type Props = Pick<
   ComponentProps<typeof ClientMissionOverview>,
@@ -47,6 +45,7 @@ export function ClientMissionTasks(props: Props) {
   return <TaskOwner key={JSON.stringify(capture)} {...props} />;
 }
 function TaskOwner(props: Props) {
+  const reject = useClientMissionRejection(props);
   const copy = useClientMissionCopy(),
     tasksCopy = useProjectTaskCopy(),
     id = useId();
@@ -63,6 +62,7 @@ function TaskOwner(props: Props) {
     lifetime.current = undefined;
     setView({ kind: 'loading' });
     setOffset(0);
+    const startedUnder = callbacks.current.actor;
     return runLatestAuthenticatedRequest({
       pending,
       identity: callbacks.current.identity,
@@ -78,17 +78,7 @@ function TaskOwner(props: Props) {
           result.status === 'notFound'
         ) {
           setView({ kind: 'denied' });
-          await handleAuthenticatedAccessRejection({
-            result,
-            signal,
-            identity: callbacks.current.identity,
-            companyContextId: props.project.companyId,
-            onCompanyContextRejected:
-              callbacks.current.onCompanyContextRejected,
-            onActorRevalidated: callbacks.current.onActorRevalidated,
-            onWorkspaceAccessRejected:
-              callbacks.current.onWorkspaceAccessRejected,
-          });
+          await reject({ result, signal, startedUnder });
         } else if (result.status === 'ok') {
           const { tasks } = readTaskList(result.value, {
             companyId: props.project.companyId,

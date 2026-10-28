@@ -1,3 +1,7 @@
+import {
+  restoreFrozenTaskSetup,
+  applyHistoricalTaskTarget,
+} from '../task/frozen-task-migration.test-support.js';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -10,7 +14,6 @@ import {
   createPostgresRestTestHarness,
   type PostgresRestTestHarness,
 } from '../database/postgres-rest-test-harness.js';
-import { CONSULTING_PREPARATION_V1 } from './project-template.definition.js';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const workspaceId = '00000000-0000-4000-8000-000000006870';
@@ -86,69 +89,13 @@ it.skipIf(!databaseUrl)(
         const body: unknown = await response.json();
         return record(body);
       }
-      const memberId = string(
-        (await request('/access/current-actor')).workspaceMembershipId,
+      const frozen = await restoreFrozenTaskSetup(
+        database.targetPool,
+        'project-stage',
       );
-      companyId = string(
-        (await request('/companies', { displayName: 'Preserved Company' })).id,
-      );
-      for (const path of [
-        '/company-director-client-assignments',
-        '/company-project-assignments',
-        '/company-task-manager-assignments',
-      ])
-        await request(path, { workspaceMembershipId: memberId, companyId });
-      // Seed the captured v1 that existed on this historical schema. The
-      // current public grant deliberately captures v2 only after migration 0077.
-      await database.targetPool.query(
-        "INSERT INTO company_role_assignments(workspace_id,company_id,workspace_membership_id,bundle,permission_set_version) VALUES($1,$2,$3,'company_project_template_user','v1')",
-        [workspaceId, companyId, memberId],
-      );
-      const clientId = string(
-        (
-          await request('/clients', {
-            displayName: 'Preserved original Client',
-          })
-        ).id,
-      );
-      const projectId = string(
-        (
-          await request('/projects', {
-            title: 'Existing copied preparation',
-            clientAccountId: clientId,
-          })
-        ).id,
-      );
-      const taskIds: string[] = [];
-      for (const title of CONSULTING_PREPARATION_V1.stages.flatMap((stage) =>
-        stage.tasks.map((task) => task.title),
-      )) {
-        const taskId = string(
-          (await request(`/projects/${projectId}/tasks`, { title })).id,
-        );
-        taskIds.push(taskId);
-        if (taskIds.length <= 2)
-          await request(`/tasks/${taskId}/complete`, { expectedVersion: 1 });
-      }
-      // Exact 0068 stored-copy fixture. Current endpoints cannot select columns that do not exist until 0069.
-      await database.targetPool.query(
-        `INSERT INTO project_template_instances(project_id,workspace_id,company_id,client_account_id,created_by_membership_id,idempotency_key,fingerprint,snapshot) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [
-          projectId,
-          workspaceId,
-          companyId,
-          clientId,
-          memberId,
-          'preserved-copy-key',
-          'preserved-copy-intent',
-          JSON.stringify(CONSULTING_PREPARATION_V1),
-        ],
-      );
-      for (const [position, taskId] of taskIds.entries())
-        await database.targetPool.query(
-          'INSERT INTO project_template_task_copies(workspace_id,company_id,project_id,task_id,position) VALUES($1,$2,$3,$4,$5)',
-          [workspaceId, companyId, projectId, taskId, position],
-        );
+      companyId = string(frozen.companyId);
+      const memberId = string(frozen.memberId),
+        projectId = string(frozen.projectId);
       const tables = (
         await database.targetPool.query<{ name: string }>(
           `SELECT table_name AS name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name`,
@@ -159,17 +106,24 @@ it.skipIf(!databaseUrl)(
         for (const table of tables) {
           // Compare all original fields; added progress columns are checked explicitly below.
           const rows = await database.targetPool.query<{ row: string }>(
-            `SELECT (to_jsonb(preserved) ${table === 'project_template_instances' ? "- 'current_stage_key' - 'stage_revision'" : ''})::text AS row FROM "${table}" preserved`,
+            `SELECT (to_jsonb(preserved) ${table === 'tasks' ? "- 'description'" : ''} ${table === 'project_template_instances' ? "- 'current_stage_key' - 'stage_revision'" : ''})::text AS row FROM "${table}" preserved`,
           );
           result[table] = rows.rows.map((row) => row.row).sort();
         }
         return result;
       }
       const before = await snapshot();
+      await applyHistoricalTaskTarget({
+        pool: database.targetPool,
+        previous,
+        journal,
+        entries,
+        index,
+      });
+      expect(await snapshot()).toEqual(before);
       await migrate(drizzle(database.targetPool), {
         migrationsFolder: resolve('drizzle'),
       });
-      expect(await snapshot()).toEqual(before);
       const counts = await database.targetPool.query(
         `SELECT (SELECT count(*)::int FROM project_stage_commands) receipts,(SELECT count(*)::int FROM project_stage_transitions) transitions,(SELECT count(*)::int FROM company_role_assignments WHERE bundle::text='company_project_stage_advancer') grants`,
       );

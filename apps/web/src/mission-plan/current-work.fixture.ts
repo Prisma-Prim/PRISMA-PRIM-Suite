@@ -75,6 +75,7 @@ export function currentOverview(count = 26) {
     activityKey: m.activityKey,
     position: i,
     task: {
+      description: null,
       id: m.taskId,
       companyId: company.id,
       projectId: project.id,

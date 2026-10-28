@@ -1,3 +1,7 @@
+import {
+  restoreFrozenTaskSetup,
+  applyHistoricalTaskTarget,
+} from '../task/frozen-task-migration.test-support.js';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -11,8 +15,6 @@ import {
   text,
   type MissionDocumentFixture,
 } from '../documents/mission-document.test-support.js';
-import { preserveFrozenResultDocument } from '../task/task-results.test-support.js';
-import { prepareMissionReview } from './mission-result-review.test-support.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
   'upgrades genuine previous-schema source/Tasks/results and old roles without enrollment, then preserves review receipts across repeat upgrade and two API restarts',
@@ -43,70 +45,23 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
       }
       fixture = await createMissionDocumentFixture(url, previous);
-      const context = await prepareMissionReview(fixture, false);
-      for (const route of [
-        '/company-task-result-recorder-assignments',
-        '/company-document-content-uploader-assignments',
-        '/company-document-approver-assignments',
-        '/company-document-project-organizer-assignments',
-      ])
-        await fixture.grant(route);
-      const { documentId, versionId } = await preserveFrozenResultDocument({
-        fixture,
-        registration: {
-          type: 'mission-deliverable',
-          clientId: context.clientId,
-          title: 'Pre-upgrade exact result DEMO',
-          purpose: 'Preserve genuine old evidence',
-        },
-      });
-      expect(
-        (
-          await fixture.call(`/documents/${documentId}/project-association`, {
-            method: 'POST',
-            body: {
-              action: 'link',
-              projectId: context.projectId,
-              expectedRevision: 0,
-            },
-          })
-        ).status,
-      ).toBe(201);
-      expect(
-        (
-          await fixture.call(`/tasks/${context.taskId}/reopen`, {
-            method: 'POST',
-            body: { expectedVersion: 2 },
-          })
-        ).status,
-      ).toBe(201);
-      expect(
-        (
-          await fixture.call(`/tasks/${context.taskId}/results`, {
-            method: 'POST',
-            body: {
-              expectedTaskVersion: 3,
-              expectedResultRevision: 0,
-              documentId,
-              versionId,
-              declaration: 'Genuine pre-review declaration DEMO',
-            },
-          })
-        ).status,
-      ).toBe(201);
-      expect(
-        (
-          await fixture.call(`/tasks/${context.taskId}/complete`, {
-            method: 'POST',
-            body: { expectedVersion: 3 },
-          })
-        ).status,
-      ).toBe(201);
-      context.body.items = context.body.items.map((item) => ({
-        ...item,
-        expectedTaskVersion: 4,
-        expectedResultRevision: 1,
-      }));
+      const frozen = await restoreFrozenTaskSetup(
+        fixture.pool,
+        'mission-result-review',
+      );
+      const rawContext = record(frozen.context);
+      const context = {
+        companyId: text(rawContext.companyId),
+        membershipId: text(rawContext.membershipId),
+        clientId: text(rawContext.clientId),
+        projectId: text(rawContext.projectId),
+        taskId: text(rawContext.taskId),
+        documentId: text(rawContext.documentId ?? frozen.documentId),
+        versionId: text(rawContext.versionId ?? frozen.versionId),
+        path: text(rawContext.path ?? '/unused'),
+        body: rawContext.body,
+      };
+      await fixture.resumeFrozenContext(context);
       const pool = fixture.pool;
       const conserved = async () => {
         const values: unknown[] = [];
@@ -130,7 +85,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           values.push(
             (
               await pool.query(
-                `SELECT to_jsonb(t) AS row FROM ${table} t ORDER BY to_jsonb(t)::text`,
+                `SELECT (to_jsonb(t) ${table === 'tasks' ? "- 'description'" : ''}) AS row FROM ${table} t ORDER BY to_jsonb(t)::text`,
               )
             ).rows,
           );
@@ -144,8 +99,15 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
           )
         ).rows,
       ).toEqual([{ relation: null }]);
-      await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
+      await applyHistoricalTaskTarget({
+        pool: pool,
+        previous,
+        journal,
+        entries,
+        index,
+      });
       expect(await conserved()).toEqual(before);
+      await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
       await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
       expect(await conserved()).toEqual(before);
       expect(

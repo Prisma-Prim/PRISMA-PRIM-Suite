@@ -593,6 +593,7 @@ async function installTasks(page: Page) {
   const reason =
     'Așteptăm {literal} — Причина : confirmation détaillée du périmètre de la préparation';
   const seed: TaskView = {
+    description: null,
     id: 'seed-task',
     companyId: company.id,
     projectId: project.id,

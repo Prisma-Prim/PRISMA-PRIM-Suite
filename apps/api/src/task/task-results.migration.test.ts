@@ -1,3 +1,7 @@
+import {
+  restoreFrozenTaskSetup,
+  applyHistoricalTaskTarget,
+} from '../task/frozen-task-migration.test-support.js';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -12,7 +16,6 @@ import {
   PDF_A,
   type MissionDocumentFixture,
 } from '../documents/mission-document.test-support.js';
-import { prepareTaskResult } from './task-results.test-support.js';
 
 it.skipIf(!process.env.TEST_DATABASE_URL)(
   'upgrades genuine pre-result Tasks/receipts and frozen mission PDFs without rewriting history or granting Recorder',
@@ -44,32 +47,22 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         await cp(join('drizzle', tag + '.sql'), join(previous, tag + '.sql'));
       }
       fixture = await createMissionDocumentFixture(url, previous);
-      const context = await prepareTaskResult(fixture);
-      const beforeSchema = await fixture.pool.query(
-        "SELECT to_regclass('public.task_result_declarations') AS relation",
-      );
-      expect(beforeSchema.rows).toEqual([{ relation: null }]);
-      const completeBody = { expectedVersion: 1 };
-      const completed = await fixture.call(
-        `/tasks/${context.taskId}/complete`,
-        { method: 'POST', key: 'pre-upgrade-completion', body: completeBody },
-      );
-      expect(completed.status).toBe(201);
-      const priorReceipt = await completed.json();
-      expect(
-        (
-          await fixture.call(`/tasks/${context.taskId}/reopen`, {
-            method: 'POST',
-            body: { expectedVersion: 2 },
-          })
-        ).status,
-      ).toBe(201);
-      const taskBefore = await json(
-        await fixture.call(`/tasks/${context.taskId}`),
-      );
-      const historyBefore = await json(
-        await fixture.call(`/tasks/${context.taskId}/history`),
-      );
+      const frozen = await restoreFrozenTaskSetup(fixture.pool, 'task-results');
+      const rawContext = record(frozen.context);
+      const context = {
+        companyId: text(rawContext.companyId),
+        membershipId: text(rawContext.membershipId),
+        clientId: text(rawContext.clientId),
+        projectId: text(rawContext.projectId),
+        taskId: text(rawContext.taskId),
+        documentId: text(rawContext.documentId),
+        versionId: text(rawContext.versionId),
+      };
+      await fixture.resumeFrozenContext(context);
+      const completeBody = frozen.completeBody,
+        priorReceipt = frozen.priorReceipt,
+        taskBefore = record(frozen.taskBefore),
+        historyBefore = frozen.historyBefore;
       const { pool } = fixture;
       const tables = [
         'tasks',
@@ -89,16 +82,30 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
         // Fixed test-owned table names; snapshots prove upgrade identity, not business behavior.
         for (const table of tables)
           rows.push(
-            (await pool.query(`SELECT * FROM ${table} ORDER BY id`)).rows,
+            (
+              await pool.query(
+                `SELECT (to_jsonb(t) ${table === 'tasks' ? "- 'description'" : ''}) AS row FROM ${table} t ORDER BY id`,
+              )
+            ).rows,
           );
         return rows;
       };
       const before = await snapshot();
-      await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
+      await applyHistoricalTaskTarget({
+        pool: pool,
+        previous,
+        journal,
+        entries,
+        index,
+      });
       expect(await snapshot()).toEqual(before);
+      await migrate(drizzle(pool), { migrationsFolder: resolve('drizzle') });
       expect(
         await json(await fixture.call(`/tasks/${context.taskId}`)),
-      ).toEqual(taskBefore);
+      ).toEqual({
+        ...taskBefore,
+        task: { ...record(taskBefore.task), description: null },
+      });
       expect(
         await json(await fixture.call(`/tasks/${context.taskId}/history`)),
       ).toEqual(historyBefore);
@@ -155,7 +162,10 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(recorded.status).toBe(201);
       expect(
         await json(await fixture.call(`/tasks/${context.taskId}`)),
-      ).toEqual(taskBefore);
+      ).toEqual({
+        ...taskBefore,
+        task: { ...record(taskBefore.task), description: null },
+      });
       expect(
         await json(await fixture.call(`/tasks/${context.taskId}/history`)),
       ).toEqual(historyBefore);

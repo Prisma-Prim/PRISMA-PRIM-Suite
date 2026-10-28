@@ -45,6 +45,7 @@ const project = {
   createdAt: '2026-09-19T00:00:00.000Z',
 };
 const task: TaskView = {
+  description: null,
   id: 'exact-task',
   companyId: company.id,
   projectId: project.id,

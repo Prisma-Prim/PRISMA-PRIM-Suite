@@ -536,6 +536,7 @@ test('finds a literal Romanian Task with plain spelling and preserves its draft 
 
 function taskFixtures(): TaskView[] {
   const base: TaskView = {
+    description: null,
     id: 'collect-task',
     companyId: company.id,
     projectId: project.id,

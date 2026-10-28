@@ -32,6 +32,7 @@ const attribution = {
   displayName: 'Ana',
 };
 const overdueTask = {
+  description: null,
   id: 'task-collect',
   companyId: companyA.id,
   projectId: project.id,

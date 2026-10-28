@@ -43,6 +43,13 @@ describe('Current-work rejection through actual App authority revalidation', () 
       const panel = await openCurrentWork();
       await within(panel).findByText('Current declaration 1 Ж / é');
       const draft = await screen.findByLabelText('Task title');
+      const instructions = screen.getByLabelText(
+        'Task instructions (optional)',
+      );
+      changeValue(
+        instructions,
+        'Protected native instructions during full Actor recovery\n  Ș / Я / 😀',
+      );
       changeValue(
         draft,
         'Protected connected native draft during revalidation',
@@ -69,6 +76,10 @@ describe('Current-work rejection through actual App authority revalidation', () 
       }
       expect(draft).toBeInTheDocument();
       expect(source).toBeInTheDocument();
+      expect(instructions).toBeInTheDocument();
+      expect(instructions).toHaveValue(
+        'Protected native instructions during full Actor recovery\n  Ș / Я / 😀',
+      );
       state.status = 200;
       const access = await screen.findByRole('region', {
         name: 'Company access',

@@ -45,6 +45,7 @@ const project = {
   createdAt: '2026-09-19T00:00:00.000Z',
 };
 const task: TaskView = {
+  description: null,
   id: 'exact-task',
   companyId: company.id,
   projectId: project.id,
@@ -594,6 +595,7 @@ it('preserves the exact pending and uncertain native creation across discovery/o
         release = resolve;
       });
     const created: TaskView = {
+      description: null,
       id: 'created-task',
       companyId: company.id,
       projectId: project.id,

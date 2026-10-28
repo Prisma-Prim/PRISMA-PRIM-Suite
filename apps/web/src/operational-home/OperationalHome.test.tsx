@@ -45,6 +45,7 @@ function overdueTask(
   changes: Record<string, unknown> = {},
 ) {
   return {
+    description: null,
     id,
     companyId: company.id,
     projectId: iso.id,

@@ -23,6 +23,7 @@ export const tasks = pgTable(
     projectId: uuid('project_id').notNull(),
     clientAccountId: uuid('client_account_id').notNull(),
     title: text('title').notNull(),
+    description: text('description'),
     assigneeMembershipId: uuid('assignee_membership_id'),
     assigneeDisplayLabel: text('assignee_display_label'),
     dueDate: date('due_date', { mode: 'string' }),
@@ -146,6 +147,11 @@ export const tasks = pgTable(
         sql`length(${table.title}) BETWEEN 1 AND 200 AND ${table.title} = btrim(${table.title})`,
       ),
       check('tasks_version_check', sql`${table.version} >= 1`),
+      // UTF-8 PostgreSQL text already rejects NUL and non-scalar encodings.
+      check(
+        'tasks_description_check',
+        sql`${table.description} IS NULL OR (length(${table.description}) BETWEEN 1 AND 2000 AND ${table.description} = btrim(${table.description}, U&'\\0009\\000A\\000B\\000C\\000D\\0020\\00A0\\1680\\2000\\2001\\2002\\2003\\2004\\2005\\2006\\2007\\2008\\2009\\200A\\2028\\2029\\202F\\205F\\3000\\FEFF'))`,
+      ),
       check(
         'tasks_assignee_check',
         sql`(${table.assigneeMembershipId} IS NULL) = (${table.assigneeDisplayLabel} IS NULL)`,

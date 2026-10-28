@@ -67,6 +67,7 @@ const title = (index: number) =>
   `Task ${String(index).padStart(2, '0')} — Literal / Sarcină / Задача / Tâche`;
 function task(index: number) {
   return {
+    description: null,
     id: `upcoming-task-${String(index).padStart(2, '0')}`,
     title: title(index),
     companyId: company.id,

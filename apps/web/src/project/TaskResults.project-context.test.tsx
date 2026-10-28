@@ -84,6 +84,7 @@ function deferredResponse() {
 }
 function task(projectId: string, id: string): TaskView {
   return {
+    description: null,
     id,
     projectId,
     companyId: 'company',

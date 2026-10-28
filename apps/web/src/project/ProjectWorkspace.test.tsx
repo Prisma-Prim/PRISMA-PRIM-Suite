@@ -1171,6 +1171,7 @@ describe('Client identity changes', () => {
   const detailPath = `/api/projects/${historicalProject.id}`;
   const taskPath = `/api/projects/${historicalProject.id}/tasks`;
   const createdTask = {
+    description: null,
     id: 'task',
     companyId: 'company',
     projectId: historicalProject.id,

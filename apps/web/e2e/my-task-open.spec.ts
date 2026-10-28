@@ -52,6 +52,7 @@ const me = {
 const taskTitle = 'Chestionar inițial';
 function taskFor(owner: typeof atelierProject, id: string, dueDate: string) {
   return {
+    description: null,
     id,
     companyId: company.id,
     projectId: owner.id,

@@ -31,6 +31,7 @@ const author = {
 };
 function task(index: number) {
   return {
+    description: null,
     id: `task-${String(index).padStart(2, '0')}`,
     title: `Task ${String(index).padStart(2, '0')} — Literal`,
     companyId: company.id,

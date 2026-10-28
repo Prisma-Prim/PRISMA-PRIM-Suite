@@ -1,5 +1,6 @@
 import { tasks } from '../database/schema/index.js';
 import type { TaskView, TaskActor, TaskDeclaration } from './task.types.js';
+import { storedTaskDescription } from './task.validation.js';
 type TaskRow = typeof tasks.$inferSelect;
 
 export function nativeTaskView(row: TaskRow): TaskView {
@@ -14,6 +15,7 @@ export function nativeTaskView(row: TaskRow): TaskView {
     projectId: row.projectId,
     clientAccountId: row.clientAccountId,
     title: row.title,
+    description: storedTaskDescription(row.description),
     assignee:
       row.assigneeMembershipId !== null && row.assigneeDisplayLabel !== null
         ? {
