@@ -1,0 +1,44 @@
+{
+  "issue": 935,
+  "pr": 936,
+  "source": "b9400a1e874ef26e2312b63c9984419f328d6f5d",
+  "base": "2425854935a188acca6b3eb7b4bbfb441bc42b89",
+  "tree": "3b7a0df6b2af80c4184f3e7d9a31db7a5b8bbcfc",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1823,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "b9400a1e874ef26e2312b63c9984419f328d6f5d",
+    "reviewedBase": "2425854935a188acca6b3eb7b4bbfb441bc42b89",
+    "preparationSource": "58560c35767407a1898b7d5c8e65a338baab2133",
+    "standards": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "spec": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "reviewOrder": "Standards then Spec",
+    "blockingFindingsRemaining": 0,
+    "rootDisposition": "Approved at #935comment6465803935 under #51comment6283507237 and current autonomous continuation6465537888. Final delta only approved header/status/index, directly inspected on both axes; no behavior change or runtime claim."
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only Document Registry25: explicit selected Project PDFs with exact Version/Representation and association revision, one authorized read snapshot, bounded20-file/20MiBPDF/21MiBZIP+factual index and protected UI lifetime. No completeness/delivery/acceptance/officialization, new permission/schema/provider/deployment or closure policy. Native owners remain authoritative; MISSION-CLOSE-01 stays solely Mission Obligations12. Runtime follows approved contract merge.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-16T00:00:00Z"
+}
