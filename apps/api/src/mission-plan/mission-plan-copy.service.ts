@@ -189,51 +189,80 @@ export class MissionPlanCopyService {
           lock: false,
         });
         await this.taskAccess.requireActor(actor);
-        await this.projects.read(actor, requireUuid(projectId));
-        const [instance] = await this.database.connection
-          .select()
-          .from(missionPlanInstances)
-          .where(
-            and(
-              eq(missionPlanInstances.workspaceId, actor.workspaceId),
-              eq(missionPlanInstances.companyId, companyId),
-              eq(missionPlanInstances.projectId, projectId),
-            ),
-          );
-        if (!instance) return { plan: null };
-        const version = await this.sources.versionWithinTransaction({
-          actor,
-          companyId,
-          planId: instance.planId,
-          versionId: instance.versionId,
-        });
-        const tasks = await this.database.connection
-          .select({
-            activityKey: missionPlanTaskCopies.activityKey,
-            position: missionPlanTaskCopies.position,
-            taskId: missionPlanTaskCopies.taskId,
-          })
-          .from(missionPlanTaskCopies)
-          .where(
-            and(
-              eq(missionPlanTaskCopies.workspaceId, actor.workspaceId),
-              eq(missionPlanTaskCopies.companyId, companyId),
-              eq(missionPlanTaskCopies.projectId, projectId),
-            ),
-          )
-          .orderBy(asc(missionPlanTaskCopies.position));
-        if (
-          tasks.length !== version.activityCount ||
-          tasks.some(
-            (task, n) =>
-              task.position !== n ||
-              task.activityKey !== version.activities[n]?.key,
-          )
-        )
-          throw new Error('Incomplete mission-plan Task mapping.');
-        return { plan: { projectId, version, tasks } };
+        const project = await this.projects.read(actor, requireUuid(projectId));
+        return this.readWithinTransaction({ actor, companyId, project });
       },
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
     );
+  }
+
+  /** Caller owns the snapshot and has established live source/Task/Project/Client authority. */
+  async readWithinTransaction({
+    actor,
+    companyId,
+    project,
+  }: {
+    actor: ActorContext;
+    companyId: string;
+    project: { id: string; clientAccountId: string };
+  }) {
+    const projectId = project.id;
+    const [instance] = await this.database.connection
+      .select()
+      .from(missionPlanInstances)
+      .where(
+        and(
+          eq(missionPlanInstances.workspaceId, actor.workspaceId),
+          eq(missionPlanInstances.companyId, companyId),
+          eq(missionPlanInstances.projectId, projectId),
+        ),
+      );
+    if (!instance) return { plan: null };
+    if (instance.clientAccountId !== project.clientAccountId)
+      throw new Error('Invalid mission-plan original Client.');
+    const version = await this.sources.versionWithinTransaction({
+      actor,
+      companyId,
+      planId: instance.planId,
+      versionId: instance.versionId,
+    });
+    const tasks = await this.database.connection
+      .select({
+        versionId: missionPlanTaskCopies.versionId,
+        activityKey: missionPlanTaskCopies.activityKey,
+        position: missionPlanTaskCopies.position,
+        taskId: missionPlanTaskCopies.taskId,
+      })
+      .from(missionPlanTaskCopies)
+      .where(
+        and(
+          eq(missionPlanTaskCopies.workspaceId, actor.workspaceId),
+          eq(missionPlanTaskCopies.companyId, companyId),
+          eq(missionPlanTaskCopies.projectId, projectId),
+        ),
+      )
+      .orderBy(asc(missionPlanTaskCopies.position));
+    if (
+      tasks.length !== version.activityCount ||
+      tasks.some(
+        (task, n) =>
+          task.position !== n ||
+          task.versionId !== instance.versionId ||
+          task.activityKey !== version.activities[n]?.key,
+      ) ||
+      new Set(tasks.map((t) => t.taskId)).size !== tasks.length
+    )
+      throw new Error('Incomplete mission-plan Task mapping.');
+    return {
+      plan: {
+        projectId,
+        version,
+        tasks: tasks.map(({ activityKey, position, taskId }) => ({
+          activityKey,
+          position,
+          taskId,
+        })),
+      },
+    };
   }
 }

@@ -1,4 +1,5 @@
 import { ProjectPdfBundle } from './ProjectPdfBundle';
+import { MissionPlanCurrentWork } from '../mission-plan/MissionPlanCurrentWork';
 import {
   MissionPlanProjectCreator,
   MissionPlanProjectCopy,
@@ -1092,6 +1093,27 @@ export function ProjectWorkspace({
             actor={actor}
             identity={identity}
             projectId={selected.project.id}
+            onActorRevalidated={onActorRevalidated}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+            onOpenTask={(taskId) => {
+              const requestId = --planTaskRequestId.current;
+              setDetailPanel('tasks');
+              setSelected((current) =>
+                current?.project.id === selected.project.id
+                  ? {
+                      ...current,
+                      requestedTask: { taskId, requestId, focus: 'task' },
+                    }
+                  : current,
+              );
+            }}
+          />
+          <MissionPlanCurrentWork
+            actor={actor}
+            identity={identity}
+            projectId={selected.project.id}
+            clientAccountId={selected.project.clientAccountId}
             onActorRevalidated={onActorRevalidated}
             onCompanyContextRejected={onCompanyContextRejected}
             onWorkspaceAccessRejected={onWorkspaceAccessRejected}

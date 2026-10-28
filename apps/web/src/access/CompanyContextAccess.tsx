@@ -389,11 +389,8 @@ export function CompanyContextAccess({
 
       if (
         result.status === 'ok' &&
-        command.bundle !== 'company-context' &&
-        command.bundle !== 'project-template-configuration' &&
-        command.bundle !== 'project-template-user' &&
-        command.bundle !== 'operational-risk-reader' &&
-        command.bundle !== 'operational-risk-recorder' &&
+        // Only this bundle carries Client read. Other consumers retire their own captured authority.
+        command.bundle === 'director-client' &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase()
       ) {

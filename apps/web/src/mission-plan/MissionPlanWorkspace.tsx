@@ -40,7 +40,10 @@ export function MissionPlanBoundary({
       className="mission-plan-region"
       key={`${session.generation}:${authority.key}`}
     >
-      <MissionPlanAccessLifetime context={{ identity, authority, ...handlers }}>
+      <MissionPlanAccessLifetime
+        actor={actor}
+        context={{ identity, authority, ...handlers }}
+      >
         {children(authority)}
       </MissionPlanAccessLifetime>
     </div>

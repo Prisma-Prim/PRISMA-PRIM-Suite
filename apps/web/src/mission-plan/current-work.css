@@ -1,0 +1,44 @@
+.current-work {
+  min-width: 0;
+}
+.current-work-activities {
+  padding-inline-start: 1.5rem;
+}
+.current-work-activities > li {
+  padding: 1rem;
+  margin-block: 1rem;
+  border: 1px solid #e6eaf1;
+  border-radius: 0.65rem;
+  overflow-wrap: anywhere;
+}
+.current-work dd {
+  margin-inline-start: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.current-work dt {
+  font-weight: 600;
+  margin-block-start: 0.5rem;
+}
+.current-work-declaration {
+  border-inline-start: 3px solid #d9b759;
+  padding-inline-start: 0.75rem;
+}
+.current-work button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.current-work :focus-visible,
+.current-work [tabindex='-1']:focus {
+  outline: 2px solid #6554b3;
+  outline-offset: 3px;
+}
+.prisme-shell .current-work {
+  padding-block: 1rem;
+}
+@media (max-width: 600px) {
+  .current-work-activities > li {
+    padding: 0.75rem;
+  }
+}
