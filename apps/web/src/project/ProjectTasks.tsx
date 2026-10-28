@@ -42,6 +42,7 @@ import { useInterfaceLocale } from '../localization/interface-locale';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { Select } from '../presentation/Select';
 import './task.css';
+import { TaskPlanning } from './TaskPlanning';
 import {
   TaskCalendarDate,
   TaskDeclarationFacts,
@@ -357,6 +358,7 @@ function TaskProject({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [members, setMembers] = useState<Assignee[] | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
+  const [planningProtected, setPlanningProtected] = useState(false);
   const [reasonDraft, setReasonDraft] = useState<ReasonDraft | null>(null);
   const [feedback, setFeedback] = useState<TaskFeedback | null>(null);
   const [taskSearch, setTaskSearch] = useState('');
@@ -388,13 +390,17 @@ function TaskProject({
     canRead && actor.activeCompany?.taskPermissions?.includes('task.manage');
   const projectClosed =
     projectStatus !== null && isClosedProjectStatus(projectStatus);
-  const busy = mutation.kind === 'pending';
+  const busy = mutation.kind === 'pending' || planningProtected;
   const current = detail?.kind === 'ready' ? detail : null;
   const mutable =
     !projectClosed &&
     (current?.mutable ?? (load.kind === 'ready' && load.listing.mutable));
   const editable =
-    canManage && mutable && mutation.kind === 'idle' && members !== null;
+    canManage &&
+    mutable &&
+    mutation.kind === 'idle' &&
+    members !== null &&
+    !planningProtected;
   const normalizedTaskSearch = taskFilterText(taskSearch.trim());
   const dateSelection = resolveDateFilter(dateFilter);
   const unusableRange = dateSelection.kind === 'unusable';
@@ -631,6 +637,7 @@ function TaskProject({
   // command is never aborted: the open waits for its outcome and, once
   // confirmed, for the read of its result, so neither overwrites the other.
   const commandSettling =
+    planningProtected ||
     mutation.kind === 'pending' ||
     (mutation.kind === 'blocked' && load.kind === 'loading');
   useEffect(() => {
@@ -768,6 +775,7 @@ function TaskProject({
   }
   function save(event: FormEvent) {
     event.preventDefault();
+    if (planningProtected) return;
     const title = draft.title.trim();
     if (
       !title ||
@@ -812,6 +820,7 @@ function TaskProject({
       });
   }
   function choose(task: TaskView, move: TaskMove) {
+    if (planningProtected) return;
     const taskId = task.id;
     const expectedVersion = task.version;
     const key = crypto.randomUUID();
@@ -848,6 +857,7 @@ function TaskProject({
   }
   function declare(event: FormEvent) {
     event.preventDefault();
+    if (planningProtected) return;
     if (!current || !reasonDraft || mutation.kind !== 'idle') return;
     if (!validTaskReason(reasonDraft.text)) {
       setReasonDraft({ ...reasonDraft, invalid: true });
@@ -903,6 +913,25 @@ function TaskProject({
           {selected ? copy.reloadDetail : copy.reload}
         </button>
       </header>
+      {canManage && load.kind !== 'denied' && (
+        <TaskPlanning
+          identity={identity}
+          companyId={companyId}
+          projectId={projectId}
+          disabled={
+            mutation.kind === 'pending' || mutation.kind === 'uncertain'
+          }
+          projectClosed={projectClosed}
+          onProtectionChange={setPlanningProtected}
+          onDenied={deny}
+          onReloaded={() =>
+            Promise.all([open(selected), onProjectChanged?.()]).then(
+              () => undefined,
+            )
+          }
+          onConfirmed={() => onActivityRecorded?.()}
+        />
+      )}
       {load.kind !== 'ready' && (
         <p role={load.kind === 'loading' ? 'status' : 'alert'}>
           {load.kind === 'loading'
@@ -1151,7 +1180,7 @@ function TaskProject({
                     <button
                       key={move}
                       type="button"
-                      disabled={mutation.kind !== 'idle'}
+                      disabled={mutation.kind !== 'idle' || planningProtected}
                       onClick={() => choose(current.task, move)}
                     >
                       {copy.moves[move]}
