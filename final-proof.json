@@ -1,0 +1,44 @@
+{
+  "issue": 939,
+  "pr": 940,
+  "source": "12d768623ec324ba678553897fb80e41062eab2a",
+  "base": "2b65a9c19cbfc80581f54c3af445b67456b3d303",
+  "tree": "8c273980eb57b2a1ee8ce6e92309c54c37eebfbc",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1833,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "12d768623ec324ba678553897fb80e41062eab2a",
+    "reviewedBase": "2b65a9c19cbfc80581f54c3af445b67456b3d303",
+    "preparationSource": "a93a4871e76c896163ed7f0bff7eb99b1c7be1c3",
+    "standards": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "spec": {
+      "status": "passed",
+      "blockers": 0,
+      "followUps": 0
+    },
+    "reviewOrder": "Standards then Spec",
+    "blockingFindingsRemaining": 0,
+    "rootDisposition": "Approved at #939comment6468646867 under #51comment6283507237 and autonomous continuation6465537888. Root directly inspected final header/status/pointer-only approval delta on both axes; no behavior change or runtime claim."
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only Company-configured mission plans11: bounded exact preserved plan beside current native Task and separately authorized current declaration facts, one native caller-owned readonly snapshot, whole-response validation and exact native continuation. No fulfillment/review/acceptance/stage/certification/closure metric or policy, new permission/schema/provider/deployment. Native owners remain authoritative; MISSION-CLOSE-01 stays solely Mission Obligations12. Runtime follows approved contract merge.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-16T00:00:00Z"
+}
