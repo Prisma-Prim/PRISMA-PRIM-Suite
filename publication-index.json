@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "kind": "reviewed-compact-docs-verification",
+  "repository": "Prisma-Prim/PRISMA-PRIM-Suite",
+  "issue": 956,
+  "pr": 959,
+  "publishedAt": "2026-10-28T20:09:40.365972+00:00",
+  "retainUntil": "2026-11-11T20:09:40.365972+00:00",
+  "source": "4c6f9793eb4dbf2685a7f9ca671102bee09f7df6",
+  "base": "bbf1208556da61528f3d83b1f43a485425b6ee7c",
+  "integrationTree": "8211955e1aeb4ceffed09b179783eea2fc91d7d1",
+  "execution": "self-reported local canonical execution; no GitHub runner attestation",
+  "selection": "Unchanged canonical report/manifest and reviewed disposition only; full local logs retained separately.",
+  "files": [
+    {
+      "path": "report.md",
+      "bytes": 3723,
+      "sha256": "74015eb9534b6654c003ad5c764c886877600efa340d4d3416f62c6d068720b2"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 350174,
+      "sha256": "f1b529824fbeccdb3d65f53fab739f4563c6087d3911dbb2656557ce7d6b1431"
+    },
+    {
+      "path": "review-disposition.md",
+      "bytes": 8681,
+      "sha256": "5b7a4666a69a98509fc4a8ada2c769a0e3849935d92a9f2fb9ed0d954cd87e0d"
+    },
+    {
+      "path": "log-doctor.log",
+      "bytes": 636,
+      "sha256": "1282629be5768d15372b6be2436b948f64cf998d14b5953fcfa021bc8e527cb4"
+    },
+    {
+      "path": "log-documentation.log",
+      "bytes": 2291,
+      "sha256": "865a190c77c557f36bbf5c7fca1754a2de026220520ae3321cb0c65f98555e2a"
+    },
+    {
+      "path": "log-format.log",
+      "bytes": 87,
+      "sha256": "1d66faad74f5e8709353f7288592866bd3a9095da1174a916e7aa632949971e2"
+    },
+    {
+      "path": "log-lint.log",
+      "bytes": 11,
+      "sha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+    },
+    {
+      "path": "log-scripts.log",
+      "bytes": 45470,
+      "sha256": "8be55cb42104683e531e41e1d56df77dd7bc66731fe5c49ac07c48c53ae52857"
+    },
+    {
+      "path": "log-types.log",
+      "bytes": 187,
+      "sha256": "2d03f0b9beb3b10b135924483a4c01316665310ea78540533aa7d8bd331c2997"
+    }
+  ]
+}
