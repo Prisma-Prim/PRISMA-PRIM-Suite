@@ -1,3 +1,4 @@
+import { SectionVisibility } from './section-visibility';
 import { Menu, X } from 'lucide-react';
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -35,6 +36,7 @@ export interface ApplicationSection {
     | 'my-tasks'
     | 'unassigned-tasks'
     | 'blocked-tasks'
+    | 'team-tasks'
     | 'clients'
     | 'access'
     | 'companies'
@@ -45,6 +47,8 @@ export interface ApplicationSection {
   content: ReactNode;
   /** A fresh read-only view retires requests and rows on section navigation. */
   mountWhenSelected?: true;
+  /** Retain the scoped owner after deliberate entry; it owns fresh-return reads. */
+  retainAfterSelection?: true;
 }
 
 /**
@@ -62,6 +66,7 @@ const sectionsOwningFocusTarget: ReadonlySet<ApplicationSection['id']> =
     'my-tasks',
     'unassigned-tasks',
     'blocked-tasks',
+    'team-tasks',
     'activity',
   ]);
 
@@ -109,7 +114,10 @@ export function ApplicationShell({
   const classicHome = '/?frame=classic';
   const previousPresentation = useRef(isPrisme);
   // URL fragments only select from the sections already authorized by App.
+  const entered = useRef(new Set<ApplicationSection['id']>());
   const selected = sections.find((section) => `#${section.id}` === url.hash);
+
+  if (selected) entered.current.add(selected.id);
 
   useEffect(() => {
     const onLocationChange = () => {
@@ -315,7 +323,8 @@ export function ApplicationShell({
                   section.id === 'clients' ||
                   section.id === 'projects' ||
                   section.id === 'unassigned-tasks' ||
-                  section.id === 'blocked-tasks',
+                  section.id === 'blocked-tasks' ||
+                  section.id === 'team-tasks',
               )
               .map((section) => (
                 <li key={section.id}>
@@ -382,9 +391,14 @@ export function ApplicationShell({
                     selected?.id !== section.id
                   }
                 >
-                  {!section.mountWhenSelected || selected?.id === section.id
-                    ? section.content
-                    : null}
+                  {!section.mountWhenSelected ||
+                  selected?.id === section.id ||
+                  (section.retainAfterSelection &&
+                    entered.current.has(section.id)) ? (
+                    <SectionVisibility value={selected?.id === section.id}>
+                      {section.content}
+                    </SectionVisibility>
+                  ) : null}
                 </div>
               ))}
             </div>

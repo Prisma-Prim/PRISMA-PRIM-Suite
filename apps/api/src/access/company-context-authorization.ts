@@ -658,6 +658,35 @@ export class CompanyContextAuthorization {
     return companyId;
   }
 
+  /** Exact captured Project read; caller owns the readonly transaction and Client participant. */
+  async requireProjectReadWithinReadTransaction(
+    actor: ActorContext,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company?.projectPermissions?.includes('project.read') ||
+      !company.projectPermissionAssignmentId ||
+      !isProjectPermissionSetVersion(company.projectPermissionSetVersion)
+    )
+      throw new ForbiddenException();
+    const companyId = await this.requireProjectReadPermission(actor);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      companyId,
+      and(
+        eq(companyRoleAssignments.id, company.projectPermissionAssignmentId),
+        eq(companyRoleAssignments.bundle, COMPANY_PROJECT_ACCESS_BUNDLE),
+        eq(
+          companyRoleAssignments.permissionSetVersion,
+          company.projectPermissionSetVersion,
+        ),
+      ) ?? sql`false`,
+      false,
+    );
+    return companyId;
+  }
+
   // Every delivered Project read and create accepts either captured version.
   async requireProjectAccess(
     actor: ActorContext,

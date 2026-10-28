@@ -34,6 +34,14 @@ export class ProjectService {
 
   async list(actor: ActorContext, selection?: { view: 'mine_open' }) {
     const companyId = await this.authorization.requireProjectAccess(actor);
+    return this.readList(actor, companyId, selection);
+  }
+
+  private async readList(
+    actor: ActorContext,
+    companyId: string,
+    selection?: { view: 'mine_open' },
+  ) {
     const rows = await this.databaseContext.connection
       .select()
       .from(projects)
@@ -63,6 +71,16 @@ export class ProjectService {
       const reference = references.get(row.clientAccountId);
       return reference ? [this.projectView(row, reference)] : [];
     });
+  }
+
+  /** Join the caller's readonly snapshot, preserving native original-Client visibility and labels. */
+  async listWithinReadTransaction(actor: ActorContext) {
+    const companyId =
+      await this.authorization.requireProjectReadWithinReadTransaction(actor);
+    await this.clients.requireReferenceReadAuthorityWithinReadTransaction(
+      actor,
+    );
+    return this.readList(actor, companyId);
   }
 
   /** Client owns membership; Project owns facts, bounded selection and this read snapshot. */

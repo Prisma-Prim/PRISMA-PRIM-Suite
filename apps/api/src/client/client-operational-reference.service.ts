@@ -72,7 +72,7 @@ export class ClientOperationalReferenceService {
     actor: ActorContext,
   ) {
     const companyId = this.requireClientRead(actor);
-    await this.lockClientReadAuthority(actor, companyId, false);
+    await this.lockClientReadAuthority(actor, companyId, false, true);
     return companyId;
   }
 
@@ -887,6 +887,7 @@ export class ClientOperationalReferenceService {
     actor: ActorContext,
     companyId: string,
     lock = true,
+    exactCapture = false,
   ): Promise<void> {
     if (actor.workspacePermissions.includes('client.manage')) {
       const query = this.databaseContext.connection
@@ -906,14 +907,23 @@ export class ClientOperationalReferenceService {
       if (managerGrants.length > 0) return;
     }
 
-    await this.lockCompanyClientReadAuthority(actor, companyId, lock);
+    await this.lockCompanyClientReadAuthority(
+      actor,
+      companyId,
+      lock,
+      exactCapture,
+    );
   }
 
   private async lockCompanyClientReadAuthority(
     actor: ActorContext,
     companyId: string,
     lock = true,
+    exactCapture = false,
   ): Promise<void> {
+    const capturedVersion = actor.activeCompany?.clientPermissionSetVersion;
+    if (exactCapture && capturedVersion !== 'v1' && capturedVersion !== 'v2')
+      throw new ForbiddenException();
     const assignmentId = actor.activeCompany?.clientPermissionAssignmentId;
     if (
       assignmentId &&
@@ -936,6 +946,9 @@ export class ClientOperationalReferenceService {
               COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE,
             ),
             inArray(companyRoleAssignments.permissionSetVersion, ['v1', 'v2']),
+            exactCapture && capturedVersion
+              ? eq(companyRoleAssignments.permissionSetVersion, capturedVersion)
+              : undefined,
             sql`${companyRoleAssignments.revokedAt} IS NULL`,
           ),
         );

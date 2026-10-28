@@ -1,3 +1,5 @@
+import { nativeTaskView as view } from './native-task-view.js';
+import { nativeTaskPage } from './native-task-page.query.js';
 import {
   ConflictException,
   Inject,
@@ -68,9 +70,7 @@ import {
   type CompanyOverdueTasksPage,
   type DueSoonTasksPage,
   type TaskAttention,
-  type TaskActor,
   type TaskChanges,
-  type TaskDeclaration,
   type TaskEventMeaning,
   type TaskFields,
   type TaskView,
@@ -270,29 +270,20 @@ export class TaskService {
         const page = { companyId, offset: input.offset, pageSize: 25 as const };
         if (readableProjects.size === 0)
           return { ...page, hasNextPage: false, tasks: [] };
-        const rows = await this.database.connection
-          .select()
-          .from(tasks)
-          .where(
-            and(
-              eq(tasks.workspaceId, actor.workspaceId),
-              eq(tasks.companyId, companyId),
-              input.kind === 'blocked'
-                ? eq(tasks.status, 'blocked')
-                : and(
-                    isNull(tasks.assigneeMembershipId),
-                    inArray(tasks.status, [...OPEN_TASK_STATES]),
-                  ),
-              inArray(tasks.projectId, [...readableProjects.keys()]),
-            ),
-          )
-          .orderBy(
-            sql`${tasks.dueDate} ASC NULLS LAST`,
-            asc(tasks.createdAt),
-            asc(tasks.id),
-          )
-          .limit(26)
-          .offset(input.offset);
+        const rows = await nativeTaskPage({
+          database: this.database,
+          workspaceId: actor.workspaceId,
+          companyId,
+          projectIds: [...readableProjects.keys()],
+          offset: input.offset,
+          predicate:
+            input.kind === 'blocked'
+              ? eq(tasks.status, 'blocked')
+              : and(
+                  isNull(tasks.assigneeMembershipId),
+                  inArray(tasks.status, [...OPEN_TASK_STATES]),
+                ),
+        });
         return {
           ...page,
           hasNextPage: rows.length > page.pageSize,
@@ -1137,114 +1128,6 @@ function fields(task: TaskView): TaskFields {
     dueDate: task.dueDate,
     priority: task.priority,
   };
-}
-function view(row: TaskRow): TaskView {
-  if (
-    (row.assigneeMembershipId === null) !==
-    (row.assigneeDisplayLabel === null)
-  )
-    throw new Error('Invalid stored Task assignment.');
-  const common = {
-    id: row.id,
-    companyId: row.companyId,
-    projectId: row.projectId,
-    clientAccountId: row.clientAccountId,
-    title: row.title,
-    assignee:
-      row.assigneeMembershipId !== null && row.assigneeDisplayLabel !== null
-        ? {
-            workspaceMembershipId: row.assigneeMembershipId,
-            displayLabel: row.assigneeDisplayLabel,
-          }
-        : null,
-    dueDate: row.dueDate,
-    priority: row.priority,
-    version: row.version,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    createdBy: {
-      internalUserId: row.createdByInternalUserId,
-      workspaceMembershipId: row.createdByMembershipId,
-      displayName: row.createdByDisplayName,
-    },
-  };
-  switch (row.status) {
-    case 'todo':
-    case 'in_progress':
-      return { ...common, status: row.status, completion: null };
-    case 'blocked':
-      return {
-        ...common,
-        status: row.status,
-        completion: null,
-        blockage: storedDeclaration(
-          row.blockageReason,
-          storedAttribution({
-            internalUserId: row.blockedByInternalUserId,
-            workspaceMembershipId: row.blockedByMembershipId,
-            displayName: row.blockedByDisplayName,
-            occurredAt: row.blockedAt,
-          }),
-        ),
-      };
-    case 'done':
-      return {
-        ...common,
-        status: row.status,
-        completion: storedAttribution({
-          internalUserId: row.completedByInternalUserId,
-          workspaceMembershipId: row.completedByMembershipId,
-          displayName: row.completedByDisplayName,
-          occurredAt: row.completedAt,
-        }),
-      };
-    case 'cancelled':
-      return {
-        ...common,
-        status: row.status,
-        completion: null,
-        cancellation: storedDeclaration(
-          row.cancellationReason,
-          storedAttribution({
-            internalUserId: row.cancelledByInternalUserId,
-            workspaceMembershipId: row.cancelledByMembershipId,
-            displayName: row.cancelledByDisplayName,
-            occurredAt: row.cancelledAt,
-          }),
-        ),
-      };
-    default: {
-      const exhaustive: never = row.status;
-      throw new Error(`Invalid stored Task state: ${String(exhaustive)}.`);
-    }
-  }
-}
-function storedAttribution(columns: {
-  internalUserId: string | null;
-  workspaceMembershipId: string | null;
-  displayName: string | null;
-  occurredAt: Date | null;
-}): { actor: TaskActor; occurredAt: string } {
-  const { internalUserId, workspaceMembershipId, displayName, occurredAt } =
-    columns;
-  if (
-    internalUserId === null ||
-    workspaceMembershipId === null ||
-    displayName === null ||
-    occurredAt === null
-  )
-    throw new Error('Invalid stored Task declaration.');
-  return {
-    actor: { internalUserId, workspaceMembershipId, displayName },
-    occurredAt: occurredAt.toISOString(),
-  };
-}
-function storedDeclaration(
-  reason: string | null,
-  attribution: { actor: TaskActor; occurredAt: string },
-): TaskDeclaration {
-  if (reason === null) throw new Error('Invalid stored Task declaration.');
-  return { reason, ...attribution };
 }
 type TaskCommand =
   | { action: 'edit'; input: TaskEdit }
