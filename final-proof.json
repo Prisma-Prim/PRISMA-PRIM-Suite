@@ -1,0 +1,313 @@
+{
+  "issue": 929,
+  "pr": 930,
+  "source": "d038248ba03b99802d3131fd356a08b1b15f1902",
+  "base": "0f0296ba57c754187c038d7d13c616f94ce16164",
+  "tree": "9be459b0d3248519aef68ea2452604975cdfd52e",
+  "integrationGateAuthority": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/747#issuecomment-6332942799",
+  "independentCI": {
+    "run": 40645692381,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381",
+    "attempt": 1,
+    "providerLatestJobAttempts": {
+      "checks": 1,
+      "scope": 1,
+      "postgres_image": 1,
+      "acceptance (1)": 1,
+      "web_unit": 1,
+      "browser (2)": 1,
+      "acceptance (2)": 1,
+      "api (3/3)": 1,
+      "api (serial)": 1,
+      "browser (3)": 1,
+      "build": 1,
+      "packaging": 1,
+      "browser (1)": 1,
+      "api (2/3)": 1,
+      "api (1/3)": 1,
+      "quality": 1
+    },
+    "actualExecutionOrigins": {
+      "checks": {
+        "actualJobId": 122673862832,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122673862832"
+      },
+      "scope": {
+        "actualJobId": 122673863192,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122673863192"
+      },
+      "postgres_image": {
+        "actualJobId": 122673942574,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122673942574"
+      },
+      "acceptance (1)": {
+        "actualJobId": 122674409461,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409461"
+      },
+      "web_unit": {
+        "actualJobId": 122674409494,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409494"
+      },
+      "browser (2)": {
+        "actualJobId": 122674409496,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409496"
+      },
+      "acceptance (2)": {
+        "actualJobId": 122674409513,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409513"
+      },
+      "api (3/3)": {
+        "actualJobId": 122674409519,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409519"
+      },
+      "api (serial)": {
+        "actualJobId": 122674409543,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409543"
+      },
+      "browser (3)": {
+        "actualJobId": 122674409555,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409555"
+      },
+      "build": {
+        "actualJobId": 122674409558,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409558"
+      },
+      "packaging": {
+        "actualJobId": 122674409559,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409559"
+      },
+      "browser (1)": {
+        "actualJobId": 122674409581,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409581"
+      },
+      "api (2/3)": {
+        "actualJobId": 122674409630,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409630"
+      },
+      "api (1/3)": {
+        "actualJobId": 122674409657,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122674409657"
+      },
+      "quality": {
+        "actualJobId": 122678296153,
+        "actualRunAttempt": 1,
+        "retainedWithoutRerun": false,
+        "actualJobUrl": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/actions/runs/40645692381/job/122678296153"
+      }
+    },
+    "event": "workflow_dispatch",
+    "all16JobsPassed": true,
+    "all10ActualTestStepsPassed": true,
+    "packagingPassed": true,
+    "failureEvidenceProbePassed": true,
+    "fiveEvidenceUploadsPassed": true,
+    "qualityRetrievalAndAggregationPassed": true,
+    "rawArchiveBytesLocallyVerified": false
+  },
+  "development": {
+    "doctor": {
+      "profile": "web-postgres",
+      "actualChromiumAndPostgresProbes": "passed"
+    },
+    "normalHostVerify": {
+      "command": "pnpm verify",
+      "exit": 0,
+      "scriptsPassed": 490,
+      "apiUnitPassed": 1520,
+      "webPassed": 3415,
+      "apiPostgresSkipped": 2024,
+      "bothBuildsPassed": true,
+      "qualification": "Normal-host PostgreSQL skips are not database evidence; separate actual PostgreSQL suites below ran successfully. This broader development run precedes the final bounded UI-only opening-review correction; affected final UI/build/browser checks are recorded separately.",
+      "source": "8553cfeba32a1fd245689a23d96958be5f330dad"
+    },
+    "realPostgres": {
+      "newGroupedPlanningPassed": 23,
+      "protocolBoundaryRollbackCases": 12,
+      "deterministicConcurrencyCases": 11,
+      "existingNativeTaskRegressionPassed": 111,
+      "apiMaterialUnchangedSincePreparationCorrection": true
+    },
+    "owningUi": {
+      "passed": 168,
+      "newPlanningProtocolCases": 24,
+      "files": 3
+    },
+    "registeredActualApp": {
+      "viewports": [
+        1440,
+        390
+      ],
+      "passed": 2,
+      "database": "Disposable actual PostgreSQL17",
+      "scenarios": [
+        "keyboard selected per-row assignments and dates",
+        "real committed response loss and exact replay",
+        "native Task facts/history and refreshed My Tasks",
+        "independent native draft and unchanged source copy",
+        "remote completion/closure with stale parent, truthful closed state"
+      ],
+      "screenshotsInspected": true
+    },
+    "targetedFailuresRetained": {
+      "api": "Initial endpoint404 RED; native404 expectation and valid revocation fixture corrected; deterministic race fixtures use observed locks and distinct actors, no timing sleeps. All23 final cases passed.",
+      "ui": "Initial missing region RED; draft recovery and retired-session bugs fixed. Three additional REDs reproduced two independent Spec blockers, corrected public UI passed162.",
+      "browser": "Earlier test-only Access display-label and unsupported term accessible-name locators corrected from actual Chromium markup; failed artifacts retained. Scoped checkbox layout corrected after functional pass. Final both registered viewports passed with unchanged assertion budgets. Opening correction extension first exposed exact label text versus accessible textbox name after textarea remount, then a screenshot readiness race before owning Task GET; captured contexts/traces retained, exact role/name and actual GET readiness used without assertion/budget changes.",
+      "types": "Required Select id and unsupported exact query option corrected before publication."
+    },
+    "canonicalCompleteLocalGateExecuted": false,
+    "finalIntegrationGate": "Owner-authorized complete independent manual CI, after formal review; see actual run proof.",
+    "openingReviewCorrection": {
+      "finding": "Grouped refresh cleared unrelated native Block/Cancel reason draft.",
+      "change": "Retain latest literal draft only for its exact unchanged Task/version on grouped refresh; ordinary reset/denial and changed-version retirement remain.",
+      "publicRed": {
+        "failed": 4,
+        "passedUnchangedVersionRetirement": 2
+      },
+      "owningUiPassed": 168,
+      "newParameterizedCases": 6,
+      "apiAccessTenancyMigrationActivityUnchanged": true,
+      "rootStandardsSpecDeltaAuditComplete": true,
+      "sensitiveConfirmationRequired": false,
+      "browser": "Both registered actual App/PostgreSQL viewports passed after extension; original preservation screenshots inspected.",
+      "source": "d038248ba03b99802d3131fd356a08b1b15f1902"
+    }
+  },
+  "review": {
+    "source": "d038248ba03b99802d3131fd356a08b1b15f1902",
+    "base": "0f0296ba57c754187c038d7d13c616f94ce16164",
+    "tree": "9be459b0d3248519aef68ea2452604975cdfd52e",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0,
+    "configuredOpeningReview": {
+      "status": "completed",
+      "source": "8553cfeba32a1fd245689a23d96958be5f330dad",
+      "hasFindings": true,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-28T06:34:32.666806Z",
+      "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/930#issuecomment-6462392864",
+      "finding": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/930#discussion_r4397600983",
+      "disposition": "One actual thread resolved after corrected public tests and real App; inspected actual thread, no second trigger."
+    },
+    "openingCorrection": {
+      "source": "d038248ba03b99802d3131fd356a08b1b15f1902",
+      "blockingFindingsFixed": 1,
+      "rootDeltaAuditComplete": true,
+      "sensitiveConfirmationRequired": false,
+      "scope": "Three Web files only: exact Task/version-scoped native reason preservation and public component/registered App regression evidence. Native ordinary navigation/reset, changed-version and denial behavior retained. API/Access/tenancy/schema/Activity byte-unchanged.",
+      "affectedChecks": {
+        "publicOwningUi": 168,
+        "formatLint": "passed",
+        "actualApiWebBuilds": "passed",
+        "registeredAppViewportsPassed": [
+          1440,
+          390
+        ],
+        "freshReasonScreenshotsInspected": true
+      },
+      "reviewReuse": "Original8553cfe review remains applicable; root inspected complete bounded delta against Standards/Spec, no sensitive confirmation required."
+    },
+    "configuredFinalHeadObservation": {
+      "source": "d038248ba03b99802d3131fd356a08b1b15f1902",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-28T06:45:27.095999Z",
+      "trigger": "Configured New commits; not manually requested",
+      "qualification": "Supplementary automatic observation overlaps CI. Required original opening review and its bounded correction/root audit/thread disposition were completed before dispatch; no new source or repeated CI/review trigger."
+    },
+    "preparation": {
+      "order": "Standards then Spec",
+      "standards": {
+        "status": "passed",
+        "blockingFindings": 0,
+        "followUps": 0,
+        "strictStructuralCheckpoint": true
+      },
+      "spec": {
+        "initialBlockingFindings": 2,
+        "blockingFindingsRemaining": 0,
+        "followUps": 0
+      },
+      "correction": "One pre-publication UI batch: target404 preserves native authority/drafts; nonmutable listing resolves current native Project lifecycle. Three REDs reproduce both defects;162 owning UI cases and both registered actual App viewports pass; root inspected correction on both axes. API/Access/tenancy/migration/Activity unchanged."
+    }
+  },
+  "priorFailedCompleteCI": [],
+  "artifacts": [
+    {
+      "id": 12798370036,
+      "name": "browser-evidence-part-browser-2-40645692381",
+      "size_in_bytes": 77651316,
+      "digest": "sha256:a27cf972d9baeb71a99b8ba7d6faf2d1387a682c59c1ed462f627bde22c9f1e1",
+      "expires_at": "2026-11-11T06:50:04Z"
+    },
+    {
+      "id": 12798246395,
+      "name": "browser-evidence-part-acceptance-1-40645692381",
+      "size_in_bytes": 81249888,
+      "digest": "sha256:8234f1327e2b2e5c3a287f6a7a4ecd6995431561cd239f2183f4680ec9b110e2",
+      "expires_at": "2026-11-11T06:55:36Z"
+    },
+    {
+      "id": 12798077324,
+      "name": "browser-evidence-pr-40645692381",
+      "size_in_bytes": 413733612,
+      "digest": "sha256:5d47679593d148aeab19aca89f50c209ae39a1f3290cc3a7d68eb2821d256d62",
+      "expires_at": "2026-11-11T06:58:20Z"
+    },
+    {
+      "id": 12797621507,
+      "name": "browser-evidence-part-browser-1-40645692381",
+      "size_in_bytes": 113851254,
+      "digest": "sha256:d7391f94de3c8ffb61c2e8518edbfcb5f56f67e4bc313395a7cee59c8d2c00d0",
+      "expires_at": "2026-11-11T06:51:54Z"
+    },
+    {
+      "id": 12797578422,
+      "name": "browser-evidence-part-acceptance-2-40645692381",
+      "size_in_bytes": 69758362,
+      "digest": "sha256:fa7622fbfea5e8f69ef299131d725307702cbf5f4ea06003cd93819a9c2b683e",
+      "expires_at": "2026-11-11T06:58:00Z"
+    },
+    {
+      "id": 12797517324,
+      "name": "browser-evidence-part-browser-3-40645692381",
+      "size_in_bytes": 71222880,
+      "digest": "sha256:c0817ce0ceaabf3cf8b6d67d2c49a3d2abab796d7d6da056ba3a44b0d6166089",
+      "expires_at": "2026-11-11T06:50:58Z"
+    }
+  ],
+  "scope": "Issue929: native Project group of1\u201350 open Tasks, explicit desired responsible member/date and observed version, one atomic native transaction and complete ordered task-planning/v1 receipt. Existing Task edit participant, eligibility/Access serialization, original Client locks/fence, Project closure, exact historical replay and individual receipts preserved. Explicit scoped UI and truthful recovery; no schema/dependency, actual grants/data/providers/deployment or closure-policy decision.",
+  "publication": "Only reviewed public technical metadata/report selected. No raw logs, archives, screenshots, traces, source dossiers, financial/model/client prose. Canonical complete local integration gate is not claimed; complete independent CI is the owner-authorized runtime alternative.",
+  "keepThrough": "2026-11-15"
+}
