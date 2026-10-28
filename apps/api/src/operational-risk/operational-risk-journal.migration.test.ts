@@ -40,7 +40,7 @@ const actor = {
 describe.skipIf(!databaseUrl)(
   'Operational Risk journal genuine upgrade',
   () => {
-    it('preserves populated 0086 rows, bytes, three legacy receipt kinds and grants, then corrects an old original through REST', async () => {
+    it('preserves every populated 0087 table, literal Task instructions, legacy receipt bytes and grants, then corrects an old original through REST', async () => {
       if (!databaseUrl) throw new Error('TEST_DATABASE_URL is required.');
       const database = await createIsolatedPostgresTestDatabase({
         baseDatabaseUrl: databaseUrl,
@@ -61,8 +61,8 @@ describe.skipIf(!databaseUrl)(
             throw new Error('Invalid migration tag.');
           return tag;
         });
-        const index = tags.indexOf('0087_operational_risk_journal_corrections');
-        expect(tags[index - 1]).toBe('0086_company_mission_plans');
+        const index = tags.indexOf('0088_operational_risk_journal_corrections');
+        expect(tags[index - 1]).toBe('0087_task_description');
         expect(index).toBe(tags.length - 1);
         await mkdir(join(previous, 'meta'));
         await writeFile(
@@ -72,7 +72,7 @@ describe.skipIf(!databaseUrl)(
         for (const tag of tags.slice(0, index))
           await cp(join('drizzle', `${tag}.sql`), join(previous, `${tag}.sql`));
         const snapshot = object(
-          JSON.parse(await readFile('drizzle/meta/0086_snapshot.json', 'utf8')),
+          JSON.parse(await readFile('drizzle/meta/0087_snapshot.json', 'utf8')),
         );
         const tables = Object.keys(object(snapshot.tables))
           .map((name) => {
@@ -84,6 +84,18 @@ describe.skipIf(!databaseUrl)(
         const connection = drizzle(database.targetPool);
         await migrate(connection, { migrationsFolder: previous });
         const pool = database.targetPool;
+        const actualTables = async () =>
+          (
+            await pool.query<{ name: string }>(
+              "SELECT tablename AS name FROM pg_tables WHERE schemaname='public' ORDER BY tablename",
+            )
+          ).rows.map((row) => row.name);
+        expect(await actualTables()).toEqual(tables);
+        const columns = () =>
+          pool.query(
+            "SELECT table_name,column_name,data_type,is_nullable,column_default FROM information_schema.columns WHERE table_schema='public' AND NOT (table_name='operational_risk_entries' AND column_name IN ('original_entry_id','original_entry_revision','journal_kind')) ORDER BY table_name,ordinal_position",
+          );
+        const predecessorColumns = (await columns()).rows;
         await pool.query(
           "INSERT INTO workspaces(id,name) VALUES($1,'Synthetic journal upgrade Workspace')",
           [workspaceId],
@@ -132,6 +144,105 @@ describe.skipIf(!databaseUrl)(
           "INSERT INTO ideas(workspace_id,company_id,description,origin,revision,disposition,actor_membership_id,actor_internal_user_id,actor_display_name,submitted_at) VALUES($1,$2,'Unrelated preserved Idea Î Ж','Synthetic predecessor source',1,'new',$3,$4,'Preserved original author',$5)",
           [workspaceId, companyId, membershipId, userId, recordedAt],
         );
+        // Task's delivered 0087 column is genuinely populated before applying Risk.
+        // Its old creation/receipt still omit instructions; later history owns them.
+        const clientId = '00000000-0000-4000-8000-000000962130';
+        const projectId = '00000000-0000-4000-8000-000000962131';
+        const taskId = '00000000-0000-4000-8000-000000962132';
+        const nullTaskId = '00000000-0000-4000-8000-000000962133';
+        const description =
+          'Preserved Task instructions\r\n  Î / Ж / 😀 <literal>';
+        await pool.query(
+          "INSERT INTO client_accounts(id,workspace_id,display_name,created_by_internal_user_id,created_by_workspace_membership_id) VALUES($1,$2,'Preserved Client',$3,$4)",
+          [clientId, workspaceId, userId, membershipId],
+        );
+        await pool.query(
+          "INSERT INTO projects(id,workspace_id,company_id,client_account_id,title,created_by_internal_user_id,created_by_workspace_membership_id,idempotency_key) VALUES($1,$2,$3,$4,'Preserved Project',$5,$6,'preserved-project')",
+          [projectId, workspaceId, companyId, clientId, userId, membershipId],
+        );
+        for (const [id, instructions, version] of [
+          [taskId, description, 2],
+          [nullTaskId, null, 1],
+        ])
+          await pool.query(
+            "INSERT INTO tasks(id,workspace_id,company_id,project_id,client_account_id,title,description,version,created_by_internal_user_id,created_by_membership_id,created_by_display_name,created_at,updated_at) VALUES($1,$2,$3,$4,$5,'Preserved Task',$6,$7,$8,$9,$10,$11,$11)",
+            [
+              id,
+              workspaceId,
+              companyId,
+              projectId,
+              clientId,
+              instructions,
+              version,
+              userId,
+              membershipId,
+              actor.displayName,
+              recordedAt,
+            ],
+          );
+        const initialTask = {
+          id: taskId,
+          companyId,
+          projectId,
+          clientAccountId: clientId,
+          title: 'Preserved Task',
+          assignee: null,
+          dueDate: null,
+          priority: 'normal',
+          status: 'todo',
+          completion: null,
+          version: 1,
+          createdAt: recordedAt,
+          updatedAt: recordedAt,
+          createdBy: { internalUserId: userId, ...actor },
+        };
+        await pool.query(
+          'INSERT INTO task_commands(workspace_id,company_id,task_id,actor_membership_id,idempotency_key,command,result) VALUES($1,$2,$3,$4,$5,$6,$7)',
+          [
+            workspaceId,
+            companyId,
+            taskId,
+            membershipId,
+            'preserved-task-command',
+            '{"title":"Preserved Task"}',
+            JSON.stringify(initialTask),
+          ],
+        );
+        for (const meaning of [
+          {
+            action: 'task.created',
+            metadata: {
+              version: 1,
+              initial: {
+                title: initialTask.title,
+                assignee: null,
+                dueDate: null,
+                priority: 'normal',
+              },
+            },
+          },
+          {
+            action: 'task.updated',
+            metadata: {
+              version: 2,
+              changes: { description: { before: null, after: description } },
+            },
+          },
+        ])
+          await pool.query(
+            'INSERT INTO task_events(workspace_id,company_id,task_id,version,actor_internal_user_id,actor_membership_id,actor_display_name,occurred_at,meaning) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+            [
+              workspaceId,
+              companyId,
+              taskId,
+              meaning.metadata.version,
+              userId,
+              membershipId,
+              actor.displayName,
+              recordedAt,
+              JSON.stringify(meaning),
+            ],
+          );
         const [intakeId, observationId, reassessmentId, correctionId] = ids;
         if (!intakeId || !observationId || !reassessmentId || !correctionId)
           throw new Error('Missing synthetic entry identity.');
@@ -333,10 +444,18 @@ describe.skipIf(!databaseUrl)(
             ),
           );
         const before = await capture();
+        expect(before[tables.indexOf('tasks')]).toHaveLength(2);
+        expect(before[tables.indexOf('task_commands')]).toHaveLength(1);
+        expect(before[tables.indexOf('task_events')]).toHaveLength(2);
+        expect(
+          (await pool.query('SELECT description FROM tasks ORDER BY id')).rows,
+        ).toEqual([{ description }, { description: null }]);
         const receiptBytes = await pool.query(
           'SELECT response::text,fingerprint FROM operational_risk_receipts ORDER BY idempotency_key',
         );
         await migrate(connection, { migrationsFolder: resolve('drizzle') });
+        expect(await actualTables()).toEqual(tables);
+        expect((await columns()).rows).toEqual(predecessorColumns);
         expect(await capture()).toEqual(before);
         expect(
           (

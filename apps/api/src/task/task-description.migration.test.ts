@@ -28,7 +28,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
     const index = entries.findIndex(
       (entry) => record(entry).tag === '0087_task_description',
     );
-    expect(index).toBe(entries.length - 1);
+    expect(index).toBe(87);
     expect(record(entries[index - 1]).tag).toBe('0086_company_mission_plans');
     const previous = await mkdtemp(join(tmpdir(), 'task-description-upgrade-'));
     let fixture: MissionDocumentFixture | undefined;
