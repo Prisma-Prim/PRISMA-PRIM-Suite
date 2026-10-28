@@ -36,6 +36,12 @@ import {
 import { contractVersionDifferences } from './contract-version-differences.js';
 type ContractRow = typeof contracts.$inferSelect;
 type VersionRow = typeof contractVersions.$inferSelect;
+type ContractReadInput = {
+  actor: ActorContext;
+  opportunityId: string;
+  contractId?: string;
+  versionId?: string;
+};
 @Injectable()
 export class ContractVersionReader {
   constructor(
@@ -48,47 +54,59 @@ export class ContractVersionReader {
     private readonly signingDocuments: DocumentSigningReferenceService,
     private readonly clients: ClientOperationalReferenceService,
   ) {}
-  async read(input: {
-    actor: ActorContext;
-    opportunityId: string;
-    contractId?: string;
-    versionId?: string;
-  }) {
+  async read(input: ContractReadInput) {
     return runClientReferenceTransaction({
       database: this.databaseContext,
-      work: async () => {
-        const companyId = await this.authorization.requireContractAccess(
-          input.actor,
-          ['commercial.contract.read'],
-          true,
-        );
-        const opportunity = await this.intake.requireReadableOfferOpportunity(
-          input.actor,
-          input.opportunityId,
-          false,
-        );
-        const found = await this.find({
-          actor: input.actor,
-          companyId,
-          opportunityId: opportunity.id,
-          ...(input.contractId === undefined
-            ? {}
-            : { contractId: input.contractId }),
-          versionId: input.versionId,
-        });
-        if (!found) {
-          if (input.versionId || input.contractId)
-            throw new NotFoundException();
-          return null;
-        }
-        if (
-          input.versionId !== undefined &&
-          input.versionId !== found.version.id
-        )
-          throw new NotFoundException();
-        return this.view(input.actor, found.contract, found.version);
-      },
+      work: () => this.readWithinTransaction(input, false),
     });
+  }
+
+  /** PDF rendering rechecks the exact Version's consumed live Client authority. */
+  async readForPdf(input: ContractReadInput & { versionId: string }) {
+    return runClientReferenceTransaction({
+      database: this.databaseContext,
+      work: () => this.readWithinTransaction(input, true),
+    });
+  }
+
+  private async readWithinTransaction(
+    input: ContractReadInput,
+    recheckConsumedClientAuthority: boolean,
+  ) {
+    const companyId = await this.authorization.requireContractAccess(
+      input.actor,
+      ['commercial.contract.read'],
+      true,
+    );
+    const opportunity = await this.intake.requireReadableOfferOpportunity(
+      input.actor,
+      input.opportunityId,
+      false,
+    );
+    const found = await this.find({
+      actor: input.actor,
+      companyId,
+      opportunityId: opportunity.id,
+      ...(input.contractId === undefined
+        ? {}
+        : { contractId: input.contractId }),
+      versionId: input.versionId,
+    });
+    if (!found) {
+      if (input.versionId || input.contractId) throw new NotFoundException();
+      return null;
+    }
+    if (input.versionId !== undefined && input.versionId !== found.version.id)
+      throw new NotFoundException();
+    if (
+      recheckConsumedClientAuthority &&
+      found.version.provenance === 'COMPANY_MODEL_OFFER' &&
+      found.version.executionState === 'EXECUTED'
+    )
+      await this.clients.requireReferenceReadAuthorityWithinReadTransaction(
+        input.actor,
+      );
+    return this.view(input.actor, found.contract, found.version);
   }
 
   /** Both main agreements of one Opportunity for the Request detail (PRD 19.13). */

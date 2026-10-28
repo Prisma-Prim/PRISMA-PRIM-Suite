@@ -1,8 +1,9 @@
+import { prepareReportedSigning } from '../contract/reported-contract-signing.test-support.js';
 import { ServerResponse } from 'node:http';
 import { Transform } from 'node:stream';
 import { StreamableFile } from '@nestjs/common';
 import * as pdfRead from '../commercial-pdf/commercial-pdf-read.js';
-import { ContractService } from '../contract/contract.service.js';
+import { ContractVersionReader } from '../contract/contract-version-reader.js';
 import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { openDocumentScannerFixture } from '../documents/document-scanner.test-support.js';
 import {
@@ -32,6 +33,7 @@ import {
   ESTIMATE_OFFER_PREPARER,
   ESTIMATE_OFFER_READER,
   ESTIMATE_OFFER_OWNER,
+  ESTIMATE_OFFER_WORKSPACE,
   openEstimateOfferFixture,
   responseRecord,
   responseString,
@@ -297,7 +299,7 @@ withPostgres('Exact non-official commercial PDF public REST', () => {
       const ownerRead =
         kind === 'offer'
           ? vi.spyOn(OfferService.prototype, 'read')
-          : vi.spyOn(ContractService.prototype, 'read');
+          : vi.spyOn(ContractVersionReader.prototype, 'readForPdf');
       const headers = vi.spyOn(ServerResponse.prototype, 'setHeader');
       let release = () => {},
         entered = () => {},
@@ -978,6 +980,325 @@ withPostgres('Exact non-official commercial PDF public REST', () => {
       expect(response.headers.get('content-disposition')).toBeNull();
     }
   });
+  it.each([false, true])(
+    'refuses an EXECUTED Contract PDF when consumed Client revocation wins before the final exact read, regranted=%s',
+    async (regranted) => {
+      const declared = await prepareReportedSigning(fixture),
+        source = declared.f.ready.source;
+      await fixture.command({
+        ...declared.target,
+        path: declared.path,
+        body: declared.body,
+      });
+      for (const path of [
+        '/company-contract-preparer-assignments',
+        '/company-director-client-assignments',
+      ])
+        await fixture.grant({
+          path,
+          companyId: source.companyId,
+          membershipId: source.readerMembershipId,
+        });
+      const exact = responseRecord(
+        responseRecord(
+          await fixture.read({
+            path: declared.f.ready.path,
+            companyId: source.companyId,
+            headers: ESTIMATE_OFFER_READER,
+          }),
+        ).contract,
+      );
+      expect(responseRecord(exact.version).executionState).toBe('EXECUTED');
+      const digest = responseString(
+        responseRecord(responseRecord(exact.version).representation),
+        'sha256',
+      );
+      let entered = () => {},
+        release = () => {};
+      const atRenderer = new Promise<void>((resolve) => {
+          entered = resolve;
+        }),
+        held = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      const render = CommercialPdfRenderer.prototype.render;
+      vi.spyOn(CommercialPdfRenderer.prototype, 'render').mockImplementation(
+        async function (this: CommercialPdfRenderer, value, signal) {
+          const bytes = await render.call(this, value, signal);
+          entered();
+          await held;
+          return bytes;
+        },
+      );
+      const pending = download(
+        `${declared.f.ready.path}/versions/${declared.f.contractVersionId}`,
+        source.companyId,
+        digest,
+        ESTIMATE_OFFER_READER,
+      );
+      try {
+        await atRenderer;
+        await revokeModelContractFixtureGrant(
+          fixture,
+          '/company-director-client-assignments',
+          source.companyId,
+          source.readerMembershipId,
+        );
+        if (regranted)
+          await fixture.grant({
+            path: '/company-director-client-assignments',
+            companyId: source.companyId,
+            membershipId: source.readerMembershipId,
+          });
+        const before = await effects();
+        release();
+        const response = await pending;
+        await response.arrayBuffer();
+        expect(response.status).toBe(403);
+        expect(response.headers.get('x-commercial-pdf-source')).toBeNull();
+        expect(response.headers.get('content-disposition')).toBeNull();
+        expect(await effects()).toEqual(before);
+      } finally {
+        release();
+      }
+    },
+    30_000,
+  );
+  it.each<'offer' | 'contract'>(['offer', 'contract'])(
+    'keeps the unsigned frozen %s PDF independent of unrelated Client revocation during rendering',
+    async (kind) => {
+      const ready = await prepareModelContractSource(fixture);
+      const contract = responseRecord(
+        await ready.invoke(ready.path + '/from-approved-model', ready.intent),
+      );
+      const exact =
+        kind === 'contract'
+          ? contract
+          : responseRecord(
+              responseRecord(
+                await fixture.read({
+                  path: ready.flow.path,
+                  companyId: ready.source.companyId,
+                  headers: ESTIMATE_OFFER_PREPARER,
+                }),
+              ).offer,
+            );
+      const version = responseRecord(exact.version),
+        representation = responseRecord(version.representation),
+        path = kind === 'contract' ? ready.path : ready.flow.path;
+      if (kind === 'contract')
+        expect(version.executionState).toBe('NOT_EXECUTED');
+      let entered = () => {},
+        release = () => {};
+      const atRenderer = new Promise<void>((resolve) => {
+          entered = resolve;
+        }),
+        held = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      const render = CommercialPdfRenderer.prototype.render;
+      vi.spyOn(CommercialPdfRenderer.prototype, 'render').mockImplementation(
+        async function (this: CommercialPdfRenderer, value, signal) {
+          const bytes = await render.call(this, value, signal);
+          entered();
+          await held;
+          return bytes;
+        },
+      );
+      const pending = download(
+        `${path}/versions/${responseString(version, 'id')}`,
+        ready.source.companyId,
+        responseString(representation, 'sha256'),
+      );
+      try {
+        await atRenderer;
+        await revokeModelContractFixtureGrant(
+          fixture,
+          '/company-director-client-assignments',
+          ready.source.companyId,
+          ready.source.preparerMembershipId,
+        );
+        const before = await effects();
+        release();
+        const response = await pending;
+        expect(response.status).toBe(200);
+        await assertCompleteDownload(
+          response,
+          exact,
+          responseString(representation, 'html'),
+          kind,
+        );
+        expect(await effects()).toEqual(before);
+      } finally {
+        release();
+      }
+    },
+    30_000,
+  );
+  it('returns the authorized exact EXECUTED Contract PDF when its final read wins before Client revocation', async () => {
+    const declared = await prepareReportedSigning(fixture),
+      source = declared.f.ready.source;
+    await fixture.command({
+      ...declared.target,
+      path: declared.path,
+      body: declared.body,
+    });
+    for (const path of [
+      '/company-contract-preparer-assignments',
+      '/company-director-client-assignments',
+    ])
+      await fixture.grant({
+        path,
+        companyId: source.companyId,
+        membershipId: source.readerMembershipId,
+      });
+    const exact = responseRecord(
+      responseRecord(
+        await fixture.read({
+          path: declared.f.ready.path,
+          companyId: source.companyId,
+          headers: ESTIMATE_OFFER_READER,
+        }),
+      ).contract,
+    );
+    const representation = responseRecord(
+      responseRecord(exact.version).representation,
+    );
+    let entered = () => {},
+      release = () => {};
+    const atFinalRead = new Promise<void>((resolve) => {
+        entered = resolve;
+      }),
+      held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const read = ContractVersionReader.prototype.readForPdf;
+    let reads = 0;
+    vi.spyOn(ContractVersionReader.prototype, 'readForPdf').mockImplementation(
+      async function (this: ContractVersionReader, input) {
+        const value = await read.call(this, input);
+        reads += 1;
+        if (reads === 2) {
+          entered();
+          await held;
+        }
+        return value;
+      },
+    );
+    const pending = download(
+      `${declared.f.ready.path}/versions/${declared.f.contractVersionId}`,
+      source.companyId,
+      responseString(representation, 'sha256'),
+      ESTIMATE_OFFER_READER,
+    );
+    try {
+      await atFinalRead;
+      await revokeModelContractFixtureGrant(
+        fixture,
+        '/company-director-client-assignments',
+        source.companyId,
+        source.readerMembershipId,
+      );
+      const before = await effects();
+      release();
+      const response = await pending;
+      expect(response.status).toBe(200);
+      await assertCompleteDownload(
+        response,
+        exact,
+        responseString(representation, 'html'),
+        'contract',
+      );
+      expect(reads).toBe(2);
+      expect(await effects()).toEqual(before);
+    } finally {
+      release();
+    }
+  }, 30_000);
+  it.each(['company-read', 'workspace-manage'])(
+    'reads an EXECUTED frozen Contract PDF with %s and without optional Document grants, enforcing consumed Client authority',
+    async (authority) => {
+      const declared = await prepareReportedSigning(fixture),
+        source = declared.f.ready.source;
+      await fixture.command({
+        ...declared.target,
+        path: declared.path,
+        body: declared.body,
+      });
+      await fixture.grant({
+        path: '/company-contract-preparer-assignments',
+        companyId: source.companyId,
+        membershipId: source.readerMembershipId,
+      });
+      if (authority === 'company-read')
+        await fixture.grant({
+          path: '/company-director-client-assignments',
+          companyId: source.companyId,
+          membershipId: source.readerMembershipId,
+        });
+      else
+        // Synthetic Workspace admission; this legacy grant has no public grant command.
+        await fixture.pool.query(
+          "INSERT INTO workspace_permission_grants(workspace_id,workspace_membership_id,permission) VALUES($1,$2,'client.manage')",
+          [ESTIMATE_OFFER_WORKSPACE, source.readerMembershipId],
+        );
+      const exact = responseRecord(
+        responseRecord(
+          await fixture.read({
+            path: declared.f.ready.path,
+            companyId: source.companyId,
+            headers: ESTIMATE_OFFER_READER,
+          }),
+        ).contract,
+      );
+      const version = responseRecord(exact.version),
+        representation = responseRecord(version.representation);
+      expect(version.executionState).toBe('EXECUTED');
+      expect(responseRecord(responseRecord(version.signature).pdf).access).toBe(
+        'denied',
+      );
+      const digest = responseString(representation, 'sha256'),
+        before = await effects();
+      const response = await download(
+        `${declared.f.ready.path}/versions/${declared.f.contractVersionId}`,
+        source.companyId,
+        digest,
+        ESTIMATE_OFFER_READER,
+      );
+      expect(response.status).toBe(200);
+      await assertCompleteDownload(
+        response,
+        exact,
+        responseString(representation, 'html'),
+        'contract',
+      );
+      expect(await effects()).toEqual(before);
+      if (authority === 'company-read')
+        await revokeModelContractFixtureGrant(
+          fixture,
+          '/company-director-client-assignments',
+          source.companyId,
+          source.readerMembershipId,
+        );
+      else
+        await fixture.pool.query(
+          "DELETE FROM workspace_permission_grants WHERE workspace_id=$1 AND workspace_membership_id=$2 AND permission='client.manage'",
+          [ESTIMATE_OFFER_WORKSPACE, source.readerMembershipId],
+        );
+      const deniedBefore = await effects();
+      const denied = await download(
+        `${declared.f.ready.path}/versions/${declared.f.contractVersionId}`,
+        source.companyId,
+        digest,
+        ESTIMATE_OFFER_READER,
+      );
+      expect(denied.status).toBe(403);
+      expect(denied.headers.get('x-commercial-pdf-source')).toBeNull();
+      expect(denied.headers.get('content-disposition')).toBeNull();
+      expect(await effects()).toEqual(deniedBefore);
+    },
+    30_000,
+  );
   it('preserves the independent received original, document receipts and Registry facts across ordinary generated Contract PDF download', async () => {
     const received = await registerReceivedContract(fixture),
       companyId = received.ready.source.companyId;

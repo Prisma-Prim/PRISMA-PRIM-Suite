@@ -112,6 +112,29 @@ export async function readCommercialPdfResponse(
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
   if (actual !== digest) return malformed;
+  try {
+    // Parse the bounded file locally; an envelope and matching hash do not prove a PDF.
+    // Keep this dependency lazy so ordinary page navigation does not load a PDF parser.
+    const { PDFDocument } = await import('pdf-lib');
+    const document = await PDFDocument.load(bytes, {
+      throwOnInvalidObject: true,
+      updateMetadata: false,
+    });
+    const pages = document.getPages();
+    if (!pages.length || pages.length > 256) return malformed;
+    for (const page of pages) {
+      const { width, height } = page.getSize();
+      if (
+        !Number.isFinite(width) ||
+        !Number.isFinite(height) ||
+        width <= 0 ||
+        height <= 0
+      )
+        return malformed;
+    }
+  } catch {
+    return malformed;
+  }
   return {
     status: 'ok',
     value: { blob: new Blob([bytes], { type: 'application/pdf' }), filename },

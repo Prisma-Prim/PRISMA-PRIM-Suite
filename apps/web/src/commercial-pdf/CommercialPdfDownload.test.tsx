@@ -61,7 +61,11 @@ function Host({
       <button onClick={pdf.callbacks.navigate}>Navigate exact Version</button>
       <CommercialPdfSelection
         onSelection={pdf.callbacks.select}
-        selection={{ ...pdfTarget, versionId }}
+        selection={
+          pdfTarget.kind === 'contract'
+            ? { ...pdfTarget, versionId, requiresClientRead: false }
+            : { ...pdfTarget, versionId }
+        }
       />
       <fieldset disabled>
         <input

@@ -21,8 +21,12 @@ type ScopeFields =
   | 'language'
   | 'sourceRendererVersion';
 type Selection =
-  | Omit<Extract<CommercialPdfTarget, { kind: 'offer' }>, ScopeFields>
-  | Omit<Extract<CommercialPdfTarget, { kind: 'contract' }>, ScopeFields>;
+  | (Omit<Extract<CommercialPdfTarget, { kind: 'offer' }>, ScopeFields> & {
+      requiresClientRead?: false;
+    })
+  | (Omit<Extract<CommercialPdfTarget, { kind: 'contract' }>, ScopeFields> & {
+      requiresClientRead: boolean;
+    });
 export type CommercialPdfSelection = Selection | null;
 export type CommercialPdfCallbacks = {
   select: (selection: CommercialPdfSelection, inlineBlocked?: boolean) => void;
@@ -39,7 +43,11 @@ type Feedback =
   | 'error'
   | 'limit'
   | 'unavailable';
-type ScopedTarget = { scope: string; target: CommercialPdfTarget };
+type ScopedTarget = {
+  scope: string;
+  target: CommercialPdfTarget;
+  requiresClientRead: boolean;
+};
 type Displayed = ScopedTarget & { inlineBlocked: boolean };
 type Command = ScopedTarget & { feedback: Feedback };
 type Props = {
@@ -70,7 +78,14 @@ export function useCommercialPdfDownload(props: Props) {
       value: generation.current.value + 1,
     };
   const company = props.actor.activeCompany;
+  const clientReadable =
+    props.actor.workspacePermissions.includes('client.manage') ||
+    company?.clientPermissions?.includes('client.read') === true;
+  // The held exact read retains its consumed authority even when its reader disappears.
+  const requiresClientRead =
+    command?.requiresClientRead ?? displayed?.requiresClientRead ?? false;
   const mayRead =
+    (!requiresClientRead || clientReadable) &&
     props.actor.active &&
     Boolean(company) &&
     company?.commercialIntakePermissions?.includes(
@@ -112,11 +127,17 @@ export function useCommercialPdfDownload(props: Props) {
         return;
       }
       if (selection.kind !== props.kind) return;
+      if (selection.requiresClientRead && !clientReadable) {
+        setDisplayed(null);
+        return;
+      }
+      const { requiresClientRead: selectedClientRead, ...source } = selection;
       const next: Displayed = {
         scope,
+        requiresClientRead: selectedClientRead ?? false,
         inlineBlocked,
         target: {
-          ...selection,
+          ...source,
           workspaceId: props.actor.workspaceId,
           companyId: company.id,
           opportunityId: props.opportunityId,
@@ -131,6 +152,7 @@ export function useCommercialPdfDownload(props: Props) {
     },
     [
       mayRead,
+      clientReadable,
       company?.id,
       scope,
       props.actor.workspaceId,
@@ -138,8 +160,17 @@ export function useCommercialPdfDownload(props: Props) {
       props.kind,
     ],
   );
-  async function download(exact: CommercialPdfTarget) {
-    if (!mayRead || liveScope.current !== scope || pending.current) return;
+  async function download(
+    exact: CommercialPdfTarget,
+    consumesClientRead: boolean,
+  ) {
+    if (
+      !mayRead ||
+      (consumesClientRead && !clientReadable) ||
+      liveScope.current !== scope ||
+      pending.current
+    )
+      return;
     const controller = new AbortController();
     pending.current = controller;
     held.current = exact;
@@ -147,7 +178,12 @@ export function useCommercialPdfDownload(props: Props) {
       !controller.signal.aborted &&
       liveScope.current === scope &&
       held.current === exact;
-    setCommand({ scope, target: exact, feedback: 'pending' });
+    const exactCommand = {
+      scope,
+      target: exact,
+      requiresClientRead: consumesClientRead,
+    };
+    setCommand({ ...exactCommand, feedback: 'pending' });
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!valid()) return;
@@ -158,7 +194,7 @@ export function useCommercialPdfDownload(props: Props) {
       );
       if (!valid()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
-        setCommand({ scope, target: exact, feedback: 'denied' });
+        setCommand({ ...exactCommand, feedback: 'denied' });
         // The shell revalidation owns its lifetime; no child abort signal is passed.
         await handleAuthenticatedAccessRejection({
           result,
@@ -181,7 +217,7 @@ export function useCommercialPdfDownload(props: Props) {
             : result.status === 'notFound'
               ? 'unavailable'
               : 'error';
-        setCommand({ scope, target: exact, feedback });
+        setCommand({ ...exactCommand, feedback });
         return;
       }
       if (!valid()) return;
@@ -192,13 +228,13 @@ export function useCommercialPdfDownload(props: Props) {
       anchor.download = result.value.filename;
       try {
         anchor.click();
-        setCommand({ scope, target: exact, feedback: 'offered' });
+        setCommand({ ...exactCommand, feedback: 'offered' });
       } finally {
         URL.revokeObjectURL(url);
         blobUrl.current = undefined;
       }
     } catch {
-      if (valid()) setCommand({ scope, target: exact, feedback: 'error' });
+      if (valid()) setCommand({ ...exactCommand, feedback: 'error' });
     } finally {
       if (pending.current === controller) pending.current = undefined;
     }
@@ -224,7 +260,12 @@ export function useCommercialPdfDownload(props: Props) {
     blocked,
     retry: Boolean(failed && sameTarget),
     activate: () =>
-      void download(failed && sameTarget && active ? active.target : selected),
+      void download(
+        failed && sameTarget && active ? active.target : selected,
+        failed && sameTarget && active
+          ? active.requiresClientRead
+          : (displayed?.requiresClientRead ?? false),
+      ),
   };
   const controls =
     active || (primary && displayed?.inlineBlocked) ? (
@@ -244,7 +285,9 @@ export function useCommercialPdfDownload(props: Props) {
                 className="commercial-pdf-button"
                 type="button"
                 aria-describedby={`${captionId} ${statusId}`}
-                onClick={() => void download(active.target)}
+                onClick={() =>
+                  void download(active.target, active.requiresClientRead)
+                }
               >
                 {copy.retry}
               </button>

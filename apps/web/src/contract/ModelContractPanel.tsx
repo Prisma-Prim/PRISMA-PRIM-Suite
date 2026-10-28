@@ -140,6 +140,8 @@ export function ModelContractPanel(
           journey.readState === 'idle' && contract
             ? {
                 kind: 'contract',
+                requiresClientRead:
+                  contract.version.executionState === 'EXECUTED',
                 rootId: contract.id,
                 reference: contract.illustrativeReference,
                 versionId: contract.version.id,

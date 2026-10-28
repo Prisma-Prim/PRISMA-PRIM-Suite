@@ -1,4 +1,4 @@
-import { webcrypto } from 'node:crypto';
+import { PDFDocument } from 'pdf-lib';
 import type { CommercialPdfTarget } from './commercial-pdf-response';
 export const pdfTarget: CommercialPdfTarget = {
   kind: 'offer',
@@ -16,22 +16,18 @@ export const pdfTarget: CommercialPdfTarget = {
   sourceRendererVersion: 1,
   sourceHtmlSha256: 'a'.repeat(64),
 };
-export async function pdfReply(target: CommercialPdfTarget = pdfTarget) {
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] >>',
-  ];
-  let text = '%PDF-1.7\n';
-  const offsets: number[] = [];
-  for (const [i, object] of objects.entries()) {
-    offsets.push(text.length);
-    text += `${i + 1} 0 obj\n${object}\nendobj\n`;
-  }
-  const xref = text.length;
-  text += `xref\n0 4\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Root 1 0 R /Size 4 >>\nstartxref\n${xref}\n%%EOF\n`;
-  const bytes = new TextEncoder().encode(text),
-    hash = [...new Uint8Array(await webcrypto.subtle.digest('SHA-256', bytes))]
+export async function pdfReply(
+  target: CommercialPdfTarget = pdfTarget,
+  suppliedBytes?: Uint8Array,
+) {
+  const document = await PDFDocument.create();
+  document
+    .addPage([595.28, 841.89])
+    .drawText('Synthetic exact commercial PDF fixture.');
+  const bytes = new Uint8Array(
+      suppliedBytes ?? (await document.save({ useObjectStreams: false })),
+    ),
+    hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
       .map((byte) => byte.toString(16).padStart(2, '0'))
       .join('');
   return new Response(bytes, {
@@ -44,4 +40,11 @@ export async function pdfReply(target: CommercialPdfTarget = pdfTarget) {
       'x-commercial-pdf-sha256': hash,
     },
   });
+}
+
+export function malformedPdfBytes() {
+  const prefix = '%PDF-1.7\n' + 'This is not a PDF object.\n'.repeat(6);
+  return new TextEncoder().encode(
+    prefix + 'xref\nstartxref\n' + prefix.length + '\n%%EOF\n',
+  );
 }

@@ -9,11 +9,11 @@ import {
   pdfRefusal,
   type CommercialPdfSource,
 } from '../commercial-pdf/commercial-pdf-source.js';
-import { ContractService } from './contract.service.js';
+import { ContractVersionReader } from './contract-version-reader.js';
 @Injectable()
 export class ContractPdfService {
   constructor(
-    private readonly contracts: ContractService,
+    private readonly contracts: ContractVersionReader,
     private readonly renderer: CommercialPdfRenderer,
   ) {}
   async read(input: {
@@ -29,7 +29,7 @@ export class ContractPdfService {
       signal: input.signal,
       renderer: this.renderer,
       readSource: async (): Promise<CommercialPdfSource> => {
-        const contract = await this.contracts.read({
+        const contract = await this.contracts.readForPdf({
           actor: input.actor,
           opportunityId: input.opportunityId,
           versionId: input.versionId,

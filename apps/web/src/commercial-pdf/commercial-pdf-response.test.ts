@@ -1,7 +1,12 @@
+import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { readCommercialPdfResponse } from './commercial-pdf-response';
-import { pdfReply, pdfTarget } from './commercial-pdf.test-fixture';
+import {
+  pdfReply,
+  pdfTarget,
+  malformedPdfBytes,
+} from './commercial-pdf.test-fixture';
 beforeEach(() => vi.stubGlobal('crypto', webcrypto));
 afterEach(() => vi.unstubAllGlobals());
 describe('Exact commercial binary response boundary', () => {
@@ -12,6 +17,14 @@ describe('Exact commercial binary response boundary', () => {
       expect(result.value.filename).toBe('offer-7-v3-non-official-ro.pdf');
       expect(result.value.blob.size).toBeGreaterThan(100);
     }
+  });
+  it('refuses structurally malformed bytes despite a coherent tuple, envelope and recomputed digest', async () => {
+    expect(
+      await readCommercialPdfResponse(
+        await pdfReply(pdfTarget, malformedPdfBytes()),
+        pdfTarget,
+      ),
+    ).toEqual({ status: 'malformed' });
   });
   it('cancels an unread malformed response body before returning refusal', async () => {
     const cancel = vi.fn();
@@ -75,4 +88,46 @@ describe('Exact commercial binary response boundary', () => {
       ),
     ).toEqual({ status: 'malformed' });
   });
+});
+
+it.each(['missingPages', 'emptyPages', 'pageBound', 'invalidBox'])(
+  'refuses coherent %s document structure with its recomputed PDF digest',
+  async (kind) => {
+    const document = await PDFDocument.create();
+    if (kind === 'pageBound')
+      for (let index = 0; index < 257; index += 1) document.addPage();
+    else if (kind !== 'emptyPages') {
+      const page = document.addPage();
+      if (kind === 'invalidBox')
+        page.node.set(
+          PDFName.of('MediaBox'),
+          PDFString.of('invalid rectangle'),
+        );
+    }
+    if (kind === 'missingPages') document.catalog.delete(PDFName.of('Pages'));
+    const bytes = new Uint8Array(
+      await document.save({ useObjectStreams: false, addDefaultPage: false }),
+    );
+    expect(
+      await readCommercialPdfResponse(
+        await pdfReply(pdfTarget, bytes),
+        pdfTarget,
+      ),
+    ).toEqual({ status: 'malformed' });
+  },
+);
+it('accepts the qualified 256-page completed PDF bound with actual parsed pages', async () => {
+  const document = await PDFDocument.create();
+  for (let index = 0; index < 256; index += 1) document.addPage();
+  const bytes = new Uint8Array(
+    await document.save({ useObjectStreams: false }),
+  );
+  expect(
+    (
+      await readCommercialPdfResponse(
+        await pdfReply(pdfTarget, bytes),
+        pdfTarget,
+      )
+    ).status,
+  ).toBe('ok');
 });

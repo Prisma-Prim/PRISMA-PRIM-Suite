@@ -24,7 +24,14 @@ import {
   modelOfferEconomicFixture,
   selectedModelFixture,
 } from './offer/model-offer.fixture';
-import { pdfReply } from './commercial-pdf/commercial-pdf.test-fixture';
+import {
+  approvedSigningContract,
+  reportedSigningFixture,
+} from './contract/reported-signing.fixture';
+import {
+  pdfReply,
+  malformedPdfBytes,
+} from './commercial-pdf/commercial-pdf.test-fixture';
 import type { CommercialPdfTarget } from './commercial-pdf/commercial-pdf-response';
 
 const companyId = modelOfferFixture().companyId,
@@ -151,6 +158,10 @@ function installTransport() {
     preparations: typeof preparations;
     actorSignals: typeof actorSignals;
     nextOfferRead: Promise<Response> | null;
+    nextContractRead: Promise<Response> | null;
+    signed: boolean;
+    documentDenied: boolean;
+    denyNextOfferVersion: boolean;
     nextActorRead: Promise<Response> | null;
     actor: ActorContext;
     head: 1 | 2;
@@ -163,6 +174,10 @@ function installTransport() {
     preparations,
     actorSignals,
     nextOfferRead: null,
+    nextContractRead: null,
+    signed: false,
+    documentDenied: false,
+    denyNextOfferVersion: false,
     nextActorRead: null,
     actor: actor(),
     head: 1,
@@ -249,6 +264,36 @@ function installTransport() {
         }
         return Response.json({ items: [], nextCursor: null });
       }
+      if (state.nextContractRead) {
+        const response = state.nextContractRead;
+        state.nextContractRead = null;
+        return response;
+      }
+      if (state.signed) {
+        if (
+          !state.actor.workspacePermissions.includes('client.manage') &&
+          !companyOf(state.actor).clientPermissions?.includes('client.read')
+        )
+          return new Response(null, { status: 403 });
+        const approved = approvedSigningContract(),
+          signature = reportedSigningFixture();
+        return Response.json({
+          contract: {
+            ...approved,
+            revision: 3,
+            version: {
+              ...approved.version,
+              executionState: 'EXECUTED',
+              signature: {
+                ...signature,
+                pdf: state.documentDenied
+                  ? { access: 'denied' }
+                  : signature.pdf,
+              },
+            },
+          },
+        });
+      }
       return Response.json({ contract: modelContractFixture() });
     }
     if (
@@ -257,6 +302,10 @@ function installTransport() {
     )
       return state.nextOfferRead;
     if (path.includes('/offers/')) {
+      if (state.denyNextOfferVersion && !path.endsWith('/versions')) {
+        state.denyNextOfferVersion = false;
+        return new Response(null, { status: 403 });
+      }
       if (path.endsWith('/versions'))
         return Response.json({
           versions: [1, 2].map((n) => ({
@@ -742,3 +791,286 @@ it('offers the inline PDF beside exact HTML and keeps its independent fallback a
   expect(state.preparations[1].body).toBe(state.preparations[0].body);
   expect(state.preparations[1].key).toBe(state.preparations[0].key);
 });
+
+it.each([200, 403])(
+  'permanently retires a held EXECUTED Contract PDF after consumed Client loss, absent reader, regrant and late %s',
+  async (status) => {
+    const state = installTransport(),
+      gate = deferred();
+    state.signed = true;
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    await open();
+    fireEvent.click(
+      control('contract').getByRole('button', {
+        name: 'Download non-official PDF',
+      }),
+    );
+    await waitFor(() => expect(state.pdf).toHaveLength(1));
+    state.nextContractRead = gate.promise;
+    const granted = state.actor;
+    await revalidate(state, {
+      ...granted,
+      workspacePermissions: granted.workspacePermissions.filter(
+        (p) => p !== 'client.manage',
+      ),
+      activeCompany: { ...companyOf(granted), clientPermissions: [] },
+    });
+    await waitFor(() => expect(state.pdf[0].signal?.aborted).toBe(true));
+    expect(
+      document.querySelector('.commercial-pdf-held[data-kind="contract"]'),
+    ).toBeNull();
+    await act(async () => gate.resolve(new Response(null, { status: 403 })));
+    // An independent Offer Version read uses the owning shell's real Access revalidation.
+    state.actor = granted;
+    state.denyNextOfferVersion = true;
+    const before = state.actorReads;
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open version 2' }),
+    );
+    await waitFor(() => expect(state.actorReads).toBeGreaterThan(before));
+    await waitFor(() =>
+      expect(
+        control('contract').getByRole('button', {
+          name: 'Download non-official PDF',
+        }),
+      ).toBeEnabled(),
+    );
+    const revalidated = state.actorReads;
+    await act(async () =>
+      state.pdf[0].resolve(
+        status === 200
+          ? await pdfReply(target('contract'))
+          : new Response(null, { status: 403 }),
+      ),
+    );
+    expect(click).not.toHaveBeenCalled();
+    expect(state.actorReads).toBe(revalidated);
+    expect(state.pdf[0].signal?.aborted).toBe(true);
+  },
+);
+it.each(['offer', 'contract'] satisfies ('offer' | 'contract')[])(
+  'keeps the unsigned %s PDF independent from unrelated Client authority loss',
+  async (kind) => {
+    const state = installTransport(),
+      click = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => undefined);
+    await open();
+    fireEvent.click(
+      control(kind).getByRole('button', { name: 'Download non-official PDF' }),
+    );
+    await waitFor(() => expect(state.pdf).toHaveLength(1));
+    await revalidate(state, {
+      ...state.actor,
+      workspacePermissions: state.actor.workspacePermissions.filter(
+        (p) => p !== 'client.manage',
+      ),
+      activeCompany: { ...companyOf(state.actor), clientPermissions: [] },
+    });
+    expect(state.pdf[0].signal?.aborted).toBe(false);
+    await act(async () => state.pdf[0].resolve(await pdfReply(target(kind))));
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+  },
+);
+it.each(['read', 'manage'])(
+  'keeps an EXECUTED Contract PDF while Client %s remains independently sufficient',
+  async (remaining) => {
+    const state = installTransport(),
+      click = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => undefined);
+    state.signed = true;
+    state.actor = {
+      ...state.actor,
+      workspacePermissions: [
+        ...state.actor.workspacePermissions,
+        'client.manage',
+      ],
+    };
+    await open();
+    fireEvent.click(
+      control('contract').getByRole('button', {
+        name: 'Download non-official PDF',
+      }),
+    );
+    await waitFor(() => expect(state.pdf).toHaveLength(1));
+    await revalidate(state, {
+      ...state.actor,
+      workspacePermissions:
+        remaining === 'read'
+          ? state.actor.workspacePermissions.filter(
+              (p) => p !== 'client.manage',
+            )
+          : state.actor.workspacePermissions,
+      activeCompany: {
+        ...companyOf(state.actor),
+        clientPermissions: remaining === 'manage' ? [] : ['client.read'],
+      },
+    });
+    expect(state.pdf[0].signal?.aborted).toBe(false);
+    await act(async () =>
+      state.pdf[0].resolve(await pdfReply(target('contract'))),
+    );
+    await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+  },
+);
+it('keeps a generated EXECUTED Contract PDF independent of optional signing-Document access', async () => {
+  const state = installTransport(),
+    click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+  state.signed = true;
+  state.actor = {
+    ...state.actor,
+    activeCompany: {
+      ...companyOf(state.actor),
+      documentPermissions: [
+        'document.read',
+        'document.content.read',
+        'document.received_contract.access',
+      ],
+    },
+  };
+  await open();
+  fireEvent.click(
+    control('contract').getByRole('button', {
+      name: 'Download non-official PDF',
+    }),
+  );
+  await waitFor(() => expect(state.pdf).toHaveLength(1));
+  state.documentDenied = true;
+  await revalidate(state, {
+    ...state.actor,
+    activeCompany: { ...companyOf(state.actor), documentPermissions: [] },
+  });
+  expect(state.pdf[0].signal?.aborted).toBe(false);
+  await act(async () =>
+    state.pdf[0].resolve(await pdfReply(target('contract'))),
+  );
+  await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+});
+it('does not offer a malformed coherent PDF reply from the actual App command', async () => {
+  const state = installTransport(),
+    click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+  await open();
+  fireEvent.click(
+    control('offer').getByRole('button', { name: 'Download non-official PDF' }),
+  );
+  await waitFor(() => expect(state.pdf).toHaveLength(1));
+  await act(async () =>
+    state.pdf[0].resolve(await pdfReply(target('offer'), malformedPdfBytes())),
+  );
+  await waitFor(() =>
+    expect(
+      control('offer').getByRole('button', { name: 'Retry non-official PDF' }),
+    ).toBeEnabled(),
+  );
+  expect(click).not.toHaveBeenCalled();
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+});
+
+it('clears an EXECUTED Contract failed exact retry after consumed Client loss while its reader disappears', async () => {
+  const state = installTransport(),
+    gate = deferred();
+  state.signed = true;
+  await open();
+  fireEvent.click(
+    control('contract').getByRole('button', {
+      name: 'Download non-official PDF',
+    }),
+  );
+  await waitFor(() => expect(state.pdf).toHaveLength(1));
+  await act(async () =>
+    state.pdf[0].resolve(new Response(null, { status: 503 })),
+  );
+  expect(
+    await control('contract').findByRole('button', {
+      name: 'Retry non-official PDF',
+    }),
+  ).toBeEnabled();
+  state.nextContractRead = gate.promise;
+  await revalidate(state, {
+    ...state.actor,
+    workspacePermissions: state.actor.workspacePermissions.filter(
+      (permission) => permission !== 'client.manage',
+    ),
+    activeCompany: { ...companyOf(state.actor), clientPermissions: [] },
+  });
+  await waitFor(() =>
+    expect(
+      document.querySelector('.commercial-pdf-held[data-kind="contract"]'),
+    ).toBeNull(),
+  );
+  await act(async () => gate.resolve(new Response(null, { status: 403 })));
+  expect(state.pdf).toHaveLength(1);
+});
+
+it.each([false, true])(
+  'refuses a ready EXECUTED selection while the local Actor lacks Client access, preserving held unsigned=%s',
+  async (heldUnsigned) => {
+    const state = installTransport(),
+      actorReply = deferred();
+    state.signed = !heldUnsigned;
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    await open();
+    if (heldUnsigned) {
+      fireEvent.click(
+        control('contract').getByRole('button', {
+          name: 'Download non-official PDF',
+        }),
+      );
+      await waitFor(() => expect(state.pdf).toHaveLength(1));
+    }
+    const granted = state.actor;
+    const denied: ActorContext = {
+      ...granted,
+      workspacePermissions: granted.workspacePermissions.filter(
+        (permission) => permission !== 'client.manage',
+      ),
+      activeCompany: { ...companyOf(granted), clientPermissions: [] },
+    };
+    state.nextActorRead = actorReply.promise;
+    await revalidate(state, denied);
+    // The Actor response was captured before server-side regrant; the new exact reader
+    // legitimately returns ready200 while that older local Actor still lacks Client.
+    state.actor = granted;
+    state.signed = true;
+    state.nextActorRead = null;
+    await act(async () => actorReply.resolve(Response.json(denied)));
+    await waitFor(() =>
+      expect(document.querySelector('.model-contract-panel')).not.toBeNull(),
+    );
+    expect(
+      document.querySelector('.commercial-pdf-action[data-kind="contract"]'),
+    ).toBeNull();
+    if (heldUnsigned) {
+      const held = document.querySelector(
+        '.commercial-pdf-held[data-kind="contract"]',
+      );
+      if (!(held instanceof HTMLElement))
+        throw new Error('Missing independent held unsigned PDF.');
+      expect(within(held).getByRole('status')).toHaveTextContent(/Preparing/);
+      expect(state.pdf[0].signal?.aborted).toBe(false);
+      await act(async () =>
+        state.pdf[0].resolve(await pdfReply(target('contract'))),
+      );
+      await waitFor(() => expect(click).toHaveBeenCalledTimes(1));
+    } else {
+      expect(state.pdf).toHaveLength(0);
+      await revalidate(state, granted);
+      await waitFor(() =>
+        expect(
+          control('contract').getByRole('button', {
+            name: 'Download non-official PDF',
+          }),
+        ).toBeEnabled(),
+      );
+    }
+  },
+);
