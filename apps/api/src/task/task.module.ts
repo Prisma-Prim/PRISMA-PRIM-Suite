@@ -1,3 +1,4 @@
+import { TeamTasksService } from './team-tasks.service.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
 import { AccountabilityModule } from '../accountability/accountability.module.js';
@@ -22,6 +23,7 @@ import { DocumentsModule } from '../documents/documents.module.js';
     DocumentsModule,
   ],
   providers: [
+    TeamTasksService,
     ProjectOpenTaskQuery,
     TaskCommandStore,
     TaskService,
@@ -29,6 +31,7 @@ import { DocumentsModule } from '../documents/documents.module.js';
     TaskResultsService,
   ],
   exports: [
+    TeamTasksService,
     ProjectOpenTaskQuery,
     TaskService,
     TaskPlanningService,

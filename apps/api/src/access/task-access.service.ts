@@ -1,11 +1,15 @@
+import { COMPANY_TASK_MANAGER_BUNDLE } from './company-permissions.js';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
-import { workspaceMemberships } from '../database/schema/index.js';
+import {
+  workspaceMemberships,
+  companyRoleAssignments,
+} from '../database/schema/index.js';
 import type { ActorContext } from './access.types.js';
 import { readMemberAuthority } from './member-authority.js';
 
@@ -33,6 +37,39 @@ export class TaskAccessService {
       (manage && !authority.manage)
     )
       throw new ForbiddenException();
+    return companyId;
+  }
+  /** Captured native Task read inside a caller-owned readonly snapshot. */
+  async requireActorWithinReadTransaction(
+    actor: ActorContext,
+  ): Promise<string> {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company?.taskPermissions?.includes('task.read') ||
+      company.taskPermissionSetVersion !== 'v1' ||
+      !company.taskPermissionAssignmentId
+    )
+      throw new ForbiddenException();
+    const companyId = await this.requireActor(actor);
+    const [assignment] = await this.database.connection
+      .select({ id: companyRoleAssignments.id })
+      .from(companyRoleAssignments)
+      .where(
+        and(
+          eq(companyRoleAssignments.id, company.taskPermissionAssignmentId),
+          eq(companyRoleAssignments.workspaceId, actor.workspaceId),
+          eq(companyRoleAssignments.companyId, companyId),
+          eq(
+            companyRoleAssignments.workspaceMembershipId,
+            actor.workspaceMembershipId,
+          ),
+          eq(companyRoleAssignments.bundle, COMPANY_TASK_MANAGER_BUNDLE),
+          eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+          isNull(companyRoleAssignments.revokedAt),
+        ),
+      );
+    if (!assignment) throw new ForbiddenException();
     return companyId;
   }
   /** The caller first authorizes the exact Project and original Client relationship. */

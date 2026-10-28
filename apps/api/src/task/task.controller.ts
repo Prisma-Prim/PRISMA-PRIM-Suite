@@ -1,3 +1,4 @@
+import { TeamTasksService } from './team-tasks.service.js';
 import {
   Body,
   Controller,
@@ -23,6 +24,7 @@ export class TaskController {
   constructor(
     private readonly tasks: TaskService,
     private readonly planning: TaskPlanningService,
+    private readonly team: TeamTasksService,
   ) {}
   @Post('projects/:projectId/tasks/planning') plan(
     @Req() request: ActorContextRequest,
@@ -63,6 +65,9 @@ export class TaskController {
     @Query() query: unknown,
   ) {
     return this.tasks.listUnassigned(actor(request), query);
+  }
+  @Get('team-tasks') listTeam(@Req() request: ActorContextRequest) {
+    return this.team.list(actor(request), request.originalUrl);
   }
   @Get('blocked-tasks') listBlocked(
     @Req() request: ActorContextRequest,

@@ -1,3 +1,5 @@
+import { TeamTasks } from './project/TeamTasks';
+import { useTeamTasksCopy } from './project/team-tasks.copy';
 import { MissionPlanWorkspace } from './mission-plan/MissionPlanWorkspace';
 import { missionPlanAuthority } from './mission-plan/mission-plan-authority';
 import { IdeasWorkspace } from './ideas/IdeasWorkspace';
@@ -72,6 +74,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const prismeCopy = usePrismeCopy();
   const unassignedCopy = useUnassignedTasksCopy();
   const blockedCopy = useBlockedTasksCopy();
+  const teamCopy = useTeamTasksCopy();
   const [clientAuthorityGeneration, setClientAuthorityGeneration] = useState(0);
   const [templateCatalogueRevision, setTemplateCatalogueRevision] = useState(0);
   const [clientIdentityGeneration, setClientIdentityGeneration] = useState(0);
@@ -346,7 +349,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const openProject = canAccessProjects
     ? (target: ProjectOpenTarget) => {
         projectNavigation.navigate({ kind: 'project', ...target });
-        navigateToSection('projects');
+        navigateToSection('projects', target.sourceSignal);
       }
     : undefined;
 
@@ -812,6 +815,25 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           actor={access.actor}
           identity={identity}
           onOpenTask={openProject}
+        />
+      ),
+    });
+  if (canReadTasks(access.actor))
+    sections.push({
+      id: 'team-tasks',
+      label: teamCopy('title'),
+      description: teamCopy('description'),
+      mountWhenSelected: true,
+      retainAfterSelection: true,
+      content: (
+        <TeamTasks
+          key={`team:${access.sessionGeneration}:${clientAuthorityGeneration}:${clientIdentityGeneration}:${activeCompanyId}`}
+          actor={access.actor}
+          identity={identity}
+          onOpenTask={openProject}
+          onActorRevalidated={acceptRevalidatedActor}
+          onCompanyContextRejected={rejectCompanyContext}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
         />
       ),
     });

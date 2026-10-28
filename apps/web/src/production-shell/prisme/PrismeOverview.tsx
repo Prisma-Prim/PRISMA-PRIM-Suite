@@ -43,6 +43,7 @@ export function SectionIcon({
     'my-tasks': ListTodo,
     'unassigned-tasks': ClipboardList,
     'blocked-tasks': ClipboardList,
+    'team-tasks': ClipboardList,
     clients: Users,
     access: ShieldCheck,
     companies: Building2,
