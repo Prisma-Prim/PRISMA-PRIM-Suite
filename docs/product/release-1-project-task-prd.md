@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832 and the bounded thirteen-activity pilot plan (§28) approved by #836; remaining capability Draft\
-**Version:** 0.12\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927; remaining capability Draft\
+**Version:** 0.13\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -868,7 +868,7 @@ historical/closed-Project, assigned-but-ineligible, revocation/late replies and
 four-locale continuity cases remain required.
 
 General team/all-Companies registers, member directories, bulk/automatic
-assignment, reminders/notifications, generation/dependencies, completion evidence,
+assignment (the separate bounded manual grouping is owned by §31), reminders/notifications, generation/dependencies, completion evidence,
 new states/lifecycle or Template changes, exports and new grants remain excluded.
 This bounded discovery projection confers no real mission-start authority and
 adds no whole historical MVP capability credit.
@@ -1041,7 +1041,7 @@ not real Clerk or maintained-scanner proof.
 
 This bounded D4 contract is ready for one complete vertical implementation after
 merge. D2 copied plans, D5 stage rules, D13 closure obligations, universal evidence
-types, bulk assignment, verification/acceptance/signature, operational certification,
+types, bulk assignment (separately bounded in §31), verification/acceptance/signature, operational certification,
 real grants/data/providers, generation, OCR/AI, exports and deployment remain separate.
 
 ## 28. Approved bounded thirteen-activity pilot plan (#836)
@@ -1264,7 +1264,7 @@ complete integration verification and guarded merge retain their usual owners.
 This contract is ready for one complete vertical runtime issue after merge.
 Operational category/Template approval, pilot source editing/publication,
 universal workflow/model editors, mandatory/optional obligations, D5 stage rules,
-D13 fulfillment/closure exceptions, bulk assignment, actual-result automation,
+D13 fulfillment/closure exceptions, bulk assignment (separately bounded in §31), actual-result automation,
 certification/training approval, real source import/grants/providers, commercial
 content/prices/numbering/signatures and deployment remain separate. No unresolved
 real numbering, legal or certification decision blocks this anonymous planning
@@ -1297,3 +1297,161 @@ thirteen-activity pilot journeys retain their source, grants, histories and rule
 Custom planning content does not expand the pilot-only readiness/review policy,
 introduce stages or decide obligations, certification or closure. Native Project,
 Task, Client and Document owners remain independent.
+
+## 31. Bounded grouped Task responsibility and due-date planning (#927)
+
+### Authority, problem and outcome
+
+**Status:** Approved bounded MVP contract — root's delegated product disposition
+on 2026-10-28 after ordered independent Standards then Spec preparation
+(zero blockers), under Dan's
+requested continuation after #925 / PR #926 and the
+[standing delegated review authority](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237).
+The review disposition is recorded in #927; runtime delivery remains separate.
+This is no new Iurie answer, actual assignment
+or broader planning policy.
+
+After creating a mission with its native Tasks, a manager currently opens every
+Task separately to assign responsibility and dates. From one Project, the manager
+selects open Tasks, reviews each Task's responsible member and due date, and saves
+the selected planning changes together. Thirteen copied activities can therefore
+be planned with one deliberate submission. This also serves manually created
+Tasks; there is no special mission-only Task model.
+
+The user stories are: select precisely the Tasks to plan; enter different people
+and dates per Task or keep/clear an existing value; save everything or nothing;
+recover the exact result after a lost reply; inspect individual native history;
+and continue with the existing Task detail/My Tasks/attention journeys. Selection
+never means all filtered or unseen Tasks and creates no automatic assignment.
+
+### Scope, actors and inherited meaning
+
+Use the existing live Company Task Manager v1 `task.read`/`task.manage`, Company
+context, Project read and original Client/read relationship boundaries (§18).
+No new permission or captured grant, implicit Owner/Director authority, real
+assignment or eligibility exception is introduced. Access still owns the narrow
+eligible-assignee query and live reassignment check. An unchanged historical
+assignee may remain even if now ineligible; a newly selected non-null assignee
+must be currently eligible. Clearing is permitted. Assignment grants no access.
+
+The Project must be open under §23 and its exact original Client active for a new
+command, including an all-no-op command. Only `todo`, `in_progress` and `blocked`
+Tasks may be planned; current status, blockage declaration, title, priority,
+completion, results/reviews, source/copy mapping and intended results are unchanged.
+Done/cancelled Tasks cannot be changed or implicitly reopened. Responsibility and
+dates retain §18 semantics: null is valid, exact YYYY-MM-DD years0001–9999 without
+timezone conversion, valid past dates allowed, no inferred working days, duration,
+sequence, capacity, reminders or legal deadline.
+
+### Command, atomicity and historical recovery
+
+One Task-owned public command addresses one Project and carries 1–50 distinct
+Task rows. Each row contains only exact Task identity, observed Task version,
+desired assignee membership or null and desired due date or null. Both desired
+fields are explicit; omissions, duplicates, unknown fields, invalid dates/versions,
+foreign/out-of-Project Tasks and oversized/empty batches fail without mutation.
+Workspace, Company, original Client, actor, time and display attribution are
+server-established. Input row order is preserved in the returned result and is
+part of exact command identity. One actor/Workspace idempotency key uses the
+existing Task-command namespace with an unambiguous grouped-command discriminator;
+cross-command/Company/Project/payload reuse conflicts, never parses a different
+receipt as this result. Existing single-Task fingerprints/receipts stay compatible.
+
+The smallest native Task planning participant is reused by individual and grouped
+edits inside one caller-owned transaction. No nested owning transaction, duplicate
+Access/Client/Project policy, repeated external HTTP edits or frontend-only
+partial-success loop qualifies. Retain native actor/assignee revocation and
+suspension serialization, original Client identity-before-relationship barrier,
+Project close guard and stale-version checks. Serialize overlapping Task writes
+with stable lock ordering. A concurrent edit/closure/Client union/access change
+either precedes the group and causes its normal refusal, or follows a completed
+group; it must not produce unauthorized or partial results.
+
+Each material Task change increments that Task version once and creates the
+existing attributed `task.updated` history with exact before/after responsibility
+and/or date. Use the native Client operational-use fence for material changes;
+no-op Tasks add no version, history or fence advance. The single durable group
+outcome contains all exact Task receipts, including no-ops. Tasks, native events,
+fence and receipt commit together; any last-row/event/receipt failure rolls all
+of them back. No new generic Activity event or visibility expansion is introduced.
+
+Exact committed replay rechecks live actor manage/read and visibility of the
+original Project and all selected Tasks before returning the historical complete
+outcome. It precedes fresh expected-version, open-state, original-Client-active,
+Project-open and changed-assignee eligibility checks, so a readable committed
+result remains confirmable after later completion, closure, union or eligibility
+loss. Current authority loss still denies without leaking receipt/Task details.
+Replay, reads, refusals and all-no-op outcomes add no business history or fence.
+Fresh reads, not replay receipts, authorize subsequent actions.
+
+### Interface, lifetime, localization and compatibility
+
+Offer a separate, explicitly opened grouped-planning region in native Project
+Tasks when current manage authority and mutability permit it. Users choose rows
+from the current complete authorized Task listing, by title and state, with an
+explicit 50-row selection bound. Nothing starts selected. Each selected row shows
+its title, observed state/version and existing or deliberately edited responsible
+member/date. The existing shared Select and date semantics remain usable by
+keyboard at1440px and390px without horizontal page overflow. Explicit selection
+and one submit are sufficient human intent; add no separate approval workflow.
+
+Distinguish loading, no open Tasks, no eligible member, read failure/retry,
+validation, denied/missing, stale/closed/historical Client refusal, pending,
+uncertain, confirmed and subsequent refresh failure. A lost/malformed response
+preserves the exact path, normalized ordered body, versions and key for explicit
+identical retry. Disable changes/submission while pending or uncertain. A conflict
+offers explicit reload before a new intent; never auto-retry/rebase/partially
+resubmit. Confirmation stays confirmed if refresh fails, with explicit fresh-read
+recovery. Closing/reopening within the same context preserves drafts and saved
+attempt; ordinary per-Task work is blocked during pending/uncertain group intent
+and retains its independent draft otherwise. New Tasks are not added to a saved
+selection implicitly, and later list reads never rewrite an uncertain command.
+
+Use existing Company/session/grant-version owner lifetime: retirement permanently
+discards that consumer and suppresses all late successes, denials, callbacks and
+navigation even if cancellation is ignored or context changes A→B→A. Switching
+interface locale preserves literal titles/dates, selection, node/focus state,
+drafts and exact command identity without I/O. Central ro/ru/fr/en interface copy
+uses the accepted Prisme controls and existing Task wording; no visual system is
+added. No confidential target/member identifier is requested as manual input.
+
+### Acceptance, verification and readiness
+
+1. Real PostgreSQL REST plans different assignees/dates on several native Tasks
+   together, including blocked/in-progress, clear values and mixed no-op/material
+   rows; exact detail/history, My Tasks and date discovery reflect only those edits.
+2. Strict malformed/empty/over50/duplicate/foreign/out-of-Project/closed Task,
+   stale version, unavailable changed assignee, authority/scope loss, closed
+   Project and superseded original Client refuse the whole group. No-op checks
+   retain normal live authorization/version/state requirements.
+3. Deterministic PostgreSQL ordering proves identical concurrent retry gives one
+   outcome, changed intent conflicts, overlapping groups/individual edits cannot
+   partially commit, actor/changed-assignee revoke or suspend races serialize,
+   and final-row/event/receipt failure rolls back earlier writes/history/fence.
+4. Exact historical replay after later edits/completion/Project closure/Client
+   union returns the same complete outcome under live authority, without new
+   events/fence; native individual receipts and command namespaces stay intact.
+5. Registered real App/PostgreSQL desktop1440/narrow390 journey creates a synthetic
+   thirteen-Task mission, selects and plans multiple Tasks by keyboard, saves,
+   reloads each chosen native Task/history and My Tasks, and reopens the unchanged
+   source copy. No user manual test is required.
+6. Public UI protocol tests prove exact lost/malformed-reply retry, stale reload,
+   confirmed-write/read-failure distinction, selection bound, readonly/empty/error
+   states, four-locale continuity and retired A→B→A late200/403 suppression. Test
+   the production parent wiring as well as the focused form.
+
+After approval and documentation merge, one separate vertical implementation
+issue may become ready with these public seams, fresh ownership/doctor/fit checks,
+targeted tests and review before complete exact-integration verification. NestJS
+and PostgreSQL remain authoritative; no external service or new dependency is
+needed. Prefer existing receipt storage without migration when its invariants
+support this distinct result; any required schema change needs a reviewed migration.
+This section supplies no runtime delivery credit.
+
+Excluded: bulk status/completion/priority/title editing, cross-Project or Company
+planning, automatic date or member proposals, dependencies/Gantt/resource planning,
+imports/exports, Calendar, notifications, new categories/mandatory obligations,
+certification, legal/financial decisions, actual tenant grants/data/configuration,
+deployment and whole-MVP approval. Mission Obligations §12 retains unanswered
+`MISSION-CLOSE-01` for the single consolidated email; this planning mechanism
+neither depends on nor decides that policy.

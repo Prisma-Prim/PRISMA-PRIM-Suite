@@ -127,6 +127,11 @@ under #922 / #923 owns the separately bounded optional Contract-to-plan creation
 Each section’s status governs its readiness; fixed illustrative sources and
 obligation, certification and closure owners remain unchanged.
 
+The separate [grouped Task planning contract](release-1-project-task-prd.md#31-bounded-grouped-task-responsibility-and-due-date-planning-927)
+under #927 bounds explicit per-Task responsibility/date entry and one atomic save
+within a Project, reusing native Task authority/history. Its status controls
+readiness; it adds no automatic scheduling, real assignment or closure policy.
+
 ## 6. Release 3 capability PRDs
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |
