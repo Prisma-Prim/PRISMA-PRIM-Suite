@@ -9,6 +9,9 @@ Ordered Standards then Spec/Product preparation and root delegated approval,
 2026-10-27, use [the standing delegation](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237).
 Product approval is separate from runtime delivery; this is no new Iurie answer
 or approval of actual business content.
+Current-work composition §11 is **Approved** under
+[#939](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/939); its separate
+readiness statement governs that extension.
 
 **Owner:** Dan Popescu. Project/Task [§1 and §§23–29](release-1-project-task-prd.md),
 [authorization §8](tenant-company-client-authorization-prd.md#8-initial-permission-families),
@@ -491,3 +494,311 @@ Excluded: attach/replace a plan on an existing Project, auto-create on signature
 new obligation/applicability/completion policy, activation, operational model
 approval, legal/price/numbering/signature decisions, actual business data/grants,
 imports, external providers, deployment and a whole-MVP completion claim.
+
+## 11. Current work for a configured mission plan
+
+**Status:** Approved bounded current-work contract under
+[#939](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/939), child of
+[#63](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/63).
+Ordered independent Standards then Spec preparation passed;
+[root delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/939#issuecomment-6468646867)
+was recorded on 2026-10-28. Product approval is separate from runtime delivery.
+This section owns
+only the new read composition; §§1–10 and the native owners retain their rules.
+
+### 11.1 Outcome, boundary and stories
+
+A collaborator opens a Company's copied mission plan and compares its complete
+preserved intended results with current ordinary Task facts and independently
+readable current result declarations. The user can find a later activity, open
+its exact native Task, then return to freshly read facts without rewriting the
+source. The outcome is complete inspection and continuation without re-entering
+planning content or opening each Task merely to inspect its current state.
+
+This is a separate current-work overview for the one-to50-activity Company source
+in §§3,5. [Mission Obligations §13](release-1-mission-obligations-prd.md#13-approved-first-vertical--inspect-mission-activityresult-readiness)
+remains fixed to its thirteen-activity pilot, with its own diagnostic derivation.
+Neither that policy nor its review boundary is generalized to configurable plans.
+No new diagnostic state, progress percentage, result count, fulfillment predicate,
+qualification, review, acceptance, stage or closure meaning is derived here.
+`done`, `cancelled` and a recorded result remain their native factual declarations.
+
+1. As a copied-plan reader, I see each original activity/title/action/intended
+   result beside the exact mapped Task's current facts, even after a successor
+   source is published or the Task title changes.
+2. As a collaborator, I inspect current state, responsibility, due date, priority
+   and a current blockage reason without opening every ordinary Task.
+3. As an independently authorized result reader, I inspect the latest native
+   declaration and its exact frozen Document reference without following a newer
+   Document Version or treating it as approved work.
+4. As a Task reader without result access, I retain ordinary Task facts and
+   continuation without confidential result metadata or an invented empty stream.
+5. As a reader of more than25 activities, I reach every row in source order and
+   return to the same local display window without additional page requests.
+6. As a collaborator, I open the exact native Task, use its independent controls
+   and return to freshly read current facts with the preserved source unchanged.
+7. As a user with pending or uncertain native Task/result work, I retain its exact
+   literal draft, observations and retry identity through overview refresh or
+   unrelated plan/result unavailability.
+8. As a historical reader, I inspect the same mapping after ordinary closure or
+   original Client supersession under current native read authority.
+9. As a user changing Company, Project, session or consumed access, I cannot
+   restore old protected data or effects through a round trip or a late response.
+10. As a keyboard or narrow-screen user in ro/ru/fr/en, I retain the current
+    window, literal content and focus across a locale-only change with no I/O.
+11. As a manual, legacy or fixed-pilot user, I keep the existing source, native
+    work, readiness, review and lifecycle paths without adopting this overview.
+
+### 11.2 Actors and independent authority
+
+Every request re-establishes the verified identity, active Internal User,
+Workspace Membership and Company context through Access. The base read consumes
+known Configuration v1 or User v1 `project.mission_plan.read`, native Project read,
+Task read and the exact Project/original-Client read relationship. It requires
+neither publish/instantiate nor Task manage, result Recorder or Reviewer authority.
+Titles, assignment and responsibility grant nothing. Null/unknown captures and
+foreign Workspace/Company context fail closed, including on a no-copy read.
+
+The optional current result keeps every
+[Project/Task §27](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
+Document metadata, mission-family, content and original-Client
+read gate. No plan, Task or review grant substitutes for them. Only a refusal of
+that independent native result-read gate becomes the row's unavailable result.
+It reveals no declaration/reason, result/Document/Version/PDF identity, actor/time,
+title, filename, existence hint or hidden count. Known authorized empty is a
+different state. Result access does not require recording or review permission.
+
+Current source and ordinary Task work remain independent of result-only denial.
+The existing copied-source read still consumes Task read; actual Task-read loss
+retires both source and overview. Plan-read loss retires consuming plan regions
+without discarding independently authorized native Task/Document/result work.
+A transport or shape failure of this new read does not invalidate a separately
+valid existing copied-source read or create authority for another owner.
+
+### 11.3 Native composition and coherent snapshot
+
+The mission-plan owner composes the existing immutable copy/Version, Project,
+Task and optional result owners through narrow public read participants. One
+caller-owned PostgreSQL repeatable-read, read-only snapshot covers base authority,
+original Client/Project visibility, complete source/mapping and every current
+Task/result read. Do not join by title, read today's plan head, fan out through
+Version history, scan unrelated Project Tasks or query private Document storage.
+
+The current native seams are the copied-plan read, `TaskService`'s transaction
+participant and `TaskResultsService`'s factual readiness participant. The latter's
+available/current or unavailable union is reusable without its pilot caller's
+diagnostic derivation. Reuse native owner DTOs and validation rather than copying
+Task, result or Document policy into the mission-plan module. Supply narrowly
+needed caller-snapshot participants where a public method currently opens its
+own transaction. A method named “within transaction” must actually stay inside
+this snapshot throughout its transitive native calls.
+
+Reuse the Client and Document read-only participants delivered with #937 where
+their authority is consumed. Validate live Client read authority without command
+locks before resolving the Project's original reference. Preserve native
+active-or-superseded historical visibility; do not require an active Client or
+open Project merely to read. Native read participants take no `FOR SHARE`,
+`FOR UPDATE` or other command row locks and open no independent/nested owning
+transaction. Do not change global `DatabaseContext` transaction semantics or
+weaken native mutation fences to achieve composition.
+
+Concurrent source publication, Task editing or result correction yields one
+coherent snapshot, never a source/Task/result mixture assembled from independent
+transactions. A later deliberate read observes later committed native facts.
+Reads create no schema, receipt, history, Activity event, operational-use fence,
+assignment, write, external call, content download or background work.
+
+### 11.4 Public read and whole-response validation
+
+The new endpoint is `GET /projects/:projectId/mission-plan/current-work`. It uses
+the existing actor context and UUID Project selection, with no business payload,
+filter, cursor, offset or other query parameter. Unsupported query parameters,
+including repeated/array forms, receive safe400. Existing
+`GET /projects/:projectId/mission-plan` and native Task/result endpoints keep
+their response and behavior.
+
+The actor guard retains401 for missing verified identity and safe403 for invalid
+context. Inside the read snapshot, live plan/Task/Project and Client base authority
+precedes query interpretation and scoped resource lookup. After that authority,
+malformed Project identity/query is400; a missing or unreadable Project/original
+Client or foreign scoped target is the native uniform unavailable404. No hidden
+label, identity, row count or source content enters refusal details.
+
+Return exactly one `overview` member:
+
+| Outcome                                                       | Published value                                                   |
+| ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Readable Project with legitimately no Company-configured copy | `overview: null`                                                  |
+| Valid configured copy                                         | `overview: { workspaceId, companyId, project, plan, activities }` |
+
+`project` contains the requested `id`, immutable original `clientAccountId` and
+current native `status`. `plan` is the existing non-null copied-plan value
+`{ projectId, version, tasks }`, including the exact native Version metadata,
+ordered source activities and preserved mapping. Each `activities` row contains
+`{ activityKey, position, task, result }`. `task` is the current native `TaskView`,
+not a second editable model. It includes the native title, version, state,
+assignee-or-null, due-date-or-null, priority and applicable blockage declaration
+with reason/actor/time. Native completion/cancellation facts retain their meaning.
+`result` is exactly `{ kind: 'unavailable' }` or
+`{ kind: 'available', current: null | TaskResultDeclaration }`, using §27's
+current declaration/reference DTO and no new result qualification or history.
+Continuation consumes `task.id` through the existing exact Task-in-Project owner;
+no new URL, locator or Document-byte route is returned, and no raw-ID entry is
+introduced in the interface.
+
+The server validates the complete bounded persisted composition before returning
+success. The browser treats JSON as unknown and validates the complete response
+before publishing any row, count, selection or continuation. The server's native
+result owner establishes which declaration is current and belongs to that Task;
+the browser validates its native shape and the enclosing exact-row binding.
+Together these boundaries prove all of:
+
+- requested Project and established Workspace/Company match every scoped field;
+- one to50 unique source activity UUID keys, valid source content/Version and
+  declared activity count, preserving the exact selected identity and literals;
+- complete contiguous zero-based source positions and exactly one unique mapped
+  Task per source row, with matching activity key/position and no extra/missing row;
+- every native Task identity equals its mapping, with the requested Project,
+  same Company and exact original Client, and a valid complete native Task shape;
+- every result union is recognized and valid, with protected fields absent from
+  unavailable; any available current declaration is the actual latest native
+  declaration for that exact Task, with its exact valid §27 reference.
+
+Do not render a trusted prefix, silently drop a bad row, coerce unknown states,
+invent defaults or present an older readable result as current. Native HTTP
+readers may retain their documented additive-field compatibility; it never relaxes
+these consumed invariants or the publisher's exact wrapper/union contract.
+Unknown/corrupt copy or source, duplicate/cross-scope/partial mapping, missing
+mapped Task, invalid current declaration/reference, malformed success and other
+server/transport failures are errors, never null, empty or gate-unavailable success.
+In particular, a404 while resolving an already-authorized latest exact result
+reference fails the read; do not catch it as the independent gate refusal.
+
+Manual, legacy four-Task and fixed-pilot Projects with no configured instance
+legitimately return null only after base authority and Project visibility. A
+configured plan cannot have zero rows. For a valid row, only
+`available/current: null` says “no result recorded in the application”; unavailable
+says nothing about whether a result exists. Neither says no work or evidence
+exists outside the application. Extra ordinary Tasks never join the source set.
+
+### 11.5 Interface, refresh and native continuation
+
+Compose a narrowly owned current-work region with existing Project detail and
+copied-source/native Task owners in Prisme and existing compatibility coverage.
+Clearly label initial source title/action/intended result separately from current
+Task title/facts and the human-declared current result. Preserve native literal
+text, assignee display labels, exact calendar dates and reasons. No result
+editor, assignment form, inferred next action or completion control is added.
+Exact native Task detail continues to own all work, result/history and PDF access.
+
+One successful response loads the complete at-most50-row set. Show at most25
+activity rows per local display window in preserved source order, with labelled
+Previous/Next and current-window position; all rows are reachable, including row26
+and row50. Window changes perform no I/O and add no server pagination or search.
+There is an explicit Refresh/Retry. Initial entry and a deliberate return from
+native Task detail each read current work afresh; neither silently follows a
+newer source Version. Refresh and same-context return retain the current window
+and restore useful focus when still valid. Newer reads supersede older reads.
+Do not poll, automatically retry failed reads or load each activity's source anew.
+
+Loading, ready, legitimately no configured plan, base denied, native unavailable,
+malformed/server failure and retry remain distinct. A result-unavailable row
+retains current Task facts and its exact native continuation. A failed refresh
+never presents retained old facts as freshly confirmed; hide the unconfirmed
+projection behind its failure/retry state. Existing source/native owners remain
+usable under their own authority. Closed Project and historical original-Client
+reads preserve their existing read-only explanations and native mutation refusal.
+
+Overview opening, refresh, window controls and locale changes cannot destroy or
+replace pending/uncertain native Task/result intent. Preserve each native owner's
+literal draft, exact target, observations, payload and idempotency key; only its
+existing explicit identical retry recovers uncertainty. A confirmed native command
+stays confirmed when the separate overview refresh fails. Consume no overview
+response as a command receipt. Preserve independent manual Project registration,
+Task creation/editing, plan publication and Document work under their own owners.
+
+### 11.6 Lifetime, localization and privacy
+
+Consume the actual identity/session, Workspace/Company, selected Project and
+source identity, and assignment identities/captured versions used by the base
+plan/Project/Client/Task read. Optional result projections separately consume
+their native Document/family/content authority. Changing any consumed identity,
+selection or authority permanently retires its old owner/generation, held read
+and continuation. An A→B→A round trip, including revoke/regrant with equal
+permission strings, cannot revive the old generation.
+
+Abort or ignore late200 and late403 before rendering data, navigating, showing
+Activity or invoking shared actor/access callbacks. Repeat this through the
+actual App/Project/native parent mounting, including held responses that ignore
+abort. Optional result-only access changes immediately hide and retire protected
+results without clearing independently valid source/Task facts or native drafts;
+base Task-read loss also removes the source and overview. Unconsumed publication,
+instantiate, Recorder, Reviewer or unrelated grants do not reset this read owner.
+Fresh restored authority may start a new read; it never validates an old reply.
+
+Use centralized ro/ru/fr/en copy for headings, state/priority labels, unassigned,
+undated, declaration/empty/unavailable distinctions, windows, refresh and errors.
+Locale-only changes retain source/result literals, window, exact Task selection,
+focus and held requests with no fetch, write, navigation or shared-access effect.
+They do not translate business text or reinterpret dates/statuses. Preserve
+semantic keyboard actions, visible focus, named controls, wrapped literal text
+and accessible errors, with no horizontal overflow at1440px and390px. Internal
+identifiers remain internal and never become browser URL/history or business copy.
+No result details leak through summaries, errors, logs or stale callbacks.
+
+### 11.7 Public acceptance and readiness
+
+1. Start future runtime RED at public REST/disposable PostgreSQL: publish a
+   synthetic plan with at least26 activities, create its exact copy, read every
+   ordered current row, and prove the50-row bound. Publish a reordered/changed
+   successor, edit the old mapped Task's title/state/assignee/date/priority/block
+   reason and record/correct its native result. Refresh preserves the old exact
+   source/mapping while returning current native facts; extra Tasks stay excluded.
+2. Prove authorized empty versus current result versus independent metadata/
+   family/content denial with no protected-field/count leakage. Native result
+   correction and later Document designation preserve exact references; §27 owns
+   byte/qualification proof. Ordinary Task read/continuation remains usable after
+   result denial, and existing source read survives a new-read transport failure.
+3. Exercise every consumed missing/null/unknown/foreign capture, inactive actor,
+   Company/Workspace and Project/original-Client boundary, malformed identity/
+   query, invalid source/mapping/Task/result shape and exact-reference refusal.
+   Prove safe base error ordering, no partial rendering and no malformed-as-empty.
+   Closed Projects and readable superseded original Clients retain exact history.
+4. Public native/API PostgreSQL tests prove the caller's one repeatable-read,
+   read-only snapshot through all participants, including Client and Document
+   access, with no nested transaction, command row lock, event/history/receipt,
+   fence advance or PDF-byte read. Controlled concurrent Task/result/source edits
+   produce coherent snapshots; re-read observes the later commits. Existing copy,
+   manual/legacy/pilot, readiness/review and native work regressions remain valid.
+5. Actual App HTTP/native-parent tests prove whole-response validation, all local
+   windows, exact Task continuation and fresh return, deliberate refresh,
+   source/Task/result independence and protected pending/uncertain/confirmed native
+   intent. Cover consumed Company/Project/session/source/base/result capture
+   A→B→A, held late200/403 and unrelated-grant continuity before any shared effect.
+   In each of four locales, ready and held-read changes preserve literal nodes,
+   window, exact selection, focus and unchanged I/O counts.
+6. Register the real App/API/disposable PostgreSQL journey at1440×900 and390×844.
+   By keyboard, open a later local window, compare old preserved intended results
+   with edited current Task/result facts after successor publication, open the
+   exact native Task and return freshly, refresh and inspect optional result
+   denial without losing ordinary work. Inspect original synthetic screenshots
+   for readable labels, wrapping, focus and no overflow. Intercepted HTTP tests
+   complement this proof; they do not replace actual PostgreSQL content/mapping.
+
+This documentation issue introduces no runtime, migration or behavior test. Its
+checks are formatting and authority/link/contract inspection. Ordered independent
+Standards then Spec preparation and root delegated approval are complete.
+Only after this contract is merged may
+root recheck readiness/fit/ownership and create the separate complete runtime child.
+No actual model, grant, provider setup, manual user test or new Iurie answer is
+required for this synthetic, factual read contract. The existing single
+[MISSION-CLOSE-01 register](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+remains its sole owner for one consolidated email; do not repeat its question or
+add its pilot clarification marker to configurable plans.
+
+Excluded: source replacement/rewriting, plan attachment to existing Projects,
+generic workflow/stages/dependencies, obligation adoption/applicability/exceptions,
+review/acceptance/fulfillment/closure policy, metrics/automatic assignment/dates,
+result or Document mutation/qualification, new permissions/captured sets, schema,
+dependencies, providers, real configuration/data, legal/pricing/certification
+decisions, external delivery, deployment and whole-MVP completion.

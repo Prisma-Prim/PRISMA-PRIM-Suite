@@ -1297,6 +1297,10 @@ thirteen-activity pilot journeys retain their source, grants, histories and rule
 Custom planning content does not expand the pilot-only readiness/review policy,
 introduce stages or decide obligations, certification or closure. Native Project,
 Task, Client and Document owners remain independent.
+The same contract's [current-work overview §11](release-1-configurable-mission-plans-prd.md#11-current-work-for-a-configured-mission-plan),
+under #939 and Approved, owns the separate complete source/current
+Task/result read and exact native Task continuation. Its status controls readiness;
+it adds no pilot diagnostic/review or completion policy.
 
 ## 31. Bounded grouped Task responsibility and due-date planning (#927)
 
