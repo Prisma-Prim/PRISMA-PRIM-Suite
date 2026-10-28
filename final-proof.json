@@ -1,0 +1,42 @@
+{
+  "issue": 927,
+  "pr": 928,
+  "source": "4f79223af839480f7d79d5a8a52653305800eb22",
+  "base": "af3ea24074e143c80869b7117b1f2bb4a8d97fb2",
+  "tree": "c2c6f017bfcc1ba80a3048f888568130a3234ee9",
+  "canonicalLocalGate": {
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1801,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "4f79223af839480f7d79d5a8a52653305800eb22",
+    "reviewedBase": "af3ea24074e143c80869b7117b1f2bb4a8d97fb2",
+    "tree": "c2c6f017bfcc1ba80a3048f888568130a3234ee9",
+    "blockingFindingsRemaining": 0,
+    "ordered": true,
+    "rootStandardsSpec": "PASS on complete final diff, including approval metadata",
+    "reports": {
+      "standards": "Independent read-only Standards PASS zero blockers. Nonblocking: user stories are prose instead of separately numbered; covered by acceptance criteria. Retained as follow-up without changing the branch under blocking-only policy.",
+      "spec": "Independent ordered Spec/Product PASS zero blockers/additional follow-ups; all four issue criteria covered, native Task/Access/Client/Project transaction feasibility inspected. No new authority or business-policy inference."
+    },
+    "disposition": "Root approved bounded contract on 2026-10-28 after ordered preparation under standing delegation #51 comment6283507237; final status-only metadata inspected on both axes. Runtime not started before documentation merge. No automated review requested for documentation.",
+    "followups": [
+      "\u00a731 user stories are identifiable in prose and covered by numbered acceptance; separate numbering is a nonblocking documentation follow-up."
+    ]
+  },
+  "independentGitHubCIExecuted": false,
+  "scope": "Documentation-only bounded grouped Task responsibility/due-date planning in Project/Task31. Native individual Task permissions, eligibility, original Client and Project guards, history, whole-group atomicity and exact replay remain owned. No runtime/schema/new grant/automatic planning/actual content/provider/deployment/whole-MVP claim. MISSION-CLOSE-01 stays in its existing register; runtime follows contract merge.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-15T23:59:59Z"
+}
