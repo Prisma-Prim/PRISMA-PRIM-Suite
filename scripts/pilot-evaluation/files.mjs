@@ -163,15 +163,29 @@ export function artifactBytes(text) {
   return Buffer.from(text, 'utf8');
 }
 
-function cleanup(target, directoryStat, created) {
+function ownsPath(owned, directory = false) {
+  if (!owned?.stat) return false;
+  const current = fstatSync(owned.descriptor);
+  const path = lstatSync(owned.path);
+  return (
+    current.nlink > 0 &&
+    sameFile(current, owned.stat) &&
+    (directory
+      ? current.isDirectory() && path.isDirectory()
+      : current.isFile() && path.isFile()) &&
+    sameFile(current, path)
+  );
+}
+
+function cleanup(directory, created) {
   try {
-    if (!sameFile(lstatSync(target), directoryStat)) return false;
+    if (!ownsPath(directory, true)) return false;
     for (const file of created) {
-      if (!file.stat || !sameFile(lstatSync(file.path), file.stat))
-        return false;
+      if (!ownsPath(file)) return false;
       unlinkSync(file.path);
     }
-    rmdirSync(target);
+    if (!ownsPath(directory, true)) return false;
+    rmdirSync(directory.path);
     return true;
   } catch {
     return false;
@@ -204,16 +218,27 @@ export function writeArtifacts(output, result, report) {
       'Output could not be created. Restore writable storage and retry with a new path.',
     );
   }
-  let directoryStat;
+  let directory;
+  let failure = null;
+  const handles = [];
   const created = [];
   try {
-    directoryStat = lstatSync(target);
-    if (!directoryStat.isDirectory() || directoryStat.isSymbolicLink())
-      throw new Error('Output changed');
+    directory = {
+      path: target,
+      descriptor: openSync(
+        target,
+        constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW,
+      ),
+      stat: null,
+    };
+    handles.push(directory);
+    directory.stat = fstatSync(directory.descriptor);
+    if (!ownsPath(directory, true)) throw new Error('Output changed');
     for (const [name, bytes] of [
       ['result.json', result],
       ['report.md', report],
     ]) {
+      if (!ownsPath(directory, true)) throw new Error('Output changed');
       const path = join(target, name);
       const descriptor = openSync(
         path,
@@ -223,25 +248,39 @@ export function writeArtifacts(output, result, report) {
           constants.O_NOFOLLOW,
         0o600,
       );
-      const owned = { path, stat: null };
+      const owned = { path, descriptor, stat: null, size: bytes.length };
+      handles.push(owned);
       created.push(owned);
+      owned.stat = fstatSync(descriptor);
+      if (!ownsPath(directory, true) || !ownsPath(owned))
+        throw new Error('Output changed');
+      if (process.platform !== 'win32') fchmodSync(descriptor, 0o600);
+      writeFileSync(descriptor, bytes);
+      if (!ownsPath(directory, true)) throw new Error('Output changed');
+    }
+    // A successful write call alone cannot attest that the claimed directory
+    // still contains both complete, original artifacts.
+    for (const file of created) {
+      if (!ownsPath(file) || fstatSync(file.descriptor).size !== file.size)
+        throw new Error('Incomplete output');
+    }
+    if (!ownsPath(directory, true)) throw new Error('Output changed');
+  } catch {
+    const removed = directory && cleanup(directory, created);
+    failure = removed
+      ? 'Writing failed; this invocation removed its incomplete output. Restore writable storage and use a new path.'
+      : 'Writing failed; the selected output is incomplete and could not be safely removed. Preserve it for inspection and use a new path.';
+  } finally {
+    // Keep every original inode pinned until cleanup has finished. Closing early
+    // would let a replacement recycle its identity and appear to be owned.
+    for (const owned of handles.reverse()) {
       try {
-        owned.stat = fstatSync(descriptor);
-        if (process.platform !== 'win32') fchmodSync(descriptor, 0o600);
-        writeFileSync(descriptor, bytes);
-      } finally {
-        closeSync(descriptor);
+        closeSync(owned.descriptor);
+      } catch {
+        failure ??=
+          'Closing output failed; the selected output is incomplete. Preserve it for inspection and use a new path.';
       }
     }
-  } catch {
-    const removed = directoryStat && cleanup(target, directoryStat, created);
-    fail(
-      'E_OUTPUT_WRITE',
-      'output',
-      null,
-      removed
-        ? 'Writing failed; this invocation removed its incomplete output. Restore writable storage and use a new path.'
-        : 'Writing failed; the selected output is incomplete and could not be safely removed. Preserve it for inspection and use a new path.',
-    );
   }
+  if (failure) fail('E_OUTPUT_WRITE', 'output', null, failure);
 }

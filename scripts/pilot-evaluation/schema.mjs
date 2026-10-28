@@ -45,6 +45,9 @@ const version = (value, input, location) =>
   integer(value, input, location, 1, 1000000);
 const nullable = (reader) => (value, input, location) =>
   value === null ? null : reader(value, input, location);
+// Only dependent field readers receive the already validated preceding fields.
+// Ordinary readers keep their existing three-argument boundary.
+const usingPriorFields = (read) => ({ read });
 const choice =
   (...values) =>
   (value, input, location) => {
@@ -79,7 +82,10 @@ function object(value, input, location, readers) {
         `${location}/${key}`,
         'Supply this required property, including null only where allowed.',
       );
-    result[key] = reader(value[key], input, `${location}/${key}`);
+    result[key] =
+      typeof reader === 'function'
+        ? reader(value[key], input, `${location}/${key}`)
+        : reader.read(value[key], input, `${location}/${key}`, result);
   }
   if (Object.keys(value).some((key) => !Object.hasOwn(readers, key)))
     invalid(
@@ -103,21 +109,20 @@ const array = (minimum, maximum, reader) => (value, input, location) => {
 };
 
 function valuePair(value, input, location, field = false) {
-  const result = object(value, input, location, {
+  return object(value, input, location, {
     ...(field ? { fieldId: id } : {}),
     state: choice('confirmed', 'inferred', 'missing', 'contradictory'),
-    value: nullable(text),
+    value: usingPriorFields((value, input, location, { state }) => {
+      const parsed = nullable(text)(value, input, location);
+      if ((state === 'confirmed' || state === 'inferred') === (parsed === null))
+        invalid(
+          input,
+          location,
+          'Confirmed/inferred require nonempty text; missing/contradictory require null.',
+        );
+      return parsed;
+    }),
   });
-  if (
-    (result.state === 'confirmed' || result.state === 'inferred') ===
-    (result.value === null)
-  )
-    invalid(
-      input,
-      `${location}/value`,
-      'Confirmed/inferred require nonempty text; missing/contradictory require null.',
-    );
-  return result;
 }
 
 function citation(value, input, location) {
@@ -203,16 +208,41 @@ function elapsed(value, input, location) {
   return value;
 }
 
-function observedField(value, input, location) {
+function reviewRequired(input, location) {
+  invalid(
+    input,
+    location,
+    'Supply reviewerRef and reviewedAt together when any final value is declared; otherwise both may be null.',
+  );
+}
+
+function observedField(value, input, location, review) {
   return object(value, input, location, {
     fieldId: id,
     initial: valuePair,
-    final: nullable(valuePair),
+    final: (value, input, location) => {
+      const parsed = nullable(valuePair)(value, input, location);
+      if (parsed !== null && review.reviewerRef === null)
+        reviewRequired(input, review.location);
+      return parsed;
+    },
   });
 }
 
-function observation(value, input, location) {
-  const result = object(value, input, location, {
+function capturedWhenCompleted(reader) {
+  return usingPriorFields((value, input, location, { status }) => {
+    if (status !== 'completed' && value !== null)
+      invalid(
+        input,
+        location,
+        'Failed and not_run observations require null fields and citations.',
+      );
+    return nullable(reader)(value, input, location);
+  });
+}
+
+function observation(value, input, location, review) {
+  return object(value, input, location, {
     caseId: id,
     caseVersion: version,
     sourceSetId: id,
@@ -220,28 +250,24 @@ function observation(value, input, location) {
     referenceId: id,
     referenceVersion: version,
     status: choice('completed', 'failed', 'not_run'),
-    elapsedMs: elapsed,
-    fields: nullable(array(0, 32, observedField)),
-    citations: nullable(array(0, 32, citation)),
+    elapsedMs: usingPriorFields((value, input, location, { status }) => {
+      const parsed = elapsed(value, input, location);
+      if (status === 'not_run' && parsed !== null)
+        invalid(input, location, 'A not_run observation requires null time.');
+      return parsed;
+    }),
+    fields: capturedWhenCompleted(
+      array(0, 32, (value, input, location) =>
+        observedField(value, input, location, review),
+      ),
+    ),
+    citations: capturedWhenCompleted(array(0, 32, citation)),
   });
-  if (result.status === 'not_run' && result.elapsedMs !== null)
-    invalid(
-      input,
-      `${location}/elapsedMs`,
-      'A not_run observation requires null time.',
-    );
-  for (const key of ['fields', 'citations'])
-    if (result.status !== 'completed' && result[key] !== null)
-      invalid(
-        input,
-        `${location}/${key}`,
-        'Failed and not_run observations require null fields and citations.',
-      );
-  return result;
 }
 
 function run(value, input, location, mode) {
-  const result = object(value, input, location, {
+  const reviewLocation = `${location}/reviewerRef`;
+  return object(value, input, location, {
     runId: id,
     mode: choice(mode),
     methodId: id,
@@ -251,20 +277,21 @@ function run(value, input, location, mode) {
     capturedAt: utc,
     captureEvidenceRef: text,
     reviewerRef: nullable(id),
-    reviewedAt: nullable(utc),
-    observations: array(0, 200, observation),
+    reviewedAt: usingPriorFields((value, input, location, { reviewerRef }) => {
+      const parsed = nullable(utc)(value, input, location);
+      if ((reviewerRef === null) !== (parsed === null))
+        reviewRequired(input, reviewLocation);
+      return parsed;
+    }),
+    observations: usingPriorFields((value, input, location, { reviewerRef }) =>
+      array(0, 200, (value, input, location) =>
+        observation(value, input, location, {
+          reviewerRef,
+          location: reviewLocation,
+        }),
+      )(value, input, location),
+    ),
   });
-  if (
-    (result.reviewerRef === null) !== (result.reviewedAt === null) ||
-    (result.reviewerRef === null &&
-      result.observations.some((o) => o.fields?.some((f) => f.final !== null)))
-  )
-    invalid(
-      input,
-      `${location}/reviewerRef`,
-      'Supply reviewerRef and reviewedAt together when any final value is declared; otherwise both may be null.',
-    );
-  return result;
 }
 
 export function validateRuns(value) {

@@ -393,6 +393,81 @@ test('review metadata and failed/not_run state constraints cannot be bypassed', 
   ]);
 });
 
+test('conditional status checks report the earlier contract field before later invalid values', (t) => {
+  const input = setup(t);
+  for (const [location, mutate] of [
+    [
+      '/manual/observations/0/elapsedMs',
+      (x) => {
+        x.runs.manual.observations[0].status = 'not_run';
+        x.runs.manual.observations[0].fields = false;
+      },
+    ],
+    [
+      '/manual/observations/0/fields',
+      (x) => {
+        x.runs.manual.observations[0].status = 'failed';
+        x.runs.manual.observations[0].citations = false;
+      },
+    ],
+    [
+      '/manual/observations/0/fields',
+      (x) => {
+        const observation = x.runs.manual.observations[0];
+        observation.status = 'not_run';
+        observation.elapsedMs = null;
+        observation.citations = false;
+      },
+    ],
+  ]) {
+    const values = fixtureObjects(input);
+    mutate(values);
+    writeInputs(input, values);
+    diagnostic(invoke(input.args), 'E_SCHEMA', 'runs', location);
+    assert.equal(existsSync(input.output), false);
+  }
+});
+
+test('review metadata and final-value requirements precede later observation errors', (t) => {
+  const input = setup(t);
+  for (const mutate of [
+    (x) => {
+      x.runs.manual.reviewerRef = null;
+      x.runs.manual.observations[0].elapsedMs = -1;
+    },
+    (x) => {
+      x.runs.manual.reviewedAt = null;
+      x.runs.manual.observations[0].elapsedMs = -1;
+    },
+    (x) => {
+      x.runs.manual.reviewerRef = null;
+      x.runs.manual.reviewedAt = null;
+      x.runs.manual.observations[0].citations = false;
+    },
+  ]) {
+    const values = fixtureObjects(input);
+    mutate(values);
+    writeInputs(input, values);
+    diagnostic(invoke(input.args), 'E_SCHEMA', 'runs', '/manual/reviewerRef');
+    assert.equal(existsSync(input.output), false);
+  }
+});
+
+test('state-value consistency is checked before unrecognized properties in the same object', (t) => {
+  const input = setup(t);
+  const values = fixtureObjects(input);
+  values.cases.cases[0].reference.fields[0].value = null;
+  values.cases.cases[0].reference.fields[0].UNTRUSTED = true;
+  writeInputs(input, values);
+  diagnostic(
+    invoke(input.args),
+    'E_SCHEMA',
+    'cases',
+    '/cases/0/reference/fields/0/value',
+  );
+  assert.equal(existsSync(input.output), false);
+});
+
 test('duplicate arrays and inconsistent identities fail in fixed case and run input order', (t) => {
   const input = setup(t);
   for (const [file, location, mutate] of [
