@@ -157,6 +157,14 @@ recorded-name and date filters, exact native Task continuation and fresh return;
 §§26/32 and native authority remain unchanged. Runtime follows approved contract
 delivery and a separate fresh child.
 
+The [ordinary Task description contract](release-1-project-task-prd.md#34-bounded-ordinary-task-description-949)
+under #949 is Approved after ordered independent Standards then Spec preparation
+and [delegated product approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/949#issuecomment-6478182578).
+It qualifies optional literal multiline instructions through native Task
+creation/detail/edit/history, preserving old receipts, original-Client guards and
+independent result/Document authority. Verified contract merge and #946/#947
+delivery precede any separate runtime child. Approval proves no runtime delivery.
+
 ## 6. Release 3 capability PRDs
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |

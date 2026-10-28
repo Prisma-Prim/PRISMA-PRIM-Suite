@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927 and Company blocked-Task supervision (§32) approved by #931; Company team Task workboard (§33) approved by #944 through delegated agent product review; remaining capability Draft\
-**Version:** 0.14\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927 and Company blocked-Task supervision (§32) approved by #931; Company team Task workboard (§33) approved by #944 through delegated agent product review; ordinary Task description (§34) approved by #949 through delegated agent product review; remaining capability Draft\
+**Version:** 0.15\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -185,6 +185,9 @@ An authorized manager creates a Task with a trimmed title of 1–200 characters,
 optional eligible responsible Workspace Membership and an optional calendar due
 date. Dates use exact YYYY-MM-DD values, years 0001–9999, without timezone
 conversion; impossible dates fail validation and past dates are permitted.
+The separately bounded [ordinary description contract (§34)](#34-bounded-ordinary-task-description-949)
+qualifies the optional instructions field and its compatibility; its own status
+governs approval and later implementation.
 Unassigned and undated Tasks are valid. The server derives immutable Workspace,
 Company, Project and original Client from the Project, and establishes identity,
 creator, timestamps and initial version.
@@ -344,7 +347,7 @@ States are manual declarations. They grant no access, satisfy no gate, trigger n
 
 My Tasks (§19) lists the reader's open Tasks (`todo`, `in_progress` and `blocked`) in the same order, and shows each row's state. Done and cancelled Tasks are excluded.
 
-Automatic priorities (§22 adds a manual priority), descriptions, dependencies, structured blocker details and reason vocabularies remain separate decisions. Dashboard counts and queues are governed by Operational Dashboard PRD §17. Section 23 decides that no Project lifecycle transition changes a Task.
+Automatic priorities (§22 adds a manual priority), dependencies, structured blocker details and reason vocabularies remain separate decisions. [Section 34](#34-bounded-ordinary-task-description-949) separately qualifies ordinary descriptions under its own approval/readiness status. Dashboard counts and queues are governed by Operational Dashboard PRD §17. Section 23 decides that no Project lifecycle transition changes a Task.
 
 ## 21. Approved Project responsible member (#367)
 
@@ -1982,3 +1985,419 @@ certification/closure/legal/pricing policy, provider/infrastructure, real data o
 grants, deployment and whole-MVP approval. [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
 alone retains `MISSION-CLOSE-01` for the existing consolidated email; this
 workboard neither depends on nor decides it.
+
+## 34. Bounded ordinary Task description (#949)
+
+### Authority, problem and outcome
+
+**Status:** Approved — bounded contract under
+[#949](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/949), within #63, after
+ordered independent Standards then Spec preparation and
+[root's delegated product approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/949#issuecomment-6478182578).
+Approval is not runtime delivery; verified contract merge and the runtime
+readiness gates below still apply.
+
+The [consolidated decision record §9.4](consolidated-product-decision-record.md#94-tasks)
+names description among essential Task fields; DEC-041 supplies Company scope.
+Sections 18/20 deliberately bounded earlier manual Tasks without this field.
+The current native create/edit grammar rejects `description`; current Task
+fields, immutable initial/correction facts and production forms do not record it.
+These are the qualification sources, not evidence of a delivered description.
+
+A colleague needs to understand exactly what an ordinary Task asks beyond its
+short title, reopen the literal instructions, and identify later corrections.
+Extend the native Task's creation, detail, editor and immutable history with one
+optional plain multiline `description`. A work journal would record later
+observations/actions and is a different outcome; no journal or comments are added.
+The measurable result is one create → reload → correct → clear → reopen-history
+journey with exact current text and attributable prior values, without another
+editor or loss of native intent.
+
+The field bounds, normalization, response/legacy rules and proof below are
+bounded reversible Product Owner synthesis under the
+[delegated review instruction](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237),
+[independent preparation instruction](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283696600)
+and [continuation authority](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6465537888).
+They are not new Iurie answers, a numbered DEC, Dan's personal review of this
+proposal, actual grants or automatic business approval. This section owns only
+the additive description contract; [Authorization §8](tenant-company-client-authorization-prd.md#8-initial-permission-families),
+[Activity §7](activity-log-accountability-prd.md#7-authorization-and-privacy),
+[UX §§5–7](ux-localization-configuration-prd.md#5-required-ui-states) and
+[Platform §§4–9](platform-security-reliability-operations-prd.md#4-security-boundaries)
+retain their cross-cutting authority. ADRs 0002/0003/0006 retain database,
+business-decision and tenancy ownership; no new architecture decision is required.
+
+### Actors, stories and scope
+
+1. As an authorized Task manager, I optionally enter detailed instructions while
+   creating a Task, so a colleague can understand the work without an external note.
+2. As a Task reader, I reopen complete literal multiline instructions with the
+   Task's Company, Project, original Client and state visible.
+3. As a manager of an open Task, I correct or clear instructions and keep the
+   old and new values, declaring actor, server time and Task version in history.
+4. As a manager changing another field, I omit description and preserve its value.
+5. As a reader of a closed Task/Project or superseded original Client, I retain
+   truthful current instructions and history without acquiring mutation authority.
+6. As a manager with an uncertain command, I deliberately retry the exact saved intent, without duplicating its correction or losing independent work.
+7. As a reader of legacy history or receipts, I distinguish an unrecorded field
+   from a recorded absence and from today's current value.
+8. As a user in either production frame or any supported locale, I use the same
+   native controls by keyboard and keep literal business text and drafts unchanged.
+9. As a user whose consumed authority changes, I receive no retired Task data or
+   late shared effects, even after a switch away and back to the same Company.
+10. As a result/Document reader, I keep those independent confidentiality and
+    frozen-content boundaries; instructions prove no produced or approved result.
+
+The only owning record is an existing native Project Task, whether manually
+created, copied from an illustrative Template or copied from a Company mission
+plan. Workspace, Company, Project and exact original Client remain immutable and
+server-established. This does not introduce standalone internal Company Tasks,
+template-description configuration, source-plan rewriting or a second Task model.
+Copied Tasks start with no description unless a later independently approved
+source-copy contract explicitly supplies one; never infer narrative from an
+activity title, intended result, frozen PDF or current source configuration.
+
+### Field, normalization and exact requests
+
+`description` is ordinary Company-confidential text, either `null` or a nonempty
+normalized string of at most **2000 Unicode code points**. Validate the original
+submitted string as Unicode scalar values: reject any unpaired surrogate and
+U+0000 anywhere before normalization, including escaped JSON input. Reject
+numbers, booleans, objects and arrays. A valid surrogate pair counts as one code
+point; combining marks count separately. Do not count UTF-16 units or graphemes.
+
+Trim only exterior ECMAScript WhiteSpace/LineTerminator code points:
+U+0009–000D, U+0020, U+00A0, U+1680, U+2000–200A, U+2028, U+2029,
+U+202F, U+205F, U+3000 and U+FEFF. Count the remaining code points after that
+trim; an empty result becomes `null`. Preserve every interior code point,
+indent, repeated space, tab and newline, including CR, LF and CRLF. Do not apply
+Unicode composition, case folding, transliteration, newline conversion, Markdown
+interpretation or HTML sanitization that changes stored text. The literal text
+`<b>Check</b>` remains those characters and renders as text, never markup.
+
+| Request field                                   | Create effect                 | Edit effect                        |
+| ----------------------------------------------- | ----------------------------- | ---------------------------------- |
+| Property omitted                                | Current description is `null` | Preserve the current value         |
+| Explicit `null`                                 | Current description is `null` | Clear to `null`                    |
+| Empty/exterior-blank text                       | Normalize to `null`           | Clear to `null`                    |
+| Valid nonempty text                             | Store exact normalized text   | Replace with exact normalized text |
+| Invalid scalar/NUL/type or over 2000 after trim | Reject                        | Reject the complete edit           |
+
+Extend only `POST /projects/:projectId/tasks` and `PATCH /tasks/:taskId` with
+this optional property. Keep their existing allowed fields and `Idempotency-Key`
+header. The create body still requires `title` and permits `assigneeMembershipId`,
+`dueDate` and `priority`; edit still requires `expectedVersion` and permits those
+four ordinary fields. Unknown fields remain rejected; state/complete/reopen/cancel,
+grouped planning, result commands and source configuration do not accept
+`description`. Scope, actor, timestamps and attribution are never body inputs.
+
+For example, create `{ "title": "Prepare visit", "description": "  Read the dossier.\n  Keep the received original.  " }`
+stores `Read the dossier.\n  Keep the received original.`. An edit
+`{ "expectedVersion": 1, "description": "Read the dossier.\n  Keep the received original." }`
+is a no-op when that is the current text. Omitting the property while editing
+`dueDate` preserves it; explicit `null` clears it. Canonically equivalent but
+different Unicode sequences and CRLF versus LF remain different submitted
+instructions and therefore different material intent after exterior trim.
+
+### Read, write and state matrix
+
+Every row inherits verified active Internal User/session, active Workspace
+Membership, server-validated active Company context, live known captured Company
+Task Manager v1 `task.read`, Project read and original Client read/active Company
+relationship. The existing Workspace `client.manage` alternative remains valid;
+membership, creator, responsible identity, Owner/Director title and Client
+visibility alone grant nothing. Unknown/null captured versions fail closed.
+
+| Operation/state                                                          | Additional authority or guard                                                                                        | Observable result                                             |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Current Task/list/detail/history read                                    | Existing read prerequisites only                                                                                     | Truthful current text and native immutable history            |
+| Read done/cancelled Task, closed Project or superseded original Client   | Same live read prerequisites; original identity retained                                                             | Readable, explicitly read-only, no canonical-union detail     |
+| New create                                                               | `task.manage`; open Project; active exact original Client                                                            | Optional description on the new `todo` Task                   |
+| New edit/clear/no-op                                                     | `task.manage`; observed Task version; `todo`, `in_progress` or `blocked`; open Project; active exact original Client | Material correction or unchanged receipt                      |
+| New edit on done/cancelled Task                                          | No exception                                                                                                         | Conflict; explicit native reopening is separate               |
+| New command on completed/cancelled Project or superseded original Client | No exception, including no-op                                                                                        | Existing closed/historical refusal                            |
+| Exact committed replay                                                   | Live read/manage and original target visibility                                                                      | Historical recorded outcome before fresh state/version guards |
+| Revoked/suspended/foreign/missing scope                                  | No fallback through assignment or another Company                                                                    | Existing denial/not-found without hidden text or receipt      |
+
+Use existing eligibility only if an assignee is actually changed. Editing
+description does not reassign an unchanged historical assignee, require the editor
+to be that assignee, or relax eligibility for a newly selected assignee. The field
+changes no Task/Project state, priority, date, blockage/cancellation declaration,
+completion, stage gate, obligation, applicability, fulfillment or approval.
+
+### Command identity, error order and transaction
+
+Retain the existing actor-Membership/Workspace Task-command namespace and its
+create/edit/action discriminator. An omitted description contributes **no key**
+to normalized command identity: preserve every old fingerprint and property order
+exactly, including existing omitted-priority compatibility. For supplied values,
+append one normalized `description` property after the existing normalized input
+properties; explicit null and normalized blank therefore share one clear intent,
+but omission is distinct from explicit null even when both would create an empty
+Task. Include target Company/Project/Task, action, expected version and every
+other submitted normalized field under the existing command shape. A key reused
+for another action, target, Company or normalized payload conflicts without writes.
+
+Preserve native error precedence, without making hidden state an oracle:
+
+1. The existing identity/Actor adapter establishes authentication and selected
+   context; missing identity is 401 and invalid/inactive/unavailable authority
+   is 403. Native path/body/key structural validation remains in its current
+   boundary; malformed known input or an unknown field is 400, never persisted.
+2. Inside the native transaction, revalidate live manage/read authority, take
+   the existing command-key lock and establish original target visibility before
+   disclosing a receipt or key conflict. A foreign/hidden Task remains the native
+   404; Project/Client-read denials retain their native refusal. Do not resolve a
+   conflicting key to reveal another target's data.
+3. A valid matching committed receipt wins before its now-old expected version,
+   new assignee eligibility, Task/Project-open or original-Client-active checks.
+   Thus later closure, edit or Client supersession does not prevent confirmation
+   under live read/manage authority. It does not make the receipt today's state.
+4. A fresh command uses Access's revocation/suspension serialization, the Client
+   identity-before-relationship mutation barrier, Project-open guard and Task
+   row/version check. Wrong version or a closed Task conflicts before computing
+   a correction. Changed-assignee validation remains in the existing edit path.
+5. Compare normalized description with the locked current value together with
+   all other edited fields. A no-op records the native unchanged outcome but
+   changes no Task version, timestamps, history or Client operational-use fence.
+   It must still pass every fresh authority/state/version guard above.
+6. One material edit increments the existing Task version once, including a
+   mixed description/title/date/assignee/priority edit, and appends one
+   `task.updated`. At version 2147483647, refuse material change with 409 and no
+   wraparound; a valid no-op and committed replay remain confirmable.
+
+Task text/version/timestamps, immutable correction history, command outcome and
+receipt, original Client operational-use fence and valid response construction
+commit as one native transaction. Creation likewise includes `task.created` and
+version 1. Reuse the Client fence; no separate description revision, event family,
+lock framework or generic command engine is added. Reads, refusals, no-ops and
+replays advance no business fence. Persistence/event/receipt/response failure
+rolls back the complete unit. Competing ordinary/grouped/result edits, Project
+closure, Client union/reversal and actor/changed-assignee revocation retain the
+owning lock order and serialized outcome; no write may slip through a lost guard.
+
+### Current, historical and legacy formats
+
+Fresh native Task views contain `description: string | null`, alongside their
+existing complete fields, versions, state and attribution. New command outcomes
+that contain native Task views also record it, including no-op and grouped
+planning outcomes. Existing response envelopes, status codes and other field
+semantics are unchanged. New `task.created.metadata.initial` records the key
+with its string or `null`, even when no description was supplied. A material edit
+adds exactly `metadata.changes.description: { before: string | null, after: string | null }`
+when changed; unrelated corrections omit it. Native history retains server actor,
+time, target and version ordering and offers no mutation/deletion route.
+
+| Format                                              | Description representation                                                                                                   |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Current native Task view                            | Required `description`, normalized string or `null`                                                                          |
+| New immutable Task outcome, including a nested Task | Recorded `description`, normalized string or `null`                                                                          |
+| Legacy immutable Task outcome                       | Property absent, other validated historical fields preserved                                                                 |
+| New creation `metadata.initial`                     | Required `description`, normalized string or `null`                                                                          |
+| Legacy creation `metadata.initial`                  | Property absent, including pre-priority initial formats                                                                      |
+| Description correction                              | `changes.description` contains exactly present `before` and `after`, each normalized string or `null`, with different values |
+| Old or unrelated correction                         | No `changes.description`; never synthesize one                                                                               |
+
+Reject malformed present description values, partial/unknown description-pair
+fields and unrecognized changed-field names. Do not trim, repair or default
+persisted or received description facts while decoding them. Other existing
+historical formats retain their own validators and compatibility; a text-only
+change cannot discard them.
+
+Legacy stored receipt JSON, command strings, event meanings and initial history
+remain immutable, including a pre-priority record's existing optional priority.
+Absence of `description` in a legacy initial snapshot or command outcome means
+**not recorded in that historical format**, never proof of an empty value then
+and never a request to insert today's text. Preserve the absence when decoding
+and returning a legacy committed outcome; do not rewrite its JSON or decorate its
+replay with `description: null` or a current value. Existing pre-description
+compatibility transformations for other fields remain unchanged. Old nested Task
+outcomes in grouped/Project creation receipts have the same preservation rule.
+
+The new current-reader contract requires present `description` and validates
+null or exact normalized scalar text; missing/malformed current data is an
+explicit unavailable/malformed response, not a silent empty description. A
+separate compatible command/history reader accepts only the identified legacy
+absence or a valid recorded value, retaining that distinction in its model.
+Neither reader may silently discard a recognized description correction. Preserve
+unknown-field tolerance of existing HTTP consumers for unrelated additive data;
+strict publisher and command validation remain strict. An older client that
+omits the edit field preserves current text; deploy the updated history consumers
+with the new publisher because old strict changed-field readers cannot display
+new corrections safely. Mixed-version operation that hides corrections is not
+claimed supported. No generic optional-field bag or unchecked cast qualifies.
+
+Audit every native Task consumer in the runtime slice: Project Task list/detail/
+create/edit/history and exact Task-in-Project navigation; My Tasks; attention,
+upcoming/due-soon and overdue/Home previews and complete pages; unassigned,
+blocked and team workboard readers; Client mission/Task preview; grouped planning;
+illustrative and configured-plan copied Task creation, current-work overview and
+their preserved command outcomes. A full native Task-view DTO gains the validated
+field under the same authority. A separately bounded summary/source/result/
+Document DTO gains no text simply because a Task was opened. Queue membership,
+ordering, title/name/date predicates, counts and preview presentation stay with
+their existing owners: no description search, snippet, automatic export or new
+result/Document disclosure. Queues open the exact native detail for instructions.
+
+### Migration, privacy and source boundaries
+
+The runtime needs one reviewed additive Drizzle migration for nullable native
+Task text with matching scalar/NUL/length/storage constraints. Existing Task rows
+read `null`; do not synthesize instructions or change IDs, state, timestamps,
+versions, assignments, Client fences, copied-source mappings, results, events,
+receipt JSON or grants. New copies without supplied instructions explicitly
+record current `null` and initial `null` under the new format. Prove the upgrade
+from the exact immediately preceding schema, including old single/group/nested
+receipts; a fresh empty database is insufficient. Old writers that omit the new
+column preserve/default its value appropriately. After new content exists,
+rollback must retain it through a compatible application/forward repair; no
+automatic column drop, history rewrite or destructive down migration is allowed.
+
+Accountability's existing narrow Task recording boundary persists the native
+initial/before/after description facts. They are Company-confidential history
+under Task/Project/original-Client read, not diagnostic log prose. Keep new text
+out of diagnostic logs, traces, exceptions, metrics, Home Activity and generic
+Activity payloads/labels/search/export. The existing generic Task event projection
+omits description from initial facts and mixed corrections; a description-only
+correction remains in native history and is omitted from the generic feed.
+Apply that projection before bounded selection so hiding it does not corrupt
+existing pagination or reveal hidden counts. Existing safe event facts and
+authorization retain their meanings; no permission, generic target/event family
+or new Activity visibility is introduced.
+
+Instructions do not replace declared results, required evidence, frozen PDFs,
+source-plan intended results, human result review, verified work or governed
+Document Versions. A description edit cannot overwrite any of them or grant their
+independent read/record/designation authority. Store and display plain text only;
+never execute HTML/Markdown, auto-link URLs, fetch content or send it to AI or an
+external provider. No new network dependency, integration, retention period,
+purge, notification or legal claim is implied. PostgreSQL/NestJS remain the
+source of truth; bounded 2000-code-point storage is not a production latency SLA.
+
+### Native interface, lifetime and recovery
+
+Both Prisme and Classic extend the existing native create form and Task detail/
+editor with one labelled optional multiline input, bound/help and associated
+validation. Show complete literal current text with preserved visible line breaks
+and wrapping, or a localized “No description”; native history distinguishes a
+recorded empty value from “Description not recorded in this historical version”.
+Show full old/new text for corrections and retained actor/time/version. An
+untouched editor must not submit a replacement merely because a browser textarea
+normalizes line endings; preserve omitted-field intent. Explicit edit and clear
+use the one ordinary Task save, with observed version and no optimistic success,
+automatic save, second editor, raw identifier entry or separate approval step.
+
+Cover loading, genuine empty, validation, denied/revoked, missing, malformed/
+unavailable, no eligible assignee, historical/closed read-only, stale/conflict,
+pending, uncertain, confirmed and failed subsequent refresh. A lost/malformed
+command reply retains exact target/path, normalized payload, observed version and
+idempotency key; disable replacement/submission until explicit identical retry
+or governed recovery. A conflict requires explicit fresh reload before a new
+intent, never an automatic rebase. Confirmation remains confirmed when the fresh
+detail/history/queue read fails. Reload must read today's state separately from
+the immutable command result, particularly a legacy result with no field.
+
+Preserve independent native Task, result and Project drafts, pending/uncertain/
+confirmed outcomes and exact continuation through filters, section/frame
+navigation, reopen and queue return while their consumed scope lives. A read
+failure, filtered-out row or changed locale does not retire another owner's
+command or rewrite its payload. Apply existing pending/uncertain grouped-planning
+exclusion to ordinary Task writes; do not let a description save bypass it.
+
+Permanent retirement follows actual App parent identity/session generation,
+Internal User, Workspace/Membership, Company-selection generation and consumed
+Task/Project/original-Client authority, assignment identities/known captured
+versions and Client authority/identity generation. Sign-out, suspension,
+revocation, consumed changes, parent removal or unmount retire that consumer
+permanently, including A→B→A and equal-string revoke/regrant. Fresh authority
+creates a new owner; abort alone is insufficient. Unconsumed Document/result/
+configuration grants preserve independent Task description work; those owners
+retire their own consumed state separately.
+
+Guard before and after every await and before render, focus, navigation, session/
+Company rejection, Actor acceptance, Activity refresh or any shared callback.
+403 recovery through selected-Company current-Actor, Workspace fallback and
+revalidation must capture the **full Actor snapshot consumed transitively by
+recovery**, in addition to local Task scope. A change consumed only by recovery
+invalidates that recovery before shared effects without discarding independently
+valid Task work. Held late 200/403 and recovery 200/403 cannot revive old content
+or alter the current session/Company/Actor after retirement, even when transport
+ignores abort. Prove production parent/admin wiring, not child remount fixtures.
+
+Centralized ro/ru/fr/en copy covers labels, optionality/limit, clear, current-empty,
+legacy-unrecorded, history and every failure/recovery state. Locale-only changes
+preserve literal text/indentation, dirty state, control nodes/focus and exact
+command identity without Task, eligible-member or Actor I/O. Reuse accepted
+Prisme controls and native semantic textarea/button behavior: keyboard entry,
+Tab/submit/clear/retry/history, visible focus, associated errors and no horizontal
+page overflow at 1440×900 and 390×844, including long unbroken and multiline text.
+
+### Public acceptance and readiness
+
+1. Begin the runtime with meaningful failing **actual PostgreSQL public REST**
+   proof at native create/edit/detail/history. Record multiline/diacritic/Cyrillic/
+   non-BMP text, reload, correct, clear and reload; assert exact normalized current
+   and initial/before/after text, attribution/version and unrelated fields. Prove
+   omitted edit preservation, null/blank equivalence, no-op timestamps/version/
+   history/fence, and material mixed edit exactly once. Include normalized 2000 and
+   2001 code points, combining marks, CR/LF/CRLF/interior spaces, exterior trim set,
+   NUL, lone high/low surrogates, valid pairs, wrong types and unknown fields.
+2. Through that seam, prove exact new/legacy replay, preserved old fingerprints
+   and receipt JSON, explicit-null versus omitted identity, changed-key/action/
+   target/Company conflict, replay after subsequent edits/closure/Client union,
+   native no-op guards, version exhaustion and no partial writes. A historical
+   replay must not replace current description or fabricate old initial facts.
+3. Prove actual foreign Workspace/Company/Project/Client targets, independent
+   context/Task/Project/Client denial, unknown captured versions, creator/assignee/
+   Owner without grants, revocation/suspension and historical/closed reads/writes.
+   Hold competing native/grouped/result writes and Project lifecycle, Client
+   union/reversal, actor/changed-assignee revoke/suspend operations in controlled
+   orders on PG. Assert one serialized authorized outcome and inject row/history/
+   receipt/response-construction failures to prove full rollback including fence.
+4. Upgrade an exact pre-description schema containing open/closed/manual/copied
+   Tasks and immutable single/group/nested receipts/history. Compare old rows,
+   IDs/versions/timestamps, receipt JSON/fingerprints, events, source mappings,
+   results/PDF hashes and grants before/after. Fresh reads are current-null;
+   historical absence remains unrecorded. Prove constraints and no implicit grant.
+5. Exercise every native consumer listed above through its public boundary.
+   Reject malformed current and supplied historical descriptions; render old
+   history and replay without invented values; preserve full corrections. Inspect
+   generic Activity/Home/count/paging/diagnostics for description exclusion and
+   Task/result/Document DTOs for forbidden cross-boundary disclosure. Existing
+   title/name/date searches must not match a term found only in description.
+6. Actual **App/HTTP/admin** tests create real native independent Task/result/
+   Project draft and pending/uncertain/confirmed intents, then navigate/filter,
+   fail reads, change all four locales, retry exact commands and confirm fresh
+   current/history recovery. Hold late 200/403 and already-started selected/
+   Workspace Actor recovery across every consumed retirement and A→B→A; include
+   full-Actor recovery-only changes and unrelated-grant continuity. Assert no
+   stale render/navigation/focus or shared session/Company/Actor/Activity effect.
+7. Register an **actual App/API/disposable PostgreSQL** journey in both production
+   frames at 1440×900 and 390×844: create instructions by keyboard, save, reload exact
+   Task, edit with attributable old/new multiline history, clear, reload and reopen
+   preserved history; include literal markup and a long unbroken value. Exercise
+   an exact native queue continuation and independent intent recovery. Inspect
+   original screenshots for complete content, localization, focus and no horizontal
+   overflow. Intercepted contracts, imports, 404-only cases or manually seeded UI
+   state alone do not prove this complete journey. No Dan/Iurie manual test is needed.
+
+Documentation preparation has no missing external input. The choices are explicit
+and reversible; actual named users, operational adoption and first-tenant role
+configuration remain unproved and unnecessary for this synthetic bounded proof.
+Root alone publishes this documentation, performs ordered independent Standards
+then Spec preparation, records actual delegated product approval and runs the
+canonical source-derived six-family docs gate; its ten heavy families are
+`not_required`, never claimed passed. Verified canonical contract merge and
+delivery of #946 and native-continuation fix #947 must precede a separate fresh
+runtime child/branch with current ownership, doctor, fit and all readiness gates.
+Do not infer readiness from this proposal or create implementation work in #949.
+An actual unresolved authority must be reported explicitly instead of invented.
+
+Excluded: journal/comments, rich text, HTML/Markdown execution, auto-links/files/
+mentions/notifications/AI, Task dependencies/subtasks, new result/Document/evidence/
+approval/applicability/fulfillment/certification/closure/legal/pricing meaning,
+automatic staffing or assignment, real users/grants/data/providers, external
+messaging, infrastructure, deployment and whole-MVP acceptance. [Mission
+Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+alone retains `MISSION-CLOSE-01` for the existing consolidated email; this ordinary
+text field neither depends on nor decides it.
