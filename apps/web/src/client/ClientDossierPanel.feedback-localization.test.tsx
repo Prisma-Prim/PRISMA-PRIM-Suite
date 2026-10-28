@@ -1,3 +1,5 @@
+import type { ActorContext } from '../access-types';
+import { baseActor } from '../production-shell/production-shell-context.test-fixtures';
 import {
   act,
   fireEvent,
@@ -225,7 +227,14 @@ function mount({
       if (path.endsWith('/legal-entities'))
         return Response.json({ clientVersion: 7, legalEntities: [] });
       if (path === '/api/access/current-actor')
-        return Response.json({ activeCompany: { id: 'company-feedback' } });
+        return Response.json({
+          ...baseActor,
+          workspacePermissions: [],
+          activeCompany: {
+            id: 'company-feedback',
+            displayName: 'Synthetic Company',
+          },
+        } satisfies ActorContext);
       throw new Error(`Unexpected request: ${path}`);
     },
   );
