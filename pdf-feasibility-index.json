@@ -1,0 +1,13 @@
+{
+  "archive": "/workspace/work/parallel-delivery/pdf-evidence/publication/pdf955-2591d015-selected.tar.gz",
+  "archiveBytes": 2725756,
+  "archiveSha256": "a504c15796d787f799506316e9490551d9f767464d8f182d6e94dfd59c542a11",
+  "staging": "/workspace/work/parallel-delivery/pdf-evidence/publication/pdf955-selected",
+  "index": "/workspace/work/parallel-delivery/pdf-evidence/publication/pdf955-selected/SELECTED_FILES.json",
+  "indexSha256": "b4687d6b54b4fe8dec3267ec97af7ec25dffd93503c26af4f38e9325eefdc32e",
+  "selectedFiles": 34,
+  "selectedFileBytesIncludingIndex": 4376449,
+  "archiveRoundTripVerified": true,
+  "allIndividualFilesUnder5MiB": true,
+  "archiveUnder5MiB": true
+}
