@@ -118,28 +118,55 @@ export class DocumentContentService {
       input.representationId === undefined
         ? undefined
         : requireUuid(input.representationId);
-    return this.database.transaction(async () => {
-      const companyId =
-        await this.authorization.requireDocumentContentRead(actor);
-      await this.boundary.requireVisible(actor, documentId);
-      const stored = await this.storage.read({
-        scope: { workspaceId: actor.workspaceId, companyId, documentId },
-        versionId,
-        ...(representationId === undefined ? {} : { representationId }),
-      });
-      if (!stored) throw new NotFoundException();
-      // A damaged adapter response is unavailable, never silently different bytes.
-      if (
-        !Buffer.isBuffer(stored.bytes) ||
-        stored.bytes.length !== stored.size ||
-        createHash('sha256').update(stored.bytes).digest('hex') !==
-          stored.sha256
-      )
-        throw new ServiceUnavailableException(
-          'The preserved Document PDF is unavailable.',
-        );
-      return stored;
+    return this.database.transaction(() =>
+      this.readVerifiedWithinTransaction(
+        actor,
+        {
+          documentId,
+          versionId,
+          ...(representationId === undefined ? {} : { representationId }),
+        },
+        false,
+      ),
+    );
+  }
+
+  /** Caller owns a read-only transaction; validates the same immutable bytes and native rights. */
+  async downloadWithinReadTransaction(
+    actor: ActorContext,
+    input: { documentId: string; versionId: string; representationId: string },
+  ) {
+    return this.readVerifiedWithinTransaction(actor, input, true);
+  }
+
+  private async readVerifiedWithinTransaction(
+    actor: ActorContext,
+    input: { documentId: string; versionId: string; representationId?: string },
+    readOnly: boolean,
+  ) {
+    const { documentId, versionId, representationId } = input;
+    const companyId = readOnly
+      ? await this.authorization.requireDocumentContentReadWithinReadTransaction(
+          actor,
+        )
+      : await this.authorization.requireDocumentContentRead(actor);
+    await this.boundary.requireVisible(actor, documentId);
+    const stored = await this.storage.read({
+      scope: { workspaceId: actor.workspaceId, companyId, documentId },
+      versionId,
+      ...(representationId === undefined ? {} : { representationId }),
     });
+    if (!stored) throw new NotFoundException();
+    // A damaged adapter response is unavailable, never silently different bytes.
+    if (
+      !Buffer.isBuffer(stored.bytes) ||
+      stored.bytes.length !== stored.size ||
+      createHash('sha256').update(stored.bytes).digest('hex') !== stored.sha256
+    )
+      throw new ServiceUnavailableException(
+        'The preserved Document PDF is unavailable.',
+      );
+    return stored;
   }
 }
 

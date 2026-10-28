@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { and, asc, desc, eq, lt, sql } from 'drizzle-orm';
 import { DatabaseContext } from '../database/database-context.js';
 import {
@@ -185,28 +185,34 @@ export class DocumentPdfStorage {
     representationId?: string;
   }) {
     const { scope, versionId, representationId } = input;
-    const [stored] = await this.database.connection
-      .select({
-        bytes: documentPdfs.content,
-        fileName: documentPdfs.fileName,
-        sha256: documentPdfs.sha256,
-        size: documentPdfs.size,
-      })
-      .from(documentPdfs)
-      .where(
-        and(
-          eq(documentPdfs.workspaceId, scope.workspaceId),
-          eq(documentPdfs.companyId, scope.companyId),
-          eq(documentPdfs.documentId, scope.documentId),
-          eq(documentPdfs.versionId, versionId),
-          representationId === undefined
-            ? undefined
-            : eq(documentPdfs.id, representationId),
-        ),
-      )
-      .orderBy(desc(documentPdfs.uploadRevision))
-      .limit(1);
-    return stored;
+    try {
+      const [stored] = await this.database.connection
+        .select({
+          bytes: documentPdfs.content,
+          fileName: documentPdfs.fileName,
+          sha256: documentPdfs.sha256,
+          size: documentPdfs.size,
+        })
+        .from(documentPdfs)
+        .where(
+          and(
+            eq(documentPdfs.workspaceId, scope.workspaceId),
+            eq(documentPdfs.companyId, scope.companyId),
+            eq(documentPdfs.documentId, scope.documentId),
+            eq(documentPdfs.versionId, versionId),
+            representationId === undefined
+              ? undefined
+              : eq(documentPdfs.id, representationId),
+          ),
+        )
+        .orderBy(desc(documentPdfs.uploadRevision))
+        .limit(1);
+      return stored;
+    } catch {
+      throw new ServiceUnavailableException(
+        'The preserved Document PDF is unavailable.',
+      );
+    }
   }
 }
 function metadata(row: PdfMetadataRow): PreservedDocumentPdf {

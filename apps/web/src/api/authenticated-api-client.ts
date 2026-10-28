@@ -34,6 +34,11 @@ export interface ApiRequest {
 
 export interface AuthenticatedApiClient {
   request<T>(path: string, request?: ApiRequest): Promise<ApiResult<T>>;
+  downloadSelection(
+    path: string,
+    body: string,
+    request?: Pick<ApiRequest, 'companyContextId' | 'signal'>,
+  ): Promise<ApiResult<Blob> | { status: 'tooLarge' }>;
   download(
     path: string,
     request?: Pick<ApiRequest, 'headers' | 'companyContextId' | 'signal'>,
@@ -122,6 +127,46 @@ export async function createAuthenticatedApiClient(
           throw error;
         return { status: 'error' };
       }
+    },
+    async downloadSelection(path, body, request = {}) {
+      const response = await authenticatedFetch(path, {
+        ...request,
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      });
+      const rejection = accessFailure(response);
+      if (rejection) return rejection;
+      if (response.status === 409) return { status: 'conflict' };
+      if (response.status === 413) return { status: 'tooLarge' };
+      if (
+        response.status !== 200 ||
+        response.headers.get('content-type') !== 'application/zip'
+      )
+        return { status: 'error' };
+      const declaredLength = response.headers.get('content-length');
+      if (
+        declaredLength !== null &&
+        (!/^[0-9]+$/u.test(declaredLength) ||
+          Number(declaredLength) > 21 * 1024 * 1024)
+      )
+        return { status: 'error' };
+      const blob = await response.blob();
+      if (
+        blob.size < 4 ||
+        blob.size > 21 * 1024 * 1024 ||
+        (declaredLength !== null && Number(declaredLength) !== blob.size)
+      )
+        return { status: 'error' };
+      const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (
+        signature[0] !== 80 ||
+        signature[1] !== 75 ||
+        signature[2] !== 3 ||
+        signature[3] !== 4
+      )
+        return { status: 'error' };
+      return { status: 'ok', value: blob };
     },
     async download(path, request = {}) {
       try {

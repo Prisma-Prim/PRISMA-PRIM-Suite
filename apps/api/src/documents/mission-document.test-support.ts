@@ -12,6 +12,8 @@ import {
 } from '../database/postgres-rest-test-harness.js';
 
 const WORKSPACE_ID = '00000000-0000-4000-8000-000000000827';
+export const FOREIGN_DOCUMENT_WORKSPACE_ID =
+  '00000000-0000-4000-8000-000000000937';
 export const PDF_A = readFileSync(
   resolve('test-support/fixtures/questionnaire-demo.pdf'),
 );
@@ -68,6 +70,11 @@ export async function createMissionDocumentFixture(
         ACCESS_BOOTSTRAP_WORKSPACE_ID: WORKSPACE_ID,
         ACCESS_BOOTSTRAP_WORKSPACE_NAME: 'Mission Documents DEMO',
         ACCESS_ACCEPTED_INVITATIONS_JSON: JSON.stringify([
+          {
+            provider: 'deterministic-test',
+            subject: 'foreign-document-member',
+            workspaceId: FOREIGN_DOCUMENT_WORKSPACE_ID,
+          },
           {
             provider: 'deterministic-test',
             subject: 'mission-collaborator',
@@ -191,6 +198,8 @@ export async function createMissionDocumentFixture(
     reset,
     restart,
     close,
+    measureApplicationQueries: <T>(work: () => Promise<T>) =>
+      harness.measureApplicationQueries(work),
     get pool() {
       return harness.pool;
     },

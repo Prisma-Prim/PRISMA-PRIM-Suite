@@ -1,3 +1,4 @@
+import { ProjectPdfBundleController } from './documents/project-pdf-bundle.controller.js';
 import { MissionPlanCopyController } from './mission-plan/mission-plan-copy.controller.js';
 import { MissionPlanModule } from './mission-plan/mission-plan.module.js';
 import { MissionPlanController } from './mission-plan/mission-plan.controller.js';
@@ -163,6 +164,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    ProjectPdfBundleController,
     MissionPlanController,
     MissionPlanCopyController,
     CompanyMissionPlanAssignmentController,

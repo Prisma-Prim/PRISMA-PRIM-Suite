@@ -99,6 +99,50 @@ export class DocumentProjectsService {
     );
   }
 
+  /** Exact selected association facts, after both native reads, inside the caller's snapshot. */
+  async requireSelectedAssociationWithinReadTransaction(input: {
+    document: typeof workingDocuments.$inferSelect;
+    project: Pick<
+      Awaited<ReturnType<ProjectService['read']>>,
+      'id' | 'companyId' | 'clientAccountId'
+    >;
+    expectedRevision: number;
+  }): Promise<void> {
+    const { document, project, expectedRevision } = input;
+    if (
+      document.companyId !== project.companyId ||
+      document.clientId !== project.clientAccountId
+    )
+      throw new NotFoundException();
+    if (
+      document.projectId === project.id &&
+      document.projectRevision === expectedRevision
+    )
+      return;
+    if (document.projectId !== project.id) {
+      // A historical exact link distinguishes a removed selection from an unrelated Document.
+      const [observed] = await this.database.connection
+        .select({ id: documentProjectEvents.id })
+        .from(documentProjectEvents)
+        .where(
+          and(
+            eq(documentProjectEvents.workspaceId, document.workspaceId),
+            eq(documentProjectEvents.companyId, document.companyId),
+            eq(documentProjectEvents.documentId, document.id),
+            eq(documentProjectEvents.projectId, project.id),
+            eq(documentProjectEvents.revision, expectedRevision),
+            eq(documentProjectEvents.action, 'link'),
+          ),
+        )
+        .limit(1);
+      if (!observed) throw new NotFoundException();
+    }
+    throw new ConflictException({
+      code: 'project_pdf_bundle_stale',
+      message: 'The Document association changed. Reload and select again.',
+    });
+  }
+
   async mutate(
     actor: ActorContext,
     documentIdValue: unknown,

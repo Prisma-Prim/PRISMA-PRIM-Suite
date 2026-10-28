@@ -1,3 +1,4 @@
+import { unzipSync, strFromU8 } from 'fflate';
 import {
   prepareReceivedContractSource,
   registerReceivedContract,
@@ -39,6 +40,165 @@ withPostgres('Received Contract PDF family public REST', () => {
 
   const source = () => prepareReceivedContractSource(fixture);
   const received = () => registerReceivedContract(fixture);
+
+  it('collects all native PDF families under their independent gates without borrowing Contract read', async () => {
+    const f = await received();
+    const companyId = f.ready.source.companyId;
+    const membershipId = f.ready.source.preparerMembershipId;
+    for (const path of [
+      '/company-project-assignments',
+      '/company-document-project-organizer-assignments',
+      '/company-mission-deliverable-access-assignments',
+      '/company-document-content-reader-assignments',
+      '/company-document-content-uploader-assignments',
+    ])
+      await fixture.grant({ path, companyId, membershipId });
+    const call = (path: string, body?: unknown, method = 'POST') =>
+      fixture.request({
+        path,
+        companyId,
+        headers: ESTIMATE_OFFER_PREPARER,
+        init: {
+          method,
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': randomUUID(),
+          },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        },
+      });
+    const project = await call('/projects', {
+      clientAccountId: f.ready.source.clientId,
+      title: 'All preserved families DEMO',
+    });
+    expect(project.status).toBe(201);
+    const projectId = responseString(
+      responseRecord(await project.json()),
+      'id',
+    );
+    const items = [];
+    for (const type of [
+      'questionnaire',
+      'mission-deliverable',
+      'received-contract',
+    ]) {
+      let document = f.document;
+      if (type !== 'received-contract') {
+        const registered = await call('/documents', {
+          type,
+          clientId: f.ready.source.clientId,
+          title: `${type} original DEMO`,
+          purpose: 'Native family gate proof',
+          ...(type === 'questionnaire'
+            ? { url: 'https://example.test/unverified' }
+            : {}),
+        });
+        expect(registered.status).toBe(201);
+        document = responseRecord(await registered.json());
+      }
+      const documentId = responseString(document, 'id');
+      const versionId = responseString(responseRecord(document.version), 'id');
+      const uploaded = await fixture.request({
+        path: `/documents/${documentId}/versions/${versionId}/content?expectedRevision=1&fileName=family-original.pdf`,
+        companyId,
+        headers: ESTIMATE_OFFER_PREPARER,
+        init: {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/pdf',
+            'idempotency-key': randomUUID(),
+          },
+          body: new Uint8Array(PDF_A),
+        },
+      });
+      expect(uploaded.status).toBe(201);
+      expect(
+        (
+          await call(`/documents/${documentId}/project-association`, {
+            projectId,
+            action: 'link',
+            expectedRevision: 0,
+          })
+        ).status,
+      ).toBe(201);
+      const history = await call(
+        `/documents/${documentId}/versions/${versionId}/content/history`,
+        undefined,
+        'GET',
+      );
+      const uploads = responseRecord(await history.json()).uploads;
+      if (!Array.isArray(uploads))
+        throw new Error('Expected native upload history');
+      items.push({
+        documentId,
+        versionId,
+        representationId: responseString(
+          responseRecord(uploads[0]),
+          'representationId',
+        ),
+        expectedProjectRevision: 1,
+      });
+    }
+    // Native Contract/Opportunity reads are deliberately removed after registration.
+    for (const bundle of ['contract-preparer', 'commercial-intake'])
+      expect(
+        (
+          await fixture.request({
+            path: `/company-${bundle}-assignments/${membershipId}/${companyId}`,
+            init: {
+              method: 'DELETE',
+              headers: { 'idempotency-key': randomUUID() },
+            },
+          })
+        ).status,
+      ).toBe(200);
+    const before = await receivedContractEffects(fixture.pool);
+    const bundled = await call(`/projects/${projectId}/pdf-bundle`, { items });
+    expect(bundled.status).toBe(200);
+    const archive = unzipSync(new Uint8Array(await bundled.arrayBuffer()));
+    expect(
+      Object.entries(archive)
+        .filter(([path]) => path.endsWith('.pdf'))
+        .map(([, bytes]) => Buffer.from(bytes)),
+    ).toEqual([PDF_A, PDF_A, PDF_A]);
+    const manifest = responseRecord(
+      JSON.parse(strFromU8(archive['manifest.json'] ?? new Uint8Array())),
+    );
+    expect(manifest).toMatchObject({
+      clientId: f.ready.source.clientId,
+      companyId,
+      projectId,
+    });
+    expect(JSON.stringify(manifest)).not.toContain(f.contractId);
+    expect(await receivedContractEffects(fixture.pool)).toEqual(before);
+    for (const [index, bundle] of [
+      [2, 'received-contract-access'],
+      [1, 'mission-deliverable-access'],
+    ] as const) {
+      expect(
+        (
+          await fixture.request({
+            path: `/company-${bundle}-assignments/${membershipId}/${companyId}`,
+            init: {
+              method: 'DELETE',
+              headers: { 'idempotency-key': randomUUID() },
+            },
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await call(`/projects/${projectId}/pdf-bundle`, {
+            items: [items[0], items[index]],
+          })
+        ).status,
+      ).toBe(404);
+      expect(
+        (await call(`/projects/${projectId}/pdf-bundle`, { items: [items[0]] }))
+          .status,
+      ).toBe(200);
+    }
+  });
 
   it('refuses invalid Unicode in received draft corrections without changing any conserved fact', async () => {
     const f = await received(),

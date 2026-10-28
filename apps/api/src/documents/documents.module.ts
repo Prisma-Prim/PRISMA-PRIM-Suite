@@ -1,3 +1,4 @@
+import { ProjectPdfBundleService } from './project-pdf-bundle.service.js';
 import { DocumentSigningReferenceService } from './document-signing-reference.service.js';
 import { DocumentContentService } from './document-content.service.js';
 import { ReceivedContractRelationsService } from './received-contract-relations.service.js';
@@ -25,6 +26,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     AccountabilityModule,
   ],
   providers: [
+    ProjectPdfBundleService,
     ReceivedContractRelationsService,
     DocumentsService,
     DocumentProjectsService,
@@ -37,6 +39,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentMalwareScanner,
   ],
   exports: [
+    ProjectPdfBundleService,
     DocumentsService,
     DocumentProjectsService,
     DocumentVersionsService,
