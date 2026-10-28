@@ -149,6 +149,14 @@ under #931 owns complete bounded discovery of recorded Task blockages and exact
 native continuation. Current reason/assignee/date facts reuse existing readers;
 its status controls readiness, with no new mutation or closure authority.
 
+The [Company team Task workboard contract](release-1-project-task-prd.md#33-bounded-company-team-task-workboard-944)
+under #944 is approved through delegated product review after ordered Standards
+then Spec preparation. It
+qualifies complete bounded Company team discovery with deliberate stored-state,
+recorded-name and date filters, exact native Task continuation and fresh return;
+§§26/32 and native authority remain unchanged. Runtime follows approved contract
+delivery and a separate fresh child.
+
 ## 6. Release 3 capability PRDs
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |
