@@ -89,6 +89,11 @@ docker build "${build_certificate_args[@]}" --file "$web_dockerfile" --tag "$web
   --build-arg VITE_API_URL=https://api.example.test/api \
   --build-arg VITE_CLERK_PUBLISHABLE_KEY="$publishable_key" .
 
+# Exercise the copied licensed assets and real renderer in the production package.
+# The runtime must resolve its own module assets from an unrelated working directory.
+docker run --rm --network none --workdir /tmp --tmpfs /usr/share/fonts:ro,noexec,nosuid \
+  --interactive "$api_image" node --input-type=module < scripts/commercial-pdf-package-smoke.mjs
+
 if docker run --rm "$api_image" >"$evidence/missing-config" 2>&1; then
   echo 'API started without production identity settings.' >&2
   exit 1

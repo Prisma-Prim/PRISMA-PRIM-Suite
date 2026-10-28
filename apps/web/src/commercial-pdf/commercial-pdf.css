@@ -1,0 +1,38 @@
+.commercial-pdf-held,
+.commercial-pdf-action {
+  max-width: 100%;
+  margin-block: 0.75rem;
+  overflow-wrap: anywhere;
+}
+.commercial-pdf-held p,
+.commercial-pdf-action p {
+  margin-block: 0.5rem;
+}
+.commercial-pdf-button {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid var(--shell-line, #e6eaf1);
+  border-radius: 0.4rem;
+  background: var(--shell-surface, #fff);
+  color: var(--shell-blue, #6451e8);
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.commercial-pdf-button:focus-visible {
+  outline: 3px solid var(--shell-focus, #7962ed);
+  outline-offset: 3px;
+}
+.commercial-pdf-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.commercial-pdf-action[data-placement='inline'] {
+  display: contents;
+}
+.commercial-pdf-action[data-placement='inline'] .commercial-pdf-button {
+  margin-inline-start: 0.4rem;
+}

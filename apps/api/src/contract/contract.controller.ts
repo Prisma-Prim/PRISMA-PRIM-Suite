@@ -1,3 +1,6 @@
+import type { ServerResponse } from 'node:http';
+import { readCommercialPdfAttachment } from '../commercial-pdf/commercial-pdf-read.js';
+import { ContractPdfService } from './contract-pdf.service.js';
 import { ModelContractService } from './model-contract.service.js';
 import { ContractModelService } from '../contract-model/contract-model.service.js';
 import { ReportedContractSigningService } from './reported-contract-signing.service.js';
@@ -11,6 +14,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -24,6 +28,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
 @UseGuards(ActorContextAdapter)
 export class ContractController {
   constructor(
+    private readonly pdf: ContractPdfService,
     private readonly contracts: ContractService,
     private readonly signing: ReportedContractSigningService,
     private readonly modelContracts: ModelContractService,
@@ -31,6 +36,26 @@ export class ContractController {
     private readonly projects: ContractProjectsService,
     private readonly projectCreation: ContractProjectCreationService,
   ) {}
+  @Get('versions/:versionId/pdf')
+  async downloadPdf(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Query() query: unknown,
+    @Res({ passthrough: true })
+    response: ServerResponse,
+  ) {
+    return readCommercialPdfAttachment(response, (signal) =>
+      this.pdf.read({
+        actor: actorFrom(request),
+        opportunityId,
+        versionId,
+        query,
+        signal,
+      }),
+    );
+  }
+
   @Get('project-candidates') candidates(
     @Req() request: ActorContextRequest,
     @Param('opportunityId') opportunityId: string,

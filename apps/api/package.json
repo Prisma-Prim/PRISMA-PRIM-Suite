@@ -25,12 +25,14 @@
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
+    "@pdf-lib/fontkit": "1.1.1",
     "drizzle-orm": "0.45.2",
+    "fflate": "0.8.3",
+    "parse5": "8.0.1",
     "pdf-lib": "1.17.1",
     "pg": "8.22.0",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2",
-    "fflate": "0.8.3"
+    "rxjs": "7.8.2"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.24",
@@ -38,6 +40,7 @@
     "@types/node": "24.10.1",
     "@types/pg": "8.20.0",
     "drizzle-kit": "0.31.10",
+    "pdfjs-dist": "6.4.299",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
   }

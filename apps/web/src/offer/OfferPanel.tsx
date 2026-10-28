@@ -1,3 +1,7 @@
+import {
+  CommercialPdfSelection,
+  type CommercialPdfCallbacks,
+} from '../commercial-pdf/CommercialPdfDownload';
 import { useModelOfferCopy } from './model-offer.copy';
 import { OfferSummary } from './OfferSummary';
 import { useOfferCommandLock } from './use-offer-command-lock';
@@ -122,6 +126,7 @@ function OfferPanelOwner({
   identity,
   opportunityId,
   requestedVersionId,
+  pdf,
   expectedOfferId,
   onProtectedWorkChange,
   currentClientId,
@@ -138,6 +143,7 @@ function OfferPanelOwner({
    * The Offer read decides what is shown; nothing else is requested.
    */
   requestedVersionId?: string;
+  pdf?: CommercialPdfCallbacks;
   /** Optional identity guard for an exact record selected by discovery. */
   expectedOfferId?: string;
   onProtectedWorkChange?: (protectedWork: boolean) => void;
@@ -512,6 +518,25 @@ function OfferPanelOwner({
 
   return (
     <section className="offer-panel" aria-labelledby="offer-title">
+      <CommercialPdfSelection
+        onSelection={pdf?.select}
+        inlineBlocked={estimateOpen}
+        selection={
+          view.kind === 'offer' && isModelOffer(view.offer)
+            ? {
+                kind: 'offer',
+                rootId: view.offer.id,
+                reference: view.offer.illustrativeReference,
+                versionId: view.offer.version.id,
+                versionNumber: view.offer.version.versionNumber,
+                provenance: 'COMPANY_MODEL_ESTIMATE',
+                createdAt: view.offer.version.financialDeclaration.declaredAt,
+                sourceRendererCode: 'OFFER_COMPANY_CONSULTING_RO',
+                sourceHtmlSha256: view.offer.version.representation.sha256,
+              }
+            : null
+        }
+      />
       <h4 id="offer-title">
         {(estimateOpen && preparationMode === 'COMPANY_MODEL') ||
         (view.kind === 'offer' && isModelOffer(view.offer))
@@ -715,7 +740,7 @@ function OfferPanelOwner({
           disabled={estimateOpen}
           aria-labelledby="offer-title"
         >
-          <OfferSummary offer={view.offer} />
+          <OfferSummary offer={view.offer} pdfAction={pdf?.action} />
           {!isIllustrativeOffer(view.offer) && (
             <OfferEstimateSource
               actor={actor}
@@ -737,6 +762,7 @@ function OfferPanelOwner({
                 opportunityId={opportunityId}
                 offer={view.offer}
                 reject={reject}
+                onNavigate={pdf?.navigate}
                 onSelect={(offer) => {
                   if (
                     estimateOpenRef.current ||

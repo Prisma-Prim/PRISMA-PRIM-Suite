@@ -20,6 +20,7 @@ export function OfferVersionHistory({
   offer,
   reject,
   onSelect,
+  onNavigate,
 }: {
   identity: BrowserIdentity;
   companyId: string;
@@ -30,6 +31,7 @@ export function OfferVersionHistory({
     signal: AbortSignal,
   ) => ReturnType<typeof handleAuthenticatedAccessRejection>;
   onSelect: (offer: OfferReadView) => void;
+  onNavigate?: () => void;
 }) {
   const copy = useOfferVersionCopy();
   const estimate = useEstimateOfferCopy();
@@ -76,6 +78,7 @@ export function OfferVersionHistory({
     return () => active.current?.abort();
   }, [identity, companyId, opportunityId, offer.id, offer.version.id, reject]);
   async function open(id: string) {
+    onNavigate?.();
     active.current?.abort();
     const request = new AbortController();
     active.current = request;

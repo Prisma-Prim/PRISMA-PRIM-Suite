@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { OfferModelBody } from '../offer-model/OfferModelVersionContent';
 import type {
   ModelOfferView,
@@ -32,9 +33,11 @@ export function SelectedOfferModelContent({
 export function ModelOfferDetails({
   version,
   illustrativeReference,
+  pdfAction,
 }: {
   version: ModelOfferView['version'];
   illustrativeReference: number;
+  pdfAction?: ReactNode;
 }) {
   const copy = useModelOfferCopy();
   const { formatDateTime, formatDecimal } = useOfferPresentation();
@@ -84,6 +87,7 @@ export function ModelOfferDetails({
       >
         {copy('download')}
       </button>
+      {pdfAction}
     </section>
   );
 }

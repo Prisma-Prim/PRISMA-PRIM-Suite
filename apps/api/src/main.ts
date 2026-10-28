@@ -18,6 +18,13 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: process.env.WEB_ORIGIN ?? 'http://localhost:5173',
     credentials: true,
+    exposedHeaders: [
+      'Content-Disposition',
+      'Content-Length',
+      'X-Commercial-Pdf-Source',
+      'X-Commercial-Pdf-Sha256',
+      'X-Commercial-Pdf-Renderer',
+    ],
   });
 
   await app.listen(port);

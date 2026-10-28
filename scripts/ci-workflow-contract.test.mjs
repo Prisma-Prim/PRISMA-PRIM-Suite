@@ -99,7 +99,8 @@ function requireOfficialImageSources([workflow, ciPostgres, api, web, smoke]) {
     const tokens = command[1].match(/"[^"]*"|'[^']*'|\S+/g);
     for (let index = 0; index < tokens.length; index += 1) {
       const token = tokens[index];
-      if (['--rm', '--detach', '--pull=never'].includes(token)) continue;
+      if (['--rm', '--detach', '--pull=never', '--interactive'].includes(token))
+        continue;
       if (
         [
           '--name',
@@ -107,6 +108,8 @@ function requireOfficialImageSources([workflow, ciPostgres, api, web, smoke]) {
           '--network-alias',
           '--env',
           '--publish',
+          '--workdir',
+          '--tmpfs',
         ].includes(token)
       ) {
         index += 1;
@@ -117,6 +120,7 @@ function requireOfficialImageSources([workflow, ciPostgres, api, web, smoke]) {
     }
   }
   assert.deepEqual(images, [
+    '"$api_image"', // Isolated commercial PDF package render.
     '"$api_image"',
     '"$postgres_image"',
     '"$api_image"',
@@ -146,6 +150,13 @@ test('the image-source guard rejects Docker Hub reintroduced at every image refe
     }
   }
   assert.equal(rejected, 6);
+  const replacedPdfImage = [...sources];
+  replacedPdfImage[4] = sources[4].replace(
+    '--interactive "$api_image"',
+    '--interactive docker.io/library/node:24',
+  );
+  assert.notEqual(replacedPdfImage[4], sources[4]);
+  assert.throws(() => requireOfficialImageSources(replacedPdfImage));
 });
 
 function jobsIn(workflow) {

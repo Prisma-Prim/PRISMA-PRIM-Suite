@@ -1,3 +1,7 @@
+import {
+  CommercialPdfSelection,
+  type CommercialPdfCallbacks,
+} from '../commercial-pdf/CommercialPdfDownload';
 import { useCallback, useEffect, useState } from 'react';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import type { ApiResult } from '../api/authenticated-api-client';
@@ -25,7 +29,9 @@ import {
   type ModelContractJourneyProps,
 } from './use-model-contract-journey';
 
-export function ModelContractPanel(props: ModelContractJourneyProps) {
+export function ModelContractPanel(
+  props: ModelContractJourneyProps & { pdf?: CommercialPdfCallbacks },
+) {
   const [declarationProtected, setDeclarationProtected] = useState(false),
     [projectProtected, setProjectProtected] = useState(false);
   const journey = useModelContractJourney(
@@ -128,6 +134,24 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
       className="contract-panel model-contract-panel"
       aria-label={copy('title')}
     >
+      <CommercialPdfSelection
+        onSelection={props.pdf?.select}
+        selection={
+          journey.readState === 'idle' && contract
+            ? {
+                kind: 'contract',
+                rootId: contract.id,
+                reference: contract.illustrativeReference,
+                versionId: contract.version.id,
+                versionNumber: contract.version.versionNumber,
+                provenance: 'COMPANY_MODEL_OFFER',
+                createdAt: contract.version.createdAt,
+                sourceRendererCode: 'COMPANY_CONSULTING_CONTRACT_RO',
+                sourceHtmlSha256: contract.version.representation.sha256,
+              }
+            : null
+        }
+      />
       <h4>{copy('title')}</h4>
       <p className="contract-banner">{copy('notice')}</p>
       <p>
@@ -172,6 +196,7 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
             key={contract.version.id}
             contract={contract}
             locked={journey.ownProtected}
+            pdfAction={props.pdf?.action}
           />
           <ModelContractChecks journey={journey} />
           {contract.version.signature && company && (
@@ -303,7 +328,10 @@ export function ModelContractPanel(props: ModelContractJourneyProps) {
                           journey.readState === 'loading' ||
                           item.id === contract.version.id
                         }
-                        onClick={() => void journey.openVersion(item.id)}
+                        onClick={() => {
+                          props.pdf?.navigate();
+                          void journey.openVersion(item.id);
+                        }}
                       >
                         {versions('version')} {item.versionNumber}
                       </button>
