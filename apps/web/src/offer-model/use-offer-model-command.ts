@@ -4,8 +4,6 @@ import {
   createAuthenticatedApiClient,
   type ApiResult,
 } from '../api/authenticated-api-client';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
-import type { ActorContext } from '../access-types';
 import type { offerModelAuthority } from './offer-model-authority';
 import type { OfferModelContent } from './offer-model-content';
 import {
@@ -52,16 +50,12 @@ export function useOfferModelCommand({
   onStart,
   onConfirmed,
   onDenied,
-  ...handlers
 }: {
   identity: BrowserIdentity;
   authority: Authority;
   onStart: () => void;
   onConfirmed: () => void;
-  onDenied: () => void;
-  onActorRevalidated?: (actor: ActorContext) => void | Promise<void>;
-  onCompanyContextRejected?: (id: string) => void;
-  onWorkspaceAccessRejected?: () => void | Promise<void>;
+  onDenied: (result: ApiResult<unknown>) => void;
 }) {
   const [state, setState] = useState<State>({
     kind: 'idle',
@@ -70,8 +64,8 @@ export function useOfferModelCommand({
   });
   const lock = useRef(false);
   const pending = useRef<AbortController | null>(null);
-  const callbacks = useRef({ onStart, onConfirmed, onDenied, ...handlers });
-  callbacks.current = { onStart, onConfirmed, onDenied, ...handlers };
+  const callbacks = useRef({ onStart, onConfirmed, onDenied });
+  callbacks.current = { onStart, onConfirmed, onDenied };
   useEffect(
     () => () => {
       pending.current?.abort();
@@ -79,21 +73,6 @@ export function useOfferModelCommand({
     [identity],
   );
 
-  async function reject(result: ApiResult<unknown>, signal: AbortSignal) {
-    callbacks.current.onDenied();
-    await handleAuthenticatedAccessRejection({
-      result,
-      identity,
-      signal,
-      companyContextId: authority.companyId,
-      onActorRevalidated: (actor) =>
-        callbacks.current.onActorRevalidated?.(actor),
-      onCompanyContextRejected: (id) =>
-        callbacks.current.onCompanyContextRejected?.(id),
-      onWorkspaceAccessRejected: () =>
-        callbacks.current.onWorkspaceAccessRejected?.(),
-    });
-  }
   async function run(attempt: Attempt) {
     if (lock.current) return;
     lock.current = true;
@@ -118,7 +97,7 @@ export function useOfferModelCommand({
       if (controller.signal.aborted) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
         setState({ kind: 'idle', notice: null, error: null });
-        await reject(result, controller.signal);
+        callbacks.current.onDenied(result);
         return;
       }
       if (
@@ -208,7 +187,7 @@ export function useOfferModelCommand({
             confirmation.status === 'unauthorized'
           ) {
             setState({ kind: 'idle', notice: null, error: null });
-            await reject(confirmation, controller.signal);
+            callbacks.current.onDenied(confirmation);
             return;
           }
           if (confirmation.status !== 'ok')

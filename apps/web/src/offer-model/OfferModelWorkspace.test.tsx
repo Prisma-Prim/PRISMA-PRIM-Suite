@@ -523,7 +523,7 @@ function LocaleSwitch() {
   );
 }
 
-it('preserves an uncertain literal command across an interface locale change and retires it when the captured grant changes', async () => {
+it('preserves an uncertain literal command across equal-authority Actor and interface locale changes and retires it when the captured grant changes', async () => {
   let writes = 0;
   vi.stubGlobal(
     'fetch',
@@ -552,6 +552,23 @@ it('preserves an uncertain literal command across an interface locale change and
     screen.getByRole('button', { name: 'Approve this exact version' }),
   );
   await screen.findByRole('button', { name: 'Retry identical command' });
+  const requestsBeforeActor = vi.mocked(fetch).mock.calls.length;
+  view.rerender(
+    <>
+      <LocaleSwitch />
+      <OfferModelWorkspace
+        actor={{ ...syntheticApprover }}
+        identity={identity}
+      />
+    </>,
+  );
+  expect(screen.getByLabelText('Decision basis')).toHaveValue(
+    ' Literal Romanian decision ',
+  );
+  expect(
+    screen.getByRole('button', { name: 'Retry identical command' }),
+  ).toBeEnabled();
+  expect(vi.mocked(fetch).mock.calls).toHaveLength(requestsBeforeActor);
   fireEvent.click(
     screen.getByRole('button', { name: 'Switch interface locale' }),
   );
@@ -891,3 +908,125 @@ it('retires the independent access revalidation when a denied history read is fo
   expect(onActorRevalidated).not.toHaveBeenCalled();
   expect(screen.queryByText('Furnizor demonstrativ')).toBeNull();
 });
+
+it('retires delayed history recovery when a newer complete Actor keeps the same model authority', async () => {
+  let releaseActor: ((response: Response) => void) | undefined;
+  const actorReply = new Promise<Response>((resolve) => {
+    releaseActor = resolve;
+  });
+  const onActorRevalidated = vi.fn();
+  let recoverySignal: AbortSignal | null | undefined;
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(input.toString(), window.location.origin).pathname;
+      if (path === '/api/offer-models/consulting-ro')
+        return Response.json({ model: syntheticModel });
+      if (path === '/api/offer-models/consulting-ro/versions')
+        return new Response(null, { status: 403 });
+      if (path === '/api/access/current-actor') {
+        recoverySignal = init?.signal;
+        return actorReply;
+      }
+      throw new Error('Unexpected Actor replacement route.');
+    }),
+  );
+  const identity = deterministicBrowserIdentity();
+  const view = render(
+    <OfferModelWorkspace
+      actor={syntheticActor}
+      identity={identity}
+      onActorRevalidated={onActorRevalidated}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Version history' }),
+  );
+  await screen.findByText('Model access is no longer available.');
+  await waitFor(() => expect(recoverySignal).toBeDefined());
+  view.rerender(
+    <OfferModelWorkspace
+      actor={{ ...syntheticActor }}
+      identity={identity}
+      onActorRevalidated={onActorRevalidated}
+    />,
+  );
+  expect(recoverySignal?.aborted).toBe(true);
+  await act(async () => {
+    releaseActor?.(Response.json(syntheticActor));
+  });
+  expect(onActorRevalidated).not.toHaveBeenCalled();
+  expect(screen.queryByText('Furnizor demonstrativ')).toBeNull();
+  expect(
+    screen.getByRole('button', { name: 'Reload the current model' }),
+  ).toBeEnabled();
+});
+
+it.each(['root', 'history', 'command'] as const)(
+  'Refresh retires independent recovery after a denied %s before starting a fresh root',
+  async (mode) => {
+    let releaseActor: ((response: Response) => void) | undefined;
+    const actorReply = new Promise<Response>((resolve) => {
+      releaseActor = resolve;
+    });
+    let recoverySignal: AbortSignal | null | undefined;
+    let rootReads = 0;
+    const onActorRevalidated = vi.fn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = new URL(input.toString(), window.location.origin).pathname;
+        if (init?.method === 'POST') return new Response(null, { status: 403 });
+        if (path === '/api/offer-models/consulting-ro') {
+          rootReads += 1;
+          return mode === 'root' && rootReads === 1
+            ? new Response(null, { status: 403 })
+            : Response.json({ model: syntheticModel });
+        }
+        if (path === '/api/offer-models/consulting-ro/versions')
+          return new Response(null, { status: 403 });
+        if (path === '/api/access/current-actor') {
+          recoverySignal = init?.signal;
+          return actorReply;
+        }
+        throw new Error('Unexpected denied Refresh route.');
+      }),
+    );
+    render(
+      <OfferModelWorkspace
+        actor={syntheticApprover}
+        identity={deterministicBrowserIdentity()}
+        onActorRevalidated={onActorRevalidated}
+      />,
+    );
+    if (mode === 'history')
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Version history' }),
+      );
+    if (mode === 'command') {
+      fireEvent.change(await screen.findByLabelText('Decision basis'), {
+        target: { value: 'Literal decision' },
+      });
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Approve this exact version' }),
+      );
+    }
+    await screen.findByText('Model access is no longer available.');
+    await waitFor(() => expect(recoverySignal).toBeDefined());
+    expect(recoverySignal?.aborted).toBe(false);
+    expect(screen.queryByLabelText('Decision basis')).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Reload the current model' }),
+    );
+    expect(recoverySignal?.aborted).toBe(true);
+    expect(await screen.findByLabelText('Decision basis')).toHaveValue('');
+    expect(rootReads).toBe(2);
+    await act(async () => {
+      releaseActor?.(Response.json(syntheticActor));
+    });
+    expect(onActorRevalidated).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText('Model access is no longer available.'),
+    ).toBeNull();
+  },
+);
