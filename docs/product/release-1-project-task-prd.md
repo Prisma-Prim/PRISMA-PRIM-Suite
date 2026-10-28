@@ -1,7 +1,7 @@
 # PRD — Release 1 Project and Task
 
-**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927 and Company blocked-Task supervision (§32) approved by #931; remaining capability Draft\
-**Version:** 0.13\
+**Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927 and Company blocked-Task supervision (§32) approved by #931; Company team Task workboard (§33) approved by #944 through delegated agent product review; remaining capability Draft\
+**Version:** 0.14\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -870,6 +870,8 @@ four-locale continuity cases remain required.
 General team/all-Companies registers, member directories, bulk/automatic
 assignment (the separate bounded manual grouping is owned by §31), reminders/notifications, generation/dependencies, completion evidence,
 new states/lifecycle or Template changes, exports and new grants remain excluded.
+The separate opt-in Company team workboard in §33 does not widen this section's
+unassigned-only set, offset-only grammar or response.
 This bounded discovery projection confers no real mission-start authority and
 adds no whole historical MVP capability credit.
 
@@ -1614,3 +1616,369 @@ new states/reasons/vocabularies or metrics, all-Companies/member directory/gener
 team register, Task mutations on this view, obligation/evidence assessment,
 financial/legal/certification/closure decisions, exports, actual data/grants,
 external setup/deployment and whole-MVP approval.
+
+The separate opt-in Company team workboard in §33 does not widen this section's
+blocked-only set, offset-only grammar or response.
+
+## 33. Bounded Company team Task workboard (#944)
+
+**Status: Approved bounded contract after ordered independent Standards then
+Spec preparation and root's [delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/944#issuecomment-6473889873) on 2026-10-28.** This is a prospective
+documentation contract, with no runtime delivery claim. Product Vision
+[§2](product-vision-prd.md#2-problem-statement), [§4](product-vision-prd.md#4-desired-outcomes)
+and [§7](product-vision-prd.md#7-actors) supply the shared-operations and
+Company-manager oversight direction. [#944](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/944)
+qualifies this bounded synthesis under [delegated product review](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237)
+and [independent preparation](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283696600).
+Filter choices, bounds and interaction below are reasoned reversible product
+synthesis, not new Iurie answers, real grants or evidence of tenant adoption.
+
+### Problem, value and user stories
+
+The current native My Tasks read is self-only. Unassigned (§26), blocked (§32)
+and overdue discovery select special-purpose subsets; they omit assigned,
+nonblocked work that is not overdue. The native Project Task list has local
+filters but requires opening each Project. A Company coordinator therefore lacks
+one complete team workboard across already-readable Projects. This addition has
+value when a reader can find that omitted work, reach a matching row beyond the
+first page, act through the exact native Task and return to current facts. These
+are acceptance outcomes, not a new operational metric or a claimed real saving.
+
+1. As an authorized Company Task reader, I want open work across readable
+   Projects, including Tasks assigned to other members, so that personal or
+   special-purpose lists do not hide team work.
+2. As that reader, I want an explicit all-states or one-state choice, so that
+   readable closed facts can be found without reopening anything.
+3. As that reader, I want all responsibility, unassigned or literal recorded-name
+   matching, so that I can narrow existing work without looking up personnel.
+4. As that reader, I want an optional inclusive manual due-date interval and
+   truthful No due date display, so that stored dates remain literal facts.
+5. As that reader, I want deliberate Apply, bounded complete pages and fresh
+   Refresh/Retry, so that draft edits do not send requests or mislabel old rows.
+6. As that reader, I want exact native Task/history continuation and a fresh
+   return with my criteria, draft and page retained.
+7. As a separately authorized manager, I want the native editor and its protected
+   intent preserved even when workboard filters, reads or access fail.
+8. As a user changing context or authority, I want retired replies and navigation
+   permanently suppressed, including after returning to an equal-looking context.
+9. As a keyboard, narrow-screen or four-language user, I want complete literal
+   facts, usable controls and stable focus without locale-only requests.
+
+### Records, actors and exact authority
+
+The set contains only native Project-linked Tasks of the selected active Company
+in the established Workspace, intersected with the native readable Project set.
+It includes manual and copied Tasks. There is no additional Project-lifecycle or
+assignee-eligibility filter: readable completed/cancelled Projects, active or
+superseded original Clients and recorded now-ineligible assignees retain their
+native facts and labels; native closed/historical write guards still apply.
+Neither a missing current eligibility record nor a homonymous name clears or
+merges an assignment.
+
+Every request re-establishes active Internal User, same-Workspace active
+membership and active authorized Company context. Access must prove the live
+known captured Company Task Manager **v1** `task.read`, independent live Company
+Project Access **v1 or v2** `project.read`, and native original-Client read:
+current Workspace `client.manage` or a live Company Director Client Access **v1
+or v2** containing `client.read`, with the original active Client–Company
+relationship. Captured assignment identity, Company, membership, revocation and
+known version must agree; null/unknown captures fail closed. The native Access,
+Project and Client owners evaluate these conditions, including the existing
+Company-context alternatives; a copied permission string is insufficient.
+
+The UI uses the existing Task-read entry predicate in both Prisme and supported
+Classic frames. Entry is only an affordance; it confers no server authority.
+Responsibility, creator, job title, Workspace ownership, Company selection and
+Template/result/Document rights confer no substitute permission. The workboard
+requests no eligible-member query, directory, email or unrelated member fact.
+Name matching uses only recorded assignee labels on otherwise readable Tasks.
+Historical Client labels stay original; canonical union and hidden Company
+activity remain outside the projection. The ordinary Task/Project/Client owners
+retain mutation/refusal, result, history and lifecycle rules in §§18–23,27,31.
+
+### One public read and deliberate criteria
+
+Add exactly one authenticated Task-owned `GET /team-tasks`, with Company selected
+through the established Actor context, not a path/body/query scope override.
+The only query keys are:
+
+| Key                     | Accepted value and default                                                                                                                                                                                                                                              |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `state`                 | Omitted means `open` (`todo`, `in_progress`, `blocked`); otherwise exactly `open`, `all`, `todo`, `in_progress`, `blocked`, `done` or `cancelled`. `all` includes all five native states.                                                                               |
+| `responsibility`        | Omitted means `all`; otherwise exactly `all`, `unassigned` or `name`. Unassigned means stored null assignment, not loss of eligibility.                                                                                                                                 |
+| `assigneeName`          | Required only for `responsibility=name`; forbidden otherwise, even empty. Trim outer whitespace using the native JavaScript trim convention; require 1–200 Unicode code points after trimming, valid Unicode scalar text and no U+0000. No membership identifier input. |
+| `dueFrom`, `dueThrough` | Independently optional exact valid `YYYY-MM-DD`, years0001–9999, with `dueFrom <= dueThrough` when both exist. Empty, null-like, whitespace, timestamps and impossible dates refuse.                                                                                    |
+| `offset`                | Omitted means zero; one ASCII decimal digit string representing a nonnegative safe integer, as in native discovery. Leading zeroes are accepted and echoed numerically; signs, whitespace, exponent and fractional forms refuse.                                        |
+
+All supplied values must be single strings. Unknown keys, repeated keys even
+with equal values, arrays/objects, malformed encoding, unsafe offset or invalid
+combinations refuse without a partial response. Reject repetitions at the raw
+HTTP boundary before any parser can silently keep one value. There is no page
+size, sort, title/content query, priority, member ID, preset or Company selector.
+Omitted date bounds mean no date restriction and include undated Tasks. Any
+present bound excludes null dates; one bound is open-ended, two are inclusive.
+Past dates and equal endpoints are valid. Use stored calendar text without time,
+timezone, current-day sampling, inferred working days or urgency meaning. This
+inherits the native date grammar preserved by #305 and §18, not a second date
+model. There is no extra undated-only mode in this addition.
+
+The recorded-name comparison follows native title filtering's NFC and Romanian
+spelling precedent, with an explicitly bounded case mapping for this new server
+predicate. Define `F(text)` as NFC, then these exact one-character lowercase
+pairs, then Romanian folding: ASCII A–Z to a–z; Latin À–Ö and Ø–Þ to à–ö and ø–þ;
+Œ→œ and Ÿ→ÿ; Romanian Ă/Â/Î/Ș/Ş/Ț/Ţ to ă/â/î/ș/ş/ț/ţ; Russian А–Я to а–я and
+Ё→ё; finally `ă/â→a`, `î→i`, `ș/ş→s`, `ț/ţ→t`. Every other scalar remains
+unchanged. Match when `F(recorded displayLabel)` contains `F(trimmed name)` as a
+literal contiguous substring. Thus decomposed/composed Romanian names and cedilla
+variants match; `й` and `и` remain distinct, as do accents outside the named
+Romanian folds. Unknown-script case variants remain distinct. Do not substitute
+locale-sensitive or generic JavaScript/SQL lowercase and claim all-Unicode
+equivalence. Preserve submitted draft text and original displayed names; the
+trimmed, case-preserving name is the applied literal and echo. Homonymous labels
+may match several distinct memberships; this is no identity assertion.
+
+This exact comparison must execute in the backend predicate before offset/limit.
+PostgreSQL's built-in NFC normalization and finite literal character translation
+can express it without an extension, persisted normalized column or new package;
+qualify the chosen expression against actual PostgreSQL. Prefer literal substring
+position. If LIKE is used, bind values and escape the escape character, `%` and
+`_` before adding only the intended outer substring wildcards, with explicit
+escape semantics; never regex, interpolate SQL, or treat caller wildcards as
+operators. The frontend boundary must use the same exact finite comparison for
+response validation. Prove supplementary characters, NFC, Romanian, Latin/Russian
+case, preserved unknown-script distinctions, quotes, backslash, `%` and `_`.
+Filtering a fetched page or fetching all Tasks into JavaScript does not qualify.
+
+### Error order, snapshot and bounded response
+
+Order is explicit: the authentication/Actor adapter first returns401 for missing
+or invalid identity and403 for inadmissible Workspace/membership/Company context.
+For an admitted Actor, strictly parse the full query next (400 on invalid input),
+then in the read snapshot recheck live Task/Project/Client authority (403 on loss),
+then establish readable Projects and apply every filter, order and page. Hidden
+Projects/Clients contribute no row, lookahead or count. No readable Projects or
+no matches is a genuine200 empty page after successful authority checks. This
+collection has no item404 probe. Invalid stored facts/projection produce an
+unavailable response without partial rows, never a fabricated empty page.
+
+One Task-owned caller opens exactly one **read-only repeatable-read** transaction.
+All live Actor/Task/Project/Client authority, original relationships and labels,
+Task predicates and page selection use that same transaction connection and
+snapshot. Use the native unlocked Access read and Client's existing read-only
+authority participant; any needed narrow Project/Client participant must join the
+caller and preserve its owner's policy. In particular, ordinary Project label
+visibility or Actor payload strings alone do not prove the live Client grant.
+No nested owning transaction or fresh pooled connection may silently escape the
+snapshot. No row/advisory/command lock, Client identity/update barrier, lifecycle
+write guard, reversal-fence advance, command receipt, Activity event or other
+effect belongs to the read. Concurrent revocation or native change may fall
+before or after snapshot establishment; each returned page must be coherent,
+and every subsequent native read/command rechecks current authority.
+
+Select at most **26 matching Task rows** for a fixed25-row page: every Workspace,
+Company, readable-Project, state, responsibility/name and date predicate precedes
+offset/limit. Order by stored due date ascending, null last, then full database
+creation time and native identifier ascending. Return the first25 and set
+`hasNextPage` only from the matching26th row. Do not count/fetch all matching
+Tasks, page then redact/filter, or change order according to priority/name. Project
+visibility may still materialize readable references; this bounds Task selection
+and response, not globally constant work or memory for every Company size.
+Each page is a fresh snapshot. Unchanged sets must traverse completely without
+duplicates/omissions; intervening writes may shift offsets across requests.
+
+The successful response has `companyId`, requested numeric `offset`, `pageSize:25`,
+`hasNextPage`, `appliedFilters` and `tasks`. The complete filter echo always
+contains `state`, `responsibility`, `assigneeName`, `dueFrom`, `dueThrough`:
+defaults are explicit; unused name and absent date bounds are JSON null. Each
+row is the **complete native Task view**, including exact IDs, original Client,
+version, title, stored state, priority, recorded assignee/null, due date/null,
+creator and timestamps, with the native state-dependent completion, blockage or
+cancellation declaration, plus native readable Project labels `{id,title,
+clientDisplayName}`. The Task's own `projectId` and `clientAccountId` retain exact
+continuation identity; Project/Client labels come from their readers, not guesses.
+No new result/evidence, eligibility, email or union field is added.
+
+Validate the entire unknown response once before any row, count-like message or
+Open control is exposed. Require expected Company, exact requested offset,
+pageSize25, boolean lookahead, at most25 unique Task IDs and exactly25 rows when
+lookahead is true. Require the complete normalized echo to equal the applied
+request, including nulls/defaults; reject missing or inconsistent fields. Validate
+every full native Task/state-dependent declaration and Project context, matching
+Company/Project identity, valid native UUID Task/Project/original-Client and
+actor/membership identifiers, versions/dates/timestamps/actors/labels, and
+satisfaction of all applied state/responsibility/name/date predicates.
+Reject a malformed later row rather than showing earlier rows. Check observable
+due/null-last and creation order without resorting; rounded public timestamps
+cannot prove a full-precision identifier tie, so do not reject valid database
+order using a JavaScript timestamp-equality guess. Server REST tests prove the
+full creation/id ordering. Deliberate additive HTTP metadata may be ignored;
+unknown required native semantics fail closed. A malformed/foreign200 offers
+same-attempt Retry and no navigation, never empty success.
+
+### Interaction, native continuation and protected intent
+
+Offer **Team Tasks** through the existing authorized Company Task-read entry in
+both frames, retaining visible Company context and accepted Prisme controls.
+Initial deliberate entry reads offset0 with open/all/no-date defaults. Keep a
+local draft separate from applied criteria and the last requested page. Typing,
+changing controls, clearing a draft or changing locale performs no I/O. Validate
+drafts with associated errors, including a date control's rejected/bad-input
+state; invalid or empty name and reversed dates neither issue a request nor
+replace the existing applied page. Selecting all/unassigned hides the name
+criterion without submitting it; a retained local name draft is not an applied
+filter. Explicit valid **Apply** captures normalized criteria, resets offset0
+and issues one new read; applied labels always describe that request, not a
+later draft. Applying identical criteria is a deliberate fresh read.
+
+Previous reads `max(0,offset-25)` under applied criteria; Next reads `offset+25`
+only from a validated lookahead, with safe arithmetic. Disable Next when addition
+would exceed the safe-integer bound. Refresh reads offset0 with the same applied
+criteria and leaves the draft intact. Retry repeats the failed applied criteria
+and offset exactly. Disable duplicate paging/Apply while a read is pending;
+newer deliberate reads retire earlier requests. Withhold old rows while loading
+or after failure; never relabel stale rows with new criteria. Distinguish loading,
+genuine empty offset0, empty out-of-range later page, denied, network/unavailable
+and malformed data. Out-of-range offers explicit Previous/Refresh, without
+automatic traversal, clamping or a false total. Errors preserve draft/applied
+criteria/page for deliberate recovery within the still-live scope.
+
+Open carries the exact native `{projectId,taskId}` from a validated live row into
+the existing Task-in-Project journey; never choose a same-title/first Task or use
+row absence as denial. Native detail/history performs fresh owning reads and
+remains the only editor/command owner. Its own historical/closed/current authority
+determines read-only or editable behavior. No workboard write, optimistic state,
+duplicate editor or auto-assignment is introduced. Returning explicitly to Team
+Tasks retains its scoped applied criteria, literal local draft and offset, and
+reads that page freshly. Changed Tasks move, disappear or appear only according
+to the returned current predicates; page shrink yields the explicit out-of-range
+state. Preserve the destination's pending exact Task-open intent until its own
+fresh reads settle; workboard changes cannot substitute another target.
+
+Production section panels can remain mounted while hidden. Integrate return and
+refresh with that actual parent lifecycle; neither hidden-panel remount guesses
+nor local fixture state proves a fresh return. Filters, Apply/paging/Refresh,
+malformed reads, denied reads and return replace only workboard read state. They
+must preserve independent native Task, result and Project drafts and pending,
+uncertain or confirmed intent: exact target/path, payload, observed version,
+idempotency key and recorded outcome. Never auto-resubmit, rebase, clear or mark
+a native command successful because a row disappeared. A confirmed native write
+stays confirmed when a subsequent workboard read fails. Losing a permission
+consumed only by that command/result retires its own owner according to its
+rules; workboard failure alone is no command-authority loss.
+
+### Consumer lifetime, recovery and localization
+
+Workboard rows, draft/applied criteria/page, requests, callbacks, navigation and
+return token belong to one lifetime established through the actual App parent:
+browser identity and session generation, active Internal User/Workspace/membership,
+Company selection generation, and consumed Task/Project/Client authority. Capture
+the relevant assignment identities, known versions and effective read permissions,
+including the Workspace `client.manage` alternative and Client authority/identity
+generation affecting native visibility. Retire permanently on consumed changes,
+revocation/suspension, Company change, sign-out, parent removal or unmount.
+Navigating within the retained native/workboard journey preserves its live scope;
+a genuine retired scope never revives because Company IDs or permission strings
+become equal again. A→B→A and revoke/fresh-grant require fresh consumer ownership.
+Do not key the workboard indiscriminately on every unconsumed grant: unrelated
+Document, result, commercial or configuration changes preserve its criteria,
+draft, page and focus and trigger no workboard I/O when consumed authority is
+unchanged. Native owners independently decide their own consumed changes.
+
+Abort is advisory. Guard freshness before and after every await, before rendering,
+focus/scroll, Open/return, session rejection, Company rejection, Actor acceptance,
+Activity refresh or any shared callback. This guard must cover the **complete
+Actor snapshot consumed by transitive recovery**, not just the visible Task-read
+projection. A403 may start selected-Company `/access/current-actor`, Workspace
+fallback and Actor revalidation; all belong to the original identity, session,
+base Actor and read scope until that recovery completes. If any input consumed
+by that full recovery changes, retire the old recovery before it can affect
+shared state, while an independently valid workboard survives unrelated grants.
+Held late200/403 or recovery200/403 cannot reject the current session/Company,
+accept an obsolete Actor, navigate, refresh shared Activity or render after
+retirement, even when transport ignores abort and A is selected again. Never
+repair an old consumer by comparing only current equal-looking strings. Test
+actual parent and administrative revalidation wiring as well as the child.
+
+Use centralized ro/ru/fr/en interface copy, shared Select/date controls and
+existing Task wording. Locale-only changes retain exact draft/applied literals,
+page, mounted controls/focus, pending request and native command identity, with
+no Task, workboard, eligible-member or Actor I/O. Dates retain canonical stored
+values while labels format for locale. Render complete literal titles, names,
+Project/Client labels and state declarations as text, never HTML or truncation
+that hides facts. Require keyboard Apply/Previous/Next/Refresh/Retry/Open/return,
+visible focus and associated errors, complete wrapping and no horizontal page
+overflow at1440×900 and390×844. No new presentation system or manual identifier
+entry is needed.
+
+### Public proof, compatibility and readiness
+
+1. Real PostgreSQL public REST must create more than25 matching native Tasks
+   across several readable Projects, all states, self/other/null and retained
+   ineligible assignees, past/current/future/null dates. Include assigned
+   nonblocked work outside old subsets. Prove defaults/all/single states,
+   responsibility and inclusive date intersections, complete echo, exact25/26
+   boundaries and full unchanged-set traversal in native due/null/creation/id
+   order. Put nonmatches and unreadable rows before/between matches so filtering
+   after paging fails. Prove name comparison/escaping cases above on actual PG.
+2. Through that REST seam, reject every strict grammar failure and prove the
+   specified error order, live known-version/assignment/context/Task/Project/
+   original-Client authority, suspended/revoked/foreign cases, historical labels
+   and closed read-only facts. Deterministically hold concurrent native changes
+   and authority changes between composition stages and trace the one read-only
+   snapshot, including transitive Project/Client participants. Prove no command,
+   row or advisory lock acquisition and no event, receipt, Task-version or
+   Client-fence write effects. Fresh native edits, assignment changes, reopening
+   and closure must affect later matching reads.
+3. Actual App/HTTP tests must prove both authorized frames, separate drafts and
+   Apply, exact paging/refresh/retry/out-of-range, whole-page/echo validation
+   (including a malformed last row), exact native Task and fresh return at the
+   retained criteria/page. Connect real pending/uncertain/confirmed native Task,
+   result and Project intent to the journey; prove failure/filter changes preserve
+   independent drafts and exact retry identity rather than merely seeding state.
+4. Actual App parent/admin composition must hold late200/403 across consumed
+   Company/identity/session/Task/Project/Client A→B→A and equal-string
+   revoke/regrant. Start recovery first, hold its selected/Workspace Actor replies,
+   change each consumed base Actor/read-scope input and release them; prove no
+   stale render, navigation or shared rejection/Actor/Activity effect. Conversely
+   unconsumed grants and each of four locale changes preserve live workboard and
+   native state/focus with no extra I/O. Fixture-only child remounts do not prove
+   the production retirement contract.
+5. A registered **actual App/API/disposable PostgreSQL** journey at1440×900 and
+   390×844 must deliberately apply name/state/date criteria over a synthetic
+   cross-Project team set with more than25 matches, reach a later page by
+   keyboard, open that exact native Task/history, edit/save it under existing
+   authority and return to a fresh workboard with retained criteria/draft/page.
+   Verify changed membership and independent native outcome, inspect original
+   screenshots and assert complete wrapping/no overflow. A fixture, import or
+   404-only substitute cannot establish this journey; no owner manual test is
+   required.
+
+The existing native `TaskService.discoveryPage` serves unassigned and blocked
+reads only; its due/null/creation/id selection is the reuse seam. A third actual
+consumer may justify one narrow Task-owned native page participant, with each
+read retaining its own strict grammar, predicates and response. Do not introduce
+a generic search/workflow engine or silently add filters/echo to old reads.
+Preserve My Tasks, attention/upcoming/overdue, §§26/32, native Task DTOs,
+fingerprints/receipts, grouped planning and command transaction/locking defaults.
+Any read-only Project/Client composition change must be explicit and narrow;
+existing command callers retain their original policy and defaults. No schema,
+migration, extension, dependency, new captured grant or external service is needed.
+
+Documentation readiness has no missing external input. Real tenant roles, grants,
+usage and adoption remain unproved; this bounded read needs none of them to be
+specified and synthetically tested. Independent Standards then Spec preparation,
+root's actual delegated approval, canonical docs integration evidence and verified
+guarded merge must precede a **separate fresh runtime child**, also waiting for
+preceding #941 delivery. Do not create that issue/branch or claim runtime within
+#944. Root alone owns publication and the final source-derived six-family docs
+gate; its ten heavy families are `not_required`, never passed without execution.
+An actual unresolved authority question must be reported rather than filled in.
+
+Excluded: all-Companies/global or historical-content search, personnel directory,
+new permission or relaxed write/eligibility, staffing/performance/urgency metrics,
+inferred priority, automatic assignment/status/notifications, mutations in this
+view, new business state/obligation/evidence/applicability/fulfillment/review/
+certification/closure/legal/pricing policy, provider/infrastructure, real data or
+grants, deployment and whole-MVP approval. [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+alone retains `MISSION-CLOSE-01` for the existing consolidated email; this
+workboard neither depends on nor decides it.
