@@ -42,6 +42,7 @@ import { useInterfaceLocale } from '../localization/interface-locale';
 import { ApplicationPresentation } from '../production-shell/application-presentation';
 import { Select } from '../presentation/Select';
 import './task.css';
+import { TaskPlanning } from './TaskPlanning';
 import {
   TaskCalendarDate,
   TaskDeclarationFacts,
@@ -357,7 +358,10 @@ function TaskProject({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [members, setMembers] = useState<Assignee[] | null>(null);
   const [mutation, setMutation] = useState<Mutation>({ kind: 'idle' });
-  const [reasonDraft, setReasonDraft] = useState<ReasonDraft | null>(null);
+  const [planningProtected, setPlanningProtected] = useState(false);
+  const [reasonDraft, setReasonDraft] = useState<
+    (ReasonDraft & { taskId: string; version: number }) | null
+  >(null);
   const [feedback, setFeedback] = useState<TaskFeedback | null>(null);
   const [taskSearch, setTaskSearch] = useState('');
   const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
@@ -388,13 +392,17 @@ function TaskProject({
     canRead && actor.activeCompany?.taskPermissions?.includes('task.manage');
   const projectClosed =
     projectStatus !== null && isClosedProjectStatus(projectStatus);
-  const busy = mutation.kind === 'pending';
+  const busy = mutation.kind === 'pending' || planningProtected;
   const current = detail?.kind === 'ready' ? detail : null;
   const mutable =
     !projectClosed &&
     (current?.mutable ?? (load.kind === 'ready' && load.listing.mutable));
   const editable =
-    canManage && mutable && mutation.kind === 'idle' && members !== null;
+    canManage &&
+    mutable &&
+    mutation.kind === 'idle' &&
+    members !== null &&
+    !planningProtected;
   const normalizedTaskSearch = taskFilterText(taskSearch.trim());
   const dateSelection = resolveDateFilter(dateFilter);
   const unusableRange = dateSelection.kind === 'unusable';
@@ -520,6 +528,18 @@ function TaskProject({
         : previous,
     );
     setDetail(nextDetail);
+    // A grouped refresh preserves an independent explanation only while its exact native Task is unchanged.
+    setReasonDraft((previous) =>
+      previous &&
+      listing.mutable &&
+      !projectClosed &&
+      nextDetail?.kind === 'ready' &&
+      nextDetail.mutable &&
+      previous.taskId === nextDetail.task.id &&
+      previous.version === nextDetail.task.version
+        ? previous
+        : null,
+    );
     const saved = drafts.current.get(taskId ?? 'create');
     const task = nextDetail?.kind === 'ready' ? nextDetail.task : null;
     setDraft(
@@ -561,6 +581,7 @@ function TaskProject({
       reload?: boolean;
       requestedOpenId?: number;
       sourceSignal?: AbortSignal;
+      preserveReasonDraft?: boolean;
     } = {},
   ) {
     if (options.sourceSignal?.aborted) return;
@@ -571,7 +592,7 @@ function TaskProject({
     setSelected(taskId);
     setDetail(taskId ? { kind: 'loading' } : null);
     setDraft(emptyDraft);
-    setReasonDraft(null);
+    if (!options.preserveReasonDraft) setReasonDraft(null);
     setMembers(null);
     if (mutation.kind !== 'uncertain') setFeedback(null);
     if (options.reload) {
@@ -631,6 +652,7 @@ function TaskProject({
   // command is never aborted: the open waits for its outcome and, once
   // confirmed, for the read of its result, so neither overwrites the other.
   const commandSettling =
+    planningProtected ||
     mutation.kind === 'pending' ||
     (mutation.kind === 'blocked' && load.kind === 'loading');
   useEffect(() => {
@@ -768,6 +790,7 @@ function TaskProject({
   }
   function save(event: FormEvent) {
     event.preventDefault();
+    if (planningProtected) return;
     const title = draft.title.trim();
     if (
       !title ||
@@ -812,13 +835,20 @@ function TaskProject({
       });
   }
   function choose(task: TaskView, move: TaskMove) {
+    if (planningProtected) return;
     const taskId = task.id;
     const expectedVersion = task.version;
     const key = crypto.randomUUID();
     switch (move) {
       case 'blocked':
       case 'cancelled':
-        setReasonDraft({ kind: move, text: '', invalid: false });
+        setReasonDraft({
+          kind: move,
+          text: '',
+          invalid: false,
+          taskId,
+          version: expectedVersion,
+        });
         return;
       case 'todo':
       case 'in_progress':
@@ -848,6 +878,7 @@ function TaskProject({
   }
   function declare(event: FormEvent) {
     event.preventDefault();
+    if (planningProtected) return;
     if (!current || !reasonDraft || mutation.kind !== 'idle') return;
     if (!validTaskReason(reasonDraft.text)) {
       setReasonDraft({ ...reasonDraft, invalid: true });
@@ -903,6 +934,26 @@ function TaskProject({
           {selected ? copy.reloadDetail : copy.reload}
         </button>
       </header>
+      {canManage && load.kind !== 'denied' && (
+        <TaskPlanning
+          identity={identity}
+          companyId={companyId}
+          projectId={projectId}
+          disabled={
+            mutation.kind === 'pending' || mutation.kind === 'uncertain'
+          }
+          projectClosed={projectClosed}
+          onProtectionChange={setPlanningProtected}
+          onDenied={deny}
+          onReloaded={() =>
+            Promise.all([
+              open(selected, { preserveReasonDraft: true }),
+              onProjectChanged?.(),
+            ]).then(() => undefined)
+          }
+          onConfirmed={() => onActivityRecorded?.()}
+        />
+      )}
       {load.kind !== 'ready' && (
         <p role={load.kind === 'loading' ? 'status' : 'alert'}>
           {load.kind === 'loading'
@@ -1136,7 +1187,11 @@ function TaskProject({
               {current && canManage && mutable && reasonDraft && (
                 <TaskReasonForm
                   draft={reasonDraft}
-                  onChange={setReasonDraft}
+                  onChange={(next) =>
+                    setReasonDraft((previous) =>
+                      previous ? { ...previous, ...next } : null,
+                    )
+                  }
                   onSubmit={declare}
                   onDismiss={() => setReasonDraft(null)}
                 />
@@ -1151,7 +1206,7 @@ function TaskProject({
                     <button
                       key={move}
                       type="button"
-                      disabled={mutation.kind !== 'idle'}
+                      disabled={mutation.kind !== 'idle' || planningProtected}
                       onClick={() => choose(current.task, move)}
                     >
                       {copy.moves[move]}

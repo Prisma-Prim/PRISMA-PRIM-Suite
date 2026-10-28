@@ -2186,6 +2186,45 @@ paths:
           description: No verified External Principal is available.
         '403':
           description: The actor lacks assignment authority or the assignment is outside the current Workspace.
+  /api/projects/{projectId}/tasks/planning:
+    post:
+      operationId: planSelectedProjectTasks
+      summary: Save responsibility and due dates for selected open Tasks atomically
+      description: >-
+        Requires current Company Task Manager, Project and original Client read authority.
+        Accepts 1–50 distinct Task IDs of this Project, each with its observed version and
+        explicit desired assignee/date (null clears). No other fields change. Native Task
+        edits, history, Client fence and one complete receipt share a transaction. Reuse
+        of a native Task key for different ordered intent conflicts. Exact committed replay
+        rechecks current authority/visibility before fresh version, state or eligibility gates.
+      tags: [Task]
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskPlanningInput'
+      responses:
+        '201':
+          description: The complete ordered native Task outcomes, including no-ops, or exact historical replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPlanningReceipt'
+        '400':
+          description: Invalid group/row/key, duplicate Task, or unavailable changed assignee. No Task changed.
+        '401':
+          description: No verified identity.
+        '403':
+          description: Current Workspace/Company/Task authority is unavailable.
+        '404':
+          description: A target is not visible in this Project or its original Client is unavailable for fresh work.
+        '409':
+          $ref: '#/components/responses/TaskProjectConflict'
   /api/projects/{projectId}/tasks:
     post:
       operationId: createProjectTask
@@ -4338,6 +4377,85 @@ components:
         taskId: { type: string, format: uuid }
         resultId: { type: string, format: uuid }
         resultRevision: { type: integer, minimum: 1, maximum: 2147483647 }
+    TaskPlanningInput:
+      type: object
+      additionalProperties: false
+      required: [tasks]
+      properties:
+        tasks:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: Ordered distinct Task identities. Reordering changes command identity.
+          items:
+            type: object
+            additionalProperties: false
+            required: [taskId, expectedVersion, assigneeMembershipId, dueDate]
+            properties:
+              taskId: { type: string, format: uuid }
+              expectedVersion:
+                { type: integer, minimum: 1, maximum: 2147483647 }
+              assigneeMembershipId: { type: [string, 'null'], format: uuid }
+              dueDate:
+                type: [string, 'null']
+                format: date
+                description: Exact valid YYYY-MM-DD, years0001–9999, without timezone conversion; past dates allowed.
+    TaskPlanningReceipt:
+      type: object
+      additionalProperties: false
+      required: [schema, projectId, tasks]
+      properties:
+        schema: { const: task-planning/v1 }
+        projectId: { type: string, format: uuid }
+        tasks:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: Complete ordinary Task receipts in input order, including unchanged fields/declarations and attribution. A replay describes the historical outcome; fresh reads authorize subsequent work.
+          items:
+            type: object
+            required:
+              [
+                id,
+                companyId,
+                projectId,
+                clientAccountId,
+                title,
+                status,
+                priority,
+                assignee,
+                dueDate,
+                version,
+                completion,
+                createdBy,
+                createdAt,
+                updatedAt,
+              ]
+            properties:
+              id: { type: string, format: uuid }
+              companyId: { type: string, format: uuid }
+              projectId: { type: string, format: uuid }
+              clientAccountId: { type: string, format: uuid }
+              title: { type: string }
+              status:
+                {
+                  type: string,
+                  enum: [todo, in_progress, blocked, done, cancelled],
+                }
+              priority: { type: string, enum: [normal, important, critical] }
+              version: { type: integer, minimum: 1, maximum: 2147483647 }
+              dueDate: { type: [string, 'null'], format: date }
+              assignee:
+                type: [object, 'null']
+                properties:
+                  workspaceMembershipId: { type: string, format: uuid }
+                  displayLabel: { type: string }
+              createdBy: { $ref: '#/components/schemas/TaskActor' }
+              createdAt: { type: string, format: date-time }
+              updatedAt: { type: string, format: date-time }
+              completion:
+                type: [object, 'null']
+                description: The native completion declaration; no completion is created by this command.
     TaskActor:
       type: object
       additionalProperties: false

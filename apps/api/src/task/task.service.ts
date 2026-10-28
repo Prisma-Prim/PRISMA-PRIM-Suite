@@ -31,7 +31,9 @@ import {
 } from '../clock/operational-date.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
 import { DatabaseContext } from '../database/database-context.js';
-import { taskCommands, tasks } from '../database/schema/index.js';
+import { tasks } from '../database/schema/index.js';
+import { TaskCommandStore } from './task-command.store.js';
+import type { TaskPlanningInput } from './task-planning.validation.js';
 import { ProjectClosedGuard } from '../project/project-closed.guard.js';
 import { isOpenProjectStatus } from '../project/project-status.js';
 import { ProjectService } from '../project/project.service.js';
@@ -85,6 +87,7 @@ export class TaskService {
     private readonly clients: ClientOperationalReferenceService,
     private readonly accountability: AccountabilityService,
     @Inject(SERVER_CLOCK) private readonly clock: ServerClock,
+    private readonly commands: TaskCommandStore,
   ) {}
   async list(actor: ActorContext, projectIdValue: unknown) {
     const projectId = requireUuid(projectIdValue);
@@ -781,6 +784,60 @@ export class TaskService {
       key,
     );
   }
+  /** The group owner holds one transaction. This native seam proves live authority and all targets before replay. */
+  async planningScopeWithinTransaction(input: {
+    actor: ActorContext;
+    projectId: string;
+    taskIds: readonly string[];
+  }) {
+    const { actor, projectId } = input;
+    const companyId = await this.access.requireActor(actor, true, true);
+    const project = await this.projects.read(actor, projectId);
+    const targets = await this.database.connection
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.workspaceId, actor.workspaceId),
+          eq(tasks.companyId, companyId),
+          eq(tasks.projectId, projectId),
+          inArray(tasks.id, [...input.taskIds]),
+        ),
+      );
+    if (targets.length !== input.taskIds.length) throw new NotFoundException();
+    return { companyId, projectId, clientAccountId: project.clientAccountId };
+  }
+
+  /** Uses the same native edit/write participant as individual mutations. No owning transaction or per-Task receipt. */
+  async planWithinTransaction(input: {
+    actor: ActorContext;
+    scope: TaskMutationScope;
+    tasks: TaskPlanningInput['tasks'];
+  }) {
+    await this.lockMutationScope(input.actor, input.scope);
+    const results = new Map<string, TaskView>();
+    // The original Client barrier serializes overlapping commands. Stable Task order also prevents row-lock inversion.
+    for (const row of [...input.tasks].sort((a, b) =>
+      a.taskId.localeCompare(b.taskId),
+    )) {
+      const current = await this.row(input.actor, row.taskId, true);
+      if (current.projectId !== input.scope.projectId)
+        throw new NotFoundException();
+      const { taskId, ...fields } = row;
+      results.set(
+        taskId,
+        await this.applyMutation(input.actor, input.scope.companyId, current, {
+          action: 'edit',
+          input: fields,
+        }),
+      );
+    }
+    return input.tasks.map(({ taskId }) => {
+      const result = results.get(taskId);
+      if (!result) throw new Error('Missing Task planning result.');
+      return result;
+    });
+  }
   async complete(
     actor: ActorContext,
     taskId: unknown,
@@ -849,70 +906,89 @@ export class TaskService {
       const visible = await this.visibleRow(actor, taskId);
       const replay = await this.replay(actor, idempotencyKey, command);
       if (replay) return replay;
-      // Lock Client identity before its relationship, including a new no-op command.
-      // Only material operations below advance the existing reversal fence.
-      await this.clients.lockActiveReferenceClient(
-        actor,
-        visible.clientAccountId,
-      );
-      await this.closedProjects.requireOpen({
-        actor,
+      await this.lockMutationScope(actor, {
         companyId,
         projectId: visible.projectId,
+        clientAccountId: visible.clientAccountId,
       });
       const current = await this.row(actor, taskId, true);
-      const occurredAt = new Date();
-      const change =
-        current.version !== commandInput.input.expectedVersion
-          ? null
-          : commandInput.action === 'edit'
-            ? isOpenTaskState(current.status)
-              ? await this.editChange(actor, current, commandInput.input)
-              : null
-            : transitionChange(commandInput, current, { actor, occurredAt });
-      if (!change)
-        throw new ConflictException(
-          'The Task changed. Reload before choosing another action.',
-        );
-      if (change === 'unchanged') {
-        const unchanged = view(current);
-        await this.recordCommand(actor, idempotencyKey, command, unchanged);
-        return unchanged;
-      }
-      if (current.version >= 2147483647)
-        throw new ConflictException('Task version is exhausted.');
-      await this.clients.recordReferenceUse(actor, current.clientAccountId);
-      const [changed] = await this.database.connection
-        .update(tasks)
-        .set({
-          ...change.updates,
-          version: current.version + 1,
-          updatedAt: occurredAt,
-        })
-        .where(
-          and(
-            eq(tasks.workspaceId, actor.workspaceId),
-            eq(tasks.companyId, companyId),
-            eq(tasks.id, taskId),
-            eq(tasks.version, current.version),
-          ),
-        )
-        .returning();
-      if (!changed)
-        throw new ConflictException(
-          'The Task changed. Reload before choosing another action.',
-        );
-      const result = view(changed);
-      await this.accountability.recordTaskEvent({
+      const result = await this.applyMutation(
         actor,
         companyId,
-        taskId,
-        occurredAt,
-        meaning: change.meaning,
-      });
+        current,
+        commandInput,
+      );
       await this.recordCommand(actor, idempotencyKey, command, result);
       return result;
     });
+  }
+  private async lockMutationScope(
+    actor: ActorContext,
+    scope: TaskMutationScope,
+  ) {
+    // Lock original Client identity before relationship, even for a new no-op. Only material edits advance its fence.
+    await this.clients.lockActiveReferenceClient(actor, scope.clientAccountId);
+    await this.closedProjects.requireOpen({
+      actor,
+      companyId: scope.companyId,
+      projectId: scope.projectId,
+    });
+  }
+  private async applyMutation(
+    actor: ActorContext,
+    companyId: string,
+    current: TaskRow,
+    commandInput: TaskCommand,
+  ) {
+    const taskId = current.id;
+    const occurredAt = new Date();
+    const change =
+      current.version !== commandInput.input.expectedVersion
+        ? null
+        : commandInput.action === 'edit'
+          ? isOpenTaskState(current.status)
+            ? await this.editChange(actor, current, commandInput.input)
+            : null
+          : transitionChange(commandInput, current, { actor, occurredAt });
+    if (!change)
+      throw new ConflictException(
+        'The Task changed. Reload before choosing another action.',
+      );
+    if (change === 'unchanged') {
+      return view(current);
+    }
+    if (current.version >= 2147483647)
+      throw new ConflictException('Task version is exhausted.');
+    await this.clients.recordReferenceUse(actor, current.clientAccountId);
+    const [changed] = await this.database.connection
+      .update(tasks)
+      .set({
+        ...change.updates,
+        version: current.version + 1,
+        updatedAt: occurredAt,
+      })
+      .where(
+        and(
+          eq(tasks.workspaceId, actor.workspaceId),
+          eq(tasks.companyId, companyId),
+          eq(tasks.id, taskId),
+          eq(tasks.version, current.version),
+        ),
+      )
+      .returning();
+    if (!changed)
+      throw new ConflictException(
+        'The Task changed. Reload before choosing another action.',
+      );
+    const result = view(changed);
+    await this.accountability.recordTaskEvent({
+      actor,
+      companyId,
+      taskId,
+      occurredAt,
+      meaning: change.meaning,
+    });
+    return result;
   }
   /** A field correction of an open Task; `unchanged` is a normalized no-op. */
   private async editChange(
@@ -983,33 +1059,11 @@ export class TaskService {
     return row;
   }
   private async lockCommand(actor: ActorContext, key: string) {
-    const lock = JSON.stringify([
-      'task',
-      actor.workspaceId,
-      actor.workspaceMembershipId,
-      key,
-    ]);
-    await this.database.connection.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtextextended(${lock},0))`,
-    );
+    await this.commands.lock({ actor, key });
   }
   private async replay(actor: ActorContext, key: string, command: string) {
-    const [existing] = await this.database.connection
-      .select()
-      .from(taskCommands)
-      .where(
-        and(
-          eq(taskCommands.workspaceId, actor.workspaceId),
-          eq(taskCommands.actorMembershipId, actor.workspaceMembershipId),
-          eq(taskCommands.idempotencyKey, key),
-        ),
-      );
-    if (!existing) return undefined;
-    if (existing.command !== command)
-      throw new ConflictException(
-        'Idempotency-Key was already used for another Task command.',
-      );
-    return readTaskView(existing.result);
+    const result = await this.commands.read({ actor, key, command });
+    return result === undefined ? undefined : readTaskView(result);
   }
   private async recordCommand(
     actor: ActorContext,
@@ -1017,17 +1071,22 @@ export class TaskService {
     command: string,
     result: TaskView,
   ) {
-    await this.database.connection.insert(taskCommands).values({
-      workspaceId: actor.workspaceId,
+    await this.commands.record({
+      actor,
+      key,
       companyId: result.companyId,
       taskId: result.id,
-      actorMembershipId: actor.workspaceMembershipId,
-      idempotencyKey: key,
       command,
       result,
     });
   }
 }
+
+type TaskMutationScope = {
+  companyId: string;
+  projectId: string;
+  clientAccountId: string;
+};
 
 function calendarDateAfter(date: string, days: number): string {
   const instant = Date.parse(`${date}T00:00:00.000Z`) + days * 86_400_000;

@@ -16,10 +16,22 @@ import {
   type ActorContextRequest,
 } from '../access/actor-context.adapter.js';
 import { TaskService } from './task.service.js';
+import { TaskPlanningService } from './task-planning.service.js';
 @Controller()
 @UseGuards(ActorContextAdapter)
 export class TaskController {
-  constructor(private readonly tasks: TaskService) {}
+  constructor(
+    private readonly tasks: TaskService,
+    private readonly planning: TaskPlanningService,
+  ) {}
+  @Post('projects/:projectId/tasks/planning') plan(
+    @Req() request: ActorContextRequest,
+    @Param('projectId') id: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.planning.plan(actor(request), id, body, key);
+  }
   @Get('projects/:projectId/tasks') list(
     @Req() request: ActorContextRequest,
     @Param('projectId') id: string,
