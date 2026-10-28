@@ -546,12 +546,21 @@ export function OperationalRiskWorkspace({
           : journal.state.kind === 'none'
             ? confirmedJournal?.originalEntryId
             : journal.state.root;
+    const riskId = selected.current;
+    const sameJournalRead = journal.checkpoint();
+    const live = () =>
+      mounted.current &&
+      !retired.current &&
+      sequence === reviewSequence.current &&
+      selected.current === riskId;
     const listLoaded = await loadList();
-    if (!mounted.current || sequence !== reviewSequence.current) return;
-    const latest = selectedId ? await loadDetail(selectedId) : undefined;
-    const statement = root ? await journal.load(root) : undefined;
-    if (!mounted.current || sequence !== reviewSequence.current || !listLoaded)
-      return;
+    if (!live() || !sameJournalRead()) return;
+    const latest = riskId ? await loadDetail(riskId) : undefined;
+    if (!live() || !sameJournalRead()) return;
+    const statementRead = root ? journal.load(root) : undefined;
+    const sameRefreshedRead = journal.checkpoint();
+    const statement = await statementRead;
+    if (!live() || !sameRefreshedRead() || !listLoaded) return;
     const current = latest && latest.revision >= knownRevision.current;
     if (
       notice === 'savedRefreshError' &&

@@ -836,81 +836,92 @@ withPostgres('Company Operational Risk public REST', () => {
     expect(object(saved.entry).narrative).toBe(scenario.body.narrative);
   });
 
-  it('fails closed on corrupt or unknown stored correction receipts without recomputing or rewriting their historical result', async () => {
-    const fixture = await prepared();
-    const scenario = await journalScenario(fixture);
-    const saved = await command({
-      fixture,
-      path: scenario.path,
-      body: scenario.body,
-      key: 'protected-historical-result',
-    });
-    const replace = async (response: unknown) => {
-      await pool.query(
-        'ALTER TABLE operational_risk_receipts DISABLE TRIGGER operational_risk_receipts_immutable',
-      );
-      try {
-        await pool.query(
-          "UPDATE operational_risk_receipts SET response=$1 WHERE command_kind='journal-correct' AND idempotency_key='protected-historical-result'",
-          [JSON.stringify(response)],
-        );
-      } finally {
-        await pool.query(
-          'ALTER TABLE operational_risk_receipts ENABLE TRIGGER operational_risk_receipts_immutable',
-        );
-      }
-    };
-    try {
-      for (const response of [
-        {
-          ...saved,
-          entry: {
-            ...object(saved.entry),
-            narrative: 'Another valid statement for the same original',
-          },
-        },
-        {
-          ...saved,
-          entry: {
-            ...object(saved.entry),
-            kind: 'future-journal-correction-v2',
-          },
-        },
-        {
-          ...saved,
-          entry: {
-            ...object(saved.entry),
-            originalEntryId: '00000000-0000-4000-8000-000000009999',
-          },
-        },
-        { ...saved, extra: 'Never discard persisted response fields' },
-      ]) {
-        await replace(response);
-        const before = await Promise.all(riskTables.map(rows));
-        const replay = await post({
-          fixture,
-          path: scenario.path,
-          body: scenario.body,
-          key: 'protected-historical-result',
-        });
-        expect(replay.status).toBe(500);
-        expect(await replay.json()).toMatchObject({
-          code: 'RISK_OUTCOME_UNCONFIRMED',
-        });
-        expect(await Promise.all(riskTables.map(rows))).toEqual(before);
-      }
-    } finally {
-      await replace(saved);
-    }
-    expect(
-      await command({
+  it.each(['observation', 'reassessment'] as const)(
+    'fails closed on corrupt or unknown stored %s correction receipts without recomputing or rewriting their historical result',
+    async (kind) => {
+      const fixture = await prepared();
+      const scenario = await journalScenario(fixture, kind);
+      const saved = await command({
         fixture,
         path: scenario.path,
         body: scenario.body,
         key: 'protected-historical-result',
-      }),
-    ).toEqual(saved);
-  });
+      });
+      const replace = async (response: unknown) => {
+        await pool.query(
+          'ALTER TABLE operational_risk_receipts DISABLE TRIGGER operational_risk_receipts_immutable',
+        );
+        try {
+          await pool.query(
+            "UPDATE operational_risk_receipts SET response=$1 WHERE command_kind='journal-correct' AND idempotency_key='protected-historical-result'",
+            [JSON.stringify(response)],
+          );
+        } finally {
+          await pool.query(
+            'ALTER TABLE operational_risk_receipts ENABLE TRIGGER operational_risk_receipts_immutable',
+          );
+        }
+      };
+      try {
+        for (const response of [
+          {
+            ...saved,
+            entry: {
+              ...object(saved.entry),
+              narrative: 'Another valid statement for the same original',
+            },
+          },
+          {
+            ...saved,
+            entry: {
+              ...object(saved.entry),
+              journalKind:
+                kind === 'observation' ? 'reassessment' : 'observation',
+            },
+          },
+          {
+            ...saved,
+            entry: {
+              ...object(saved.entry),
+              kind: 'future-journal-correction-v2',
+            },
+          },
+          {
+            ...saved,
+            entry: {
+              ...object(saved.entry),
+              originalEntryId: '00000000-0000-4000-8000-000000009999',
+            },
+          },
+          { ...saved, extra: 'Never discard persisted response fields' },
+        ]) {
+          await replace(response);
+          const before = await Promise.all(riskTables.map(rows));
+          const replay = await post({
+            fixture,
+            path: scenario.path,
+            body: scenario.body,
+            key: 'protected-historical-result',
+          });
+          expect(replay.status).toBe(500);
+          expect(await replay.json()).toMatchObject({
+            code: 'RISK_OUTCOME_UNCONFIRMED',
+          });
+          expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+        }
+      } finally {
+        await replace(saved);
+      }
+      expect(
+        await command({
+          fixture,
+          path: scenario.path,
+          body: scenario.body,
+          key: 'protected-historical-result',
+        }),
+      ).toEqual(saved);
+    },
+  );
 
   it('records literal facts, unknown optional values and explicit unassessed/unassigned truth without widening legacy access', async () => {
     const fixture = await prepared();

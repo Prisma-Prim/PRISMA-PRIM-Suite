@@ -50,7 +50,13 @@ export function useRiskJournalStatement({
   async function load(
     originalEntryId: string,
   ): Promise<OperationalRiskJournalStatement | undefined> {
-    if (!companyId || !riskId) return undefined;
+    if (
+      !companyId ||
+      !riskId ||
+      !mounted.current ||
+      selectedRisk.current !== riskId
+    )
+      return undefined;
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
@@ -92,5 +98,13 @@ export function useRiskJournalStatement({
       return undefined;
     }
   }
-  return { state, load, clear };
+  function checkpoint(): () => boolean {
+    const risk = selectedRisk.current;
+    const sequence = generation.current;
+    return () =>
+      mounted.current &&
+      selectedRisk.current === risk &&
+      generation.current === sequence;
+  }
+  return { state, load, clear, checkpoint };
 }
