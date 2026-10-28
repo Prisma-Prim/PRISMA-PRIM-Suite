@@ -169,6 +169,13 @@ it creates no Document Registry entry, provider Location or official designation
 Non-official rehearsal output and later numbering retain distinct immutable
 representations/Versions; an approved checksum is never rewritten.
 
+[Commercial Workflow §33](release-3-commercial-33-non-official-pdf-download.md)
+solely owns the bounded read-derived non-official PDF of exact existing model-based
+Offer/ordinary Contract content. It preserves the source HTML and original bytes,
+creates no Registry record/Version/Location and grants no official designation,
+signature equivalence or operational authority. Received-PDF storage and numbering
+retain their independent owners.
+
 The bounded [Commercial Workflow §29](release-3-commercial-29-company-contract-model.md)
 defines complete Company ordinary consulting Contract model configuration,
 including sectionsI–IX, party/signature areas and thirteen intended-activity rows,
