@@ -79,7 +79,7 @@
   cursor: default;
   opacity: 0.55;
 }
-.risk-workspace :is(button, input, textarea, summary):focus-visible {
+.risk-workspace :is(button, input, textarea, summary, h3):focus-visible {
   outline: 3px solid #b49aea;
   outline-offset: 3px;
 }
@@ -123,6 +123,10 @@
   display: grid;
   gap: 1rem;
   border-top: 4px solid #ad91eb;
+}
+.risk-editor .risk-field {
+  display: grid;
+  gap: 0.45rem;
 }
 .risk-editor label {
   display: grid;
@@ -227,4 +231,15 @@
   .risk-workspace button {
     transition: none;
   }
+}
+
+.risk-editor-context {
+  background: #f7f3ff;
+  border: 1px solid #e4dcf5;
+  border-radius: 0.8rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+}
+.risk-editor-context p {
+  margin: 0.4rem 0;
 }

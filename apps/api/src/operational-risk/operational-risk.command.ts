@@ -5,8 +5,10 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type { ActorContext } from '../access/access.types.js';
 import { operationalRiskReceipts } from '../database/schema/index.js';
 import { readOperationalRiskResult } from './operational-risk.persistence.js';
+import { readOperationalRiskJournalCorrection } from './operational-risk.validation.js';
 
-export type OperationalRiskCommandKind = 'record' | 'journal' | 'correct';
+export type OperationalRiskCommandKind =
+  'record' | 'journal' | 'correct' | 'journal-correct';
 
 export async function operationalRiskReplay({
   connection,
@@ -16,15 +18,21 @@ export async function operationalRiskReplay({
   key,
   fingerprint,
   riskId,
+  journal,
 }: {
   connection: NodePgDatabase;
   actor: ActorContext;
   companyId: string;
-  kind: OperationalRiskCommandKind;
   key: string;
   fingerprint: string;
   riskId?: string;
-}) {
+} & (
+  | { kind: 'journal-correct'; journal: { entryId: string; body: unknown } }
+  | {
+      kind: Exclude<OperationalRiskCommandKind, 'journal-correct'>;
+      journal?: never;
+    }
+)) {
   const scope = JSON.stringify([
     'operational-risk-command',
     actor.workspaceId,
@@ -60,7 +68,23 @@ export async function operationalRiskReplay({
   const result = readOperationalRiskResult(receipt.response, {
     companyId,
     riskId,
+    journal:
+      kind === 'journal-correct'
+        ? {
+            entryId: journal.entryId,
+            input: readOperationalRiskJournalCorrection(journal.body),
+          }
+        : undefined,
   });
+  if (
+    (kind === 'record' && result.entry.kind !== 'intake-recorded') ||
+    (kind === 'correct' && result.entry.kind !== 'intake-corrected') ||
+    (kind === 'journal' &&
+      result.entry.kind !== 'observation' &&
+      result.entry.kind !== 'reassessment') ||
+    (kind === 'journal-correct' && result.entry.kind !== 'journal-corrected')
+  )
+    throw new Error('The stored Risk receipt command kind is invalid.');
   if (result.risk.id !== receipt.riskId)
     throw new Error('The stored Risk receipt target is invalid.');
   return result;

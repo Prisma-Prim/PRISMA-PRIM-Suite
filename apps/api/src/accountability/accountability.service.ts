@@ -1446,7 +1446,9 @@ export class AccountabilityService {
             'operational_risk.recorded' | 'operational_risk.intake.corrected';
         }
       | {
-          action: 'operational_risk.journal.recorded';
+          action:
+            | 'operational_risk.journal.recorded'
+            | 'operational_risk.journal.corrected';
           kind: 'observation' | 'reassessment';
         }
     ),
@@ -1464,7 +1466,7 @@ export class AccountabilityService {
         actorMembershipId: input.actor.workspaceMembershipId,
         recordedAt: input.recordedAt,
         metadata:
-          input.action === 'operational_risk.journal.recorded'
+          'kind' in input
             ? { revision: input.revision, kind: input.kind }
             : { revision: input.revision },
       })

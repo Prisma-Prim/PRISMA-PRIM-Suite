@@ -25,6 +25,7 @@ import {
   operationalRiskReplay,
   type OperationalRiskCommandKind,
 } from './operational-risk.command.js';
+import { currentJournalStatement } from './operational-risk.journal.js';
 import {
   buildOperationalRiskRecord,
   readOperationalRiskEntry,
@@ -43,9 +44,12 @@ import {
   readOperationalRiskHistoryCursor,
   readOperationalRiskIntake,
   readOperationalRiskJournal,
+  readOperationalRiskJournalCorrection,
+  readOperationalRiskNoQuery,
   readOperationalRiskListCursor,
   readOperationalRiskPagination,
   uuid,
+  type OperationalRiskJournalCorrectionInput,
 } from './operational-risk.validation.js';
 
 interface Command {
@@ -275,6 +279,130 @@ export class OperationalRiskService {
     });
   }
 
+  correctJournal({
+    actor,
+    riskId: submittedId,
+    journalEntryId: submittedEntryId,
+    body,
+    key,
+  }: Command & {
+    riskId: string;
+    journalEntryId: string;
+  }): Promise<OperationalRiskResult> {
+    return this.command(async () => {
+      const companyId = await this.access.requireActor({
+        actor,
+        record: true,
+        lock: true,
+      });
+      const riskId = uuid(submittedId);
+      const journalEntryId = uuid(submittedEntryId);
+      const idempotencyKey = requireIdempotencyKey(key);
+      const fingerprint = operationalRiskFingerprint({
+        riskId: submittedId,
+        journalEntryId: submittedEntryId,
+        body,
+      });
+      const replay = await operationalRiskReplay({
+        connection: this.database.connection,
+        actor,
+        companyId,
+        kind: 'journal-correct',
+        key: idempotencyKey,
+        fingerprint,
+        riskId,
+        journal: { entryId: journalEntryId, body },
+      });
+      if (replay) return replay;
+      const input = readOperationalRiskJournalCorrection(body);
+      const risk = await this.findRisk({
+        actor,
+        companyId,
+        riskId,
+        lock: true,
+      });
+      const statement = await currentJournalStatement({
+        connection: this.database.connection,
+        risk,
+        journalEntryId,
+      });
+      const next = this.nextRevision(risk, input.expectedRevision);
+      if (input.predecessorId !== statement.currentEntry.id) this.stale();
+      if (
+        input.narrative === statement.currentEntry.narrative &&
+        input.occurredOn === statement.currentEntry.occurredOn
+      )
+        throw new BadRequestException({
+          code: 'UNCHANGED_RISK_JOURNAL_FACTS',
+          message: 'A correction must change a journal fact.',
+        });
+      const recordedAt = this.now();
+      const [entry] = await this.database.connection
+        .insert(operationalRiskEntries)
+        .values({
+          ...this.attribution({
+            actor,
+            companyId,
+            riskId,
+            revision: next,
+            recordedAt,
+          }),
+          kind: 'journal-corrected',
+          originalEntryId: journalEntryId,
+          originalEntryRevision: statement.originalEntry.revision,
+          journalKind: statement.originalEntry.kind,
+          predecessorId: statement.currentEntry.id,
+          predecessorRevision: statement.currentEntry.revision,
+          payload: {
+            narrative: input.narrative,
+            occurredOn: input.occurredOn,
+            reason: input.reason,
+          },
+        })
+        .returning();
+      if (!entry)
+        throw new Error('The Risk journal correction was not recorded.');
+      const updated = await this.advance({
+        risk,
+        next,
+        currentIntakeRevision: risk.currentIntakeRevision,
+      });
+      return this.finish({
+        actor,
+        companyId,
+        risk: updated,
+        entry,
+        kind: 'journal-correct',
+        journal: { entryId: journalEntryId, input },
+        key: idempotencyKey,
+        fingerprint,
+        recordedAt,
+      });
+    });
+  }
+
+  journalStatement({
+    actor,
+    riskId,
+    journalEntryId,
+    query,
+  }: {
+    actor: ActorContext;
+    riskId: string;
+    journalEntryId: string;
+    query: unknown;
+  }) {
+    return this.read(async () => {
+      const companyId = await this.access.requireActor({ actor });
+      readOperationalRiskNoQuery(query);
+      return currentJournalStatement({
+        connection: this.database.connection,
+        risk: await this.findRisk({ actor, companyId, riskId: uuid(riskId) }),
+        journalEntryId: uuid(journalEntryId),
+      });
+    });
+  }
+
   list({
     actor,
     query,
@@ -494,22 +622,34 @@ export class OperationalRiskService {
     key,
     fingerprint,
     recordedAt,
+    journal,
   }: {
     actor: ActorContext;
     companyId: string;
     risk: RiskRow;
     entry: EntryRow;
-    kind: OperationalRiskCommandKind;
     key: string;
     fingerprint: string;
     recordedAt: Date;
-  }): Promise<OperationalRiskResult> {
+  } & (
+    | {
+        kind: 'journal-correct';
+        journal: {
+          entryId: string;
+          input: OperationalRiskJournalCorrectionInput;
+        };
+      }
+    | {
+        kind: Exclude<OperationalRiskCommandKind, 'journal-correct'>;
+        journal?: never;
+      }
+  )): Promise<OperationalRiskResult> {
     const result = readOperationalRiskResult(
       {
         risk: await this.readRecord(risk),
         entry: readOperationalRiskEntry(entry),
       },
-      { companyId, riskId: risk.id },
+      { companyId, riskId: risk.id, journal },
     );
     const envelope = {
       actor,
@@ -538,6 +678,13 @@ export class OperationalRiskService {
           ...envelope,
           action: 'operational_risk.journal.recorded',
           kind: result.entry.kind,
+        });
+        break;
+      case 'journal-corrected':
+        await this.accountability.recordOperationalRiskEvent({
+          ...envelope,
+          action: 'operational_risk.journal.corrected',
+          kind: result.entry.journalKind,
         });
         break;
       default:

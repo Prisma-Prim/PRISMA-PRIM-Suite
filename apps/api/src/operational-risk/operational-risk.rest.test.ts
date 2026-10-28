@@ -38,7 +38,12 @@ const riskTables = [
   'operational_risk_events',
   'operational_risk_receipts',
 ] as const;
-const commandKinds = ['record', 'journal', 'correct'] as const;
+const commandKinds = [
+  'record',
+  'journal',
+  'correct',
+  'journal-correct',
+] as const;
 type Fixture = {
   companyId: string;
   membershipId: string;
@@ -91,6 +96,820 @@ withPostgres('Company Operational Risk public REST', () => {
   afterAll(async () => {
     await harness?.close();
     await database?.close();
+  });
+
+  it('corrects an original journal statement through the public Company command without changing its kind or intake', async () => {
+    const fixture = await prepared();
+    const initial = await command({
+      fixture,
+      path: '/operational-risks',
+      body: facts,
+      key: 'journal-correction-intake',
+    });
+    const riskId = string(object(initial.risk).id);
+    const original = await command({
+      fixture,
+      path: `/operational-risks/${riskId}/journal`,
+      body: {
+        expectedRevision: 1,
+        kind: 'observation',
+        narrative: ' Original observation — exact literal ',
+        occurredOn: '2024-02-29',
+      },
+      key: 'journal-correction-original',
+    });
+    expect(object(original.risk).revision).toBe(2);
+    expect(original.entry).toMatchObject({
+      kind: 'observation',
+      revision: 2,
+      narrative: ' Original observation — exact literal ',
+      occurredOn: '2024-02-29',
+    });
+    const originalId = string(object(original.entry).id);
+    const corrected = await command({
+      fixture,
+      path: `/operational-risks/${riskId}/journal/${originalId}/corrections`,
+      body: {
+        expectedRevision: 2,
+        predecessorId: originalId,
+        narrative: ' Corrected observation\nÎ / Ж / <literal> ',
+        occurredOn: null,
+        reason: ' Verified the original source ',
+      },
+      key: 'journal-correction-first',
+    });
+    expect(corrected.entry).toEqual({
+      id: expect.any(String),
+      revision: 3,
+      kind: 'journal-corrected',
+      originalEntryId: originalId,
+      journalKind: 'observation',
+      predecessorId: originalId,
+      narrative: ' Corrected observation\nÎ / Ж / <literal> ',
+      occurredOn: null,
+      reason: ' Verified the original source ',
+      actor: {
+        workspaceMembershipId: fixture.membershipId,
+        displayName: 'risk-member',
+      },
+      recordedAt: '2026-10-21T12:00:00.000Z',
+    });
+    expect(corrected.risk).toEqual({ ...object(original.risk), revision: 3 });
+  });
+
+  it.each(['observation', 'reassessment'] as const)(
+    'reopens %s original/current, preserves every successor beyond a history boundary and permits motivated restoration',
+    async (kind) => {
+      const fixture = await prepared();
+      const scenario = await journalScenario(fixture, kind);
+      expect(await read({ fixture, path: scenario.root })).toEqual({
+        riskId: scenario.riskId,
+        companyId: fixture.companyId,
+        revision: 2,
+        originalEntry: scenario.original.entry,
+        currentEntry: scenario.original.entry,
+      });
+      const all: unknown[] = [scenario.original.entry, scenario.initial.entry];
+      let predecessorId = scenario.originalId;
+      for (
+        let expectedRevision = 2;
+        expectedRevision < 29;
+        expectedRevision++
+      ) {
+        const saved = await command({
+          fixture,
+          path: scenario.path,
+          key: `successor-${expectedRevision}`,
+          body: {
+            ...scenario.body,
+            expectedRevision,
+            predecessorId,
+            narrative:
+              expectedRevision === 2
+                ? object(scenario.original.entry).narrative
+                : expectedRevision === 28
+                  ? object(scenario.original.entry).narrative
+                  : ` Literal successor ${expectedRevision} Î Ж <script> `,
+            occurredOn:
+              expectedRevision === 28
+                ? '2024-02-29'
+                : expectedRevision % 2 === 0
+                  ? null
+                  : '2020-01-01',
+          },
+        });
+        expect(saved.risk).toEqual({
+          ...object(scenario.original.risk),
+          revision: expectedRevision + 1,
+        });
+        expect(saved.entry).toMatchObject({
+          kind: 'journal-corrected',
+          originalEntryId: scenario.originalId,
+          journalKind: kind,
+          predecessorId,
+        });
+        all.unshift(saved.entry);
+        predecessorId = string(object(saved.entry).id);
+      }
+      expect(await read({ fixture, path: scenario.root })).toEqual({
+        riskId: scenario.riskId,
+        companyId: fixture.companyId,
+        revision: 29,
+        originalEntry: scenario.original.entry,
+        currentEntry: all[0],
+      });
+      const first = object(
+        await read({
+          fixture,
+          path: `/operational-risks/${scenario.riskId}/history`,
+        }),
+      );
+      expect(array(first.items)).toEqual(all.slice(0, 25));
+      expect(first.next_cursor).toBe('5');
+      const older = await read({
+        fixture,
+        path: `/operational-risks/${scenario.riskId}/history?cursor=5`,
+      });
+      expect(older).toEqual({ items: all.slice(25), next_cursor: null });
+      expect(
+        (await rows('operational_risk_events'))
+          .map(object)
+          .filter((row) => row.action === 'operational_risk.journal.corrected'),
+      ).toHaveLength(27);
+      for (const row of (await rows('operational_risk_events'))
+        .map(object)
+        .filter((row) => row.action === 'operational_risk.journal.corrected'))
+        expect(row.metadata).toEqual({ revision: row.revision, kind });
+    },
+  );
+
+  it('rejects invalid journal corrections and reason-only changes without consuming their keys or any state', async () => {
+    const fixture = await prepared();
+    const scenario = await journalScenario(fixture);
+    const before = await Promise.all(riskTables.map(rows));
+    const missingDate = Object.fromEntries(
+      Object.entries(scenario.body).filter(([key]) => key !== 'occurredOn'),
+    );
+    const bodies = [
+      missingDate,
+      { ...scenario.body, narrative: '' },
+      { ...scenario.body, narrative: ' \n ' },
+      { ...scenario.body, narrative: '😀'.repeat(2501) },
+      { ...scenario.body, reason: '' },
+      { ...scenario.body, reason: ' \n ' },
+      { ...scenario.body, reason: '😀'.repeat(1001) },
+      { ...scenario.body, occurredOn: '2026-02-29' },
+      { ...scenario.body, occurredOn: '2026-01-01T00:00:00Z' },
+      { ...scenario.body, predecessorId: 'not-a-uuid' },
+      { ...scenario.body, expectedRevision: 0 },
+      { ...scenario.body, expectedRevision: 1.5 },
+      { ...scenario.body, expectedRevision: 2147483648 },
+      ...[
+        'kind',
+        'companyId',
+        'actor',
+        'score',
+        'status',
+        'originalEntryId',
+      ].map((key) => ({ ...scenario.body, [key]: 'not accepted' })),
+    ];
+    for (const body of bodies) {
+      const response = await post({
+        fixture,
+        path: scenario.path,
+        body,
+        key: 'refused-reusable',
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        code: 'INVALID_RISK_INPUT',
+      });
+    }
+    const noOp = await post({
+      fixture,
+      path: scenario.path,
+      body: {
+        ...scenario.body,
+        narrative: object(scenario.original.entry).narrative,
+        occurredOn: '2024-02-29',
+        reason: 'Only a changed reason',
+      },
+      key: 'refused-reusable',
+    });
+    expect(noOp.status).toBe(400);
+    expect(await noOp.json()).toMatchObject({
+      code: 'UNCHANGED_RISK_JOURNAL_FACTS',
+    });
+    expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+    const saved = await command({
+      fixture,
+      path: scenario.path,
+      body: {
+        ...scenario.body,
+        narrative: '😀'.repeat(2500),
+        reason: '😀'.repeat(1000),
+      },
+      key: 'refused-reusable',
+    });
+    expect(object(saved.entry).narrative).toBe('😀'.repeat(2500));
+    expect(object(saved.entry).reason).toBe('😀'.repeat(1000));
+  });
+
+  it('replays the exact journal correction historically after target and unrelated revisions and conflicts on every changed input or target', async () => {
+    const fixture = await prepared();
+    const scenario = await journalScenario(fixture);
+    const first = await command({
+      fixture,
+      path: scenario.path,
+      body: scenario.body,
+      key: 'frozen-journal-correct',
+    });
+    await command({
+      fixture,
+      path: scenario.path,
+      body: {
+        ...scenario.body,
+        expectedRevision: 3,
+        predecessorId: object(first.entry).id,
+        narrative: 'Later statement',
+      },
+      key: 'later-target',
+    });
+    const unrelated = await command({
+      fixture,
+      path: `/operational-risks/${scenario.riskId}/journal`,
+      body: {
+        expectedRevision: 4,
+        kind: 'reassessment',
+        narrative: 'Unrelated',
+      },
+      key: 'unrelated',
+    });
+    const before = await Promise.all(riskTables.map(rows));
+    expect(
+      await command({
+        fixture,
+        path: scenario.path,
+        body: Object.fromEntries(Object.entries(scenario.body).reverse()),
+        key: 'frozen-journal-correct',
+      }),
+    ).toEqual(first);
+    for (const body of [
+      { ...scenario.body, narrative: 'Changed' },
+      { ...scenario.body, occurredOn: '2000-01-01' },
+      { ...scenario.body, reason: 'Changed' },
+      { ...scenario.body, expectedRevision: 5 },
+      { ...scenario.body, predecessorId: object(first.entry).id },
+    ]) {
+      const response = await post({
+        fixture,
+        path: scenario.path,
+        body,
+        key: 'frozen-journal-correct',
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        code: 'IDEMPOTENCY_CONFLICT',
+      });
+    }
+    for (const path of [
+      `/operational-risks/${scenario.riskId}/journal/${string(object(unrelated.entry).id)}/corrections`,
+      `/operational-risks/00000000-0000-4000-8000-000000009999/journal/${scenario.originalId}/corrections`,
+    ]) {
+      const response = await post({
+        fixture,
+        path,
+        body: scenario.body,
+        key: 'frozen-journal-correct',
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        code: 'IDEMPOTENCY_CONFLICT',
+      });
+    }
+    expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+    for (const predecessorId of [
+      scenario.originalId,
+      string(object(unrelated.entry).id),
+      '00000000-0000-4000-8000-000000009999',
+    ]) {
+      const response = await post({
+        fixture,
+        path: scenario.path,
+        body: { ...scenario.body, expectedRevision: 5, predecessorId },
+        key: crypto.randomUUID(),
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toMatchObject({
+        code: 'STALE_RISK_REVISION',
+      });
+    }
+  });
+
+  it.each([
+    'same-key',
+    'same-original',
+    'different-original',
+    'append',
+    'intake',
+  ] as const)(
+    'serializes journal correction racing %s through real database holder/waiter barriers',
+    async (other) => {
+      const fixture = await prepared();
+      const scenario = await journalScenario(fixture);
+      let secondPath = scenario.path;
+      let secondBody: unknown = {
+        ...scenario.body,
+        narrative: 'Competing correction',
+      };
+      let firstBody = scenario.body;
+      if (other === 'different-original') {
+        const second = await command({
+          fixture,
+          path: `/operational-risks/${scenario.riskId}/journal`,
+          body: {
+            expectedRevision: 2,
+            kind: 'reassessment',
+            narrative: 'Second original',
+          },
+          key: 'second-original',
+        });
+        firstBody = { ...scenario.body, expectedRevision: 3 };
+        secondPath = `/operational-risks/${scenario.riskId}/journal/${string(object(second.entry).id)}/corrections`;
+        secondBody = { ...firstBody, predecessorId: object(second.entry).id };
+      }
+      if (other === 'same-key') secondBody = firstBody;
+      if (other === 'append') {
+        secondPath = `/operational-risks/${scenario.riskId}/journal`;
+        secondBody = {
+          expectedRevision: 2,
+          kind: 'reassessment',
+          narrative: 'Concurrent append',
+        };
+      }
+      if (other === 'intake') {
+        secondPath = `/operational-risks/${scenario.riskId}/intake-corrections`;
+        secondBody = {
+          ...facts,
+          cause: 'Concurrent intake correction',
+          expectedRevision: 2,
+          predecessorId: object(scenario.initial.entry).id,
+          reason: 'Checked',
+        };
+      }
+      const replies = await race({
+        table: 'operational_risk_entries',
+        first: () =>
+          post({
+            fixture,
+            path: scenario.path,
+            body: firstBody,
+            key: 'race-first',
+          }),
+        second: () =>
+          post({
+            fixture,
+            path: secondPath,
+            body: secondBody,
+            key: other === 'same-key' ? 'race-first' : 'race-second',
+          }),
+      });
+      expect(replies.map((response) => response.status)).toEqual([
+        201,
+        other === 'same-key' ? 201 : 409,
+      ]);
+      if (other === 'same-key')
+        expect(await replies[1].json()).toEqual(await replies[0].json());
+      else
+        expect(await replies[1].json()).toMatchObject({
+          code: 'STALE_RISK_REVISION',
+        });
+      expect(
+        object(await read({ fixture, path: scenario.root })).revision,
+      ).toBe(other === 'different-original' ? 4 : 3);
+      expect(
+        (await rows('operational_risk_events'))
+          .map(object)
+          .filter((row) => row.action === 'operational_risk.journal.corrected'),
+      ).toHaveLength(1);
+    },
+  );
+
+  it('authorizes exact current reads and unavailable originals before revealing content, including Reader-only consultation', async () => {
+    const fixture = await prepared();
+    const scenario = await journalScenario(fixture);
+    const second = await prepared();
+    const foreign = await journalScenario(second);
+    const saved = await command({
+      fixture,
+      path: scenario.path,
+      body: scenario.body,
+      key: 'saved-for-read',
+    });
+    const missing = '00000000-0000-4000-8000-000000009999';
+    for (const root of [
+      `/operational-risks/${scenario.riskId}/journal/${missing}`,
+      `/operational-risks/${scenario.riskId}/journal/${string(object(scenario.initial.entry).id)}`,
+      `/operational-risks/${scenario.riskId}/journal/${string(object(saved.entry).id)}`,
+      `/operational-risks/${scenario.riskId}/journal/${foreign.originalId}`,
+      `/operational-risks/${foreign.riskId}/journal/${foreign.originalId}`,
+      `/operational-risks/${missing}/journal/${scenario.originalId}`,
+    ]) {
+      expect(
+        (await request({ path: root, companyId: fixture.companyId })).status,
+      ).toBe(404);
+      expect(
+        (
+          await post({
+            fixture,
+            path: `${root}/corrections`,
+            body: { ...scenario.body, expectedRevision: 3 },
+            key: crypto.randomUUID(),
+          })
+        ).status,
+      ).toBe(404);
+    }
+    expect(
+      (
+        await request({
+          path: `${scenario.root}?limit=1`,
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request({
+          path: scenario.root.replace(scenario.originalId, 'bad-uuid'),
+          companyId: fixture.companyId,
+        })
+      ).status,
+    ).toBe(400);
+    await revoke(recorderPath, fixture);
+    expect(await read({ fixture, path: scenario.root })).toMatchObject({
+      originalEntry: scenario.original.entry,
+      currentEntry: saved.entry,
+    });
+    expect(
+      (
+        await post({
+          fixture,
+          path: scenario.path,
+          body: scenario.body,
+          key: 'saved-for-read',
+        })
+      ).status,
+    ).toBe(403);
+    await revoke(readerPath, fixture);
+    await grant(recorderPath, fixture);
+    expect(
+      (await request({ path: scenario.root, companyId: fixture.companyId }))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await post({
+          fixture,
+          path: scenario.path,
+          body: { narrative: null },
+          key: 'authority-first',
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it.each([
+    'reader',
+    'recorder',
+    'context',
+    'company',
+    'membership',
+    'user',
+  ] as const)(
+    'holds live %s authority through correction commit, then denies exact replay',
+    async (loss) => {
+      const fixture = await prepared();
+      const scenario = await journalScenario(fixture);
+      const pause = await pauseWrites('operational_risk_entries');
+      let saving: Promise<Response> | undefined;
+      let losing: Promise<unknown> | undefined;
+      try {
+        saving = post({
+          fixture,
+          path: scenario.path,
+          body: scenario.body,
+          key: 'correction-before-loss',
+        });
+        const savingPid = await waitForBlockedBy(pause.backendPid);
+        losing = loseAuthority(fixture, loss);
+        await waitForBlockedBy(savingPid);
+        await pause.release();
+        expect((await saving).status).toBe(201);
+        await losing;
+        expect(
+          (await request({ path: scenario.root, companyId: fixture.companyId }))
+            .status,
+        ).toBe(loss === 'recorder' ? 200 : 403);
+        const before = await Promise.all(riskTables.map(rows));
+        expect(
+          (
+            await post({
+              fixture,
+              path: scenario.path,
+              body: scenario.body,
+              key: 'correction-before-loss',
+            })
+          ).status,
+        ).toBe(403);
+        expect(
+          (
+            await post({
+              fixture,
+              path: scenario.path,
+              body: scenario.body,
+              key: 'correction-after-loss',
+            })
+          ).status,
+        ).toBe(403);
+        expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+      } finally {
+        await pause.close();
+        await Promise.allSettled([saving, losing]);
+      }
+    },
+  );
+
+  it.each([
+    'reader',
+    'recorder',
+    'context',
+    'company',
+    'membership',
+    'user',
+  ] as const)(
+    'denies journal correction and cached replay when %s authority loss owns the database lock first',
+    async (loss) => {
+      const fixture = await prepared();
+      const scenario = await journalScenario(fixture);
+      await command({
+        fixture,
+        path: scenario.path,
+        body: scenario.body,
+        key: 'journal-cached-before-loss',
+      });
+      const before = await Promise.all(riskTables.map(rows));
+      const held = await hold(async (connection) => {
+        await loseAuthority(fixture, loss, connection);
+      });
+      let replay: Promise<Response> | undefined;
+      try {
+        replay = post({
+          fixture,
+          path: scenario.path,
+          body: scenario.body,
+          key: 'journal-cached-before-loss',
+        });
+        await waitForBlockedBy(held.backendPid);
+        await held.release();
+        expect((await replay).status).toBe(403);
+        expect(
+          (
+            await post({
+              fixture,
+              path: scenario.path,
+              body: { ...scenario.body, expectedRevision: 3 },
+              key: 'new-after-lost',
+            })
+          ).status,
+        ).toBe(403);
+        expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+      } finally {
+        await held.release();
+        if (replay) await replay;
+      }
+    },
+  );
+
+  it('rejects direct journal forks, wrong-kind/foreign lineage, unadvanced heads and mutation of committed correction rows in PostgreSQL', async () => {
+    const fixture = await prepared();
+    const scenario = await journalScenario(fixture);
+    const other = await journalScenario(fixture, 'reassessment');
+    const saved = await command({
+      fixture,
+      path: scenario.path,
+      body: scenario.body,
+      key: 'immutable-correction',
+    });
+    const id = string(object(saved.entry).id);
+    const copy = async (
+      overrides: {
+        predecessor?: string;
+        predecessorRevision?: number;
+        original?: string;
+        originalRevision?: number;
+        journalKind?: string;
+        revision?: number;
+        companyId?: string;
+        riskId?: string;
+      } = {},
+    ) =>
+      pool.query(
+        `
+      INSERT INTO operational_risk_entries(id,workspace_id,company_id,risk_id,revision,kind,predecessor_id,predecessor_revision,original_entry_id,original_entry_revision,journal_kind,payload,actor_internal_user_id,actor_membership_id,actor_display_name,recorded_at)
+      SELECT gen_random_uuid(),workspace_id,$1,$2,$3,kind,$4,$5,$6,$7,$8,payload,actor_internal_user_id,actor_membership_id,actor_display_name,recorded_at FROM operational_risk_entries WHERE id=$9`,
+        [
+          overrides.companyId ?? fixture.companyId,
+          overrides.riskId ?? scenario.riskId,
+          overrides.revision ?? 4,
+          overrides.predecessor ?? id,
+          overrides.predecessorRevision ?? 3,
+          overrides.original ?? scenario.originalId,
+          overrides.originalRevision ?? 2,
+          overrides.journalKind ?? 'observation',
+          id,
+        ],
+      );
+    await expect(
+      copy({ predecessor: scenario.originalId, predecessorRevision: 2 }),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      copy({ predecessor: other.originalId, predecessorRevision: 2 }),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(copy({ original: other.originalId })).rejects.toMatchObject({
+      code: '23514',
+    });
+    await expect(copy({ journalKind: 'reassessment' })).rejects.toMatchObject({
+      code: '23514',
+    });
+    await expect(copy()).rejects.toMatchObject({ code: '23514' });
+    await expect(copy({ revision: 5 })).rejects.toMatchObject({
+      code: '23514',
+    });
+    await expect(
+      copy({ companyId: '00000000-0000-4000-8000-000000009999' }),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query(
+        'UPDATE operational_risk_entries SET payload=payload WHERE id=$1',
+        [id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      pool.query('DELETE FROM operational_risk_entries WHERE id=$1', [id]),
+    ).rejects.toMatchObject({ code: '23514' });
+    expect(await read({ fixture, path: scenario.root })).toMatchObject({
+      revision: 3,
+      currentEntry: saved.entry,
+      originalEntry: scenario.original.entry,
+    });
+  });
+
+  it('allows any currently authorized Recorder to correct another author without changing original attribution', async () => {
+    const fixture = await prepared();
+    const scenario = await journalScenario(fixture);
+    const other = await actor('risk-other');
+    const otherFixture = {
+      companyId: fixture.companyId,
+      membershipId: string(other.workspaceMembershipId),
+      internalUserId: string(other.internalUserId),
+    };
+    for (const path of [
+      '/company-context-assignments',
+      readerPath,
+      recorderPath,
+    ])
+      await grant(path, otherFixture);
+    const saved = await command({
+      fixture,
+      path: scenario.path,
+      body: scenario.body,
+      key: 'other-author-correction',
+      subject: 'risk-other',
+    });
+    expect(object(saved.entry).actor).toEqual({
+      workspaceMembershipId: otherFixture.membershipId,
+      displayName: 'risk-other',
+    });
+    expect(
+      await read({ fixture, path: scenario.root, subject: 'risk-other' }),
+    ).toMatchObject({
+      originalEntry: scenario.original.entry,
+      currentEntry: saved.entry,
+    });
+    expect(object(scenario.original.entry).actor).toEqual({
+      workspaceMembershipId: fixture.membershipId,
+      displayName: 'risk-member',
+    });
+  });
+
+  it('rejects a valid-shaped but mismatched journal response and rolls back before confirming the submitted correction', async () => {
+    const fixture = await prepared();
+    const scenario = await journalScenario(fixture);
+    const before = await Promise.all(riskTables.map(rows));
+    await pool.query(`CREATE FUNCTION test_changed_journal_response() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+      IF NEW.kind='journal-corrected' THEN NEW.payload=jsonb_set(NEW.payload,'{narrative}','"Different valid literal statement"'::jsonb); END IF;
+      RETURN NEW; END $$;
+      CREATE TRIGGER test_changed_journal_response BEFORE INSERT ON operational_risk_entries FOR EACH ROW EXECUTE FUNCTION test_changed_journal_response();`);
+    try {
+      const response = await post({
+        fixture,
+        path: scenario.path,
+        body: scenario.body,
+        key: 'exact-submitted-result',
+      });
+      expect(response.status).toBe(500);
+      expect(await response.json()).toMatchObject({
+        code: 'RISK_OUTCOME_UNCONFIRMED',
+      });
+      expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+    } finally {
+      await pool.query(
+        'DROP TRIGGER test_changed_journal_response ON operational_risk_entries; DROP FUNCTION test_changed_journal_response()',
+      );
+    }
+    const saved = await command({
+      fixture,
+      path: scenario.path,
+      body: scenario.body,
+      key: 'exact-submitted-result',
+    });
+    expect(object(saved.entry).narrative).toBe(scenario.body.narrative);
+  });
+
+  it('fails closed on corrupt or unknown stored correction receipts without recomputing or rewriting their historical result', async () => {
+    const fixture = await prepared();
+    const scenario = await journalScenario(fixture);
+    const saved = await command({
+      fixture,
+      path: scenario.path,
+      body: scenario.body,
+      key: 'protected-historical-result',
+    });
+    const replace = async (response: unknown) => {
+      await pool.query(
+        'ALTER TABLE operational_risk_receipts DISABLE TRIGGER operational_risk_receipts_immutable',
+      );
+      try {
+        await pool.query(
+          "UPDATE operational_risk_receipts SET response=$1 WHERE command_kind='journal-correct' AND idempotency_key='protected-historical-result'",
+          [JSON.stringify(response)],
+        );
+      } finally {
+        await pool.query(
+          'ALTER TABLE operational_risk_receipts ENABLE TRIGGER operational_risk_receipts_immutable',
+        );
+      }
+    };
+    try {
+      for (const response of [
+        {
+          ...saved,
+          entry: {
+            ...object(saved.entry),
+            narrative: 'Another valid statement for the same original',
+          },
+        },
+        {
+          ...saved,
+          entry: {
+            ...object(saved.entry),
+            kind: 'future-journal-correction-v2',
+          },
+        },
+        {
+          ...saved,
+          entry: {
+            ...object(saved.entry),
+            originalEntryId: '00000000-0000-4000-8000-000000009999',
+          },
+        },
+        { ...saved, extra: 'Never discard persisted response fields' },
+      ]) {
+        await replace(response);
+        const before = await Promise.all(riskTables.map(rows));
+        const replay = await post({
+          fixture,
+          path: scenario.path,
+          body: scenario.body,
+          key: 'protected-historical-result',
+        });
+        expect(replay.status).toBe(500);
+        expect(await replay.json()).toMatchObject({
+          code: 'RISK_OUTCOME_UNCONFIRMED',
+        });
+        expect(await Promise.all(riskTables.map(rows))).toEqual(before);
+      }
+    } finally {
+      await replace(saved);
+    }
+    expect(
+      await command({
+        fixture,
+        path: scenario.path,
+        body: scenario.body,
+        key: 'protected-historical-result',
+      }),
+    ).toEqual(saved);
   });
 
   it('records literal facts, unknown optional values and explicit unassessed/unassigned truth without widening legacy access', async () => {
@@ -516,6 +1335,19 @@ withPostgres('Company Operational Risk public REST', () => {
       body: correctionBody,
       key: 'same-correct',
     });
+    await command({
+      fixture,
+      path: `/operational-risks/${riskId}/journal/${string(object(journal.entry).id)}/corrections`,
+      body: {
+        expectedRevision: 3,
+        predecessorId: object(journal.entry).id,
+        narrative: 'Corrected journal after intake successor',
+        occurredOn: null,
+        reason: 'Checked source',
+      },
+      // Same literal key remains independent in the new command-kind namespace.
+      key: 'same-correct',
+    });
     expect(
       await command({
         fixture,
@@ -561,8 +1393,8 @@ withPostgres('Company Operational Risk public REST', () => {
     expect(
       object(await read({ fixture, path: `/operational-risks/${riskId}` }))
         .revision,
-    ).toBe(3);
-    expect(await rows('operational_risk_events')).toHaveLength(3);
+    ).toBe(4);
+    expect(await rows('operational_risk_events')).toHaveLength(4);
   });
 
   it('refuses stale heads, stale displayed predecessors, unchanged corrections and unavailable targets without consuming keys', async () => {
@@ -914,6 +1746,30 @@ withPostgres('Company Operational Risk public REST', () => {
       key: 'restricted-content',
     });
     const riskId = string(object(created.risk).id);
+    const original = await command({
+      fixture,
+      path: `/operational-risks/${riskId}/journal`,
+      body: {
+        expectedRevision: 1,
+        kind: 'observation',
+        narrative: 'Confidential original statement',
+        occurredOn: null,
+      },
+      key: 'restricted-journal',
+    });
+    const originalId = string(object(original.entry).id);
+    await command({
+      fixture,
+      path: `/operational-risks/${riskId}/journal/${originalId}/corrections`,
+      body: {
+        expectedRevision: 2,
+        predecessorId: originalId,
+        narrative: 'Confidential corrected statement',
+        occurredOn: '2024-02-29',
+        reason: 'Confidential correction reason',
+      },
+      key: 'restricted-correction',
+    });
     const baseline = await read({
       fixture,
       path: '/activity-log',
@@ -936,8 +1792,16 @@ withPostgres('Company Operational Risk public REST', () => {
     expect(home.status).toBe(200);
     expect(JSON.stringify(await home.json())).not.toContain(riskId);
     const events = await rows('operational_risk_events');
-    expect(events).toHaveLength(1);
+    expect(events).toHaveLength(3);
     expect(object(events[0]).metadata).toEqual({ revision: 1 });
+    expect(
+      events
+        .map(object)
+        .find((row) => row.action === 'operational_risk.journal.corrected')
+        ?.metadata,
+    ).toEqual({ revision: 3, kind: 'observation' });
+    expect(JSON.stringify(events)).not.toContain('Confidential');
+    expect(JSON.stringify(baseline)).not.toContain('Confidential');
     expect(JSON.stringify(events)).not.toContain(facts.process);
     expect(JSON.stringify(await rows('activity_log_events'))).not.toContain(
       riskId,
@@ -1065,7 +1929,9 @@ withPostgres('Company Operational Risk public REST', () => {
         body: attempt.body,
         key: 'rollback',
       });
-      expect(object(saved.risk).revision).toBe(kind === 'record' ? 1 : 2);
+      expect(object(saved.risk).revision).toBe(
+        kind === 'record' ? 1 : kind === 'journal-correct' ? 3 : 2,
+      );
     },
   );
 
@@ -1134,7 +2000,9 @@ withPostgres('Company Operational Risk public REST', () => {
         body: attempt.body,
         key: 'construction',
       });
-      expect(object(saved.risk).revision).toBe(kind === 'record' ? 1 : 2);
+      expect(object(saved.risk).revision).toBe(
+        kind === 'record' ? 1 : kind === 'journal-correct' ? 3 : 2,
+      );
     },
   );
 
@@ -1359,6 +2227,10 @@ withPostgres('Company Operational Risk public REST', () => {
         riskId: undefined,
         baselineRisk: undefined,
       };
+    if (kind === 'journal-correct') {
+      const scenario = await journalScenario(fixture);
+      return { ...scenario, baselineRisk: scenario.original.risk };
+    }
     const created = await command({
       fixture,
       path: '/operational-risks',
@@ -1384,6 +2256,78 @@ withPostgres('Company Operational Risk public REST', () => {
             },
       riskId,
       baselineRisk: created.risk,
+    };
+  }
+
+  async function loseAuthority(
+    fixture: Fixture,
+    loss: 'reader' | 'recorder' | 'context' | 'company' | 'membership' | 'user',
+    connection: Pool | PoolClient = pool,
+  ) {
+    if (loss === 'reader' || loss === 'recorder' || loss === 'context')
+      return connection.query(
+        'UPDATE company_role_assignments SET revoked_at=now() WHERE company_id=$1 AND workspace_membership_id=$2 AND bundle::text=$3 AND revoked_at IS NULL',
+        [
+          fixture.companyId,
+          fixture.membershipId,
+          loss === 'context'
+            ? 'company_context_access'
+            : `company_operational_risk_${loss}`,
+        ],
+      );
+    if (loss === 'company')
+      return connection.query(
+        "UPDATE companies SET status='inactive' WHERE id=$1",
+        [fixture.companyId],
+      );
+    if (loss === 'membership')
+      return connection.query(
+        "UPDATE workspace_memberships SET status='inactive' WHERE id=$1",
+        [fixture.membershipId],
+      );
+    return connection.query(
+      "UPDATE internal_users SET status='inactive' WHERE id=$1",
+      [fixture.internalUserId],
+    );
+  }
+
+  async function journalScenario(
+    fixture: Fixture,
+    kind: 'observation' | 'reassessment' = 'observation',
+  ) {
+    const initial = await command({
+      fixture,
+      path: '/operational-risks',
+      body: facts,
+      key: crypto.randomUUID(),
+    });
+    const riskId = string(object(initial.risk).id);
+    const original = await command({
+      fixture,
+      path: `/operational-risks/${riskId}/journal`,
+      body: {
+        expectedRevision: 1,
+        kind,
+        narrative: ' Original statement Î / Ж / <literal> ',
+        occurredOn: '2024-02-29',
+      },
+      key: crypto.randomUUID(),
+    });
+    const originalId = string(object(original.entry).id);
+    return {
+      initial,
+      original,
+      originalId,
+      riskId,
+      root: `/operational-risks/${riskId}/journal/${originalId}`,
+      path: `/operational-risks/${riskId}/journal/${originalId}/corrections`,
+      body: {
+        expectedRevision: 2,
+        predecessorId: originalId,
+        narrative: ' Corrected statement\nwith literal whitespace ',
+        occurredOn: null,
+        reason: ' Checked the source ',
+      },
     };
   }
 

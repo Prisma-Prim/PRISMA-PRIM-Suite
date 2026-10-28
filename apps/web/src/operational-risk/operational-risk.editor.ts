@@ -1,4 +1,7 @@
-import type { OperationalRiskFacts } from './operational-risk.types';
+import type {
+  OperationalRiskFacts,
+  OperationalRiskJournalOriginal,
+} from './operational-risk.types';
 
 const requiredFactFields = [
   'process',
@@ -27,6 +30,17 @@ export type Editor =
       reason: string;
     }
   | {
+      kind: 'journal-correct';
+      riskId: string;
+      originalEntry: OperationalRiskJournalOriginal;
+      expectedRevision: number;
+      predecessorId: string;
+      narrative: string;
+      occurredOn: string;
+      reason: string;
+      baseline: { narrative: string; occurredOn: string | null };
+    }
+  | {
       kind: 'journal';
       riskId: string;
       expectedRevision: number;
@@ -38,8 +52,16 @@ export type Command = {
   path: string;
   body: string;
   key: string;
-  riskId?: string;
-};
+} & (
+  | { kind: 'record' }
+  | { kind: 'journal' | 'correct'; riskId: string }
+  | {
+      kind: 'journal-correct';
+      riskId: string;
+      journalEntryId: string;
+      journalKind: 'observation' | 'reassessment';
+    }
+);
 export function emptyFacts(): FactsDraft {
   return {
     process: '',
@@ -60,14 +82,39 @@ export function draftFacts(facts: OperationalRiskFacts): FactsDraft {
   };
 }
 export function commandFrom(editor: Editor): Command | undefined {
-  if (editor.kind === 'journal') {
+  if (editor.kind === 'journal' || editor.kind === 'journal-correct') {
     if (
       editor.narrative.trim().length === 0 ||
       editor.narrative.length > 5000 ||
       !validDate(editor.occurredOn)
     )
       return undefined;
+    if (editor.kind === 'journal-correct') {
+      if (
+        editor.reason.trim().length === 0 ||
+        editor.reason.length > 2000 ||
+        (editor.narrative === editor.baseline.narrative &&
+          (editor.occurredOn || null) === editor.baseline.occurredOn)
+      )
+        return undefined;
+      return {
+        kind: editor.kind,
+        riskId: editor.riskId,
+        journalEntryId: editor.originalEntry.id,
+        journalKind: editor.originalEntry.kind,
+        path: `/operational-risks/${encodeURIComponent(editor.riskId)}/journal/${encodeURIComponent(editor.originalEntry.id)}/corrections`,
+        key: crypto.randomUUID(),
+        body: JSON.stringify({
+          expectedRevision: editor.expectedRevision,
+          predecessorId: editor.predecessorId,
+          narrative: editor.narrative,
+          occurredOn: editor.occurredOn || null,
+          reason: editor.reason,
+        }),
+      };
+    }
     return {
+      kind: editor.kind,
       path: `/operational-risks/${encodeURIComponent(editor.riskId)}/journal`,
       riskId: editor.riskId,
       key: crypto.randomUUID(),
@@ -101,6 +148,7 @@ export function commandFrom(editor: Editor): Command | undefined {
   };
   if (editor.kind === 'record')
     return {
+      kind: editor.kind,
       path: '/operational-risks',
       key: crypto.randomUUID(),
       body: JSON.stringify(facts),
@@ -108,6 +156,7 @@ export function commandFrom(editor: Editor): Command | undefined {
   if (editor.reason.trim().length === 0 || editor.reason.length > 2000)
     return undefined;
   return {
+    kind: editor.kind,
     path: `/operational-risks/${encodeURIComponent(editor.riskId)}/intake-corrections`,
     riskId: editor.riskId,
     key: crypto.randomUUID(),
