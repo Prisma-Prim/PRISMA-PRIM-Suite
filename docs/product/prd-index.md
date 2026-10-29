@@ -121,12 +121,19 @@ require that answer.
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
 The separately selected [offline comparative pilot-evaluation contract](ai-knowledge-governance-prd.md#17-bounded-offline-comparative-pilot-evaluation--957)
-under [#957](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957) is **Approved** following [coordinator disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957#issuecomment-6479172511) within the existing AI/Knowledge owner.
-It specifies a provider-free local command over declared case/reference inputs and
-captured observations, with deterministic per-case and paired metrics and explicit
-synthetic provenance. Its bounded readiness gate does not promote the wider Draft
-PRD, approve a real pilot or change Release 7 sequencing. A separate runtime child
-follows actual product approval, canonical contract merge and readiness checks.
+remains within the existing AI/Knowledge owner. Its original [#957](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957)
+directory-output contract was approved; its unmerged runtime #963 / PR #966 is
+blocked by the accepted initial-directory-ownership finding, not delivered.
+The explicit single-file output revision under [#976](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/976)
+is **Approved** following [coordinator disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/976#issuecomment-6489604636). Section 17 owns the complete deterministic USTAR
+protocol, exclusive created-file ownership, limits, failure conservation and
+versioned receipt, while retaining the declared case/reference inputs,
+per-case/paired metrics and synthetic provenance. Ordered Standards then Spec,
+actual delegated product disposition, canonical merge and fresh complete
+readiness precede one replacement runtime child; close the old scope explicitly
+superseded without delivery credit only at that handoff. This revision neither
+promotes the wider Draft PRD nor approves a real pilot or changes Release 7
+sequencing.
 
 ## 5. Release 1 capability PRDs
 
