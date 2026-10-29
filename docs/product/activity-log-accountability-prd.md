@@ -137,6 +137,28 @@ events. Assignment grant/revoke uses
 `company_task_manager_assignment.revoked` with existing administration visibility.
 No event mutation/deletion route or general member-directory exposure is added.
 
+For the [Project next-action contract (§35)](release-1-project-task-prd.md#35-bounded-explicit-project-next-action-973),
+an **Approved bounded contract** under #973 after completed ordered independent
+Standards then Spec preparation and [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391),
+each material set/replacement/correction/
+clear records one internal `project.next_action.updated`, targeting the original
+Company-owned Project with server actor membership/time and exactly
+`{ revision }` metadata. Head, immutable Project-owned before/after history,
+command receipt, event and original Client operational-use fence commit together;
+native coupled integrity refuses partial facts. Reads, denied/failed commands,
+normalized no-ops and identical committed replay add no event or fence advance.
+The event contains no action text, key, fingerprint, Client label or linked artifact.
+
+This proposal adds **no generic Activity/Home/search/count/export projection**.
+Exclude the event family before bounded selection/pagination/counting, rather
+than allowing an unconditional selector to expose its target, existence or a
+short/empty page side channel. Literal current and before/after history stay in
+the native Project owner under ordinary Project/original-Client reads; Activity
+or assignment-administration authority grants neither. Coordinator grant/revoke
+uses Authorization §8's existing minimal bundle-label administration convention,
+separate from business history. These approved recording semantics are not
+executed runtime evidence or new visibility for existing Project events.
+
 For [attributable mission-result review](release-1-mission-obligations-prd.md#14-approved-next-vertical--record-attributable-result-review-885),
 each material batch records internal `project.mission_result.reviewed`, targeting
 the Company-owned review batch with server actor/time and metadata containing

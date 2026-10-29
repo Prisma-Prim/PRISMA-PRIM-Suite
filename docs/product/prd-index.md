@@ -178,6 +178,15 @@ creation/detail/edit/history, preserving old receipts, original-Client guards an
 independent result/Document authority. Verified contract merge and #946/#947
 delivery precede any separate runtime child. Approval proves no runtime delivery.
 
+The [explicit Project next-action contract](release-1-project-task-prd.md#35-bounded-explicit-project-next-action-973)
+under #973 is an **Approved bounded contract**. It qualifies one Project-owned literal
+record, independent captured coordination authority, immutable native history and
+the complete protected Client → Project journey. It creates no Task link, workflow
+order, enrollment or closure rule. Ordered independent Standards then Spec
+preparation and [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391)
+are complete; canonical merge and fresh runtime readiness precede any
+implementation child. No runtime or actual grant is claimed.
+
 ## 6. Release 3 capability PRDs
 
 | Capability PRD                                                                                                                           | Document status                                               | Depends on                                                                                                                   |

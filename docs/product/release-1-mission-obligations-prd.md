@@ -127,8 +127,15 @@ operator access and visible Company selection grant no mission authority.
 | Project closer                 | Commit the reviewed governed completion                 | Mission-approval opt-in plus existing `project.close`, Project/Client and all independently consumed evidence reads.                 |
 | Company access administrator   | Deliberately grant/revoke a new capability              | Existing assignment administration; no bootstrap/backfill or automatic Iurie assignment.                                             |
 
-Authorization §8 owns §15's approved exact applicability bundles; broader adoption,
-next-action and completion capabilities remain unqualified. Existing captured bundles never gain these capabilities
+Authorization §8 owns §15's approved exact applicability bundles. The independent
+[Project-owned literal next-action contract](release-1-project-task-prd.md#35-bounded-explicit-project-next-action-973)
+under #973 is an Approved bounded contract after completed ordered independent
+Standards then Spec preparation and [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391);
+it requires neither mission adoption nor
+Task/result/Document reads. It owns only the explicit literal action, not this
+blueprint's responsible-person/due-date planning or mandatory enrollment. Broader
+adoption, structured next-action coordination and completion remain unqualified.
+Existing captured bundles never gain these capabilities
 silently. Membership, actor, Company, exact captured authority and mutable state
 are rechecked at each command and replay. Unknown versions fail closed.
 
@@ -236,7 +243,9 @@ same intent/key. Missing capability or exact-scope changes retire only the
 affected protected intent, preserving independent result/PDF/navigation owners.
 
 Activity Log owns attributable adoption, applicability decisions, next-action
-changes and reviewed closure. Event metadata stays minimal; reasons, declarations
+changes and reviewed closure as each bounded contract qualifies them. The separate
+literal-action contract is owned by Project/Task §35 and Activity §7; this blueprint
+does not authorize its implementation. Event metadata stays minimal; reasons, declarations
 and PDF identities remain in their separately authorized owning records. No
 customer prose, evidence bytes or inaccessible Company identity enters generic
 Activity metadata.
@@ -337,6 +346,15 @@ runtime tests listed here are future requirements, not executed proof.
 The supplied dossier, email clarifications and existing Sarcina transcriptions are reused. No repeated questionnaire or upload is required. Known source facts, reasoned product synthesis and actual unproved outcomes remain distinct. The broader 105-page Sarcina is used through its existing controlled transcription, not claimed freshly reread; E08 is the different pricing specification.
 
 The read-only readiness outcome in §13 is delivered through #883 / PR #884. Attributable human review in §14 is implemented by #887, following the approved #885 contract and the established evidence rules. Neither needs an answer about closing without certification. Section 15 supplies the approved complete scoped-applicability contract; canonical merge and fresh runtime readiness remain required. Guarded opt-in completion remains separately unqualified; §§3–9 alone do not authorize mutation implementation. No unsupported source or unreviewed declaration automatically becomes accepted work. The pending certification policy never silently becomes permissive.
+
+The independent #973 literal next-action contract lives solely in Project/Task §35
+with Authorization/Activity owning its cross-cutting consequences. Its Approved
+bounded contract status follows completed ordered independent Standards then Spec
+preparation and [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391);
+canonical merge and fresh runtime readiness still apply there;
+it changes none of approved §§12–15, actual #969/#971 applicability or #972's
+complete existing guard/lifetime obligations. A recorded next action proves no
+performed work, policy adoption, fulfilled obligation or consulting completion.
 
 The owner's request to keep outstanding questions durably for one eventual email is recorded in §12. Another agent follows that register, retains its state and reminds Dan when assembling the consolidated request. There is no individual-answer prompt or scheduled email. The completed anonymous ordinary-lifecycle milestone remains delivered.
 

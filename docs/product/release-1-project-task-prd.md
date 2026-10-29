@@ -1,7 +1,8 @@
 # PRD — Release 1 Project and Task
 
 **Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927 and Company blocked-Task supervision (§32) approved by #931; Company team Task workboard (§33) approved by #944 through delegated agent product review; ordinary Task description (§34) approved by #949 through delegated agent product review; remaining capability Draft\
-**Version:** 0.15\
+**Project next action (§35):** Approved bounded contract under [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391); no runtime or grant.\
+**Version:** 0.16\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -2407,3 +2408,461 @@ messaging, infrastructure, deployment and whole-MVP acceptance. [Mission
 Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
 alone retains `MISSION-CLOSE-01` for the existing consolidated email; this ordinary
 text field neither depends on nor decides it.
+
+## 35. Bounded explicit Project next action (#973)
+
+### 35.1 Authority, value and one chosen interface
+
+**Status:** Approved bounded contract under
+[#973](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973), parent #63, after
+completed ordered independent Standards then Spec preparation and
+[root’s actual delegated product approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391).
+This section authorizes no runtime or grant.
+
+In [Iurie's S02-Q13 answer](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/81#issuecomment-5307108376),
+he explicitly answered **yes** to a visible next required action per Project/audit.
+His examples include waiting for Client documents, sending the report to the
+certification body, following NC to its deadline and waiting for the certificate.
+The same source's stronger “no active Project without a next action” statement is
+the interview agent's interpretation, not an approved activation/closure guard.
+Story 11 and §11 already name next actions. Mission Obligations §§3–9 are a
+non-executable blueprint, not a stage graph or permission to enforce enrollment.
+
+At preparation base `68bbf8fa2609cad8d448363ee12577b745dbbf40`, the native Project
+schema, public Project read/create boundary and Project detail have no persisted
+next-action record. `ClientMissionTasks`'s “Next Tasks” is pagination. The all-state
+next-title ownership check found Opportunity work (#306/#312/#340/#760) and Task
+deadlines (#721), rather than another operational Project owner. Opportunity next
+action stays commercial and is neither copied nor reused here.
+
+The observable benefit is that a colleague reopening an exact Project can read
+the deliberately recorded next action and its attributable replacements without
+guessing from Task dates, priority, done state or a copied flat plan. The bounded
+success measure is one native Client → Project → set → reload → replace → clear →
+reopen-history journey with exact text and no independent draft loss.
+
+| Candidate                        | Fit to actual examples and native code                                                                                                                                                                                                                                  | Disposition                                                            |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Short Project-owned literal text | “Waiting for Client documents” and “Send the report to the body” can be recorded even with no Task or protected Document. Existing Project/original-Client reads suffice.                                                                                               | Chosen complete proposal below.                                        |
+| Exact existing Task reference    | Requires an eligible existing Task and independent Task read; waiting or sending need not already be a Task. Mutable Task titles/state cannot conserve what the coordinator declared. Adding creation, eligibility or linked-data snapshots would broaden this outcome. | Deferred; no Task picker, identifier, inference or link is introduced. |
+
+This is reversible agent Product Owner synthesis of interface, bounds, storage,
+permissions and proof under the [delegated review instruction](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283507237),
+[independent preparation instruction](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6283696600)
+and [continuation authority](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/51#issuecomment-6465537888).
+It is not a new Iurie answer, Dan's personal review, a numbered DEC or actual
+assignment. [Authorization §8](tenant-company-client-authorization-prd.md#8-initial-permission-families),
+[Activity §7](activity-log-accountability-prd.md#7-authorization-and-privacy),
+[UX §§5–7](ux-localization-configuration-prd.md#5-required-ui-states),
+[Platform §§4–9](platform-security-reliability-operations-prd.md#4-security-boundaries)
+and ADRs 0002/0003/0006 retain their existing cross-cutting ownership.
+
+### 35.2 Actors, scope, stories and permission matrix
+
+Every record, command, receipt and history fact belongs to one immutable exact
+Workspace, responsible Company, existing Project and its **original** Client
+Account. All are server-resolved from the Project; the body cannot select another
+Client/Company or retarget history. Manual, illustrative and Company-plan Projects
+use the same native record. No mission adoption, Task, result, Document, Contract
+or Opportunity is required or created.
+
+1. As a Project reader, I reopen its literal current next action or an explicit
+   missing-recorded-action state, with Company, original Client and lifecycle visible.
+2. As an explicitly authorized coordinator, I set the first action, replace or
+   correct it, or deliberately clear it on an eligible open Project.
+3. As a reader, I reopen immutable before/after text, revision, declaring actor
+   and server time, including after clearing or ordinary Project closure.
+4. As a coordinator after uncertainty, I confirm the exact saved intent/key;
+   after a stale conflict I deliberately reload before making another intent.
+5. As a user without coordination authority, I retain independent Project reads
+   and Task/result/applicability work without gaining a next-action write.
+6. As an administrator, I deliberately grant/revoke only the new captured bundle
+   through existing administration, without receiving protected business text.
+7. As a user changing locale/frame or navigating sections, I preserve literal
+   inputs, focus and independent draft/pending/uncertain/confirmed owners.
+8. As a user whose consumed scope is retired, I receive no late content or shared
+   effects, including after A→B→A or revoke/regrant with identical permission strings.
+
+Authorization §8 owns new **Company Project Next Action Coordinator v1**, code
+`company_project_next_action_coordinator`, containing exactly
+`project.next_action.update`. It supplies no read or administration prerequisite.
+Existing Project Access v1/v2 and `project.update` responsible-member semantics
+remain unchanged; no old capture expands.
+
+All rows require verified active identity/session/Internal User, active Workspace
+Membership and server-validated active Company context, live captured
+`project.read`, and original Client read (`client.manage` or the current Company
+`client.read` boundary) plus that original Client–Company relationship. Recognized
+Project Access v1/v2 retain their current read meaning; unknown/null captures deny.
+
+| Operation/state                                                                   | Additional prerequisite                                                                                                               | Result                                                                                  |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Current and native history read                                                   | Existing Project/original-Client reads only                                                                                           | Literal current text and bounded attributable history.                                  |
+| Completed/cancelled Project or superseded original Client read                    | Same live reads; preserve original identity                                                                                           | Explicit read-only current/history; no canonical-union or other-Company detail.         |
+| Fresh set/replace/correct/clear, including no-op                                  | Live Coordinator v1; observed next-action and lifecycle revisions; `preparatory`, `active` or `on_hold`; active exact original Client | One changed or unchanged recorded outcome.                                              |
+| Fresh write on completed/cancelled Project or inactive/superseded original Client | No override, including for no-op                                                                                                      | Native closed/historical conflict.                                                      |
+| Identical committed confirmation                                                  | Live same-target reads and Coordinator v1                                                                                             | Conserved outcome before fresh revision/open/Client-active guards.                      |
+| Missing/foreign/hidden target or denied/revoked/suspended authority               | No fallback through responsibility, title or another Company                                                                          | Existing safe denial/not-found; no text, receipt, count or target-existence disclosure. |
+
+Creator, responsible member, Workspace Owner/Director title or Company selection
+alone grants no capability. Unlinked literal text consumes no Task, copied-plan,
+result, Document/content, applicability or Activity read. A writer may mention an
+artifact in literal text, but the application never resolves that mention, reveals
+linked information or grants its authority. No mandatory two-person approval,
+automatic grant, migration backfill grant or real Iurie assignment follows.
+
+### 35.3 Literal value, revision and closed public grammar
+
+The value `text` is `null` or an exact normalized nonempty string of at most
+**500 Unicode code points**. Apply §34's scalar/NUL validation and explicitly
+enumerated exterior ECMAScript whitespace trim, with this smaller bound. Reject
+unpaired surrogates and U+0000 before normalization; reject wrong JSON types.
+Empty/exterior-blank text normalizes to `null`. Preserve every interior scalar,
+indent, repeated space, tab, CR, LF and CRLF; no Unicode composition, case folding,
+translation, markup interpretation or newline conversion. Count scalar code
+points after trim, including separate combining marks and one per valid pair.
+Render `<b>Send</b>` literally, without HTML/Markdown execution, auto-links or fetches.
+
+Use one separate native seam; do not extend old Project creation/update bodies:
+
+- `GET /projects/:projectId/next-action`, with only optional `beforeRevision`.
+- `POST /projects/:projectId/next-action`, with required `Idempotency-Key` and
+  exactly `{ expectedRevision, expectedLifecycleRevision, text }`.
+
+Both revisions are finite JSON integers in `0..2147483647`; missing, fractional,
+string, boolean, negative or larger values are 400. `text` must be present: null
+or normalized blank explicitly clears; omission is 400, never accidental clear.
+Unknown fields are 400. UUID selection uses the native UUID validator; key uses
+the existing nonblank, exterior-trimmed native idempotency-key contract. No new
+global key grammar or changed old command fingerprints are introduced.
+
+For example, revision 0 plus `"  Waiting for Client documents.  "` creates
+revision 1 with `Waiting for Client documents.`. Replacing it with `Send the report
+to the body.` creates revision 2. Explicit null creates revision 3, preserving
+both prior declarations. Another null at revision 3 is unchanged. A canonically
+equivalent but differently encoded string, or LF instead of CRLF, is a material
+replacement if its normalized scalars differ.
+
+Revision **0** means no material declaration has ever been recorded; its text
+and last-change attribution are null. The first non-null set creates revision 1.
+Virtual revision 0 is valid only when no head or material history exists; an
+inconsistent missing head/history is unavailable, never silently defaulted empty.
+Each material set/correction/replacement/clear increments this stream once,
+retaining immutable before/after and predecessor `revision - 1`. There is at most
+one current head per exact Project. Null after a later clear is recorded absence
+at that revision; it does not erase history or become revision 0. A null value
+means **no next action recorded**, never “no work required”.
+
+A no-op must pass all fresh write guards and exact observed revisions. It records
+one unchanged receipt but changes no head, version, timestamp, history, event or
+Client fence. At 2147483647 a material change returns 409 without wrapping;
+valid no-op and committed replay remain confirmable. This stream never changes
+Project responsibility/lifecycle/stage revisions or old Project timestamps,
+Task state/date/priority, result, applicability, source mappings or closure rules.
+There is no fulfillment/complete action, automatic succession, Task-completion
+inference, activation/completion guard or automatic enrollment/backfill.
+
+### 35.4 Command identity, public order and atomic serialization
+
+The new command namespace is Project-next-action only, unique by Workspace,
+actor Workspace Membership and normalized key. Its deterministic fingerprint is
+the closed, ordered normalized object
+`{ format: "project-next-action-command-v1", companyId, projectId, expectedRevision, expectedLifecycleRevision, text }`.
+Workspace/actor are the namespace, not caller inputs. Null and trimmed blank
+share intent; old receipts/command strings in every other namespace stay byte-exact.
+Changed target, Company, revision, lifecycle observation or normalized text under
+the same key conflicts; never reveal the earlier target's receipt to explain it.
+
+1. ActorContextAdapter retains native 401 for missing identity and 403 for invalid
+   or inactive selected authority. Native path/body/key/query structural validation
+   is 400. Validation never supplies authorization or reveals hidden business facts.
+2. Inside the transaction, take the new command-key lock, then Access's live
+   read/update and parent-suspension/revocation serialization through its public
+   interface. Establish Company-scoped Project visibility and original-Client
+   read/relationship before any receipt/key-conflict disclosure. Hidden/missing/
+   foreign Project is 404; denied Company/Project/Client authority retains native 403. Do not query Access or Client tables independently from this owner.
+3. A valid matching committed receipt returns HTTP 200 before its old revisions,
+   current closed state or original Client supersession can reject confirmation.
+   A changed fingerprint returns 409 without writes. Both still require current
+   same-target read/update authority; a revoked writer cannot retrieve the receipt.
+4. Fresh intent uses the existing **Access → original Client identity before
+   relationship → Project** mutation barriers. Lock the exact original active
+   Client through its public operational-reference seam before the Project row,
+   then the next-action head (or serialize its absent-head creation under the
+   Project lock). Recheck current Client visibility/active relationship, Project
+   open status, exact lifecycle revision and exact next-action revision under
+   those locks. A stale observation or closed/historical mutation is 409.
+5. Compare normalized text under the locks. Valid no-op returns HTTP 200 unchanged;
+   otherwise enforce exhaustion and append exactly one material revision.
+6. Build and validate the complete public response **inside** the transaction
+   before commit. Persistence, history, receipt, event, fence or response-construction
+   failure rolls back every component. An interrupted reply after commit is an
+   uncertain command, recoverable only by the same intent/key under live authority.
+
+One transaction conserves scoped current head, immutable predecessor/before/after
+history, normalized command/fingerprint, durable exact outcome, minimal internal
+Activity event and original Client operational-use fence. A material change
+advances that existing fence exactly once; reads, refusals, no-ops and replays do
+not. Do not create a generic command/workflow framework or a second Client fence.
+
+Prove both dangerous orders with held real PostgreSQL barriers: competing
+same/different-key setters, Project lifecycle/closure, Client union/reversal or
+relationship change, and consumed grant revoke/member/Company suspension. If
+the competing guard change commits first, the waiting fresh command rechecks and
+refuses rather than using its earlier read. If this command commits first, it is
+one authorized declaration, after which the guard change governs later writes/
+reads; Client use prevents an invalid reversal under its owning fence. Equal
+revision setters serialize to one material winner and one stale conflict; same
+key/intent serializes to one receipt/revision, while same-key changed intent
+conflicts. Project lifecycle changes first invalidate its observed revision;
+next-action first does not invent a new completion guard. Ordinary Task/result/
+applicability work never mutates the action automatically. All owners retain the
+existing common lock order, with no inverse Project-before-Client path.
+
+### 35.5 Current, receipt, history and every consumer boundary
+
+The current native record has exactly the owned format
+`{ format: "project-next-action-v1", workspaceId, companyId, projectId, originalClientAccountId, revision, text, lastChange }`.
+At revision 0, `text` and `lastChange` are null; otherwise `lastChange` is exactly
+`{ internalUserId, workspaceMembershipId, displayName, occurredAt }`, captured from
+the acting server-authorized member and server time. `occurredAt` is a valid UTC
+ISO-8601 timestamp with millisecond precision (`YYYY-MM-DDTHH:mm:ss.sssZ`), not a
+caller-supplied date; internal scope/actor identifiers use the native UUID form.
+Display name is an immutable
+attribution label, never membership authority or an email-directory lookup.
+At positive revisions, text may be null only through an attributable clear.
+
+GET returns HTTP 200 `{ current, history: { entries, hasMore, nextBeforeRevision } }`.
+Each history entry has `{ revision, predecessorRevision, before, after, attribution }`,
+where before/after are normalized text/null, differ, and attribution has the same
+closed shape as lastChange. Revision 1's before is null and predecessor is 0;
+later facts conserve their actual immediate predecessor. Return at most **25**
+entries, newest revision first, using 26 for continuation. Optional `beforeRevision`
+is one canonical ASCII decimal query value matching `[1-9][0-9]*`, at most
+2147483647, and selects strictly lower revisions. Signs, leading zeroes, whitespace,
+exponents, empty/repeated values and unknown query input are 400. `nextBeforeRevision`
+is the oldest returned revision when more exist, otherwise null. It is a position,
+not authority. No total, arbitrary limit, search or hidden row count is added.
+Read current and the selected page in one read-only repeatable-read snapshot;
+later pages are fresh reads, not a claimed frozen multi-request snapshot. An
+empty page with positive current revision is not a new unrecorded action.
+
+POST returns HTTP 200
+`{ format: "project-next-action-command-v1", outcome: "changed" | "unchanged", record }`,
+where record is the complete current format at that command's result revision.
+Persist the exact validated response with the command. Identical replay returns
+that historical outcome, not today's current record/history; the UI reads GET
+separately after confirmation. Later edits, clears or closure cannot decorate or
+retarget it. History, receipt, captured attribution and normalized strings are
+immutable, with no ordinary update/delete route. Malformed stored facts fail
+closed; never trim, repair, drop corrections or replace them with null/current text.
+
+| Consumer                                                                                                       | Exact consequence                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| New native Project next-action current/editor/history                                                          | Requires the new current/history format; keeps revision-0 missing, later cleared, malformed/unavailable, denied and unsupported responses distinct.         |
+| New command/retry reader                                                                                       | Validates the closed command format and exact attributed record; separates historical confirmation from fresh current read.                                 |
+| Existing Project directory, My open Projects and Client-Project cards/overview/navigation                      | Keep old DTOs, search, paging and selectors. Open the exact existing Project detail to read its action; no unconditional prose field/aggregate is appended. |
+| Existing Project create/manual/Template/Company-plan receipts and responsibility/lifecycle/history             | Preserve old JSON, identifiers, revisions and historical absence. They never acquire this stream through a shared `select *` or replay decoration.          |
+| Native Task/detail/history/queues, result and applicability/readiness/review consumers                         | Preserve independent formats, permission gates and intents; no action field, inferred fulfillment or new dependency.                                        |
+| Frozen copied plan/source snapshots, Document Versions, PDF/bundle indexes and Project result/closure evidence | Preserve exact recorded content/hashes/meaning; no current-action lookup or silent extension.                                                               |
+| Generic Activity/Home/search/count/export/diagnostics/AI                                                       | No prose, new target identifiers, counts, filters or unconditional stream selector; Activity §7 owns recording and exclusion before bounded selection.      |
+
+The runtime audits the real consumers above, HTTP decoders, command persistence,
+App parents and administration. Existing HTTP readers retain their unrelated
+additive-field tolerance; publishers and persisted-format readers remain strict.
+Legacy Project/Task receipt absence means “not recorded in that format”, never
+known null then, never today's action. No old Project API is now required to
+produce this new field. An explicit unknown format discriminator is **unsupported**;
+missing fields or invalid values in the known format are malformed/unavailable.
+An absent old-server seam or ambiguous 404 is unavailable until support is known,
+never a successful empty action or proof that the target exists. Keep native
+401/403 denial distinct; do not mask refusal/transport failure as unrecorded.
+
+### 35.6 Native integrity, upgrade, privacy and operation
+
+Runtime uses an additive reviewed Drizzle migration against the **genuine
+immediately preceding schema**, with no migration number reserved here. The
+Project-owned current/immutable history/command storage is separate from old
+Project receipt representations. Existing Projects have virtual revision 0/null
+until an explicit material declaration; reads perform no initialization writes.
+New Project creation likewise creates no next-action declaration or event.
+
+PostgreSQL independently enforces original Workspace/Company/Project/Client
+composite references, actor membership/Internal User scope, one head per Project,
+unique actor/Workspace command keys, unique positive Project revisions, valid
+scalar text bounds/nulls, captured attribution completeness and same-scope
+predecessor continuity. Enforce immutable history/receipts and coupled material
+head/history/receipt/event conservation, rejecting missing or mismatched coupled
+facts and forged cross-scope references through native constraints/transactional
+guards. Application validation/locks remain mandatory alongside those constraints.
+
+Upgrade a populated predecessor with open/closed/manual/copied Projects and old
+Task/result/closure/union and single/group/nested command facts. Record predecessor
+public baseline using its compatible application/SQL fixtures, close it, apply
+the actual new migration, and validate with the matching new application. Do not
+run an incompatible current ORM against a prior schema or use a fresh empty DB as
+upgrade proof. Compare IDs, states, revisions, timestamps, receipt JSON/fingerprints,
+source maps, results, exact PDF hashes, events, Client fences and all captures;
+repeat upgrade and read/replay with unchanged results. No old fact/grant is
+rewritten. After new text exists, recovery retains it through a compatible
+application/forward repair; no destructive down migration/history rewrite.
+
+Text is ordinary Company-confidential Project content and is deliberately visible
+to its existing Project/original-Client readers. Native history stores the exact
+before/after values in this protected owner. The internal Activity event contains
+only its resulting revision. Prose/keys/fingerprints/attribution payloads stay out
+of diagnostics, traces, exceptions, metrics, generic Activity/Home/export and AI
+or provider calls. There is no Document fetch, auto-link, notification, reminder,
+external integration, new dependency, retention/purge policy or legal assertion.
+Bounded 500-code-point values and 25-entry pages constrain work; they establish
+no production latency SLA. Platform recovery and privacy owners remain unchanged.
+
+### 35.7 Native journey, lifetime, localization and recovery
+
+Both Prisme and legacy Classic extend the existing selected Project detail,
+reachable from the Client-Project journey, with its next-action current/history
+and explicit coordinator editor. Keep the accepted Prisme presentation and
+Classic compatibility route; add no public Classic switch or new screen. Use a
+labelled short plain textarea, bound/help, Save/Replace and deliberate Clear with
+associated validation. Show full wrapped literal text/line breaks, attribution
+and revision; revision 0 says no action recorded, later null says cleared with
+history available. Native history shows exact before/after and attribution with
+explicit older-page continuation. Closed/historical reads retain it read-only.
+No raw UUID entry, auto-save, optimistic success, automatic next-step engine,
+responsible-member/date picker or new approval step is introduced.
+
+An untouched textarea preserves its original intent even if the browser normalizes
+line endings. Only an explicit submitted edit replaces text. Loading, missing,
+cleared, unsupported, malformed/unavailable, denied/revoked, validation, pending,
+conflict/stale, uncertain, confirmed, closed/historical and subsequent-refresh
+failure remain distinct. A lost/malformed POST reply retains exact target/path,
+normalized payload, both observed revisions and key. Disable replacement/clear
+while pending/uncertain; offer explicit identical retry. Stale conflict needs an
+explicit fresh reload/review before new intent; never auto-rebase. Confirmed
+outcome remains confirmed if current/history/Activity refresh fails. Keep the
+saved command result separate from the fresh current projection.
+
+Native Project, Task, result and applicability owners retain independent drafts,
+pending/uncertain/confirmed commands and exact continuation through section/frame
+navigation and hide/reopen. An unrelated read failure or filtered-out Project
+does not abandon another owner's intent. A next-action save cannot replace a
+Task/result/applicability command or bypass their own pending-state exclusions;
+they do not acquire an arbitrary mutual-exclusion workflow here.
+
+Permanent retirement follows the **actual App and administration parent** session/
+identity generation, Internal User, Workspace/Membership, Company-selection
+generation, exact Project/original-Client target and consumed read/write assignment
+identities/known captures/authority generation. Sign-out, suspension, revocation,
+parent removal/unmount, consumed scope change and A→B→A retire that owner forever;
+equal-string revoke/regrant creates a new owner. Coordinator-only loss retires
+write draft/intent while a separately valid read owner may keep protected current/
+history. Project/Client-read loss retires both. Unconsumed Task/result/Document/
+applicability/configuration grants preserve next-action work, and next-action
+Coordinator changes preserve those independently valid owners.
+
+Original Project/Client identity remains stable across canonical union/reversal.
+Revalidate current visibility/mutability, retaining authorized native work while
+dossier-scoped openings retire their consumed Client-identity generation under
+[Shared Client §22.2](release-1-shared-client-prd.md#222-stories-membership-and-bounded-discovery).
+Fresh authorities create new consumers; abort or a reconstructed equal-string key
+cannot revive a retired one. Wire narrow invalidation through the real App and
+admin parents instead of only adding a child key that existing parent keys bypass.
+
+Guard before/after **every await** and before render, focus, navigation, session/
+Company rejection, Actor acceptance, Activity refresh and any shared callback.
+Selected-Company current-Actor recovery, Workspace fallback and revalidation must
+capture the **full Actor snapshot consumed transitively by recovery**, as well as
+the local record scope. Recovery-only consumed changes invalidate recovery before
+shared effects while independently valid local work survives. Held late 200/403,
+selected recovery 200/403 and Workspace fallback 200/403 must not restore retired
+content or alter the current Actor/session/Company/Activity, even if abort is ignored.
+No cache redesign or takeover of other feature owners is authorized.
+
+Centralized **ro/ru/fr/en** copy covers every label, bound, missing/cleared/history,
+failure and recovery state. Locale/frame-only changes preserve literal business
+text, dirty state, exact normalized command/key, control DOM identity and focus,
+without Actor/source/record I/O caused solely by localization/presentation. At
+1440×900 and 390×844, prove keyboard entry, Tab/Save/Clear/retry/history, visible
+focus, associated errors and full long-unbroken/multiline wrapping with no page
+horizontal overflow. Synthetic actual App acceptance needs no manual owner test.
+
+### 35.8 Public proof, fit, exclusions and readiness
+
+1. Start runtime with meaningful failing **actual public REST/PostgreSQL** proof:
+   set on an existing Project, reload exact current text/history, replace, clear
+   and reload. Record the actual RED, then GREEN; a missing seam prediction,
+   import failure or 404 alone is not the business proof. Assert exact attribution,
+   revision/predecessor and unchanged old Project/Task/result fields. Test 500/501
+   code points, combining marks/non-BMP pairs/diacritics/Cyrillic, full exterior trim,
+   interior spaces/CR/LF/CRLF, NUL/lone surrogates, wrong types/unknown fields and
+   literal markup. Null/blank no-op conserves timestamps/history/event/fence.
+2. Prove HTTP grammar/status/order, first set/replacement/correction/clear,
+   25-entry history continuation, invalid/repeated/hidden query scopes, no totals,
+   exact immutable receipt replay after later edits/closure/Client supersession,
+   same-key changed input/target/Company conflicts and exhaustion. Distinguish
+   current null, revision-0 unrecorded, legacy format absence, unsupported and
+   malformed/denied outcomes through actual readers.
+3. Through public REST, prove independent read/update/admin denial; actual
+   foreign Workspace/Company/Project/original-Client scope; unknown/null captures;
+   v1/v2 Project read compatibility; creator/responsible/Owner without new right;
+   grant/revoke/regrant and membership/Company/session suspension. Synthetic admin
+   grants only Coordinator v1; old captured bundles and repeated grants never expand.
+4. Hold both competing orders named in §35.4 on real PostgreSQL, including same/
+   different keys, head initialization, setters, lifecycle/closure, Client union/
+   reversal/relationship and Access revocation. Inject current/history/event/
+   receipt/fence/**response-construction** failures and assert full rollback,
+   including zero orphan receipts/events and no Client fence advance. Exercise
+   native SQL forged-scope/predecessor/missing-coupled/immutability constraints.
+5. Prove genuine populated immediate-predecessor upgrade and repeat-upgrade,
+   including old single/group/nested receipt JSON, captures, mappings, results/PDF
+   hashes and fences. New virtual current is revision 0/null; no historical
+   receipt acquires today's text. Restart twice and conserve new history/replay.
+6. Audit every §35.5 consumer through its public boundary, including current/
+   history/receipt decoders and actual App/admin wiring. Term found only in the
+   action matches no existing title/name search. Generic Activity/Home/pagination/
+   counts/export/diagnostics acquire no prose, target or count through an
+   unconditional selector. Old result/closure/PDF/source snapshots stay exact.
+7. Actual **App/HTTP/admin** positive controls create native Project/Task/result/
+   applicability independent draft, pending, uncertain and confirmed intents;
+   preserve them across authorized navigation/read failure/frame/locale changes,
+   and confirm identical next-action retry separately from current/history refresh.
+   Hold late 200/403 and already-started selected/Workspace recovery 200/403
+   across each true consumed retirement, A→B→A/regrant and full-Actor recovery-only
+   changes. Assert no stale render/focus/navigation or shared Actor/session/
+   Company/Activity effect; unrelated-grant controls retain valid independent work.
+8. Register an **actual App/API/disposable-PostgreSQL** keyboard acceptance in
+   Prisme and Classic, at **1440×900 and 390×844**: open from Client, set/reload,
+   replace/reload exact attributable history, clear/reload/reopen history and read
+   a closed/historical Project. Include four locales, literal markup, multiline/
+   long-unbroken text, uncertainty/retry and independent native continuation.
+   Inspect original screenshots for full content/focus/no overflow. Intercepted
+   fixtures or manually seeded UI alone do not prove this journey. No Clerk,
+   external provider, named actual grant or Dan/Iurie manual step is required.
+
+This complete journey is intended for one fresh runtime context. At fresh
+readiness, inspect actual current owners, dependencies and test fit. If it does
+not fit, re-scope the **whole observable journey** before creating its child;
+never drop authority, integrity, lifetime, upgrade or actual acceptance proof.
+Section 34 and Mission Obligations §15 remain independent neighboring contracts;
+#950/#954's text-representation work is not proof of all Actor lifetimes, and
+#972 still requires its complete existing guards. Do not take over those owners.
+
+Documentation preparation has no missing external business input. Root approved
+this explicit synthesis after completed ordered independent Standards then Spec
+preparation and [actual delegated product disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391);
+actual users/grants, adoption and operational tenant configuration remain unproved
+and unnecessary for synthetic proof. Root alone retains public actions and the
+final current-base documentation gate after the #954 lease. The source-derived six required families and ten
+`not_required` heavy families are not runtime evidence. Approved canonical merge
+and a separate fresh readiness/ownership/doctor/fit check precede any runtime
+child; neither this proposal nor approval alone makes it ready-for-agent.
+
+Excluded: Task references/creation/planning, journal/comments, rich text/mentions/
+files/links, stage graphs/dependencies/automatic next steps, due-date or staffing
+policy, reminders/escalation, mission enrollment/adoption/completion guards,
+fulfillment/NC/certification/auditor policy, Contract/Opportunity changes,
+source-plan narrative editing, official numbering, financial/pricing/legal
+meaning, real users/grants/model activation, provider/deployment and whole-MVP
+acceptance. [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+alone retains `MISSION-CLOSE-01`; this action neither decides it nor repeats a
+business question or dossier request.
