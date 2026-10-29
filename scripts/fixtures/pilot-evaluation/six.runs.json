@@ -1,0 +1,267 @@
+{
+  "schema": "prisma-prim-pilot-runs/v1",
+  "evaluationId": "DEMO-SIX",
+  "caseSetId": "DEMO-SIX",
+  "caseSetVersion": 1,
+  "protocolId": "P-DEMO",
+  "protocolVersion": 1,
+  "manual": {
+    "runId": "M-SIX",
+    "mode": "manual",
+    "methodId": "MANUAL-DEMO",
+    "methodVersion": 1,
+    "operatorRef": "SYNTHETIC-OP",
+    "recordedBy": "SYNTHETIC-REC",
+    "capturedAt": "2026-01-01T00:00:00.000Z",
+    "captureEvidenceRef": "SYNTHETIC-authored-manual",
+    "reviewerRef": "SYNTHETIC-REV",
+    "reviewedAt": "2026-01-01T00:00:00.000Z",
+    "observations": [
+      {
+        "caseId": "A",
+        "caseVersion": 1,
+        "sourceSetId": "S-A",
+        "sourceSetVersion": 1,
+        "referenceId": "R-A",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 60000,
+        "fields": [
+          {
+            "fieldId": "f1",
+            "initial": {
+              "state": "confirmed",
+              "value": "20"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          },
+          {
+            "fieldId": "f2",
+            "initial": {
+              "state": "confirmed",
+              "value": "22"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          }
+        ],
+        "citations": [
+          {
+            "sourceId": "DOC-A",
+            "sourceVersion": 1,
+            "locator": "p1"
+          }
+        ]
+      },
+      {
+        "caseId": "B",
+        "caseVersion": 1,
+        "sourceSetId": "S-B",
+        "sourceSetVersion": 1,
+        "referenceId": "R-B",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 30000,
+        "fields": [
+          {
+            "fieldId": "f1",
+            "initial": {
+              "state": "confirmed",
+              "value": "20"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          }
+        ],
+        "citations": [
+          {
+            "sourceId": "DOC-B",
+            "sourceVersion": 1,
+            "locator": "p1"
+          }
+        ]
+      },
+      {
+        "caseId": "C",
+        "caseVersion": 1,
+        "sourceSetId": "S-C",
+        "sourceSetVersion": 1,
+        "referenceId": "R-C",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 10000,
+        "fields": null,
+        "citations": null
+      },
+      {
+        "caseId": "D",
+        "caseVersion": 1,
+        "sourceSetId": "S-D",
+        "sourceSetVersion": 1,
+        "referenceId": "R-D",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 10000,
+        "fields": null,
+        "citations": null
+      },
+      {
+        "caseId": "E",
+        "caseVersion": 1,
+        "sourceSetId": "S-E",
+        "sourceSetVersion": 1,
+        "referenceId": "R-E",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 10000,
+        "fields": null,
+        "citations": null
+      },
+      {
+        "caseId": "F",
+        "caseVersion": 1,
+        "sourceSetId": "S-F",
+        "sourceSetVersion": 1,
+        "referenceId": "R-F",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 0,
+        "fields": null,
+        "citations": null
+      }
+    ]
+  },
+  "assisted": {
+    "runId": "A-SIX",
+    "mode": "assisted",
+    "methodId": "ASSISTED-DEMO",
+    "methodVersion": 1,
+    "operatorRef": "SYNTHETIC-OP",
+    "recordedBy": "SYNTHETIC-REC",
+    "capturedAt": "2026-01-01T00:00:00.000Z",
+    "captureEvidenceRef": "SYNTHETIC-authored-assisted",
+    "reviewerRef": "SYNTHETIC-REV",
+    "reviewedAt": "2026-01-01T00:00:00.000Z",
+    "observations": [
+      {
+        "caseId": "A",
+        "caseVersion": 1,
+        "sourceSetId": "S-A",
+        "sourceSetVersion": 1,
+        "referenceId": "R-A",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 30000,
+        "fields": [
+          {
+            "fieldId": "f1",
+            "initial": {
+              "state": "confirmed",
+              "value": "20"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          },
+          {
+            "fieldId": "f2",
+            "initial": {
+              "state": "confirmed",
+              "value": "20"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          }
+        ],
+        "citations": [
+          {
+            "sourceId": "DOC-A",
+            "sourceVersion": 1,
+            "locator": "p1"
+          },
+          {
+            "sourceId": "DOC-A",
+            "sourceVersion": 1,
+            "locator": "p2"
+          }
+        ]
+      },
+      {
+        "caseId": "B",
+        "caseVersion": 1,
+        "sourceSetId": "S-B",
+        "sourceSetVersion": 1,
+        "referenceId": "R-B",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 45000,
+        "fields": [
+          {
+            "fieldId": "f1",
+            "initial": {
+              "state": "confirmed",
+              "value": "22"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          }
+        ],
+        "citations": [
+          {
+            "sourceId": "DOC-B",
+            "sourceVersion": 2,
+            "locator": "p1"
+          }
+        ]
+      },
+      {
+        "caseId": "D",
+        "caseVersion": 1,
+        "sourceSetId": "S-D",
+        "sourceSetVersion": 1,
+        "referenceId": "R-D",
+        "referenceVersion": 1,
+        "status": "failed",
+        "elapsedMs": 5000,
+        "fields": null,
+        "citations": null
+      },
+      {
+        "caseId": "E",
+        "caseVersion": 1,
+        "sourceSetId": "S-E",
+        "sourceSetVersion": 1,
+        "referenceId": "R-E",
+        "referenceVersion": 2,
+        "status": "completed",
+        "elapsedMs": 1000,
+        "fields": null,
+        "citations": null
+      },
+      {
+        "caseId": "F",
+        "caseVersion": 1,
+        "sourceSetId": "S-F",
+        "sourceSetVersion": 1,
+        "referenceId": "R-F",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 1000,
+        "fields": null,
+        "citations": null
+      }
+    ]
+  }
+}
