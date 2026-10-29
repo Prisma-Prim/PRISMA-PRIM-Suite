@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   createMissionDocumentFixture,
   json,
@@ -183,7 +183,7 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
     ).toEqual([{ count: 2 }]);
   });
 
-  it('attributes a material correction to its new Coordinator, rejects stale or superseded targets and preserves the earlier unchanged receipt', async () => {
+  async function prepareMaterialCorrection() {
     const c = await prepare();
     await grantCoordinatorB(c.companyId, c.memberB);
     const history = await json(await fixture.call(c.path + '/history'));
@@ -216,47 +216,82 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
     });
     expect(changed.status).toBe(201);
     const material = await json(changed);
-    expect(material).toMatchObject({
-      action: 'recorded',
-      applicabilityRevision: 2,
-    });
-    expect(material.factId).not.toBe(c.receiptA.factId);
-    const facts = objects(
-      record((await json(await fixture.call(c.path + '/history'))).history)
-        .facts,
-    );
-    expect(facts[1]).toEqual(objects(record(history.history).facts)[0]);
-    expect(facts[0]).toMatchObject({
-      kind: 'PROPOSAL_CORRECTED',
-      activityPredecessorId: c.receiptA.factId,
-      actor: {
-        workspaceMembershipId: c.memberB,
-        internalUserId: c.actorB.internalUserId,
-      },
-      capture: {
-        assignmentId: captureB.missionApplicabilityCoordinatorAssignmentId,
-        permissionSetVersion: 'v1',
-      },
-    });
     const afterMaterial = await snapshot(c.clientId);
-    expect(await json(await fixture.call(c.path, options))).toEqual(receiptB);
-    for (const body of [
-      c.correction,
-      {
-        ...c.correction,
-        ...(await observedApplicability(fixture, c.path, c.taskId)),
+    const currentObservations = await observedApplicability(
+      fixture,
+      c.path,
+      c.taskId,
+    );
+    return {
+      c,
+      history,
+      options,
+      receiptB,
+      captureB,
+      material,
+      afterMaterial,
+      currentObservations,
+    };
+  }
+
+  describe('material correction from another Coordinator', () => {
+    let prepared: Awaited<ReturnType<typeof prepareMaterialCorrection>>;
+    beforeEach(async () => {
+      prepared = await prepareMaterialCorrection();
+    });
+
+    it('attributes the successor and preserves the exact original proposal stamp', async () => {
+      const { c, history, captureB, material } = prepared;
+      expect(material).toMatchObject({
+        action: 'recorded',
+        applicabilityRevision: 2,
+      });
+      expect(material.factId).not.toBe(c.receiptA.factId);
+      const facts = objects(
+        record((await json(await fixture.call(c.path + '/history'))).history)
+          .facts,
+      );
+      expect(facts[1]).toEqual(objects(record(history.history).facts)[0]);
+      expect(facts[0]).toMatchObject({
+        kind: 'PROPOSAL_CORRECTED',
+        activityPredecessorId: c.receiptA.factId,
+        actor: {
+          workspaceMembershipId: c.memberB,
+          internalUserId: c.actorB.internalUserId,
+        },
+        capture: {
+          assignmentId: captureB.missionApplicabilityCoordinatorAssignmentId,
+          permissionSetVersion: 'v1',
+        },
+      });
+    });
+
+    it('replays the earlier exact unchanged receipt without altering facts, events or Client fence', async () => {
+      const { c, options, receiptB, afterMaterial } = prepared;
+      expect(await json(await fixture.call(c.path, options))).toEqual(receiptB);
+      expect(await snapshot(c.clientId)).toEqual(afterMaterial);
+    });
+
+    it.each(['stale', 'superseded'] as const)(
+      'refuses the %s correction without altering facts, events or Client fence',
+      async (observations) => {
+        const { c, currentObservations, afterMaterial } = prepared;
+        const body =
+          observations === 'stale'
+            ? c.correction
+            : { ...c.correction, ...currentObservations };
+        expect(
+          (
+            await fixture.call(c.path, {
+              method: 'POST',
+              identity: coordinatorB,
+              body,
+            })
+          ).status,
+        ).toBe(409);
+        expect(await snapshot(c.clientId)).toEqual(afterMaterial);
       },
-    ])
-      expect(
-        (
-          await fixture.call(c.path, {
-            method: 'POST',
-            identity: coordinatorB,
-            body,
-          })
-        ).status,
-      ).toBe(409);
-    expect(await snapshot(c.clientId)).toEqual(afterMaterial);
+    );
   });
 
   const cloneReceipt =
