@@ -1,0 +1,10 @@
+Terminal excerpt from logs/scripts.log. Complete original retained locally and hashed in the canonical manifest. ANSI formatting removed.
+
+ℹ tests 551
+ℹ suites 0
+ℹ pass 551
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 37632.585712

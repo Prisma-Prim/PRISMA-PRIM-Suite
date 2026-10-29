@@ -1,0 +1,4 @@
+Terminal excerpt from local-browser/browser/playwright.log. Complete original retained locally and hashed in the canonical manifest. ANSI formatting removed.
+
+  1 skipped
+  707 passed (11.6m)
