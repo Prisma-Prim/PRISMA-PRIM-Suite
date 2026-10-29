@@ -555,14 +555,24 @@ it.each(['task', 'project', 'client', 'captured version'])(
         },
       });
     render(<App identity={deterministicBrowserIdentity()} />);
-    const navigation = await screen.findByRole('navigation', {
-      name: 'Primary navigation',
-    });
-    expect(
-      within(navigation).queryByRole('link', {
-        name: 'Blocked Tasks',
-      }),
-    ).not.toBeInTheDocument();
+    if (kind === 'captured version') {
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'We could not verify your access. Please try again.',
+      );
+      expect(
+        screen.queryByRole('navigation', { name: 'Primary navigation' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+    } else {
+      const navigation = await screen.findByRole('navigation', {
+        name: 'Primary navigation',
+      });
+      expect(
+        within(navigation).queryByRole('link', {
+          name: 'Blocked Tasks',
+        }),
+      ).not.toBeInTheDocument();
+    }
     expect(api.calls.some((call) => call.path === '/api/blocked-tasks')).toBe(
       false,
     );

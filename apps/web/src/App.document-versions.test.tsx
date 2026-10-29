@@ -1,3 +1,5 @@
+import type { ActorContext } from './access-types';
+import { baseActor } from './production-shell/production-shell-context.test-fixtures';
 import { render, screen } from './test/render-with-interface-locale';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -125,13 +127,14 @@ it.each([
                     },
                   ],
                 }
-              : {
+              : ({
+                  ...baseActor,
                   internalUserId: 'owner-1',
                   displayName: 'Workspace Owner',
                   email: 'owner@example.test',
                   workspaceName: 'PRISMA Workspace',
                   workspacePermissions: ['company.manage'],
-                },
+                } satisfies ActorContext),
         );
       }),
     );

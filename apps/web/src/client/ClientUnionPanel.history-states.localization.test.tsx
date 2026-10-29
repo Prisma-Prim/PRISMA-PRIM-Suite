@@ -1,3 +1,5 @@
+import type { ActorContext } from '../access-types';
+import { baseActor } from '../production-shell/production-shell-context.test-fixtures';
 import {
   act,
   fireEvent,
@@ -393,7 +395,11 @@ describe('localized Client union history public states', () => {
           .mockReturnValueOnce(reversal.promise)
           .mockResolvedValue(
             response({
-              value: { activeCompany: { id: historyCompanies[0].id } },
+              value: {
+                ...baseActor,
+                workspacePermissions: [],
+                activeCompany: historyCompanies[0],
+              } satisfies ActorContext,
             }),
           );
         vi.stubGlobal('fetch', fetcher);

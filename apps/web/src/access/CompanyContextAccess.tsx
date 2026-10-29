@@ -23,6 +23,7 @@ import {
 } from 'react';
 import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
+import { readCurrentActor } from './current-actor';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { useProfitabilityCopy } from '../profitability-estimate/profitability.copy';
@@ -360,13 +361,11 @@ export function CompanyContextAccess({
         command.companyId.toLowerCase() ===
           actor.activeCompany?.id.toLowerCase()
       ) {
-        const revalidated = await api.request<ActorContext>(
-          '/access/current-actor',
-          {
-            companyContextId: command.companyId,
-            signal: request.signal,
-          },
-        );
+        const revalidated = await readCurrentActor({
+          api,
+          companyContextId: command.companyId,
+          signal: request.signal,
+        });
         if (request.signal.aborted) return;
         if (revalidated.status === 'unauthorized') {
           await identity.rejectSession();

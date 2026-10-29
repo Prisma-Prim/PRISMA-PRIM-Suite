@@ -2538,117 +2538,150 @@ describe('CompanyContextAccess', () => {
     expect(refreshActivity).not.toHaveBeenCalled();
   });
 
-  it('retries self-assignment actor revalidation with the same command key', async () => {
-    const selfActor: ActorContext = {
-      ...ownerActor,
-      activeCompany: {
-        id: companyId,
-        displayName: 'PRISMA-PRIM',
-        clientPermissions: [],
-      },
-    };
-    const revalidatedActor: ActorContext = {
-      ...selfActor,
-      activeCompany: {
-        id: companyId,
-        displayName: 'PRISMA-PRIM',
-        clientPermissions: ['client.read', 'client.create', 'client.update'],
-      },
-    };
-    const state = {
-      members: [
-        {
-          workspaceMembershipId: ownerMembershipId,
-          displayName: 'Workspace Owner',
-          email: 'owner@example.test',
+  it.each([
+    'HTTP error',
+    'incomplete Actor',
+    'invalid permission',
+    'unsupported version',
+    'administration reload error',
+  ])(
+    'retries self-assignment after %s with the same command key',
+    async (failure) => {
+      const selfActor: ActorContext = {
+        ...ownerActor,
+        activeCompany: {
+          id: companyId,
+          displayName: 'PRISMA-PRIM',
+          clientPermissions: [],
         },
-      ],
-      companies: [{ id: companyId, displayName: 'PRISMA-PRIM' }],
-      assignments: [],
-    };
-    const grantedState = {
-      ...state,
-      assignments: [
-        {
-          id: 'assignment-1',
-          workspaceMembershipId: ownerMembershipId,
-          companyId,
-          bundle: 'Company Director Client Access',
-          permissionSetVersion: 'v2',
-          active: true,
+      };
+      const revalidatedActor: ActorContext = {
+        ...selfActor,
+        activeCompany: {
+          id: companyId,
+          displayName: 'PRISMA-PRIM',
+          clientPermissions: ['client.read', 'client.create', 'client.update'],
         },
-      ],
-    };
-    const assignment = {
-      id: 'assignment-1',
-      workspaceMembershipId: ownerMembershipId,
-      companyId,
-      bundle: 'Company Director Client Access',
-      active: true,
-    };
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(state), { status: 200 }),
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(assignment), { status: 201 }),
-        )
-        .mockResolvedValueOnce(new Response(null, { status: 500 }))
-        .mockResolvedValueOnce(new Response(null, { status: 500 }))
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(grantedState), { status: 200 }),
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(assignment), { status: 201 }),
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(revalidatedActor), { status: 200 }),
-        )
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify(grantedState), { status: 200 }),
-        ),
-    );
-    const acceptActor = vi.fn(async () => undefined);
+      };
+      const state = {
+        members: [
+          {
+            workspaceMembershipId: ownerMembershipId,
+            displayName: 'Workspace Owner',
+            email: 'owner@example.test',
+          },
+        ],
+        companies: [{ id: companyId, displayName: 'PRISMA-PRIM' }],
+        assignments: [],
+      };
+      const grantedState = {
+        ...state,
+        assignments: [
+          {
+            id: 'assignment-1',
+            workspaceMembershipId: ownerMembershipId,
+            companyId,
+            bundle: 'Company Director Client Access',
+            permissionSetVersion: 'v2',
+            active: true,
+          },
+        ],
+      };
+      const assignment = {
+        id: 'assignment-1',
+        workspaceMembershipId: ownerMembershipId,
+        companyId,
+        bundle: 'Company Director Client Access',
+        active: true,
+      };
+      const replies = [
+        Response.json(state),
+        Response.json(assignment, { status: 201 }),
+        failure === 'HTTP error' || failure === 'administration reload error'
+          ? new Response(null, { status: 500 })
+          : Response.json(
+              failure === 'incomplete Actor'
+                ? { internalUserId: selfActor.internalUserId }
+                : {
+                    ...selfActor,
+                    activeCompany: {
+                      ...selfActor.activeCompany,
+                      ...(failure === 'invalid permission'
+                        ? { clientPermissions: ['client.delete'] }
+                        : { clientPermissionSetVersion: 'v99' }),
+                    },
+                  },
+            ),
+        ...(failure === 'administration reload error'
+          ? [new Response(null, { status: 500 }), Response.json(grantedState)]
+          : [Response.json(grantedState)]),
+        Response.json(assignment, { status: 201 }),
+        Response.json(revalidatedActor),
+        Response.json(grantedState),
+      ];
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          const response = replies.shift();
+          if (!response) throw new Error('Unexpected request');
+          return response;
+        }),
+      );
+      const acceptActor = vi.fn(async () => undefined);
 
-    render(
-      <CompanyContextAccess
-        actor={selfActor}
-        identity={deterministicBrowserIdentity()}
-        onActorRevalidated={acceptActor}
-      />,
-    );
-    await screen.findByLabelText('Workspace member');
-    changeValue(screen.getByLabelText('Workspace member'), ownerMembershipId);
-    changeValue(screen.getByLabelText('Company'), companyId);
-    changeValue(screen.getByLabelText('Access bundle'), 'director-client');
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+      render(
+        <CompanyContextAccess
+          actor={selfActor}
+          identity={deterministicBrowserIdentity()}
+          onActorRevalidated={acceptActor}
+        />,
+      );
+      await screen.findByLabelText('Workspace member');
+      changeValue(screen.getByLabelText('Workspace member'), ownerMembershipId);
+      changeValue(screen.getByLabelText('Company'), companyId);
+      changeValue(screen.getByLabelText('Access bundle'), 'director-client');
+      fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The access state could not be loaded or changed.',
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Retry access state' }));
-    await screen.findByLabelText('Workspace member');
-    expect(screen.getByText(/Current server state:/)).toHaveTextContent(
-      'Current server state: Granted',
-    );
-    expect(screen.getByRole('button', { name: 'Grant access' })).toBeEnabled();
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'The access state could not be loaded or changed.',
+      );
+      expect(acceptActor).not.toHaveBeenCalled();
+      expect(
+        screen.queryByText('Access granted. Server state refreshed.'),
+      ).not.toBeInTheDocument();
+      if (failure === 'administration reload error') {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Retry access state' }),
+        );
+      }
+      await screen.findByLabelText('Workspace member');
+      expect(screen.getByText(/Current server state:/)).toHaveTextContent(
+        'Current server state: Granted',
+      );
+      expect(
+        screen.getByRole('button', { name: 'Grant access' }),
+      ).toBeEnabled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
-    await screen.findByText('Access granted. Server state refreshed.');
+      fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+      await screen.findByText('Access granted. Server state refreshed.');
 
-    const firstKey = new Headers(
-      vi.mocked(fetch).mock.calls[1]?.[1]?.headers,
-    ).get('idempotency-key');
-    const retryKey = new Headers(
-      vi.mocked(fetch).mock.calls[5]?.[1]?.headers,
-    ).get('idempotency-key');
-    expect(firstKey).toBeTruthy();
-    expect(retryKey).toBe(firstKey);
-    expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
-  });
+      const commands = vi
+        .mocked(fetch)
+        .mock.calls.filter(([, options]) => options?.method === 'POST');
+      expect(commands).toHaveLength(2);
+      const firstKey = new Headers(commands[0]?.[1]?.headers).get(
+        'idempotency-key',
+      );
+      const retryKey = new Headers(commands[1]?.[1]?.headers).get(
+        'idempotency-key',
+      );
+      expect(firstKey).toBeTruthy();
+      expect(retryKey).toBe(firstKey);
+      expect(commands[1]?.[0]).toBe(commands[0]?.[0]);
+      expect(commands[1]?.[1]?.body).toBe(commands[0]?.[1]?.body);
+      expect(acceptActor).toHaveBeenCalledWith(revalidatedActor);
+    },
+  );
 
   it('rejects the session when the administration read is unauthorized', async () => {
     vi.stubGlobal(

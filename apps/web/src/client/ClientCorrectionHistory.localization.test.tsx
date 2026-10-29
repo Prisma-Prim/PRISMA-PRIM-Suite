@@ -1,3 +1,5 @@
+import type { ActorContext } from '../access-types';
+import { baseActor } from '../production-shell/production-shell-context.test-fixtures';
 import {
   act,
   fireEvent,
@@ -308,7 +310,14 @@ it.each(['empty', 'error', 'unavailable'] as const)(
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       const path = new URL(input.toString(), 'http://localhost').pathname;
       if (path === '/api/access/current-actor')
-        return Response.json({ activeCompany: { id: 'company-history' } });
+        return Response.json({
+          ...baseActor,
+          workspacePermissions: [],
+          activeCompany: {
+            id: 'company-history',
+            displayName: 'Synthetic Company',
+          },
+        } satisfies ActorContext);
       if (path !== '/api/clients/client-history/correction-history')
         throw new Error('Unexpected history request.');
       if (retry)

@@ -1,5 +1,5 @@
 import type { BrowserIdentity } from '../access-composition';
-import type { ActorContext } from '../access-types';
+import { readCurrentActor } from '../access/current-actor';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { activityLogPageResponse } from './activity-log-response';
 import type { ProductionShellTransport } from './production-shell-session';
@@ -10,7 +10,8 @@ export async function createAuthenticatedProductionShellTransport(
   const api = await createAuthenticatedApiClient(identity);
   return {
     loadActor: ({ companyId, signal }) =>
-      api.request<ActorContext>('/access/current-actor', {
+      readCurrentActor({
+        api,
         companyContextId: companyId,
         signal,
       }),

@@ -1,3 +1,5 @@
+import type { ActorContext } from './access-types';
+import { baseActor } from './production-shell/production-shell-context.test-fixtures';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -33,12 +35,13 @@ describe('ApplicationRoot', () => {
                 ? []
                 : input.toString().endsWith('/activity-log')
                   ? { events: [] }
-                  : {
+                  : ({
+                      ...baseActor,
                       displayName: 'Ada Ionescu',
                       email: 'ada@example.test',
                       workspaceName: 'PRISMA Workspace',
                       workspacePermissions: ['company.manage'],
-                    },
+                    } satisfies ActorContext),
             ),
             { status: 200 },
           ),

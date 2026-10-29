@@ -1,3 +1,5 @@
+import type { ActorContext } from './access-types';
+import { baseActor } from './production-shell/production-shell-context.test-fixtures';
 import {
   act,
   fireEvent,
@@ -48,12 +50,13 @@ describe('App', () => {
                         },
                       ],
                     }
-                  : {
+                  : ({
+                      ...baseActor,
                       displayName: 'Ada Ionescu',
                       email: 'ada@example.test',
                       workspaceName: 'PRISMA Workspace',
                       workspacePermissions: ['company.manage'],
-                    },
+                    } satisfies ActorContext),
             ),
             { status: 200 },
           ),
@@ -192,13 +195,14 @@ describe('App', () => {
                       },
                     ],
                   }
-                : {
+                : ({
+                    ...baseActor,
                     internalUserId: 'user-1',
                     displayName: 'Ada Ionescu',
                     email: 'ada@example.test',
                     workspaceName: 'PRISMA Workspace',
                     workspacePermissions: ['company.manage'],
-                  },
+                  } satisfies ActorContext),
           ),
           { status: 200 },
         ),
@@ -251,13 +255,14 @@ describe('App', () => {
                         },
                       ],
                     }
-                  : {
+                  : ({
+                      ...baseActor,
                       internalUserId: 'owner-1',
                       displayName: 'Workspace Owner',
                       email: 'owner@example.test',
                       workspaceName: 'PRISMA Workspace',
                       workspacePermissions: ['company.manage'],
-                    },
+                    } satisfies ActorContext),
             ),
             { status: 200 },
           ),
@@ -321,13 +326,14 @@ describe('App', () => {
                         },
                       ],
                     }
-                  : {
+                  : ({
+                      ...baseActor,
                       internalUserId: 'owner-1',
                       displayName: 'Workspace Owner',
                       email: 'owner@example.test',
                       workspaceName: 'PRISMA Workspace',
                       workspacePermissions: ['company.manage'],
-                    },
+                    } satisfies ActorContext),
             ),
             { status: 200 },
           ),
@@ -379,13 +385,14 @@ describe('App', () => {
                       },
                     ],
                   }
-                : {
+                : ({
+                    ...baseActor,
                     internalUserId: 'owner-1',
                     displayName: 'Workspace Owner',
                     email: 'owner@example.test',
                     workspaceName: 'PRISMA Workspace',
                     workspacePermissions: ['company.manage'],
-                  },
+                  } satisfies ActorContext),
           ),
           { status: 200 },
         ),
@@ -436,13 +443,14 @@ describe('App', () => {
                         },
                       ],
                     }
-                  : {
+                  : ({
+                      ...baseActor,
                       internalUserId: 'owner-1',
                       displayName: 'Workspace Owner',
                       email: 'owner@example.test',
                       workspaceName: 'PRISMA Workspace',
                       workspacePermissions: ['company.manage'],
-                    },
+                    } satisfies ActorContext),
             ),
             { status: 200 },
           ),
@@ -553,12 +561,13 @@ describe('App', () => {
               ? []
               : input.toString().endsWith('/activity-log')
                 ? { events: [] }
-                : {
+                : ({
+                    ...baseActor,
                     displayName: 'Ada Ionescu',
                     email: 'ada@example.test',
                     workspaceName: 'PRISMA Workspace',
                     workspacePermissions: ['company.manage'],
-                  },
+                  } satisfies ActorContext),
           ),
           { status: 200 },
         ),
@@ -587,11 +596,12 @@ describe('App', () => {
           : Promise.resolve(
               new Response(
                 JSON.stringify({
+                  ...baseActor,
                   displayName: 'Ada Ionescu',
                   email: 'ada@example.test',
                   workspaceName: 'PRISMA Workspace',
                   workspacePermissions: ['company.manage'],
-                }),
+                } satisfies ActorContext),
                 { status: 200 },
               ),
             ),

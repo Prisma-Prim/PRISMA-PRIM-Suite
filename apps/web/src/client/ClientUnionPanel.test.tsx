@@ -1,3 +1,5 @@
+import type { ActorContext } from '../access-types';
+import { baseActor } from '../production-shell/production-shell-context.test-fixtures';
 import { changeValue } from '../test/select-option';
 import {
   act,
@@ -1571,7 +1573,13 @@ describe('Client union UI public journey', () => {
         .fn()
         .mockResolvedValueOnce(response(comparison, 201))
         .mockResolvedValueOnce(response({}, status))
-        .mockResolvedValue(response({ activeCompany: { id: 'company-a' } }));
+        .mockResolvedValue(
+          response({
+            ...baseActor,
+            workspacePermissions: [],
+            activeCompany: { id: 'company-a', displayName: 'PRISMA-PRIM' },
+          } satisfies ActorContext),
+        );
       vi.stubGlobal('fetch', fetcher);
       render(<ClientUnionPanel {...props()} />);
       fireEvent.submit(await completeComparison());
