@@ -1,0 +1,108 @@
+{
+  "issue": 973,
+  "pr": 974,
+  "source": "9950e1fa210546c3dc48b2698b10f0cd358e521a",
+  "base": "a4236a454633f72095fa747a7eaabd006061dda0",
+  "tree": "10e5e4e556c57823f94ef1a3df4b657730ec236b",
+  "canonicalLocalGate": {
+    "attempt": 2,
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1890,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "issue": 973,
+    "reviewedSource": "a58feedc5f9635cd6499eaaed240bc91be25d5cc",
+    "reviewedBase": "68bbf8fa2609cad8d448363ee12577b745dbbf40",
+    "reviewedTree": "20b1ac337e16fad97c9209d35859d2c79f2533ee",
+    "approvedPreparedSource": "08a1351353f32ee1bf42d87409a09101f9662fba",
+    "approvedPreparedTree": "76aa759fe7430670b256e8a9d4ad4311146bb1db",
+    "orderedIndependentReview": [
+      "standards",
+      "spec"
+    ],
+    "reports": {
+      "standards": {
+        "sha256": "8a7454cc2ce9bfab812f816cb7be9e4e32f799c5d8824cfc92412ae0a315da19",
+        "report": "# DOC973 independent Standards review\n\n**Complete \u2014 PASS.** Standards only; no product approval.\n\nSource: `a58feedc5f9635cd6499eaaed240bc91be25d5cc`  \nBase: `68bbf8fa2609cad8d448363ee12577b745dbbf40`  \nTree: `20b1ac337e16fad97c9209d35859d2c79f2533ee`\n\nDiff: `git diff 68bbf8fa2609cad8d448363ee12577b745dbbf40...a58feedc5f9635cd6499eaaed240bc91be25d5cc`. Sole commit: `a58feedc docs(project): define explicit next-action contract (#973)`.\n\nRead the complete five-file diff, originating issue, applicable AGENTS, issue-execution, knowledge system, ticketing standard, domain/CONTEXT, relevant decision-record/ADR and owning Project, Authorization, Activity, Mission, Shared Client, UX and Platform contracts.\n\nDocumented rules assessed: AGENTS Product boundary/Review policy; repository-knowledge-system \u00a7\u00a72,4,7\u20138 (one owner, targeted complete route, truthful evidence/status); specification-and-ticketing-standard \u00a7\u00a72\u20135,8\u20139 (authority, PRD completeness, readiness, delegated synthesis); domain Ownership; ADR-0006 isolation/authorization.\n\nPer-file/hunk disposition:\n\n- `release-1-project-task-prd.md` header/\u00a735: no hard violation. Source answer and agent interpretation remain distinct; proposal state, exact permissions, lifecycle/history/replay, privacy, integrity, compatibility and complete native proof are explicit. Cross-cutting owners remain authoritative; fresh runtime readiness remains separate.\n- `tenant-company-client-authorization-prd.md` \u00a78 insertion: no hard violation. Independent captured Coordinator v1 grants only the new write; reads, administration and existing captures retain their boundaries.\n- `activity-log-accountability-prd.md` \u00a77 insertion: no hard violation. Minimal internal event and atomic conservation align with protected history and exclusion before generic pagination/counting.\n- `prd-index.md` \u00a75 insertion: no hard violation. Direct owner navigation accurately preserves Ready for product review and pending disposition.\n- `release-1-mission-obligations-prd.md` \u00a7\u00a74/8/11 pointers: no hard violation. Narrow reconciliation preserves independent mission authority. Independently compared \u00a712 through EOF byte-for-byte against base: unchanged.\n\nIndependent immutable-source checks found 183 valid relative links, including 117 heading targets; checkout remains clean. No runtime/heavy checks or public actions performed.\n\nAll twelve Fowler baseline heuristics considered; none applies materially to this documentation change. Findings: **0 hard, 0 heuristic; 0 blockers, 0 nonblocking suggestions**. Ordered independent Spec review and root's actual delegated product disposition remain pending.\n",
+        "blockingFindings": 0,
+        "nonblockingFindings": 0
+      },
+      "spec": {
+        "sha256": "3c1c9e02fc098b091c60a6de609db3589302852ba81400e2a4a4466cd6a47b5f",
+        "report": "# Independent Spec/Product-contract review \u2014 DOC973\n\nSource: `a58feedc5f9635cd6499eaaed240bc91be25d5cc`  \nBase: `68bbf8fa2609cad8d448363ee12577b745dbbf40`  \nTree: `20b1ac337e16fad97c9209d35859d2c79f2533ee`\n\nDisposition: **COMPLETE \u2014 no findings.** Spec/Product-contract axis: **0 blockers; 0 nonblocking findings.** Standards is the separate preceding axis and was not reassessed here. This disposition is not product approval, publication or runtime-readiness approval; root's actual delegated product disposition remains pending.\n\nReviewed the complete assigned issue, all five changed files and all of Project/Task \u00a735, the handoff/source evidence, applicable repository instructions, knowledge/ticketing/domain/context authorities, relevant cross-cutting owners/ADRs and actual Project, Access, Client, App and administration interfaces. Used the code-review Spec workflow and mandatory TypeScript discipline before source inspection.\n\nThe proposal meets issue contract items 1\u20138: source-backed literal-versus-Task qualification and accurate S02-Q13 attribution (\u00a735.1); independent captured Coordinator v1 and exact original scope/read/write matrix (\u00a735.2; Authorization \u00a78); closed normalization, revisions, history, no-op, exhaustion, receipt/error/replay ordering (\u00a7\u00a735.3\u201335.5); public Access\u2192Client\u2192Project serialization, both dangerous orders, coupled integrity and response-failure rollback (\u00a735.4); genuine predecessor/repeat-upgrade and legacy conservation (\u00a735.6); native versus generic-consumer privacy (Activity \u00a77; \u00a735.5); actual App/admin full-transitive recovery, permanent consumed-scope retirement and independent intent preservation (\u00a735.7); and meaningful REST/PostgreSQL plus registered actual-App acceptance in four locales, both frames and viewports (\u00a735.8).\n\nNo missing/partial acceptance requirement, unrequested business behavior, or contradictory implemented contract requiring a blocking correction was identified. Direct base/source comparison verifies Mission \u00a712 through EOF is byte-identical; approved applicability \u00a7\u00a712\u201315 and #972's normative obligations remain intact. No activation/closure guard, actual grant, owner test or runtime child is introduced.\n\nLimitations: this is an independent static documentation review of the pinned artifact. Business/ownership history uses the captured source evidence; no new live tracker poll was performed. No runtime implementation, PostgreSQL/browser/heavy checks, final canonical documentation gate or publication was executed during #954's heavy-check lease. Future runtime fit/readiness remains explicitly gated.\n",
+        "blockingFindings": 0,
+        "nonblockingFindings": 0
+      }
+    },
+    "actualApprovalComment": 6484463391,
+    "actualApprovalURL": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391",
+    "blockingFindingsRemaining": 0,
+    "normalization": {
+      "reviewedSource": "a58feedc5f9635cd6499eaaed240bc91be25d5cc",
+      "approvedSource": "08a1351353f32ee1bf42d87409a09101f9662fba",
+      "base": "68bbf8fa2609cad8d448363ee12577b745dbbf40",
+      "tree": "76aa759fe7430670b256e8a9d4ad4311146bb1db",
+      "rootReadEntireStatusOnlyDelta": true,
+      "rootIndependentlyVerifiedExactInverseCount": 11,
+      "allFiveBlobsInverseByteExact": true,
+      "artifactsHashAndSizeVerified": 20,
+      "approvedBlobs": {
+        "docs/product/activity-log-accountability-prd.md": "b7c4513d85a32ea305b06cc4def060411a99045ca5d18541517b4d029f96e05c",
+        "docs/product/prd-index.md": "f167866206c2dcb68b746a74289d328a220273a8502dbc94874bb0e30b7a4960",
+        "docs/product/release-1-mission-obligations-prd.md": "93613513c645658ef18a116f6b4af7da32eb4a7400775ac08c27dbe272f593fc",
+        "docs/product/release-1-project-task-prd.md": "405b060db17db4af1114d9c2c5ec64b02f08cd7b7868c568ea80a8e460b69b37",
+        "docs/product/tenant-company-client-authorization-prd.md": "99446b1c706f6bcfed7179221f4820ade5663f8fff097b98ead123fafeb845fd"
+      },
+      "normalizationReportSHA256": "e48d892df114e8f994c92ddd00a1676d8896ce8e44d42f45b4eee4676b844bbf"
+    },
+    "status": "Applicable ordered Standards/Spec and actual delegated approval complete before canonical documentation gate; all five approved blobs identical on actual current base.",
+    "source": "9950e1fa210546c3dc48b2698b10f0cd358e521a",
+    "base": "a4236a454633f72095fa747a7eaabd006061dda0",
+    "tree": "10e5e4e556c57823f94ef1a3df4b657730ec236b",
+    "complete": true,
+    "unresolvedThreads": 0,
+    "automaticReviewTriggerRequired": false,
+    "compositionApplicability": {
+      "issue": 973,
+      "fromSource": "08a1351353f32ee1bf42d87409a09101f9662fba",
+      "source": "9950e1fa210546c3dc48b2698b10f0cd358e521a",
+      "base": "a4236a454633f72095fa747a7eaabd006061dda0",
+      "tree": "10e5e4e556c57823f94ef1a3df4b657730ec236b",
+      "allFiveApprovedBlobsIdentical": true,
+      "scopedPaths": [
+        "docs/product/activity-log-accountability-prd.md",
+        "docs/product/prd-index.md",
+        "docs/product/release-1-mission-obligations-prd.md",
+        "docs/product/release-1-project-task-prd.md",
+        "docs/product/tenant-company-client-authorization-prd.md"
+      ],
+      "clean": true,
+      "mainDelta": "Actor representation validation only; no overlap with five DOC owners, no material conflict resolution or normative edit.",
+      "reviewReuse": "OriginalorderedStandards\u2192Spec/actualrootapproval/11statusinversesremainapplicable; no newbroadreview."
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "priorFailedCanonicalGate": {
+    "attempt": 1,
+    "status": "failed_before_any_family",
+    "actualScopeRecorded": "complete",
+    "reason": "Default command sandbox returned spawnSync git EPERM even with exit0 and correct stdout; source-derived scope therefore conservatively unproven. Railway check refused before any family.",
+    "targetedDiagnosis": "Identical unchanged canonical changedFiles/isDocumentationOnly with authorized network-capable execution returned exact five DOC paths and docs_only true. No tracked code/configuration or assertion changes.",
+    "all16FamiliesUnexecuted": true,
+    "originalEvidence": "verification-1",
+    "next": "One fresh gate in verification-2 with normal authorized execution. If another complete failure, pause full reruns for targeted diagnosis."
+  },
+  "scope": "Documentation-only approved bounded Project next-action contract under ProjectTask35: one explicit short literal record, independent captured Coordinatorv1, exact set/replace/clear/current/history/receipt/authority/transaction/privacy/lifetime/native acceptance semantics. Existing Project/Task/result/source/PDF and Mission12-15 remain conserved. No runtime, actual grant, automatic workflow/activation/closure/fulfillment claim. Separate fresh runtime follows canonical merge/readiness. MISSION-CLOSE-01 remains solely its existing register.",
+  "publication": "Unmodified canonical metadata manifest and report, compact technical proof/index only. Bulk inputs are exact existing public Git paths/modes/SHA256, individually validated against source bytes. Artifact hashes identify private raw logs; log bodies are not selected. No images, archives, traces, original dossier or model prose selected.",
+  "keepThrough": "2026-11-20T23:59:59Z"
+}
