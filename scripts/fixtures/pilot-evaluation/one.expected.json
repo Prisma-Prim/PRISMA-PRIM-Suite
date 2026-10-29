@@ -1,0 +1,42 @@
+{
+  "declaredCasesCount": 1,
+  "basePairCount": 1,
+  "time": {
+    "pairedCaseIds": ["A"],
+    "excluded": [],
+    "manualMs": 60000,
+    "assistedMs": 30000,
+    "reductionPercent": "50.000000"
+  },
+  "fields": {
+    "pairedCaseIds": ["A"],
+    "excluded": [],
+    "manual": { "numerator": 0, "denominator": 1, "value": "0.000000" },
+    "assisted": { "numerator": 1, "denominator": 1, "value": "1.000000" },
+    "assistedMinusManualPp": "100.000000"
+  },
+  "changes": {
+    "pairedCaseIds": ["A"],
+    "excluded": [],
+    "manual": { "numerator": 1, "denominator": 1, "value": "1.000000" },
+    "assisted": { "numerator": 0, "denominator": 1, "value": "0.000000" },
+    "assistedMinusManualPp": "-100.000000"
+  },
+  "citations": {
+    "pairedCaseIds": ["A"],
+    "excluded": [],
+    "manual": {
+      "precision": { "numerator": 1, "denominator": 1, "value": "1.000000" },
+      "recall": { "numerator": 1, "denominator": 1, "value": "1.000000" },
+      "exact": { "numerator": 1, "denominator": 1, "value": "1.000000" }
+    },
+    "assisted": {
+      "precision": { "numerator": 1, "denominator": 1, "value": "1.000000" },
+      "recall": { "numerator": 1, "denominator": 1, "value": "1.000000" },
+      "exact": { "numerator": 1, "denominator": 1, "value": "1.000000" }
+    },
+    "precisionDeltaPp": "0.000000",
+    "recallDeltaPp": "0.000000",
+    "exactDeltaPp": "0.000000"
+  }
+}

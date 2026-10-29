@@ -1,0 +1,84 @@
+{
+  "declaredCasesCount": 6,
+  "basePairCount": 3,
+  "time": {
+    "pairedCaseIds": ["A", "B"],
+    "excluded": [
+      { "caseId": "C", "reasons": ["missing_assisted"] },
+      { "caseId": "D", "reasons": ["failed_assisted"] },
+      { "caseId": "E", "reasons": ["incompatible_assisted"] },
+      { "caseId": "F", "reasons": ["zero_time_manual"] }
+    ],
+    "manualMs": 90000,
+    "assistedMs": 75000,
+    "reductionPercent": "16.666667"
+  },
+  "fields": {
+    "pairedCaseIds": ["A", "B"],
+    "excluded": [
+      { "caseId": "C", "reasons": ["missing_assisted"] },
+      { "caseId": "D", "reasons": ["failed_assisted"] },
+      { "caseId": "E", "reasons": ["incompatible_assisted"] },
+      {
+        "caseId": "F",
+        "reasons": ["unmeasured_fields_manual", "unmeasured_fields_assisted"]
+      }
+    ],
+    "manual": { "numerator": 2, "denominator": 3, "value": "0.666667" },
+    "assisted": { "numerator": 2, "denominator": 3, "value": "0.666667" },
+    "assistedMinusManualPp": "0.000000"
+  },
+  "changes": {
+    "pairedCaseIds": ["A", "B"],
+    "excluded": [
+      { "caseId": "C", "reasons": ["missing_assisted"] },
+      { "caseId": "D", "reasons": ["failed_assisted"] },
+      { "caseId": "E", "reasons": ["incompatible_assisted"] },
+      {
+        "caseId": "F",
+        "reasons": ["unmeasured_fields_manual", "unmeasured_fields_assisted"]
+      }
+    ],
+    "manual": { "numerator": 1, "denominator": 3, "value": "0.333333" },
+    "assisted": { "numerator": 1, "denominator": 3, "value": "0.333333" },
+    "assistedMinusManualPp": "0.000000"
+  },
+  "citations": {
+    "pairedCaseIds": ["A", "B"],
+    "excluded": [
+      {
+        "caseId": "C",
+        "reasons": ["missing_assisted", "unsupported_reference_citations"]
+      },
+      {
+        "caseId": "D",
+        "reasons": ["failed_assisted", "unsupported_reference_citations"]
+      },
+      {
+        "caseId": "E",
+        "reasons": ["incompatible_assisted", "unsupported_reference_citations"]
+      },
+      {
+        "caseId": "F",
+        "reasons": [
+          "unsupported_reference_citations",
+          "unmeasured_citations_manual",
+          "unmeasured_citations_assisted"
+        ]
+      }
+    ],
+    "manual": {
+      "precision": { "numerator": 2, "denominator": 2, "value": "1.000000" },
+      "recall": { "numerator": 2, "denominator": 3, "value": "0.666667" },
+      "exact": { "numerator": 1, "denominator": 2, "value": "0.500000" }
+    },
+    "assisted": {
+      "precision": { "numerator": 2, "denominator": 3, "value": "0.666667" },
+      "recall": { "numerator": 2, "denominator": 3, "value": "0.666667" },
+      "exact": { "numerator": 1, "denominator": 2, "value": "0.500000" }
+    },
+    "precisionDeltaPp": "-33.333333",
+    "recallDeltaPp": "0.000000",
+    "exactDeltaPp": "0.000000"
+  }
+}
