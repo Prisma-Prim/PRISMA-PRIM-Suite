@@ -11,6 +11,7 @@ import {
 } from './invitation-acceptance-intent';
 import { useInvitationAcceptanceCopy } from './invitation-acceptance.copy';
 import { WorkspaceInvitationAcceptance } from './WorkspaceInvitationAcceptance';
+import { ClerkNativeValidation } from './ClerkNativeValidation';
 import '../production-shell/application-shell.css';
 
 export function WorkspaceInvitationEntry({
@@ -58,26 +59,28 @@ function InvitationAuthentication({ intent }: { intent: AcceptanceIntent }) {
       <section className="production-content-surface invitation-entry">
         <h1>{copy.title}</h1>
         <p>{copy.authentication}</p>
-        {mode === 'signup' && signUpUrl ? (
-          <SignUp
-            routing="hash"
-            forceRedirectUrl={returnUrl}
-            signInUrl={signInUrl}
-            signInForceRedirectUrl={returnUrl}
-          />
-        ) : mode === 'signin' ? (
-          <SignIn
-            routing="hash"
-            forceRedirectUrl={returnUrl}
-            signUpUrl={signUpUrl ?? returnUrl}
-            signUpForceRedirectUrl={returnUrl}
-          />
-        ) : (
-          <div className="invitation-entry-actions">
-            <a href={signInUrl}>{copy.signIn}</a>
-            {signUpUrl && <a href={signUpUrl}>{copy.signUp}</a>}
-          </div>
-        )}
+        <ClerkNativeValidation>
+          {mode === 'signup' && signUpUrl ? (
+            <SignUp
+              routing="hash"
+              forceRedirectUrl={returnUrl}
+              signInUrl={signInUrl}
+              signInForceRedirectUrl={returnUrl}
+            />
+          ) : mode === 'signin' ? (
+            <SignIn
+              routing="hash"
+              forceRedirectUrl={returnUrl}
+              signUpUrl={signUpUrl ?? returnUrl}
+              signUpForceRedirectUrl={returnUrl}
+            />
+          ) : (
+            <div className="invitation-entry-actions">
+              <a href={signInUrl}>{copy.signIn}</a>
+              {signUpUrl && <a href={signUpUrl}>{copy.signUp}</a>}
+            </div>
+          )}
+        </ClerkNativeValidation>
       </section>
     </main>
   );

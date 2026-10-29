@@ -94,10 +94,36 @@
 
 .invitation-entry {
   display: grid;
+  min-width: 0;
   color: var(--shell-ink);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   gap: 1rem;
   width: min(100%, 36rem);
+}
+
+.invitation-authentication {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.invitation-authentication :is(.cl-rootBox, .cl-cardBox, .cl-card) {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.invitation-authentication .cl-socialButtonsBlockButtonText {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.invitation-native-error {
+  margin: 1rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .invitation-entry-actions {
