@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { actorContextFixture } from './actor-context.fixture';
 
 test('invited visitors reach sign-in from a focused public welcome', async ({
   page,
@@ -67,9 +68,7 @@ test('authenticated members enter the protected application directly', async ({
   await page.route('**/api/access/current-actor', (route) =>
     route.fulfill({
       json: {
-        displayName: 'Ada Ionescu',
-        email: 'ada@example.test',
-        workspaceName: 'PRISMA Workspace',
+        ...actorContextFixture,
         workspacePermissions: [],
       },
     }),
