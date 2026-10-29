@@ -15,6 +15,7 @@ import {
   revision,
   text,
   uuid,
+  type OperationalRiskJournalCorrectionInput,
 } from './operational-risk.validation.js';
 
 export function readOperationalRiskEntry(
@@ -31,6 +32,33 @@ export function readOperationalRiskEntry(
       },
       recordedAt: row.recordedAt.toISOString(),
     };
+    if (row.kind === 'journal-corrected') {
+      exact(payload, ['narrative', 'occurredOn', 'reason']);
+      if (
+        row.originalEntryRevision === null ||
+        row.originalEntryRevision <= 1 ||
+        row.predecessorRevision === null ||
+        row.predecessorRevision < row.originalEntryRevision ||
+        row.predecessorRevision >= row.revision
+      )
+        corrupt();
+      return entry({
+        ...common,
+        kind: row.kind,
+        originalEntryId: row.originalEntryId,
+        journalKind: row.journalKind,
+        predecessorId: row.predecessorId,
+        narrative: payload.narrative,
+        occurredOn: payload.occurredOn,
+        reason: payload.reason,
+      });
+    }
+    if (
+      row.originalEntryId !== null ||
+      row.originalEntryRevision !== null ||
+      row.journalKind !== null
+    )
+      corrupt();
     if (row.kind === 'intake-recorded') {
       exact(payload, ['facts']);
       if (row.predecessorId !== null || row.predecessorRevision !== null)
@@ -107,7 +135,11 @@ export function buildOperationalRiskRecord({
 /** Validates the durable response boundary while still inside the transaction. */
 export function readOperationalRiskResult(
   value: unknown,
-  expected: { companyId: string; riskId?: string },
+  expected: {
+    companyId: string;
+    riskId?: string;
+    journal?: { entryId: string; input: OperationalRiskJournalCorrectionInput };
+  },
 ): OperationalRiskResult {
   return stored(() => {
     const body = object(value);
@@ -121,6 +153,17 @@ export function readOperationalRiskResult(
     )
       return corrupt();
     if (intake(resultEntry) && resultEntry.id !== risk.currentIntake.id)
+      corrupt();
+    if (
+      expected.journal !== undefined &&
+      (resultEntry.kind !== 'journal-corrected' ||
+        resultEntry.originalEntryId !== expected.journal.entryId ||
+        resultEntry.revision !== expected.journal.input.expectedRevision + 1 ||
+        resultEntry.predecessorId !== expected.journal.input.predecessorId ||
+        resultEntry.narrative !== expected.journal.input.narrative ||
+        resultEntry.occurredOn !== expected.journal.input.occurredOn ||
+        resultEntry.reason !== expected.journal.input.reason)
+    )
       corrupt();
     return { risk, entry: resultEntry };
   });
@@ -206,6 +249,36 @@ function entry(value: unknown): OperationalRiskEntry {
       kind: body.kind,
       facts: readOperationalRiskIntake(body.facts),
       predecessorId: uuid(body.predecessorId),
+      reason: text(body.reason, 2000),
+    };
+  }
+  if (body.kind === 'journal-corrected') {
+    exact(body, [
+      ...commonKeys,
+      'originalEntryId',
+      'journalKind',
+      'predecessorId',
+      'narrative',
+      'occurredOn',
+      'reason',
+    ]);
+    if (
+      common.revision <= 2 ||
+      (body.journalKind !== 'observation' &&
+        body.journalKind !== 'reassessment')
+    )
+      return corrupt();
+    const originalEntryId = uuid(body.originalEntryId);
+    const predecessorId = uuid(body.predecessorId);
+    if (common.id === originalEntryId || common.id === predecessorId) corrupt();
+    return {
+      ...common,
+      kind: body.kind,
+      originalEntryId,
+      journalKind: body.journalKind,
+      predecessorId,
+      narrative: text(body.narrative, 5000),
+      occurredOn: optionalDate(body.occurredOn),
       reason: text(body.reason, 2000),
     };
   }

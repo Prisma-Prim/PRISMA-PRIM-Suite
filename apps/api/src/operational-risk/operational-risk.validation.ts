@@ -57,6 +57,38 @@ export function readOperationalRiskCorrection(value: unknown) {
   };
 }
 
+export function readOperationalRiskJournalCorrection(value: unknown) {
+  const body = object(value);
+  const keys = [
+    'expectedRevision',
+    'predecessorId',
+    'narrative',
+    'occurredOn',
+    'reason',
+  ];
+  fields(body, keys);
+  if (
+    keys.some((key) => !Object.hasOwn(body, key)) ||
+    body.occurredOn === undefined
+  )
+    invalid();
+  return {
+    expectedRevision: revision(body.expectedRevision),
+    predecessorId: uuid(body.predecessorId),
+    narrative: text(body.narrative, 5000),
+    occurredOn: optionalDate(body.occurredOn),
+    reason: text(body.reason, 2000),
+  };
+}
+
+export type OperationalRiskJournalCorrectionInput = ReturnType<
+  typeof readOperationalRiskJournalCorrection
+>;
+
+export function readOperationalRiskNoQuery(value: unknown): void {
+  fields(object(value), []);
+}
+
 export function readOperationalRiskPagination(value: unknown) {
   const query = object(value);
   fields(query, ['limit', 'cursor']);

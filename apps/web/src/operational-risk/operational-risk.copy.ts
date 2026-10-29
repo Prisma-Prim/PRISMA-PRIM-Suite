@@ -1,6 +1,20 @@
 import { defineMessages, useMessages } from '../localization/messages';
 
 const keys = [
+  'viewStatement',
+  'currentStatement',
+  'originalStatement',
+  'correctStatement',
+  'journal-corrected',
+  'noJournalCorrection',
+  'historicalStatement',
+  'correctionAttribution',
+  'originalAttribution',
+  'retryCorrection',
+  'idempotencyConflict',
+  'journalUnavailable',
+  'savedCorrection',
+  'journalPredecessor',
   'readerGranted',
   'readerRevoked',
   'recorderGranted',
@@ -65,6 +79,23 @@ const keys = [
 
 export const operationalRiskMessages = defineMessages(keys, {
   ro: {
+    viewStatement: 'Vedeți declarația actuală',
+    currentStatement: 'Declarația actuală din jurnal',
+    originalStatement: 'Declarația originală din jurnal',
+    correctStatement: 'Corectați declarația din jurnal',
+    'journal-corrected': 'Corectare motivată a declarației',
+    noJournalCorrection: 'Declarația nu a fost corectată.',
+    historicalStatement:
+      'Declarație istorică. Reîncărcați înainte de a corecta.',
+    correctionAttribution: 'Autorul corectării',
+    originalAttribution: 'Autorul original',
+    retryCorrection: 'Reîncercați aceeași corectare',
+    idempotencyConflict:
+      'Această cheie a înregistrat o altă comandă. Reîncărcați și verificați propunerea înainte de o comandă nouă.',
+    journalUnavailable: 'Declarația nu este disponibilă în această Companie.',
+    savedCorrection: 'Corectare confirmată (istorică)',
+    journalPredecessor: 'Declarația precedentă',
+
     readerGranted: 'a acordat consultarea riscurilor',
     readerRevoked: 'a retras consultarea riscurilor',
     recorderGranted: 'a acordat înregistrarea riscurilor',
@@ -138,6 +169,23 @@ export const operationalRiskMessages = defineMessages(keys, {
       'v1: înregistrare și urmărire manuală. Consultarea riscurilor și accesul la contextul Companiei se acordă separat.',
   },
   ru: {
+    viewStatement: 'Посмотреть текущее заявление',
+    currentStatement: 'Текущее заявление журнала',
+    originalStatement: 'Первоначальное заявление журнала',
+    correctStatement: 'Исправить заявление журнала',
+    'journal-corrected': 'Исправление заявления с обоснованием',
+    noJournalCorrection: 'Заявление ещё не исправлялось.',
+    historicalStatement:
+      'Историческое заявление. Загрузите заново перед исправлением.',
+    correctionAttribution: 'Автор исправления',
+    originalAttribution: 'Первоначальный автор',
+    retryCorrection: 'Повторить то же исправление',
+    idempotencyConflict:
+      'Этот ключ уже записал другую команду. Загрузите и проверьте предложение перед новой командой.',
+    journalUnavailable: 'Заявление недоступно в этой компании.',
+    savedCorrection: 'Подтверждённое исправление (историческое)',
+    journalPredecessor: 'Предыдущее заявление',
+
     readerGranted: 'предоставил просмотр рисков',
     readerRevoked: 'отозвал просмотр рисков',
     recorderGranted: 'предоставил запись рисков',
@@ -211,6 +259,23 @@ export const operationalRiskMessages = defineMessages(keys, {
       'v1: запись рисков и ручное сопровождение. Просмотр рисков и доступ к контексту компании предоставляются отдельно.',
   },
   fr: {
+    viewStatement: 'Voir la déclaration actuelle',
+    currentStatement: 'Déclaration actuelle du journal',
+    originalStatement: 'Déclaration originale du journal',
+    correctStatement: 'Corriger la déclaration du journal',
+    'journal-corrected': 'Correction motivée du journal',
+    noJournalCorrection: 'Cette déclaration n’a pas encore été corrigée.',
+    historicalStatement: 'Déclaration historique. Rechargez avant de corriger.',
+    correctionAttribution: 'Auteur de la correction',
+    originalAttribution: 'Auteur original',
+    retryCorrection: 'Réessayer la même correction',
+    idempotencyConflict:
+      'Cette clé a enregistré une autre commande. Rechargez et vérifiez la proposition avant une nouvelle commande.',
+    journalUnavailable:
+      'La déclaration n’est pas disponible dans cette société.',
+    savedCorrection: 'Correction confirmée (historique)',
+    journalPredecessor: 'Déclaration précédente',
+
     readerGranted: 'a accordé la consultation des risques',
     readerRevoked: 'a retiré la consultation des risques',
     recorderGranted: 'a accordé l’enregistrement des risques',
@@ -284,6 +349,22 @@ export const operationalRiskMessages = defineMessages(keys, {
       'v1 : enregistrement et suivi manuel. La consultation des risques et l’accès au contexte de la société sont accordés séparément.',
   },
   en: {
+    viewStatement: 'View current statement',
+    currentStatement: 'Current journal statement',
+    originalStatement: 'Original journal statement',
+    correctStatement: 'Correct journal statement',
+    'journal-corrected': 'Motivated journal correction',
+    noJournalCorrection: 'This statement has not been corrected.',
+    historicalStatement: 'Historical statement. Reload before correcting.',
+    correctionAttribution: 'Correction author',
+    originalAttribution: 'Original author',
+    retryCorrection: 'Retry the same correction',
+    idempotencyConflict:
+      'This key recorded a different command. Reload and review the proposal before a new command.',
+    journalUnavailable: 'The statement is not available in this Company.',
+    savedCorrection: 'Confirmed correction (historical)',
+    journalPredecessor: 'Previous statement',
+
     readerGranted: 'granted Risk read access',
     readerRevoked: 'revoked Risk read access',
     recorderGranted: 'granted Risk recording access',

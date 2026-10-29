@@ -31,13 +31,35 @@ export type OperationalRiskIntake = EntryAttribution &
       }
   );
 
+export type OperationalRiskJournalOriginal = EntryAttribution &
+  ({ kind: 'observation' } | { kind: 'reassessment' }) & {
+    narrative: string;
+    occurredOn: string | null;
+  };
+
+export type OperationalRiskJournalCorrection = EntryAttribution & {
+  kind: 'journal-corrected';
+  originalEntryId: string;
+  journalKind: 'observation' | 'reassessment';
+  predecessorId: string;
+  narrative: string;
+  occurredOn: string | null;
+  reason: string;
+};
+
 export type OperationalRiskEntry =
   | OperationalRiskIntake
-  | (EntryAttribution & {
-      kind: 'observation' | 'reassessment';
-      narrative: string;
-      occurredOn: string | null;
-    });
+  | OperationalRiskJournalOriginal
+  | OperationalRiskJournalCorrection;
+
+export interface OperationalRiskJournalStatement {
+  riskId: string;
+  companyId: string;
+  revision: number;
+  originalEntry: OperationalRiskJournalOriginal;
+  currentEntry:
+    OperationalRiskJournalOriginal | OperationalRiskJournalCorrection;
+}
 
 export interface OperationalRiskRecord {
   id: string;

@@ -68,6 +68,38 @@ export class OperationalRiskController {
   ) {
     return this.risks.correct({ actor: actorFrom(request), riskId, body, key });
   }
+
+  @Get(':riskId/journal/:journalEntryId')
+  journalStatement(
+    @Req() request: ActorContextRequest,
+    @Param('riskId') riskId: string,
+    @Param('journalEntryId') journalEntryId: string,
+    @Query() query: unknown,
+  ) {
+    return this.risks.journalStatement({
+      actor: actorFrom(request),
+      riskId,
+      journalEntryId,
+      query,
+    });
+  }
+
+  @Post(':riskId/journal/:journalEntryId/corrections')
+  correctJournal(
+    @Req() request: ActorContextRequest,
+    @Param('riskId') riskId: string,
+    @Param('journalEntryId') journalEntryId: string,
+    @Body() body: unknown,
+    @Headers('idempotency-key') key: string | undefined,
+  ) {
+    return this.risks.correctJournal({
+      actor: actorFrom(request),
+      riskId,
+      journalEntryId,
+      body,
+      key,
+    });
+  }
 }
 
 function actorFrom(request: ActorContextRequest) {

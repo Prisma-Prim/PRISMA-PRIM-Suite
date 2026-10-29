@@ -3,11 +3,11 @@ import type { BrowserIdentity } from '../access-composition';
 import type { ActorContext } from '../access-types';
 import {
   createAuthenticatedApiClient,
+  conflictCode,
   type ApiResult,
 } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
 import { useInterfaceLocale } from '../localization/interface-locale';
-import { Select } from '../presentation/Select';
 import { useOperationalRiskCopy } from './operational-risk.copy';
 import {
   readRiskHistory,
@@ -17,7 +17,6 @@ import {
 } from './operational-risk.response';
 import type {
   OperationalRiskEntry,
-  OperationalRiskFacts,
   OperationalRiskPage,
   OperationalRiskRecord,
   OperationalRiskSummary,
@@ -26,11 +25,18 @@ import {
   commandFrom,
   draftFacts,
   emptyFacts,
-  factFields,
   type Command,
   type Editor,
-  type FactsDraft,
 } from './operational-risk.editor';
+import { useRiskJournalStatement } from './use-risk-journal-statement';
+import { OperationalRiskJournalStatement } from './OperationalRiskJournalStatement';
+import type {
+  OperationalRiskJournalStatement as JournalStatement,
+  OperationalRiskJournalCorrection,
+} from './operational-risk.types';
+import { OperationalRiskEditor } from './OperationalRiskEditor';
+import { OperationalRiskFactsView } from './OperationalRiskFactsView';
+import { OperationalRiskHistory } from './OperationalRiskHistory';
 import './operational-risk.css';
 
 type Pending =
@@ -41,10 +47,13 @@ type Notice =
   | 'savedRefreshError'
   | 'invalid'
   | 'conflict'
+  | 'idempotencyConflict'
   | 'notFound'
   | undefined;
 type ConflictReview =
-  { kind: 'record' } | { kind: 'head'; value: OperationalRiskRecord };
+  | { kind: 'record' }
+  | { kind: 'head'; value: OperationalRiskRecord }
+  | { kind: 'journal'; value: JournalStatement };
 type Load<Value> =
   | { kind: 'loading' }
   | { kind: 'error' }
@@ -85,7 +94,7 @@ export function OperationalRiskWorkspace({
   onWorkspaceAccessRejected: () => Promise<void> | void;
 }) {
   const copy = useOperationalRiskCopy();
-  const { formatDate, formatDateTime } = useInterfaceLocale();
+  const { formatDateTime } = useInterfaceLocale();
   const id = useId();
   const companyId = actor.activeCompany?.id;
   const [list, setList] = useState<
@@ -103,9 +112,13 @@ export function OperationalRiskWorkspace({
   const [notice, setNotice] = useState<Notice>();
   const [review, setReview] = useState<ConflictReview>();
   const reviewSequence = useRef(0);
+  const [confirmedJournal, setConfirmedJournal] =
+    useState<OperationalRiskJournalCorrection>();
   const [denied, setDenied] = useState(false);
   const mounted = useRef(false);
+  const retired = useRef(false);
   const selected = useRef<string | undefined>(undefined);
+  const knownRevision = useRef(0);
   const activeCommand = useRef<Command | undefined>(undefined);
   const listRequest = useRef<AbortController | undefined>(undefined);
   const detailRequest = useRef<AbortController | undefined>(undefined);
@@ -124,6 +137,26 @@ export function OperationalRiskWorkspace({
     onCompanyContextRejected,
     onWorkspaceAccessRejected,
   };
+
+  const journal = useRiskJournalStatement({
+    identity,
+    companyId,
+    riskId: selectedId,
+    reject,
+    onUnavailable(root) {
+      setEditor((current) =>
+        current?.kind === 'journal-correct' && current.originalEntry.id === root
+          ? undefined
+          : current,
+      );
+      setNotice((current) =>
+        current === 'savedRefreshError' ? current : 'notFound',
+      );
+    },
+    onRead(value) {
+      observeRevision(value.riskId, value.revision);
+    },
+  });
 
   // App keys this workspace by session, Company and both captured assignments.
   // Locale changes only format labels: no effect retires drafts or commands.
@@ -145,13 +178,28 @@ export function OperationalRiskWorkspace({
   ): Promise<boolean> {
     // A transport may ignore abort. Old scope replies must never reach the
     // shared identity rejection path and sign out a now-current session.
-    if (signal.aborted || !mounted.current) return true;
+    if (signal.aborted || !mounted.current || retired.current) return true;
     if (result.status !== 'unauthorized' && result.status !== 'forbidden')
       return false;
     // Retire Risk content immediately, even if revalidation itself is offline.
     if (!signal.aborted && mounted.current) {
+      retired.current = true;
       setDenied(true);
+      for (const request of [
+        listRequest.current,
+        detailRequest.current,
+        commandRequest.current,
+      ])
+        if (request?.signal !== signal) request?.abort();
+      setList({ kind: 'loading' });
+      setDetail({ kind: 'loading' });
+      setHistory({ kind: 'loading' });
+      selected.current = undefined;
+      knownRevision.current = 0;
+      setSelectedId(undefined);
       setEditor(undefined);
+      journal.clear(signal);
+      setConfirmedJournal(undefined);
       setReview(undefined);
       reviewSequence.current++;
       activeCommand.current = undefined;
@@ -167,6 +215,11 @@ export function OperationalRiskWorkspace({
       onWorkspaceAccessRejected: rejection.current.onWorkspaceAccessRejected,
     });
     return true;
+  }
+
+  function observeRevision(riskId: string, revision: number): void {
+    if (selected.current === riskId)
+      knownRevision.current = Math.max(knownRevision.current, revision);
   }
 
   async function loadList(cursor?: string): Promise<boolean> {
@@ -194,6 +247,7 @@ export function OperationalRiskWorkspace({
         return false;
       if (result.status !== 'ok') throw new Error('Risk read failed.');
       const page = readRiskPage({ value: result.value, companyId });
+      for (const item of page.items) observeRevision(item.id, item.revision);
       setList((previous) => ({
         kind: 'ready',
         more: 'idle',
@@ -221,6 +275,14 @@ export function OperationalRiskWorkspace({
     riskId: string,
   ): Promise<OperationalRiskRecord | undefined> {
     if (!companyId) return undefined;
+    if (selected.current !== riskId) {
+      knownRevision.current =
+        list.kind === 'ready'
+          ? (list.value.items.find((item) => item.id === riskId)?.revision ?? 0)
+          : 0;
+      journal.clear();
+      setConfirmedJournal(undefined);
+    }
     detailRequest.current?.abort();
     const request = new AbortController();
     detailRequest.current = request;
@@ -242,12 +304,15 @@ export function OperationalRiskWorkspace({
       )
         return undefined;
       if (result.status === 'notFound') {
-        setNotice((current) => (current === 'conflict' ? current : 'notFound'));
+        setNotice((current) =>
+          isConflictNotice(current) ? current : 'notFound',
+        );
         setDetail({ kind: 'error' });
         return undefined;
       }
       if (result.status !== 'ok') throw new Error('Risk detail failed.');
       const value = readRiskRecord({ value: result.value, companyId, riskId });
+      observeRevision(riskId, value.revision);
       const entries = await api.request<unknown>(
         `/operational-risks/${encodeURIComponent(riskId)}/history`,
         { companyContextId: companyId, signal: request.signal },
@@ -264,6 +329,7 @@ export function OperationalRiskWorkspace({
         return undefined;
       }
       const page = readRiskHistory(entries.value);
+      if (page.items[0]) observeRevision(riskId, page.items[0].revision);
       if (page.items.some((entry) => entry.revision > value.revision))
         throw new Error('Risk changed during read.');
       setHistory({ kind: 'ready', value: page, more: 'idle' });
@@ -364,18 +430,44 @@ export function OperationalRiskWorkspace({
         const saved = readRiskResult({
           value: result.value,
           companyId,
-          riskId: command.riskId,
+          riskId: command.kind === 'record' ? undefined : command.riskId,
+          correction:
+            command.kind === 'journal-correct'
+              ? {
+                  entryId: command.journalEntryId,
+                  journalKind: command.journalKind,
+                  body: command.body,
+                }
+              : undefined,
         });
+        observeRevision(saved.risk.id, saved.risk.revision);
+        if (command.kind === 'journal-correct') {
+          if (saved.entry.kind !== 'journal-corrected')
+            throw new Error('Unexpected Risk correction result.');
+          setConfirmedJournal(saved.entry);
+        }
         setEditor(undefined);
         setNotice('recorded');
         const listLoaded = await loadList();
         if (request.signal.aborted || !mounted.current) return;
         const detailLoaded = await loadDetail(saved.risk.id);
+        if (request.signal.aborted || !mounted.current) return;
+        const statementLoaded =
+          command.kind === 'journal-correct'
+            ? await journal.load(command.journalEntryId)
+            : true;
         if (!request.signal.aborted && mounted.current) {
           activeCommand.current = undefined;
           setPending(undefined);
           setNotice(
-            listLoaded && detailLoaded ? 'recorded' : 'savedRefreshError',
+            listLoaded &&
+              detailLoaded &&
+              detailLoaded.revision >= knownRevision.current &&
+              statementLoaded &&
+              (statementLoaded === true ||
+                statementLoaded.revision >= knownRevision.current)
+              ? 'recorded'
+              : 'savedRefreshError',
           );
         }
         return;
@@ -391,9 +483,18 @@ export function OperationalRiskWorkspace({
           result.status === 'validation'
             ? 'invalid'
             : result.status === 'conflict'
-              ? 'conflict'
+              ? conflictCode(result) === 'IDEMPOTENCY_CONFLICT'
+                ? 'idempotencyConflict'
+                : 'conflict'
               : 'notFound',
         );
+        if (
+          result.status === 'notFound' &&
+          command.kind === 'journal-correct'
+        ) {
+          setEditor(undefined);
+          journal.clear();
+        }
         return;
       }
       setPending({ kind: 'uncertain', command });
@@ -413,7 +514,7 @@ export function OperationalRiskWorkspace({
       activeCommand.current ||
       !canRecord(actor) ||
       denied ||
-      notice === 'conflict'
+      isConflictNotice(notice)
     )
       return;
     const command = commandFrom(editor);
@@ -426,6 +527,8 @@ export function OperationalRiskWorkspace({
 
   function start(next: Editor): void {
     if (activeCommand.current) return;
+    setConfirmedJournal(undefined);
+    if (next.kind !== 'journal-correct') journal.clear();
     reviewSequence.current++;
     setReview(undefined);
     setNotice(undefined);
@@ -435,26 +538,54 @@ export function OperationalRiskWorkspace({
   async function reload(): Promise<void> {
     const sequence = ++reviewSequence.current;
     setReview(undefined);
+    const root =
+      editor?.kind === 'journal-correct'
+        ? editor.originalEntry.id
+        : journal.state.kind === 'ready'
+          ? journal.state.value.originalEntry.id
+          : journal.state.kind === 'none'
+            ? confirmedJournal?.originalEntryId
+            : journal.state.root;
+    const riskId = selected.current;
+    const sameJournalRead = journal.checkpoint();
+    const live = () =>
+      mounted.current &&
+      !retired.current &&
+      sequence === reviewSequence.current &&
+      selected.current === riskId;
     const listLoaded = await loadList();
-    if (!mounted.current || sequence !== reviewSequence.current) return;
-    const latest = selectedId ? await loadDetail(selectedId) : undefined;
+    if (!live() || !sameJournalRead()) return;
+    const latest = riskId ? await loadDetail(riskId) : undefined;
+    if (!live() || !sameJournalRead()) return;
+    const statementRead = root ? journal.load(root) : undefined;
+    const sameRefreshedRead = journal.checkpoint();
+    const statement = await statementRead;
+    if (!live() || !sameRefreshedRead() || !listLoaded) return;
+    const current = latest && latest.revision >= knownRevision.current;
     if (
-      !mounted.current ||
-      sequence !== reviewSequence.current ||
-      !listLoaded ||
-      notice !== 'conflict' ||
-      !editor
+      notice === 'savedRefreshError' &&
+      current &&
+      (!root || (statement && statement.revision >= knownRevision.current))
     )
-      return;
+      setNotice(undefined);
+    if (!isConflictNotice(notice) || !editor) return;
     if (editor.kind === 'record') setReview({ kind: 'record' });
-    else if (latest?.id === editor.riskId)
-      setReview({ kind: 'head', value: latest });
+    else if (current && latest.id === editor.riskId) {
+      if (editor.kind === 'journal-correct') {
+        if (
+          statement &&
+          statement.originalEntry.id === editor.originalEntry.id &&
+          statement.revision >= knownRevision.current
+        )
+          setReview({ kind: 'journal', value: statement });
+      } else setReview({ kind: 'head', value: latest });
+    }
   }
 
   function continueReviewed(): void {
     if (
       !editor ||
-      notice !== 'conflict' ||
+      !isConflictNotice(notice) ||
       !review ||
       activeCommand.current ||
       denied
@@ -462,8 +593,31 @@ export function OperationalRiskWorkspace({
       return;
     if (editor.kind === 'record') {
       if (review.kind !== 'record') return;
+    } else if (editor.kind === 'journal-correct') {
+      if (
+        review.kind !== 'journal' ||
+        review.value.riskId !== editor.riskId ||
+        review.value.originalEntry.id !== editor.originalEntry.id ||
+        review.value.revision < knownRevision.current
+      )
+        return;
+      const latest = review.value;
+      setEditor({
+        ...editor,
+        expectedRevision: latest.revision,
+        predecessorId: latest.currentEntry.id,
+        baseline: {
+          narrative: latest.currentEntry.narrative,
+          occurredOn: latest.currentEntry.occurredOn,
+        },
+      });
     } else {
-      if (review.kind !== 'head' || review.value.id !== editor.riskId) return;
+      if (
+        review.kind !== 'head' ||
+        review.value.id !== editor.riskId ||
+        review.value.revision < knownRevision.current
+      )
+        return;
       const latest = review.value;
       setEditor(
         editor.kind === 'journal'
@@ -480,75 +634,48 @@ export function OperationalRiskWorkspace({
     setNotice(undefined);
   }
 
+  async function startJournalCorrection(): Promise<void> {
+    if (
+      activeCommand.current ||
+      editor ||
+      denied ||
+      !canRecord(actor) ||
+      journal.state.kind !== 'ready'
+    )
+      return;
+    const root = journal.state.value.originalEntry.id;
+    const riskId = selectedId;
+    const sequence = ++reviewSequence.current;
+    const latest = await journal.load(root);
+    if (
+      !latest ||
+      !mounted.current ||
+      sequence !== reviewSequence.current ||
+      selected.current !== riskId ||
+      latest.riskId !== riskId ||
+      latest.revision < knownRevision.current
+    )
+      return;
+    start({
+      kind: 'journal-correct',
+      riskId: latest.riskId,
+      originalEntry: latest.originalEntry,
+      expectedRevision: latest.revision,
+      predecessorId: latest.currentEntry.id,
+      narrative: latest.currentEntry.narrative,
+      occurredOn: latest.currentEntry.occurredOn ?? '',
+      reason: '',
+      baseline: {
+        narrative: latest.currentEntry.narrative,
+        occurredOn: latest.currentEntry.occurredOn,
+      },
+    });
+  }
+
   if (!companyId || !canReadOperationalRisks(actor)) return null;
   const busy = pending !== undefined;
   const risk = detail.kind === 'ready' ? detail.value : undefined;
   const formatInstant = formatDateTime;
-  const field = (name: keyof FactsDraft, maximum: number, required: boolean) =>
-    editor && editor.kind !== 'journal' ? (
-      <label key={name} htmlFor={`${id}-${name}`}>
-        {copy(name)}
-        {required && (
-          <span className="risk-required"> · {copy('required')}</span>
-        )}
-        {name === 'plannedDate' ? (
-          <input
-            id={`${id}-${name}`}
-            type="date"
-            required={required}
-            maxLength={maximum}
-            value={editor.facts[name]}
-            disabled={busy}
-            onChange={(event) => {
-              const value = event.target.value;
-              setEditor((current) =>
-                current && current.kind !== 'journal'
-                  ? { ...current, facts: { ...current.facts, [name]: value } }
-                  : current,
-              );
-            }}
-          />
-        ) : (
-          <textarea
-            id={`${id}-${name}`}
-            required={required}
-            maxLength={maximum}
-            value={editor.facts[name]}
-            disabled={busy}
-            onChange={(event) => {
-              const value = event.target.value;
-              setEditor((current) =>
-                current && current.kind !== 'journal'
-                  ? { ...current, facts: { ...current.facts, [name]: value } }
-                  : current,
-              );
-            }}
-          />
-        )}
-      </label>
-    ) : null;
-  function factsView(facts: OperationalRiskFacts) {
-    return (
-      <dl className="risk-facts">
-        {factFields.map((name) => (
-          <div key={name}>
-            <dt>{copy(name)}</dt>
-            <dd>
-              {facts[name] === null
-                ? copy(
-                    name === 'existingMeasures' || name === 'sourceDescription'
-                      ? 'notRecorded'
-                      : 'unknown',
-                  )
-                : name === 'plannedDate'
-                  ? formatDate(`${facts[name]}T00:00:00.000Z`)
-                  : facts[name]}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    );
-  }
 
   return (
     <section className="risk-workspace" aria-labelledby={`${id}-heading`}>
@@ -599,7 +726,11 @@ export function OperationalRiskWorkspace({
                     void execute(pending.command);
                   }}
                 >
-                  {copy('retryExact')}
+                  {copy(
+                    pending.command.kind === 'journal-correct'
+                      ? 'retryCorrection'
+                      : 'retryExact',
+                  )}
                 </button>
               )}
             </div>
@@ -622,6 +753,8 @@ export function OperationalRiskWorkspace({
                           disabled={busy || editor !== undefined}
                           onClick={() => {
                             setNotice(undefined);
+                            journal.clear();
+                            setConfirmedJournal(undefined);
                             void loadDetail(item.id);
                           }}
                         >
@@ -660,146 +793,95 @@ export function OperationalRiskWorkspace({
             </section>
             <div className="risk-main">
               {editor && (
-                <form className="risk-panel risk-editor" onSubmit={submit}>
-                  <h3>
-                    {editor.kind === 'record'
-                      ? copy('newIntake')
-                      : editor.kind === 'correct'
-                        ? copy('correct')
-                        : copy('history')}
-                  </h3>
-                  {editor.kind === 'journal' ? (
-                    <>
-                      <label htmlFor={`${id}-kind`}>
-                        {copy('kind')}
-                        <Select
-                          id={`${id}-kind`}
-                          value={editor.entryKind}
-                          options={[
-                            {
-                              value: 'observation',
-                              label: copy('observation'),
-                            },
-                            {
-                              value: 'reassessment',
-                              label: copy('reassessment'),
-                            },
-                          ]}
-                          disabled={busy}
-                          onValueChange={(value) => {
-                            if (
-                              value === 'observation' ||
-                              value === 'reassessment'
-                            )
-                              setEditor((current) =>
-                                current?.kind === 'journal'
-                                  ? { ...current, entryKind: value }
-                                  : current,
-                              );
-                          }}
-                        />
-                      </label>
-                      <label htmlFor={`${id}-narrative`}>
-                        {copy('narrative')}
-                        <textarea
-                          id={`${id}-narrative`}
-                          required
-                          maxLength={5000}
-                          disabled={busy}
-                          value={editor.narrative}
-                          onChange={(event) => {
-                            const narrative = event.target.value;
-                            setEditor((current) =>
-                              current?.kind === 'journal'
-                                ? { ...current, narrative }
-                                : current,
-                            );
-                          }}
-                        />
-                      </label>
-                      <label htmlFor={`${id}-occurredOn`}>
-                        {copy('occurredOn')}
-                        <input
-                          type="date"
-                          id={`${id}-occurredOn`}
-                          disabled={busy}
-                          value={editor.occurredOn}
-                          onChange={(event) => {
-                            const occurredOn = event.target.value;
-                            setEditor((current) =>
-                              current?.kind === 'journal'
-                                ? { ...current, occurredOn }
-                                : current,
-                            );
-                          }}
-                        />
-                      </label>
-                    </>
-                  ) : (
-                    <>
-                      {field('process', 300, true)}
-                      {field('cause', 2000, true)}
-                      {field('effect', 2000, true)}
-                      {field('plannedMeasure', 2000, true)}
-                      {field('existingMeasures', 2000, false)}
-                      {field('sourceDescription', 300, false)}
-                      {field('plannedDate', 10, false)}
-                      {editor.kind === 'correct' && (
-                        <label htmlFor={`${id}-reason`}>
-                          {copy('reason')}
-                          <textarea
-                            id={`${id}-reason`}
-                            required
-                            maxLength={2000}
-                            disabled={busy}
-                            value={editor.reason}
-                            onChange={(event) => {
-                              const reason = event.target.value;
-                              setEditor((current) =>
-                                current?.kind === 'correct'
-                                  ? { ...current, reason }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                      )}
-                    </>
+                <OperationalRiskEditor
+                  editor={editor}
+                  companyName={actor.activeCompany?.displayName ?? ''}
+                  busy={busy}
+                  status={
+                    notice === 'invalid'
+                      ? 'invalid'
+                      : isConflictNotice(notice)
+                        ? review
+                          ? 'reviewed'
+                          : 'conflict'
+                        : 'editable'
+                  }
+                  onChange={setEditor}
+                  onSubmit={submit}
+                  onContinue={continueReviewed}
+                  onCancel={() => {
+                    reviewSequence.current++;
+                    setReview(undefined);
+                    setEditor(undefined);
+                    setNotice(undefined);
+                  }}
+                />
+              )}
+              {journal.state.kind === 'ready' && (
+                <OperationalRiskJournalStatement
+                  value={journal.state.value}
+                  revision={Math.max(
+                    knownRevision.current,
+                    risk?.revision ?? 0,
                   )}
-                  {notice === 'conflict' && review && (
-                    <div className="risk-command-state" role="status">
-                      <p>{copy('reviewDraft')}</p>
-                      <button
-                        className="risk-primary"
-                        type="button"
-                        onClick={continueReviewed}
-                      >
-                        {copy('continueReviewed')}
-                      </button>
-                    </div>
-                  )}
-                  <div className="risk-actions">
-                    <button
-                      className="risk-primary"
-                      type="submit"
-                      disabled={busy || notice === 'conflict'}
-                    >
-                      {copy('save')}
-                    </button>
+                  canCorrect={
+                    canRecord(actor) &&
+                    !editor &&
+                    notice !== 'savedRefreshError'
+                  }
+                  disabled={busy}
+                  editing={editor !== undefined}
+                  onCorrect={() => {
+                    void startJournalCorrection();
+                  }}
+                />
+              )}
+              {(journal.state.kind === 'loading' ||
+                journal.state.kind === 'error' ||
+                journal.state.kind === 'unavailable') && (
+                <section
+                  className="risk-panel"
+                  aria-label={copy('currentStatement')}
+                >
+                  <p
+                    role={journal.state.kind === 'loading' ? 'status' : 'alert'}
+                  >
+                    {copy(
+                      journal.state.kind === 'loading'
+                        ? 'loading'
+                        : journal.state.kind === 'unavailable'
+                          ? 'journalUnavailable'
+                          : 'loadError',
+                    )}
+                  </p>
+                  {journal.state.kind !== 'loading' && (
                     <button
                       type="button"
                       disabled={busy}
                       onClick={() => {
-                        reviewSequence.current++;
-                        setReview(undefined);
-                        setEditor(undefined);
-                        setNotice(undefined);
+                        if (
+                          journal.state.kind === 'error' ||
+                          journal.state.kind === 'unavailable'
+                        )
+                          void journal.load(journal.state.root);
                       }}
                     >
-                      {copy('cancel')}
+                      {copy('retryRead')}
                     </button>
-                  </div>
-                </form>
+                  )}
+                </section>
+              )}
+              {confirmedJournal && notice === 'savedRefreshError' && (
+                <section
+                  className="risk-panel"
+                  aria-label={copy('savedCorrection')}
+                >
+                  <h3>{copy('savedCorrection')}</h3>
+                  <p className="risk-literal">{confirmedJournal.narrative}</p>
+                  <p className="risk-literal">
+                    {copy('reason')}: {confirmedJournal.reason}
+                  </p>
+                </section>
               )}
               {selectedId && (
                 <section className="risk-panel" aria-label={copy('current')}>
@@ -815,10 +897,15 @@ export function OperationalRiskWorkspace({
                           {copy('revision')} {risk.revision}
                         </span>
                       </div>
+                      {risk.revision < knownRevision.current && (
+                        <p role="status">{copy('historicalStatement')}</p>
+                      )}
                       <p className="risk-truth">{copy('notAssessed')}</p>
                       <p>{copy('notResponsible')}</p>
                       <h4>{copy('current')}</h4>
-                      {factsView(risk.currentIntake.facts)}
+                      <OperationalRiskFactsView
+                        facts={risk.currentIntake.facts}
+                      />
                       {risk.currentIntake.kind === 'intake-corrected' && (
                         <p className="risk-literal">
                           <strong>{copy('reason')}: </strong>
@@ -829,7 +916,9 @@ export function OperationalRiskWorkspace({
                         <div className="risk-actions">
                           <button
                             type="button"
-                            disabled={busy}
+                            disabled={
+                              busy || risk.revision < knownRevision.current
+                            }
                             onClick={() =>
                               start({
                                 kind: 'correct',
@@ -846,7 +935,9 @@ export function OperationalRiskWorkspace({
                           <button
                             className="risk-primary"
                             type="button"
-                            disabled={busy}
+                            disabled={
+                              busy || risk.revision < knownRevision.current
+                            }
                             onClick={() =>
                               start({
                                 kind: 'journal',
@@ -864,81 +955,26 @@ export function OperationalRiskWorkspace({
                       )}
                       <details>
                         <summary>{copy('original')}</summary>
-                        {factsView(risk.originalIntake.facts)}
+                        <OperationalRiskFactsView
+                          facts={risk.originalIntake.facts}
+                        />
                       </details>
-                      <h4>{copy('history')}</h4>
-                      {history.kind === 'loading' ? (
-                        <p role="status">{copy('loading')}</p>
-                      ) : history.kind === 'error' ? (
-                        <p role="alert">{copy('loadError')}</p>
-                      ) : (
-                        <>
-                          <ol className="risk-history">
-                            {history.value.items.map((entry) => (
-                              <li key={entry.id}>
-                                <div className="risk-detail-heading">
-                                  <strong>{copy(entry.kind)}</strong>
-                                  <span>
-                                    {copy('revision')} {entry.revision}
-                                  </span>
-                                </div>
-                                <p>
-                                  {copy('author')}:{' '}
-                                  <strong>{entry.actor.displayName}</strong> ·{' '}
-                                  {formatInstant(entry.recordedAt)}
-                                </p>
-                                {entry.kind === 'observation' ||
-                                entry.kind === 'reassessment' ? (
-                                  <>
-                                    <p className="risk-literal">
-                                      {entry.narrative}
-                                    </p>
-                                    <p>
-                                      {copy('occurredOn')}:{' '}
-                                      {entry.occurredOn === null
-                                        ? copy('unknown')
-                                        : formatDate(
-                                            `${entry.occurredOn}T00:00:00.000Z`,
-                                          )}
-                                    </p>
-                                  </>
-                                ) : (
-                                  <>
-                                    {factsView(entry.facts)}
-                                    {entry.kind === 'intake-corrected' && (
-                                      <>
-                                        <p className="risk-literal">
-                                          {copy('reason')}: {entry.reason}
-                                        </p>
-                                        <p>
-                                          {copy('predecessor')}:{' '}
-                                          <code>{entry.predecessorId}</code>
-                                        </p>
-                                      </>
-                                    )}
-                                  </>
-                                )}
-                              </li>
-                            ))}
-                          </ol>
-                          {history.more === 'error' && (
-                            <p role="alert">{copy('loadError')}</p>
-                          )}
-                          {history.value.next_cursor && (
-                            <button
-                              type="button"
-                              disabled={busy || history.more === 'loading'}
-                              onClick={() => {
-                                void loadOlder();
-                              }}
-                            >
-                              {history.more === 'loading'
-                                ? copy('loading')
-                                : copy('more')}
-                            </button>
-                          )}
-                        </>
-                      )}
+                      <OperationalRiskHistory
+                        history={history}
+                        busy={busy}
+                        canSelect={!editor}
+                        currentEntryId={
+                          journal.state.kind === 'ready'
+                            ? journal.state.value.currentEntry.id
+                            : undefined
+                        }
+                        onView={(root) => {
+                          void journal.load(root);
+                        }}
+                        onOlder={() => {
+                          void loadOlder();
+                        }}
+                      />
                     </>
                   )}
                 </section>
@@ -955,4 +991,8 @@ function uniqueSummaries(
   items: OperationalRiskSummary[],
 ): OperationalRiskSummary[] {
   return [...new Map(items.map((item) => [item.id, item])).values()];
+}
+
+function isConflictNotice(notice: Notice): boolean {
+  return notice === 'conflict' || notice === 'idempotencyConflict';
 }

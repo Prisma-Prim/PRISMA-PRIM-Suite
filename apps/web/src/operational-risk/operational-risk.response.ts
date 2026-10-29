@@ -1,5 +1,6 @@
 import type {
   OperationalRiskEntry,
+  OperationalRiskJournalStatement,
   OperationalRiskFacts,
   OperationalRiskPage,
   OperationalRiskRecord,
@@ -65,10 +66,16 @@ export function readRiskResult({
   value,
   companyId,
   riskId,
+  correction,
 }: {
   value: unknown;
   companyId: string;
   riskId?: string;
+  correction?: {
+    entryId: string;
+    journalKind: 'observation' | 'reassessment';
+    body: string;
+  };
 }): OperationalRiskResult {
   const body = object(value, ['risk', 'entry']);
   const risk = readRiskRecord({ value: body.risk, companyId, riskId });
@@ -79,7 +86,77 @@ export function readRiskResult({
       entry.id !== risk.currentIntake.id)
   )
     invalid();
+  if (
+    correction !== undefined &&
+    (entry.kind !== 'journal-corrected' ||
+      entry.originalEntryId !== correction.entryId ||
+      entry.journalKind !== correction.journalKind)
+  )
+    invalid();
+  if (correction) {
+    const submitted = object(JSON.parse(correction.body), [
+      'expectedRevision',
+      'predecessorId',
+      'narrative',
+      'occurredOn',
+      'reason',
+    ]);
+    if (
+      entry.kind !== 'journal-corrected' ||
+      entry.revision !== integer(submitted.expectedRevision) + 1 ||
+      entry.predecessorId !== uuid(submitted.predecessorId) ||
+      entry.narrative !== text(submitted.narrative, 5000) ||
+      entry.occurredOn !== dateOnly(submitted.occurredOn) ||
+      entry.reason !== text(submitted.reason, 2000)
+    )
+      invalid();
+  }
   return { risk, entry };
+}
+
+export function readRiskJournalStatement({
+  value,
+  companyId,
+  riskId,
+  journalEntryId,
+}: {
+  value: unknown;
+  companyId: string;
+  riskId: string;
+  journalEntryId: string;
+}): OperationalRiskJournalStatement {
+  const body = object(value, [
+    'riskId',
+    'companyId',
+    'revision',
+    'originalEntry',
+    'currentEntry',
+  ]);
+  const originalEntry = readRiskEntry(body.originalEntry);
+  const currentEntry = readRiskEntry(body.currentEntry);
+  const revision = integer(body.revision);
+  if (
+    uuid(body.riskId) !== riskId ||
+    uuid(body.companyId) !== companyId ||
+    (originalEntry.kind !== 'observation' &&
+      originalEntry.kind !== 'reassessment') ||
+    originalEntry.id !== journalEntryId ||
+    originalEntry.revision > revision ||
+    currentEntry.revision > revision ||
+    currentEntry.kind === 'intake-recorded' ||
+    currentEntry.kind === 'intake-corrected'
+  )
+    return invalid();
+  if (currentEntry.kind === 'journal-corrected') {
+    if (
+      currentEntry.originalEntryId !== originalEntry.id ||
+      currentEntry.journalKind !== originalEntry.kind ||
+      currentEntry.revision <= originalEntry.revision
+    )
+      invalid();
+  } else if (JSON.stringify(currentEntry) !== JSON.stringify(originalEntry))
+    invalid();
+  return { riskId, companyId, revision, originalEntry, currentEntry };
 }
 
 export function readRiskPage({
@@ -164,6 +241,36 @@ export function readRiskEntry(value: unknown): OperationalRiskEntry {
       kind: body.kind,
       facts: facts(body.facts),
       predecessorId: uuid(body.predecessorId),
+      reason: text(body.reason, 2000),
+    };
+  }
+  if (body.kind === 'journal-corrected') {
+    object(body, [
+      ...commonKeys,
+      'originalEntryId',
+      'journalKind',
+      'predecessorId',
+      'narrative',
+      'occurredOn',
+      'reason',
+    ]);
+    if (
+      common.revision <= 2 ||
+      (body.journalKind !== 'observation' &&
+        body.journalKind !== 'reassessment')
+    )
+      return invalid();
+    const originalEntryId = uuid(body.originalEntryId);
+    const predecessorId = uuid(body.predecessorId);
+    if (common.id === originalEntryId || common.id === predecessorId) invalid();
+    return {
+      ...common,
+      kind: body.kind,
+      originalEntryId,
+      journalKind: body.journalKind,
+      predecessorId,
+      narrative: text(body.narrative, 5000),
+      occurredOn: dateOnly(body.occurredOn),
       reason: text(body.reason, 2000),
     };
   }

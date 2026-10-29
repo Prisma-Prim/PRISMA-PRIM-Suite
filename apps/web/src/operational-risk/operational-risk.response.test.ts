@@ -4,7 +4,15 @@ import {
   readRiskPage,
   readRiskRecord,
   readRiskResult,
+  readRiskJournalStatement,
 } from './operational-risk.response';
+import {
+  journalCorrection,
+  journalOriginal,
+  journalRiskId,
+  journalStatement,
+  riskCompanyId,
+} from '../test/operational-risk-journal-fixture';
 
 const companyId = '00000000-0000-4000-8000-000000000763';
 const riskId = '00000000-0000-4000-8000-000000000764';
@@ -41,6 +49,139 @@ const record = {
 };
 
 describe('Operational Risk network boundary', () => {
+  it('constructs an exact original/current journal pair and preserves the complete correction variant in history and command results', () => {
+    const value = {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: journalCorrection,
+    };
+    expect(
+      readRiskJournalStatement({
+        value,
+        companyId: riskCompanyId,
+        riskId: journalRiskId,
+        journalEntryId: journalOriginal.id,
+      }),
+    ).toEqual(value);
+    expect(
+      readRiskHistory({
+        items: [journalCorrection, journalOriginal],
+        next_cursor: null,
+      }),
+    ).toEqual({
+      items: [journalCorrection, journalOriginal],
+      next_cursor: null,
+    });
+    expect(() =>
+      readRiskResult({
+        value: {
+          risk: { ...record, companyId: riskCompanyId, revision: 3 },
+          entry: journalCorrection,
+        },
+        companyId: riskCompanyId,
+        correction: {
+          entryId: journalRiskId,
+          journalKind: 'observation',
+          body: JSON.stringify({
+            expectedRevision: 2,
+            predecessorId: journalOriginal.id,
+            narrative: journalCorrection.narrative,
+            occurredOn: null,
+            reason: journalCorrection.reason,
+          }),
+        },
+      }),
+    ).toThrow();
+  });
+  it.each([
+    { ...journalStatement, riskId: journalOriginal.id },
+    { ...journalStatement, companyId: journalRiskId },
+    { ...journalStatement, revision: 1 },
+    {
+      ...journalStatement,
+      originalEntry: { ...journalOriginal, kind: 'journal-corrected' },
+    },
+    {
+      ...journalStatement,
+      currentEntry: {
+        ...journalOriginal,
+        narrative: 'Contradictory original value',
+      },
+    },
+    {
+      ...journalStatement,
+      currentEntry: {
+        ...journalOriginal,
+        actor: {
+          ...journalOriginal.actor,
+          displayName: 'Contradictory original author',
+        },
+      },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: { ...journalCorrection, originalEntryId: journalRiskId },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: { ...journalCorrection, journalKind: 'reassessment' },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: {
+        ...journalCorrection,
+        predecessorId: journalCorrection.id,
+      },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: { ...journalCorrection, reason: null },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: { ...journalCorrection, occurredOn: undefined },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: { ...journalCorrection, occurredOn: '2026-02-29' },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: { ...journalCorrection, revision: 4 },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: {
+        ...journalCorrection,
+        actor: { ...journalCorrection.actor, displayName: '' },
+      },
+    },
+    {
+      ...journalStatement,
+      revision: 3,
+      currentEntry: { ...journalCorrection, kind: 'future-variant' },
+    },
+  ])(
+    'fails closed on malformed, foreign or contradictory successful current-journal data %#',
+    (value) => {
+      expect(() =>
+        readRiskJournalStatement({
+          value,
+          companyId: riskCompanyId,
+          riskId: journalRiskId,
+          journalEntryId: journalOriginal.id,
+        }),
+      ).toThrow('Invalid operational Risk response.');
+    },
+  );
   it('preserves literal accepted facts and attributable unassessed truth', () => {
     expect(readRiskRecord({ value: record, companyId, riskId })).toEqual(
       record,
