@@ -169,6 +169,34 @@ export class ProjectService {
     return this.view(actor, row);
   }
 
+  /** Caller owns the mission snapshot and acquires this Project barrier after its original Client. */
+  async missionContextWithinTransaction(input: {
+    actor: ActorContext;
+    projectId: string;
+    lock?: boolean;
+  }) {
+    const companyId = await this.authorization.requireProjectAccess(
+      input.actor,
+      input.lock ?? false,
+    );
+    const query = this.databaseContext.connection
+      .select()
+      .from(projects)
+      .where(
+        and(
+          eq(projects.workspaceId, input.actor.workspaceId),
+          eq(projects.companyId, companyId),
+          eq(projects.id, input.projectId),
+        ),
+      );
+    const [row] = input.lock ? await query.for('share') : await query;
+    if (!row) throw new NotFoundException();
+    return {
+      ...(await this.view(input.actor, row)),
+      lifecycleRevision: row.lifecycleRevision,
+    };
+  }
+
   async create(actor: ActorContext, body: unknown, key: string | undefined) {
     return this.databaseContext.transaction(() =>
       this.createWithinTransaction(actor, body, key),

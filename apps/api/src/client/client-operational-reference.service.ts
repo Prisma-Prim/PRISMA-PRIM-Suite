@@ -76,11 +76,21 @@ export class ClientOperationalReferenceService {
     return companyId;
   }
 
+  /** An applicability command fences the exact Client-read capture before its actor/key mutex. */
+  async requireCapturedReferenceReadAuthorityWithinTransaction(
+    actor: ActorContext,
+  ) {
+    const companyId = this.requireClientRead(actor);
+    await this.lockClientReadAuthority(actor, companyId, true, true);
+    return companyId;
+  }
+
   async readReferenceClient(actor: ActorContext, originalClientId: string) {
     const companyId = this.requireClientRead(actor);
     const [client] = await this.databaseContext.connection
       .select({
         id: clientAccounts.id,
+        relationshipId: clientCompanyRelationships.id,
         displayName: clientAccounts.displayName,
         status: clientAccounts.status,
       })

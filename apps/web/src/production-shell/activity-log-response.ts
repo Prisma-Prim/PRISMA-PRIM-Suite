@@ -56,6 +56,14 @@ const targetTypes = {
   'company.registered': 'company',
   'company_task_manager_assignment.granted': 'company_role_assignment',
   'company_task_manager_assignment.revoked': 'company_role_assignment',
+  'company_mission_applicability_coordinator_assignment.granted':
+    'company_role_assignment',
+  'company_mission_applicability_coordinator_assignment.revoked':
+    'company_role_assignment',
+  'company_mission_applicability_approver_assignment.granted':
+    'company_role_assignment',
+  'company_mission_applicability_approver_assignment.revoked':
+    'company_role_assignment',
   'company_mission_result_reviewer_assignment.granted':
     'company_role_assignment',
   'company_mission_result_reviewer_assignment.revoked':

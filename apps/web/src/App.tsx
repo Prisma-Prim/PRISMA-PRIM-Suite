@@ -157,6 +157,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   );
   const {
     shellContext: access,
+    companySelectionGeneration = 0,
     selectCompany,
     rejectCompanyContext,
     rejectCompanyContextAndRefreshActivity,
@@ -725,7 +726,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
               onWorkspaceAccessRejected={rejectWorkspaceAccess}
               catalogueRevision={templateCatalogueRevision}
               onOpenContract={openRequest}
-              key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany.id}`}
+              key={`project:${access.sessionGeneration}:${clientAuthorityGeneration}:${companySelectionGeneration}:${access.actor.activeCompany.id}`}
               actor={access.actor}
               identity={identity}
               onActivityRecorded={refreshActivityLog}
@@ -843,6 +844,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ...prismeCopy.sections.access,
       content: (
         <CompanyContextAccess
+          key={`access:${access.sessionGeneration}:${companySelectionGeneration}`}
           actor={access.actor}
           identity={identity}
           onActorRevalidated={acceptRevalidatedActor}

@@ -79,6 +79,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_received_contract_access',
   'company_task_result_recorder',
   'company_mission_result_reviewer',
+  'company_mission_applicability_coordinator',
+  'company_mission_applicability_approver',
   'company_offer_model_editor',
   'company_contract_model_editor',
   'company_offer_model_approver',
@@ -762,11 +764,15 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_received_contract_access_assignment.granted',
   'company_task_result_recorder_assignment.granted',
   'company_mission_result_reviewer_assignment.granted',
+  'company_mission_applicability_coordinator_assignment.granted',
+  'company_mission_applicability_approver_assignment.granted',
   'company_document_content_reader_assignment.revoked',
   'company_mission_deliverable_access_assignment.revoked',
   'company_received_contract_access_assignment.revoked',
   'company_task_result_recorder_assignment.revoked',
   'company_mission_result_reviewer_assignment.revoked',
+  'company_mission_applicability_coordinator_assignment.revoked',
+  'company_mission_applicability_approver_assignment.revoked',
   'company_document_content_uploader_assignment.granted',
   'company_document_content_uploader_assignment.revoked',
   'company_project_assignment.granted',
@@ -890,6 +896,8 @@ export const activityLogEvents = pgTable(
               | 'Company Received Contract Access'
               | 'Company Task Result Recorder'
               | 'Company Mission Result Reviewer'
+              | 'Company Mission Applicability Coordinator'
+              | 'Company Mission Applicability Approver'
               | 'Company Document Content Uploader'
               | 'Company Project Access'
               | 'Company Commercial Intake'

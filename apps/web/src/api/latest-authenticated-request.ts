@@ -51,6 +51,7 @@ export async function handleAuthenticatedAccessRejection({
   onActorRevalidated,
   onWorkspaceAccessRejected = () => undefined,
   signal,
+  isCurrent,
 }: {
   result: ApiResult<unknown>;
   identity: BrowserIdentity;
@@ -59,14 +60,21 @@ export async function handleAuthenticatedAccessRejection({
   onActorRevalidated: (actor: ActorContext) => Promise<void> | void;
   onWorkspaceAccessRejected?: () => Promise<void> | void;
   signal?: AbortSignal;
+  isCurrent?: () => boolean;
 }): Promise<'unauthorized' | 'forbidden' | undefined> {
+  if (result.status !== 'unauthorized' && result.status !== 'forbidden')
+    return undefined;
+  const live = () => !signal?.aborted && (isCurrent?.() ?? true);
   if (result.status === 'unauthorized') {
+    // Existing owners may retire their own signal before reporting401. Explicit
+    // captured consumers additionally fence shared rejection against retirement.
+    if (isCurrent && !live()) return 'unauthorized';
     await identity.rejectSession();
     return 'unauthorized';
   }
-  if (result.status !== 'forbidden') return undefined;
+  if (!live()) return 'forbidden';
   const api = await createAuthenticatedApiClient(identity);
-  if (signal?.aborted) return 'forbidden';
+  if (!live()) return 'forbidden';
   let selectedContextWasForbidden = false;
   if (companyContextId) {
     const selectedContext = await readCurrentActor({
@@ -74,7 +82,7 @@ export async function handleAuthenticatedAccessRejection({
       companyContextId,
       signal,
     });
-    if (signal?.aborted) return 'forbidden';
+    if (!live()) return 'forbidden';
     if (selectedContext.status === 'unauthorized') {
       await identity.rejectSession();
       return 'unauthorized';
@@ -85,6 +93,7 @@ export async function handleAuthenticatedAccessRejection({
         return 'forbidden';
       }
       onCompanyContextRejected(companyContextId);
+      if (!live()) return 'forbidden';
       await onActorRevalidated(selectedContext.value);
       return 'forbidden';
     }
@@ -92,7 +101,7 @@ export async function handleAuthenticatedAccessRejection({
   }
 
   const workspaceContext = await readCurrentActor({ api, signal });
-  if (signal?.aborted) return 'forbidden';
+  if (!live()) return 'forbidden';
   if (workspaceContext.status === 'unauthorized') {
     await identity.rejectSession();
     return 'unauthorized';
@@ -104,6 +113,7 @@ export async function handleAuthenticatedAccessRejection({
   if (workspaceContext.status === 'ok') {
     if (companyContextId && selectedContextWasForbidden) {
       onCompanyContextRejected(companyContextId);
+      if (!live()) return 'forbidden';
       await onActorRevalidated(workspaceContext.value);
     } else if (!companyContextId) {
       await onActorRevalidated(workspaceContext.value);

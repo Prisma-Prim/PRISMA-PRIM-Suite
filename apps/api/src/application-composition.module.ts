@@ -1,3 +1,5 @@
+import { MissionApplicabilityModule } from './project-mission-applicability/mission-applicability.module.js';
+import { MissionApplicabilityController } from './project-mission-applicability/mission-applicability.controller.js';
 import { ProjectPdfBundleController } from './documents/project-pdf-bundle.controller.js';
 import { MissionPlanCopyController } from './mission-plan/mission-plan-copy.controller.js';
 import { MissionPlanModule } from './mission-plan/mission-plan.module.js';
@@ -21,6 +23,9 @@ import { CompanyReceivedContractAccessAssignmentController } from './access/comp
 import { TaskResultsController } from './task/task-results.controller.js';
 import { CompanyTaskResultRecorderAssignmentController } from './access/company-task-result-recorder-assignment.controller.js';
 import { CompanyMissionResultReviewerAssignmentController } from './access/company-mission-result-reviewer-assignment.controller.js';
+import { CompanyMissionApplicabilityCoordinatorAssignmentController } from './access/company-mission-applicability-coordinator-assignment.controller.js';
+import { CompanyMissionApplicabilityApproverAssignmentController } from './access/company-mission-applicability-approver-assignment.controller.js';
+
 import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
 import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
 import { MissionResultReviewModule } from './project-mission-review/mission-result-review.module.js';
@@ -145,6 +150,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalRiskModule,
     ProjectTemplateModule,
     MissionResultReviewModule,
+    MissionApplicabilityModule,
     TaskModule,
     DocumentsModule,
     ProjectModule,
@@ -178,6 +184,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalRiskController,
     ProjectTemplateController,
     MissionResultReviewController,
+    MissionApplicabilityController,
     CompanyProjectTemplateUserAssignmentController,
     CompanyProjectTemplateConfigurationAssignmentController,
     CompanyProjectStageAdvancerAssignmentController,
@@ -197,6 +204,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyReceivedContractAccessAssignmentController,
     CompanyTaskResultRecorderAssignmentController,
     CompanyMissionResultReviewerAssignmentController,
+    CompanyMissionApplicabilityCoordinatorAssignmentController,
+    CompanyMissionApplicabilityApproverAssignmentController,
+
     CompanyDocumentContentUploaderAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,

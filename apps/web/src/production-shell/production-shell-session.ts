@@ -32,6 +32,7 @@ export interface ProductionShellTransport {
 }
 
 export interface ProductionShellSessionSnapshot {
+  readonly companySelectionGeneration?: number;
   readonly shellContext: ProductionShellContext;
   readonly selectCompany: (companyId: string) => Promise<void>;
   readonly refreshActivityLog: () => Promise<void>;
@@ -76,6 +77,10 @@ export function createProductionShellSession({
   const preference = createCompanyContextPreferenceStore();
   const listeners = new Set<() => void>();
   let shellContext: ProductionShellContext = { status: 'checking' };
+  let companySelectionGeneration = 0;
+  let actorLifetime: { signature: string; retired: boolean } | undefined;
+  let companyRejectionLifetime:
+    { signature: string; retired: boolean } | undefined;
   let snapshot = createSnapshot(shellContext);
   let operation: RequestOperation | undefined;
   let activityOperation: RequestOperation | undefined;
@@ -86,14 +91,43 @@ export function createProductionShellSession({
     context: ProductionShellContext,
   ): ProductionShellSessionSnapshot {
     const origin = captureCompanyContextOrigin(context);
+    const signature =
+      context.status === 'active' ? JSON.stringify(context.actor) : undefined;
+    if (actorLifetime?.signature !== signature) {
+      if (actorLifetime) actorLifetime.retired = true;
+      actorLifetime =
+        signature === undefined ? undefined : { signature, retired: false };
+    }
+    const capturedActor = actorLifetime;
+    const capturedRejection = companyRejectionLifetime;
+    const canRejectCompany = () =>
+      connected &&
+      capturedRejection !== undefined &&
+      !capturedRejection.retired &&
+      companyRejectionLifetime === capturedRejection;
+    // Equivalent revalidation keeps pending native work live. A true full-Actor
+    // change permanently retires saved shared effects, including A→B→A. Pending
+    // selection recovery still belongs to its committed Actor; feature parents
+    // independently consume the exposed Company-selection generation.
+    const current = () =>
+      connected &&
+      capturedActor !== undefined &&
+      !capturedActor.retired &&
+      actorLifetime === capturedActor;
     return {
       shellContext: context,
-      selectCompany: (companyId) => selectCompany(context, origin, companyId),
-      refreshActivityLog: () => refreshActivityLog(context, origin),
-      acceptRevalidatedActor: (actor) =>
-        acceptRevalidatedActor(context, origin, actor),
+      companySelectionGeneration,
+      selectCompany: async (companyId) => {
+        if (current()) await selectCompany(context, origin, companyId);
+      },
+      refreshActivityLog: async () => {
+        if (current()) await refreshActivityLog(context, origin);
+      },
+      acceptRevalidatedActor: async (actor) => {
+        if (current()) await acceptRevalidatedActor(context, origin, actor);
+      },
       rejectCompanyContext: (companyId) => {
-        if (!connected || !origin) return;
+        if (!canRejectCompany() || !origin) return;
         dispatch({
           type: 'company-rejected',
           origin,
@@ -102,7 +136,7 @@ export function createProductionShellSession({
         });
       },
       rejectCompanyContextAndRefreshActivity: async (companyId) => {
-        if (!connected || !origin) return;
+        if (!canRejectCompany() || !origin) return;
         const previousContext = shellContext;
         dispatch({
           type: 'company-rejected',
@@ -114,11 +148,11 @@ export function createProductionShellSession({
         await snapshot.refreshActivityLog();
       },
       rejectWorkspaceAccess: () => {
-        if (!connected || !origin || context.status !== 'active') return;
+        if (!current() || !origin) return;
         dispatch({ type: 'access-forbidden' });
       },
       includeCompany: (company) => {
-        if (!connected || !origin) return;
+        if (!current() || !origin) return;
         dispatch({ type: 'company-included', origin, company });
       },
     };
@@ -129,6 +163,19 @@ export function createProductionShellSession({
   ): void {
     const next = transitionCompanyContext(shellContext, transition);
     if (next === shellContext) return;
+    // The existing rejectionCandidate policy accepts a delayed committed-Company
+    // refusal through failed selection recovery. Only a verified Actor publication
+    // or access retirement changes that authority; other shared effects consume
+    // the full current Actor, including internal recovery state.
+    if ('actor' in transition || next.status !== 'active') {
+      const signature =
+        next.status === 'active' ? JSON.stringify(next.actor) : undefined;
+      if (companyRejectionLifetime?.signature !== signature) {
+        if (companyRejectionLifetime) companyRejectionLifetime.retired = true;
+        companyRejectionLifetime =
+          signature === undefined ? undefined : { signature, retired: false };
+      }
+    }
     shellContext = next;
     snapshot = createSnapshot(shellContext);
     synchronizeCompanyContextPreference(shellContext);
@@ -316,6 +363,7 @@ export function createProductionShellSession({
       capturedContext.companyContext.status !== 'ready'
     )
       return;
+    companySelectionGeneration += 1;
     const candidate = beginOperation();
     dispatch({ type: 'selection-started', origin, companyId });
 

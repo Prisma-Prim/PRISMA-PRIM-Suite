@@ -1,3 +1,5 @@
+import { missionApplicabilityEvents } from '../database/schema/mission-applicability.js';
+import type { missionApplicabilityFacts } from '../database/schema/mission-applicability.js';
 import { missionPlanVersions } from '../database/schema/mission-plan.js';
 import { readMemberAuthority } from '../access/member-authority.js';
 import type { MissionPlanVersionPublishedActivityEvent } from '../mission-plan/mission-plan.activity.js';
@@ -701,6 +703,40 @@ export class AccountabilityService {
     });
   }
   /** Restricted review facts are never projected into ordinary Activity or Task history. */
+  async recordMissionApplicabilityEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    factId: string;
+    applicabilityRevision: number;
+    kind: (typeof missionApplicabilityFacts.$inferSelect)['kind'];
+    occurredAt: Date;
+  }): Promise<void> {
+    const actions = {
+      PROPOSED: 'project.mission_applicability.proposed',
+      PROPOSAL_CORRECTED: 'project.mission_applicability.proposal_corrected',
+      APPROVED: 'project.mission_applicability.approved',
+      REJECTED: 'project.mission_applicability.rejected',
+      RESTORED: 'project.mission_applicability.restored',
+    } satisfies Record<
+      (typeof missionApplicabilityFacts.$inferSelect)['kind'],
+      string
+    >;
+    await this.databaseContext.connection
+      .insert(missionApplicabilityEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        projectId: input.projectId,
+        factId: input.factId,
+        applicabilityRevision: input.applicabilityRevision,
+        action: actions[input.kind],
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: { applicabilityRevision: input.applicabilityRevision },
+      });
+  }
   async recordMissionResultReviewEvent(input: {
     actor: ActorContext;
     companyId: string;
@@ -3564,11 +3600,15 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_received_contract_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_mission_result_reviewer_assignment.granted':
+    case 'company_mission_applicability_coordinator_assignment.granted':
+    case 'company_mission_applicability_approver_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
     case 'company_mission_deliverable_access_assignment.revoked':
     case 'company_received_contract_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.revoked':
     case 'company_mission_result_reviewer_assignment.revoked':
+    case 'company_mission_applicability_coordinator_assignment.revoked':
+    case 'company_mission_applicability_approver_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':
     case 'company_document_content_uploader_assignment.revoked':
     case 'company_project_assignment.granted':

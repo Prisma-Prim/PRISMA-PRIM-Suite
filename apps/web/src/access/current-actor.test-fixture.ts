@@ -28,6 +28,17 @@ export const completeActor = {
     taskPermissions: ['task.read'],
     taskPermissionAssignmentId: 'sample',
     taskPermissionSetVersion: 'v1',
+    missionApplicabilityProposalPermissions: [
+      'project.mission_applicability.propose',
+    ],
+    missionApplicabilityCoordinatorAssignmentId: 'sample',
+    missionApplicabilityCoordinatorPermissionSetVersion: 'v1',
+    missionApplicabilityDecisionPermissions: [
+      'project.mission_applicability.decide',
+      'project.mission_applicability.restore',
+    ],
+    missionApplicabilityApproverAssignmentId: 'sample',
+    missionApplicabilityApproverPermissionSetVersion: 'v1',
     missionResultReviewPermissions: ['project.mission_result.review'],
     missionResultReviewerAssignmentId: 'sample',
     missionResultReviewerPermissionSetVersion: 'v1',

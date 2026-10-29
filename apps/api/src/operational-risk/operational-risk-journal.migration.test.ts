@@ -63,7 +63,6 @@ describe.skipIf(!databaseUrl)(
         });
         const index = tags.indexOf('0088_operational_risk_journal_corrections');
         expect(tags[index - 1]).toBe('0087_task_description');
-        expect(index).toBe(tags.length - 1);
         await mkdir(join(previous, 'meta'));
         await writeFile(
           join(previous, 'meta/_journal.json'),
@@ -453,7 +452,19 @@ describe.skipIf(!databaseUrl)(
         const receiptBytes = await pool.query(
           'SELECT response::text,fingerprint FROM operational_risk_receipts ORDER BY idempotency_key',
         );
-        await migrate(connection, { migrationsFolder: resolve('drizzle') });
+        // Keep the historical proof fixed at the owning 0087 -> 0088 upgrade,
+        // independently of later additive migrations in the current application.
+        const targetTag = tags[index];
+        if (!targetTag) throw new Error('Missing Risk migration target.');
+        await cp(
+          join('drizzle', `${targetTag}.sql`),
+          join(previous, `${targetTag}.sql`),
+        );
+        await writeFile(
+          join(previous, 'meta/_journal.json'),
+          JSON.stringify({ ...journal, entries: entries.slice(0, index + 1) }),
+        );
+        await migrate(connection, { migrationsFolder: previous });
         expect(await actualTables()).toEqual(tables);
         expect((await columns()).rows).toEqual(predecessorColumns);
         expect(await capture()).toEqual(before);
@@ -471,6 +482,8 @@ describe.skipIf(!databaseUrl)(
             )
           ).rows,
         ).toEqual([{ count: 0 }]);
+        await migrate(connection, { migrationsFolder: resolve('drizzle') });
+        expect(await capture()).toEqual(before);
         harness = await createPostgresRestTestHarness({
           databaseUrl: database.targetUrl,
           environment: {

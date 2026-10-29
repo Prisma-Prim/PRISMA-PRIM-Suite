@@ -1133,6 +1133,11 @@ export function ProjectWorkspace({
           {canUseProjectTemplate(actor) &&
             actor.activeCompany?.taskPermissions?.includes('task.read') && (
               <ProjectTemplatePlan
+                originalClientGeneration={clientIdentityRevision}
+                onActorRevalidated={onActorRevalidated}
+                onCompanyContextRejected={onCompanyContextRejected}
+                onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+                onActivityRecorded={onActivityRecorded}
                 key={`${selected.project.id}:${templateAuthority}`}
                 actor={actor}
                 identity={identity}
