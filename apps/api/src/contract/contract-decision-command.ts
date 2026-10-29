@@ -1,3 +1,4 @@
+import { openContractCommandReceipt } from './contract-command-receipt.js';
 import { runClientReferenceTransaction } from '../client/client-reference-transaction.js';
 import { contractSource } from './contract-source.js';
 import { qualityRunView } from './contract-quality-view.js';
@@ -8,7 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { ActorContext } from '../access/access.types.js';
 import { requireIdempotencyKey } from '../access/access-command-validation.js';
 import type { CompanyContextAuthorization } from '../access/company-context-authorization.js';
@@ -20,7 +21,6 @@ import {
   contracts,
   contractVersions,
   contractQualityRuns,
-  contractCommands,
   contractDecisions,
 } from '../database/schema/index.js';
 import { commandFingerprint } from '../command/idempotent-command.js';
@@ -124,43 +124,25 @@ export async function decideContractVersion(
         versionId: input.versionId,
         payload: input.payload,
       });
-      await dependencies.databaseContext.connection.execute(
-        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`${actor.workspaceId}:${companyId}:${actor.workspaceMembershipId}:${key}`},0))`,
-      );
-      const [receipt] = await dependencies.databaseContext.connection
-        .select()
-        .from(contractCommands)
-        .where(
-          and(
-            eq(contractCommands.workspaceId, actor.workspaceId),
-            eq(contractCommands.companyId, companyId),
-            eq(
-              contractCommands.actorWorkspaceMembershipId,
-              actor.workspaceMembershipId,
-            ),
-            eq(contractCommands.idempotencyKey, key),
+      const receipt = await openContractCommandReceipt({
+        database: dependencies.databaseContext,
+        actor,
+        companyId,
+        key,
+        opportunityId: input.opportunityId,
+        contractId: found.contract.id,
+        kind: input.kind,
+        fingerprint,
+      });
+      if (receipt.kind === 'recorded') {
+        return receipt.confirm(
+          await readContractDecision(
+            dependencies.databaseContext,
+            actor,
+            found.contract,
+            found.version,
           ),
         );
-      if (receipt) {
-        if (
-          receipt.kind !== input.kind ||
-          receipt.fingerprint !== fingerprint ||
-          receipt.resultContractId !== found.contract.id ||
-          !receipt.resultDecisionId
-        )
-          throw conflict(
-            'IDEMPOTENCY_CONFLICT',
-            'Idempotency-Key was used for another Contract command.',
-          );
-        const recorded = await readContractDecision(
-          dependencies.databaseContext,
-          actor,
-          found.contract,
-          found.version,
-        );
-        if (!recorded || recorded.id !== receipt.resultDecisionId)
-          throw new Error('Missing recorded Contract decision.');
-        return recorded;
       }
       if (found.version.supersededByVersionId)
         throw conflict(
@@ -315,20 +297,7 @@ export async function decideContractVersion(
             eq(contracts.id, current.contract.id),
           ),
         );
-      await dependencies.databaseContext.connection
-        .insert(contractCommands)
-        .values({
-          workspaceId: actor.workspaceId,
-          companyId,
-          actorWorkspaceMembershipId: actor.workspaceMembershipId,
-          idempotencyKey: key,
-          fingerprint,
-          opportunityId: input.opportunityId,
-          resultContractId: current.contract.id,
-          kind: command.kind,
-          resultDecisionId: decision.id,
-          createdAt: decidedAt,
-        });
+      await receipt.append({ id: decision.id, occurredAt: decidedAt });
       await dependencies.accountability.recordContractDecision({
         actor,
         companyId,
