@@ -1,0 +1,3 @@
+Terminal excerpt from local-browser/acceptance/playwright.log. Complete original retained locally and hashed in the canonical manifest. ANSI formatting removed.
+
+  146 passed (22.1m)

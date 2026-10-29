@@ -1,0 +1,6 @@
+Terminal excerpt from logs/api-parallel.log. Complete original retained locally and hashed in the canonical manifest. ANSI formatting removed.
+
+ Test Files  209 passed | 1 skipped (210)
+      Tests  3609 passed | 1 skipped (3610)
+   Start at  15:03:45
+   Duration  2103.56s (transform 6.52s, setup 0ms, import 150.16s, tests 1929.68s, environment 17ms)

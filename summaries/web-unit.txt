@@ -1,0 +1,6 @@
+Terminal excerpt from logs/web-unit.log. Complete original retained locally and hashed in the canonical manifest. ANSI formatting removed.
+
+ Test Files  228 passed (228)
+      Tests  3959 passed (3959)
+   Start at  15:39:49
+   Duration  390.22s (transform 7.97s, setup 28.61s, import 42.86s, tests 554.01s, environment 125.95s)

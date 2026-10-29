@@ -1,0 +1,188 @@
+{
+  "schema": "prisma-prim-evidence-publication/v1",
+  "pr": 978,
+  "run": "run003",
+  "ref": "local-evidence/pr-978/fc1331d47b8290474379d24d5edd6bb213f994b8-run003",
+  "source": "fc1331d47b8290474379d24d5edd6bb213f994b8",
+  "base": "582e5e032961f5869b961181659a4858a63b90d9",
+  "integration_commit": "7bc083f0a761dd29dc7a0a89e0e00609ab5df55e",
+  "integration_tree": "1a3b8d758db6ae91db7e10b617cbb1f104b1499e",
+  "canonical_status": "passed",
+  "canonical_mode": "complete",
+  "canonical_artifact_count": 2608,
+  "complete_originals": "Retained locally; selected publication is not the full inventory",
+  "limits": {
+    "total_bytes": 20971520,
+    "blob_bytes": 5242880
+  },
+  "retention": "At least 14 days after merge; only owned evidence refs may be deleted",
+  "index_self_hash": "Recorded in SHA256SUMS and the PR publication receipt",
+  "files": [
+    {
+      "path": "report.md",
+      "bytes": 3589,
+      "sha256": "829327dfab8c8cda893ec1d89d54c9bf8806b2a521a59e686fa1722b054d2192",
+      "copy_kind": "selected-exact-original",
+      "original_path": "report.md",
+      "original_bytes": 3589,
+      "original_sha256": "829327dfab8c8cda893ec1d89d54c9bf8806b2a521a59e686fa1722b054d2192",
+      "selection_reason": "Canonical compact report/manifest"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 1013866,
+      "sha256": "cf6b9b98754a812aa5ba388c05988def402c578c28890edabe0bdd45c2b5b4c3",
+      "copy_kind": "selected-exact-original",
+      "original_path": "manifest.json",
+      "original_bytes": 1013866,
+      "original_sha256": "cf6b9b98754a812aa5ba388c05988def402c578c28890edabe0bdd45c2b5b4c3",
+      "selection_reason": "Canonical compact report/manifest"
+    },
+    {
+      "path": "summaries/scripts.txt",
+      "bytes": 260,
+      "sha256": "4c2878e5fca9e386863377ab75a1f077052c285c3b0ece3ba4e5a6ff424ea827",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/scripts.log",
+      "original_bytes": 51433,
+      "original_sha256": "83c987cac2253877cc238421714d7ba7a57f75807cffc09492e21fdf39a793db",
+      "selection_reason": "Reviewed terminal result excerpt; complete original retained locally"
+    },
+    {
+      "path": "summaries/documentation.txt",
+      "bytes": 319,
+      "sha256": "5ac71ae6ae135c124d29fc90f430c29730db8ea76116ffa2cacb6c890d0d1802",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/documentation.log",
+      "original_bytes": 7346,
+      "original_sha256": "bb6cf048adf294eb76a196382fa964757768fa6f8a5538341602debf9b9ae99a",
+      "selection_reason": "Reviewed terminal result excerpt; complete original retained locally"
+    },
+    {
+      "path": "summaries/api-parallel.txt",
+      "bytes": 353,
+      "sha256": "4bbe3a55ddb6788ef00167bba3a865403dc5dc813f1c3bfeeb7aef85a685f62f",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/api-parallel.log",
+      "original_bytes": 702015,
+      "original_sha256": "8024f8206464023ef1850ca0c67606599ff377ecb0d6cecaacfb3302fad29bc3",
+      "selection_reason": "Reviewed terminal result excerpt; complete original retained locally"
+    },
+    {
+      "path": "summaries/api-serial.txt",
+      "bytes": 315,
+      "sha256": "e9d78eaa592a883b333dabaea5db8ef4a6c31c60aae9d15376b334e9a5e5fad6",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/api-serial.log",
+      "original_bytes": 55026,
+      "original_sha256": "f6da485f4bd0d1a4f8ee56b2758f5cf59aad7bc3d01c21d1fa9009c53ad5119f",
+      "selection_reason": "Reviewed terminal result excerpt; complete original retained locally"
+    },
+    {
+      "path": "summaries/web-unit.txt",
+      "bytes": 328,
+      "sha256": "f7400643b0c88a933740c2c6cbefb7790075db402741b5b96c9452959392857f",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/web-unit.log",
+      "original_bytes": 98348,
+      "original_sha256": "9ac5a3f4b5023b5fdc0e947a84afb6e10286cb6a28d0593b9e26b8814f045d70",
+      "selection_reason": "Reviewed terminal result excerpt; complete original retained locally"
+    },
+    {
+      "path": "summaries/browser.txt",
+      "bytes": 192,
+      "sha256": "a975410770fb2c0de15d412191b18b4b5a5a62d2f5d9e1a3d2f7ddaf004bfa65",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "local-browser/browser/playwright.log",
+      "original_bytes": 1558,
+      "original_sha256": "27fc074b10d73f488d1723bc19adf1d6deca4d61a1235687049c7ccc64929d31",
+      "selection_reason": "Reviewed browser terminal results; one existing declared skip"
+    },
+    {
+      "path": "screenshots/contract-model-approved-desktop.png",
+      "bytes": 85746,
+      "sha256": "a058a3d9e9332577fad6902c9db325554319fbdbdf9af41dc5b5cc37e249e3ed",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/contract-model.acceptance--bfa88-s-access-and-Company-drafts-operational-acceptance-desktop/contract-model-approved-Desktop.png",
+      "original_bytes": 85746,
+      "original_sha256": "a058a3d9e9332577fad6902c9db325554319fbdbdf9af41dc5b5cc37e249e3ed",
+      "selection_reason": "Reviewed synthetic actual App/API/PostgreSQL model approval capture; only the visible viewport is claimed inspected"
+    },
+    {
+      "path": "screenshots/contract-model-approved-narrow.png",
+      "bytes": 49635,
+      "sha256": "fea4af85082da3172d5a5709a7ef38268d85a485f3f0dd9556d27f73d85dbccb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/contract-model.acceptance--bfa88-s-access-and-Company-drafts-operational-acceptance-narrow/contract-model-approved-Narrow.png",
+      "original_bytes": 49635,
+      "original_sha256": "fea4af85082da3172d5a5709a7ef38268d85a485f3f0dd9556d27f73d85dbccb",
+      "selection_reason": "Reviewed synthetic actual App/API/PostgreSQL model approval capture; only the visible viewport is claimed inspected"
+    },
+    {
+      "path": "screenshots/offer-model-approved-desktop.png",
+      "bytes": 84627,
+      "sha256": "1338c92817993304e564117caa92440469eeeb8c64660d13179a15d096640c08",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/offer-model.acceptance-adm-36473-s-access-and-Company-drafts-operational-acceptance-desktop/offer-model-approved-Desktop.png",
+      "original_bytes": 84627,
+      "original_sha256": "1338c92817993304e564117caa92440469eeeb8c64660d13179a15d096640c08",
+      "selection_reason": "Reviewed synthetic actual App/API/PostgreSQL model approval capture; only the visible viewport is claimed inspected"
+    },
+    {
+      "path": "screenshots/offer-model-approved-narrow.png",
+      "bytes": 49319,
+      "sha256": "5de9d866da1ac52bc5e79ce3526f9c66dd5ccd5e3b6e42110b449fa01091a5ec",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/offer-model.acceptance-adm-36473-s-access-and-Company-drafts-operational-acceptance-narrow/offer-model-approved-Narrow.png",
+      "original_bytes": 49319,
+      "original_sha256": "5de9d866da1ac52bc5e79ce3526f9c66dd5ccd5e3b6e42110b449fa01091a5ec",
+      "selection_reason": "Reviewed synthetic actual App/API/PostgreSQL model approval capture; only the visible viewport is claimed inspected"
+    },
+    {
+      "path": "intentional-failure-probe/client-registration-timeline.json",
+      "bytes": 1401,
+      "sha256": "028bbf7e4931017c32d787351e47bbcf717a277e17135604f83f85456a344f9d",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/client-registration-timeline.json",
+      "original_bytes": 1401,
+      "original_sha256": "028bbf7e4931017c32d787351e47bbcf717a277e17135604f83f85456a344f9d",
+      "selection_reason": "Reviewed required deliberate failure-evidence probe; does not represent an acceptance-suite failure"
+    },
+    {
+      "path": "intentional-failure-probe/error-context.md",
+      "bytes": 82,
+      "sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/error-context.md",
+      "original_bytes": 82,
+      "original_sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07",
+      "selection_reason": "Reviewed required deliberate failure-evidence probe; does not represent an acceptance-suite failure"
+    },
+    {
+      "path": "intentional-failure-probe/test-failed-1.png",
+      "bytes": 9319,
+      "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/test-failed-1.png",
+      "original_bytes": 9319,
+      "original_sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "selection_reason": "Reviewed required deliberate failure-evidence probe; does not represent an acceptance-suite failure"
+    },
+    {
+      "path": "summaries/acceptance.txt",
+      "bytes": 183,
+      "sha256": "b1b0c408e3b088f581fffe88cb5c6a55e3350238d6e2b660bb73582e1ee4e61e",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "local-browser/acceptance/playwright.log",
+      "original_bytes": 414,
+      "original_sha256": "06a4839e164e3fbc7956ab4f4223c82752bb5bce23a496c6712a5cc766fd1488",
+      "selection_reason": "Reviewed terminal result for both registered App/API/PostgreSQL acceptance viewports"
+    },
+    {
+      "path": "README.md",
+      "bytes": 863,
+      "sha256": "58f727053c2cf035d7d3c4c9bb5031eb329c6ef0dc0eef6071f77b3bdf9b3e45",
+      "copy_kind": "publication-generated-context"
+    }
+  ]
+}
