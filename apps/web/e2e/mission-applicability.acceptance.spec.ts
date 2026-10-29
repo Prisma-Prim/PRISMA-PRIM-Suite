@@ -473,7 +473,11 @@ for (const frame of ['prisme', 'classic'] as const)
             .locator('input')
             .evaluateAll(
               (elements, title) =>
-                elements.some((element) => element.value === title),
+                elements.some(
+                  (element) =>
+                    element instanceof HTMLInputElement &&
+                    element.value === title,
+                ),
               text(activity.title),
             ),
         )
@@ -510,10 +514,374 @@ for (const frame of ['prisme', 'classic'] as const)
       await assign('document-content-reader');
       await expect(page.locator('body')).toHaveJSProperty(
         'scrollWidth',
-        await page.evaluate(() => document.documentElement.clientWidth),
+        await page.evaluate(() => window.document.documentElement.clientWidth),
       );
       await page.screenshot({
         path: info.outputPath('native-unavailable-' + suffix + '.png'),
         fullPage: true,
       });
+    });
+for (const frame of ['prisme', 'classic'] as const)
+  for (const locale of ['en', 'ro', 'fr', 'ru'] as const)
+    test(`inspects an exact off-page applicability predecessor in ${frame} / ${locale}`, async ({
+      page,
+    }, info) => {
+      test.setTimeout(120_000);
+      const narrow = info.project.name.endsWith('narrow'),
+        suffix = `${frame}-${locale}-${narrow ? 'narrow' : 'desktop'}`,
+        membershipId = text(process.env.ACCEPTANCE_PRIMARY_MEMBERSHIP_ID),
+        copy = (key: (typeof missionApplicabilityMessages.keys)[number]) =>
+          resolveMessage(missionApplicabilityMessages, locale, key);
+      const companyResponse = await page.request.post(origin + '/companies', {
+        headers: { ...owner, 'idempotency-key': randomUUID() },
+        data: { displayName: 'Referenced applicability DEMO ' + suffix },
+      });
+      expect(companyResponse.status()).toBe(201);
+      const companyId = text(object(await companyResponse.json()).id),
+        headers = { ...ada, 'x-company-context-id': companyId };
+      for (const bundle of [
+        'context',
+        'director-client',
+        'project',
+        'task-manager',
+        'project-template-user',
+        'document-registrar',
+        'mission-deliverable-access',
+        'document-content-reader',
+        'mission-applicability-coordinator',
+        'mission-applicability-approver',
+      ]) {
+        const response = await page.request.post(
+          origin + `/company-${bundle}-assignments`,
+          {
+            headers: { ...owner, 'idempotency-key': randomUUID() },
+            data: { companyId, workspaceMembershipId: membershipId },
+          },
+        );
+        expect(response.status(), bundle).toBe(201);
+      }
+      async function read(path: string) {
+        const response = await page.request.get(origin + path, { headers });
+        expect(response.status(), path).toBe(200);
+        return object(await response.json());
+      }
+      async function post(path: string, data: unknown) {
+        const response = await page.request.post(origin + path, {
+          headers: { ...headers, 'idempotency-key': randomUUID() },
+          data,
+        });
+        expect(response.status(), path).toBe(201);
+        return object(await response.json());
+      }
+      function revision(value: unknown) {
+        if (typeof value !== 'number' || !Number.isInteger(value) || value < 0)
+          throw new Error('Expected an observed public revision');
+        return value;
+      }
+      const clientId = text(
+          (
+            await post('/clients', {
+              displayName: 'Related Client DEMO ' + suffix,
+            })
+          ).id,
+        ),
+        title = 'Referenced Project DEMO ' + suffix,
+        projectId = text(
+          (
+            await post('/projects/from-template', {
+              clientAccountId: clientId,
+              title,
+              templateKey: 'CONSULTING_MISSION_PILOT_ILLUSTRATIVE',
+              templateVersion: 1,
+            })
+          ).id,
+        ),
+        path = `/projects/${projectId}/mission-applicability`,
+        source = await read(`/projects/${projectId}/template`),
+        activities = objects(object(source.template).activities),
+        subject = activities[6],
+        other = activities[0];
+      if (!subject || !other) throw new Error('Expected two copied activities');
+      const subjectTaskId = text(subject.taskId),
+        otherTaskId = text(other.taskId),
+        nativeBefore = {
+          task: await read(`/tasks/${subjectTaskId}`),
+          otherTask: await read(`/tasks/${otherTaskId}`),
+          result: await read(`/tasks/${subjectTaskId}/results`),
+          lifecycle: await read(`/projects/${projectId}/lifecycle`),
+        };
+      async function command({
+        taskId,
+        intent,
+      }: {
+        taskId: string;
+        intent: Record<string, unknown>;
+      }) {
+        const current = object((await read(path)).applicability),
+          activity = objects(current.activities).find(
+            (row) => object(row.task).id === taskId,
+          );
+        if (!activity) throw new Error('Missing exact observed activity');
+        const result = object(activity.result).current;
+        return post(path, {
+          ...intent,
+          taskId,
+          expectedApplicabilityRevision: revision(current.revision),
+          expectedTaskVersion: revision(object(activity.task).version),
+          expectedResultRevision:
+            result === null ? 0 : revision(object(result).revision),
+          expectedLifecycleRevision: revision(current.lifecycleRevision),
+        });
+      }
+      const agreement = {
+          kind: 'NO_CONTRACTUAL_CHANGE_REPORTED',
+          basis: 'DEMO literal statement, not a verified agreement',
+        },
+        scopeBasis = 'DEMO explicitly reported scope for this exact activity',
+        originalReason =
+          'DEMO earlier proposal <b>literal</b>\nЖ / é / 🌍\n' +
+          'EarlierScopeWithoutBreak'.repeat(12),
+        original = await command({
+          taskId: subjectTaskId,
+          intent: {
+            action: 'PROPOSE',
+            reason: originalReason,
+            scopeBasis,
+            agreement,
+          },
+        });
+      expect(original.applicabilityRevision).toBe(1);
+      let filler = await command({
+        taskId: otherTaskId,
+        intent: {
+          action: 'PROPOSE',
+          reason: 'DEMO proposal for another activity',
+          scopeBasis,
+          agreement,
+        },
+      });
+      // Real public commands put more than one history page BETWEEN this
+      // proposal and its decision. Another activity cannot identify its target.
+      for (let index = 0; index < 25; index++)
+        filler = await command({
+          taskId: otherTaskId,
+          intent: {
+            action: 'CORRECT_PROPOSAL',
+            proposalId: text(filler.factId),
+            reason: 'DEMO unrelated correction ' + index,
+            scopeBasis,
+            agreement,
+            correctionReason: 'DEMO explicit replacement ' + index,
+          },
+        });
+      expect(filler.applicabilityRevision).toBe(27);
+      const approval = await command({
+        taskId: subjectTaskId,
+        intent: {
+          action: 'DECIDE',
+          proposalId: text(original.factId),
+          outcome: 'APPROVE',
+          basis: 'DEMO approval of that exact earlier proposal',
+        },
+      });
+      expect(approval.applicabilityRevision).toBe(28);
+      expect(
+        (
+          await command({
+            taskId: subjectTaskId,
+            intent: {
+              action: 'RESTORE',
+              approvalId: text(approval.factId),
+              basis: 'DEMO make the exact activity required again',
+            },
+          })
+        ).applicabilityRevision,
+      ).toBe(29);
+      const later = await command({
+        taskId: subjectTaskId,
+        intent: {
+          action: 'PROPOSE',
+          reason: 'DEMO later proposal, never the earlier approval target',
+          scopeBasis,
+          agreement,
+        },
+      });
+      expect(later.applicabilityRevision).toBe(30);
+      expect(
+        (
+          await command({
+            taskId: subjectTaskId,
+            intent: {
+              action: 'DECIDE',
+              proposalId: text(later.factId),
+              outcome: 'REJECT',
+              basis: 'DEMO keep required work and conserve the old decision',
+            },
+          })
+        ).applicabilityRevision,
+      ).toBe(31);
+      const beforeHistory = await read(path + '/history');
+      expect(objects(object(beforeHistory.history).facts)).toHaveLength(25);
+      const requests: string[] = [],
+        historyCursors: string[] = [];
+      page.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.pathname.startsWith('/api/'))
+          requests.push(request.method() + ' ' + url.pathname + url.search);
+        if (url.pathname === '/api' + path + '/history') {
+          const cursor = url.searchParams.get('beforeRevision');
+          if (cursor !== null) historyCursors.push(cursor);
+        }
+      });
+      await openProject(page, companyId, title, narrow);
+      if (frame === 'classic') await enterClassicCompatibility(page);
+      await selectOption(page.locator('#interface-locale'), locale);
+      const panel = page.locator('.mission-applicability');
+      await expect(panel).toHaveAccessibleName(copy('title'));
+      await selectOption(
+        panel.getByRole('combobox', { name: copy('select'), exact: true }),
+        subjectTaskId,
+      );
+      const history = panel.getByRole('region', {
+        name: copy('history'),
+        exact: true,
+      });
+      await expect(history.locator('.applicability-fact')).toHaveCount(25);
+      const corrected = history.getByRole('article', {
+        name: `${copy('PROPOSAL_CORRECTED')} — ${copy('version')} 26`,
+        exact: true,
+      });
+      await expect(corrected).toContainText(
+        `${copy('supersededBy')} — ${copy('version')} 27`,
+      );
+      const restored = history.getByRole('article', {
+        name: `${copy('RESTORED')} — ${copy('version')} 29`,
+        exact: true,
+      });
+      await expect(restored).toContainText(copy('restoredApproval'));
+      await expect(restored).toContainText(
+        `${copy('APPROVED')} — ${copy('version')} 28`,
+      );
+      if (locale === 'en')
+        await restored.screenshot({
+          path: info.outputPath(
+            'restored-approval-relation-' + suffix + '.png',
+          ),
+        });
+      const laterProposal = history.getByRole('article', {
+        name: `${copy('PROPOSED')} — ${copy('version')} 30`,
+        exact: true,
+      });
+      await expect(laterProposal).toContainText(copy('priorActivityFact'));
+      await expect(laterProposal).toContainText(
+        `${copy('RESTORED')} — ${copy('version')} 29`,
+      );
+      const decision = history.getByRole('article', {
+        name: `${copy('APPROVED')} — ${copy('version')} 28`,
+        exact: true,
+      });
+      await expect(decision).toContainText(copy('decisionProposal'));
+      await expect(decision).toContainText(copy('relationNotLoaded'));
+      expect(historyCursors).toEqual([]);
+      const inspect = decision.getByRole('button', {
+        name: `${copy('inspectRelation')}: ${copy('decisionProposal')} — ${copy('version')} 28`,
+        exact: true,
+      });
+      await inspect.focus();
+      await page.keyboard.press('Enter');
+      const inspection = history.getByRole('region', {
+        name: copy('relationInspection'),
+        exact: true,
+      });
+      await expect(inspection).toBeVisible();
+      await expect(inspection).toContainText(
+        'DEMO approval of that exact earlier proposal',
+      );
+      const older = inspection.getByRole('button', {
+        name: copy('olderRelated'),
+        exact: true,
+      });
+      await expect(older).toBeVisible();
+      expect(historyCursors).toEqual(['28']);
+      await older.focus();
+      await page.keyboard.press('Enter');
+      const target = inspection.getByRole('article', {
+        name: `${copy('PROPOSED')} — ${copy('version')} 1`,
+        exact: true,
+      });
+      await expect(target).toBeVisible();
+      await expect(
+        inspection.getByRole('heading', {
+          name: copy('relationInspection'),
+          exact: true,
+        }),
+      ).toBeFocused();
+      expect(historyCursors).toEqual(['28', '3']);
+      expect(
+        await target.getByText(originalReason, { exact: true }).textContent(),
+      ).toBe(originalReason);
+      await expect(inspection).not.toContainText(
+        'DEMO later proposal, never the earlier approval target',
+      );
+      await expect(inspection.locator('b, a, script')).toHaveCount(0);
+      await inspection.screenshot({
+        path: info.outputPath('exact-predecessor-context-' + suffix + '.png'),
+      });
+      await target.scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: info.outputPath('exact-predecessor-viewport-' + suffix + '.png'),
+      });
+      const targetNode = await target.elementHandle();
+      if (!targetNode) throw new Error('Expected the resolved native target');
+      const beforeLocale = [...requests],
+        alternate = locale === 'fr' ? 'en' : 'fr',
+        alternateCopy = (
+          key: (typeof missionApplicabilityMessages.keys)[number],
+        ) => resolveMessage(missionApplicabilityMessages, alternate, key);
+      await selectOption(page.locator('#interface-locale'), alternate);
+      const translatedInspection = panel.getByRole('region', {
+          name: alternateCopy('relationInspection'),
+          exact: true,
+        }),
+        translatedTarget = translatedInspection.getByRole('article', {
+          name: `${alternateCopy('PROPOSED')} — ${alternateCopy('version')} 1`,
+          exact: true,
+        });
+      await expect(translatedTarget).toBeVisible();
+      expect(
+        await translatedTarget.evaluate(
+          (node, originalNode) => node === originalNode,
+          targetNode,
+        ),
+      ).toBe(true);
+      expect(requests).toEqual(beforeLocale);
+      await selectOption(page.locator('#interface-locale'), locale);
+      await expect(target).toBeVisible();
+      expect(requests).toEqual(beforeLocale);
+      await inspection
+        .getByRole('button', { name: copy('closeInspection'), exact: true })
+        .focus();
+      await page.keyboard.press('Enter');
+      await expect(inspection).toHaveCount(0);
+      await expect(
+        history.getByRole('heading', { name: copy('history'), exact: true }),
+      ).toBeFocused();
+      expect(historyCursors).toEqual(['28', '3']);
+      expect(object((await read(path)).applicability).revision).toBe(31);
+      expect(await read(path + '/history')).toEqual(beforeHistory);
+      expect(await read(`/projects/${projectId}/template`)).toEqual(source);
+      expect({
+        task: await read(`/tasks/${subjectTaskId}`),
+        otherTask: await read(`/tasks/${otherTaskId}`),
+        result: await read(`/tasks/${subjectTaskId}/results`),
+        lifecycle: await read(`/projects/${projectId}/lifecycle`),
+      }).toEqual(nativeBefore);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true);
+      expect(requests.every((request) => request.startsWith('GET '))).toBe(
+        true,
+      );
     });

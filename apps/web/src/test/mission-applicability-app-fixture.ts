@@ -106,13 +106,15 @@ export function installParentServer(
   override: (
     path: string,
     init: RequestInit | undefined,
+    url: URL,
   ) => Promise<Response | undefined>,
 ) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const path = new URL(input.toString(), window.location.origin).pathname,
-        overridden = await override(path, init);
+      const url = new URL(input.toString(), window.location.origin),
+        path = url.pathname,
+        overridden = await override(path, init, url);
       if (overridden) return overridden;
       if (path === '/api/access/current-actor')
         return Response.json(readActor());

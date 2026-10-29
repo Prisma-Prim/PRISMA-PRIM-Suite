@@ -1,3 +1,5 @@
+import { useApplicabilityHistory } from './use-applicability-history';
+import { ApplicabilityHistoryView } from './ApplicabilityHistoryView';
 import { clientReadAuthority } from './project-authority';
 import { useEffect, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
@@ -13,7 +15,6 @@ import type { CopiedPilotTemplatePlan } from './project-template-response';
 import { useProjectTaskCopy } from './task.copy';
 import { useMissionApplicabilityCopy } from './mission-applicability.copy';
 import {
-  readApplicabilityHistory,
   readApplicabilityReceipt,
   readMissionApplicability,
   type ApplicabilityIntent,
@@ -149,10 +150,6 @@ type Mutation =
       command: Command;
       receipt: ReturnType<typeof readApplicabilityReceipt>;
     };
-type History = Extract<
-  NonNullable<ReturnType<typeof readApplicabilityHistory>>,
-  { kind: 'available' }
->;
 type ReadState =
   | 'loading'
   | 'ready'
@@ -183,9 +180,6 @@ function ApplicabilityReader(
     writeRequest = useRef<AbortController | undefined>(undefined);
   const [state, setState] = useState<ReadState>('loading'),
     [snapshot, setSnapshot] = useState<ApplicabilitySnapshot | null>(null),
-    [history, setHistory] = useState<History | null>(null),
-    [historyError, setHistoryError] = useState(false),
-    [historyUnavailable, setHistoryUnavailable] = useState(false),
     [selected, setSelected] = useState(props.plan.activities[0]?.taskId ?? ''),
     [mutation, setMutation] = useState<Mutation>({ kind: 'idle' }),
     [denied, setDenied] = useState({ proposal: '', decision: '' });
@@ -225,105 +219,83 @@ function ApplicabilityReader(
     readRequest.current?.abort();
     writeRequest.current?.abort();
     setSnapshot(null);
-    setHistory(null);
+    history.clear();
     setMutation({ kind: 'idle' });
     setState(next);
   }
-  async function load(before?: number, historyOnly = false) {
+  const history = useApplicabilityHistory({
+    path,
+    identity: props.identity,
+    companyId,
+    plan: props.plan,
+    snapshot,
+    capture: localCapture,
+    captureRecovery: props.captureRecovery,
+    recover,
+    onDenied: () => retire('denied'),
+  });
+  async function load() {
     const valid = localCapture(),
       recoveryValid = props.captureRecovery();
     if (!valid()) return;
+    history.close();
     readRequest.current?.abort();
     const controller = new AbortController();
     readRequest.current = controller;
     const live = () => valid() && !controller.signal.aborted;
-    if (!historyOnly) setState('loading');
-    setHistoryError(false);
+    setState('loading');
     try {
       const api = await createAuthenticatedApiClient(props.identity);
       if (!live()) return;
-      if (!historyOnly) {
-        const result = await api.request<unknown>(path, {
-          companyContextId: companyId,
-          signal: controller.signal,
-        });
-        if (!live()) return;
-        if (result.status === 'unauthorized' || result.status === 'forbidden') {
-          await recover(result, live, recoveryValid, controller.signal);
-          if (live()) retire('denied');
-          return;
-        }
-        if (result.status === 'notFound') {
-          retire('missing');
-          return;
-        }
-        if (result.status !== 'ok') {
-          setState('error');
-          return;
-        }
-        let value: ReturnType<typeof readMissionApplicability>;
-        try {
-          value = readMissionApplicability(result.value, {
-            projectId: props.projectId,
-            plan: props.plan,
-          });
-        } catch {
-          setState('malformed');
-          return;
-        }
-        if (!value) {
-          setSnapshot(null);
-          setHistory(null);
-          setState('unsupported');
-          return;
-        }
-        if (value.kind === 'unavailable') {
-          retire('unavailable');
-          return;
-        }
-        setSnapshot(value);
-        setState('ready');
-        setMutation((current) =>
-          current.kind === 'conflict' || current.kind === 'invalid'
-            ? { kind: 'idle' }
-            : current,
-        );
-      }
-      if (!live()) return;
-      const result = await api.request<unknown>(
-        path +
-          '/history' +
-          (before === undefined ? '' : `?beforeRevision=${before}`),
-        { companyContextId: companyId, signal: controller.signal },
-      );
+      const result = await api.request<unknown>(path, {
+        companyContextId: companyId,
+        signal: controller.signal,
+      });
       if (!live()) return;
       if (result.status === 'unauthorized' || result.status === 'forbidden') {
         await recover(result, live, recoveryValid, controller.signal);
         if (live()) retire('denied');
         return;
       }
-      if (result.status !== 'ok') {
-        setHistoryError(true);
+      if (result.status === 'notFound') {
+        retire('missing');
         return;
       }
+      if (result.status !== 'ok') {
+        setState('error');
+        return;
+      }
+      let value: ReturnType<typeof readMissionApplicability>;
       try {
-        const page = readApplicabilityHistory(result.value, props.plan, before);
-        if (!page) throw new Error('Unsupported history changed');
-        if (page.kind === 'unavailable') {
-          setHistory(null);
-          setHistoryUnavailable(true);
-          return;
-        }
-        setHistory(page);
-        setHistoryUnavailable(false);
+        value = readMissionApplicability(result.value, {
+          projectId: props.projectId,
+          plan: props.plan,
+        });
       } catch {
-        setHistoryError(true);
+        setState('malformed');
+        return;
       }
+      if (!value) {
+        setSnapshot(null);
+        history.clear();
+        setState('unsupported');
+        return;
+      }
+      if (value.kind === 'unavailable') {
+        retire('unavailable');
+        return;
+      }
+      setSnapshot(value);
+      setState('ready');
+      setMutation((current) =>
+        current.kind === 'conflict' || current.kind === 'invalid'
+          ? { kind: 'idle' }
+          : current,
+      );
+
+      if (live()) await history.loadPage();
     } catch {
-      if (live()) {
-        if (historyOnly) setHistoryError(true);
-        else setState('error');
-      }
+      if (live()) setState('error');
     }
   }
   useEffect(() => {
@@ -428,6 +400,7 @@ function ApplicabilityReader(
       controller: new AbortController(),
     });
   }
+  const knownFacts = history.knownFacts;
   const activity = snapshot?.activities.find((row) => row.task.id === selected),
     busy = mutation.kind === 'pending' || mutation.kind === 'uncertain',
     blocked =
@@ -497,7 +470,10 @@ function ApplicabilityReader(
               value: row.task.id,
               label: row.key + ' — ' + row.title,
             }))}
-            onValueChange={setSelected}
+            onValueChange={(value) => {
+              history.close();
+              setSelected(value);
+            }}
             disabled={busy}
           />
           {activity && (
@@ -524,18 +500,34 @@ function ApplicabilityReader(
                 </button>
               )}
               {activity.pendingProposal ? (
-                <ApplicabilityFactView fact={activity.pendingProposal} />
+                <ApplicabilityFactView
+                  fact={activity.pendingProposal}
+                  knownFacts={knownFacts}
+                  onInspect={history.inspect}
+                />
               ) : (
                 <p>{copy('noProposal')}</p>
               )}
               {activity.activeApproval && (
-                <ApplicabilityFactView fact={activity.activeApproval} />
+                <ApplicabilityFactView
+                  fact={activity.activeApproval}
+                  knownFacts={knownFacts}
+                  onInspect={history.inspect}
+                />
               )}
               {activity.lastDecision && !activity.activeApproval && (
-                <ApplicabilityFactView fact={activity.lastDecision} />
+                <ApplicabilityFactView
+                  fact={activity.lastDecision}
+                  knownFacts={knownFacts}
+                  onInspect={history.inspect}
+                />
               )}
               {activity.lastRestoration && (
-                <ApplicabilityFactView fact={activity.lastRestoration} />
+                <ApplicabilityFactView
+                  fact={activity.lastRestoration}
+                  knownFacts={knownFacts}
+                  onInspect={history.inspect}
+                />
               )}
               {canCoordinate(props.actor) &&
                 !activity.activeApproval &&
@@ -567,35 +559,7 @@ function ApplicabilityReader(
                 ))}
             </div>
           )}
-          <section aria-label={copy('history')}>
-            <h5>{copy('history')}</h5>
-            {historyError && <p role="alert">{copy('historyError')}</p>}
-            {historyUnavailable && <p>{copy('unavailable')}</p>}
-            {history && (
-              <>
-                {history.facts.length === 0 && <p>{copy('historyEmpty')}</p>}
-                {history.facts.map((fact) => (
-                  <ApplicabilityFactView key={fact.id} fact={fact} />
-                ))}
-                <button
-                  type="button"
-                  onClick={() => void load(undefined, true)}
-                >
-                  {copy('newest')}
-                </button>
-                {history.nextBeforeRevision !== null && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void load(history.nextBeforeRevision ?? undefined, true)
-                    }
-                  >
-                    {copy('older')}
-                  </button>
-                )}
-              </>
-            )}
-          </section>
+          <ApplicabilityHistoryView history={history} />
         </>
       )}
     </section>

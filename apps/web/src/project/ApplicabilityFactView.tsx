@@ -1,3 +1,9 @@
+import {
+  applicabilityRelation,
+  resolveApplicabilityRelation,
+  supersedingApplicabilityCorrection,
+  type ApplicabilityRelation,
+} from './applicability-relations';
 import { useMissionApplicabilityCopy } from './mission-applicability.copy';
 import type {
   ApplicabilityFact,
@@ -56,8 +62,29 @@ export function ApplicabilityIntentContent({
     </dl>
   );
 }
-export function ApplicabilityFactView({ fact }: { fact: ApplicabilityFact }) {
-  const copy = useMissionApplicabilityCopy();
+export function ApplicabilityFactView({
+  fact,
+  knownFacts = [],
+  onInspect,
+}: {
+  fact: ApplicabilityFact;
+  knownFacts?: readonly ApplicabilityFact[];
+  onInspect?: (
+    origin: ApplicabilityFact,
+    relation: ApplicabilityRelation,
+    trigger: HTMLElement,
+  ) => void;
+}) {
+  const copy = useMissionApplicabilityCopy(),
+    relation = applicabilityRelation(fact),
+    target = relation
+      ? resolveApplicabilityRelation({
+          origin: fact,
+          relation,
+          facts: knownFacts,
+        })
+      : null,
+    correction = supersedingApplicabilityCorrection(fact, knownFacts);
   return (
     <article
       className="applicability-fact"
@@ -72,6 +99,36 @@ export function ApplicabilityFactView({ fact }: { fact: ApplicabilityFact }) {
         <time dateTime={fact.occurredAt}>{fact.occurredAt}</time>
       </p>
       <p className="applicability-literal">{fact.source.title}</p>
+      {relation && target && (
+        <dl>
+          <dt>{copy(relation.kind)}</dt>
+          <dd>
+            {target.kind === 'known'
+              ? `${copy(target.fact.kind)} — ${copy('version')} ${target.fact.revision}`
+              : copy(
+                  target.kind === 'notLoaded'
+                    ? 'relationNotLoaded'
+                    : 'relationUnverified',
+                )}
+            {onInspect && (
+              <button
+                type="button"
+                onClick={(event) =>
+                  onInspect(fact, relation, event.currentTarget)
+                }
+              >
+                {copy('inspectRelation')}: {copy(relation.kind)} —{' '}
+                {copy('version')} {fact.revision}
+              </button>
+            )}
+          </dd>
+        </dl>
+      )}
+      {correction && (
+        <p>
+          {copy('supersededBy')} — {copy('version')} {correction.revision}
+        </p>
+      )}
       <ApplicabilityIntentContent intent={fact.intent} />
     </article>
   );
