@@ -1,0 +1,496 @@
+{
+  "issue": 950,
+  "pr": 954,
+  "source": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+  "base": "68bbf8fa2609cad8d448363ee12577b745dbbf40",
+  "localExecutionCheckout": "b290e5c6197be48e31a8c450dda33306fad7a804",
+  "tree": "eeb3de0c01fab34ab13f23646ca9b4346e01bc1d",
+  "canonicalLocalGate": {
+    "attempt": 2,
+    "scope": "complete",
+    "status": "passed",
+    "all16RequiredFamiliesPassed": true,
+    "apiReuse": false,
+    "exactIntegrationInputsVerified": 1890,
+    "artifactHashesVerified": 2544,
+    "freshValidation": {
+      "name": "validate",
+      "argv": [
+        "node",
+        "scripts/verify-local.mjs",
+        "validate",
+        "--output",
+        "/workspace/work/actor-954-integration/verification-2"
+      ],
+      "cwd": "/workspace/work/actor-954-integration/repo",
+      "startedAt": "2026-10-29T02:29:42.494659+00:00",
+      "finishedAt": "2026-10-29T02:29:48.841994+00:00",
+      "exit": 0,
+      "rawLogSHA256": "167d95598448338a98b8ca6b9f62e0be70df4dbb244e2686ad21766f9d631536"
+    },
+    "selfReportedNotGitHubRunnerAttestation": true,
+    "localAPIAllowance": "Canonical local fixed --testTimeout=15000; does not prove canonical Actions implicit5000 default or a business response SLA."
+  },
+  "reviews": {
+    "issue": 950,
+    "pr": 954,
+    "source": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+    "base": "68bbf8fa2609cad8d448363ee12577b745dbbf40",
+    "checkout": "b290e5c6197be48e31a8c450dda33306fad7a804",
+    "tree": "eeb3de0c01fab34ab13f23646ca9b4346e01bc1d",
+    "complete": true,
+    "blockingFindingsRemaining": 0,
+    "unresolvedThreads": 0,
+    "preparation": "Original author Standards and Spec self-reviews complete; public PR handoff records focused/native/supplemental acceptance and final whole-web verification. Old private raw author/reviewer evidence was not retained in this replacement workspace; no original raw artifact hash is invented.",
+    "originalIndependentReview": {
+      "reviewedBase": "6854c68c90e3ed9545181aa445d3af204fe54131",
+      "initialSourceShort": "80212e6",
+      "standardsFindings": 0,
+      "specBlockingFindings": 1,
+      "originalBlocker": "Native Activity denial treated unreadable Workspace revalidation as proof to retire selected Company.",
+      "oneCorrectionBatch": "Helper and both native Activity/Company-selection consumers corrected; actual-session regressions and same-pattern audit recorded in public handoff.",
+      "sensitiveConfirmationSourceShort": "e89ab36",
+      "originalResolved": true,
+      "newBlockingFindings": 0,
+      "provenance": "Existing public PR954 handoff disposition, reused; root does not claim to possess original private reports."
+    },
+    "configuredOpeningReview": {
+      "comment": 6478305067,
+      "source": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+      "status": "completed",
+      "hasFindings": false,
+      "hasUnresolved": false,
+      "completedAt": "2026-10-29T01:00:36.451782Z",
+      "priorCompletedSource": "89fc876c8338a474636841864ea1af85d4668e92",
+      "configuredNewCommitReviewConsumedWithoutManualTrigger": true
+    },
+    "baseApplicability": {
+      "cleanAutomaticMerge": true,
+      "reviewedPaths": [
+        "apps/web/e2e/public-welcome.spec.ts",
+        "apps/web/src/App.blocked-task-lifecycle.test.tsx",
+        "apps/web/src/App.document-versions.test.tsx",
+        "apps/web/src/App.test.tsx",
+        "apps/web/src/ApplicationRoot.test.tsx",
+        "apps/web/src/access-types.ts",
+        "apps/web/src/access/CompanyContextAccess.test.tsx",
+        "apps/web/src/access/CompanyContextAccess.tsx",
+        "apps/web/src/access/current-actor.test-fixture.ts",
+        "apps/web/src/access/current-actor.test.ts",
+        "apps/web/src/access/current-actor.ts",
+        "apps/web/src/api/latest-authenticated-request.ts",
+        "apps/web/src/client/ClientCorrectionHistory.localization.test.tsx",
+        "apps/web/src/client/ClientDossierPanel.feedback-localization.test.tsx",
+        "apps/web/src/client/ClientUnionPanel.history-states.localization.test.tsx",
+        "apps/web/src/client/ClientUnionPanel.test.tsx",
+        "apps/web/src/production-shell/authenticated-production-shell-transport.ts",
+        "apps/web/src/production-shell/current-actor-native-recovery.test.ts",
+        "apps/web/src/production-shell/current-actor-recovery.test.tsx",
+        "apps/web/src/production-shell/production-shell-session.ts"
+      ],
+      "composedPaths": [
+        "apps/web/e2e/public-welcome.spec.ts",
+        "apps/web/src/App.blocked-task-lifecycle.test.tsx",
+        "apps/web/src/App.document-versions.test.tsx",
+        "apps/web/src/App.test.tsx",
+        "apps/web/src/ApplicationRoot.test.tsx",
+        "apps/web/src/access-types.ts",
+        "apps/web/src/access/CompanyContextAccess.test.tsx",
+        "apps/web/src/access/CompanyContextAccess.tsx",
+        "apps/web/src/access/current-actor.test-fixture.ts",
+        "apps/web/src/access/current-actor.test.ts",
+        "apps/web/src/access/current-actor.ts",
+        "apps/web/src/api/latest-authenticated-request.ts",
+        "apps/web/src/client/ClientCorrectionHistory.localization.test.tsx",
+        "apps/web/src/client/ClientDossierPanel.feedback-localization.test.tsx",
+        "apps/web/src/client/ClientUnionPanel.history-states.localization.test.tsx",
+        "apps/web/src/client/ClientUnionPanel.test.tsx",
+        "apps/web/src/production-shell/authenticated-production-shell-transport.ts",
+        "apps/web/src/production-shell/current-actor-native-recovery.test.ts",
+        "apps/web/src/production-shell/current-actor-recovery.test.tsx",
+        "apps/web/src/production-shell/production-shell-session.ts"
+      ],
+      "identicalFeatureBlobs": 19,
+      "inheritedTestOnlyDifference": {
+        "path": "apps/web/src/App.blocked-task-lifecycle.test.tsx",
+        "meaning": "Two description:null fixture fields from delivered960; no manual conflict resolution/production correction.",
+        "patchSHA256": "2edfadd545d55b75eee3b1924a732d02bd62cd0f2571f8986e2d5c3a1c2cbfd1",
+        "targetedActualAppTestsPassed": 18
+      },
+      "reviewReusedWithoutAnotherBroadRound": true,
+      "baseDelta": "Previously delivered source-plan/model/lifetime, Task instructions and canonical contract changes retain this Access representation boundary; no production950 edit was needed for base composition. The separate public-welcome test-only verification correction is recorded below.",
+      "baseDeltaPathCount": 113,
+      "baseDeltaOverlapPaths": [
+        "apps/web/src/App.blocked-task-lifecycle.test.tsx"
+      ],
+      "onlyOverlappingFeatureBlobInspectedAsRecorded": true,
+      "originalIndependentReviewPathCount": 19,
+      "additionalRootSelfReviewedTestCorrectionPath": "apps/web/e2e/public-welcome.spec.ts",
+      "scopedProductionUnchangedSinceIndependentReview": true,
+      "publishedSourceAdvancedByOneTestOnlyCommit": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+      "publishedSourceRewritten": false
+    },
+    "scopeLimitation": "Representation validation only. Full feature-required Actor/admin lifetimes remain within972; no permission/schema/server/business behavior expanded.",
+    "boundedCICorrection": {
+      "parent": "89fc876c8338a474636841864ea1af85d4668e92",
+      "source": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+      "sourceTree": "cd8c63f0fa5979a8727f3a100c7dc5b59ffdd1a8",
+      "changedPaths": [
+        "apps/web/e2e/public-welcome.spec.ts"
+      ],
+      "patchSHA256": "7ad96af9bb82ddfe8294a528aa6f19a30c54b1ac1f1c04adf08a198ed4cfc9a1",
+      "productionAndEveryOtherTrackedBlobIdentical": 1868,
+      "selfReviewStandards": "PASS: existing complete typed browser Actor fixture; no unchecked assertion/new helper/config/budget; preserve explicit empty Workspace rights.",
+      "selfReviewSpec": "PASS: accepted complete success enters protected shell; malformed-success rejection retains148existingreader tests. Original UI assertions and behavior preserved.",
+      "samePatternAuditBefore": {
+        "checkedFiles": 144,
+        "completeLiteralRoots": 11,
+        "incompleteUnspreadRootCandidates": [
+          {
+            "path": "apps/web/e2e/public-welcome.spec.ts",
+            "line": 69,
+            "missing": [
+              "internalUserId",
+              "workspaceMembershipId",
+              "workspaceId",
+              "active"
+            ]
+          }
+        ],
+        "scope": "Same-pattern syntax audit only; spread/owned typed builders and intentional malformed tests remain subject to existing full actual browser proof."
+      },
+      "samePatternAuditAfter": {
+        "checkedFiles": 143,
+        "completeLiteralRoots": 11,
+        "incompleteUnspreadRootCandidates": [],
+        "scope": "Same-pattern syntax audit only; spread/owned typed builders and intentional malformed tests remain subject to existing full actual browser proof."
+      },
+      "firstCompleteFailure": 1,
+      "affectedChecks": "All6PASS including exact4publicbrowser cases; strictaffectedE2EtypeswithViteambient; originalregistered config/assertions/budgets preserved.",
+      "at": "2026-10-29T00:55:02.720734+00:00",
+      "checks": {
+        "source": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+        "base": "68bbf8fa2609cad8d448363ee12577b745dbbf40",
+        "checkout": "b290e5c6197be48e31a8c450dda33306fad7a804",
+        "tree": "eeb3de0c01fab34ab13f23646ca9b4346e01bc1d",
+        "status": "passed",
+        "executions": [
+          {
+            "name": "doctor",
+            "argv": [
+              "node",
+              "scripts/agent-doctor.mjs",
+              "--profile",
+              "web"
+            ],
+            "startedAt": "2026-10-29T00:56:59.980053+00:00",
+            "finishedAt": "2026-10-29T00:57:02.044880+00:00",
+            "exit": 0,
+            "rawLogSHA256": "6a66f23796e6a5b5194d67d36d47ea6eadd80c1e6e7d63ed3f186081c57baa2e"
+          },
+          {
+            "name": "format",
+            "argv": [
+              "pnpm",
+              "exec",
+              "prettier",
+              "--check",
+              "apps/web/e2e/public-welcome.spec.ts"
+            ],
+            "startedAt": "2026-10-29T00:57:02.045216+00:00",
+            "finishedAt": "2026-10-29T00:57:02.601668+00:00",
+            "exit": 0,
+            "rawLogSHA256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+          },
+          {
+            "name": "lint",
+            "argv": [
+              "pnpm",
+              "exec",
+              "eslint",
+              "apps/web/e2e/public-welcome.spec.ts"
+            ],
+            "startedAt": "2026-10-29T00:57:02.602016+00:00",
+            "finishedAt": "2026-10-29T00:57:03.854488+00:00",
+            "exit": 0,
+            "rawLogSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "name": "web-types",
+            "argv": [
+              "pnpm",
+              "--filter",
+              "@prisma-prim/web",
+              "typecheck"
+            ],
+            "startedAt": "2026-10-29T00:57:03.854843+00:00",
+            "finishedAt": "2026-10-29T00:57:21.203820+00:00",
+            "exit": 0,
+            "rawLogSHA256": "5cfb036289d819b2a87e947d65f4532031dd37753f3cf2def0f77d398eea1737"
+          },
+          {
+            "name": "e2e-types",
+            "argv": [
+              "pnpm",
+              "--filter",
+              "@prisma-prim/web",
+              "exec",
+              "tsc",
+              "--noEmit",
+              "--strict",
+              "--target",
+              "ES2022",
+              "--module",
+              "ESNext",
+              "--moduleResolution",
+              "bundler",
+              "--jsx",
+              "react-jsx",
+              "--skipLibCheck",
+              "--esModuleInterop",
+              "--lib",
+              "ES2022,DOM,DOM.Iterable",
+              "--types",
+              "node,vite/client",
+              "e2e/public-welcome.spec.ts"
+            ],
+            "startedAt": "2026-10-29T00:57:21.204160+00:00",
+            "finishedAt": "2026-10-29T00:57:22.856531+00:00",
+            "exit": 0,
+            "rawLogSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "name": "browser",
+            "argv": [
+              "pnpm",
+              "--filter",
+              "@prisma-prim/web",
+              "exec",
+              "playwright",
+              "test",
+              "e2e/public-welcome.spec.ts",
+              "--workers=2",
+              "--output",
+              "/workspace/work/actor-954-integration/correction-browser-results",
+              "--reporter=line,json"
+            ],
+            "startedAt": "2026-10-29T00:57:22.856918+00:00",
+            "finishedAt": "2026-10-29T00:57:45.786034+00:00",
+            "exit": 0,
+            "rawLogSHA256": "828d318e3e75382523b2448f5bec48e105d93d090d1a94f0e31732949b2a5911"
+          }
+        ]
+      },
+      "browserStats": {
+        "startTime": "2026-10-29T00:57:23.998Z",
+        "duration": 21759.114999999998,
+        "expected": 4,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "afterIntegrationSyntaxAudit": {
+        "checkedFiles": 144,
+        "completeLiteralRoots": 11,
+        "incompleteUnspreadRootCandidates": [],
+        "scope": "Same-pattern syntax audit only; spread/owned typed builders and intentional malformed tests remain subject to existing full actual browser proof."
+      },
+      "rootConfirmedOnlyOneIntegrationTestBlobChanged": true,
+      "productionAndEveryOtherIntegrationBlobIdentical": 1889
+    }
+  },
+  "independentGitHubCIExecuted": false,
+  "dispatchPolicy": "Issue950 explicitly excludes implicit manual CI; no GitHub CI dispatched.",
+  "priorFailedCanonicalGate": {
+    "attempt": 1,
+    "source": "89fc876c8338a474636841864ea1af85d4668e92",
+    "base": "68bbf8fa2609cad8d448363ee12577b745dbbf40",
+    "checkout": "f06f4cb991c22c8547649a3fb11c73796c2ae347",
+    "tree": "b4aede36a985b16d0a308d58a745422aecd8625a",
+    "status": "failed",
+    "manifestSHA256": "a123bb5b00d179cd00fcc14a63b8f9c4fc690e15fcbbc6137f4ed41167909fe8",
+    "reportSHA256": "8bd9010bd5a092b47eee205deaab8e5431ba009cbb0af553e378a9c8dd6738b1",
+    "sourceInputsVerified": 1890,
+    "artifactHashesVerified": 1819,
+    "families": [
+      {
+        "id": "doctor",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "format",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "lint",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "types",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "scripts",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "documentation",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "api-parallel",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "api-serial",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "web-unit",
+        "status": "passed",
+        "exitCode": 0
+      },
+      {
+        "id": "browser",
+        "status": "failed",
+        "exitCode": 1
+      },
+      {
+        "id": "acceptance",
+        "status": "unexecuted",
+        "exitCode": null
+      },
+      {
+        "id": "acceptance-evidence",
+        "status": "unexecuted",
+        "exitCode": null
+      },
+      {
+        "id": "build",
+        "status": "unexecuted",
+        "exitCode": null
+      },
+      {
+        "id": "railway-types",
+        "status": "unexecuted",
+        "exitCode": null
+      },
+      {
+        "id": "railway-tests",
+        "status": "unexecuted",
+        "exitCode": null
+      },
+      {
+        "id": "packaging",
+        "status": "unexecuted",
+        "exitCode": null
+      }
+    ],
+    "APIparallelPassed": 3524,
+    "APIserialPassed": 106,
+    "webUnitPassed": 3823,
+    "browser": {
+      "passed": 705,
+      "skipped": 1,
+      "failed": 2,
+      "sameScenario": "authenticated members enter the protected application directly",
+      "file": "apps/web/e2e/public-welcome.spec.ts",
+      "viewports": [
+        "desktop",
+        "narrow"
+      ],
+      "actualCause": "Successful test reply contains only displayName/email/workspaceName/workspacePermissions, omitting required internalUserId/workspaceMembershipId/workspaceId/active. Current-Actor reader correctly rejects it, so expected greeting never appears.",
+      "pageSnapshot": "We could not verify your access. Please try again."
+    },
+    "laterSixFamiliesUnexecuted": true,
+    "nativeCleanupVerified": true,
+    "samePatternAudit": {
+      "checkedFiles": 144,
+      "completeLiteralRoots": 11,
+      "incompleteUnspreadRootCandidates": [
+        {
+          "path": "apps/web/e2e/public-welcome.spec.ts",
+          "line": 69,
+          "missing": [
+            "internalUserId",
+            "workspaceMembershipId",
+            "workspaceId",
+            "active"
+          ]
+        }
+      ],
+      "scope": "Same-pattern syntax audit only; spread/owned typed builders and intentional malformed tests remain subject to existing full actual browser proof."
+    },
+    "correctionPlan": "One test-only fixture correction reusing existing typed actorContextFixture with original workspacePermissions:[]; preserve assertions/budgets/config/production. All16freshrequiredoncorrectedsource, noAPIreuse; this is first failed complete run."
+  },
+  "scope": "Access-owned successful current-Actor representation validation before browser shell/recovery/self-assignment publication; malformed200 remains read error, genuine401/403 preserved, opaque captures stay feature-owned. No backend/schema/permissions/business semantics changed. Remaining full Actor/admin lifetime requirements remain in972.",
+  "cleanup": {
+    "ownedManagedPostgreSQLCleanedNatively": true,
+    "managerNotExecuting": true,
+    "childNotExecuting": true,
+    "method": "Private exact-run label and kernel-identity checks; no daemon restart, prune, signal or unrelated resource change. Resource/process/environment identifiers remain private."
+  },
+  "publication": "Unmodified canonical manifest/report plus compact reviewed technical proof/index. Bulk inputs are existing public Git paths/modes/hashes verified against actual integration checkout; artifact hashes identify complete private raw logs/synthetic browser evidence. No raw logs/images/archives/traces/original dossier/client/model prose selected. Private local integration commit is not claimed published; public source/base deterministically compose exact tested tree.",
+  "keepThrough": "2026-11-20T23:59:59Z",
+  "executionEnvironment": {
+    "versions": "Actual allowlisted tool and database versions are recorded in the canonical manifest.",
+    "dockerLauncher": {
+      "sha256": "aa4090827ddcec1fb25cae909179e5f33122c1915a756628969dd6578b41d014",
+      "onlyOverride": "Writable BUILDX_CONFIG state directory, followed by exec of the installed Docker binary; existing credentials and TLS/proxy trust remain inherited.",
+      "repositoryToolingUnchanged": true
+    },
+    "dependencySetup": "Normal frozen root and separate Railway installs; development commands matched the installed default store. Canonical commands and environment policy remain unchanged.",
+    "railwayCommandObservedSetup": "The canonical pnpm Railway typecheck recreated its local dependency directory against the same frozen 33-entry lockfile; Railway3.13.0 and TypeScript5.9.3 remain the tracked versions. No manifest, lockfile, command or test-budget change."
+  },
+  "visualInspection": {
+    "source": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+    "tree": "eeb3de0c01fab34ab13f23646ca9b4346e01bc1d",
+    "inspectedOriginals": [
+      {
+        "artifactPath": "browser-evidence/browser/company-access-administrat-20b74--by-member-and-Company-name-desktop/company-access-desktop.png",
+        "sha256": "1cf9c881b17d3b0cc3bae2c7c0a80916a91bdb087c07badd8a9d09a47f1c5cde",
+        "width": 1440,
+        "height": 1301,
+        "inspection": "Original viewed at native resolution; Team/access labels, Member/Company/bundle controls and captured-version/revoked state readable; all fields fit and no visible page overflow."
+      },
+      {
+        "artifactPath": "browser-evidence/browser/company-access-administrat-20b74--by-member-and-Company-name-desktop/company-access-captured-version-desktop.png",
+        "sha256": "8a142f60d939c4595fb6683e55a4929166de2f6c9d8eada963b62903c3fa19de",
+        "width": 1440,
+        "height": 1331,
+        "inspection": "Original viewed at native resolution; Team/access labels, Member/Company/bundle controls and captured-version/revoked state readable; all fields fit and no visible page overflow."
+      },
+      {
+        "artifactPath": "browser-evidence/browser/company-access-administrat-20b74--by-member-and-Company-name-narrow/company-access-captured-version-narrow.png",
+        "sha256": "d5aa9747f97e1afa1b71f7c839a488123d95515f8ca553fae749fd9dfc1054b2",
+        "width": 390,
+        "height": 1583,
+        "inspection": "Original native-resolution screenshot inspected: full labels and captured-v2 state fit the narrow page, with no visible horizontal overflow."
+      },
+      {
+        "artifactPath": "browser-evidence/browser/production-shell-renders-t-cd3be-mal-application-entry-point-desktop/shell-desktop.png",
+        "sha256": "dfa1bb695400d1739cddc24fb4444c21e02b3e81eeaf5f685b85de3c69b31e43",
+        "width": 1440,
+        "height": 977,
+        "inspection": "Original native-resolution shell/Workspace Activity screenshot inspected: header, native Activity entry and desktop/mobile frame fit. Desktop includes its explicit unavailable Company-context warning; this is not a verified Company-read claim."
+      },
+      {
+        "artifactPath": "browser-evidence/browser/production-shell-renders-t-cd3be-mal-application-entry-point-narrow/shell-narrow.png",
+        "sha256": "3417cb526424bbdcd4bc10d23121876c5274d4009342534036da288a42ac1ef3",
+        "width": 390,
+        "height": 948,
+        "inspection": "Original native-resolution shell/Workspace Activity screenshot inspected: header, native Activity entry and desktop/mobile frame fit. Desktop includes its explicit unavailable Company-context warning; this is not a verified Company-read claim."
+      }
+    ],
+    "at": "2026-10-29T02:07:10.188889+00:00",
+    "scope": "Five selected current-run synthetic originals at desktop1440/narrow390 only; no claim of inspecting every unrelated screenshot. No raw images selected for publication."
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "issue": 950,
+  "pr": 954,
+  "source": "71c07e1461bebc41e273e7b592fb90b23b7e58ba",
+  "base": "68bbf8fa2609cad8d448363ee12577b745dbbf40",
+  "localExecutionCheckout": "b290e5c6197be48e31a8c450dda33306fad7a804",
+  "tree": "eeb3de0c01fab34ab13f23646ca9b4346e01bc1d",
+  "keepThrough": "2026-11-20T23:59:59Z",
+  "selection": "Unmodified canonical manifest/report plus compact reviewed technical proof/index. Bulk inputs are existing public Git paths/modes/hashes verified against actual integration checkout; artifact hashes identify complete private raw logs/synthetic browser evidence. No raw logs/images/archives/traces/original dossier/client/model prose selected. Private local integration commit is not claimed published; public source/base deterministically compose exact tested tree.",
+  "files": [
+    {
+      "path": "final-proof.json",
+      "bytes": 22662,
+      "sha256": "5da51fbf40eb5d075dab6e2bb01650662df2b79b75a3ea3a192069767ff5582b"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 984828,
+      "sha256": "ab59b7cc33441f144b9e3d6b4bbbfae6d61be7ed357a7f9e27098ecbc5c5feb5"
+    },
+    {
+      "path": "report.md",
+      "bytes": 3595,
+      "sha256": "a160292a6de1c028653954683762bce2987a7afc1e36ade347c079ee49386ee9"
+    }
+  ]
+}
