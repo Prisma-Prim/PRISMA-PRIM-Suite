@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { spawn, spawnSync } from 'node:child_process';
 import {
+  accessSync,
+  constants,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -148,7 +150,7 @@ test('inputs must be distinct captured regular files with no observed symlink co
   }
 });
 
-test('every existing output kind is refused and its private contents remain conserved', (t) => {
+test('every existing output kind is refused and its private contents remain conserved', async (t) => {
   for (const variant of [
     'file',
     'directory',
@@ -158,46 +160,65 @@ test('every existing output kind is refused and its private contents remain cons
     'device',
     'socket',
   ]) {
-    const input = setup(t);
-    const sentinel = join(input.directory, 'sentinel');
-    writeFileSync(sentinel, 'FOREIGN-SENTINEL');
-    if (variant === 'file') writeFileSync(input.output, 'FOREIGN-OUTPUT');
-    if (variant === 'directory') {
-      mkdirSync(input.output);
-      writeFileSync(join(input.output, 'sentinel'), 'FOREIGN-CHILD');
-    }
-    if (variant === 'symlink' || variant === 'dangling')
-      symlinkSync(
-        variant === 'symlink' ? sentinel : sentinel + '.absent',
-        input.output,
-      );
-    if (variant === 'fifo')
-      assert.equal(spawnSync('mkfifo', [input.output]).status, 0);
-    if (variant === 'socket')
-      assert.equal(
-        spawnSync('python3', [
-          '-c',
-          'import socket,sys;s=socket.socket(socket.AF_UNIX);s.bind(sys.argv[1])',
+    await t.test(variant, (context) => {
+      const input = setup(context);
+      const sentinel = join(input.directory, 'sentinel');
+      writeFileSync(sentinel, 'FOREIGN-SENTINEL');
+      if (variant === 'file') writeFileSync(input.output, 'FOREIGN-OUTPUT');
+      if (variant === 'directory') {
+        mkdirSync(input.output);
+        writeFileSync(join(input.output, 'sentinel'), 'FOREIGN-CHILD');
+      }
+      if (variant === 'symlink' || variant === 'dangling')
+        symlinkSync(
+          variant === 'symlink' ? sentinel : sentinel + '.absent',
           input.output,
-        ]).status,
-        0,
+        );
+      if (variant === 'fifo')
+        assert.equal(spawnSync('mkfifo', [input.output]).status, 0);
+      if (variant === 'socket')
+        assert.equal(
+          spawnSync('python3', [
+            '-c',
+            'import socket,sys;s=socket.socket(socket.AF_UNIX);s.bind(sys.argv[1])',
+            input.output,
+          ]).status,
+          0,
+        );
+      const target = variant === 'device' ? '/dev/null' : input.output;
+      const before = lstatSync(target);
+      let expectedCode = 'E_OUTPUT_EXISTS';
+      if (variant === 'device') {
+        assert.equal(before.isCharacterDevice(), true);
+        // /dev is a borrowed native fixture, not an owned writable directory.
+        // Qualify its parent before choosing one exact diagnostic. The unchanged
+        // parent-safety guard runs before existing-target inspection.
+        try {
+          accessSync(dirname(target), constants.W_OK);
+        } catch (error) {
+          assert.ok(['EACCES', 'EPERM', 'EROFS'].includes(error.code));
+          expectedCode = 'E_OUTPUT_PATH';
+        }
+      }
+      diagnostic(
+        invoke([...input.args.slice(0, -1), target]),
+        expectedCode,
+        'output',
       );
-    const target = variant === 'device' ? '/dev/null' : input.output;
-    diagnostic(
-      invoke([...input.args.slice(0, -1), target]),
-      'E_OUTPUT_EXISTS',
-      'output',
-    );
-    assert.equal(readFileSync(sentinel, 'utf8'), 'FOREIGN-SENTINEL');
-    if (variant === 'file')
-      assert.equal(readFileSync(target, 'utf8'), 'FOREIGN-OUTPUT');
-    if (variant === 'directory')
-      assert.equal(
-        readFileSync(join(target, 'sentinel'), 'utf8'),
-        'FOREIGN-CHILD',
-      );
-    conserved(input);
-    recover(input);
+      const after = lstatSync(target);
+      for (const key of ['dev', 'ino', 'rdev', 'mode'])
+        assert.equal(after[key], before[key], `${variant}: ${key} conserved`);
+      assert.equal(readFileSync(sentinel, 'utf8'), 'FOREIGN-SENTINEL');
+      if (variant === 'file')
+        assert.equal(readFileSync(target, 'utf8'), 'FOREIGN-OUTPUT');
+      if (variant === 'directory')
+        assert.equal(
+          readFileSync(join(target, 'sentinel'), 'utf8'),
+          'FOREIGN-CHILD',
+        );
+      conserved(input);
+      recover(input);
+    });
   }
 });
 
