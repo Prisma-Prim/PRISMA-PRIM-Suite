@@ -224,6 +224,42 @@ bundle-label-only metadata. Exactly one event per actual state change; no event
 for denied, failed, repeated-state or exact-replayed administration. Existing
 administration visibility supplies no protected applicability content/history.
 
+The [Project next-action contract (§35)](release-1-project-task-prd.md#35-bounded-explicit-project-next-action-973)
+is an **Approved bounded contract** after completed ordered independent Standards
+then Spec preparation and [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391),
+not runtime delivery or an actual grant. It
+specifies independent **Company Project Next Action Coordinator v1**, code
+`company_project_next_action_coordinator`, containing exactly
+`project.next_action.update`. Existing administration explicitly grants/revokes
+captured v1 through `company.assignment.manage` and
+`/company-project-next-action-coordinator-assignments` for an active same-Workspace
+membership and active Company. Null/unknown captures fail closed. No existing
+captured bundle, repeated grant, migration, bootstrap, responsibility, title or
+Workspace ownership acquires this permission. `project.update` remains solely
+the existing responsible-member capability; Project Access v1/v2 do not expand.
+
+The new bundle grants no context, Project/Client/Task/result/Document/content read,
+administration, assignment, lifecycle, closure or mission authority. Literal
+current/history reads require ordinary Project and original Client/Company reads
+only; no unrelated Task/result/Document prerequisite is invented. New commands
+and identical committed confirmation require those reads plus live Coordinator
+v1, serialized by Access against revocation/suspension. Section 35 owns exact
+open/historical, replay and immutable original-identity behavior. No actual Iurie
+or user grant, backfill or mandatory two-person rule is authorized.
+
+Active-Company current-Actor exposes `projectNextActionPermissions`,
+`projectNextActionCoordinatorAssignmentId` and
+`projectNextActionCoordinatorPermissionSetVersion`, recognizing captured v1 only.
+These are consumed-lifetime facts, never substitutes for live server checks.
+Coordinator-only changes retire write work while separately valid Project reads
+and unrelated feature owners survive; full transitive Actor recovery and actual
+App/admin parent retirement follow §35.7. Administration events are
+`company_project_next_action_coordinator_assignment.granted` / `.revoked`, with
+existing Company assignment target, acting administrator membership/server time
+and bundle-label-only metadata. Emit once per actual state transition, none for
+denied/failed/repeated-state/replayed administration. Existing administration
+visibility reveals no protected action text/history.
+
 The [Project responsible member slice](release-1-project-task-prd.md#21-approved-project-responsible-member-367) adds `project.update`, listed among the initial permissions of the consolidated decision record §8.1. It exists only through captured **Company Project Access v2**, which is v1 (`project.read`, `project.create`) plus `project.update`. Project Access v1 remains exactly read and create. Existing v1 assignments never expand in place and receive no migration grant. A fresh grant after explicit revocation captures v2 through the existing Company assignment administration and its attributable grant/revoke events. Every delivered Project-read and Project-create check accepts captured v1 or v2; `project.update` requires a live v2; null or unknown versions fail closed. In this slice `project.update` authorizes only the responsible-member change defined by the Project/Task PRD. It grants no Task, Document, Client, Company context or administration authority. No other bundle, Workspace ownership, Company Context Access, Company Director Client Access or Task Manager assignment confers it.
 
 The [provisional Project lifecycle](release-1-project-task-prd.md#23-approved-provisional-project-lifecycle-406) adds the opt-in **Company Project Approver v1**. It contains exactly `project.lifecycle.transition` (activate, hold, resume) and `project.close` (complete, cancel): the separate lifecycle-transition and close permissions of Project/Task PRD section 8 and decision record §8.1.
