@@ -1,3 +1,4 @@
+import { useCommercialPdfDownload } from '../commercial-pdf/CommercialPdfDownload';
 import { ContractPanel } from '../contract/ContractPanel';
 import {
   useCallback,
@@ -2907,6 +2908,24 @@ function RequestDetail({
           version: requestedVersion.version,
         }
       : undefined;
+  const pdfProps = {
+    actor,
+    identity,
+    opportunityId: request.initialOpportunity.id,
+    onCompanyContextRejected,
+    onActorRevalidated,
+    onWorkspaceAccessRejected,
+  };
+  const offerPdf = useCommercialPdfDownload({
+    ...pdfProps,
+    kind: 'offer',
+    navigation: requestedOffer?.requestId,
+  });
+  const contractPdf = useCommercialPdfDownload({
+    ...pdfProps,
+    kind: 'contract',
+    navigation: requestedContract?.requestId,
+  });
   return (
     <article
       className="commercial-intake-detail"
@@ -3046,8 +3065,10 @@ function RequestDetail({
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
+      {offerPdf.controls}
       <OfferPanel
         key={`offer:${requestedOffer?.requestId ?? 'head'}:${clientAuthority}:${actor.internalUserId}:${actor.workspaceId}:${actor.workspaceMembershipId}:${request.id}:${request.initialOpportunity.id}:${actor.activeCompany?.offerPermissionAssignmentId ?? 'no-assignment'}:${actor.activeCompany?.offerPermissionSetVersion ?? 'no-version'}:${actor.activeCompany?.offerPermissions?.join(',') ?? ''}:${request.clientReference?.currentClientId ?? 'no-client'}`}
+        pdf={offerPdf.callbacks}
         actor={actor}
         identity={identity}
         opportunityId={request.initialOpportunity.id}
@@ -3058,7 +3079,9 @@ function RequestDetail({
         onActorRevalidated={onActorRevalidated}
         onWorkspaceAccessRejected={onWorkspaceAccessRejected}
       />
+      {contractPdf.controls}
       <ContractPanel
+        pdf={contractPdf.callbacks}
         currentClientId={request.clientReference?.currentClientId}
         onOpenProject={onOpenProject}
         opportunityTitle={request.initialOpportunity.title}

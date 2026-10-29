@@ -1,3 +1,7 @@
+import {
+  readCommercialPdfResponse,
+  type CommercialPdfTarget,
+} from '../commercial-pdf/commercial-pdf-response';
 import type { BrowserIdentity } from '../access-composition';
 import { selectedWorkspaceId } from '../access/workspace-selection';
 
@@ -33,6 +37,16 @@ export interface ApiRequest {
 }
 
 export interface AuthenticatedApiClient {
+  downloadCommercialPdf(
+    path: string,
+    target: CommercialPdfTarget,
+    request?: Pick<ApiRequest, 'companyContextId' | 'signal'>,
+  ): Promise<
+    | ApiResult<{ blob: Blob; filename: string }>
+    | {
+        status: 'malformed' | 'unsupported' | 'stale' | 'limit' | 'unavailable';
+      }
+  >;
   request<T>(path: string, request?: ApiRequest): Promise<ApiResult<T>>;
   downloadSelection(
     path: string,
@@ -72,6 +86,28 @@ export async function createAuthenticatedApiClient(
   }
 
   return {
+    async downloadCommercialPdf(path, target, request = {}) {
+      const response = await authenticatedFetch(path, {
+        ...request,
+        method: 'GET',
+      });
+      const rejection = accessFailure(response);
+      if (rejection) return rejection;
+      if (response.status === 422) {
+        const code = codeFrom(await optionalJson(response));
+        return {
+          status:
+            code === 'PDF_CONTENT_LIMIT'
+              ? 'limit'
+              : code === 'PDF_SOURCE_UNSUPPORTED'
+                ? 'unavailable'
+                : 'unsupported',
+        };
+      }
+      if (response.status === 409) return { status: 'stale' };
+      if (response.status !== 200) return { status: 'error' };
+      return readCommercialPdfResponse(response, target);
+    },
     async request<T>(
       path: string,
       request: ApiRequest = {},

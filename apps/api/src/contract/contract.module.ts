@@ -1,3 +1,5 @@
+import { CommercialPdfRenderer } from '../commercial-pdf/commercial-pdf-renderer.js';
+import { ContractPdfService } from './contract-pdf.service.js';
 import { MissionPlanModule } from '../mission-plan/mission-plan.module.js';
 import { ReportedContractSigningService } from './reported-contract-signing.service.js';
 import { DocumentsModule } from '../documents/documents.module.js';
@@ -35,6 +37,8 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
     ServerClockModule,
   ],
   providers: [
+    CommercialPdfRenderer,
+    ContractPdfService,
     ContractDecisionQueueService,
     ContractVersionReader,
     ReportedContractSigningService,
@@ -45,6 +49,7 @@ import { ContractProjectCreationService } from './contract-project-creation.serv
     ContractProjectCreationService,
   ],
   exports: [
+    ContractPdfService,
     ContractDecisionQueueService,
     ReportedContractSigningService,
     ModelContractService,

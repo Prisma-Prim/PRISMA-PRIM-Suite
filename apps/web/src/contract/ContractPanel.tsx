@@ -1,3 +1,7 @@
+import {
+  useCommercialPdfDisplayed,
+  type CommercialPdfCallbacks,
+} from '../commercial-pdf/CommercialPdfDownload';
 import { useEffect, useRef, useState } from 'react';
 import { createAuthenticatedApiClient } from '../api/authenticated-api-client';
 import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
@@ -14,7 +18,10 @@ import { useContractCopy } from './contract.copy';
 import './contract.css';
 
 /** A session/scope/captured-authority change retires the whole command owner. */
-export function ContractPanel(props: ContractPanelProps) {
+type PdfContractPanelProps = ContractPanelProps & {
+  pdf?: CommercialPdfCallbacks;
+};
+export function ContractPanel(props: PdfContractPanelProps) {
   const generation = useRef({ identity: props.identity, value: 0 });
   if (generation.current.identity !== props.identity)
     generation.current = {
@@ -71,11 +78,16 @@ type Route =
   | { kind: 'legacy'; initialRead: { contract: unknown; offer?: unknown } }
   | { kind: 'model'; contract: ModelContractView | null; offer?: unknown };
 function ContractJourneyOwner(
-  props: ContractPanelProps & { legacyKey: string },
+  props: PdfContractPanelProps & { legacyKey: string },
 ) {
   const copy = useContractCopy(),
     [route, setRoute] = useState<Route>({ kind: 'loading' }),
     [reload, setReload] = useState(0);
+  // The child model reader owns ready selections; this entry reader publishes absence only.
+  useCommercialPdfDisplayed(
+    route.kind === 'model' ? undefined : null,
+    props.pdf?.select,
+  );
   const company = props.actor.activeCompany,
     companyId = company?.id;
   const preparerRead =

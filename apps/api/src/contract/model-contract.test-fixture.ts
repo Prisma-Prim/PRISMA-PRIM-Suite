@@ -51,6 +51,8 @@ export async function prepareModelContractSource(
     clientTaxId?: string;
     clientAddress?: string;
     offerStage?: 'PENDING' | 'APPROVED' | 'TRANSMITTED';
+    modelContent?: typeof generatedOfferModelContent;
+    contractModelContent?: typeof generatedContractModelContent;
   } = {},
 ) {
   const flow = await prepareGeneratedOfferWorkflow(
@@ -83,7 +85,7 @@ export async function prepareModelContractSource(
     responseRecord(
       await invoke(`${modelPath}/versions`, {
         expectedModelRevision: 0,
-        content: generatedContractModelContent,
+        content: options.contractModelContent ?? generatedContractModelContent,
       }),
     ).model,
   );

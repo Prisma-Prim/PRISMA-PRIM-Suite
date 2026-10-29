@@ -1,3 +1,6 @@
+import type { ServerResponse } from 'node:http';
+import { readCommercialPdfAttachment } from '../commercial-pdf/commercial-pdf-read.js';
+import { OfferPdfService } from './offer-pdf.service.js';
 import {
   Body,
   Controller,
@@ -8,6 +11,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -21,9 +25,30 @@ import { EstimateOfferPreparationService } from './offer-estimate-preparation.se
 @UseGuards(ActorContextAdapter)
 export class OfferController {
   constructor(
+    private readonly pdf: OfferPdfService,
     private readonly offers: OfferService,
     private readonly estimateOffers: EstimateOfferPreparationService,
   ) {}
+
+  @Get('versions/:versionId/pdf')
+  async downloadPdf(
+    @Req() request: ActorContextRequest,
+    @Param('opportunityId') opportunityId: string,
+    @Param('versionId') versionId: string,
+    @Query() query: unknown,
+    @Res({ passthrough: true })
+    response: ServerResponse,
+  ) {
+    return readCommercialPdfAttachment(response, (signal) =>
+      this.pdf.read({
+        actor: actorFrom(request),
+        opportunityId,
+        versionId,
+        query,
+        signal,
+      }),
+    );
+  }
 
   @Post('from-approved-model')
   createFromApprovedModel(

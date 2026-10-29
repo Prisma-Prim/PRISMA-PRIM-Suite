@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ContractModelBody } from '../contract-model/ContractModelVersionContent';
 import { useModelOfferCopy } from '../offer/model-offer.copy';
 import { useInterfaceLocale } from '../localization/interface-locale';
@@ -10,9 +10,11 @@ import type { ModelContractView } from './model-contract-response';
 export function ModelContractDetails({
   contract,
   locked,
+  pdfAction,
 }: {
   contract: ModelContractView;
   locked: boolean;
+  pdfAction?: ReactNode;
 }) {
   const copy = useModelContractCopy(),
     common = useContractCopy(),
@@ -131,6 +133,7 @@ export function ModelContractDetails({
       <button type="button" disabled={locked} onClick={download}>
         {copy('download')}
       </button>
+      {pdfAction}
       {preview && (
         <div className="contract-representation">
           <p>

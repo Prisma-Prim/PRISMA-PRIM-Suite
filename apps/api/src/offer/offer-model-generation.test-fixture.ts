@@ -39,7 +39,11 @@ export const generatedOfferModelContent = {
 
 export async function prepareGeneratedOfferSource(
   fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
-  options: { clientTaxId?: string; clientAddress?: string } = {},
+  options: {
+    clientTaxId?: string;
+    clientAddress?: string;
+    modelContent?: typeof generatedOfferModelContent;
+  } = {},
 ) {
   const source = await fixture.prepare(options);
   await fixture.grant({
@@ -60,7 +64,7 @@ export async function prepareGeneratedOfferSource(
         headers: ESTIMATE_OFFER_PREPARER,
         body: {
           expectedModelRevision: 0,
-          content: generatedOfferModelContent,
+          content: options.modelContent ?? generatedOfferModelContent,
         },
       }),
     ).model,
@@ -121,7 +125,11 @@ export function generatedOfferIntent(source: {
 export async function prepareGeneratedOfferWorkflow(
   fixture: Awaited<ReturnType<typeof openEstimateOfferFixture>>,
   stage: 'PENDING' | 'APPROVED' | 'TRANSMITTED',
-  options: { clientTaxId?: string; clientAddress?: string } = {},
+  options: {
+    clientTaxId?: string;
+    clientAddress?: string;
+    modelContent?: typeof generatedOfferModelContent;
+  } = {},
 ) {
   const source = await prepareGeneratedOfferSource(fixture, options);
   const path = `/offers/opportunities/${source.opportunityId}`;
@@ -147,7 +155,9 @@ export async function prepareGeneratedOfferWorkflow(
           acknowledgedWarningCodes: [
             'DECLARED_TAX_UNVERIFIED',
             'NON_OFFICIAL_OFFER',
-            'ILLUSTRATIVE_MODEL',
+            ...(options.modelContent?.sourceKind === 'COMPANY_SUPPLIED'
+              ? []
+              : ['ILLUSTRATIVE_MODEL']),
           ],
         },
       }),

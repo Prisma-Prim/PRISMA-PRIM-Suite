@@ -1,3 +1,5 @@
+import { CommercialPdfRenderer } from '../commercial-pdf/commercial-pdf-renderer.js';
+import { OfferPdfService } from './offer-pdf.service.js';
 import { OfferModelModule } from '../offer-model/offer-model.module.js';
 import { Module } from '@nestjs/common';
 import { AccessModule } from '../access/access.module.js';
@@ -25,11 +27,14 @@ import { EstimateOfferPreparationService } from './offer-estimate-preparation.se
     ServerClockModule,
   ],
   providers: [
+    CommercialPdfRenderer,
+    OfferPdfService,
     OfferService,
     EstimateOfferPreparationService,
     OfferDecisionQueueService,
   ],
   exports: [
+    OfferPdfService,
     OfferService,
     EstimateOfferPreparationService,
     OfferDecisionQueueService,

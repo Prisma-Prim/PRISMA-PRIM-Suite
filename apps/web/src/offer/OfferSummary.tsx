@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ModelOfferDetails } from './ModelOfferDetails';
 import { useModelOfferCopy } from './model-offer.copy';
 import { useOfferPreparationCopy } from './offer-preparation.copy';
@@ -15,7 +16,13 @@ import {
   type OfferDecisionView,
 } from './offer-response';
 
-export function OfferSummary({ offer }: { offer: OfferReadView }) {
+export function OfferSummary({
+  offer,
+  pdfAction,
+}: {
+  offer: OfferReadView;
+  pdfAction?: ReactNode;
+}) {
   const copy = useOfferPreparationCopy();
   const modelCopy = useModelOfferCopy();
   const decisionCopy = useOfferDecisionCopy();
@@ -133,6 +140,7 @@ export function OfferSummary({ offer }: { offer: OfferReadView }) {
         <ModelOfferDetails
           version={version}
           illustrativeReference={offer.illustrativeReference}
+          pdfAction={pdfAction}
         />
       )}
       {version.scopeNote && <p>{version.scopeNote}</p>}

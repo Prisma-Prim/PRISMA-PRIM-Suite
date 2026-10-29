@@ -56,6 +56,7 @@ if (command === 'curl') {
 }
 if (args[0] === 'pull' || (args[0] === 'run' && !args.includes('--pull=never') && args.includes(${JSON.stringify(postgresImage)}))) pull();
 if (args[0] === 'build' && scenario.later === 'build') process.exit(42);
+if (args[0] === 'run' && args.includes('--input-type=module') && args.includes('/tmp') && args.includes('none')) { console.log('commercial-pdf-production-package PASS'); process.exit(0); }
 if (args[0] === 'run' && args.includes('--rm') && !args.includes('migrate')) {
   console.error('CLERK_PUBLISHABLE_KEY is required'); process.exit(1);
 }
@@ -96,6 +97,7 @@ test('packaging recovers one PostgreSQL throttle and completes the smoke journey
   const result = smoke({ throttles: 1 });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /PASS image startup/);
+  assert.match(result.stdout, /commercial-pdf-production-package/);
   assert.equal(
     result.commands.filter(
       ([command, operation]) => command === 'docker' && operation === 'pull',
