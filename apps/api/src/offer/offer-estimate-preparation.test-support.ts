@@ -24,6 +24,7 @@ export async function openEstimateOfferFixture(
     legacyPreparer?: boolean;
     historicalOfferCaptures?: { preparer: 'v1' | 'v2' | 'v3'; approver: 'v1' };
     serverClock?: ServerClock;
+    synchronizeIdentityProfile?: boolean;
   } = {},
 ) {
   const baseDatabaseUrl = process.env.TEST_DATABASE_URL;
@@ -36,6 +37,7 @@ export async function openEstimateOfferFixture(
     createPostgresRestTestHarness({
       databaseUrl: database.targetUrl,
       migrationsFolder: options.migrationsFolder,
+      synchronizeIdentityProfile: options.synchronizeIdentityProfile,
       serverClock: options.serverClock ?? {
         now: () => new Date('2026-10-24T09:00:00.000Z'),
       },
