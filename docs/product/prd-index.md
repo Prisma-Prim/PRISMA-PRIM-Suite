@@ -177,6 +177,15 @@ recorded-name and date filters, exact native Task continuation and fresh return;
 §§26/32 and native authority remain unchanged. Runtime follows approved contract
 delivery and a separate fresh child.
 
+The [standalone Internal Company Task contract](release-1-project-task-prd.md#36-bounded-standalone-internal-company-tasks-996)
+under #996 is Approved after ordered independent Standards then Spec and
+[actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996#issuecomment-6529503138). It normalizes the approved Sarcina-derived
+decision record §9.4 outcome: complete ordinary Company-only Task work without a
+fake Client/Project. It specifies separate captured opt-in authority, immutable
+history and exact commands while conserving old Project Task formats, queues and
+permissions. Canonical merge and a separate fresh readiness/ownership/fit check precede runtime;
+no internal Task, actual grant or operational activation is delivered by this entry.
+
 The [ordinary Task description contract](release-1-project-task-prd.md#34-bounded-ordinary-task-description-949)
 under #949 is Approved after ordered independent Standards then Spec preparation
 and [delegated product approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/949#issuecomment-6478182578).

@@ -128,6 +128,36 @@ authority. Its holder must independently possess the owning Project's context an
 read prerequisites before reading Tasks; `task.manage` additionally permits their
 bounded manual mutations under the Project/Task PRD.
 
+The [standalone Internal Company Task contract (§36)](release-1-project-task-prd.md#36-bounded-standalone-internal-company-tasks-996)
+is an **Approved bounded contract** under [actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996#issuecomment-6529503138)
+after ordered independent Standards then Spec preparation, not runtime or a real grant. It specifies
+independent opt-in **Company Internal Task Manager v1**, code
+`company_internal_task_manager`, containing exactly `internal_task.read` and
+`internal_task.manage`. Existing Company assignment administration explicitly
+grants/revokes captured v1 through
+`/company-internal-task-manager-assignments`, requiring current
+`company.assignment.manage`, an active same-Workspace Membership and active Company.
+No old Task Manager or other capture, repeated grant, bootstrap, migration, Owner/
+Director title or creator/assignee identity expands. Null/unknown captures deny.
+
+The bundle supplies neither Company context nor Project/Client/Document/result/
+Activity/administration authority. Company selection eligibility stays unchanged.
+All internal Task reads require current captured read and active Company/User/
+Membership; fresh writes/no-ops and committed confirmation additionally require
+manage, serialized through Access against relevant suspension/revocation. Company-
+only assignee eligibility is explicitly owned by §36.2 and contains no Project or
+Client prerequisite. New permissions do not alter old Project Task authorization.
+
+Current-Actor exposes `internalTaskPermissions`, `internalTaskManagerAssignmentId`
+and `internalTaskManagerPermissionSetVersion`, recognizing exact captured v1 only.
+They establish consumed UI lifetime, not server authority. Actual App/admin/recovery
+retirement and preservation of independently valid work follow §36.6. Assignment
+events are `company_internal_task_manager_assignment.granted` / `.revoked`, with
+existing Company-assignment target, acting administrator membership/server time
+and bundle-label-only metadata. Emit once per actual change, none for denied,
+failed, repeated-state or replayed administration. Administration visibility grants
+no internal Task text/history; this preparation activates no actual person.
+
 The [exact mission Task result contract](release-1-project-task-prd.md#27-approved-exact-mission-task-results-832)
 adds independent opt-in **Company Task Result Recorder v1**, containing exactly
 `task.result.record`. Existing Company assignment administration explicitly grants
