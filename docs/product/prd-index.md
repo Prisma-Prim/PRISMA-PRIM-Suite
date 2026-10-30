@@ -147,6 +147,12 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 | 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft           | Company/RBAC; Shared Client; Project/Task; Governed Documents |
 | 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft           | All earlier Release 1 capabilities; UX                        |
 
+The [approved multi-Company operational summaries](release-1-operational-dashboard-acceptance-prd.md#23-approved-multi-company-operational-summaries-990)
+under #990 define a bounded three-summary view grouped by independently
+authorized Company. Section23 has delegated agent product approval; no new metric, global total, permission
+or runtime readiness is inferred. Its existing owners and fresh seam/ownership
+checks govern any later implementation child.
+
 The bounded [Company mission-plan contract](release-1-configurable-mission-plans-prd.md)
 under #917 / #918 extends Project/Task with reusable flat plans and exact native
 Task copies, delivered by #920 / PR #921. Its [Contract continuation §10](release-1-configurable-mission-plans-prd.md#10-contract-to-configured-mission-continuation)
