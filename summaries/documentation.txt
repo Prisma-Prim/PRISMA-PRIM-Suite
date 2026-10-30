@@ -1,0 +1,6 @@
+Selected terminal excerpt; full original retained locally.
+
+ Test Files  10 passed (10)
+      Tests  83 passed (83)
+   Start at  06:02:46
+   Duration  158.35s (transform 3.59s, setup 0ms, import 8.55s, tests 182.28s, environment 1ms)

@@ -1,0 +1,228 @@
+{
+  "schema": "prisma-prim-evidence-publication/v1",
+  "pr": 981,
+  "run": "run001",
+  "ref": "local-evidence/pr-981/5f344b40d4818c00133b301710d20284f1e421b7-run001",
+  "source": "5f344b40d4818c00133b301710d20284f1e421b7",
+  "base": "63c5388d4a57705117b0067735793b4bea2ce5a5",
+  "integration_commit": "88face6052ebb14ef0f16fac7dc125a52de23693",
+  "integration_tree": "d83a31248c70504e040f472ee9454c0cc88f0309",
+  "canonical_status": "passed",
+  "canonical_mode": "complete",
+  "canonical_artifact_count": 2608,
+  "complete_originals": "Retained locally; selected publication is not the full inventory",
+  "limits": {
+    "total_bytes": 20971520,
+    "blob_bytes": 5242880
+  },
+  "retention": "At least 14 days after merge; only owned evidence refs may be deleted",
+  "index_self_hash": "Recorded in SHA256SUMS and the PR publication receipt",
+  "files": [
+    {
+      "path": "report.md",
+      "bytes": 3607,
+      "sha256": "35369713bc142c9e2ac591ebf4f660c28bea71a3cafd0c1c2badda5335855cc7",
+      "copy_kind": "selected-exact-original",
+      "original_path": "report.md",
+      "original_bytes": 3607,
+      "original_sha256": "35369713bc142c9e2ac591ebf4f660c28bea71a3cafd0c1c2badda5335855cc7",
+      "selection_reason": "Canonical compact report/manifest"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 1015213,
+      "sha256": "7bc513555e8654cb0faa720f0543494fe572f7bb437debe54dc386d654277056",
+      "copy_kind": "selected-exact-original",
+      "original_path": "manifest.json",
+      "original_bytes": 1015213,
+      "original_sha256": "7bc513555e8654cb0faa720f0543494fe572f7bb437debe54dc386d654277056",
+      "selection_reason": "Canonical compact report/manifest"
+    },
+    {
+      "path": "screenshots/offer-model-approved-desktop.png",
+      "bytes": 84627,
+      "sha256": "1338c92817993304e564117caa92440469eeeb8c64660d13179a15d096640c08",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/offer-model.acceptance-adm-36473-s-access-and-Company-drafts-operational-acceptance-desktop/offer-model-approved-Desktop.png",
+      "original_bytes": 84627,
+      "original_sha256": "1338c92817993304e564117caa92440469eeeb8c64660d13179a15d096640c08",
+      "selection_reason": "Current-run synthetic desktop proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "screenshots/contract-model-approved-desktop.png",
+      "bytes": 85746,
+      "sha256": "a058a3d9e9332577fad6902c9db325554319fbdbdf9af41dc5b5cc37e249e3ed",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/contract-model.acceptance--bfa88-s-access-and-Company-drafts-operational-acceptance-desktop/contract-model-approved-Desktop.png",
+      "original_bytes": 85746,
+      "original_sha256": "a058a3d9e9332577fad6902c9db325554319fbdbdf9af41dc5b5cc37e249e3ed",
+      "selection_reason": "Current-run synthetic desktop proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "screenshots/mission-native-after-plan-access-loss-desktop.png",
+      "bytes": 287388,
+      "sha256": "32bc4af37617d583f98111ee9ab54d346132a1e8267f0e21fcf56247b7d63686",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/mission-plan.acceptance-co-43585--successor-and-native-edits-operational-acceptance-desktop/native-work-after-plan-access-loss.png",
+      "original_bytes": 287388,
+      "original_sha256": "32bc4af37617d583f98111ee9ab54d346132a1e8267f0e21fcf56247b7d63686",
+      "selection_reason": "Current-run synthetic desktop proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "screenshots/current-work-independent-result-denial-desktop.png",
+      "bytes": 67051,
+      "sha256": "c24fc496aa755c83becbf0a5056096195417c359e8f2f0ef4949e06365c704b4",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/mission-current-work.accep-02fee-h-independent-result-denial-operational-acceptance-desktop/independent-result-denial.png",
+      "original_bytes": 67051,
+      "original_sha256": "c24fc496aa755c83becbf0a5056096195417c359e8f2f0ef4949e06365c704b4",
+      "selection_reason": "Current-run synthetic desktop proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "screenshots/offer-model-approved-narrow.png",
+      "bytes": 49319,
+      "sha256": "5de9d866da1ac52bc5e79ce3526f9c66dd5ccd5e3b6e42110b449fa01091a5ec",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/offer-model.acceptance-adm-36473-s-access-and-Company-drafts-operational-acceptance-narrow/offer-model-approved-Narrow.png",
+      "original_bytes": 49319,
+      "original_sha256": "5de9d866da1ac52bc5e79ce3526f9c66dd5ccd5e3b6e42110b449fa01091a5ec",
+      "selection_reason": "Current-run synthetic narrow proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "screenshots/contract-model-approved-narrow.png",
+      "bytes": 49635,
+      "sha256": "fea4af85082da3172d5a5709a7ef38268d85a485f3f0dd9556d27f73d85dbccb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/contract-model.acceptance--bfa88-s-access-and-Company-drafts-operational-acceptance-narrow/contract-model-approved-Narrow.png",
+      "original_bytes": 49635,
+      "original_sha256": "fea4af85082da3172d5a5709a7ef38268d85a485f3f0dd9556d27f73d85dbccb",
+      "selection_reason": "Current-run synthetic narrow proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "screenshots/mission-native-after-plan-access-loss-narrow.png",
+      "bytes": 241670,
+      "sha256": "351d7f9d1ad49b3263c0603d45714e7a4254c69f5b65f1433ba0273e9ad607bb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/mission-plan.acceptance-co-43585--successor-and-native-edits-operational-acceptance-narrow/native-work-after-plan-access-loss.png",
+      "original_bytes": 241670,
+      "original_sha256": "351d7f9d1ad49b3263c0603d45714e7a4254c69f5b65f1433ba0273e9ad607bb",
+      "selection_reason": "Current-run synthetic narrow proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "screenshots/current-work-independent-result-denial-narrow.png",
+      "bytes": 62827,
+      "sha256": "b54aa205d94c26f97d76e420ad26d70f09f6b9159c3175f127615303c1ffec86",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance/mission-current-work.accep-02fee-h-independent-result-denial-operational-acceptance-narrow/independent-result-denial.png",
+      "original_bytes": 62827,
+      "original_sha256": "b54aa205d94c26f97d76e420ad26d70f09f6b9159c3175f127615303c1ffec86",
+      "selection_reason": "Current-run synthetic narrow proof for an actual recovery consumer; visually inspected, original hash frozen."
+    },
+    {
+      "path": "summaries/scripts.txt",
+      "bytes": 181,
+      "sha256": "7aba684568ee849e8e4f5adefb707c9ae40bc9586beb599e1294f83301020557",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/scripts.log",
+      "original_bytes": 51424,
+      "original_sha256": "cceb5a18723709031c76ffa38de828c5e2baa017180d2a652fd1ecda83ed4e72",
+      "selection_reason": "Reviewed terminal counts only; selected excerpt, not the full original execution log."
+    },
+    {
+      "path": "summaries/documentation.txt",
+      "bytes": 234,
+      "sha256": "0419fc81e0072b5ce08b76c63f76067990ac70337f581c8909335a42d697219f",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/documentation.log",
+      "original_bytes": 7347,
+      "original_sha256": "331c0f09f8e80858309f399dcd07b1dce16d229c3d9e647e7ff253216f437464",
+      "selection_reason": "Reviewed terminal counts only; selected excerpt, not the full original execution log."
+    },
+    {
+      "path": "summaries/api-parallel.txt",
+      "bytes": 269,
+      "sha256": "acfc8491406e5bc66f8fe13cfaa00e04b559232219581d21fc84d62ec8165c45",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/api-parallel.log",
+      "original_bytes": 706678,
+      "original_sha256": "f4df00c3d1380c569726ee591314323947b7b2708531734898f00f0e439bd1f8",
+      "selection_reason": "Reviewed terminal counts only; selected excerpt, not the full original execution log."
+    },
+    {
+      "path": "summaries/api-serial.txt",
+      "bytes": 233,
+      "sha256": "203230a85ddd024074ae0fc8351bc6bd079b29f3d920b4ff3adb6debfeb5edfd",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/api-serial.log",
+      "original_bytes": 54939,
+      "original_sha256": "e8bb105d67bb571100119f4614dbcba3b568c5e5c32b716f879a552228808064",
+      "selection_reason": "Reviewed terminal counts only; selected excerpt, not the full original execution log."
+    },
+    {
+      "path": "summaries/web-unit.txt",
+      "bytes": 248,
+      "sha256": "6d034b60060ec9be599bbeded998d75f13351d940f74e0f59938adf32a0bc0a3",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "logs/web-unit.log",
+      "original_bytes": 96744,
+      "original_sha256": "46866ad5c5726cab1478149097798d15d07d8e761ec11c1ac1014a58a6285ebc",
+      "selection_reason": "Reviewed terminal counts only; selected excerpt, not the full original execution log."
+    },
+    {
+      "path": "summaries/browser.txt",
+      "bytes": 93,
+      "sha256": "dbcd2c6282901aa568214b9474d358d5fcdbe9ca542bddd9d15f37df6e361db4",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "local-browser/browser/playwright.log",
+      "original_bytes": 1558,
+      "original_sha256": "a84ddae0f31540e293d94c135ccce5d80ec6e36b1156bdc41957d29f351f2f85",
+      "selection_reason": "Reviewed terminal counts only; selected excerpt, not the full original execution log."
+    },
+    {
+      "path": "summaries/acceptance.txt",
+      "bytes": 81,
+      "sha256": "ed472076593071e31e17362597662fcfb5e1cffb15f2b2abcfb5862e72a5e962",
+      "copy_kind": "selected-or-sanitized-copy",
+      "original_path": "local-browser/acceptance/playwright.log",
+      "original_bytes": 414,
+      "original_sha256": "1440b2e6a300fa572b9350d7f1704174f1171802aad3fac871f3e6af14eda639",
+      "selection_reason": "Reviewed terminal result146/146; selected excerpt, full original retained locally."
+    },
+    {
+      "path": "intentional-failure-probe/test-failed-1.png",
+      "bytes": 9319,
+      "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/test-failed-1.png",
+      "original_bytes": 9319,
+      "original_sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "selection_reason": "Reviewed synthetic independent evidence-capture probe; deliberate failure, not product acceptance failure."
+    },
+    {
+      "path": "intentional-failure-probe/error-context.md",
+      "bytes": 82,
+      "sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/error-context.md",
+      "original_bytes": 82,
+      "original_sha256": "6c57c0b33279a58f2fae7a49b1a8cacaf0527ac10a95285fae793d25226b4b07",
+      "selection_reason": "Reviewed synthetic independent evidence-capture probe; deliberate failure, not product acceptance failure."
+    },
+    {
+      "path": "intentional-failure-probe/client-registration-timeline.json",
+      "bytes": 1420,
+      "sha256": "7034b746cc3b510a52a07bb5acf5bc9c43e0b1b68002e225ebfc2c92cb9a0b58",
+      "copy_kind": "selected-exact-original",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/client-registration-timeline.json",
+      "original_bytes": 1420,
+      "original_sha256": "7034b746cc3b510a52a07bb5acf5bc9c43e0b1b68002e225ebfc2c92cb9a0b58",
+      "selection_reason": "Reviewed synthetic independent evidence-capture probe; deliberate failure, not product acceptance failure."
+    },
+    {
+      "path": "README.md",
+      "bytes": 863,
+      "sha256": "f87a16f726e0391129038f1d5add04101c3d5935789a84e32956229728e7c880",
+      "copy_kind": "publication-generated-context"
+    }
+  ]
+}

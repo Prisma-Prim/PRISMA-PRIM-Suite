@@ -1,0 +1,3 @@
+Selected terminal excerpt; full original retained locally.
+
+  146 passed (21.7m)

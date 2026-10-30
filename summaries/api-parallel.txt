@@ -1,0 +1,6 @@
+Selected terminal excerpt; full original retained locally.
+
+ Test Files  211 passed | 1 skipped (212)
+      Tests  3629 passed | 1 skipped (3630)
+   Start at  06:05:25
+   Duration  2091.74s (transform 6.87s, setup 0ms, import 149.75s, tests 1918.62s, environment 17ms)
