@@ -84,6 +84,8 @@ interface ApplicationShellProps {
   /** Optional overview content between the Prisme hero and its capabilities. */
   overviewSummary?: ReactNode;
   children: ReactNode;
+  /** Retires a pending continuation when the user deliberately leaves its view. */
+  onNavigate?: () => void;
 }
 
 export function ApplicationContentSurface({
@@ -101,6 +103,7 @@ export function ApplicationShell({
   userArea,
   overviewSummary,
   children,
+  onNavigate,
 }: ApplicationShellProps) {
   const copy = usePrismeCopy();
   const [location, setLocation] = useState(() => window.location.href);
@@ -152,6 +155,7 @@ export function ApplicationShell({
   }, [isPrisme, url.hash]);
 
   function changePresentation() {
+    onNavigate?.();
     const nextUrl = getPresentationUrl(new URL(window.location.href), 'prisme');
     window.history.replaceState(window.history.state, '', nextUrl);
     setLocation(nextUrl.href);
@@ -174,6 +178,7 @@ export function ApplicationShell({
       (event.currentTarget.target && event.currentTarget.target !== '_self')
     )
       return;
+    onNavigate?.();
     if (!isPrisme) {
       closeNavigation();
       return;
