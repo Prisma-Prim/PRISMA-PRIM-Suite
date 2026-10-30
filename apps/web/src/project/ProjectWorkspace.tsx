@@ -1,4 +1,5 @@
 import { ProjectPdfBundle } from './ProjectPdfBundle';
+import { ProjectNextAction } from './ProjectNextAction';
 import { MissionPlanCurrentWork } from '../mission-plan/MissionPlanCurrentWork';
 import {
   MissionPlanProjectCreator,
@@ -1031,6 +1032,17 @@ export function ProjectWorkspace({
             identity={identity}
             projectId={selected.project.id}
             onOpenContract={onOpenContract}
+          />
+          <ProjectNextAction
+            actor={actor}
+            identity={identity}
+            projectId={selected.project.id}
+            originalClientId={selected.project.clientAccountId}
+            originalClientGeneration={clientIdentityRevision}
+            projectStatus={selected.project.status}
+            onActorRevalidated={onActorRevalidated}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
           />
           <ProjectResponsible
             actor={actor}

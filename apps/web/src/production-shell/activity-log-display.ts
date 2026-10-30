@@ -1,4 +1,5 @@
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
+import { useProjectNextActionCopy } from '../project/project-next-action.copy';
 import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
@@ -73,9 +74,14 @@ export function useActivityLogDisplay() {
   const signing = useReportedSigningCopy();
   const reviewCopy = useMissionReviewCopy();
   const applicabilityCopy = useMissionApplicabilityCopy();
+  const nextActionCopy = useProjectNextActionCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
     ...taskResultActions,
+    'company_project_next_action_coordinator_assignment.granted':
+      nextActionCopy('granted'),
+    'company_project_next_action_coordinator_assignment.revoked':
+      nextActionCopy('revoked'),
     'company_mission_applicability_coordinator_assignment.granted':
       applicabilityCopy('coordinatorGranted'),
     'company_mission_applicability_coordinator_assignment.revoked':

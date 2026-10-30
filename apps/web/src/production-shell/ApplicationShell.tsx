@@ -135,13 +135,27 @@ export function ApplicationShell({
   useEffect(() => {
     const presentationChanged = previousPresentation.current !== isPrisme;
     const fragmentChanged = previousHash.current !== url.hash;
+    const focused = document.activeElement;
+    const destination = selected ? document.getElementById(selected.id) : null;
+    // A frame-only history change keeps an existing business control mounted.
+    // Keep its focus; section navigation and disappearing shell controls retain
+    // the existing destination/fallback rules below.
+    const retainedBusinessFocus =
+      presentationChanged &&
+      !fragmentChanged &&
+      focused instanceof HTMLElement &&
+      destination?.contains(focused) &&
+      !focused.closest('[hidden]');
     if (fragmentChanged && selected) {
-      const destination = document.getElementById(selected.id);
       destination?.scrollIntoView?.({ block: 'start' });
       destination?.focus();
-    } else if (isPrisme && (presentationChanged || fragmentChanged))
+    } else if (
+      !retainedBusinessFocus &&
+      isPrisme &&
+      (presentationChanged || fragmentChanged)
+    )
       titleRef.current?.focus();
-    else if (presentationChanged) {
+    else if (presentationChanged && !retainedBusinessFocus) {
       const menuButton = menuButtonRef.current;
       if (menuButton && menuButton.getClientRects().length > 0)
         menuButton.focus();

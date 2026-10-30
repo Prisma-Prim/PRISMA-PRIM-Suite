@@ -55,6 +55,10 @@ const targetTypes = {
   'workspace_sessions.revocation_retry_required': 'workspace_membership',
   'company.registered': 'company',
   'company_task_manager_assignment.granted': 'company_role_assignment',
+  'company_project_next_action_coordinator_assignment.granted':
+    'company_role_assignment',
+  'company_project_next_action_coordinator_assignment.revoked':
+    'company_role_assignment',
   'company_task_manager_assignment.revoked': 'company_role_assignment',
   'company_mission_applicability_coordinator_assignment.granted':
     'company_role_assignment',

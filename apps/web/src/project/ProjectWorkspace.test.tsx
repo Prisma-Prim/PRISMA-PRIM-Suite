@@ -353,12 +353,15 @@ it('shows the persisted registration time of each loaded Project row and of the 
     'datetime',
     reopenedProject.createdAt,
   );
-  // The responsible member and lifecycle sections read their own sub-resources.
+  // Responsible membership and next action own separate sub-resource reads.
   expect(
     fetch.mock.calls
       .slice(readsAfterLoad)
       .filter(([url]) => !url.endsWith('/responsible')),
-  ).toEqual([['/api/projects/project', expect.anything()]]);
+  ).toEqual([
+    ['/api/projects/project', expect.anything()],
+    ['/api/projects/project/next-action', expect.anything()],
+  ]);
 });
 
 it('filters loaded Projects by visible title or Client without requesting again or changing server order', async () => {

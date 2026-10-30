@@ -1,4 +1,5 @@
 import {
+  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
 } from './company-permissions.js';
@@ -198,6 +199,41 @@ export class CompanyContextAuthorization {
     return {
       companyId: company.id,
       assignmentId: company.missionApplicabilityApproverAssignmentId,
+      permissionSetVersion: 'v1' as const,
+    };
+  }
+
+  async requireProjectNextActionCoordinator(actor: ActorContext) {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company?.projectNextActionPermissions?.includes(
+        'project.next_action.update',
+      ) ||
+      company.projectNextActionCoordinatorPermissionSetVersion !== 'v1' ||
+      !company.projectNextActionCoordinatorAssignmentId
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, company.id, true);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(
+          companyRoleAssignments.id,
+          company.projectNextActionCoordinatorAssignmentId,
+        ),
+        eq(
+          companyRoleAssignments.bundle,
+          COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+        ),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      true,
+    );
+    return {
+      companyId: company.id,
+      assignmentId: company.projectNextActionCoordinatorAssignmentId,
       permissionSetVersion: 'v1' as const,
     };
   }
@@ -736,6 +772,20 @@ export class CompanyContextAuthorization {
   async requireProjectReadWithinReadTransaction(
     actor: ActorContext,
   ): Promise<string> {
+    return this.requireCapturedProjectRead(actor, false);
+  }
+
+  /** Fence the exact consumed Project-read grant after a command's key wait. */
+  async requireCapturedProjectReadWithinTransaction(
+    actor: ActorContext,
+  ): Promise<string> {
+    return this.requireCapturedProjectRead(actor, true);
+  }
+
+  private async requireCapturedProjectRead(
+    actor: ActorContext,
+    lock: boolean,
+  ): Promise<string> {
     const company = actor.activeCompany;
     if (
       !actor.active ||
@@ -744,7 +794,7 @@ export class CompanyContextAuthorization {
       !isProjectPermissionSetVersion(company.projectPermissionSetVersion)
     )
       throw new ForbiddenException();
-    const companyId = await this.requireProjectReadPermission(actor);
+    const companyId = await this.requireProjectReadPermission(actor, lock);
     await this.requireLiveCapturedAssignment(
       actor,
       companyId,
@@ -756,7 +806,7 @@ export class CompanyContextAuthorization {
           company.projectPermissionSetVersion,
         ),
       ) ?? sql`false`,
-      false,
+      lock,
     );
     return companyId;
   }
@@ -1698,6 +1748,7 @@ export class CompanyContextAuthorization {
         COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
         COMPANY_TASK_RESULT_RECORDER_BUNDLE,
         COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+        COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
         COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
         COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
@@ -1860,6 +1911,14 @@ export class CompanyContextAuthorization {
         ];
         company.missionApplicabilityApproverAssignmentId = row.assignmentId;
         company.missionApplicabilityApproverPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.projectNextActionPermissions = ['project.next_action.update'];
+        company.projectNextActionCoordinatorAssignmentId = row.assignmentId;
+        company.projectNextActionCoordinatorPermissionSetVersion = 'v1';
       }
       if (
         row.bundle === COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE &&

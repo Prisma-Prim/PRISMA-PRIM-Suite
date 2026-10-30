@@ -1,4 +1,5 @@
 import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
+import { useProjectNextActionCopy } from '../project/project-next-action.copy';
 import { useAuthorityLifetime } from './use-authority-lifetime';
 import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
@@ -53,6 +54,7 @@ type AssignmentBundle =
   | 'offer-model-editor'
   | 'offer-model-approver'
   | 'mission-applicability-coordinator'
+  | 'project-next-action-coordinator'
   | 'mission-applicability-approver'
   | 'mission-result-reviewer'
   | 'task-result-recorder'
@@ -106,6 +108,8 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'mission-result-reviewer': '/company-mission-result-reviewer-assignments',
   'mission-applicability-coordinator':
     '/company-mission-applicability-coordinator-assignments',
+  'project-next-action-coordinator':
+    '/company-project-next-action-coordinator-assignments',
   'mission-applicability-approver':
     '/company-mission-applicability-approver-assignments',
   'ideas-reader': '/company-ideas-reader-assignments',
@@ -325,6 +329,7 @@ export function CompanyContextAccess({
   const taskResultCopy = useTaskResultCopy();
   const reviewCopy = useMissionReviewCopy();
   const applicabilityCopy = useMissionApplicabilityCopy();
+  const nextActionCopy = useProjectNextActionCopy();
   if (!canManageAssignments) return null;
 
   async function submit(event: FormEvent, submission: Submission) {
@@ -731,6 +736,10 @@ export function CompanyContextAccess({
               },
               { value: 'task-manager', label: copy('taskManagerBundle') },
               {
+                value: 'project-next-action-coordinator',
+                label: nextActionCopy('bundle'),
+              },
+              {
                 value: 'mission-applicability-coordinator',
                 label: applicabilityCopy('coordinatorBundle'),
               },
@@ -758,6 +767,7 @@ export function CompanyContextAccess({
                 value === 'operational-risk-reader' ||
                 value === 'operational-risk-recorder' ||
                 value === 'task-manager' ||
+                value === 'project-next-action-coordinator' ||
                 value === 'mission-applicability-coordinator' ||
                 value === 'mission-applicability-approver' ||
                 value === 'mission-result-reviewer' ||
@@ -1021,6 +1031,8 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'mission-result-reviewer': 'Company Mission Result Reviewer',
     'mission-applicability-coordinator':
       'Company Mission Applicability Coordinator',
+    'project-next-action-coordinator':
+      'Company Project Next Action Coordinator',
     'mission-applicability-approver': 'Company Mission Applicability Approver',
     'task-result-recorder': 'Company Task Result Recorder',
     'document-project-organizer': 'Company Document Project Organizer',

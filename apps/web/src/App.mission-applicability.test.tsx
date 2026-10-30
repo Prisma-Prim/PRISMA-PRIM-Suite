@@ -386,9 +386,13 @@ it.each([200, 403])(
   20000,
 );
 
-it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
-  'preserves independent native Task/result/Project %s work through unrelated Risk grant publication and sibling Project navigation',
-  async (phase) => {
+it.each(
+  (['draft', 'pending', 'uncertain', 'confirmed'] as const).flatMap((phase) =>
+    (['risk', 'next-action'] as const).map((grant) => ({ phase, grant })),
+  ),
+)(
+  'preserves independent native Task/result/Project $phase work through unrelated $grant grant publication and sibling Project navigation',
+  async ({ phase, grant }) => {
     const recorder = {
       ...actor,
       workspacePermissions: ['client.manage', 'company.assignment.manage'],
@@ -458,11 +462,14 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
     };
     let currentActor: unknown = recorder,
       granted = false;
-    const riskAssignment = {
-      id: 'risk-reader-demo',
+    const publishedAssignment = {
+      id: 'independent-assignment-demo',
       workspaceMembershipId: actor.workspaceMembershipId,
       companyId,
-      bundle: 'Company Operational Risk Reader',
+      bundle:
+        grant === 'risk'
+          ? 'Company Operational Risk Reader'
+          : 'Company Project Next Action Coordinator',
       permissionSetVersion: 'v1',
       active: true,
     };
@@ -479,24 +486,38 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
               },
             ],
             companies: [{ id: companyId, displayName: 'Company DEMO' }],
-            assignments: granted ? [riskAssignment] : [],
+            assignments: granted ? [publishedAssignment] : [],
           });
         if (
-          path === '/api/company-operational-risk-reader-assignments' &&
+          path ===
+            (grant === 'risk'
+              ? '/api/company-operational-risk-reader-assignments'
+              : '/api/company-project-next-action-coordinator-assignments') &&
           init?.method === 'POST'
         ) {
           granted = true;
           currentActor = {
             ...recorder,
-            displayName: 'Fresh unrelated Risk Actor DEMO',
+            displayName: 'Fresh independent Actor DEMO',
             activeCompany: {
               ...recorder.activeCompany,
-              operationalRiskPermissions: ['risk.read'],
-              operationalRiskReaderAssignmentId: riskAssignment.id,
-              operationalRiskReaderPermissionSetVersion: 'v1',
+              ...(grant === 'risk'
+                ? {
+                    operationalRiskPermissions: ['risk.read'],
+                    operationalRiskReaderAssignmentId: publishedAssignment.id,
+                    operationalRiskReaderPermissionSetVersion: 'v1',
+                  }
+                : {
+                    projectNextActionPermissions: [
+                      'project.next_action.update',
+                    ],
+                    projectNextActionCoordinatorAssignmentId:
+                      publishedAssignment.id,
+                    projectNextActionCoordinatorPermissionSetVersion: 'v1',
+                  }),
             },
           };
-          return Response.json(riskAssignment, { status: 201 });
+          return Response.json(publishedAssignment, { status: 201 });
         }
         if (path === '/api/projects') return Response.json([project, sibling]);
         if (path === `/api/projects/${sibling.id}`)
@@ -620,12 +641,14 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
       );
       changeValue(
         within(access).getByRole('combobox', { name: 'Access bundle' }),
-        'operational-risk-reader',
+        grant === 'risk'
+          ? 'operational-risk-reader'
+          : 'project-next-action-coordinator',
       );
       fireEvent.click(
         within(access).getByRole('button', { name: 'Grant access' }),
       );
-      await screen.findByText('Fresh unrelated Risk Actor DEMO');
+      await screen.findByText('Fresh independent Actor DEMO');
       fireEvent.click(
         within(
           screen.getByRole('navigation', { name: 'Primary navigation' }),

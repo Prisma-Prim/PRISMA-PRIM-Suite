@@ -354,6 +354,10 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Task Result Recorder',
     versions: { v1: ['task.result.record'] },
   },
+  company_project_next_action_coordinator: {
+    label: 'Company Project Next Action Coordinator',
+    versions: { v1: ['project.next_action.update'] },
+  },
   company_mission_applicability_coordinator: {
     label: 'Company Mission Applicability Coordinator',
     versions: { v1: ['project.mission_applicability.propose'] },
@@ -1113,3 +1117,8 @@ export const COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE =
   'company_mission_applicability_approver' satisfies CompanyRoleBundle;
 export const COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL =
   COMPANY_ROLE_BUNDLES.company_mission_applicability_approver.label;
+
+export const COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE =
+  'company_project_next_action_coordinator' satisfies CompanyRoleBundle;
+export const COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_project_next_action_coordinator.label;

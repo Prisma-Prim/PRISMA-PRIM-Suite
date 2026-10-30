@@ -23,6 +23,11 @@ import { App } from './App';
 import { InterfaceLocaleSelect } from './localization/InterfaceLocaleSelect';
 import { deterministicBrowserIdentity } from './access-composition';
 import type { TaskView } from './project/task-response';
+import {
+  emptyNextAction,
+  firstNextAction,
+  nextActionActor,
+} from './test/project-next-action-app';
 
 beforeEach(() => {
   localStorage.clear();
@@ -39,7 +44,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, '', '/');
 });
-async function recordIndependentApplicability(panel: HTMLElement) {
+type IndependentDeclaration = 'applicability' | 'next-action';
+async function recordIndependentDeclaration(
+  panel: HTMLElement,
+  kind: IndependentDeclaration,
+) {
+  if (kind === 'next-action') {
+    const input = await within(panel).findByRole('textbox', {
+      name: 'Next action',
+    });
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, {
+      target: { value: 'Independent next action DEMO' },
+    });
+    fireEvent.click(
+      within(panel).getByRole('button', { name: 'Save next action' }),
+    );
+    await within(panel).findByText('Next action saved.');
+    await within(panel).findByText(
+      'The current next action could not be refreshed.',
+    );
+    return;
+  }
   fireEvent.change(
     within(panel).getByRole('textbox', {
       name: 'Proposal reason (1–1000 characters)',
@@ -66,6 +92,23 @@ async function recordIndependentApplicability(panel: HTMLElement) {
   );
   await within(panel).findByText('Applicability fact confirmed.');
   await within(panel).findByText('Current applicability could not be loaded.');
+}
+function nextActionServer() {
+  let recorded = false;
+  return (path: string, init: RequestInit | undefined) => {
+    if (path !== `/api/projects/${projectId}/next-action`) return undefined;
+    if (init?.method === 'POST') {
+      recorded = true;
+      return Response.json({
+        format: 'project-next-action-command-v1',
+        outcome: 'changed',
+        record: firstNextAction('Independent next action DEMO').current,
+      });
+    }
+    return recorded
+      ? new Response(null, { status: 503 })
+      : Response.json(emptyNextAction());
+  };
 }
 async function presentationRoundtrip(protectedReads: () => number) {
   await act(async () => {
@@ -98,7 +141,12 @@ async function presentationRoundtrip(protectedReads: () => number) {
     ).getByRole('link', { name: 'Projects' }),
   );
 }
-function nativeTasks(): TaskView[] {
+function nativeTasks(
+  author: Pick<
+    typeof actor,
+    'internalUserId' | 'workspaceMembershipId' | 'displayName'
+  > = actor,
+): TaskView[] {
   return plan.activities.map((row) => ({
     id: row.taskId,
     companyId,
@@ -113,19 +161,26 @@ function nativeTasks(): TaskView[] {
     createdAt: project.createdAt,
     updatedAt: project.createdAt,
     createdBy: {
-      internalUserId: actor.internalUserId,
-      workspaceMembershipId: actor.workspaceMembershipId,
-      displayName: actor.displayName,
+      internalUserId: author.internalUserId,
+      workspaceMembershipId: author.workspaceMembershipId,
+      displayName: author.displayName,
     },
     status: 'todo',
     completion: null,
   }));
 }
 
-it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
-  'preserves actual native Task creation %s and Project draft while applicability records independently, fails its refresh and changes all locales/frames',
-  async (phase) => {
-    const tasks = nativeTasks(),
+it.each(
+  (['draft', 'pending', 'uncertain', 'confirmed'] as const).flatMap((phase) =>
+    (['applicability', 'next-action'] as const).map((kind) => ({
+      phase,
+      kind,
+    })),
+  ),
+)(
+  'preserves actual native Task creation $phase and Project draft while $kind records independently, fails its refresh and changes all locales/frames',
+  async ({ phase, kind }) => {
+    const tasks = nativeTasks(kind === 'next-action' ? nextActionActor : actor),
       base = tasks[0];
     if (!base) throw new Error('Missing native Task');
     const createdTask: TaskView = {
@@ -138,9 +193,14 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
       applicabilityRecorded = false,
       finish: ((response: Response) => void) | undefined;
     const protectedRequests: string[] = [];
+    const serveNextAction = nextActionServer();
     installParentServer(
-      () => actor,
+      () => (kind === 'next-action' ? nextActionActor : actor),
       async (path, init) => {
+        if (kind === 'next-action') {
+          const response = serveNextAction(path, init);
+          if (response) return response;
+        }
         if (/current-actor|\/projects|\/tasks/u.test(path))
           protectedRequests.push(path);
         if (path === `/api/projects/${projectId}/tasks`) {
@@ -249,10 +309,14 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
     if (phase === 'confirmed')
       await within(taskRegion).findByText('Task change recorded.');
     const panel = await screen.findByRole('region', {
-      name: 'Mission activity applicability',
+      name:
+        kind === 'next-action'
+          ? 'Project next action'
+          : 'Mission activity applicability',
     });
-    await within(panel).findByRole('combobox', { name: 'Source activity' });
-    await recordIndependentApplicability(panel);
+    if (kind === 'applicability')
+      await within(panel).findByRole('combobox', { name: 'Source activity' });
+    await recordIndependentDeclaration(panel, kind);
     const before = writes.map((write) => ({ ...write }));
     await presentationRoundtrip(() => protectedRequests.length);
     expect(
@@ -286,9 +350,16 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
   20_000,
 );
 
-it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
-  'preserves actual native Project registration %s with exact retry through source navigation, all locales/frames and independent applicability failure',
-  async (phase) => {
+it.each(
+  (['draft', 'pending', 'uncertain', 'confirmed'] as const).flatMap((phase) =>
+    (['applicability', 'next-action'] as const).map((kind) => ({
+      phase,
+      kind,
+    })),
+  ),
+)(
+  'preserves actual native Project registration $phase and its open exclusions through all locales/frames and independent $kind continuation',
+  async ({ phase, kind }) => {
     const createdProject = {
       ...project,
       id: '30000000-0000-4000-8000-000000000099',
@@ -299,9 +370,14 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
       applicabilityRecorded = false,
       finish: ((response: Response) => void) | undefined;
     const protectedRequests: string[] = [];
+    const serveNextAction = nextActionServer();
     installParentServer(
-      () => actor,
+      () => (kind === 'next-action' ? nextActionActor : actor),
       async (path, init) => {
+        if (kind === 'next-action') {
+          const response = serveNextAction(path, init);
+          if (response) return response;
+        }
         if (/current-actor|\/projects|\/tasks/u.test(path))
           protectedRequests.push(path);
         if (path === '/api/projects') {
@@ -354,6 +430,14 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
       </StrictMode>,
     );
     const projects = await screen.findByRole('region', { name: 'Projects' });
+    if (kind === 'next-action') {
+      fireEvent.click(
+        await within(projects).findByRole('button', {
+          name: new RegExp(project.title),
+        }),
+      );
+      await screen.findByRole('region', { name: 'Project next action' });
+    }
     const title = await within(projects).findByRole('textbox', {
       name: 'Project title',
     });
@@ -376,6 +460,13 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
       await within(projects).findByRole('article', {
         name: createdProject.title,
       });
+    if (kind === 'next-action' && phase === 'pending') {
+      // Native registration deliberately removes its selected detail while
+      // pending. The independent feature must respect that existing exclusion.
+      expect(
+        screen.queryByRole('region', { name: 'Project next action' }),
+      ).not.toBeInTheDocument();
+    }
     const before = writes.map((write) => ({ ...write }));
     await presentationRoundtrip(() => protectedRequests.length);
     expect(writes).toEqual(before);
@@ -393,6 +484,18 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
       await within(projects).findByRole('article', {
         name: createdProject.title,
       });
+      if (kind === 'next-action') {
+        fireEvent.click(
+          await within(projects).findByRole('button', {
+            name: new RegExp(project.title),
+          }),
+        );
+        const panel = await screen.findByRole('region', {
+          name: 'Project next action',
+        });
+        await recordIndependentDeclaration(panel, kind);
+        expect(writes).toEqual(before);
+      }
     } else {
       fireEvent.click(
         await within(projects).findByRole('button', {
@@ -400,10 +503,14 @@ it.each(['draft', 'pending', 'uncertain', 'confirmed'] as const)(
         }),
       );
       const panel = await screen.findByRole('region', {
-        name: 'Mission activity applicability',
+        name:
+          kind === 'next-action'
+            ? 'Project next action'
+            : 'Mission activity applicability',
       });
-      await within(panel).findByRole('combobox', { name: 'Source activity' });
-      await recordIndependentApplicability(panel);
+      if (kind === 'applicability')
+        await within(panel).findByRole('combobox', { name: 'Source activity' });
+      await recordIndependentDeclaration(panel, kind);
       fireEvent.change(
         within(projects).getByRole('searchbox', { name: 'Find Projects' }),
         { target: { value: 'Independent' } },

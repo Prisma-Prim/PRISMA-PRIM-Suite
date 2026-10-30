@@ -1,3 +1,4 @@
+import { projectNextActionEvents } from '../database/schema/project-next-action.js';
 import { missionApplicabilityEvents } from '../database/schema/mission-applicability.js';
 import type { missionApplicabilityFacts } from '../database/schema/mission-applicability.js';
 import { missionPlanVersions } from '../database/schema/mission-plan.js';
@@ -701,6 +702,28 @@ export class AccountabilityService {
       occurredAt: input.occurredAt,
       metadata: { revision: input.revision },
     });
+  }
+  /** Project-owned internal event, deliberately absent from generic Activity selectors. */
+  async recordProjectNextActionEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    revision: number;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(projectNextActionEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        projectId: input.projectId,
+        revision: input.revision,
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        action: 'project.next_action.updated',
+        metadata: { revision: input.revision },
+        occurredAt: input.occurredAt,
+      });
   }
   /** Restricted review facts are never projected into ordinary Activity or Task history. */
   async recordMissionApplicabilityEvent(input: {
@@ -3600,6 +3623,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_received_contract_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_mission_result_reviewer_assignment.granted':
+    case 'company_project_next_action_coordinator_assignment.granted':
     case 'company_mission_applicability_coordinator_assignment.granted':
     case 'company_mission_applicability_approver_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
@@ -3607,6 +3631,7 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_received_contract_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.revoked':
     case 'company_mission_result_reviewer_assignment.revoked':
+    case 'company_project_next_action_coordinator_assignment.revoked':
     case 'company_mission_applicability_coordinator_assignment.revoked':
     case 'company_mission_applicability_approver_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':

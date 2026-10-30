@@ -52,6 +52,7 @@ import {
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
@@ -156,6 +157,10 @@ const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
 };
 const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE: BundleDefinition = {
+  value: COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   permissionSetVersion: 'v1',
 };
 const MISSION_APPLICABILITY_COORDINATOR_BUNDLE: BundleDefinition = {
@@ -334,6 +339,7 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
@@ -1514,6 +1520,32 @@ export class CompanyContextAssignmentService {
       command.idempotencyKey,
     );
   }
+  grantProjectNextActionCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeProjectNextActionCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   grantMissionApplicabilityCoordinator(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -2119,6 +2151,10 @@ function assignmentAction(
       return granted
         ? 'company_task_result_recorder_assignment.granted'
         : 'company_task_result_recorder_assignment.revoked';
+    case COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE:
+      return granted
+        ? 'company_project_next_action_coordinator_assignment.granted'
+        : 'company_project_next_action_coordinator_assignment.revoked';
     case COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE:
       return granted
         ? 'company_mission_applicability_coordinator_assignment.granted'

@@ -112,6 +112,9 @@ describe('current Actor representation', () => {
         'missionPlanGrants',
         'offerModelGrants',
         'contractModelGrants',
+        'projectNextActionPermissions',
+        'projectNextActionCoordinatorAssignmentId',
+        'projectNextActionCoordinatorPermissionSetVersion',
       ].includes(name),
   );
   it.each(typedFields)(
@@ -156,7 +159,14 @@ describe('current Actor representation', () => {
     expect(await read(value)).toEqual({ status: 'ok', value });
   });
 
-  it.each(['missionPlanGrants', 'offerModelGrants', 'contractModelGrants'])(
+  it.each([
+    'missionPlanGrants',
+    'offerModelGrants',
+    'contractModelGrants',
+    'projectNextActionPermissions',
+    'projectNextActionCoordinatorAssignmentId',
+    'projectNextActionCoordinatorPermissionSetVersion',
+  ])(
     'preserves opaque %s including unfamiliar versions and shapes',
     async (field) => {
       for (const capture of [
