@@ -1,0 +1,68 @@
+{
+  "issue": 996,
+  "pr": 997,
+  "source": "bfe019ce51c75c51ae82b66cd4c421bc0c057c7a",
+  "base": "422892e5ab4a49da1a467002536d587e510b063f",
+  "tree": "fbb92ae8b079505cff859072399d5b4d27ef8ea6",
+  "canonicalLocalGate": {
+    "attempt": 2,
+    "scope": "docs_only",
+    "status": "passed",
+    "requiredFamilies": [
+      "doctor",
+      "format",
+      "lint",
+      "types",
+      "scripts",
+      "documentation"
+    ],
+    "sourceInputsVerified": 1963,
+    "selfReportedNotGitHubRunnerAttestation": true
+  },
+  "reviews": {
+    "complete": true,
+    "source": "bfe019ce51c75c51ae82b66cd4c421bc0c057c7a",
+    "base": "422892e5ab4a49da1a467002536d587e510b063f",
+    "blockingFindingsRemaining": 0,
+    "actualApprovalComment": 6529503138,
+    "order": [
+      "independent Standards",
+      "independent Spec",
+      "root actual delegated bounded disposition",
+      "metadata-only Approved normalization"
+    ],
+    "reviewedDiffSha256": "5512626dfae01c96b4946d0dbc5b35a8a9eeb28fabf4b08d425b84ccb7d38de2",
+    "standards": {
+      "reviewer": "/root/internal_tasks996_standards",
+      "blocking": 0,
+      "followUps": 0
+    },
+    "spec": {
+      "reviewer": "/root/internal_tasks996_spec",
+      "blocking": 0,
+      "followUps": 0
+    },
+    "selfReview": [
+      "Standards",
+      "Spec"
+    ],
+    "postReviewNormalization": "Four files changed only proposal/approval status and actual approval pointers; root inspected exact unified diffs and captured final blob SHA256.",
+    "runtimeTestsExecuted": false,
+    "documentationOnly": true
+  },
+  "independentGitHubCIExecuted": false,
+  "priorFailedCanonicalGate": {
+    "attempt": 1,
+    "status": "failed",
+    "scope": "docs_only",
+    "reason": "Doctor pnpm readiness probe ETIMEDOUT; later families unexecuted, ten source-derived not_required. No source failure proven.",
+    "targetedDiagnosis": "Unchanged pnpm --version under the canonical inherited-environment subset returned11.20.0/status0; unchanged standard doctor under that same subset passed all required probes. The dependency/version readiness prerequisite is now demonstrated restored without changing source/config/timeout.",
+    "exactRootCause": "Initial probe timeout observed; no narrower persistent cause proven.",
+    "retryJustification": "One fresh canonical attempt after targeted restored readiness, no blind failed-gate relabel.",
+    "originalEvidence": "verification-1",
+    "next": "verification-2; pause further full runs if another complete failure until identified cause is fixed or prerequisite restored."
+  },
+  "scope": "Documentation-only bounded standalone Internal Company Tasks, ProjectTask36, Authorization8, Activity7 and index. Exact approved normalized Sarcina9.4 source; independent opt-in Company-only authority; ordinary Task journey/history; no fake Client/Project, old-grant expansion, existing queue change or runtime delivery. Separate fresh runtime requires canonical merge/current fit, ownership and all readiness gates; parents972/993 retain ownership.",
+  "publication": "Unmodified canonical metadata manifest/report plus compact proof/index only. Bulk inputs contain exact public Git path/mode/SHA256 entries, individually checked against source Git objects and file bytes. Log hashes identify retained private logs; no raw logs, images, traces, dossier or model prose selected.",
+  "keepThrough": "2026-11-20T23:59:59Z"
+}
