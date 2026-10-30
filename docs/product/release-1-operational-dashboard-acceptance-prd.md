@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
 **Status:** Operational home approved by #398 (section 17), latest dated Activity preview approved by #720 (section 18), personal upcoming deadlines approved by #721 (section 19), complete My attention drill-down agent-approved under delegated delivery authority (section 20), bounded multi-Company summaries agent-approved under delegated delivery authority (section 23); remaining capability Draft — other role journeys and metrics pending\
-**Version:** 0.7\
+**Version:** 0.8\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -399,6 +399,14 @@ after ordered independent Standards then Spec PASS with zero findings. This is
 agent product approval of this bounded contract, not Dan's personal review,
 runtime delivery or whole-dashboard approval.
 
+The [bounded cancellation clarification](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/990#issuecomment-6531570183)
+records the later delegated corrective disposition after checking the actual
+selector. The [same-batch recovery qualification](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/990#issuecomment-6532773904)
+clarifies that existing authority/session recovery governs continuity and may
+retire Company context. Original independent preparation covers unchanged
+material; coordinating review covers this correction. No new independent review
+or runtime result is claimed.
+
 ### 23.1 Purpose, provenance and proposed boundary
 
 An Internal User who already reads work in several Companies needs to compare
@@ -466,9 +474,9 @@ PRD's unresolved broader first-tenant role matrix or exceptional-access policy.
 
 ### 23.3 Read composition, dates and independent failures
 
-Opening the view retains the working Company and mounts a read-only, Home-local
-region. Each qualified Company's existing no-query operational Home read uses
-that Company's request context; it does not select that Company globally or add
+Opening the view mounts a read-only, Home-local region without itself invoking
+Company selection. Each qualified Company's existing no-query operational Home
+read uses that Company's request context; it does not select that Company globally or add
 an `all` ownership value. Reuse the owning response validation and exact Company
 binding. Show only the three summary kinds above, in §17.2 order; existing attention
 or other Home regions are not promoted into this view.
@@ -518,6 +526,10 @@ provider call or persistent dashboard model is created.
 Opening, retrying or refreshing this region does not call the global Company
 selector merely to collect data. The working Company, any independent native
 draft and pending/uncertain command retain their existing owners and lifetimes.
+Preservation means causal non-interference from opening, collecting, staging its
+confirmation or cancelling this view. Independent owners may still complete
+operations, recover or retire state under current authority. Never freeze or
+restore an old Actor, draft or command for visual continuity.
 
 Closing, a newer read of the same Company, changed Company discovery, identity,
 session, Workspace, membership or consumed authority retires the affected results.
@@ -529,11 +541,27 @@ No authority projection is a durable permission cache. A current denial rechecks
 the affected authority through the existing recovery owner; it does not replay a
 stale captured actor into the global shell or clear unrelated valid work.
 
-Choosing a summary carries its exact Company and destination through the normal
-Company-selection owner. Preserve that owner's unsaved-work warning/cancel and
-pending/failed selection behavior. Cancellation or failure leaves the current
-Company and destination unchanged. Only a successful, still-current selection
-with revalidated destination authority opens:
+Choosing a summary stages its exact Company and destination in a local,
+deliberately confirmed drill-down. Before any Company selection, show the
+named Company and destination with Continue and Cancel. Cancel closes only
+that staged confirmation, restores focus to its summary action when still
+available, and initiates no Company selection, navigation, authority refresh
+or business request. Staging the confirmation and Cancel do not themselves change
+the working Company or reset independent native drafts and pending/uncertain
+commands. Normal owner progress and current authority/session invalidation remain
+in force. This bounded confirmation does not inspect dirty state or introduce a
+global unsaved-work policy.
+
+Continue alone invokes the normal Company-selection owner with the exact
+staged Company and destination. Preserve its current pending/failed behavior
+and any warnings actually supplied by that owner; no existing global warning
+is assumed. A stale/retired confirmation cannot continue. Cancel initiates no
+selection. A failed, denied or retired selection never opens the staged
+destination; retain the selector's actual recovery and privacy-retirement
+semantics, including removal of active Company or session/Workspace access when
+required. Never restore the previous Actor or Company for visual continuity.
+Only a successful, still-current selection with revalidated destination
+authority opens:
 
 - Active Clients → the existing Company Client directory;
 - Open Projects → the existing default Company Project list without Client filter;
@@ -561,8 +589,10 @@ the existing safe focus recovery when it does not.
 The UX PRD §7 owns Romanian default/fallback and Romanian, Russian, French and
 English interface coverage. All new labels, dates, counts, accessible names,
 loading, empty and error wording follow it with required-key checks. Literal
-Company and business names remain unchanged. A locale-only change preserves rows,
-pending reads, focus and navigation intent without network I/O or Company change.
+Company and business names remain unchanged. A locale-only change does not itself
+reset rows, pending reads, focus or navigation intent, initiate network I/O or
+change Company. Normal independent replies, owner progress and current authority
+retirement still apply.
 
 ### 23.6 Future acceptance and readiness
 
@@ -588,9 +618,17 @@ The future acceptance contract must cover:
    identity/session/Workspace changes, equal-permission capture replacement and
    current authority loss. Include positive controls preserving unrelated drafts
    and current results; cancellation alone is not stale-reply proof.
-5. Exact Client/Project/overdue-Task drill-down, unsaved-work cancel, failed/retired
-   selection and authority loss before destination. No global Company selection
-   occurs during collection; only the explicit current drill-down may select.
+5. Exact Client/Project/overdue-Task drill-down with deliberate Continue/Cancel
+   before Company selection, failed/retired selection and authority loss before
+   destination. Prove staging confirmation and Cancel do not reset an existing
+   independent native draft or pending/uncertain command and cause zero
+   selection/navigation/authority-refresh/business requests. Hold independent
+   work with unchanged authority to prove those inputs and intents remain intact;
+   separately prove normal independent completion/recovery and required current
+   authority/session/Workspace retirement proceed without stale restoration.
+   Failed/denied selection retains its owner's actual resulting state and opens
+   no staged destination. No global Company selection occurs during collection;
+   only the explicit current Continue may select.
 6. Four locales, long names/diacritics/Cyrillic, keyboard/focus, distinct accessible
    names, complete reachable rows and no overflow at both widths. Locale-only
    changes preserve literal content and perform no I/O.
