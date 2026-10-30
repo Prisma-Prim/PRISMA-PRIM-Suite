@@ -135,6 +135,11 @@ superseded without delivery credit only at that handoff. This revision neither
 promotes the wider Draft PRD nor approves a real pilot or changes Release 7
 sequencing.
 
+The separately selected [offline knowledge-context and citation qualification](ai-knowledge-governance-prd.md#18-offline-knowledge-context-and-citation-qualification)
+prepares candidate-safe synthetic contexts and checks separately declared observations
+against exact source/version/locator/quote and fictional eligibility/review inputs.
+It changes neither the closed pilot command nor production AI readiness.
+
 ## 5. Release 1 capability PRDs
 
 Release 1 is a sequence of integrated capability slices, not five parallel horizontal projects. Capability PRDs may remain Draft while named evidence is collected. Their implementation children are created only when the readiness gates pass.
