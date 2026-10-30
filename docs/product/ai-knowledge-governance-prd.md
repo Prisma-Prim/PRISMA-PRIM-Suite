@@ -120,6 +120,13 @@ An authorized user asks a dossier question. Retrieval selects only permitted cur
 
 Question source: S09.
 
+The [synthetic source and citation preparation kit](ai-knowledge-synthetic-kit/README.md)
+under [#989](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/989) supplies
+fictional versioned passages and authored expectations for manual or future
+qualification. It does not satisfy representative evidence, actual source
+admission/rights, observed human review or the readiness gates below, and is not
+direct input to section 17's closed offline evaluation schemas.
+
 ## 15. Technical and legal dependencies
 
 - provider contract, region, retention and training-use review;
