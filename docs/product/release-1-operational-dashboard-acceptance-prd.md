@@ -1,7 +1,7 @@
 # PRD — Release 1 Operational Dashboard and Acceptance
 
-**Status:** Operational home approved by #398 (section 17), latest dated Activity preview approved by #720 (section 18), personal upcoming deadlines approved by #721 (section 19), complete My attention drill-down agent-approved under delegated delivery authority (section 20); remaining capability Draft — other role journeys and metrics pending  
-**Version:** 0.6  
+**Status:** Operational home approved by #398 (section 17), latest dated Activity preview approved by #720 (section 18), personal upcoming deadlines approved by #721 (section 19), complete My attention drill-down agent-approved under delegated delivery authority (section 20), bounded multi-Company summaries agent-approved under delegated delivery authority (section 23); remaining capability Draft — other role journeys and metrics pending\
+**Version:** 0.8\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; UX PRD; Tenant/Company/Authorization PRD; Activity Log PRD
 
@@ -217,7 +217,7 @@ My Tasks keeps its own order and presentation. This deterministic ordering is th
 
 - elapsed-time "What changed since yesterday" filters (session 28); the bounded latest-dated Activity preview is separately approved in section 18;
 - money, invoices, payments, audits, trainings, nonconformities, certificates and general approval queues; the separately approved [pending-estimate discovery](release-3-confirmed-cost-profitability-estimate-prd.md#13-approved-company-queue-awaiting-director-decision-889) and [pending commercial decisions](release-3-commercial-32-pending-decisions.md) reuse existing owners and do not expand these summaries;
-- Workspace-wide or "All Companies" views, which will reuse these definitions;
+- Workspace-wide or "All Companies" views, which will reuse these definitions; section 23 prepares a bounded proposal without lifting this first-journey exclusion;
 - commercial dashboards and Opportunity next actions;
 - configurable widgets, personalization, saved views, thresholds and time zones;
 - reminders, escalation and notification channels;
@@ -389,3 +389,264 @@ the bounded independent Offer and Contract queues, their existing captured
 authority, complete pages and exact protected continuation. Home composes these
 regions beside §21 without changing §17 summaries, attention ranking or the
 remaining Draft dashboard scope. Approval is separate from runtime delivery.
+
+## 23. Approved multi-Company operational summaries (#990)
+
+**Status:** Approved — bounded product contract; runtime implementation remains separately gated.
+
+**Approval:** [Delegated product disposition, 2026-10-30](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/990#issuecomment-6516187545),
+after ordered independent Standards then Spec PASS with zero findings. This is
+agent product approval of this bounded contract, not Dan's personal review,
+runtime delivery or whole-dashboard approval.
+
+The [bounded cancellation clarification](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/990#issuecomment-6531570183)
+records the later delegated corrective disposition after checking the actual
+selector. The [same-batch recovery qualification](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/990#issuecomment-6532773904)
+clarifies that existing authority/session recovery governs continuity and may
+retire Company context. Original independent preparation covers unchanged
+material; coordinating review covers this correction. No new independent review
+or runtime result is claimed.
+
+### 23.1 Purpose, provenance and proposed boundary
+
+An Internal User who already reads work in several Companies needs to compare
+their existing operational summaries without repeatedly changing the working
+Company. This view presents separate Company rows, each containing only its
+currently readable §17.2 summaries and their existing destinations.
+
+Section 13 and the [decision record §34.2](consolidated-product-decision-record.md#342-normalized-confirmed-business-evidence)
+supply the business direction: authorized consolidated oversight with Company
+attribution. DEC-195 and the [UX PRD §4](ux-localization-configuration-prd.md#4-navigation-architecture)
+keep a consolidated view distinct from ownership. They do not supply new metric
+formulas or actual assignments. The proposed display, read orchestration and
+navigation below are explicit reversible product/technical choices under #990,
+not new Iurie answers, permission bundles or a numbered decision.
+
+User stories for this bounded view:
+
+1. As a reader of several Companies, I want the same three known summaries grouped
+   by Company, so that I can locate work without confusing its owner.
+2. As a restricted reader, I want each Company and summary qualified independently,
+   so that another Company's access cannot expose records or counts.
+3. As a reader, I want the date and load state of each row, so that partial or
+   independently refreshed results cannot be mistaken for one synchronized report.
+4. As a reader, I want a summary to open its existing Company-specific list through
+   the normal context switch, so that further actions retain one explicit owner.
+5. As a keyboard or mobile user, I want labelled navigation, preserved focus and
+   recovery in my interface language, so that this view works on either viewport.
+
+Only **Active Clients**, **Open Projects** and **Overdue Tasks** are included.
+Their formulas, record sets, permissions and drill-downs remain exactly §17.2.
+The view stores no business state and computes no global total, deduplicated
+Client count, ranking, urgency, financial measure or pilot-comparison score.
+One shared Client may contribute to two independent Company counts; those counts
+are never added or presented as a Workspace Client total.
+
+### 23.2 Reader, Company discovery and authority
+
+The entry is an explicitly named **All Companies summaries** action inside the
+existing operational Home availability gate. Its presence does not create Home
+access for an actor with no active Company or none of §17's summary reads. A user
+with one eligible Company may open the view; no named manager, identity or minimum
+number of Companies is an authorization condition.
+
+Candidate Companies come only from the current server-authorized Company list
+in the same Workspace. Preserve that owner's complete active visible set and
+order; do not hard-code PRISMA-PRIM, BIC, ECG or silently truncate the set. Company
+context access permits discovery, never a summary by itself. For each candidate,
+resolve the current actor for that exact Company through the existing Access
+boundary, then evaluate the same underlying read gates as ordinary Home. Never
+copy the working Company's permission arrays or captured assignments onto a
+sibling Company. The server revalidates each subsequent business read.
+
+| Item                       | Required existing authority                                                             | Observable absence                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Candidate Company identity | Existing Company-list visibility in the current Workspace                               | No Company row, identifier, hidden count or discovery attempt from a guessed identifier |
+| Company summary row        | Current Company context and at least one of §17's owning summary reads for that Company | Omit the row when qualification proves none                                             |
+| Individual summary         | Its exact §17.2 owning read for that Company                                            | Omit it without zero, placeholder, permission explanation or inferred count             |
+| Drill-down                 | Fresh Company selection plus the destination's current owning read                      | No destination content from a failed selection or lost read                             |
+
+No global dashboard/aggregate grant is introduced or inferred. Workspace
+administration, membership, Company context, a business title and another Company's
+grants confer no additional summary permission. This is a proposal to compose
+independently authorized existing reads, not a replacement for the Authorization
+PRD's unresolved broader first-tenant role matrix or exceptional-access policy.
+
+### 23.3 Read composition, dates and independent failures
+
+Opening the view mounts a read-only, Home-local region without itself invoking
+Company selection. Each qualified Company's existing no-query operational Home
+read uses that Company's request context; it does not select that Company globally or add
+an `all` ownership value. Reuse the owning response validation and exact Company
+binding. Show only the three summary kinds above, in §17.2 order; existing attention
+or other Home regions are not promoted into this view.
+
+Each Company read retains §17.1's one server-sampled instant, operational date in
+`Europe/Chisinau` and one owning repeatable-read snapshot. Show the returned date
+beside its Company row, localized without changing its exact calendar meaning.
+Separate Companies and retries are separate reads: they need not share an instant,
+snapshot or calendar date. In particular, reads across server midnight may show
+different dates. Do not invent a common "today", last-updated timestamp or frozen
+comparison, and do not calculate due dates from the browser clock.
+
+Loading, genuine zero, unavailable and denied are different:
+
+- Initial Company discovery has loading, no visible Companies and retryable failure
+  states. A failure shows no retained counts and never claims an empty Workspace.
+- During per-Company authority qualification, do not publish counts or summary
+  placeholders. A transient qualification failure may identify only Company
+  metadata already returned by discovery, with neutral load-failure/retry wording;
+  it must not assert a summary permission or presence of business records.
+- After positive qualification, the row may show its permitted summaries loading.
+  A successful count of zero is displayed as zero and its existing empty list may
+  be opened. Omitted summaries stay omitted.
+- The existing operational Home read is atomic within one Company: a non-authority
+  failure makes that row unavailable and clears its old counts/date/actions. Do not
+  invent independently successful blocks from a failed whole response. Other
+  Companies' successful rows remain usable with their own dates and states.
+- Company-context denial removes its row and revalidates candidate visibility;
+  loss of one summary read removes that block after current qualification, without
+  turning it into zero. Session rejection retires the whole view through the
+  existing authentication owner. Malformed, foreign or inconsistent responses
+  expose no counts or destination actions and produce safe retryable failure.
+- **Retry Company** requalifies and reloads only that Company. **Refresh view**
+  retires prior counts, refreshes discovery and qualifies all current candidates
+  anew. Requests use bounded execution rather than unbounded fan-out; a future
+  runtime issue must name and verify its finite scheduling choice. There is no
+  automatic polling, background refresh or locale-triggered read.
+
+When discovery and qualification succeed but no Company has a readable summary,
+use one neutral no-available-summaries state, not "no work" or a hidden-row total.
+Partial or total transient failure cannot be relabelled as this genuine state.
+No Activity event, receipt, business version, fence change, notification, export,
+provider call or persistent dashboard model is created.
+
+### 23.4 Retirement and existing drill-downs
+
+Opening, retrying or refreshing this region does not call the global Company
+selector merely to collect data. The working Company, any independent native
+draft and pending/uncertain command retain their existing owners and lifetimes.
+Preservation means causal non-interference from opening, collecting, staging its
+confirmation or cancelling this view. Independent owners may still complete
+operations, recover or retire state under current authority. Never freeze or
+restore an old Actor, draft or command for visual continuity.
+
+Closing, a newer read of the same Company, changed Company discovery, identity,
+session, Workspace, membership or consumed authority retires the affected results.
+An observed captured assignment replacement retires its consumer even when the
+permission strings are equal. Retired success and denial replies cannot restore
+old rows, overwrite newer state, reject a newer session or trigger navigation,
+including when transport ignores abort and during Company A→B→A transitions.
+No authority projection is a durable permission cache. A current denial rechecks
+the affected authority through the existing recovery owner; it does not replay a
+stale captured actor into the global shell or clear unrelated valid work.
+
+Choosing a summary stages its exact Company and destination in a local,
+deliberately confirmed drill-down. Before any Company selection, show the
+named Company and destination with Continue and Cancel. Cancel closes only
+that staged confirmation, restores focus to its summary action when still
+available, and initiates no Company selection, navigation, authority refresh
+or business request. Staging the confirmation and Cancel do not themselves change
+the working Company or reset independent native drafts and pending/uncertain
+commands. Normal owner progress and current authority/session invalidation remain
+in force. This bounded confirmation does not inspect dirty state or introduce a
+global unsaved-work policy.
+
+Continue alone invokes the normal Company-selection owner with the exact
+staged Company and destination. Preserve its current pending/failed behavior
+and any warnings actually supplied by that owner; no existing global warning
+is assumed. A stale/retired confirmation cannot continue. Cancel initiates no
+selection. A failed, denied or retired selection never opens the staged
+destination; retain the selector's actual recovery and privacy-retirement
+semantics, including removal of active Company or session/Workspace access when
+required. Never restore the previous Actor or Company for visual continuity.
+Only a successful, still-current selection with revalidated destination
+authority opens:
+
+- Active Clients → the existing Company Client directory;
+- Open Projects → the existing default Company Project list without Client filter;
+- Overdue Tasks → the existing Company overdue-Task list and its complete pages.
+
+The destination reads current state under its own owner; a changed date, record
+or access may legitimately change its total. Do not promise equality between
+different read instants. A selected Company's delayed continuation cannot open
+after close, another selection, session or authority retirement. Creation or
+mutation remains inside the destination's ordinary single-Company workflow.
+
+### 23.5 Presentation, localization and accessibility
+
+Keep Workspace, the working Company and the consolidated viewing label distinct.
+Each row/card has a Company heading, its returned date, labelled summary actions
+and an associated state/retry action. Preserve discovery order without sorting
+Companies by values. Use the existing Prisme design and semantic controls;
+reflow vertically at narrow widths without horizontal overflow or hiding a
+Company attribution. Keyboard order follows the visual order. Names distinguish
+the same summary or Retry action in different Companies without duplicated IDs;
+loading/error announcements do not move focus on asynchronous row completion.
+Close restores focus to the opening action when it still exists; retirement uses
+the existing safe focus recovery when it does not.
+
+The UX PRD §7 owns Romanian default/fallback and Romanian, Russian, French and
+English interface coverage. All new labels, dates, counts, accessible names,
+loading, empty and error wording follow it with required-key checks. Literal
+Company and business names remain unchanged. A locale-only change does not itself
+reset rows, pending reads, focus or navigation intent, initiate network I/O or
+change Company. Normal independent replies, owner progress and current authority
+retirement still apply.
+
+### 23.6 Future acceptance and readiness
+
+Use the existing public App composition with real locale/provider composition
+and HTTP-boundary doubles for deterministic read/retirement/navigation order;
+use PostgreSQL REST for genuine per-Company authority, count sets and dates, then
+the registered real App/API/disposable-PostgreSQL journey at desktop1440/narrow390
+with inspected original screenshots. No fixture-only display proves runtime.
+
+The future acceptance contract must cover:
+
+1. At least two eligible Companies with unequal counts, a shared Client and an
+   independently context-visible Company with no summary read. Exact §17 formulas
+   and omission hold, including due today/undated/closed Tasks and preparatory,
+   completed or cancelled Projects under their current owner definitions.
+2. Company-only actors, distinct owning reads, no assignments, unknown captures,
+   revoked/deactivated context, foreign Workspace and guessed Company identifiers.
+   Prove no hidden Company, title, count, zero or implied permission is published.
+3. Discovery failure, qualification failure, one Company failure beside a healthy
+   Company, genuine zeros, safe malformed refusal, targeted retry and explicit
+   refresh. Separate server dates across midnight stay attributable to their rows.
+4. Held old success and denial, newer retry, close/reopen, Company A→B→A,
+   identity/session/Workspace changes, equal-permission capture replacement and
+   current authority loss. Include positive controls preserving unrelated drafts
+   and current results; cancellation alone is not stale-reply proof.
+5. Exact Client/Project/overdue-Task drill-down with deliberate Continue/Cancel
+   before Company selection, failed/retired selection and authority loss before
+   destination. Prove staging confirmation and Cancel do not reset an existing
+   independent native draft or pending/uncertain command and cause zero
+   selection/navigation/authority-refresh/business requests. Hold independent
+   work with unchanged authority to prove those inputs and intents remain intact;
+   separately prove normal independent completion/recovery and required current
+   authority/session/Workspace retirement proceed without stale restoration.
+   Failed/denied selection retains its owner's actual resulting state and opens
+   no staged destination. No global Company selection occurs during collection;
+   only the explicit current Continue may select.
+6. Four locales, long names/diacritics/Cyrillic, keyboard/focus, distinct accessible
+   names, complete reachable rows and no overflow at both widths. Locale-only
+   changes preserve literal content and perform no I/O.
+
+This issue prepares documentation only; its bounded product disposition is recorded
+above. Before any runtime child is created, the contract must be canonical on
+main and pass all [ticket-readiness gates](specification-and-ticketing-standard.md#8-ready-for-agent-gates)
+against fresh code and ownership. A runtime ticket must fix its finite request
+scheduling, test inputs and acceptance scope without widening the three metrics.
+
+The current single-Company Actor projection and App's Company-selection,
+authenticated-request recovery and authority lifetimes are consumed seams, not
+a pre-existing consolidated dashboard. [PR984/#972](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/984)
+also changes these seams. Its owner must finish or explicitly hand off any shared
+runtime work before an overlapping child starts; a prepared source is not delivery.
+Other open Company-context/recovery owners must be checked at that later frontier.
+This documentation introduces no schema, migration, runtime endpoint, permission,
+real assignment or implementation-ready child and earns no whole-dashboard or
+MVP completion credit. Broader role journeys, new metrics, consolidated attention/
+approval queues, money, audits/trainings, urgency, reminders and pilot evaluation
+remain separately deferred under their owners.

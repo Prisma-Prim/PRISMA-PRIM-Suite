@@ -1,3 +1,4 @@
+import { knowledgeSourceEvents } from '../database/schema/index.js';
 import { activityReadableDocuments } from './activity-readable-documents.js';
 import { missionPlanVersions } from '../database/schema/mission-plan.js';
 import { readMemberAuthority } from '../access/member-authority.js';
@@ -1429,6 +1430,34 @@ export class AccountabilityService {
   }
 
   // Internal restricted recording only: no generic Activity/Home target exists.
+  async recordKnowledgeSourceEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    sourceId: string;
+    revision: number;
+    action: 'drafted' | 'admitted' | 'revoked';
+    commandFingerprint: string;
+    recordedAt: Date;
+  }): Promise<void> {
+    const [event] = await this.databaseContext.connection
+      .insert(knowledgeSourceEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        sourceId: input.sourceId,
+        revision: input.revision,
+        action: input.action,
+        commandFingerprint: input.commandFingerprint,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorDisplayName: input.actor.displayName,
+        recordedAt: input.recordedAt,
+      })
+      .returning({ id: knowledgeSourceEvents.id });
+    if (!event)
+      throw new Error('The restricted source event was not recorded.');
+  }
+
   async recordOperationalRiskEvent(
     input: {
       actor: ActorContext;
@@ -3454,6 +3483,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_profitability_contributor_assignment.revoked':
     case 'company_profitability_director_assignment.granted':
     case 'company_profitability_director_assignment.revoked':
+    case 'company_knowledge_source_administrator_assignment.granted':
+    case 'company_knowledge_source_administrator_assignment.revoked':
+    case 'company_knowledge_evidence_reader_assignment.granted':
+    case 'company_knowledge_evidence_reader_assignment.revoked':
     case 'company_operational_risk_reader_assignment.granted':
     case 'company_operational_risk_reader_assignment.revoked':
     case 'company_operational_risk_recorder_assignment.granted':
