@@ -5,6 +5,7 @@ import {
   render,
   screen,
   within,
+  waitFor,
 } from './test/render-with-interface-locale';
 import { App } from './App';
 import { deterministicBrowserIdentity } from './access-composition';
@@ -105,6 +106,7 @@ it('opens the native next action from the actual App, preserves exact uncertain 
   const editor = await within(panel).findByRole('textbox', {
     name: 'Next action',
   });
+  await waitFor(() => expect(editor).toBeEnabled());
   fireEvent.change(editor, {
     target: { value: '  Waiting for Client documents.  ' },
   });
