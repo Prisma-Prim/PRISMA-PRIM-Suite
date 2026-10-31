@@ -1,0 +1,174 @@
+{
+  "schema": "prisma-prim-failed-evidence-publication/v1",
+  "pr": 998,
+  "run": "failed-run002-20261030",
+  "ref": "local-evidence/pr-998/9a4bc00adc0932d23f57c6250ab7b11ae954b028-failed-run002-20261030",
+  "source": "9a4bc00adc0932d23f57c6250ab7b11ae954b028",
+  "base": "ecb7edf42e90a39d44bda2e01c2cc607ac1a4b4e",
+  "integration_commit": "68c52f54b6fc408259c8d60b6c21e653ed063c19",
+  "integration_tree": "48b932bb2ace94acd17108516daa15690eaffdf5",
+  "canonical_status": "failed",
+  "canonical_mode": "complete",
+  "native_managed_outer_exit": 1,
+  "passed_families": 15,
+  "failed_families": [
+    "packaging"
+  ],
+  "full_failed_count": 2,
+  "merge_eligible": false,
+  "canonical_artifact_count": 2608,
+  "complete_originals": "Retained unchanged locally; this is selected/sanitized inspection evidence, not the full inventory or a passing validation.",
+  "limits": {
+    "total_bytes": 20971520,
+    "blob_bytes": 5242880
+  },
+  "retention": "While needed by the open PR/review and at least14 days after any later merge; never merge this ref into product.",
+  "files": [
+    {
+      "path": "report.md",
+      "bytes": 3533,
+      "sha256": "1d8aec6c3b0b9a920f16b49094ca8c4912b28aeea30b9b759b3e2e6efc6af775",
+      "copy_kind": "selected-sanitized-canonical-failed-run-copy",
+      "selection_reason": "Canonical failed-run report/manifest. Only the explicitly listed local-path aliases and host-kernel omission differ; source/base/tree, inputs, results, flags, times and artifact hashes are preserved.",
+      "original_path": "report.md",
+      "original_bytes": 3607,
+      "original_sha256": "b2cd0d4b4d72aad607ccfa485454894004928fd610d19fe9c56acf063493dea0",
+      "sanitization_operations": [
+        {
+          "kind": "local-path-prefix-alias",
+          "alias": "<verification-output>",
+          "occurrences": 2
+        }
+      ]
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 1015996,
+      "sha256": "98ddb304d2304363e4cdb32b579b4ab1056e6affc6afec6599753d0c1767cf5e",
+      "copy_kind": "selected-sanitized-canonical-failed-run-copy",
+      "selection_reason": "Canonical failed-run report/manifest. Only the explicitly listed local-path aliases and host-kernel omission differ; source/base/tree, inputs, results, flags, times and artifact hashes are preserved.",
+      "original_path": "manifest.json",
+      "original_bytes": 1016121,
+      "original_sha256": "0eff426baf82ce57701212953494eddfa05271a7826ec4f6f1404651c70e6143",
+      "sanitization_operations": [
+        {
+          "kind": "local-path-prefix-alias",
+          "alias": "<verification-output>",
+          "occurrences": 2
+        },
+        {
+          "kind": "local-path-prefix-alias",
+          "alias": "<pnpm-home>",
+          "occurrences": 1
+        },
+        {
+          "kind": "local-path-prefix-alias",
+          "alias": "<browser-cache>",
+          "occurrences": 1
+        },
+        {
+          "kind": "nonessential-host-metadata",
+          "field": "versions.kernel",
+          "replacement": "<host-kernel-omitted>"
+        }
+      ]
+    },
+    {
+      "path": "captures/desktop/client-document-navigation-desktop-prisme.png",
+      "bytes": 102027,
+      "sha256": "fc61fb862ca2ad90c89244db37494ab767bbaf327640c55fb5a557d8c6aad7b1",
+      "copy_kind": "selected-exact-current-run-original",
+      "selection_reason": "Selected synthetic rendering capture, actually viewed by delivery coordinator and independent root. See README for seam, viewport and focus/probe qualifications.",
+      "original_path": "browser-evidence/acceptance/client-document-navigation-19b30-the-real-API-and-PostgreSQL-operational-acceptance-desktop/client-document-navigation-desktop-prisme.png",
+      "original_bytes": 102027,
+      "original_sha256": "fc61fb862ca2ad90c89244db37494ab767bbaf327640c55fb5a557d8c6aad7b1"
+    },
+    {
+      "path": "captures/desktop/client-documents-history-desktop.png",
+      "bytes": 85670,
+      "sha256": "f9d8663d17b947638714569f3f7a2d5dd4212d9d12e0c18a546a307d98a6da54",
+      "copy_kind": "selected-exact-current-run-original",
+      "selection_reason": "Selected synthetic rendering capture, actually viewed by delivery coordinator and independent root. See README for seam, viewport and focus/probe qualifications.",
+      "original_path": "browser-evidence/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-history-desktop.png",
+      "original_bytes": 85670,
+      "original_sha256": "f9d8663d17b947638714569f3f7a2d5dd4212d9d12e0c18a546a307d98a6da54"
+    },
+    {
+      "path": "captures/desktop/client-documents-content-denied-desktop.png",
+      "bytes": 61660,
+      "sha256": "1e4f50eec563f5c67ce4bfac8d78da74d9e7345d3d761cf21d1904da8798c6a2",
+      "copy_kind": "selected-exact-current-run-original",
+      "selection_reason": "Selected synthetic rendering capture, actually viewed by delivery coordinator and independent root. See README for seam, viewport and focus/probe qualifications.",
+      "original_path": "browser-evidence/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-desktop/client-documents-content-denied-desktop.png",
+      "original_bytes": 61660,
+      "original_sha256": "1e4f50eec563f5c67ce4bfac8d78da74d9e7345d3d761cf21d1904da8798c6a2"
+    },
+    {
+      "path": "captures/narrow/client-document-navigation-narrow-prisme.png",
+      "bytes": 57752,
+      "sha256": "0fb565e4e272d173ca5d800c4d84468feb0b603092aca4bdfcbbb586b38bae32",
+      "copy_kind": "selected-exact-current-run-original",
+      "selection_reason": "Selected synthetic rendering capture, actually viewed by delivery coordinator and independent root. See README for seam, viewport and focus/probe qualifications.",
+      "original_path": "browser-evidence/acceptance/client-document-navigation-19b30-the-real-API-and-PostgreSQL-operational-acceptance-narrow/client-document-navigation-narrow-prisme.png",
+      "original_bytes": 57752,
+      "original_sha256": "0fb565e4e272d173ca5d800c4d84468feb0b603092aca4bdfcbbb586b38bae32"
+    },
+    {
+      "path": "captures/narrow/client-documents-history-narrow.png",
+      "bytes": 77080,
+      "sha256": "9fd4c25875cd1fc4d4befe959591f459b85fcecc94c55070b2720b97e4805e57",
+      "copy_kind": "selected-exact-current-run-original",
+      "selection_reason": "Selected synthetic rendering capture, actually viewed by delivery coordinator and independent root. See README for seam, viewport and focus/probe qualifications.",
+      "original_path": "browser-evidence/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-narrow/client-documents-history-narrow.png",
+      "original_bytes": 77080,
+      "original_sha256": "9fd4c25875cd1fc4d4befe959591f459b85fcecc94c55070b2720b97e4805e57"
+    },
+    {
+      "path": "captures/narrow/client-documents-content-denied-narrow.png",
+      "bytes": 55976,
+      "sha256": "30d96b4535956721b305a0b85fbbb6978a1c4ba9efc55e6ae18dbf17471a2428",
+      "copy_kind": "selected-exact-current-run-original",
+      "selection_reason": "Selected synthetic rendering capture, actually viewed by delivery coordinator and independent root. See README for seam, viewport and focus/probe qualifications.",
+      "original_path": "browser-evidence/acceptance/client-documents.acceptanc-0ff27-ved-Version-and-PDF-history-operational-acceptance-narrow/client-documents-content-denied-narrow.png",
+      "original_bytes": 55976,
+      "original_sha256": "30d96b4535956721b305a0b85fbbb6978a1c4ba9efc55e6ae18dbf17471a2428"
+    },
+    {
+      "path": "captures/probe/test-failed-1.png",
+      "bytes": 9319,
+      "sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb",
+      "copy_kind": "selected-exact-current-run-original",
+      "selection_reason": "Selected synthetic rendering capture, actually viewed by delivery coordinator and independent root. See README for seam, viewport and focus/probe qualifications.",
+      "original_path": "browser-evidence/acceptance-evidence-probe/client-registration-eviden-81193-nal-Client-evidence-failure-capture-proof/test-failed-1.png",
+      "original_bytes": 9319,
+      "original_sha256": "34fdf9f6255ba32c8ee56244d38b1eb3cd5208f11360d228779627bc28c733fb"
+    },
+    {
+      "path": "packaging-terminal-excerpt.txt",
+      "bytes": 497,
+      "sha256": "01f53a1534a3d2d689fae5eac6835d92603845e0ccc92e5fd7e81379187a3cac",
+      "copy_kind": "selected-terminal-excerpt",
+      "selection_reason": "Bounded actual ENOSPC failure observation; complete original retained locally. No earlier rejected web diagnostic is included.",
+      "original_path": "logs/packaging.log",
+      "original_bytes": 12129,
+      "original_sha256": "5f73054d74f8f4592c7643bcaed26c1ed3347fa489b95ebc16c2f2b7d1aa9132"
+    },
+    {
+      "path": "native-result.json",
+      "bytes": 1400,
+      "sha256": "8de02bb7ba0f7ca0ffa27f6c03f15d72c1768f2f4c495406dc8314ccd5c2af68",
+      "copy_kind": "qualified-selected-native-result",
+      "selection_reason": "Minimal qualified actual outer-exit/source guard summary; private PID/session/ownership dumps are omitted. Original wrong static tree label is disclosed and preserved.",
+      "original_path": "native-exit-002.json",
+      "original_bytes": 507,
+      "original_sha256": "66fe7812f52417d28ae58dcaa2e21388db677ce5d3c4e36f31bb5213a6ff54c0"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4145,
+      "sha256": "a673d38e5f5de633599850f663234a2e0e2be1ff4b6fdcfad1875c97ee28ae4b",
+      "copy_kind": "publication-generated-context",
+      "selection_reason": "Explicit failure, selection, sanitization, synthetic seams, focus/probe caveats and retention context."
+    }
+  ]
+}

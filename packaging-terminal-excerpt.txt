@@ -1,0 +1,8 @@
+Selected three terminal lines from the original packaging log; not the complete log.
+Both API/web image builds and the production PDF smoke completed earlier.
+The missing-Clerk-setting message earlier in the log belongs to its intentional negative control.
+The actual failure below occurred during the first packaged migration.
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file '/app/apps/api/drizzle.config.ts'
+ENOSPC: no space left on device, mkdir '/tmp/tsx-1000'

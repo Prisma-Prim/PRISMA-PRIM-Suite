@@ -1,0 +1,24 @@
+{
+  "schema": "prisma-prim-native-failed-run-summary/v1",
+  "run": "failed-run002",
+  "source": "9a4bc00adc0932d23f57c6250ab7b11ae954b028",
+  "base": "ecb7edf42e90a39d44bda2e01c2cc607ac1a4b4e",
+  "integration_commit": "68c52f54b6fc408259c8d60b6c21e653ed063c19",
+  "integration_tree": "48b932bb2ace94acd17108516daa15690eaffdf5",
+  "started_at": "2026-10-30T20:57:25Z",
+  "finished_at": "2026-10-30T22:18:16.025115+00:00",
+  "actual_managed_outer_exit": 1,
+  "owned_lifecycle_cleanup": "Managed runner completed its awaited owned cleanup; no cleanup-failure diagnostic was emitted.",
+  "source_inputs_unchanged": 1965,
+  "integration_inputs_unchanged": 1968,
+  "clean_source_and_integration": true,
+  "full_failed_runs": 2,
+  "further_full_runs": "Paused pending an identified correction or genuinely restored prerequisite; no complete verification pass.",
+  "raw_native_receipt_sha256": "66fe7812f52417d28ae58dcaa2e21388db677ce5d3c4e36f31bb5213a6ff54c0",
+  "raw_receipt_tree_label_erratum": {
+    "original_literal": "feac78cbb7e97b9baeeefd52bc00255f7d177a7e",
+    "actual_canonical_tree": "48b932bb2ace94acd17108516daa15690eaffdf5",
+    "qualification": "The wrapper static receipt tree label was incorrect. The original receipt remains intact; launch record, actual clean checkout and canonical provenance agree on the actual tree above. Native exit1 is unchanged."
+  },
+  "merge_eligible": false
+}
