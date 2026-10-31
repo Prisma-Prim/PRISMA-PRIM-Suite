@@ -36,7 +36,7 @@ function permissions(value: unknown) {
   };
 }
 it.skipIf(!process.env.TEST_DATABASE_URL)(
-  'upgrades genuine populated published parent / 0090 twice, conserves every full row, old nested receipt and PDF, then retains a new declaration through two application restarts',
+  'upgrades genuine populated delivered main / 0090 twice, conserves every full row, old nested receipt and PDF, then retains a new declaration through two application restarts',
   async () => {
     const url = process.env.TEST_DATABASE_URL;
     if (!url) throw new Error('PostgreSQL required.');
@@ -53,7 +53,7 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
     expect(createHash('sha256').update(contextBytes).digest('hex')).toBe(
       provenance.contextSha256,
     );
-    expect(c.source).toBe('f9928112d28b819cde6149f4af8a643e088c2dbf');
+    expect(c.source).toBe('d1f0efde6f07b1d1276ec6628ef3923dc47f1a49');
     expect(c.predecessor).toBe('0090_mission_applicability');
     const database = await createIsolatedPostgresTestDatabase({
       baseDatabaseUrl: url,

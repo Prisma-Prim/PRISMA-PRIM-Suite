@@ -1,10 +1,10 @@
 {
-  "source": "f9928112d28b819cde6149f4af8a643e088c2dbf",
-  "tree": "6d89aca1357c3ac9123ba3a86fbdfed4e26211a8",
+  "source": "d1f0efde6f07b1d1276ec6628ef3923dc47f1a49",
+  "tree": "5166a27e4fddeadab186ae69db6f34b4eda441cf",
   "predecessor": "0090_mission_applicability",
-  "method": "Restored the genuine populated0088 fixture and applied the published parent f992 Knowledge0089/applicability0090 journal before constructing its matching compiled old application. Actual public commands populated single/group/nested receipts, union, applicability and governed Knowledge/PDF with both capturedv1 grants. Closed old app before native pg_dump; no NextAction0091/current-child ORM or disabled guards. All data and rights declarations are synthetic; scanner is an owned TCP fixture. This is provisional stacked-parent evidence, requiring refresh after actual parent delivery.",
-  "backupSha256": "422a68b48f17b1374ba37ba71eb1a8986c53ad216b3f214aa9f11aa05555567c",
-  "contextSha256": "50dc7ed8d0b2e3d61e52208e21acc848f78c8492fcd42e64ceca19b9c9c96cbf",
+  "method": "Restored the genuine populated0088 fixture and applied the actual delivered main Knowledge0089/applicability0090 journal before constructing its matching compiled old application. Actual public commands populated single/group/nested receipts, union, applicability and governed Knowledge/PDF with both capturedv1 grants. Closed old app before native pg_dump; no NextAction0091/current-child ORM or disabled guards. All data and rights declarations are synthetic; scanner is an owned TCP fixture. The matching old application is bound to the verified actual delivered main source/tree and compiled input SHA-256 manifest; generation is performed only after actual parent delivery. The synthetic old application and upgrade probe share the explicit 2026-10-31T12:00:00Z logical clock. No NextAction successor was present.",
+  "backupSha256": "84d76ead9bb1f13a686e2f266bb14df55189fd7211dce8688ed194b8c177e900",
+  "contextSha256": "23c6bc8533607e825aa9408034b0d6c884e64fe941163ae4dc3b5dc0c63d76e4",
   "counts": {
     "projects": 5,
     "results": 1,

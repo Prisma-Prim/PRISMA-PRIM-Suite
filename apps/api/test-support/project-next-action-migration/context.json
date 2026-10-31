@@ -1,5 +1,5 @@
 {
-  "source": "f9928112d28b819cde6149f4af8a643e088c2dbf",
+  "source": "d1f0efde6f07b1d1276ec6628ef3923dc47f1a49",
   "predecessor": "0090_mission_applicability",
   "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
   "membershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -706,14 +706,14 @@
       "receipt": {
         "action": "recorded",
         "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
-        "factId": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
+        "factId": "5e566bdd-9dc8-4ad7-9bf0-807c6092f1f6",
         "applicabilityRevision": 1
       },
       "status": 201,
       "replay": {
         "action": "recorded",
         "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
-        "factId": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
+        "factId": "5e566bdd-9dc8-4ad7-9bf0-807c6092f1f6",
         "applicabilityRevision": 1
       }
     },
@@ -724,7 +724,7 @@
         "title": "Old grouped Task 0 DEMO"
       },
       "receipt": {
-        "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+        "id": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -734,8 +734,8 @@
         "dueDate": null,
         "priority": "normal",
         "version": 1,
-        "createdAt": "2026-10-31T09:39:14.286Z",
-        "updatedAt": "2026-10-31T09:39:14.286Z",
+        "createdAt": "2026-10-31T11:38:43.805Z",
+        "updatedAt": "2026-10-31T11:38:43.805Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -751,13 +751,13 @@
         "dueDate": null,
         "priority": "normal",
         "description": null,
-        "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+        "id": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
         "version": 1,
-        "createdAt": "2026-10-31T09:39:14.286Z",
-        "updatedAt": "2026-10-31T09:39:14.286Z",
+        "createdAt": "2026-10-31T11:38:43.805Z",
+        "updatedAt": "2026-10-31T11:38:43.805Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -774,7 +774,7 @@
         "title": "Old grouped Task 1 DEMO"
       },
       "receipt": {
-        "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+        "id": "cc3878ab-07a1-423f-b29f-4677e803295c",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -784,8 +784,8 @@
         "dueDate": null,
         "priority": "normal",
         "version": 1,
-        "createdAt": "2026-10-31T09:39:14.325Z",
-        "updatedAt": "2026-10-31T09:39:14.325Z",
+        "createdAt": "2026-10-31T11:38:43.845Z",
+        "updatedAt": "2026-10-31T11:38:43.845Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -801,13 +801,13 @@
         "dueDate": null,
         "priority": "normal",
         "description": null,
-        "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+        "id": "cc3878ab-07a1-423f-b29f-4677e803295c",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
         "version": 1,
-        "createdAt": "2026-10-31T09:39:14.325Z",
-        "updatedAt": "2026-10-31T09:39:14.325Z",
+        "createdAt": "2026-10-31T11:38:43.845Z",
+        "updatedAt": "2026-10-31T11:38:43.845Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -823,13 +823,13 @@
       "body": {
         "tasks": [
           {
-            "taskId": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+            "taskId": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
             "expectedVersion": 1,
             "assigneeMembershipId": null,
             "dueDate": "2026-11-02"
           },
           {
-            "taskId": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+            "taskId": "cc3878ab-07a1-423f-b29f-4677e803295c",
             "expectedVersion": 1,
             "assigneeMembershipId": null,
             "dueDate": "2026-11-09"
@@ -841,7 +841,7 @@
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "tasks": [
           {
-            "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+            "id": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -851,8 +851,8 @@
             "dueDate": "2026-11-02",
             "priority": "normal",
             "version": 2,
-            "createdAt": "2026-10-31T09:39:14.286Z",
-            "updatedAt": "2026-10-31T09:39:14.380Z",
+            "createdAt": "2026-10-31T11:38:43.805Z",
+            "updatedAt": "2026-10-31T11:38:43.908Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -862,7 +862,7 @@
             "completion": null
           },
           {
-            "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+            "id": "cc3878ab-07a1-423f-b29f-4677e803295c",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -872,8 +872,8 @@
             "dueDate": "2026-11-09",
             "priority": "normal",
             "version": 2,
-            "createdAt": "2026-10-31T09:39:14.325Z",
-            "updatedAt": "2026-10-31T09:39:14.369Z",
+            "createdAt": "2026-10-31T11:38:43.845Z",
+            "updatedAt": "2026-10-31T11:38:43.921Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -895,13 +895,13 @@
             "dueDate": "2026-11-02",
             "priority": "normal",
             "description": null,
-            "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+            "id": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
             "version": 2,
-            "createdAt": "2026-10-31T09:39:14.286Z",
-            "updatedAt": "2026-10-31T09:39:14.380Z",
+            "createdAt": "2026-10-31T11:38:43.805Z",
+            "updatedAt": "2026-10-31T11:38:43.908Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -916,13 +916,13 @@
             "dueDate": "2026-11-09",
             "priority": "normal",
             "description": null,
-            "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+            "id": "cc3878ab-07a1-423f-b29f-4677e803295c",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
             "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
             "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
             "version": 2,
-            "createdAt": "2026-10-31T09:39:14.325Z",
-            "updatedAt": "2026-10-31T09:39:14.369Z",
+            "createdAt": "2026-10-31T11:38:43.845Z",
+            "updatedAt": "2026-10-31T11:38:43.921Z",
             "createdBy": {
               "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
               "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -938,9 +938,9 @@
       "path": "/knowledge/sources",
       "key": "old-knowledge-draft",
       "body": {
-        "documentId": "b152a9e3-0169-418e-9979-1b1fcdacc782",
-        "documentVersionId": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
-        "representationId": "d243981a-e802-4e8d-aa28-875cd04871ab",
+        "documentId": "67ef6a36-d6cc-4597-a1f5-5fd56569e38c",
+        "documentVersionId": "48d38555-9954-48eb-aa61-14dedc80ff01",
+        "representationId": "0c4de83d-7753-487f-8c4c-478ed62dba5b",
         "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
         "language": "en",
         "ownerReference": "Fictional source owner",
@@ -957,44 +957,44 @@
         ]
       },
       "receipt": {
-        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "sourceId": "f81203e1-2acc-42de-b9ef-9bab5c10f5b6",
         "revision": 1,
         "state": "draft",
         "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
-        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+        "projectionSha256": "6952a0b1bfd22bc84af4df4c71880af3b84ed64a1a8da17155cfb19a27faadf6"
       },
       "status": 201,
       "replay": {
-        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "sourceId": "f81203e1-2acc-42de-b9ef-9bab5c10f5b6",
         "revision": 1,
         "state": "draft",
         "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
-        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+        "projectionSha256": "6952a0b1bfd22bc84af4df4c71880af3b84ed64a1a8da17155cfb19a27faadf6"
       }
     },
     {
-      "path": "/knowledge/sources/f1008f61-d6a5-4515-9a03-3e43377a3b13/admission",
+      "path": "/knowledge/sources/f81203e1-2acc-42de-b9ef-9bab5c10f5b6/admission",
       "key": "old-knowledge-admit",
       "body": {
         "expectedRevision": 1,
         "attestation": "exact-version-source-and-use-reviewed/v1",
         "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
-        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+        "projectionSha256": "6952a0b1bfd22bc84af4df4c71880af3b84ed64a1a8da17155cfb19a27faadf6"
       },
       "receipt": {
-        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "sourceId": "f81203e1-2acc-42de-b9ef-9bab5c10f5b6",
         "revision": 2,
         "state": "admitted",
         "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
-        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+        "projectionSha256": "6952a0b1bfd22bc84af4df4c71880af3b84ed64a1a8da17155cfb19a27faadf6"
       },
       "status": 200,
       "replay": {
-        "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+        "sourceId": "f81203e1-2acc-42de-b9ef-9bab5c10f5b6",
         "revision": 2,
         "state": "admitted",
         "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
-        "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a"
+        "projectionSha256": "6952a0b1bfd22bc84af4df4c71880af3b84ed64a1a8da17155cfb19a27faadf6"
       }
     }
   ],
@@ -1085,21 +1085,21 @@
         "missionApplicabilityProposalPermissions": [
           "project.mission_applicability.propose"
         ],
-        "missionApplicabilityCoordinatorAssignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
+        "missionApplicabilityCoordinatorAssignmentId": "12261b6e-1f86-4dbd-b59c-a8e4cc6d9b3e",
         "missionApplicabilityCoordinatorPermissionSetVersion": "v1",
-        "clientPermissionAssignmentId": "efde75a3-28db-49e6-ba9d-1faebded768f",
+        "clientPermissionAssignmentId": "9d2591d5-aa33-4a10-8cf8-d3d7a03ac7f0",
         "clientPermissionSetVersion": "v2",
-        "documentContentUploaderAssignmentId": "1b883ab6-dcc2-4b6e-9fe8-e5c9cfc47d90",
+        "documentContentUploaderAssignmentId": "739c8b20-416d-4aef-bb75-8bb9c1175355",
         "documentContentUploaderPermissionSetVersion": "v1",
         "knowledgeGrants": [
           {
             "bundle": "company_knowledge_source_administrator",
-            "assignmentId": "3882e70e-7768-46c1-9ecc-dcaac58056d4",
+            "assignmentId": "ba7e57b8-574c-4f4d-ba0b-edfb23be7af0",
             "permissionSetVersion": "v1"
           },
           {
             "bundle": "company_knowledge_evidence_reader",
-            "assignmentId": "0a501718-56a4-487b-b2f3-cf57a264b9a9",
+            "assignmentId": "10cacdff-2f5f-4dda-b783-1bfca3752ac7",
             "permissionSetVersion": "v1"
           }
         ]
@@ -2236,7 +2236,7 @@
             "state": "RESULT_NOT_RECORDED",
             "applicability": "REQUIRED",
             "pendingProposal": {
-              "id": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
+              "id": "5e566bdd-9dc8-4ad7-9bf0-807c6092f1f6",
               "revision": 1,
               "kind": "PROPOSED",
               "predecessorId": null,
@@ -2278,13 +2278,13 @@
                 "displayName": "Mission Owner DEMO"
               },
               "capture": {
-                "assignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
+                "assignmentId": "12261b6e-1f86-4dbd-b59c-a8e4cc6d9b3e",
                 "permissionSetVersion": "v1"
               },
-              "occurredAt": "2026-10-31T09:39:14.238Z"
+              "occurredAt": "2026-10-31T11:38:43.762Z"
             },
             "lastProposal": {
-              "id": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
+              "id": "5e566bdd-9dc8-4ad7-9bf0-807c6092f1f6",
               "revision": 1,
               "kind": "PROPOSED",
               "predecessorId": null,
@@ -2326,10 +2326,10 @@
                 "displayName": "Mission Owner DEMO"
               },
               "capture": {
-                "assignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
+                "assignmentId": "12261b6e-1f86-4dbd-b59c-a8e4cc6d9b3e",
                 "permissionSetVersion": "v1"
               },
-              "occurredAt": "2026-10-31T09:39:14.238Z"
+              "occurredAt": "2026-10-31T11:38:43.762Z"
             },
             "lastDecision": null,
             "lastRestoration": null,
@@ -2630,7 +2630,7 @@
         "kind": "available",
         "facts": [
           {
-            "id": "ead8df67-abb4-4f0a-8223-ec4f280d35bf",
+            "id": "5e566bdd-9dc8-4ad7-9bf0-807c6092f1f6",
             "revision": 1,
             "kind": "PROPOSED",
             "predecessorId": null,
@@ -2672,20 +2672,20 @@
               "displayName": "Mission Owner DEMO"
             },
             "capture": {
-              "assignmentId": "0e2a20ef-90c9-439b-98a2-e002c84c353d",
+              "assignmentId": "12261b6e-1f86-4dbd-b59c-a8e4cc6d9b3e",
               "permissionSetVersion": "v1"
             },
-            "occurredAt": "2026-10-31T09:39:14.238Z"
+            "occurredAt": "2026-10-31T11:38:43.762Z"
           }
         ],
         "hasMore": false,
         "nextBeforeRevision": null
       }
     },
-    "/tasks/97843805-e94a-4ad4-bc4e-166868a0d22c": {
+    "/tasks/8fee2afe-3d27-412f-8d8d-27f818e625a3": {
       "mutable": true,
       "task": {
-        "id": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+        "id": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -2695,8 +2695,8 @@
         "dueDate": "2026-11-02",
         "priority": "normal",
         "version": 2,
-        "createdAt": "2026-10-31T09:39:14.286Z",
-        "updatedAt": "2026-10-31T09:39:14.380Z",
+        "createdAt": "2026-10-31T11:38:43.805Z",
+        "updatedAt": "2026-10-31T11:38:43.908Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2706,7 +2706,7 @@
         "completion": null
       }
     },
-    "/tasks/97843805-e94a-4ad4-bc4e-166868a0d22c/history": {
+    "/tasks/8fee2afe-3d27-412f-8d8d-27f818e625a3/history": {
       "events": [
         {
           "action": "task.created",
@@ -2720,8 +2720,8 @@
               "description": null
             }
           },
-          "id": "00b0f279-d258-4c6d-b1b3-3a4846e7f961",
-          "occurredAt": "2026-10-31T09:39:14.286Z",
+          "id": "0c2be680-57e6-4618-ae22-188fd4c2f67b",
+          "occurredAt": "2026-10-31T11:38:43.805Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2729,7 +2729,7 @@
           },
           "target": {
             "type": "task",
-            "taskId": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+            "taskId": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
             "taskTitle": "Old grouped Task 0 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
@@ -2745,8 +2745,8 @@
               }
             }
           },
-          "id": "66f2d0b4-444f-4f4b-aa28-a74ffa06f602",
-          "occurredAt": "2026-10-31T09:39:14.380Z",
+          "id": "9930d649-1bb9-4fc5-86a8-88809df52ebd",
+          "occurredAt": "2026-10-31T11:38:43.908Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2754,17 +2754,17 @@
           },
           "target": {
             "type": "task",
-            "taskId": "97843805-e94a-4ad4-bc4e-166868a0d22c",
+            "taskId": "8fee2afe-3d27-412f-8d8d-27f818e625a3",
             "taskTitle": "Old grouped Task 0 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
         }
       ]
     },
-    "/tasks/10559ebd-6aeb-4e6b-83ee-afc048b984c6": {
+    "/tasks/cc3878ab-07a1-423f-b29f-4677e803295c": {
       "mutable": true,
       "task": {
-        "id": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+        "id": "cc3878ab-07a1-423f-b29f-4677e803295c",
         "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
         "projectId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
         "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
@@ -2774,8 +2774,8 @@
         "dueDate": "2026-11-09",
         "priority": "normal",
         "version": 2,
-        "createdAt": "2026-10-31T09:39:14.325Z",
-        "updatedAt": "2026-10-31T09:39:14.369Z",
+        "createdAt": "2026-10-31T11:38:43.845Z",
+        "updatedAt": "2026-10-31T11:38:43.921Z",
         "createdBy": {
           "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
           "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2785,7 +2785,7 @@
         "completion": null
       }
     },
-    "/tasks/10559ebd-6aeb-4e6b-83ee-afc048b984c6/history": {
+    "/tasks/cc3878ab-07a1-423f-b29f-4677e803295c/history": {
       "events": [
         {
           "action": "task.created",
@@ -2799,8 +2799,8 @@
               "description": null
             }
           },
-          "id": "de6fbca6-e90e-4c34-9087-c02b72980412",
-          "occurredAt": "2026-10-31T09:39:14.325Z",
+          "id": "cb0cc35f-fc40-45df-b627-70d1a0b02b0f",
+          "occurredAt": "2026-10-31T11:38:43.845Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2808,7 +2808,7 @@
           },
           "target": {
             "type": "task",
-            "taskId": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+            "taskId": "cc3878ab-07a1-423f-b29f-4677e803295c",
             "taskTitle": "Old grouped Task 1 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
@@ -2824,8 +2824,8 @@
               }
             }
           },
-          "id": "bb0bbcaa-fd90-44a9-89ff-9b7c71a8bc0f",
-          "occurredAt": "2026-10-31T09:39:14.369Z",
+          "id": "56912ea4-b3a7-4503-9fa0-b4afda3b0d4f",
+          "occurredAt": "2026-10-31T11:38:43.921Z",
           "actor": {
             "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
             "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
@@ -2833,7 +2833,7 @@
           },
           "target": {
             "type": "task",
-            "taskId": "10559ebd-6aeb-4e6b-83ee-afc048b984c6",
+            "taskId": "cc3878ab-07a1-423f-b29f-4677e803295c",
             "taskTitle": "Old grouped Task 1 DEMO",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
@@ -2844,29 +2844,29 @@
       "events": [
         {
           "action": "client.union_confirmed",
-          "projectionReference": "2515c9d0-9791-41a7-af9c-365fde29ecb3",
+          "projectionReference": "a15fa9eb-ca20-4e37-9881-229af960df7d",
           "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
           "actor": {
             "kind": "authorized_resolver"
           },
           "target": {
             "type": "client_union_operation",
-            "projectionReference": "2515c9d0-9791-41a7-af9c-365fde29ecb3",
+            "projectionReference": "a15fa9eb-ca20-4e37-9881-229af960df7d",
             "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
           }
         }
       ],
-      "detailReferences": ["2515c9d0-9791-41a7-af9c-365fde29ecb3"]
+      "detailReferences": ["a15fa9eb-ca20-4e37-9881-229af960df7d"]
     },
-    "/knowledge/sources/f1008f61-d6a5-4515-9a03-3e43377a3b13/administration": {
-      "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
+    "/knowledge/sources/f81203e1-2acc-42de-b9ef-9bab5c10f5b6/administration": {
+      "sourceId": "f81203e1-2acc-42de-b9ef-9bab5c10f5b6",
       "revision": 2,
       "state": "admitted",
       "sourceSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
-      "projectionSha256": "f599f5847c28c6e4e687342ef3e4033c5ecd3f7797bf4a2f3bd518d6dec9558a",
-      "documentId": "b152a9e3-0169-418e-9979-1b1fcdacc782",
-      "documentVersionId": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
-      "representationId": "d243981a-e802-4e8d-aa28-875cd04871ab",
+      "projectionSha256": "6952a0b1bfd22bc84af4df4c71880af3b84ed64a1a8da17155cfb19a27faadf6",
+      "documentId": "67ef6a36-d6cc-4597-a1f5-5fd56569e38c",
+      "documentVersionId": "48d38555-9954-48eb-aa61-14dedc80ff01",
+      "representationId": "0c4de83d-7753-487f-8c4c-478ed62dba5b",
       "versionStatus": "official",
       "language": "en",
       "ownerReference": "Fictional source owner",
@@ -2888,38 +2888,38 @@
           "action": "drafted",
           "actorMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
           "actorDisplayName": "Mission Owner DEMO",
-          "recordedAt": "2026-10-31T09:39:15.039Z"
+          "recordedAt": "2026-10-31T12:00:00.000Z"
         },
         {
           "revision": 2,
           "action": "admitted",
           "actorMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
           "actorDisplayName": "Mission Owner DEMO",
-          "recordedAt": "2026-10-31T09:39:15.089Z"
+          "recordedAt": "2026-10-31T12:00:00.000Z"
         }
       ]
     },
-    "/documents/b152a9e3-0169-418e-9979-1b1fcdacc782/versions": {
+    "/documents/67ef6a36-d6cc-4597-a1f5-5fd56569e38c/versions": {
       "workingRevision": 3,
       "mutable": true,
       "versions": [
         {
-          "id": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
+          "id": "48d38555-9954-48eb-aa61-14dedc80ff01",
           "number": 1,
-          "createdAt": "2026-10-31T09:39:14.696Z",
+          "createdAt": "2026-10-31T11:38:44.180Z",
           "createdBy": {
             "displayName": "Mission Owner DEMO"
           },
           "representations": [
             {
-              "id": "4ef05674-e794-4dcb-80d4-1231ae058ea6",
+              "id": "94ca713f-2ed3-4b17-aea8-6088219f328e",
               "kind": "external-reference",
               "verification": "unverified",
               "position": 1,
               "form": "other",
               "primary": true,
               "appendedAfterDesignation": false,
-              "addedAt": "2026-10-31T09:39:14.696Z",
+              "addedAt": "2026-10-31T11:38:44.180Z",
               "addedBy": {
                 "displayName": "Mission Owner DEMO"
               },
@@ -2928,26 +2928,26 @@
             }
           ],
           "pdfContent": {
-            "representationId": "d243981a-e802-4e8d-aa28-875cd04871ab",
+            "representationId": "0c4de83d-7753-487f-8c4c-478ed62dba5b",
             "revision": 2,
             "fileName": "fictional-knowledge-original.pdf",
             "mediaType": "application/pdf",
             "size": 1727,
             "sha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975",
-            "storedAt": "2026-10-31T09:39:14.829Z",
+            "storedAt": "2026-10-31T11:38:44.330Z",
             "storedBy": {
               "displayName": "Mission Owner DEMO"
             },
             "scan": {
               "outcome": "clean",
               "engine": "ClamAV 1.4.3",
-              "scannedAt": "2026-10-31T09:39:14.824Z"
+              "scannedAt": "2026-10-31T11:38:44.323Z"
             },
             "state": "stored",
             "access": "granted"
           },
           "status": "official",
-          "designatedAt": "2026-10-31T09:39:14.893Z",
+          "designatedAt": "2026-10-31T11:38:44.368Z",
           "designatedBy": {
             "displayName": "Mission Owner DEMO"
           },
@@ -2960,9 +2960,9 @@
     }
   },
   "knowledge": {
-    "sourceId": "f1008f61-d6a5-4515-9a03-3e43377a3b13",
-    "documentId": "b152a9e3-0169-418e-9979-1b1fcdacc782",
-    "versionId": "fd0915c3-daae-4fd5-8be1-64b3437cd88d",
+    "sourceId": "f81203e1-2acc-42de-b9ef-9bab5c10f5b6",
+    "documentId": "67ef6a36-d6cc-4597-a1f5-5fd56569e38c",
+    "versionId": "48d38555-9954-48eb-aa61-14dedc80ff01",
     "pdfSha256": "13db913afa1ea93a6ccdbb337025a737bd8183cf36b83799ece0bfd085c77975"
   },
   "pdfSha256": "ed5bbbd62e0a5d77042803266e0c679ceafde1a37d5566ccefe41d803bb8568d"
