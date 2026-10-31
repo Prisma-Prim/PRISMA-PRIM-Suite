@@ -82,6 +82,9 @@ const isActorContext = object({
       taskPermissions: optional(array(literal('task.read', 'task.manage'))),
       taskPermissionAssignmentId: optional(isString),
       taskPermissionSetVersion: optional(literal('v1')),
+      projectNextActionPermissions: optional(isOpaque),
+      projectNextActionCoordinatorAssignmentId: optional(isOpaque),
+      projectNextActionCoordinatorPermissionSetVersion: optional(isOpaque),
       missionApplicabilityProposalPermissions: optional(
         array(literal('project.mission_applicability.propose')),
       ),

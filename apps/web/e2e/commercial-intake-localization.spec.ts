@@ -327,15 +327,15 @@ for (const locale of locales) {
     await association
       .getByRole('button', { name: alternate.retry, exact: true })
       .click();
-    expect(commands.associations).toHaveLength(2);
+    await expect.poll(() => commands.associations).toHaveLength(2);
     expect(commands.associations[0]?.key).toBeTruthy();
     expect(commands.associations[1]).toEqual(commands.associations[0]);
     expect(commands.associations[0]?.body).toBe(
       JSON.stringify({ expectedVersion: 1, clientAccountId: client.id }),
     );
-    await expect(intake.locator('.commercial-intake-detail')).toContainText(
-      client.displayName,
-    );
+    await expect(
+      intake.locator('.commercial-intake-detail > dl'),
+    ).toContainText(client.displayName);
     await selectOption(page.getByLabel(alternate.label, { exact: true }), {
       label: locale.name,
     });
@@ -349,9 +349,9 @@ for (const locale of locales) {
       .filter({ has: page.getByText('Demande {original}', { exact: true }) })
       .click();
     await expect(intake.getByText(originalText, { exact: true })).toBeVisible();
-    await expect(intake.locator('.commercial-intake-detail')).toContainText(
-      client.displayName,
-    );
+    await expect(
+      intake.locator('.commercial-intake-detail > dl'),
+    ).toContainText(client.displayName);
     const timestamp = intake.locator('.commercial-intake-detail time').first();
     await expect(timestamp).toHaveText(locale.timestamp);
     await expect(timestamp).toHaveAttribute('datetime', saved.capturedAt);

@@ -77,6 +77,9 @@ export interface ActiveCompanyContext
   taskResultPermissions?: TaskResultPermission[];
   taskResultRecorderAssignmentId?: string;
   taskResultRecorderPermissionSetVersion?: 'v1';
+  projectNextActionPermissions?: Array<'project.next_action.update'>;
+  projectNextActionCoordinatorAssignmentId?: string;
+  projectNextActionCoordinatorPermissionSetVersion?: 'v1';
   missionApplicabilityProposalPermissions?: Array<'project.mission_applicability.propose'>;
   missionApplicabilityCoordinatorAssignmentId?: string;
   missionApplicabilityCoordinatorPermissionSetVersion?: 'v1';

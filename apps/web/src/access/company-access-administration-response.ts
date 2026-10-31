@@ -28,6 +28,7 @@ const CAPTURED_VERSIONS = {
   'Company Task Result Recorder': ['v1'],
   'Company Mission Result Reviewer': ['v1'],
   'Company Mission Applicability Coordinator': ['v1'],
+  'Company Project Next Action Coordinator': ['v1'],
   'Company Mission Applicability Approver': ['v1'],
   'Company Service Catalogue': ['v1'],
   'Company Pricing Configuration': ['v1'],

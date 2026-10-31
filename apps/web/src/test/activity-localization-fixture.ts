@@ -621,6 +621,18 @@ export const activityEventsByAction = {
     action: 'company_mission_applicability_coordinator_assignment.granted',
     target: targets.company_role_assignment,
   },
+  'company_project_next_action_coordinator_assignment.granted': {
+    ...ordinary,
+    id: 'event-next-action-coordinator-granted',
+    action: 'company_project_next_action_coordinator_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_project_next_action_coordinator_assignment.revoked': {
+    ...ordinary,
+    id: 'event-next-action-coordinator-revoked',
+    action: 'company_project_next_action_coordinator_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'company_mission_applicability_coordinator_assignment.revoked': {
     ...ordinary,
     id: 'event-company_mission_applicability_coordinator_assignment.revoked',

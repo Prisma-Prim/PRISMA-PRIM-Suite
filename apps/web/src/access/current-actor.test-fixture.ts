@@ -28,6 +28,9 @@ export const completeActor = {
     taskPermissions: ['task.read'],
     taskPermissionAssignmentId: 'sample',
     taskPermissionSetVersion: 'v1',
+    projectNextActionPermissions: ['project.next_action.update'],
+    projectNextActionCoordinatorAssignmentId: 'sample-next-action',
+    projectNextActionCoordinatorPermissionSetVersion: 'v1',
     missionApplicabilityProposalPermissions: [
       'project.mission_applicability.propose',
     ],

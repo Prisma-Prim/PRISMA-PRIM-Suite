@@ -30,6 +30,7 @@ import type {
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL,
+  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL,
   COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE_LABEL,
   COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
@@ -198,6 +199,7 @@ export type CanonicalActivityEvent =
         | 'company_received_contract_access_assignment.granted'
         | 'company_task_result_recorder_assignment.granted'
         | 'company_mission_result_reviewer_assignment.granted'
+        | 'company_project_next_action_coordinator_assignment.granted'
         | 'company_mission_applicability_coordinator_assignment.granted'
         | 'company_mission_applicability_approver_assignment.granted'
         | 'company_document_content_reader_assignment.revoked'
@@ -205,6 +207,7 @@ export type CanonicalActivityEvent =
         | 'company_received_contract_access_assignment.revoked'
         | 'company_task_result_recorder_assignment.revoked'
         | 'company_mission_result_reviewer_assignment.revoked'
+        | 'company_project_next_action_coordinator_assignment.revoked'
         | 'company_mission_applicability_coordinator_assignment.revoked'
         | 'company_mission_applicability_approver_assignment.revoked'
         | 'company_document_content_uploader_assignment.granted'
@@ -293,6 +296,7 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL
+          | typeof COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL
           | typeof COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE_LABEL
           | typeof COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
@@ -422,6 +426,7 @@ export interface OrdinaryActivityLogEvent {
     | 'company_received_contract_access_assignment.granted'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_mission_result_reviewer_assignment.granted'
+    | 'company_project_next_action_coordinator_assignment.granted'
     | 'company_mission_applicability_coordinator_assignment.granted'
     | 'company_mission_applicability_approver_assignment.granted'
     | 'company_document_content_reader_assignment.revoked'
@@ -429,6 +434,7 @@ export interface OrdinaryActivityLogEvent {
     | 'company_received_contract_access_assignment.revoked'
     | 'company_task_result_recorder_assignment.revoked'
     | 'company_mission_result_reviewer_assignment.revoked'
+    | 'company_project_next_action_coordinator_assignment.revoked'
     | 'company_mission_applicability_coordinator_assignment.revoked'
     | 'company_mission_applicability_approver_assignment.revoked'
     | 'company_document_content_uploader_assignment.granted'
@@ -564,6 +570,7 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL
+          | typeof COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL
           | typeof COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE_LABEL
           | typeof COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
