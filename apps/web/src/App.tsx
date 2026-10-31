@@ -64,7 +64,14 @@ import { ProfitabilityDecisionQueue } from './profitability-estimate/Profitabili
 import { OfferDecisionQueue } from './offer/OfferDecisionQueue';
 import { ContractDecisionQueue } from './contract/ContractDecisionQueue';
 import { OperationalHome } from './operational-home/OperationalHome';
+import { MultiCompanySummary } from './operational-home/MultiCompanySummary';
+import type { CompanySummaryKind } from './operational-home/operational-home-response';
 import { useProductionShellContext } from './production-shell/useProductionShellContext';
+
+type HomeScopeLifetime = {
+  readonly scope: string;
+  readonly identity: BrowserIdentity;
+};
 
 export function App({ identity }: { identity: BrowserIdentity }) {
   const copy = useAppCopy();
@@ -105,6 +112,37 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const [requestedDocument, setRequestedDocument] = useState<
     RequestedDocument & { documentsContext: string }
   >();
+  const multiCompanyNavigation = useRef(0);
+  const overdueLifetime = useRef<HomeScopeLifetime>({
+    scope: 'inactive',
+    identity,
+  });
+  const [requestedCompanySummary, setRequestedCompanySummary] = useState<{
+    actor: ActorContext;
+    sessionGeneration: number;
+    clientAuthorityGeneration: number;
+    requestId: number;
+    kind: CompanySummaryKind;
+  }>();
+  const [requestedOverdue, setRequestedOverdue] = useState<{
+    lifetime: HomeScopeLifetime;
+    requestId: number;
+  }>();
+  const retireMultiCompanyNavigation = useCallback(() => {
+    multiCompanyNavigation.current += 1;
+    overdueLifetime.current = { ...overdueLifetime.current };
+    setRequestedCompanySummary(undefined);
+    setRequestedOverdue(undefined);
+  }, []);
+  useEffect(() => {
+    window.addEventListener('hashchange', retireMultiCompanyNavigation);
+    window.addEventListener('popstate', retireMultiCompanyNavigation);
+    return () => {
+      retireMultiCompanyNavigation();
+      window.removeEventListener('hashchange', retireMultiCompanyNavigation);
+      window.removeEventListener('popstate', retireMultiCompanyNavigation);
+    };
+  }, [retireMultiCompanyNavigation]);
   /** Request ids only increase, so no retired request id is ever reissued. */
   const documentRequests = useRef(0);
   const sectionNavigation = useRef({
@@ -126,9 +164,11 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         | 'documents'
         | 'requests'
         | 'my-tasks'
-        | 'activity',
+        | 'activity'
+        | 'overview',
       sourceSignal?: AbortSignal,
     ) => {
+      retireMultiCompanyNavigation();
       const requestId = ++sectionNavigation.current.requestId;
       const nextUrl = new URL(window.location.href);
       nextUrl.hash = section;
@@ -153,12 +193,13 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         destination.focus();
       });
     },
-    [],
+    [retireMultiCompanyNavigation],
   );
   const {
     shellContext: access,
     companySelectionGeneration = 0,
-    selectCompany,
+    selectCompany: selectOrdinaryCompany,
+    selectCompanyAndContinue,
     rejectCompanyContext,
     rejectCompanyContextAndRefreshActivity,
     rejectWorkspaceAccess,
@@ -166,6 +207,28 @@ export function App({ identity }: { identity: BrowserIdentity }) {
     includeCompany,
     refreshActivityLog,
   } = useProductionShellContext(identity);
+  const selectCompany = useCallback(
+    async (companyId: string) => {
+      retireMultiCompanyNavigation();
+      await selectOrdinaryCompany(companyId);
+    },
+    [retireMultiCompanyNavigation, selectOrdinaryCompany],
+  );
+  const homeScope =
+    access.status === 'active'
+      ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${operationalHomeAuthority(access.actor)}`
+      : 'inactive';
+  if (
+    overdueLifetime.current.scope !== homeScope ||
+    overdueLifetime.current.identity !== identity
+  )
+    // A later equal scope is a new lifetime, never revival of an old intent.
+    overdueLifetime.current = { scope: homeScope, identity };
+  useEffect(() => {
+    setRequestedOverdue((current) =>
+      current?.lifetime === overdueLifetime.current ? current : undefined,
+    );
+  }, [homeScope, identity]);
 
   // An exact dossier restriction belongs to exactly one Company, session,
   // Client authority and Client identity generation. Any change retires it
@@ -228,6 +291,57 @@ export function App({ identity }: { identity: BrowserIdentity }) {
       ? `${access.sessionGeneration}:${clientAuthorityGeneration}:${access.actor.activeCompany?.id ?? 'no-company'}`
       : 'unavailable';
   const projectNavigation = useProjectNavigation(projectRequestContext);
+  // Selection may intentionally remount Home. Consume its continuation only in
+  // the render that owns the actual selected Actor and destination interfaces.
+  useEffect(() => {
+    const requested = requestedCompanySummary;
+    if (!requested) return;
+    setRequestedCompanySummary(undefined);
+    if (
+      access.status !== 'active' ||
+      access.actor !== requested.actor ||
+      access.sessionGeneration !== requested.sessionGeneration ||
+      clientAuthorityGeneration !== requested.clientAuthorityGeneration ||
+      multiCompanyNavigation.current !== requested.requestId
+    )
+      return;
+    switch (requested.kind) {
+      case 'active_clients':
+        if (
+          access.actor.workspacePermissions.includes('client.manage') ||
+          access.actor.activeCompany?.clientPermissions?.includes('client.read')
+        )
+          navigateToSection('clients');
+        return;
+      case 'open_projects':
+        if (canAccessProjectsSection(access.actor)) {
+          projectNavigation.navigate({ kind: 'directory' });
+          navigateToSection('projects');
+        }
+        return;
+      case 'overdue_tasks':
+        if (canReadTasks(access.actor)) {
+          // Its own authorized navigation retires earlier work first. Only then
+          // admit the new native-panel continuation in that navigation lifetime.
+          navigateToSection('overview');
+          setRequestedOverdue({
+            lifetime: overdueLifetime.current,
+            requestId: multiCompanyNavigation.current,
+          });
+        }
+        return;
+      default: {
+        const exhaustive: never = requested.kind;
+        return exhaustive;
+      }
+    }
+  }, [
+    access,
+    requestedCompanySummary,
+    clientAuthorityGeneration,
+    projectNavigation,
+    navigateToSection,
+  ]);
 
   if (!identity.loaded)
     return (
@@ -375,6 +489,20 @@ export function App({ identity }: { identity: BrowserIdentity }) {
           open_projects: canAccessProjects,
           overdue_tasks: canReadTasks(access.actor),
         }}
+        overdueOpenIntent={
+          requestedOverdue?.lifetime === overdueLifetime.current &&
+          requestedOverdue.requestId === multiCompanyNavigation.current
+            ? {
+                requestId: requestedOverdue.requestId,
+                onConsumed: () =>
+                  setRequestedOverdue((current) =>
+                    current?.requestId === requestedOverdue.requestId
+                      ? undefined
+                      : current,
+                  ),
+              }
+            : undefined
+        }
         onRevalidateAuthority={() => selectCompany(activeCompany.id)}
         onOpenClients={() => navigateToSection('clients')}
         onOpenProjects={() => {
@@ -400,6 +528,32 @@ export function App({ identity }: { identity: BrowserIdentity }) {
   const operationalHome = (
     <>
       {operationalSummary}
+      {operationalSummary && (
+        <MultiCompanySummary
+          key={`multi-company:${homeScope}`}
+          actor={access.actor}
+          identity={identity}
+          onWorkspaceAccessRejected={rejectWorkspaceAccess}
+          onCancelNavigation={retireMultiCompanyNavigation}
+          onContinue={async ({ companyId, kind }) => {
+            const requestId = ++multiCompanyNavigation.current;
+            const continued = await selectCompanyAndContinue({
+              companyId,
+              isCurrent: () => multiCompanyNavigation.current === requestId,
+              onSelected: (actor) => {
+                setRequestedCompanySummary({
+                  actor,
+                  sessionGeneration: access.sessionGeneration,
+                  clientAuthorityGeneration,
+                  requestId,
+                  kind,
+                });
+              },
+            });
+            return continued ? 'opened' : 'not-opened';
+          }}
+        />
+      )}
       <ProfitabilityDecisionQueue
         key={`profitability-queue:${access.sessionGeneration}`}
         actor={access.actor}
@@ -907,6 +1061,7 @@ export function App({ identity }: { identity: BrowserIdentity }) {
         companyName: access.actor.activeCompany?.displayName,
       }}
       sections={sections}
+      onNavigate={retireMultiCompanyNavigation}
       companyContext={
         <CompanyContextSelector
           actor={access.actor}

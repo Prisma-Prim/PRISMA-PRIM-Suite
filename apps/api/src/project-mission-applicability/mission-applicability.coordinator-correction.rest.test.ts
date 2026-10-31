@@ -27,6 +27,12 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
     fixture = await createMissionDocumentFixture(url);
   });
   afterAll(async () => fixture?.close());
+  let preparedContext: Awaited<ReturnType<typeof prepare>>;
+  // Public dossier/grant setup belongs to the normal preparation lifecycle.
+  // Each behavioral test retains its unchanged default five-second budget.
+  beforeEach(async () => {
+    preparedContext = await prepare();
+  });
 
   async function prepare() {
     const c = await prepareApplicability(fixture);
@@ -131,7 +137,7 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
   }
 
   it("conserves another Coordinator's exact pending content with only one caller-owned unchanged receipt and exact replay", async () => {
-    const c = await prepare();
+    const c = preparedContext;
     expect(
       (
         await fixture.call(c.path, {
@@ -184,7 +190,7 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
   });
 
   async function prepareMaterialCorrection() {
-    const c = await prepare();
+    const c = preparedContext;
     await grantCoordinatorB(c.companyId, c.memberB);
     const history = await json(await fixture.call(c.path + '/history'));
     const options = {
@@ -298,7 +304,7 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
     'INSERT INTO mission_applicability_commands SELECT (jsonb_populate_record(NULL::mission_applicability_commands,to_jsonb(c)||$3::jsonb)).* FROM mission_applicability_commands c WHERE actor_membership_id=$1 AND idempotency_key=$2 RETURNING actor_membership_id,fact_id,action';
 
   it('admits only exact current cross-Coordinator correction receipts while sealing original recorded and event attribution', async () => {
-    const c = await prepare();
+    const c = preparedContext;
     await grantCoordinatorB(c.companyId, c.memberB);
     const response = await fixture.call(c.path, {
       method: 'POST',
@@ -413,7 +419,7 @@ describe.skipIf(!url)('Cross-Coordinator exact pending corrections', () => {
   it.each(['PROPOSE', 'DECIDE', 'RESTORE'] as const)(
     'keeps %s unchanged limited to its original actor',
     async (action) => {
-      const c = await prepare();
+      const c = preparedContext;
       await grantCoordinatorB(c.companyId, c.memberB);
       let body: Record<string, unknown> = c.normalizedProposal;
       let originalKey = 'coordinator-a-proposal-demo';

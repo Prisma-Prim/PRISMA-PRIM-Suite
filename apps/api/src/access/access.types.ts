@@ -1,3 +1,4 @@
+import type { KnowledgeCapturedGrant } from './knowledge-captured-grants.js';
 import type { MissionPlanActorProjection } from './mission-plan-captured-grants.js';
 import type {
   CompanyClientPermission,
@@ -53,6 +54,7 @@ export interface ActiveCompanyContext
     OfferModelActorProjection,
     ContractModelActorProjection,
     MissionPlanActorProjection {
+  knowledgeGrants?: KnowledgeCapturedGrant[];
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];

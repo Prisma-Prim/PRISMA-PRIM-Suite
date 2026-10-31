@@ -87,6 +87,8 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_contract_model_approver',
   'company_mission_plan_configuration',
   'company_mission_plan_user',
+  'company_knowledge_source_administrator',
+  'company_knowledge_evidence_reader',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -842,6 +844,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_mission_plan_configuration_assignment.revoked',
   'company_mission_plan_user_assignment.granted',
   'company_mission_plan_user_assignment.revoked',
+  'company_knowledge_source_administrator_assignment.granted',
+  'company_knowledge_source_administrator_assignment.revoked',
+  'company_knowledge_evidence_reader_assignment.granted',
+  'company_knowledge_evidence_reader_assignment.revoked',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
@@ -922,6 +928,8 @@ export const activityLogEvents = pgTable(
               | 'Company Ideas Reviewer'
               | 'Company Profitability Contributor'
               | 'Company Profitability Director'
+              | 'Company Knowledge Source Administrator'
+              | 'Company Knowledge Evidence Reader'
               | 'Company Operational Risk Reader'
               | 'Company Operational Risk Recorder'
               | 'Company Sales Stage Configuration'

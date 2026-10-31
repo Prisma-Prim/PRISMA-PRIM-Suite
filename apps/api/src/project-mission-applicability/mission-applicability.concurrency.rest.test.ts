@@ -1,4 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import { MissionApplicabilityStore } from './mission-applicability.store.js';
 import {
   pilotKey,
@@ -29,6 +37,12 @@ describe.skipIf(!url)(
       fixture = await createMissionDocumentFixture(url);
     });
     afterAll(async () => fixture?.close());
+    let preparedContext: Awaited<ReturnType<typeof prepare>>;
+    // Public dossier/grant setup belongs to the normal preparation lifecycle.
+    // Each behavioral test retains its unchanged default five-second budget.
+    beforeEach(async () => {
+      preparedContext = await prepare();
+    });
 
     async function blockedBy(pid: number) {
       const deadline = Date.now() + 5000;
@@ -123,7 +137,7 @@ describe.skipIf(!url)(
     it.each(['same-key', 'new-key'] as const)(
       'serializes %s duplicate delivery before producing one immutable fact and conserved receipts',
       async (kind) => {
-        const c = await prepare(),
+        const c = preparedContext,
           barrier = await gate('mission_applicability_facts', 'INSERT');
         const command = (key: string) =>
           fixture.call(c.path, { method: 'POST', key, body: c.body });
@@ -150,7 +164,7 @@ describe.skipIf(!url)(
     it.each(['applicability-first', 'task-first'] as const)(
       'conserves the exact observed Task while allowing ordinary later Task changes: %s',
       async (order) => {
-        const c = await prepare();
+        const c = preparedContext;
         const propose = () =>
           fixture.call(c.path, { method: 'POST', body: c.body });
         const cancel = () =>
@@ -202,7 +216,7 @@ describe.skipIf(!url)(
     )(
       'fences consumed $bundle in both held orders: $order',
       async ({ path, bundle, order }) => {
-        const c = await prepare();
+        const c = preparedContext;
         const propose = () =>
           fixture.call(c.path, { method: 'POST', body: c.body });
         const revoke = () =>
@@ -249,7 +263,7 @@ describe.skipIf(!url)(
     it.each(['applicability-first', 'close-first'] as const)(
       'serializes ordinary closure without changing its Task guard or losing historical confirmation: %s',
       async (order) => {
-        const c = await prepare();
+        const c = preparedContext;
         await fixture.grant('/company-project-approver-assignments');
         for (const activity of c.activities)
           expect(
@@ -313,7 +327,7 @@ describe.skipIf(!url)(
     ])(
       'rolls back every row and original Client fence when %s fails',
       async (table) => {
-        const c = await prepare(),
+        const c = preparedContext,
           before = (
             await fixture.pool.query(
               'SELECT version,updated_at FROM client_accounts WHERE id=$1',
@@ -362,7 +376,7 @@ describe.skipIf(!url)(
     );
 
     it('rolls back the completed native writes and Client fence when receipt response construction throws', async () => {
-      const c = await prepare(),
+      const c = preparedContext,
         before = (
           await fixture.pool.query(
             'SELECT version,updated_at FROM client_accounts WHERE id=$1',
@@ -465,7 +479,7 @@ describe.skipIf(!url)(
     )(
       'fences $parent through commit in both held orders: $order',
       async ({ parent, order }) => {
-        const c = await prepare(),
+        const c = preparedContext,
           { member, user } = await grantCollaborator(c.companyId);
         const propose = () =>
           fixture.call(c.path, {
@@ -572,7 +586,7 @@ describe.skipIf(!url)(
     )(
       'fences native $parent archive after Client identity and before relationship: $order',
       async ({ parent, order }) => {
-        const c = await prepare();
+        const c = preparedContext;
         const propose = () =>
           fixture.call(c.path, { method: 'POST', body: c.body });
         const table =
@@ -613,7 +627,7 @@ describe.skipIf(!url)(
     );
 
     async function unionScenario() {
-      const c = await prepare();
+      const c = preparedContext;
       await fixture.grant('/company-director-client-assignments');
       const canonical = await fixture.call('/clients', {
         method: 'POST',
@@ -792,7 +806,7 @@ describe.skipIf(!url)(
     it.each(['applicability-first', 'result-first'] as const)(
       'fences exact result observations without erasing an earlier attributable fact: %s',
       async (order) => {
-        const c = await prepare();
+        const c = preparedContext;
         for (const bundle of [
           'document-content-uploader',
           'document-approver',
@@ -864,7 +878,7 @@ describe.skipIf(!url)(
     it.each(['decision-first', 'revoke-first'] as const)(
       'fences the independently captured Approver in both held orders: %s',
       async (order) => {
-        const c = await prepare();
+        const c = preparedContext;
         await fixture.grant(
           '/company-mission-applicability-approver-assignments',
         );
@@ -913,7 +927,7 @@ describe.skipIf(!url)(
     it.each(['applicability-first', 'review-first'] as const)(
       'preserves independent Result Reviewer facts and applicability in both held orders: %s',
       async (order) => {
-        const c = await prepare();
+        const c = preparedContext;
         await fixture.grant('/company-mission-result-reviewer-assignments');
         expect(
           (

@@ -1,5 +1,15 @@
 import { MissionApplicabilityModule } from './project-mission-applicability/mission-applicability.module.js';
 import { MissionApplicabilityController } from './project-mission-applicability/mission-applicability.controller.js';
+import {
+  KnowledgeActorGuard,
+  KnowledgeIdentityVerifier,
+} from './knowledge/knowledge-identity.js';
+import { KnowledgeModule } from './knowledge/knowledge.module.js';
+import {
+  KnowledgeController,
+  KnowledgeReadController,
+  KnowledgeAssignmentController,
+} from './knowledge/knowledge.controller.js';
 import { ProjectPdfBundleController } from './documents/project-pdf-bundle.controller.js';
 import { MissionPlanCopyController } from './mission-plan/mission-plan-copy.controller.js';
 import { MissionPlanModule } from './mission-plan/mission-plan.module.js';
@@ -143,6 +153,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    KnowledgeModule,
     MissionPlanModule,
     ContractModelModule,
     OfferModelModule,
@@ -170,6 +181,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    KnowledgeController,
+    KnowledgeReadController,
+    KnowledgeAssignmentController,
     ProjectPdfBundleController,
     MissionPlanController,
     MissionPlanCopyController,
@@ -263,6 +277,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityDecisionQueueController,
   ],
   providers: [
+    KnowledgeActorGuard,
+    KnowledgeIdentityVerifier,
     VerifiedPrincipalAdapter,
     WorkspaceInvitationAcceptanceService,
     {

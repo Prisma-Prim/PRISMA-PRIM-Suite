@@ -133,21 +133,34 @@ it.each(['pending', 'uncertain', 'confirmed'] as const)(
     const { native, state } = install();
     render(
       <>
-        <CurrentWorkLocaleProbe />
+        <div role="group" aria-label="Locale test controls">
+          <CurrentWorkLocaleProbe />
+        </div>
         <App identity={deterministicBrowserIdentity()} />
       </>,
     );
+    const localeControls = screen.getByRole('group', {
+      name: 'Locale test controls',
+    });
     await openCurrentWork();
-    const title = await screen.findByLabelText('Task title');
+    const tasks = await screen.findByRole('region', {
+      name: 'Tasks',
+    });
+    const title = await within(tasks).findByLabelText('Task title');
+    const form = title.closest('form');
+    if (!form)
+      throw new Error('The native Task form must contain its title field.');
     changeValue(title, 'Protected native Task exact Ж / é');
-    const instructions = screen.getByLabelText('Task instructions (optional)');
+    const instructions = within(form).getByLabelText(
+      'Task instructions (optional)',
+    );
     changeValue(
       instructions,
       'Protected native instructions Ж / é / 😀\n  exact intent',
     );
     if (mode === 'pending') native.taskHold = deferred();
     if (mode === 'confirmed') native.taskStatus = 201;
-    fireEvent.click(screen.getByRole('button', { name: 'Create Task' }));
+    fireEvent.click(within(form).getByRole('button', { name: 'Create Task' }));
     await waitFor(() => expect(native.posts).toHaveLength(1));
     const panel = await team();
     state.status = 503;
@@ -157,7 +170,9 @@ it.each(['pending', 'uncertain', 'confirmed'] as const)(
     await within(panel).findByRole('alert');
     for (const locale of ['ro', 'ru', 'fr', 'en'])
       fireEvent.click(
-        screen.getByRole('button', { name: 'Change to ' + locale }),
+        within(localeControls).getByRole('button', {
+          name: 'Change to ' + locale,
+        }),
       );
     if (mode !== 'confirmed') expect(title).toBeInTheDocument();
     expect(native.posts).toHaveLength(1);
@@ -180,7 +195,9 @@ it.each(['pending', 'uncertain', 'confirmed'] as const)(
       native.taskHold = undefined;
     }
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Retry pending Task change' }),
+      await within(tasks).findByRole('button', {
+        name: 'Retry pending Task change',
+      }),
     );
     await waitFor(() => expect(native.posts).toHaveLength(2));
     expect(native.posts[1]).toEqual(native.posts[0]);

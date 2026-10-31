@@ -85,9 +85,10 @@ it.skipIf(!process.env.TEST_DATABASE_URL)(
       );
       const entries = objects(journal.entries),
         index = entries.findIndex(
-          (entry) => entry.tag === '0089_mission_applicability',
+          (entry) => entry.tag === '0090_mission_applicability',
         );
-      expect(entries[index - 1]?.tag).toBe(c.predecessor);
+      expect(entries[88]?.tag).toBe(c.predecessor);
+      expect(entries[index - 1]?.tag).toBe('0089_knowledge_cited_evidence');
       const tables = (
         await pool.query(
           "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename",

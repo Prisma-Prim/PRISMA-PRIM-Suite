@@ -156,12 +156,12 @@ afterEach(() => {
 });
 
 it.each(locales)(
-  'renders all 138 admitted actions and 19 target types in %s without exposing canonical codes',
+  'renders all 142 admitted actions and 19 target types in %s without exposing canonical codes',
   (locale) => {
     present({ state: { status: 'ready', events: allActivityEvents }, locale });
     const region = screen.getByRole('region', { name: words[locale].title });
     const rows = within(region).getAllByRole('listitem');
-    expect(rows).toHaveLength(138);
+    expect(rows).toHaveLength(142);
     expect(
       new Set(allActivityEvents.map((event) => event.target.type)).size,
     ).toBe(19);
