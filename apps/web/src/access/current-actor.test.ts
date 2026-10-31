@@ -44,6 +44,37 @@ describe('current Actor representation', () => {
     expect(result.value).toBe(completeActor);
   });
 
+  it.each(['v1', 'v99'])(
+    'accepts additive backend Knowledge captures %s without interpreting their authority',
+    async (permissionSetVersion) => {
+      const actor = {
+        ...completeActor,
+        activeCompany: {
+          ...completeActor.activeCompany,
+          knowledgeGrants: [
+            {
+              bundle: 'company_knowledge_source_administrator',
+              assignmentId: '00000000-0000-4000-8000-000000007031',
+              permissionSetVersion,
+            },
+            {
+              bundle: 'company_knowledge_evidence_reader',
+              assignmentId: '00000000-0000-4000-8000-000000007032',
+              permissionSetVersion,
+            },
+          ],
+        },
+      };
+      const result = await read(actor);
+      expect(result).toEqual({ status: 'ok', value: actor });
+      if (result.status !== 'ok') throw new Error('Expected a readable Actor');
+      expect(result.value).toBe(actor);
+      expect(result.value.activeCompany?.clientPermissions).toBe(
+        completeActor.activeCompany.clientPermissions,
+      );
+    },
+  );
+
   it('accepts Workspace-only context, additive fields and exact identifier spelling', async () => {
     const actor = {
       ...workspaceActor,

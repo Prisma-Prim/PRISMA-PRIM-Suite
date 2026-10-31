@@ -3265,7 +3265,528 @@ paths:
         '409':
           description: Incomplete required Tasks, stale revision, unsupported transition, closed Project or changed key intent.
 
+  /api/knowledge/sources:
+    post:
+      operationId: draftKnowledgeSource
+      tags:
+        - Knowledge
+      summary: Draft an exact-Version source and immutable curated passages
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReceipt'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeDraft'
+    get:
+      operationId: listKnowledgeSources
+      tags:
+        - Knowledge
+      summary: List currently eligible exact sources without hidden counts
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - current
+              - historical
+            default: current
+          description: Historical mode requires exact documentVersionId; current mode rejects it.
+        - in: query
+          name: documentVersionId
+          schema:
+            type: string
+            format: uuid
+          description: Required only for explicit historical mode.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeSourcePage'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      security:
+        - PrismaKnowledgeBearer: []
+  /api/knowledge/search:
+    get:
+      operationId: searchKnowledgeEvidence
+      tags:
+        - Knowledge
+      summary: Match a literal query over independently authorized passages
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - current
+              - historical
+            default: current
+          description: Historical mode requires exact documentVersionId; current mode rejects it.
+        - in: query
+          name: documentVersionId
+          schema:
+            type: string
+            format: uuid
+          description: Required only for explicit historical mode.
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            default: 20
+        - in: query
+          name: cursor
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 2048
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeSearchPage'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      security:
+        - PrismaKnowledgeBearer: []
+  /api/knowledge/sources/{sourceId}/passages/{locator}:
+    get:
+      operationId: readKnowledgePassage
+      tags:
+        - Knowledge
+      summary: Read one exact authorized literal citation
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: locator
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 120
+            not:
+              enum:
+                - .
+                - ..
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum:
+              - current
+              - historical
+            default: current
+          description: Historical mode requires exact documentVersionId; current mode rejects it.
+        - in: query
+          name: documentVersionId
+          schema:
+            type: string
+            format: uuid
+          description: Required only for explicit historical mode.
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgePassage'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      security:
+        - PrismaKnowledgeBearer: []
+  /api/knowledge/sources/{sourceId}/administration:
+    get:
+      operationId: inspectKnowledgeSource
+      tags:
+        - Knowledge
+      summary: Inspect private source declarations and restricted attributed history
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeAdministration'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+  /api/knowledge/sources/{sourceId}/admission:
+    post:
+      operationId: admitKnowledgeSource
+      tags:
+        - Knowledge
+      summary: Attest source/use review against exact source and projection hashes
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReceipt'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeAdmission'
+  /api/knowledge/sources/{sourceId}/revocation:
+    post:
+      operationId: revokeKnowledgeSource
+      tags:
+        - Knowledge
+      summary: Revoke admission without rewriting source or history
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/RequiredCompanyContextId'
+        - in: path
+          name: sourceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeReceipt'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeRevocation'
+  /api/knowledge/assignments/administrators:
+    post:
+      operationId: grantKnowledgeAdministrator
+      tags:
+        - Knowledge
+      summary: Explicitly assign the independent captured Knowledge bundle
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeAssignment'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeAssignmentInput'
+  /api/knowledge/assignments/administrators/{membershipId}/{companyId}:
+    delete:
+      operationId: revokeKnowledgeAdministrator
+      tags:
+        - Knowledge
+      summary: Revoke the independent captured Knowledge bundle
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: membershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeAssignment'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+  /api/knowledge/assignments/readers:
+    post:
+      operationId: grantKnowledgeReader
+      tags:
+        - Knowledge
+      summary: Explicitly assign the independent captured Knowledge bundle
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeAssignment'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeAssignmentInput'
+  /api/knowledge/assignments/readers/{membershipId}/{companyId}:
+    delete:
+      operationId: revokeKnowledgeReader
+      tags:
+        - Knowledge
+      summary: Revoke the independent captured Knowledge bundle
+      description:
+        Every call preserves live Company/Document/content access and the independent captured
+        Knowledge grant. Source administration records declarations, not independently verified legal/OCR
+        facts.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - in: path
+          name: membershipId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: companyId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current authorized result; command receipts retain original execution revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeAssignment'
+        '400':
+          description: Invalid closed request.
+        '401':
+          description: Missing or invalid PRISMA identity/resource credential.
+        '403':
+          description: Current captured permission or native Document/content access is absent.
+        '404':
+          description: Requested source/evidence is not currently visible or eligible.
+        '409':
+          description: Command key, source checksum, state or revision conflicts.
+        '503':
+          description: Capability is disabled or verified evidence is unavailable.
 components:
+  securitySchemes:
+    PrismaKnowledgeBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: Clerk JWT for the configured Knowledge resource audience
   parameters:
     IdempotencyKey:
       in: header
@@ -3320,6 +3841,432 @@ components:
               - $ref: '#/components/schemas/ProjectClosedConflict'
               - $ref: '#/components/schemas/GenericConflict'
   schemas:
+    KnowledgeHash:
+      type: string
+      pattern: ^[a-f0-9]{64}$
+    KnowledgeSourceSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - sourceId
+        - documentId
+        - documentVersionId
+        - sourceSha256
+        - projectionSha256
+        - title
+        - language
+        - versionStatus
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        documentVersionId:
+          type: string
+          format: uuid
+        sourceSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        projectionSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        language:
+          type: string
+          enum:
+            - ro
+            - ru
+            - en
+        versionStatus:
+          type: string
+          enum:
+            - official
+            - superseded
+    KnowledgePassage:
+      type: object
+      additionalProperties: false
+      required:
+        - source
+        - locator
+        - text
+        - passageSha256
+        - retrievedAt
+      properties:
+        source:
+          $ref: '#/components/schemas/KnowledgeSourceSummary'
+        locator:
+          type: string
+          minLength: 1
+          maxLength: 120
+          not:
+            enum:
+              - .
+              - ..
+        text:
+          type: string
+          minLength: 1
+          maxLength: 16384
+        passageSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        retrievedAt:
+          type: string
+          format: date-time
+    KnowledgeSourcePage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/KnowledgeSourceSummary'
+        nextCursor:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+    KnowledgeSearchPage:
+      type: object
+      additionalProperties: false
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/KnowledgePassage'
+        nextCursor:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+    KnowledgeReceipt:
+      type: object
+      additionalProperties: false
+      required:
+        - sourceId
+        - revision
+        - state
+        - sourceSha256
+        - projectionSha256
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+        state:
+          type: string
+          enum:
+            - draft
+            - admitted
+            - revoked
+        sourceSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        projectionSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+    KnowledgeDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - documentId
+        - documentVersionId
+        - representationId
+        - sourceSha256
+        - language
+        - ownerReference
+        - provenance
+        - rightsEvidenceReference
+        - permittedPurpose
+        - effectiveFrom
+        - effectiveUntil
+        - passages
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        documentVersionId:
+          type: string
+          format: uuid
+        representationId:
+          type: string
+          format: uuid
+        sourceSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        language:
+          type: string
+          enum:
+            - ro
+            - ru
+            - en
+        ownerReference:
+          type: string
+          minLength: 1
+          maxLength: 200
+        provenance:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        rightsEvidenceReference:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        permittedPurpose:
+          type: string
+          const: cited-evidence
+        effectiveFrom:
+          type: string
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$
+        effectiveUntil:
+          type: string
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$
+        passages:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - locator
+              - text
+            properties:
+              locator:
+                type: string
+                minLength: 1
+                maxLength: 120
+                not:
+                  enum:
+                    - .
+                    - ..
+              text:
+                type: string
+                minLength: 1
+                maxLength: 16384
+      description:
+        Exact preserved PDF binding and declared curated projection; unique locators, total
+        serialized passage array at most48000UTF-8bytes, end strictlyafterstart. No OCR/legal/licensing
+        claim.
+    KnowledgeAdmission:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedRevision
+        - attestation
+        - sourceSha256
+        - projectionSha256
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 1
+        attestation:
+          type: string
+          const: exact-version-source-and-use-reviewed/v1
+        sourceSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        projectionSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+    KnowledgeRevocation:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedRevision
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 1
+    KnowledgeAssignmentInput:
+      type: object
+      additionalProperties: false
+      required:
+        - workspaceMembershipId
+        - companyId
+      properties:
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+    KnowledgeAssignment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - workspaceMembershipId
+        - companyId
+        - active
+        - bundle
+        - permissionSetVersion
+      properties:
+        id:
+          type: string
+          format: uuid
+        workspaceMembershipId:
+          type: string
+          format: uuid
+        companyId:
+          type: string
+          format: uuid
+        active:
+          type: boolean
+        bundle:
+          type: string
+          enum:
+            - Company Knowledge Source Administrator
+            - Company Knowledge Evidence Reader
+        permissionSetVersion:
+          type: string
+          const: v1
+    KnowledgeAdministration:
+      type: object
+      additionalProperties: false
+      required:
+        - sourceId
+        - revision
+        - state
+        - sourceSha256
+        - projectionSha256
+        - documentId
+        - documentVersionId
+        - representationId
+        - versionStatus
+        - language
+        - ownerReference
+        - provenance
+        - rightsEvidenceReference
+        - permittedPurpose
+        - effectiveFrom
+        - effectiveUntil
+        - confidentiality
+        - passages
+        - history
+      properties:
+        sourceId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+        state:
+          type: string
+          enum:
+            - draft
+            - admitted
+            - revoked
+        sourceSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        projectionSha256:
+          $ref: '#/components/schemas/KnowledgeHash'
+        documentId:
+          type: string
+          format: uuid
+        documentVersionId:
+          type: string
+          format: uuid
+        representationId:
+          type: string
+          format: uuid
+        versionStatus:
+          type: string
+          enum:
+            - official
+            - superseded
+        language:
+          type: string
+          enum:
+            - ro
+            - ru
+            - en
+        ownerReference:
+          type: string
+          minLength: 1
+          maxLength: 200
+        provenance:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        rightsEvidenceReference:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        permittedPurpose:
+          type: string
+          const: cited-evidence
+        effectiveFrom:
+          type: string
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$
+        effectiveUntil:
+          type: string
+          format: date-time
+          pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$
+        confidentiality:
+          type: string
+          const: company-confidential
+        passages:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - locator
+              - text
+            properties:
+              locator:
+                type: string
+                minLength: 1
+                maxLength: 120
+                not:
+                  enum:
+                    - .
+                    - ..
+              text:
+                type: string
+                minLength: 1
+                maxLength: 16384
+        history:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - revision
+              - action
+              - actorMembershipId
+              - actorDisplayName
+              - recordedAt
+            properties:
+              revision:
+                type: integer
+                minimum: 1
+              action:
+                type: string
+                enum:
+                  - drafted
+                  - admitted
+                  - revoked
+              actorMembershipId:
+                type: string
+                format: uuid
+              actorDisplayName:
+                type: string
+              recordedAt:
+                type: string
+                format: date-time
     ContractMissionPlanCreationInput:
       type: object
       additionalProperties: false

@@ -45,6 +45,10 @@ export type CompanyContextState =
 export interface OrdinaryActivityLogEvent {
   id: string;
   action:
+    | 'company_knowledge_source_administrator_assignment.granted'
+    | 'company_knowledge_source_administrator_assignment.revoked'
+    | 'company_knowledge_evidence_reader_assignment.granted'
+    | 'company_knowledge_evidence_reader_assignment.revoked'
     | 'workspace_invitation.issued'
     | 'workspace_invitation.revoked'
     | 'workspace_invitation.accepted'

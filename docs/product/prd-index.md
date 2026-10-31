@@ -120,6 +120,8 @@ require that answer.
 | [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft           | Equivalent-work qualification, processing resource bounds and evidence    |
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
+The [read-only cited-evidence connection](ai-knowledge-governance-prd.md#19-read-only-cited-evidence-connection-for-codex--bounded-software-contract) owns the bounded source-admission/REST/Codex MCP software contract; production AI promotion remains separately gated.
+
 The separately selected [offline comparative pilot-evaluation contract](ai-knowledge-governance-prd.md#17-bounded-offline-comparative-pilot-evaluation--957)
 remains within the existing AI/Knowledge owner. Its original [#957](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957)
 directory-output contract was approved; its unmerged runtime #963 / PR #966 is
