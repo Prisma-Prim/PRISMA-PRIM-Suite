@@ -1,10 +1,14 @@
-import type { ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { useState, type ReactNode } from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApplicationRoot } from '../ApplicationRoot';
 import { interfaceLocaleStorageKey } from '../localization/interface-locale';
 
-const auth = vi.hoisted(() => ({ signedIn: false }));
+const auth = vi.hoisted(() => ({
+  signedIn: false,
+  codeMounted: false,
+  codeLabelled: false,
+}));
 vi.mock('@clerk/react', () => ({
   ClerkProvider: ({ children }: { children: ReactNode }) => children,
   RedirectToSignIn: () => null,
@@ -33,9 +37,57 @@ function ProviderAuthentication({
 }) {
   // Real Clerk UI 1.41.1 composes hash routes against this synthetic origin.
   // Keep this external-boundary contract aligned with the captured #792 failure.
+  const [codeGeneration, setCodeGeneration] = useState<number | undefined>(
+    auth.codeMounted ? 0 : undefined,
+  );
   const target = new URL(forceRedirectUrl, window.location.href);
   new URL('http://clerk-dummy' + target.hash.substring(1));
-  return <a href={forceRedirectUrl}>Complete authentication</a>;
+  return (
+    <form>
+      <label htmlFor="provider-email">Provider email</label>
+      <input
+        id="provider-email"
+        type="text"
+        inputMode="email"
+        required
+        pattern="^.*@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-\.]+$"
+        aria-describedby="sdk-help sdk-feedback"
+      />
+      <span id="sdk-help">Provider-owned hint</span>
+      <span id="sdk-feedback">Provider-owned feedback</span>
+      <button type="button" onClick={() => setCodeGeneration(0)}>
+        Show synthetic provider code
+      </button>
+      <button
+        type="button"
+        onClick={() => setCodeGeneration((value) => (value ?? 0) + 1)}
+      >
+        Replace synthetic provider code
+      </button>
+      <button type="button" onClick={() => setCodeGeneration(undefined)}>
+        Remove synthetic provider code
+      </button>
+      {codeGeneration !== undefined && (
+        <input
+          key={codeGeneration}
+          autoComplete="one-time-code"
+          aria-label="Enter verification code"
+          aria-labelledby={
+            auth.codeLabelled ? 'sdk-initial-code-label' : undefined
+          }
+          aria-describedby="sdk-help"
+          inputMode="numeric"
+          pattern="\d{6}"
+          maxLength={6}
+          required
+        />
+      )}
+      {auth.codeLabelled && (
+        <span id="sdk-initial-code-label">Provider-owned code label</span>
+      )}
+      <a href={forceRedirectUrl}>Complete authentication</a>
+    </form>
+  );
 }
 const invitationId = 'aaaaaaaa-0000-4000-8000-000000000163';
 const key = 'bbbbbbbb-0000-4000-8000-000000000163';
@@ -73,8 +125,251 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   auth.signedIn = false;
+  auth.codeMounted = false;
+  auth.codeLabelled = false;
   sessionStorage.clear();
   window.history.replaceState(null, '', '/');
+});
+
+it('names a late provider code control reactively without changing its work, constraints or SDK ownership', async () => {
+  vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+  const captured = { invitationId, key, attempted: false };
+  window.history.replaceState(
+    captured,
+    '',
+    '/accept-invitation?invitation=' + invitationId + '&mode=signin',
+  );
+  const fetch = vi.fn();
+  vi.stubGlobal('fetch', fetch);
+  const view = render(<ApplicationRoot pathname="/accept-invitation" />);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Show synthetic provider code' }),
+  );
+  const input = await screen.findByRole('textbox', {
+    name: 'Enter verification code',
+  });
+  const labelIds = (input.getAttribute('aria-labelledby') ?? '')
+    .split(/\s+/u)
+    .filter(Boolean);
+  expect(labelIds).toHaveLength(1);
+  const ownedId = labelIds[0];
+  if (!ownedId) throw new Error('Missing owned code label');
+  const label = document.getElementById(ownedId);
+  expect(label).toHaveTextContent('Enter verification code');
+  fireEvent.input(input, { target: { value: 'xx{keep}' } });
+  const pattern = input.getAttribute('pattern');
+  const navigation = window.location.href;
+  input.focus();
+  for (const choice of [
+    { index: 0, name: 'Introduceți codul de verificare' },
+    { index: 1, name: 'Введите код подтверждения' },
+    { index: 2, name: 'Saisissez le code de vérification' },
+    { index: 3, name: 'Enter verification code' },
+  ]) {
+    const picker = screen.getByRole('combobox');
+    picker.focus();
+    fireEvent.keyDown(picker, { key: 'Home' });
+    for (let i = 0; i < choice.index; i++)
+      fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.keyDown(picker, { key: 'Enter' });
+    expect(screen.getByRole('textbox', { name: choice.name })).toBe(input);
+    expect(input).toHaveValue('xx{keep}');
+    expect(picker).toHaveFocus();
+    expect(document.getElementById(ownedId)).toBe(label);
+    expect(input).toHaveAttribute('aria-labelledby', ownedId);
+    expect(input).toHaveAttribute('aria-label', 'Enter verification code');
+    expect(input).toHaveAttribute('aria-describedby', 'sdk-help');
+    expect(input).toHaveAttribute('pattern', pattern);
+    expect(input).toHaveAttribute('required');
+    expect(input).toHaveAttribute('maxlength', '6');
+    expect(input).toHaveAttribute('inputmode', 'numeric');
+    expect(window.location.href).toBe(navigation);
+    expect(window.history.state).toEqual(captured);
+  }
+  const sdkLabel = document.createElement('span');
+  sdkLabel.id = 'sdk-code-label';
+  sdkLabel.textContent = 'Provider code name';
+  input.after(sdkLabel);
+  input.setAttribute('aria-labelledby', 'sdk-code-label');
+  await waitFor(() =>
+    expect(input).toHaveAccessibleName(
+      'Enter verification code Provider code name',
+    ),
+  );
+  input.setAttribute(
+    'aria-labelledby',
+    input.getAttribute('aria-labelledby') + ' sdk-later',
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Replace synthetic provider code' }),
+  );
+  const replacement = await screen.findByRole('textbox', {
+    name: 'Enter verification code',
+  });
+  expect(replacement).not.toBe(input);
+  expect(input).toHaveAttribute('aria-labelledby', 'sdk-code-label sdk-later');
+  expect(replacement).toHaveAttribute('aria-labelledby', ownedId);
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Remove synthetic provider code' }),
+  );
+  await waitFor(() =>
+    expect(replacement).not.toHaveAttribute('aria-labelledby'),
+  );
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Show synthetic provider code' }),
+  );
+  const remounted = await screen.findByRole('textbox', {
+    name: 'Enter verification code',
+  });
+  remounted.setAttribute('aria-labelledby', ownedId + ' sdk-on-unmount');
+  view.unmount();
+  expect(remounted).toHaveAttribute('aria-labelledby', 'sdk-on-unmount');
+  expect(document.getElementById(ownedId)).toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('preserves an existing provider code label and leaves controls outside the invitation owner untouched', async () => {
+  vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+  auth.codeMounted = true;
+  auth.codeLabelled = true;
+  window.history.replaceState(
+    { invitationId, key, attempted: false },
+    '',
+    '/accept-invitation?invitation=' + invitationId + '&mode=signin',
+  );
+  const outside = document.createElement('input');
+  outside.autocomplete = 'one-time-code';
+  outside.setAttribute('aria-label', 'Outside provider code');
+  document.body.append(outside);
+  try {
+    const view = render(<ApplicationRoot pathname="/accept-invitation" />);
+    const input = await screen.findByRole('textbox', {
+      name: 'Enter verification code Provider-owned code label',
+    });
+    expect(input).toHaveAttribute('aria-label', 'Enter verification code');
+    expect(input.getAttribute('aria-labelledby')?.split(/\s+/u)).toContain(
+      'sdk-initial-code-label',
+    );
+    input.focus();
+    input.setAttribute('aria-labelledby', 'sdk-initial-code-label');
+    await waitFor(() =>
+      expect(input).toHaveAccessibleName(
+        'Enter verification code Provider-owned code label',
+      ),
+    );
+    expect(input).toHaveFocus();
+    const picker = screen.getByRole('combobox');
+    picker.focus();
+    fireEvent.keyDown(picker, { key: 'Home' });
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.keyDown(picker, { key: 'Enter' });
+    expect(
+      screen.getByRole('textbox', {
+        name: 'Введите код подтверждения Provider-owned code label',
+      }),
+    ).toBe(input);
+    expect(picker).toHaveFocus();
+    expect(outside).not.toHaveAttribute('aria-labelledby');
+    view.unmount();
+    expect(input).toHaveAttribute('aria-labelledby', 'sdk-initial-code-label');
+    outside.setAttribute('autocomplete', 'off');
+    outside.setAttribute('autocomplete', 'one-time-code');
+    await Promise.resolve();
+    expect(outside).not.toHaveAttribute('aria-labelledby');
+  } finally {
+    outside.remove();
+  }
+});
+
+it('localizes native invalid feedback without changing the field, constraints or continuation', () => {
+  vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+  window.history.replaceState(
+    { invitationId, key, attempted: false },
+    '',
+    '/accept-invitation?invitation=' + invitationId + '&mode=signin',
+  );
+  const fetch = vi.fn();
+  vi.stubGlobal('fetch', fetch);
+  const { unmount } = render(<ApplicationRoot pathname="/accept-invitation" />);
+  const input = screen.getByRole('textbox', { name: 'Provider email' });
+  const literal = 'Șir-literal Русский {keep}';
+  fireEvent.input(input, { target: { value: literal } });
+  const route = window.location.href;
+  const continuation = window.history.state;
+  const invalid = new Event('invalid', { cancelable: true });
+  fireEvent(input, invalid);
+
+  expect(invalid.defaultPrevented).toBe(true);
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Enter a valid email address.',
+  );
+  const errorId = screen.getByRole('alert').id;
+  expect(input).toHaveAttribute(
+    'aria-describedby',
+    'sdk-help sdk-feedback ' + errorId,
+  );
+  expect(input).toBeInvalid();
+
+  for (const choice of [
+    { index: 0, message: 'Introduceți o adresă de email validă.' },
+    { index: 1, message: 'Введите корректный адрес электронной почты.' },
+    { index: 2, message: 'Saisissez une adresse e-mail valide.' },
+  ]) {
+    const picker = screen.getByRole('combobox');
+    fireEvent.keyDown(picker, { key: 'Home' });
+    for (let index = 0; index < choice.index; index++)
+      fireEvent.keyDown(picker, { key: 'ArrowDown' });
+    fireEvent.keyDown(picker, { key: 'Enter' });
+    expect(screen.getByRole('alert')).toHaveTextContent(choice.message);
+    expect(screen.getByRole('alert')).toHaveAttribute('id', errorId);
+    expect(screen.getByRole('textbox', { name: 'Provider email' })).toBe(input);
+    expect(input).toHaveValue(literal);
+    expect(input).toHaveAttribute('required');
+    expect(input).toHaveAttribute(
+      'aria-describedby',
+      'sdk-help sdk-feedback ' + errorId,
+    );
+    expect(window.location.href).toBe(route);
+    expect(window.history.state).toEqual(continuation);
+  }
+  fireEvent.input(input, { target: { value: 'synthetic@example.test' } });
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(input).toHaveAttribute('aria-describedby', 'sdk-help sdk-feedback');
+  expect(input).toBeValid();
+
+  fireEvent.input(input, { target: { value: literal } });
+  fireEvent.invalid(input);
+  input.setAttribute(
+    'aria-describedby',
+    input.getAttribute('aria-describedby') + ' sdk-later',
+  );
+  unmount();
+  expect(input).toHaveAttribute(
+    'aria-describedby',
+    'sdk-help sdk-feedback sdk-later',
+  );
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it('keeps required validation native and clears only owned feedback when the step changes', () => {
+  vi.stubEnv('VITE_CLERK_PUBLISHABLE_KEY', 'pk_test_fixture');
+  window.history.replaceState(
+    { invitationId, key, attempted: false },
+    '',
+    '/accept-invitation?invitation=' + invitationId + '&mode=signin',
+  );
+  render(<ApplicationRoot pathname="/accept-invitation" />);
+  const input = screen.getByRole('textbox', { name: 'Provider email' });
+  fireEvent.invalid(input);
+  expect(input).toBeInvalid();
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Enter your email address.',
+  );
+  fireEvent(window, new HashChangeEvent('hashchange'));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(input).toHaveAttribute('aria-describedby', 'sdk-help sdk-feedback');
+  expect(input).toHaveAttribute('required');
+  expect(input).toBeInvalid();
 });
 
 it('renders embedded authentication with a hash-route-compatible exact continuation', () => {

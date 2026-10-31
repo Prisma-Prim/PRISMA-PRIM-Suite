@@ -15,6 +15,7 @@
     "test:preflight:playwright": "playwright test e2e/production-shell.spec.ts --grep \"renders the production shell\""
   },
   "dependencies": {
+    "@clerk/localizations": "4.14.2",
     "@clerk/react": "6.13.1",
     "lucide-react": "0.468.0",
     "pdf-lib": "1.17.1",

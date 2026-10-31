@@ -26,6 +26,10 @@ withPostgres(
       await migrate(drizzle({ client: database.targetPool }), {
         migrationsFolder: './drizzle',
       });
+      // Keep automatic maintenance out of this owned fixture's NOWAIT lock oracle.
+      await database.targetPool.query(
+        'ALTER TABLE public.workspaces SET (autovacuum_enabled = false)',
+      );
     }, 60_000);
 
     afterEach(async () => {

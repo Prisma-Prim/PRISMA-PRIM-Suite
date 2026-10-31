@@ -6,7 +6,9 @@ import {
 } from '@clerk/react';
 import { useMemo, type ReactNode } from 'react';
 import { clearWorkspaceSelection } from './access/workspace-selection';
+import { clerkAuthenticationLocalization } from './access/clerk-authentication-localization';
 import { useAppCopy } from './app.copy';
+import { useInterfaceLocale } from './localization/interface-locale';
 
 export interface BrowserIdentity {
   loaded: boolean;
@@ -25,6 +27,7 @@ export function ClerkAccessComposition({
   children(identity: BrowserIdentity): ReactNode;
   signedOutView?: ReactNode;
 }) {
+  const { locale } = useInterfaceLocale();
   const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
   if (!publishableKey)
     throw new Error('VITE_CLERK_PUBLISHABLE_KEY is required.');
@@ -32,6 +35,7 @@ export function ClerkAccessComposition({
     <ClerkProvider
       publishableKey={publishableKey}
       afterSignOutUrl={window.location.href}
+      localization={clerkAuthenticationLocalization(locale)}
     >
       <ClerkIdentity signedOutView={signedOutView}>{children}</ClerkIdentity>
     </ClerkProvider>

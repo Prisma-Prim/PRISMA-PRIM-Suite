@@ -1,4 +1,6 @@
 import { projectPdfBundleMessages } from '../project/project-pdf-bundle.copy';
+import { clerkNativeValidationMessages } from '../access/clerk-native-validation.copy';
+import { assertClerkAuthenticationCoverage } from '../access/clerk-authentication.copy';
 import { ideasMessages } from '../ideas/ideas.copy';
 import { companyAssignmentMessages } from '../access/company-assignment-localization.copy';
 import { workspaceMembershipSuspensionMessages } from '../access/workspace-membership-suspension.copy';
@@ -60,6 +62,8 @@ import { interfaceLocaleMessages } from './interface-locale.copy';
 import { assertMessageCoverage } from './messages';
 
 export function assertFirstJourneyTranslationCoverage(): void {
+  assertClerkAuthenticationCoverage();
+  assertMessageCoverage('clerkNativeValidation', clerkNativeValidationMessages);
   assertMessageCoverage('projectPdfBundle', projectPdfBundleMessages);
   assertMessageCoverage('missionReview', missionReviewMessages);
   assertMessageCoverage('taskResult', taskResultMessages);
