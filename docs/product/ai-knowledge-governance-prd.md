@@ -120,6 +120,13 @@ An authorized user asks a dossier question. Retrieval selects only permitted cur
 
 Question source: S09.
 
+The [synthetic source and citation preparation kit](ai-knowledge-synthetic-kit/README.md)
+under [#989](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/989) supplies
+fictional versioned passages and authored expectations for manual or future
+qualification. It does not satisfy representative evidence, actual source
+admission/rights, observed human review or the readiness gates below, and is not
+direct input to section 17's closed offline evaluation schemas.
+
 ## 15. Technical and legal dependencies
 
 - provider contract, region, retention and training-use review;
@@ -483,3 +490,423 @@ The original contract received ordered independent Standards then Spec preparati
 The proposed replacement outcome remains “Produce an offline paired pilot-evaluation report from declared files.” One fresh runtime author implements all of §§17.3–17.10, including both synthetic fixture sets, independent literal metric expectations and the complete owned-container/failure journey through the sole public command. Prior metric material may inform the work; old source CI, private qualifications or an unmerged branch do not qualify the replacement's exact source/base/tree. Require the standard doctor, focused public command tests, format/lint/strict checks, complete current review policy and final integration evidence. Canonical v2 merge and fresh readiness are its blockers; #972 and Clerk #658 are independent, not artificial prerequisites. No product code or prototype starts from #976, and no new ADR is required for this reversible interface. ADRs 0001/0003/0005/0006 retain stack and business-authority ownership.
 
 Real usefulness or AI promotion remains blocked on controlled representative current/obsolete/missing/contradictory and multilingual cases, lawful permitted sources, independently prepared reference evidence, actual equivalent-work manual/assisted captures with operator/review provenance, bias/order/failure review, and explicitly approved task-specific thresholds/sample design under §§9/14–16. Synthetic fixtures, this contract and an exit 0 do not close those dependencies. Pricing/calculation correctness, critical-action traceability, administrative-error rates, satisfaction, retrieval/answer semantics and safety/autonomy evaluation remain separately bounded later work. A general experiment platform, dashboards, live instrumentation, DB/API/storage services, permissions, provider adapters, automated decisions, real-data import/publication and process/tooling overhaul are excluded.
+
+## 18. Offline knowledge-context and citation qualification
+
+**Status:** Separately selected bounded offline engineering tool; the wider PRD
+remains Draft and §16 still governs production AI readiness.
+
+This tool prepares source contexts and qualifies separately supplied observations
+against a finite synthetic oracle. It implements no model, application retrieval,
+Knowledge Source admission, real role/permission grant, authenticated review,
+production Analysis or Cited Answer. It invokes no provider, network, database,
+tool action or business mutation. The selected runtime uses Node built-ins; the
+existing §17 pilot command and its closed schemas/protocol remain unchanged.
+
+### 18.1 Public command and file boundary
+
+```bash
+node scripts/knowledge-qualification.mjs --help
+node scripts/knowledge-qualification.mjs prepare --help
+node scripts/knowledge-qualification.mjs prepare --bundle /tmp/knowledge/bundle.json --out /tmp/knowledge/contexts-001.tar
+node scripts/knowledge-qualification.mjs evaluate --help
+node scripts/knowledge-qualification.mjs evaluate --bundle /tmp/knowledge/bundle.json --observations /tmp/knowledge/observations.json --out /tmp/knowledge/result-001.tar
+```
+
+The flags above are complete and each required flag has exactly one nonempty
+local path. Help is alone at the root or after its one mode, exits0 and performs
+no input/output file access. Reject missing/duplicate/unknown flags, positionals, mixed help,
+stdin, URLs, globs, control-character paths and overwrite attempts; never prompt
+or guess paths. Missing parent directories are not created.
+
+Inputs are existing distinct regular files, each at most1,048,576 captured UTF-8
+bytes including a one-byte overflow probe. Reject BOM, invalid UTF-8, malformed
+JSON, duplicate object keys, nesting beyond12 containers, unknown properties,
+unknown versions and symlink path components. Reuse §17.3's existing input and
+exclusive USTAR output primitives without changing that command: the output is
+one new direct child of an existing writable directory outside this worktree and
+input paths, private0600 at exclusive creation and descriptor verification.
+Exactly `result.json` then `report.md`, neutral headers/padding and end blocks,
+each at most16,777,216 bytes, container at most33,556,480 bytes. Require complete
+verified bytes and successful descriptor closure before receipt. Preserve inputs,
+prior outputs, incomplete files and replacements; retry at a fresh path. §17.3's
+filesystem capability and observed-path/race limitations apply unchanged: this is
+not atomic content publication, arbitrary same-UID protection or crash durability.
+
+### 18.2 Closed synthetic bundle
+
+Every listed property is required unless explicitly optional; no other properties
+are accepted. The wrapper is `schema: "prisma-prim-knowledge-bundle/v1"`, `content`
+and `expectations`. It explicitly adopts the delivered kit's two literal JSON
+blocks as nested synthetic inputs, rather than silently changing their former
+illustrative formats or §17's incompatible input schemas.
+
+| Object       | Complete properties                                                                                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Content      | `format: "prisma-prim-synthetic-knowledge-content/v1"`, `corpusId`, `corpusVersion`, `dataKind: "synthetic"`, `profiles`, `sources`                                                           |
+| Profile      | `profileId`, `workspaceRef`, `companyRef`, `purposes`, `permittedSources`                                                                                                                     |
+| Source       | `sourceId`, `version`, `workspaceRef`, `companyRef`, `language`, `admission`, `status`, `title`, `passages`                                                                                   |
+| Passage      | `locator`, `text`                                                                                                                                                                             |
+| Reference    | `sourceId`, `version`                                                                                                                                                                         |
+| Expectations | `format: "prisma-prim-synthetic-knowledge-expectations/v1"`, `corpusId`, `corpusVersion`, `expectationSetId`, `expectationSetVersion`, `dataKind: "synthetic"`, `cases`                       |
+| Case         | `caseId`, `caseVersion`, `language`, `purpose`, `profileId`, `mode`, `question`, `candidateRefs`, `expected`; optional `selectedHistoricalRefs` and `humanDisposition` only as below          |
+| Expected     | `outcome`, `retrievalRefs`, `citations`, `requiredProperties`, `prohibitedOutcomes`; optional `fields`, or the pair `initialFields`/`finalFields`, never both shapes                          |
+| Citation     | `sourceId`, `version`, `locator`, `quote`                                                                                                                                                     |
+| Field        | `fieldId`, `state`, `value`; optional `rationale` and `alternatives`                                                                                                                          |
+| Human event  | `eventRef`, `actorRef`, `kind`, `fieldId`, `at`, `evidenceKind: "authored_fiction"`; accept requires `value`, correct requires `value`/`reason`, reject requires `reason` and forbids `value` |
+
+IDs match `[A-Za-z][A-Za-z0-9._-]{0,63}`. Versions are integers1–1,000,000.
+Strings are well-formed Unicode, preserve exact composition/case/whitespace, and
+exclude C0 controls except tab/LF/CR and exclude DEL. All text is nonempty.
+Titles/locators contain at most256 code points; passages/quotes16,000;
+questions, rationales, reasons and qualitative notes2,000; field values and
+alternatives1,000. A human event's time is a real UTC calendar instant in exact
+`YYYY-MM-DDTHH:mm:ssZ` form. Language is `ro`, `ru`, `en` or `other`; purpose is
+`cited-answer` or `analysis`. Admission is `synthetic-approved` or
+`synthetic-not-approved`; status is `current` or `superseded`.
+
+Bounds:1–32 profiles,0–128 source Versions,1–32 passages per source,0–128
+permitted references per profile,0–200 cases,0–16 candidate/expected retrieval
+references per case,0–32 citations/fields/qualitative notes. Purposes are unique,
+at most2. Historical mode requires1–16 exact `selectedHistoricalRefs` drawn from
+the case's candidates; current mode forbids that property. Source ID/Version,
+profile, case, locator within a Version, citation source/Version/locator, field
+within its array and event IDs are unique. A Source ID retains one Workspace/Company and at most one current Version.
+All profile/candidate/history references resolve to this inventory; corpus IDs
+and Versions agree between content and expectations.
+
+Field state is `inferred`, `confirmed`, `missing` or `contradictory`.
+Inferred/confirmed require a nonempty value; missing/contradictory require null.
+Optional alternatives are2–16 unique strings and allowed only for contradictory
+state. Qualitative rationale/notes are not mechanically judged. Initial expected
+fields cannot be confirmed: this selected protocol supplies no prior authenticated
+approval. A human event is allowed only for an Analysis case with separate initial
+and final expected fields. Accept/correct supplies exactly one matching confirmed
+final field; reject supplies no final fields. The event names an existing initial
+field, and accept retains its proposed value. Those are authored fictional events,
+not execution of a review action.
+
+Outcome is one of `supported`, `supported_history`, `contradictory`,
+`insufficient_evidence`, `insufficient_authorized_evidence`, `access_denied`,
+`supported_with_untrusted_instruction`, `analysis_proposal`, `human_accepted`,
+`human_corrected`, `human_rejected`, `insufficient_admitted_evidence`.
+The human outcomes require the matching supplied event kind. Oracle retrieval
+references must be eligible; oracle citations must match actual full passage text
+and an oracle-retrieved source. An invalid oracle fails input validation.
+The tool cannot establish immutability, authenticity or rights from declared IDs:
+operators version changed bytes/preconditions and retain the original inputs.
+
+### 18.3 Candidate-safe preparation
+
+Eligibility is computed from the case's candidates and declared profile, never
+from expected answers, expected retrieval references or qualitative notes.
+A source must match the profile's Workspace/Company, be permitted by that
+profile, be synthetically approved and satisfy its purpose. Current mode includes
+only current sources; history includes only the explicitly selected Versions,
+retaining each status. No purpose permission produces no source or fictional
+review-event context. A derived `capability` marker is `simulated_allowed` or
+`simulated_denied`, not an oracle answer or real application grant.
+
+`result.json` is `prisma-prim-knowledge-contexts/v1`: `schema`,
+`dataKind: "synthetic"`, `measurementBasis: "declared_inputs_unverified"`,
+`corpus {id,version}`, `expectationSet {id,version}`, `contexts`.
+Each context contains only `caseId`, `caseVersion`, `profileId`, `capability`, `purpose`, `mode`,
+`language`, `question`, `scope {workspaceRef,companyRef}`, permitted `sources`
+and the explicitly supplied `humanDisposition` or null. A supplied source exposes
+only `sourceId`, `version`, `status`, `language`, `title`, `passages {locator,text}`.
+Keep inventory order. Omit all inaccessible IDs/titles/content, full profiles,
+candidates and oracle properties. An empty supplied-source array is generic
+insufficiency, never a hidden-source count or permission explanation.
+`report.md` lists only those contexts and supplied source identities/statuses.
+
+Source passages and human events remain untrusted declared data. They cannot
+change eligibility, invoke a tool or create authority. Preparing these exact
+contexts proves this tool's output only; it does not prove what a later external
+provider actually received or whether a candidate followed an embedded instruction.
+
+### 18.4 Separate captured observations and mechanical evaluation
+
+The closed observation file contains `schema:
+"prisma-prim-knowledge-observations/v1"`, `dataKind: "synthetic"`, `corpusId`,
+`corpusVersion`, `expectationSetId`, `expectationSetVersion`, `runId`, `runVersion`,
+`methodId`, `methodVersion`, `evidenceKind` (`authored_fixture` or
+`captured_declared`) and0–200 unique `observations`.
+
+Each observation has `caseId`, `caseVersion`, `profileId`, `purpose`, `mode`,
+`status`, `retrievalRefs`, `outcome`, `citations`, `initialFields`, `finalFields`,
+`humanEventRef`, with optional `answer`. Corpus/expectation identities and every
+case/profile/purpose/mode/Version must match the bundle exactly; reject unknown
+cases or incompatible identities rather than joining them silently. Completed
+observations supply arrays and an outcome from the enum; humanEventRef is an ID
+or null and optional answer is nonempty text up to16,000 code points.
+For `failed`/`not_run`, all six evidence fields are null and optional answer must
+be null. An absent case observation is reported as missing, not a success.
+
+Unknown/ineligible observed source references and bad quote/locator/Version are
+mechanical findings rather than a false successful capture. Keep separately
+captured observations separate from authored expectations: runtime must never
+produce observations by copying the oracle. The bundled demonstration observations
+are expressly labelled authored fixtures, not captured inference.
+
+Evaluation result `prisma-prim-knowledge-result/v1` contains schema/dataKind/
+measurementBasis, corpus/expectation identities, run `{id,version,methodId,
+methodVersion,evidenceKind}`, captured input SHA-256 values, per-case records,
+summary and explicit unavailable measures. Each record preserves case/profile/
+purpose/mode/Version, declared status, finding code/index pairs, measurements,
+initial/final observed fields, the separately supplied fictional event and captured
+answer or null. Output never invents an event from a candidate's claimed event ID. Evaluation
+results are operator-only; only prepare output is a candidate context.
+
+| Measure                   | Exact numerator                                                                                             | Denominator                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| retrievalSetMatch         | 1 when declared retrieval references equal the oracle set and all are eligible, else0                       | 1 per completed observation                      |
+| citationExactness         | Observed citations with eligible source, known locator, exact full quote and a declared retrieval reference | Observed citations                               |
+| citationReferenceCoverage | Oracle citations reproduced exactly                                                                         | Oracle citations                                 |
+| outcomeMatch              | 1 for literal declared-outcome equality, else0                                                              | 1 per completed observation                      |
+| initialFieldMatch         | Expected initial fields matching ID/state/value/ordered alternatives                                        | Expected initial fields                          |
+| finalFieldMatch           | Expected final fields matching ID/state/value/ordered alternatives                                          | Expected final fields                            |
+| humanEventMatch           | 1 when the claimed event ID equals the supplied fictional event, else0                                      | 1 if an event is supplied or claimed; otherwise0 |
+
+Retrieval/citation/field collections compare without order, except an individual
+field's alternatives retain declared order. Rationale and free answer text receive
+no semantic judgment. Extra, missing or changed entries produce findings even when
+a reference-coverage numerator happens to equal its denominator. A confirmed
+initial field, or confirmed final field without the matching separately supplied
+accept/correct event/field/value, produces unsupported-confirmation findings.
+A hidden retrieval is flagged even when final answer text appears harmless.
+
+Each measure is `{numerator,denominator,value}`. The integer counts are
+authoritative; value is the ratio rounded to six decimal places, or null for a
+zero denominator. Failed/not-run/missing observations contribute0/0. Summary
+includes case/completed/failed/notRun/missing counts, casesWithFindings and summed
+measurements. Empty sets and absent fields/citations never manufacture a score.
+Semantic support, language quality, representativeness, actual access enforcement,
+authenticated human approval, serious-error thresholds and release/MVP completion
+remain explicitly unavailable. There is no aggregate quality verdict or promotion.
+
+### 18.5 Receipt, failure semantics and literal example
+
+Success emits one newline-terminated JSON receipt with `schema:
+"prisma-prim-knowledge-receipt/v1"`, `mode`, `dataKind: "synthetic"`,
+`measurementBasis: "declared_inputs_unverified"`, `format: "ustar"`,
+`entries: ["result.json","report.md"]`. No local output path or source content
+is printed. Exit0 attests complete mechanical files even with findings; exit2
+means arguments/JSON/schema/bounds/duplicate/reference failure, exit3 means
+input-file/path/output failure, exit1 an unexpected internal failure.
+
+Failure emits one safe JSON line to stderr, at most2,048 bytes, with
+`schema: "prisma-prim-knowledge-error/v1"`, `code`, `input`, `location`,
+`message`, `example`; stdout is empty. Input is arguments/bundle/observations/
+output/internal and location is a known JSON Pointer or null. Codes remain
+E_ARGUMENT, E_INPUT_FILE, E_INPUT_LIMIT, E_JSON, E_SCHEMA, E_DUPLICATE,
+E_REFERENCE, E_OUTPUT_PATH, E_OUTPUT_EXISTS, E_OUTPUT_LIMIT, E_OUTPUT_WRITE,
+E_INTERNAL. Do not echo untrusted values/keys, full paths, raw OS errors or secrets.
+Validation order is arguments, bundle JSON/schema/references, observation JSON/
+schema/references when selected, then output construction/safety/write.
+
+The [literal fixtures](../../scripts/fixtures/knowledge-qualification/README.md)
+transcribe all22 kit cases. K01's current citation is `S-RO-INVENTORY`, Version2,
+locator `p1`, exact text “În atelierul fictiv Lumen sunt patru cutii de mostre.”
+The literal correct observation contributes1/1 citationExactness; replacing
+“patru” with “cinci” contributes0/1 and a quote-mismatch finding. Superseded
+Version1's exact quote is still ineligible in current mode. K19 retains initial
+inferred5 and the separately supplied fictional correction to confirmed4;
+K20's rejection has no final value. The full separately authored fixture gives
+14/14 exact citations,22/22 retrieval-set matches,7/7 initial fields,2/2 final
+fields and3/3 event-reference matches. These are inspectable mechanics, never
+observed model accuracy, real human approval or representative first-tenant work.
+
+Run spawned public CLI tests for these vectors, wrong/unknown identities, hidden
+retrieval despite harmless text, absent/failed observations, empty denominators,
+Unicode/whitespace exactness, source-instruction data, malformed inputs and
+exclusive/private output recovery. Source kit literals and the existing §17 pilot
+command stay unchanged. Actual source inventory/rights/admission, real approvers
+and grants, representative useful cases, registry/interactions and legal/security/
+provider review/configuration remain production AI dependencies under §§9/14–16.
+
+## 19. Read-only cited-evidence connection for Codex — bounded software contract
+
+**Status:** Selected bounded application contract; production promotion is separate.
+
+**Capability:** `knowledge.cited-evidence`, version `1`.
+
+**Owner:** Knowledge; NestJS retains authorization, source admission and exact references.
+
+The initial connection exposes PRISMA evidence through standard MCP to an
+operator-configured Codex client. ChatGPT/Codex performs inference; this server
+returns governed evidence, not a generated answer or a confirmed Analysis. It
+uses no model API key and never reads Codex credentials, ChatGPT cookies or
+subscription tokens. Sections 5–9/14–16 and their actual source, representative,
+legal/security and production-promotion requirements remain in force. Synthetic
+software tests satisfy none of those real-world inputs.
+
+### 19.1 Source admission and literal curated projections
+
+A Company Knowledge Source names an exact official or deliberately historical
+Document Version and one preserved PDF representation. Creation verifies native
+Document/content visibility, the actual preserved byte checksum and the Version
+binding. Unverified external references and draft Document Versions are not
+admissible. Official designation alone grants no knowledge eligibility.
+
+The closed draft input contains `documentId`, `documentVersionId`,
+`representationId`, `sourceSha256`, `language` (`ro`, `ru`, `en`),
+`ownerReference` (1–200 characters), `provenance` and `rightsEvidenceReference`
+(each 1–1000), `permittedPurpose: "cited-evidence"`, `effectiveFrom`,
+`effectiveUntil` and `passages`. Effective instants use exact UTC
+`YYYY-MM-DDTHH:mm:ss.sssZ`, with an end strictly after the start. Confidentiality
+comes from the governed Document and grants no additional access.
+
+There are 1–20 passages with distinct literal locators (1–120 characters,
+excluding `.` and `..`) and literal text (1–16384 characters); their serialized
+array is at most 48000 UTF-8 bytes. NUL, unsupported control characters and
+unpaired surrogates are rejected. No whitespace, case or Unicode normalization
+changes a passage. The projection checksum binds Version, representation,
+source checksum and ordered locator/text pairs. Individual passage hashes bind
+exact UTF-8 text. A projection is a human-curated transcription, not an OCR or
+semantic-correspondence result verified by the server.
+
+The lifecycle is `draft → admitted → revoked`, with `draft → revoked` also
+available. There is no un-revoke, in-place content correction or deletion.
+Changed source/projection content requires a new Source. Approval names the
+expected revision and both source/projection hashes with the exact attestation
+`exact-version-source-and-use-reviewed/v1`. The authenticated administrator
+thereby records a review declaration for that exact content and use. A nonempty
+rights reference or an attestation does not independently prove a license,
+legal review, expert approval or a real business-source admission.
+
+Commands require an Idempotency-Key and optimistic revision for transitions.
+The key is scoped to Workspace and actor membership; Company, target, operation
+and validated input are fingerprinted. An identical retry rechecks current
+source-administration and native Document access, then returns the original
+receipt. A changed/reused command conflicts. Receipts describe the original
+command revision, not a promise of current admission. Projection, source state,
+receipt and attributed history commit atomically. Database guards preserve
+immutable content and append-only contiguous transition history.
+
+### 19.2 Authority and private audit
+
+Two new Company bundles start **unassigned**, each with immutable captured `v1`:
+
+| Bundle                                 | Permission                | Boundary                                                |
+| -------------------------------------- | ------------------------- | ------------------------------------------------------- |
+| Company Knowledge Source Administrator | `knowledge.source.manage` | Draft, attest, revoke and inspect source administration |
+| Company Knowledge Evidence Reader      | `knowledge.evidence.read` | Read admitted cited evidence                            |
+
+Existing Workspace assignment management owns explicit grants/revokes. No old
+bundle version expands, existing role/title implies neither new permission, and
+neither bundle supplies native Document or content visibility. Every operation
+also requires the current Company and its existing Document/content authority.
+Captured assignment identity/version is checked against its live unrevoked row;
+a replaced assignment cannot revive an old capture with equal permission strings.
+
+Source administration can prepare an inventory before capability activation.
+Its inspection/history additionally requires current native Document visibility.
+The current Accountability owner appends restricted `knowledge_source_events`
+inside the command transaction, with exact source/revision, action, actor
+membership/Internal User/display snapshot, command fingerprint and server instant.
+This follows its existing restricted-event pattern: there is no new generic
+Activity/Home projection and no source text, rights evidence or token in event
+metadata. Capability use alone cannot inspect drafts, rights or administration.
+
+Successful evidence reads append minimal `knowledge_interactions` attribution:
+operation, capability version, authenticated membership, Company, instant and
+returned source/Version/projection references. They store no query, source body,
+credential, generated answer or business decision. This is read attribution,
+not an AI approval framework. Read operations otherwise conserve governed
+Document Versions, business commands and source transition history.
+
+### 19.3 Protected REST and current evidence
+
+The [OpenAPI contract](../../apps/api/openapi.yaml) owns exact route schemas.
+Source administration uses the ordinary PRISMA identity boundary:
+
+- `POST /api/knowledge/sources` creates a draft;
+- `POST /api/knowledge/sources/{sourceId}/admission` records the exact attestation;
+- `POST /api/knowledge/sources/{sourceId}/revocation` withdraws admission;
+- `GET /api/knowledge/sources/{sourceId}/administration` inspects private metadata,
+  immutable passage content and attributed history;
+- Company Knowledge assignments use `/api/knowledge/assignments/administrators`
+  or `/readers`, with the existing Workspace assignment authority.
+
+Evidence reads use a legitimate PRISMA Bearer token for the explicitly configured
+`KNOWLEDGE_TOKEN_AUDIENCE`, verified through the existing Clerk identity adapter
+with the existing authorized web party plus that resource audience. This does
+not create an OAuth authorization server or widen ordinary web authentication.
+The existing narrowly gated deterministic test/demo identity mode is reused only
+in its allowed environment; it is not a production authentication fallback.
+
+The server-side `KNOWLEDGE_EVIDENCE_ENABLED` switch defaults to disabled. An
+explicit validated deployment configuration, actual sources/rights, explicit
+assignments and required reviews precede real activation; tool arguments cannot
+set configuration. Enabled software is operable with legitimately configured
+credentials and admitted sources; it is not hardcoded to return no results.
+
+The read surface is:
+
+- `GET /api/knowledge/sources`: an authorized source page;
+- `GET /api/knowledge/search?query=...`: exact case-sensitive literal matching,
+  with no semantic model, embeddings, invented precedence or answer;
+- `GET /api/knowledge/sources/{sourceId}/passages/{locator}`: an exact passage.
+
+Current mode is default and returns only currently official Versions with
+currently effective, admitted `cited-evidence` sources. Explicit historical mode
+requires one exact `documentVersionId`; revoked/expired admission is never
+restored by historical intent. Each call re-establishes current actor, Company,
+Document/content access and admission before projection content is published.
+An unauthorized source contributes no title, identifier, count or zero.
+
+List/search pages contain at most 20 results. Query length is 1–200 characters,
+cursors at most 2048, source IDs are UUIDs and passage locators 1–120 characters.
+A non-null cursor resumes after the last authorized result; a final empty search
+page may terminate an exactly full previous page. No total or hidden-source count
+is emitted. Multiple conflicting sources stay separate and retain their exact
+references; no source gets inferred authority over another.
+
+Read authorization and source/Version locks follow existing transaction
+linearization. Revocation committed before the live pre-projection gate prevents
+publication; already-authorized bytes released before a later revocation cannot
+be recalled over a network. A client disconnect retires its own pending bridge
+work; one reply cannot be rebound to another request, actor or context.
+
+### 19.4 MCP operator connection and honest proof
+
+The maintained pinned TypeScript MCP SDK exposes exactly three tools:
+`list_knowledge_sources`, `search_knowledge`, `get_knowledge_passage`.
+Their closed input/output schemas enforce the same mode, exact history,
+pagination and literal-reference bounds. They are read-only/non-destructive;
+there is no write, approval, SQL, filesystem or arbitrary-fetch tool.
+
+Build the API normally, then configure Codex to launch
+`apps/api/dist/knowledge-mcp/stdio.main.js` with Node. The stdio bridge consumes
+only operator-provided environment variables:
+
+- `PRISMA_KNOWLEDGE_API_ORIGIN`: fixed PRISMA HTTPS origin; numeric-loopback HTTP
+  is permitted for isolated local development;
+- `PRISMA_KNOWLEDGE_WORKSPACE_ID`, `PRISMA_KNOWLEDGE_COMPANY_ID`: fixed selected
+  scope, revalidated by the server;
+- `PRISMA_KNOWLEDGE_BEARER_TOKEN`: legitimate PRISMA resource credential supplied
+  by the operator, never discovered from a client account.
+
+A Codex stdio configuration uses `command = "node"`, the absolute compiled entry
+as its `args`, and these variable **names** in `env_vars`. No credential value
+belongs in a committed example. HTTP redirects, model-provided origins/context,
+userinfo, query/fragment-bearing origins and arbitrary credential headers are
+rejected. Each upstream request has a 10-second deadline and a 2-MiB decoded
+response limit. Returned citation text hashes and exact requested identities
+are verified at the client boundary; extra upstream administration fields are
+not passed to the model. Stdio stdout contains only MCP; failures are sanitized.
+
+The initial deliverable is a Codex-compatible stdio connector, not a configured
+user account. ChatGPT remote connection needs a reachable HTTPS MCP endpoint and
+proper protected-resource/OAuth authorization-server configuration; this slice
+does not invent those settings or reuse a ChatGPT subscription as a model API.
+Codex's `auth = "chatgpt"` first-party mode is not authentication to PRISMA.
+
+Software proof uses public governed Document/PDF commands, explicit fictional
+new grants, actual Nest/PostgreSQL source transitions and an actual MCP SDK
+client through the HTTP bridge. Only the external identity boundary is replaced
+by declared fixtures in that native proof. Separate tests exercise the real Clerk
+SDK with synthetic signed keys and forwarded audience/party constraints. Neither
+is proof of a live Clerk tenant or a configured ChatGPT/Codex account. Independent
+ro/ru/en PDF text and curated literal citations prove mechanical multilingual
+preservation; there is no semantic-answer or representative-pilot score.

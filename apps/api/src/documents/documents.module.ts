@@ -39,6 +39,7 @@ import { DocumentVersionsService } from './document-versions.service.js';
     DocumentMalwareScanner,
   ],
   exports: [
+    DocumentReadBoundary,
     ProjectPdfBundleService,
     DocumentsService,
     DocumentProjectsService,

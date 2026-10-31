@@ -35,6 +35,8 @@ type Props = {
   onOpenTask?: (task: { projectId: string; taskId: string }) => void;
   /** Optional final Task-focus intent for the Company overdue disclosure only. */
   onOpenOverdueTask?: (task: { projectId: string; taskId: string }) => void;
+  /** An exact selected-Company continuation, consumed once by this native panel. */
+  overdueOpenIntent?: { requestId: number; onConsumed: () => void };
 };
 
 type Load =
@@ -76,6 +78,7 @@ function CompanySummary({
   onOpenMyTasks,
   onOpenTask,
   onOpenOverdueTask,
+  overdueOpenIntent,
 }: Props) {
   const copy = useOperationalHomeCopy();
   const { formatDate } = useInterfaceLocale();
@@ -86,6 +89,7 @@ function CompanySummary({
   const overdueCard = useRef<HTMLButtonElement>(null);
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const focusPanel = useRef(false);
+  const consumedOverdueIntent = useRef<number | undefined>(undefined);
 
   // The latest read supersedes any earlier read still in flight.
   function read() {
@@ -136,6 +140,26 @@ function CompanySummary({
     load.view.summaries.some((summary) => summary.kind === 'overdue_tasks');
   // A read that no longer returns the overdue count closes its panel.
   const overdueWithdrawn = load.kind === 'ready' && !overdueShown;
+  useEffect(() => {
+    if (
+      !overdueOpenIntent ||
+      consumedOverdueIntent.current === overdueOpenIntent.requestId ||
+      load.kind === 'loading'
+    )
+      return;
+    consumedOverdueIntent.current = overdueOpenIntent.requestId;
+    overdueOpenIntent.onConsumed();
+    // A terminal refusal/error consumes the intent too; later refresh never
+    // replays a destination that was not readable when this request completed.
+    if (!overdueShown || !availableSummaries.overdue_tasks) return;
+    focusPanel.current = true;
+    setPanelOpen(true);
+  }, [
+    overdueOpenIntent,
+    load.kind,
+    overdueShown,
+    availableSummaries.overdue_tasks,
+  ]);
   useEffect(() => {
     if (overdueWithdrawn) setPanelOpen(false);
   }, [overdueWithdrawn]);

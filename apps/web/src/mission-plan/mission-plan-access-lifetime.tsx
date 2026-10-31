@@ -1,14 +1,7 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import type { ApiResult } from '../api/authenticated-api-client';
 import type { ActorContext } from '../access-types';
-import { handleAuthenticatedAccessRejection } from '../api/latest-authenticated-request';
+import { useAccessRecovery } from '../api/use-access-recovery';
 import type { PlanContext } from './use-mission-plan-io';
 import { useMissionPlanCopy } from './mission-plan.copy';
 const Rejection = createContext<((result: ApiResult<unknown>) => void) | null>(
@@ -25,62 +18,8 @@ export function MissionPlanAccessLifetime({
   actor: ActorContext;
   children: ReactNode;
 }) {
-  const [denied, setDenied] = useState(false),
-    copy = useMissionPlanCopy();
-  const rejected = useRef(false),
-    pending = useRef<AbortController | null>(null),
-    current = useRef(context);
-  const owner = useRef({
-    key: context.authority.key,
-    identity: context.identity,
-    actor,
-    generation: 0,
-  });
-  const readScopeChanged =
-    owner.current.key !== context.authority.key ||
-    owner.current.identity !== context.identity;
-  // Recovery publishes a complete actor. A newer snapshot retires it even when this reader's rights did not change.
-  if (readScopeChanged || owner.current.actor !== actor) {
-    pending.current?.abort();
-    pending.current = null;
-    owner.current = {
-      key: context.authority.key,
-      identity: context.identity,
-      actor,
-      generation: owner.current.generation + 1,
-    };
-    if (readScopeChanged) {
-      rejected.current = false;
-      if (denied) setDenied(false);
-    }
-  }
-  current.current = context;
-  useEffect(() => () => pending.current?.abort(), []);
-  function reject(result: ApiResult<unknown>) {
-    if (rejected.current) return;
-    rejected.current = true;
-    const controller = new AbortController();
-    pending.current = controller;
-    const generation = owner.current.generation;
-    const live = () =>
-      owner.current.generation === generation &&
-      pending.current === controller &&
-      !controller.signal.aborted;
-    setDenied(true);
-    const c = current.current;
-    void handleAuthenticatedAccessRejection({
-      result,
-      signal: controller.signal,
-      identity: c.identity,
-      companyContextId: c.authority.companyId,
-      onActorRevalidated: (actor) =>
-        live() ? current.current.onActorRevalidated?.(actor) : undefined,
-      onCompanyContextRejected: (id) =>
-        live() ? current.current.onCompanyContextRejected?.(id) : undefined,
-      onWorkspaceAccessRejected: () =>
-        live() ? current.current.onWorkspaceAccessRejected?.() : undefined,
-    }).catch(() => undefined);
-  }
+  const copy = useMissionPlanCopy();
+  const { denied, reject } = useAccessRecovery({ ...context, actor });
   return denied ? (
     <p role="alert">{copy('denied')}</p>
   ) : (
