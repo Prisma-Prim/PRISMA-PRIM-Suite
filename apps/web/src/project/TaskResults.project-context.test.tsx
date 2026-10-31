@@ -217,7 +217,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it('retires a hidden Project result draft and late PDF while preserving the ordinary Task cache', async () => {
+it('preserves the hidden Project result correction and ordinary Task cache while retiring late PDF navigation', async () => {
   const fixture = transport({ exists: true });
   const create = vi.fn().mockReturnValue('blob:demo');
   vi.stubGlobal('URL', { createObjectURL: create, revokeObjectURL: vi.fn() });
@@ -229,7 +229,7 @@ it('retires a hidden Project result draft and late PDF while preserving the ordi
   });
   fireEvent.click(screen.getByRole('button', { name: 'Correct result' }));
   fireEvent.change(screen.getByLabelText('Result declaration'), {
-    target: { value: 'Retired result draft DEMO' },
+    target: { value: 'Independent result draft DEMO' },
   });
   fireEvent.click(
     screen.getByRole('button', { name: 'Download exact PDF · Version 1' }),
@@ -239,8 +239,8 @@ it('retires a hidden Project result draft and late PDF while preserving the ordi
   await openTask('Task B DEMO');
   expect(fixture.state.downloadSignal?.aborted).toBe(true);
   expect(
-    screen.queryByDisplayValue('Retired result draft DEMO'),
-  ).not.toBeInTheDocument();
+    screen.getByDisplayValue('Independent result draft DEMO'),
+  ).not.toBeVisible();
   fixture.download.resolve(
     new Response('%PDF-DEMO', {
       headers: { 'content-type': 'application/pdf' },
@@ -260,12 +260,12 @@ it('retires a hidden Project result draft and late PDF while preserving the ordi
   ).toHaveValue('Ordinary Task draft DEMO');
   expect(create).not.toHaveBeenCalled();
   expect(
-    screen.queryByDisplayValue('Retired result draft DEMO'),
-  ).not.toBeInTheDocument();
+    screen.getByDisplayValue('Independent result draft DEMO'),
+  ).toBeVisible();
 });
 
 it.each([false, true])(
-  'retires a result command across Projects when pending=%s, including late success and exact-retry state',
+  'conserves independent result command across Projects when pending=%s, including confirmation and exact same-target retry',
   async (pending) => {
     const fixture = transport({ pending });
     const view = render(show());
@@ -290,19 +290,33 @@ it.each([false, true])(
     await waitFor(() =>
       expect(screen.queryByText('Recording result…')).not.toBeInTheDocument(),
     );
-    expect(screen.queryByText('Result confirmed.')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', {
-        name: 'Retry exact result command',
-        hidden: true,
-      }),
-    ).not.toBeInTheDocument();
+    const hiddenConfirmation = screen.queryByText('Result confirmed.');
+    if (hiddenConfirmation) expect(hiddenConfirmation).not.toBeVisible();
     view.rerender(show());
-    await screen.findByText('Preserved output DEMO');
-    expect(
-      screen.queryByDisplayValue('Result draft DEMO'),
-    ).not.toBeInTheDocument();
-    expect(fixture.state.commands).toHaveLength(1);
+    if (pending)
+      expect(await screen.findByText('Result confirmed.')).toBeVisible();
+    else {
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Retry exact result command',
+        }),
+      );
+      expect(await screen.findByText('Result confirmed.')).toBeVisible();
+      expect(fixture.state.commands[1]?.body).toBe(
+        fixture.state.commands[0]?.body,
+      );
+      expect(
+        new Headers(fixture.state.commands[1]?.headers).get('idempotency-key'),
+      ).toBe(
+        new Headers(fixture.state.commands[0]?.headers).get('idempotency-key'),
+      );
+      expect(
+        fixture.fetcher.mock.calls
+          .filter(([, request]) => request?.method === 'POST')
+          .map(([url]) => url),
+      ).toEqual(['/api/tasks/task-a/results', '/api/tasks/task-a/results']);
+    }
+    expect(fixture.state.commands).toHaveLength(pending ? 1 : 2);
   },
 );
 

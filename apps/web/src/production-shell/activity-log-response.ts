@@ -29,6 +29,14 @@ type ActivityAction = ActivityLogEvent['action'];
  * fails type checking here until its target is stated deliberately.
  */
 const targetTypes = {
+  'company_knowledge_source_administrator_assignment.granted':
+    'company_role_assignment',
+  'company_knowledge_source_administrator_assignment.revoked':
+    'company_role_assignment',
+  'company_knowledge_evidence_reader_assignment.granted':
+    'company_role_assignment',
+  'company_knowledge_evidence_reader_assignment.revoked':
+    'company_role_assignment',
   'company_offer_model_editor_assignment.granted': 'company_role_assignment',
   'company_contract_model_editor_assignment.granted': 'company_role_assignment',
   'company_offer_model_editor_assignment.revoked': 'company_role_assignment',
@@ -55,7 +63,19 @@ const targetTypes = {
   'workspace_sessions.revocation_retry_required': 'workspace_membership',
   'company.registered': 'company',
   'company_task_manager_assignment.granted': 'company_role_assignment',
+  'company_project_next_action_coordinator_assignment.granted':
+    'company_role_assignment',
+  'company_project_next_action_coordinator_assignment.revoked':
+    'company_role_assignment',
   'company_task_manager_assignment.revoked': 'company_role_assignment',
+  'company_mission_applicability_coordinator_assignment.granted':
+    'company_role_assignment',
+  'company_mission_applicability_coordinator_assignment.revoked':
+    'company_role_assignment',
+  'company_mission_applicability_approver_assignment.granted':
+    'company_role_assignment',
+  'company_mission_applicability_approver_assignment.revoked':
+    'company_role_assignment',
   'company_mission_result_reviewer_assignment.granted':
     'company_role_assignment',
   'company_mission_result_reviewer_assignment.revoked':

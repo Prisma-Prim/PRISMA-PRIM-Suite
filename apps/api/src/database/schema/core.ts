@@ -79,12 +79,17 @@ export const companyRoleBundle = pgEnum('company_role_bundle', [
   'company_received_contract_access',
   'company_task_result_recorder',
   'company_mission_result_reviewer',
+  'company_project_next_action_coordinator',
+  'company_mission_applicability_coordinator',
+  'company_mission_applicability_approver',
   'company_offer_model_editor',
   'company_contract_model_editor',
   'company_offer_model_approver',
   'company_contract_model_approver',
   'company_mission_plan_configuration',
   'company_mission_plan_user',
+  'company_knowledge_source_administrator',
+  'company_knowledge_evidence_reader',
 ]);
 export const companyContextAssignmentOperation = pgEnum(
   'company_context_assignment_operation',
@@ -762,11 +767,17 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_received_contract_access_assignment.granted',
   'company_task_result_recorder_assignment.granted',
   'company_mission_result_reviewer_assignment.granted',
+  'company_project_next_action_coordinator_assignment.granted',
+  'company_mission_applicability_coordinator_assignment.granted',
+  'company_mission_applicability_approver_assignment.granted',
   'company_document_content_reader_assignment.revoked',
   'company_mission_deliverable_access_assignment.revoked',
   'company_received_contract_access_assignment.revoked',
   'company_task_result_recorder_assignment.revoked',
   'company_mission_result_reviewer_assignment.revoked',
+  'company_project_next_action_coordinator_assignment.revoked',
+  'company_mission_applicability_coordinator_assignment.revoked',
+  'company_mission_applicability_approver_assignment.revoked',
   'company_document_content_uploader_assignment.granted',
   'company_document_content_uploader_assignment.revoked',
   'company_project_assignment.granted',
@@ -836,6 +847,10 @@ export const activityLogAction = pgEnum('activity_log_action', [
   'company_mission_plan_configuration_assignment.revoked',
   'company_mission_plan_user_assignment.granted',
   'company_mission_plan_user_assignment.revoked',
+  'company_knowledge_source_administrator_assignment.granted',
+  'company_knowledge_source_administrator_assignment.revoked',
+  'company_knowledge_evidence_reader_assignment.granted',
+  'company_knowledge_evidence_reader_assignment.revoked',
 ]);
 
 export const activityLogTargetType = pgEnum('activity_log_target_type', [
@@ -890,6 +905,9 @@ export const activityLogEvents = pgTable(
               | 'Company Received Contract Access'
               | 'Company Task Result Recorder'
               | 'Company Mission Result Reviewer'
+              | 'Company Project Next Action Coordinator'
+              | 'Company Mission Applicability Coordinator'
+              | 'Company Mission Applicability Approver'
               | 'Company Document Content Uploader'
               | 'Company Project Access'
               | 'Company Commercial Intake'
@@ -914,6 +932,8 @@ export const activityLogEvents = pgTable(
               | 'Company Ideas Reviewer'
               | 'Company Profitability Contributor'
               | 'Company Profitability Director'
+              | 'Company Knowledge Source Administrator'
+              | 'Company Knowledge Evidence Reader'
               | 'Company Operational Risk Reader'
               | 'Company Operational Risk Recorder'
               | 'Company Sales Stage Configuration'

@@ -61,9 +61,10 @@ describe.skipIf(!databaseUrl)(
             throw new Error('Invalid migration tag.');
           return tag;
         });
-        const index = tags.indexOf('0088_operational_risk_journal_corrections');
+        const targetTag = '0088_operational_risk_journal_corrections';
+        const index = tags.indexOf(targetTag);
         expect(tags[index - 1]).toBe('0087_task_description');
-        expect(index).toBe(tags.length - 1);
+        expect(index).toBe(88);
         await mkdir(join(previous, 'meta'));
         await writeFile(
           join(previous, 'meta/_journal.json'),
@@ -453,7 +454,16 @@ describe.skipIf(!databaseUrl)(
         const receiptBytes = await pool.query(
           'SELECT response::text,fingerprint FROM operational_risk_receipts ORDER BY idempotency_key',
         );
-        await migrate(connection, { migrationsFolder: resolve('drizzle') });
+        // Prove the owned 0087→0088 schema/data contract before later features.
+        await cp(
+          join('drizzle', `${targetTag}.sql`),
+          join(previous, `${targetTag}.sql`),
+        );
+        await writeFile(
+          join(previous, 'meta/_journal.json'),
+          JSON.stringify({ ...journal, entries: entries.slice(0, index + 1) }),
+        );
+        await migrate(connection, { migrationsFolder: previous });
         expect(await actualTables()).toEqual(tables);
         expect((await columns()).rows).toEqual(predecessorColumns);
         expect(await capture()).toEqual(before);
@@ -471,6 +481,17 @@ describe.skipIf(!databaseUrl)(
             )
           ).rows,
         ).toEqual([{ count: 0 }]);
+        // The running application needs every current migration. Later tables
+        // may be added, while all predecessor rows and literal receipts remain.
+        await migrate(connection, { migrationsFolder: resolve('drizzle') });
+        expect(await capture()).toEqual(before);
+        expect(
+          (
+            await pool.query(
+              'SELECT response::text,fingerprint FROM operational_risk_receipts ORDER BY idempotency_key',
+            )
+          ).rows,
+        ).toEqual(receiptBytes.rows);
         harness = await createPostgresRestTestHarness({
           databaseUrl: database.targetUrl,
           environment: {

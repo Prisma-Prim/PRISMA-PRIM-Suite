@@ -1,3 +1,7 @@
+import type {
+  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL,
+  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL,
+} from '../access/company-permissions.js';
 import type { MissionPlanVersionPublishedActivityEvent } from '../mission-plan/mission-plan.activity.js';
 import {
   COMPANY_IDEAS_READER_BUNDLE_LABEL,
@@ -26,6 +30,9 @@ import type {
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL,
+  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL,
+  COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE_LABEL,
+  COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL,
   COMPANY_DOCUMENT_PROJECT_ORGANIZER_BUNDLE_LABEL,
   COMPANY_DIRECTOR_CLIENT_ACCESS_BUNDLE_LABEL,
@@ -192,11 +199,17 @@ export type CanonicalActivityEvent =
         | 'company_received_contract_access_assignment.granted'
         | 'company_task_result_recorder_assignment.granted'
         | 'company_mission_result_reviewer_assignment.granted'
+        | 'company_project_next_action_coordinator_assignment.granted'
+        | 'company_mission_applicability_coordinator_assignment.granted'
+        | 'company_mission_applicability_approver_assignment.granted'
         | 'company_document_content_reader_assignment.revoked'
         | 'company_mission_deliverable_access_assignment.revoked'
         | 'company_received_contract_access_assignment.revoked'
         | 'company_task_result_recorder_assignment.revoked'
         | 'company_mission_result_reviewer_assignment.revoked'
+        | 'company_project_next_action_coordinator_assignment.revoked'
+        | 'company_mission_applicability_coordinator_assignment.revoked'
+        | 'company_mission_applicability_approver_assignment.revoked'
         | 'company_document_content_uploader_assignment.granted'
         | 'company_document_content_uploader_assignment.revoked'
         | 'company_project_assignment.granted'
@@ -246,6 +259,10 @@ export type CanonicalActivityEvent =
         | 'company_profitability_contributor_assignment.granted'
         | 'company_profitability_contributor_assignment.revoked'
         | 'company_profitability_director_assignment.granted'
+        | 'company_knowledge_source_administrator_assignment.granted'
+        | 'company_knowledge_evidence_reader_assignment.granted'
+        | 'company_knowledge_source_administrator_assignment.revoked'
+        | 'company_knowledge_evidence_reader_assignment.revoked'
         | 'company_operational_risk_reader_assignment.granted'
         | 'company_operational_risk_recorder_assignment.granted'
         | 'company_profitability_director_assignment.revoked'
@@ -279,6 +296,9 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL
+          | typeof COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL
+          | typeof COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE_LABEL
+          | typeof COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
@@ -307,6 +327,8 @@ export type CanonicalActivityEvent =
           | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL
+          | typeof COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL
           | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
           | typeof COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL
@@ -404,11 +426,17 @@ export interface OrdinaryActivityLogEvent {
     | 'company_received_contract_access_assignment.granted'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_mission_result_reviewer_assignment.granted'
+    | 'company_project_next_action_coordinator_assignment.granted'
+    | 'company_mission_applicability_coordinator_assignment.granted'
+    | 'company_mission_applicability_approver_assignment.granted'
     | 'company_document_content_reader_assignment.revoked'
     | 'company_mission_deliverable_access_assignment.revoked'
     | 'company_received_contract_access_assignment.revoked'
     | 'company_task_result_recorder_assignment.revoked'
     | 'company_mission_result_reviewer_assignment.revoked'
+    | 'company_project_next_action_coordinator_assignment.revoked'
+    | 'company_mission_applicability_coordinator_assignment.revoked'
+    | 'company_mission_applicability_approver_assignment.revoked'
     | 'company_document_content_uploader_assignment.granted'
     | 'company_document_content_uploader_assignment.revoked'
     | 'company_project_assignment.granted'
@@ -458,6 +486,10 @@ export interface OrdinaryActivityLogEvent {
     | 'company_profitability_contributor_assignment.granted'
     | 'company_profitability_contributor_assignment.revoked'
     | 'company_profitability_director_assignment.granted'
+    | 'company_knowledge_source_administrator_assignment.granted'
+    | 'company_knowledge_evidence_reader_assignment.granted'
+    | 'company_knowledge_source_administrator_assignment.revoked'
+    | 'company_knowledge_evidence_reader_assignment.revoked'
     | 'company_operational_risk_reader_assignment.granted'
     | 'company_operational_risk_recorder_assignment.granted'
     | 'company_profitability_director_assignment.revoked'
@@ -538,6 +570,9 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_TASK_RESULT_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_MISSION_RESULT_REVIEWER_BUNDLE_LABEL
+          | typeof COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE_LABEL
+          | typeof COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE_LABEL
+          | typeof COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL
           | typeof COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_ACCESS_BUNDLE_LABEL
           | typeof COMPANY_CONTEXT_ACCESS_BUNDLE_LABEL
@@ -566,6 +601,8 @@ export interface OrdinaryActivityLogEvent {
           | typeof COMPANY_IDEAS_REVIEWER_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_CONTRIBUTOR_BUNDLE_LABEL
           | typeof COMPANY_PROFITABILITY_DIRECTOR_BUNDLE_LABEL
+          | typeof COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE_LABEL
+          | typeof COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE_LABEL
           | typeof COMPANY_OPERATIONAL_RISK_READER_BUNDLE_LABEL
           | typeof COMPANY_OPERATIONAL_RISK_RECORDER_BUNDLE_LABEL
           | typeof COMPANY_PROJECT_APPROVER_BUNDLE_LABEL

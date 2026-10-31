@@ -5,6 +5,7 @@ import {
   type IdentitySessionRevoker,
 } from '../access/identity-session-revoker.js';
 import { SERVER_CLOCK, type ServerClock } from '../clock/server-clock.js';
+import { SYNCHRONIZE_ACCESS_IDENTITY_PROFILE } from '../access/access.service.js';
 import { Test } from '@nestjs/testing';
 import type { Logger } from 'drizzle-orm/logger';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -29,6 +30,8 @@ export interface PostgresRestTestHarness {
 }
 
 export interface CreatePostgresRestTestHarnessOptions {
+  /** Keep stored profiles fixed while testing same-member domain lock ordering. */
+  readonly synchronizeIdentityProfile?: boolean;
   readonly sessionRevoker?: IdentitySessionRevoker;
   // Replaces only the server clock boundary for fixed-instant tests.
   readonly serverClock?: ServerClock;
@@ -72,6 +75,7 @@ export async function createPostgresRestTestHarness({
   sessionRevoker,
   serverClock,
   applicationPoolConfiguration,
+  synchronizeIdentityProfile,
 }: CreatePostgresRestTestHarnessOptions): Promise<PostgresRestTestHarness> {
   assertLocalTestDatabaseUrl(databaseUrl);
   Object.assign(process.env, environment, { DATABASE_URL: databaseUrl });
@@ -96,6 +100,10 @@ export async function createPostgresRestTestHarness({
     })
       .overrideProvider(DATABASE)
       .useValue(database);
+    if (synchronizeIdentityProfile !== undefined)
+      builder
+        .overrideProvider(SYNCHRONIZE_ACCESS_IDENTITY_PROFILE)
+        .useValue(synchronizeIdentityProfile);
     if (sessionRevoker)
       builder
         .overrideProvider(IDENTITY_SESSION_REVOKER)

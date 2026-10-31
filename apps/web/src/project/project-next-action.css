@@ -1,0 +1,32 @@
+.project-next-action {
+  border: 1px solid var(--prisme-border, #e6eaf1);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-block: 1rem;
+  min-width: 0;
+}
+.project-next-action :is(p, dd, h4, h5, h6, time) {
+  overflow-wrap: anywhere;
+}
+.next-action-literal {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.next-action-editor textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font: inherit;
+  min-width: 0;
+}
+.next-action-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+}
+.project-next-action :is(button, textarea):focus-visible {
+  outline: 3px solid #7144d9;
+  outline-offset: 3px;
+}

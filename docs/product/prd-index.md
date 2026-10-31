@@ -120,6 +120,8 @@ require that answer.
 | [Processing Efficiency and Resource-Bounded Workloads](processing-efficiency-prd.md)             | Draft           | Equivalent-work qualification, processing resource bounds and evidence    |
 | [UX, Localization and Configuration](ux-localization-configuration-prd.md)                       | Draft           | Accessible workflows, terminology, localization and bounded configuration |
 
+The [read-only cited-evidence connection](ai-knowledge-governance-prd.md#19-read-only-cited-evidence-connection-for-codex--bounded-software-contract) owns the bounded source-admission/REST/Codex MCP software contract; production AI promotion remains separately gated.
+
 The separately selected [offline comparative pilot-evaluation contract](ai-knowledge-governance-prd.md#17-bounded-offline-comparative-pilot-evaluation--957)
 remains within the existing AI/Knowledge owner. Its original [#957](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957)
 directory-output contract was approved; its unmerged runtime #963 / PR #966 is
@@ -135,6 +137,11 @@ superseded without delivery credit only at that handoff. This revision neither
 promotes the wider Draft PRD nor approves a real pilot or changes Release 7
 sequencing.
 
+The separately selected [offline knowledge-context and citation qualification](ai-knowledge-governance-prd.md#18-offline-knowledge-context-and-citation-qualification)
+prepares candidate-safe synthetic contexts and checks separately declared observations
+against exact source/version/locator/quote and fictional eligibility/review inputs.
+It changes neither the closed pilot command nor production AI readiness.
+
 ## 5. Release 1 capability PRDs
 
 Release 1 is a sequence of integrated capability slices, not five parallel horizontal projects. Capability PRDs may remain Draft while named evidence is collected. Their implementation children are created only when the readiness gates pass.
@@ -146,6 +153,12 @@ Release 1 is a sequence of integrated capability slices, not five parallel horiz
 | 3     | [Project and Task](release-1-project-task-prd.md)                                         | Draft           | Company/RBAC; Shared Client; Activity Log                     |
 | 4     | [Document Registry](release-1-document-registry-prd.md)                                   | Draft           | Company/RBAC; Shared Client; Project/Task; Governed Documents |
 | 5     | [Operational Dashboard and Acceptance](release-1-operational-dashboard-acceptance-prd.md) | Draft           | All earlier Release 1 capabilities; UX                        |
+
+The [approved multi-Company operational summaries](release-1-operational-dashboard-acceptance-prd.md#23-approved-multi-company-operational-summaries-990)
+under #990 define a bounded three-summary view grouped by independently
+authorized Company. Section23 has delegated agent product approval; no new metric, global total, permission
+or runtime readiness is inferred. Its existing owners and fresh seam/ownership
+checks govern any later implementation child.
 
 The bounded [Company mission-plan contract](release-1-configurable-mission-plans-prd.md)
 under #917 / #918 extends Project/Task with reusable flat plans and exact native
@@ -176,6 +189,15 @@ qualifies complete bounded Company team discovery with deliberate stored-state,
 recorded-name and date filters, exact native Task continuation and fresh return;
 §§26/32 and native authority remain unchanged. Runtime follows approved contract
 delivery and a separate fresh child.
+
+The [standalone Internal Company Task contract](release-1-project-task-prd.md#36-bounded-standalone-internal-company-tasks-996)
+under #996 is Approved after ordered independent Standards then Spec and
+[actual delegated disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996#issuecomment-6529503138). It normalizes the approved Sarcina-derived
+decision record §9.4 outcome: complete ordinary Company-only Task work without a
+fake Client/Project. It specifies separate captured opt-in authority, immutable
+history and exact commands while conserving old Project Task formats, queues and
+permissions. Canonical merge and a separate fresh readiness/ownership/fit check precede runtime;
+no internal Task, actual grant or operational activation is delivered by this entry.
 
 The [ordinary Task description contract](release-1-project-task-prd.md#34-bounded-ordinary-task-description-949)
 under #949 is Approved after ordered independent Standards then Spec preparation
@@ -208,7 +230,12 @@ The Commercial Workflow PRD owns the reusable Request → Opportunity → pricin
 the bounded exact non-official PDF download of existing model-based Offer and
 ordinary Contract Versions, including history. Its status is Approved following
 [coordinator disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/955#issuecomment-6479686845)
-under #955; runtime follows canonical merge and separate readiness.
+under #955; the original runtime is delivered by [#965 / PR #970](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/970).
+Its [illustrative Offer v1 extension §33.13](release-3-commercial-33-non-official-pdf-download.md#3313-exact-illustrative-offer-v1-extension-987)
+under [#987](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/987) is Approved following
+ordered Standards then Spec preparation and [actual delegated technical approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/987#issuecomment-6499422361).
+Canonical merge and all twelve fresh-child gates still precede a separate runtime;
+this contract approval does not make that runtime ready or delivered.
 
 The Illustrative Deterministic Pricing PRD owns R3B1–R3B4: the Workspace Service Definition and Company Service Offering, the effective-dated Tariff and Pricing Rule Versions, the immutable Pricing Snapshot that references them by exact version, and the governed illustrative fixed net discount created atomically with a new Snapshot (delivered by #458 / #470). It proves catalogue, versioning, provenance, decimal and explicit-adjustment mechanics with illustrative values, and authorizes no real price, ability to perform, discount policy, approval or external effect.
 

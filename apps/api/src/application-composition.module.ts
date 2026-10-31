@@ -1,3 +1,17 @@
+import { ProjectNextActionModule } from './project-next-action/project-next-action.module.js';
+import { ProjectNextActionController } from './project-next-action/project-next-action.controller.js';
+import { MissionApplicabilityModule } from './project-mission-applicability/mission-applicability.module.js';
+import { MissionApplicabilityController } from './project-mission-applicability/mission-applicability.controller.js';
+import {
+  KnowledgeActorGuard,
+  KnowledgeIdentityVerifier,
+} from './knowledge/knowledge-identity.js';
+import { KnowledgeModule } from './knowledge/knowledge.module.js';
+import {
+  KnowledgeController,
+  KnowledgeReadController,
+  KnowledgeAssignmentController,
+} from './knowledge/knowledge.controller.js';
 import { ProjectPdfBundleController } from './documents/project-pdf-bundle.controller.js';
 import { MissionPlanCopyController } from './mission-plan/mission-plan-copy.controller.js';
 import { MissionPlanModule } from './mission-plan/mission-plan.module.js';
@@ -21,6 +35,10 @@ import { CompanyReceivedContractAccessAssignmentController } from './access/comp
 import { TaskResultsController } from './task/task-results.controller.js';
 import { CompanyTaskResultRecorderAssignmentController } from './access/company-task-result-recorder-assignment.controller.js';
 import { CompanyMissionResultReviewerAssignmentController } from './access/company-mission-result-reviewer-assignment.controller.js';
+import { CompanyProjectNextActionCoordinatorAssignmentController } from './access/company-project-next-action-coordinator-assignment.controller.js';
+import { CompanyMissionApplicabilityCoordinatorAssignmentController } from './access/company-mission-applicability-coordinator-assignment.controller.js';
+import { CompanyMissionApplicabilityApproverAssignmentController } from './access/company-mission-applicability-approver-assignment.controller.js';
+
 import { CompanyDocumentContentReaderAssignmentController } from './access/company-document-content-reader-assignment.controller.js';
 import { CompanyDocumentContentUploaderAssignmentController } from './access/company-document-content-uploader-assignment.controller.js';
 import { MissionResultReviewModule } from './project-mission-review/mission-result-review.module.js';
@@ -138,6 +156,7 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
 
 @Module({
   imports: [
+    KnowledgeModule,
     MissionPlanModule,
     ContractModelModule,
     OfferModelModule,
@@ -145,6 +164,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalRiskModule,
     ProjectTemplateModule,
     MissionResultReviewModule,
+    ProjectNextActionModule,
+    MissionApplicabilityModule,
     TaskModule,
     DocumentsModule,
     ProjectModule,
@@ -164,6 +185,9 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityEstimateModule,
   ],
   controllers: [
+    KnowledgeController,
+    KnowledgeReadController,
+    KnowledgeAssignmentController,
     ProjectPdfBundleController,
     MissionPlanController,
     MissionPlanCopyController,
@@ -178,6 +202,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     OperationalRiskController,
     ProjectTemplateController,
     MissionResultReviewController,
+    ProjectNextActionController,
+    MissionApplicabilityController,
     CompanyProjectTemplateUserAssignmentController,
     CompanyProjectTemplateConfigurationAssignmentController,
     CompanyProjectStageAdvancerAssignmentController,
@@ -197,6 +223,10 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     CompanyReceivedContractAccessAssignmentController,
     CompanyTaskResultRecorderAssignmentController,
     CompanyMissionResultReviewerAssignmentController,
+    CompanyProjectNextActionCoordinatorAssignmentController,
+    CompanyMissionApplicabilityCoordinatorAssignmentController,
+    CompanyMissionApplicabilityApproverAssignmentController,
+
     CompanyDocumentContentUploaderAssignmentController,
     CompanyDocumentProjectOrganizerAssignmentController,
     ProjectController,
@@ -253,6 +283,8 @@ import { ProfitabilityEstimateController } from './profitability-estimate/profit
     ProfitabilityDecisionQueueController,
   ],
   providers: [
+    KnowledgeActorGuard,
+    KnowledgeIdentityVerifier,
     VerifiedPrincipalAdapter,
     WorkspaceInvitationAcceptanceService,
     {

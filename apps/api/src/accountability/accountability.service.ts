@@ -1,12 +1,14 @@
+import { projectNextActionEvents } from '../database/schema/project-next-action.js';
+import { missionApplicabilityEvents } from '../database/schema/mission-applicability.js';
+import type { missionApplicabilityFacts } from '../database/schema/mission-applicability.js';
+import { knowledgeSourceEvents } from '../database/schema/index.js';
+import { activityReadableDocuments } from './activity-readable-documents.js';
 import { missionPlanVersions } from '../database/schema/mission-plan.js';
 import { readMemberAuthority } from '../access/member-authority.js';
 import type { MissionPlanVersionPublishedActivityEvent } from '../mission-plan/mission-plan.activity.js';
-import { receivedContractAssignment } from '../access/received-contract-access.js';
 import { CONTRACT_MODEL_CODE } from '../contract-model/contract-model.content.js';
 import { contractModelEvents } from '../database/schema/contract-model.js';
-import { companyRoleAssignments } from '../database/schema/index.js';
 import { offerModelEvents } from '../database/schema/offer-model.js';
-import { missionDeliverableAssignment } from '../access/mission-deliverable-access.js';
 import { ideaEvents } from '../database/schema/ideas.js';
 import type { ProjectTemplateVersion } from '../project-template/project-template.definition.js';
 import type { ProjectTemplateVersionCreatedActivityEvent } from '../project-template/project-template-version.types.js';
@@ -66,7 +68,6 @@ import {
   documentCorrectionCommands,
   documentProjectEvents,
   documentVersionCommands,
-  workingDocuments,
   clientAccounts,
   clientCompanyRelationships,
   companies,
@@ -700,7 +701,63 @@ export class AccountabilityService {
       metadata: { revision: input.revision },
     });
   }
+  /** Project-owned internal event, deliberately absent from generic Activity selectors. */
+  async recordProjectNextActionEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    revision: number;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.databaseContext.connection
+      .insert(projectNextActionEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        projectId: input.projectId,
+        revision: input.revision,
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        action: 'project.next_action.updated',
+        metadata: { revision: input.revision },
+        occurredAt: input.occurredAt,
+      });
+  }
   /** Restricted review facts are never projected into ordinary Activity or Task history. */
+  async recordMissionApplicabilityEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    projectId: string;
+    factId: string;
+    applicabilityRevision: number;
+    kind: (typeof missionApplicabilityFacts.$inferSelect)['kind'];
+    occurredAt: Date;
+  }): Promise<void> {
+    const actions = {
+      PROPOSED: 'project.mission_applicability.proposed',
+      PROPOSAL_CORRECTED: 'project.mission_applicability.proposal_corrected',
+      APPROVED: 'project.mission_applicability.approved',
+      REJECTED: 'project.mission_applicability.rejected',
+      RESTORED: 'project.mission_applicability.restored',
+    } satisfies Record<
+      (typeof missionApplicabilityFacts.$inferSelect)['kind'],
+      string
+    >;
+    await this.databaseContext.connection
+      .insert(missionApplicabilityEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        projectId: input.projectId,
+        factId: input.factId,
+        applicabilityRevision: input.applicabilityRevision,
+        action: actions[input.kind],
+        actorInternalUserId: input.actor.internalUserId,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        occurredAt: input.occurredAt,
+        metadata: { applicabilityRevision: input.applicabilityRevision },
+      });
+  }
   async recordMissionResultReviewEvent(input: {
     actor: ActorContext;
     companyId: string;
@@ -1432,6 +1489,34 @@ export class AccountabilityService {
   }
 
   // Internal restricted recording only: no generic Activity/Home target exists.
+  async recordKnowledgeSourceEvent(input: {
+    actor: ActorContext;
+    companyId: string;
+    sourceId: string;
+    revision: number;
+    action: 'drafted' | 'admitted' | 'revoked';
+    commandFingerprint: string;
+    recordedAt: Date;
+  }): Promise<void> {
+    const [event] = await this.databaseContext.connection
+      .insert(knowledgeSourceEvents)
+      .values({
+        workspaceId: input.actor.workspaceId,
+        companyId: input.companyId,
+        sourceId: input.sourceId,
+        revision: input.revision,
+        action: input.action,
+        commandFingerprint: input.commandFingerprint,
+        actorMembershipId: input.actor.workspaceMembershipId,
+        actorInternalUserId: input.actor.internalUserId,
+        actorDisplayName: input.actor.displayName,
+        recordedAt: input.recordedAt,
+      })
+      .returning({ id: knowledgeSourceEvents.id });
+    if (!event)
+      throw new Error('The restricted source event was not recorded.');
+  }
+
   async recordOperationalRiskEvent(
     input: {
       actor: ActorContext;
@@ -2556,44 +2641,17 @@ export class AccountabilityService {
         actorMembershipId: input.actor.workspaceMembershipId,
       });
   }
-  /** Scope family authority inside each dated query, before its page bound. */
-  private documentFamilyVisibility(actor: ActorContext) {
-    const grant = missionDeliverableAssignment(actor);
-    const mission = grant
-      ? exists(
-          this.databaseContext.connection
-            .select({ id: companyRoleAssignments.id })
-            .from(companyRoleAssignments)
-            .where(grant),
-        )
-      : sql`false`;
-    const receivedGrant = receivedContractAssignment(actor);
-    const received = receivedGrant
-      ? exists(
-          this.databaseContext.connection
-            .select({ id: companyRoleAssignments.id })
-            .from(companyRoleAssignments)
-            .where(receivedGrant),
-        )
-      : sql`false`;
-    return sql`(${eq(workingDocuments.type, 'questionnaire')} OR (${eq(workingDocuments.type, 'mission-deliverable')} AND ${mission}) OR (${eq(workingDocuments.type, 'received-contract')} AND ${received}))`;
-  }
-
   async documentEvents(
     actor: ActorContext,
   ): Promise<DocumentRegisteredActivityEvent[]> {
-    if (
-      !actor.active ||
-      !actor.activeCompany?.documentPermissions?.includes('document.read') ||
-      (!actor.workspacePermissions.includes('client.manage') &&
-        !actor.activeCompany.clientPermissions.includes('client.read'))
-    )
-      return [];
-    const rows = await this.databaseContext.connection
+    const connection = this.databaseContext.connection;
+    const documents = activityReadableDocuments({ actor, connection });
+    if (!documents) return [];
+    const rows = await connection
       .select({
         id: documentRegistrationEvents.id,
         documentId: documentRegistrationEvents.documentId,
-        documentTitle: workingDocuments.title,
+        documentTitle: documents.title,
         companyId: documentRegistrationEvents.companyId,
         occurredAt: documentRegistrationEvents.occurredAt,
         internalUserId: internalUsers.id,
@@ -2601,37 +2659,11 @@ export class AccountabilityService {
       })
       .from(documentRegistrationEvents)
       .innerJoin(
-        workingDocuments,
+        documents,
         and(
-          eq(
-            workingDocuments.workspaceId,
-            documentRegistrationEvents.workspaceId,
-          ),
-          eq(workingDocuments.companyId, documentRegistrationEvents.companyId),
-          eq(workingDocuments.id, documentRegistrationEvents.documentId),
-        ),
-      )
-      .innerJoin(
-        clientAccounts,
-        and(
-          eq(clientAccounts.workspaceId, workingDocuments.workspaceId),
-          eq(clientAccounts.id, workingDocuments.clientId),
-          sql`${clientAccounts.status} IN ('active','superseded')`,
-        ),
-      )
-      .innerJoin(
-        clientCompanyRelationships,
-        and(
-          eq(
-            clientCompanyRelationships.workspaceId,
-            workingDocuments.workspaceId,
-          ),
-          eq(clientCompanyRelationships.companyId, workingDocuments.companyId),
-          eq(
-            clientCompanyRelationships.clientAccountId,
-            workingDocuments.clientId,
-          ),
-          eq(clientCompanyRelationships.status, 'active'),
+          eq(documents.workspaceId, documentRegistrationEvents.workspaceId),
+          eq(documents.companyId, documentRegistrationEvents.companyId),
+          eq(documents.id, documentRegistrationEvents.documentId),
         ),
       )
       .innerJoin(
@@ -2650,13 +2682,6 @@ export class AccountabilityService {
       .innerJoin(
         internalUsers,
         eq(internalUsers.id, workspaceMemberships.internalUserId),
-      )
-      .where(
-        and(
-          eq(documentRegistrationEvents.workspaceId, actor.workspaceId),
-          eq(documentRegistrationEvents.companyId, actor.activeCompany.id),
-          this.documentFamilyVisibility(actor),
-        ),
       )
       .orderBy(
         desc(documentRegistrationEvents.occurredAt),
@@ -2683,14 +2708,10 @@ export class AccountabilityService {
   private async documentCorrectionEvents(
     actor: ActorContext,
   ): Promise<DocumentCorrectedActivityEvent[]> {
-    if (
-      !actor.active ||
-      !actor.activeCompany?.documentPermissions?.includes('document.read') ||
-      (!actor.workspacePermissions.includes('client.manage') &&
-        !actor.activeCompany.clientPermissions.includes('client.read'))
-    )
-      return [];
-    const rows = await this.databaseContext.connection
+    const connection = this.databaseContext.connection;
+    const documents = activityReadableDocuments({ actor, connection });
+    if (!documents) return [];
+    const rows = await connection
       .select({
         id: documentCorrectionCommands.id,
         documentId: documentCorrectionCommands.documentId,
@@ -2701,37 +2722,11 @@ export class AccountabilityService {
       })
       .from(documentCorrectionCommands)
       .innerJoin(
-        workingDocuments,
+        documents,
         and(
-          eq(
-            workingDocuments.workspaceId,
-            documentCorrectionCommands.workspaceId,
-          ),
-          eq(workingDocuments.companyId, documentCorrectionCommands.companyId),
-          eq(workingDocuments.id, documentCorrectionCommands.documentId),
-        ),
-      )
-      .innerJoin(
-        clientAccounts,
-        and(
-          eq(clientAccounts.workspaceId, workingDocuments.workspaceId),
-          eq(clientAccounts.id, workingDocuments.clientId),
-          sql`${clientAccounts.status} IN ('active','superseded')`,
-        ),
-      )
-      .innerJoin(
-        clientCompanyRelationships,
-        and(
-          eq(
-            clientCompanyRelationships.workspaceId,
-            workingDocuments.workspaceId,
-          ),
-          eq(clientCompanyRelationships.companyId, workingDocuments.companyId),
-          eq(
-            clientCompanyRelationships.clientAccountId,
-            workingDocuments.clientId,
-          ),
-          eq(clientCompanyRelationships.status, 'active'),
+          eq(documents.workspaceId, documentCorrectionCommands.workspaceId),
+          eq(documents.companyId, documentCorrectionCommands.companyId),
+          eq(documents.id, documentCorrectionCommands.documentId),
         ),
       )
       .innerJoin(
@@ -2751,14 +2746,7 @@ export class AccountabilityService {
         internalUsers,
         eq(internalUsers.id, workspaceMemberships.internalUserId),
       )
-      .where(
-        and(
-          eq(documentCorrectionCommands.workspaceId, actor.workspaceId),
-          eq(documentCorrectionCommands.companyId, actor.activeCompany.id),
-          this.documentFamilyVisibility(actor),
-          eq(documentCorrectionCommands.outcome, 'corrected'),
-        ),
-      )
+      .where(eq(documentCorrectionCommands.outcome, 'corrected'))
       .orderBy(
         desc(documentCorrectionCommands.occurredAt),
         desc(documentCorrectionCommands.id),
@@ -2788,14 +2776,10 @@ export class AccountabilityService {
   private async documentVersionEvents(
     actor: ActorContext,
   ): Promise<DocumentVersionActivityEvent[]> {
-    if (
-      !actor.active ||
-      !actor.activeCompany?.documentPermissions?.includes('document.read') ||
-      (!actor.workspacePermissions.includes('client.manage') &&
-        !actor.activeCompany.clientPermissions.includes('client.read'))
-    )
-      return [];
-    const rows = await this.databaseContext.connection
+    const connection = this.databaseContext.connection;
+    const documents = activityReadableDocuments({ actor, connection });
+    if (!documents) return [];
+    const rows = await connection
       .select({
         id: documentVersionCommands.id,
         action: documentVersionCommands.action,
@@ -2805,7 +2789,7 @@ export class AccountabilityService {
         appendedAfterDesignation:
           documentVersionCommands.appendedAfterDesignation,
         documentId: documentVersionCommands.documentId,
-        documentTitle: workingDocuments.title,
+        documentTitle: documents.title,
         companyId: documentVersionCommands.companyId,
         occurredAt: documentVersionCommands.occurredAt,
         internalUserId: internalUsers.id,
@@ -2813,34 +2797,11 @@ export class AccountabilityService {
       })
       .from(documentVersionCommands)
       .innerJoin(
-        workingDocuments,
+        documents,
         and(
-          eq(workingDocuments.workspaceId, documentVersionCommands.workspaceId),
-          eq(workingDocuments.companyId, documentVersionCommands.companyId),
-          eq(workingDocuments.id, documentVersionCommands.documentId),
-        ),
-      )
-      .innerJoin(
-        clientAccounts,
-        and(
-          eq(clientAccounts.workspaceId, workingDocuments.workspaceId),
-          eq(clientAccounts.id, workingDocuments.clientId),
-          sql`${clientAccounts.status} IN ('active','superseded')`,
-        ),
-      )
-      .innerJoin(
-        clientCompanyRelationships,
-        and(
-          eq(
-            clientCompanyRelationships.workspaceId,
-            workingDocuments.workspaceId,
-          ),
-          eq(clientCompanyRelationships.companyId, workingDocuments.companyId),
-          eq(
-            clientCompanyRelationships.clientAccountId,
-            workingDocuments.clientId,
-          ),
-          eq(clientCompanyRelationships.status, 'active'),
+          eq(documents.workspaceId, documentVersionCommands.workspaceId),
+          eq(documents.companyId, documentVersionCommands.companyId),
+          eq(documents.id, documentVersionCommands.documentId),
         ),
       )
       .innerJoin(
@@ -2859,13 +2820,6 @@ export class AccountabilityService {
       .innerJoin(
         internalUsers,
         eq(internalUsers.id, workspaceMemberships.internalUserId),
-      )
-      .where(
-        and(
-          eq(documentVersionCommands.workspaceId, actor.workspaceId),
-          eq(documentVersionCommands.companyId, actor.activeCompany.id),
-          this.documentFamilyVisibility(actor),
-        ),
       )
       .orderBy(
         desc(documentVersionCommands.occurredAt),
@@ -2946,19 +2900,18 @@ export class AccountabilityService {
   private async documentProjectEvents(
     actor: ActorContext,
   ): Promise<DocumentProjectActivityEvent[]> {
+    const connection = this.databaseContext.connection;
+    const documents = activityReadableDocuments({ actor, connection });
     if (
-      !actor.active ||
-      !actor.activeCompany?.projectPermissions?.includes('project.read') ||
-      !actor.activeCompany?.documentPermissions?.includes('document.read') ||
-      (!actor.workspacePermissions.includes('client.manage') &&
-        !actor.activeCompany.clientPermissions.includes('client.read'))
+      !documents ||
+      !actor.activeCompany?.projectPermissions?.includes('project.read')
     )
       return [];
-    const rows = await this.databaseContext.connection
+    const rows = await connection
       .select({
         id: documentProjectEvents.id,
         documentId: documentProjectEvents.documentId,
-        documentTitle: workingDocuments.title,
+        documentTitle: documents.title,
         projectId: documentProjectEvents.projectId,
         projectTitle: projects.title,
         action: documentProjectEvents.action,
@@ -2969,11 +2922,11 @@ export class AccountabilityService {
       })
       .from(documentProjectEvents)
       .innerJoin(
-        workingDocuments,
+        documents,
         and(
-          eq(workingDocuments.workspaceId, documentProjectEvents.workspaceId),
-          eq(workingDocuments.companyId, documentProjectEvents.companyId),
-          eq(workingDocuments.id, documentProjectEvents.documentId),
+          eq(documents.workspaceId, documentProjectEvents.workspaceId),
+          eq(documents.companyId, documentProjectEvents.companyId),
+          eq(documents.id, documentProjectEvents.documentId),
         ),
       )
       .innerJoin(
@@ -2982,30 +2935,7 @@ export class AccountabilityService {
           eq(projects.workspaceId, documentProjectEvents.workspaceId),
           eq(projects.companyId, documentProjectEvents.companyId),
           eq(projects.id, documentProjectEvents.projectId),
-          eq(projects.clientAccountId, workingDocuments.clientId),
-        ),
-      )
-      .innerJoin(
-        clientAccounts,
-        and(
-          eq(clientAccounts.workspaceId, workingDocuments.workspaceId),
-          eq(clientAccounts.id, workingDocuments.clientId),
-          sql`${clientAccounts.status} IN ('active','superseded')`,
-        ),
-      )
-      .innerJoin(
-        clientCompanyRelationships,
-        and(
-          eq(
-            clientCompanyRelationships.workspaceId,
-            workingDocuments.workspaceId,
-          ),
-          eq(clientCompanyRelationships.companyId, workingDocuments.companyId),
-          eq(
-            clientCompanyRelationships.clientAccountId,
-            workingDocuments.clientId,
-          ),
-          eq(clientCompanyRelationships.status, 'active'),
+          eq(projects.clientAccountId, documents.originalClientId),
         ),
       )
       .innerJoin(
@@ -3021,13 +2951,6 @@ export class AccountabilityService {
       .innerJoin(
         internalUsers,
         eq(internalUsers.id, workspaceMemberships.internalUserId),
-      )
-      .where(
-        and(
-          eq(documentProjectEvents.workspaceId, actor.workspaceId),
-          eq(documentProjectEvents.companyId, actor.activeCompany.id),
-          this.documentFamilyVisibility(actor),
-        ),
       )
       .orderBy(
         desc(documentProjectEvents.occurredAt),
@@ -3564,11 +3487,17 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_received_contract_access_assignment.granted':
     case 'company_task_result_recorder_assignment.granted':
     case 'company_mission_result_reviewer_assignment.granted':
+    case 'company_project_next_action_coordinator_assignment.granted':
+    case 'company_mission_applicability_coordinator_assignment.granted':
+    case 'company_mission_applicability_approver_assignment.granted':
     case 'company_document_content_reader_assignment.revoked':
     case 'company_mission_deliverable_access_assignment.revoked':
     case 'company_received_contract_access_assignment.revoked':
     case 'company_task_result_recorder_assignment.revoked':
     case 'company_mission_result_reviewer_assignment.revoked':
+    case 'company_project_next_action_coordinator_assignment.revoked':
+    case 'company_mission_applicability_coordinator_assignment.revoked':
+    case 'company_mission_applicability_approver_assignment.revoked':
     case 'company_document_content_uploader_assignment.granted':
     case 'company_document_content_uploader_assignment.revoked':
     case 'company_project_assignment.granted':
@@ -3619,6 +3548,10 @@ function persistenceFor(event: CanonicalActivityEvent) {
     case 'company_profitability_contributor_assignment.revoked':
     case 'company_profitability_director_assignment.granted':
     case 'company_profitability_director_assignment.revoked':
+    case 'company_knowledge_source_administrator_assignment.granted':
+    case 'company_knowledge_source_administrator_assignment.revoked':
+    case 'company_knowledge_evidence_reader_assignment.granted':
+    case 'company_knowledge_evidence_reader_assignment.revoked':
     case 'company_operational_risk_reader_assignment.granted':
     case 'company_operational_risk_reader_assignment.revoked':
     case 'company_operational_risk_recorder_assignment.granted':

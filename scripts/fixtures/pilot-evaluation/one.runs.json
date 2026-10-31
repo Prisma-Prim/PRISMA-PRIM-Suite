@@ -1,0 +1,96 @@
+{
+  "schema": "prisma-prim-pilot-runs/v1",
+  "evaluationId": "DEMO-ONE",
+  "caseSetId": "DEMO-ONE",
+  "caseSetVersion": 1,
+  "protocolId": "P-DEMO",
+  "protocolVersion": 1,
+  "manual": {
+    "runId": "M-ONE",
+    "mode": "manual",
+    "methodId": "MANUAL-DEMO",
+    "methodVersion": 1,
+    "operatorRef": "SYNTHETIC-OP",
+    "recordedBy": "SYNTHETIC-REC",
+    "capturedAt": "2026-01-01T00:00:00.000Z",
+    "captureEvidenceRef": "SYNTHETIC-authored-manual",
+    "reviewerRef": "SYNTHETIC-REV",
+    "reviewedAt": "2026-01-01T00:00:00.000Z",
+    "observations": [
+      {
+        "caseId": "A",
+        "caseVersion": 1,
+        "sourceSetId": "S-A",
+        "sourceSetVersion": 1,
+        "referenceId": "R-A",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 60000,
+        "fields": [
+          {
+            "fieldId": "employees",
+            "initial": {
+              "state": "confirmed",
+              "value": "22"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          }
+        ],
+        "citations": [
+          {
+            "sourceId": "DOC-A",
+            "sourceVersion": 1,
+            "locator": "p1"
+          }
+        ]
+      }
+    ]
+  },
+  "assisted": {
+    "runId": "A-ONE",
+    "mode": "assisted",
+    "methodId": "ASSISTED-DEMO",
+    "methodVersion": 1,
+    "operatorRef": "SYNTHETIC-OP",
+    "recordedBy": "SYNTHETIC-REC",
+    "capturedAt": "2026-01-01T00:00:00.000Z",
+    "captureEvidenceRef": "SYNTHETIC-authored-assisted",
+    "reviewerRef": "SYNTHETIC-REV",
+    "reviewedAt": "2026-01-01T00:00:00.000Z",
+    "observations": [
+      {
+        "caseId": "A",
+        "caseVersion": 1,
+        "sourceSetId": "S-A",
+        "sourceSetVersion": 1,
+        "referenceId": "R-A",
+        "referenceVersion": 1,
+        "status": "completed",
+        "elapsedMs": 30000,
+        "fields": [
+          {
+            "fieldId": "employees",
+            "initial": {
+              "state": "confirmed",
+              "value": "20"
+            },
+            "final": {
+              "state": "confirmed",
+              "value": "20"
+            }
+          }
+        ],
+        "citations": [
+          {
+            "sourceId": "DOC-A",
+            "sourceVersion": 1,
+            "locator": "p1"
+          }
+        ]
+      }
+    ]
+  }
+}

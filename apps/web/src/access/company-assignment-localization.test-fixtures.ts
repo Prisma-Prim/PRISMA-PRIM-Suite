@@ -605,6 +605,39 @@ export const assignmentBundleCases = [
     },
   },
   {
+    value: 'project-next-action-coordinator',
+    canonical: 'Company Project Next Action Coordinator',
+    version: 'v1',
+    labels: {
+      ro: 'Coordonatorul acțiunii următoare a proiectelor companiei',
+      ru: 'Координатор следующего действия проектов компании',
+      fr: 'Coordinateur de la prochaine action des projets de l’entreprise',
+      en: 'Company Project Next Action Coordinator',
+    },
+  },
+  {
+    value: 'mission-applicability-coordinator',
+    canonical: 'Company Mission Applicability Coordinator',
+    version: 'v1',
+    labels: {
+      ro: 'Coordonatorul aplicabilității misiunii Companiei',
+      ru: 'Координатор применимости миссии компании',
+      fr: 'Coordinateur d’applicabilité de mission de la Société',
+      en: 'Company Mission Applicability Coordinator',
+    },
+  },
+  {
+    value: 'mission-applicability-approver',
+    canonical: 'Company Mission Applicability Approver',
+    version: 'v1',
+    labels: {
+      ro: 'Aprobatorul aplicabilității misiunii Companiei',
+      ru: 'Утверждающий применимость миссии компании',
+      fr: 'Approbateur d’applicabilité de mission de la Société',
+      en: 'Company Mission Applicability Approver',
+    },
+  },
+  {
     value: 'mission-result-reviewer',
     canonical: 'Company Mission Result Reviewer',
     version: 'v1',

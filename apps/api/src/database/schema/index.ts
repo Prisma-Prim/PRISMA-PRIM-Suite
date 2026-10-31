@@ -39,3 +39,7 @@ export * from './contract-signing-declarations.js';
 export * from './mission-result-reviews.js';
 
 export * from './mission-plan.js';
+
+export * from './mission-applicability.js';
+export * from './project-next-action.js';
+export * from './knowledge.js';

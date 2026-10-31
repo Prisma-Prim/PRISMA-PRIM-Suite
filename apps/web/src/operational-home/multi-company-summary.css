@@ -1,0 +1,116 @@
+.multi-company-summary-entry {
+  margin-top: 1rem;
+  min-width: 0;
+}
+.multi-company-summary-entry button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.5rem;
+  color: var(--shell-navy-deep);
+  background: var(--shell-surface, white);
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.multi-company-summary-entry button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.multi-company-summary-entry button:focus-visible,
+.multi-company-summary-heading h2:focus-visible,
+.multi-company-summary-confirmation h3:focus-visible {
+  outline: 3px solid var(--shell-focus);
+  outline-offset: 3px;
+}
+.multi-company-summary {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.75rem;
+  color: var(--shell-ink);
+  background: var(--shell-surface, white);
+  overflow-wrap: anywhere;
+}
+.multi-company-summary-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+.multi-company-summary h2,
+.multi-company-summary h3 {
+  margin: 0;
+  color: var(--shell-navy-deep);
+}
+.multi-company-summary p {
+  line-height: 1.5;
+}
+.multi-company-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.multi-company-summary-rows {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.multi-company-summary-row {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.6rem;
+}
+.multi-company-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.multi-company-summary-cards button {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 0.6rem;
+  min-width: 0;
+  text-align: start;
+}
+.multi-company-summary-cards strong {
+  font-size: 1.9rem;
+}
+.multi-company-summary-confirmation {
+  padding: 1rem;
+  border: 1px solid var(--shell-line);
+  border-radius: 0.6rem;
+  background: var(--shell-surface-soft, #f8fafc);
+}
+.prisme-shell .multi-company-summary-entry button {
+  border-color: #e2e4ee;
+  border-radius: 0.7rem;
+}
+.prisme-shell .multi-company-summary-entry button:hover:not(:disabled) {
+  border-color: #9b8aca;
+}
+.prisme-shell .multi-company-summary-cards button {
+  box-shadow: 0 3px 12px rgb(41 38 70 / 4%);
+}
+@media (max-width: 700px) {
+  .multi-company-summary {
+    padding: 0.75rem;
+  }
+  .multi-company-summary-heading {
+    flex-direction: column;
+  }
+  .multi-company-summary-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .multi-company-summary-actions {
+    width: 100%;
+  }
+  .multi-company-summary-actions button {
+    flex: 1 1 10rem;
+  }
+}

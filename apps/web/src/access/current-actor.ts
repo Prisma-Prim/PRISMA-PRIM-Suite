@@ -82,6 +82,26 @@ const isActorContext = object({
       taskPermissions: optional(array(literal('task.read', 'task.manage'))),
       taskPermissionAssignmentId: optional(isString),
       taskPermissionSetVersion: optional(literal('v1')),
+      projectNextActionPermissions: optional(isOpaque),
+      projectNextActionCoordinatorAssignmentId: optional(isOpaque),
+      projectNextActionCoordinatorPermissionSetVersion: optional(isOpaque),
+      missionApplicabilityProposalPermissions: optional(
+        array(literal('project.mission_applicability.propose')),
+      ),
+      missionApplicabilityCoordinatorAssignmentId: optional(isString),
+      missionApplicabilityCoordinatorPermissionSetVersion: optional(
+        literal('v1'),
+      ),
+      missionApplicabilityDecisionPermissions: optional(
+        array(
+          literal(
+            'project.mission_applicability.decide',
+            'project.mission_applicability.restore',
+          ),
+        ),
+      ),
+      missionApplicabilityApproverAssignmentId: optional(isString),
+      missionApplicabilityApproverPermissionSetVersion: optional(literal('v1')),
       missionResultReviewPermissions: optional(
         array(literal('project.mission_result.review')),
       ),

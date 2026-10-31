@@ -1,6 +1,8 @@
 // The captured versions the server may report for each administrable bundle.
 // An unlisted label or version fails closed; the screen never infers one.
 const CAPTURED_VERSIONS = {
+  'Company Knowledge Source Administrator': ['v1'],
+  'Company Knowledge Evidence Reader': ['v1'],
   'Company Mission Plan Configuration': ['v1'],
   'Company Mission Plan User': ['v1'],
   'Company Contract Model Editor': ['v1'],
@@ -25,6 +27,9 @@ const CAPTURED_VERSIONS = {
   'Company Task Manager': ['v1'],
   'Company Task Result Recorder': ['v1'],
   'Company Mission Result Reviewer': ['v1'],
+  'Company Mission Applicability Coordinator': ['v1'],
+  'Company Project Next Action Coordinator': ['v1'],
+  'Company Mission Applicability Approver': ['v1'],
   'Company Service Catalogue': ['v1'],
   'Company Pricing Configuration': ['v1'],
   'Company Pricing User': ['v1'],

@@ -432,17 +432,30 @@ it('withholds cached and held linked-Project metadata across Project capture los
     },
   } satisfies typeof signingActor;
   let reads = 0,
+    initialRead: ((value: Response) => void) | undefined,
     release: ((value: Response) => void) | undefined;
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     if (input.toString().endsWith('/project-candidates'))
       return response({ items: [] });
-    if (++reads === 2)
+    reads++;
+    if (reads === 1)
+      return new Promise<Response>((resolve) => {
+        initialRead = resolve;
+      });
+    if (reads === 2)
       return new Promise<Response>((resolve) => {
         release = resolve;
       });
     return response({ contract, precontract: null });
   });
   const view = render(panel(actor));
+  await waitFor(() => expect(initialRead).toBeTypeOf('function'));
+  if (!initialRead) throw new Error('Expected the initial Contract read.');
+  const finishInitialRead = initialRead;
+  // Finish mounting the Contract owner before starting the held reload.
+  await act(async () => {
+    finishInitialRead(response({ contract, precontract: null }));
+  });
   await screen.findByText(linked.title, { exact: true });
   fireEvent.click(screen.getByRole('button', { name: 'Reload Contract' }));
   await waitFor(() => expect(release).toBeTypeOf('function'));

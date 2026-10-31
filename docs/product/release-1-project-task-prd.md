@@ -2,7 +2,8 @@
 
 **Status:** Preparatory registration, manual preparation Tasks, My Tasks, the Project responsible member and manual Task priority approved by #238, #246, #347, #367 and #375, and the provisional Project lifecycle (§23) delivered by #406 and #407, and the provisional illustrative Template creation journey (§24) approved by #634, and the bounded My open Projects read (§25) approved through delegated agent review, and Company unassigned preparation Task discovery (§26) approved under delegated 2026-10-21 synthesis, exact mission Task results (§27) approved by #832, the bounded thirteen-activity pilot plan (§28) approved by #836 and grouped Task planning (§31) approved by #927 and Company blocked-Task supervision (§32) approved by #931; Company team Task workboard (§33) approved by #944 through delegated agent product review; ordinary Task description (§34) approved by #949 through delegated agent product review; remaining capability Draft\
 **Project next action (§35):** Approved bounded contract under [root’s actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/973#issuecomment-6484463391); no runtime or grant.\
-**Version:** 0.16\
+**Internal Company Tasks (§36):** Approved bounded contract under [actual delegated approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996#issuecomment-6529503138); no runtime or grant.\
+**Version:** 0.17\
 **Owner:** Dan Popescu  
 **Parent authorities:** Product Vision; Tenant/Company/Authorization PRD; Activity Log PRD; UX PRD
 
@@ -66,7 +67,7 @@ Tasks are copied into the Project when a template is instantiated. Later templat
 2. Every Project has one responsible Company.
 3. A linked Contract must use the same provider Company.
 4. Project existence does not require a Contract.
-5. Every Task has explicit Company scope inherited from its Project.
+5. Every Task has explicit Company scope. Project Tasks inherit it from their Project; separately bounded Internal Company Tasks (§36) belong directly to a Company.
 6. Template instantiation copies governed definitions.
 7. Standard identity includes its exact edition.
 8. Completion and closure do not erase prior stages, assignments or evidence.
@@ -2866,3 +2867,376 @@ meaning, real users/grants/model activation, provider/deployment and whole-MVP
 acceptance. [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
 alone retains `MISSION-CLOSE-01`; this action neither decides it nor repeats a
 business question or dossier request.
+
+## 36. Bounded standalone Internal Company Tasks (#996)
+
+### 36.1 Authority, problem and observable value
+
+**Status:** Approved bounded contract after ordered independent Standards then Spec preparation and [actual delegated product disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996#issuecomment-6529503138); not runtime delivery.
+**Owner:** Dan and delegated product agents; preparation [#996](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996), parent #63.
+
+The approved normalized [decision record §9.4](consolidated-product-decision-record.md#94-tasks)
+states: “Every Task belongs to a Workspace and Company. A Task may be linked to a
+Project, Project Stage or Client, or be an internal Company Task.” Its authority
+section identifies the original **Sarcina Tehnică MASTER v1.1**. This is an exact
+normalized-source locator, not a quotation or page reference from the original
+DOCX. The historical v1.0 comparison is not normative or current delivery evidence.
+
+At main `422892e5ab4a49da1a467002536d587e510b063f`, native Task storage requires
+both Project and Client, and creation is Project-scoped. The source-backed missing
+outcome is ordinary Company work without either relationship. For example, a
+synthetic manager records “Prepare the internal equipment inventory”, selects a
+responsible member and date, records a blockage, resumes, completes and later
+reopens it. The complete attributable history survives every correction. No
+administrative Project or fake Client is required or created.
+
+The following bounded access, protocol, UI and proof choices are **delegated
+product/technical synthesis**, not additional statements by Iurie or new source
+requirements. Reuse ordinary Task meaning from §§18/20/22/34; this section owns
+only the Company-only variant. Section 7's former inherited-Company invariant and
+§34's exclusion describe Project Tasks, not a prohibition of the source's internal
+variant. All existing Project Task contracts retain their scope and representation.
+
+Success means an authorized Company-only user can discover, create, reload, assign,
+date, prioritize, edit, block/resume, complete/reopen/cancel and reopen exact history
+through the production application, with no Project/Client rights or record. This
+is a verifiable acceptance outcome, not a new adoption metric or whole-MVP claim.
+
+### 36.2 Actors, scope and user stories
+
+An **Internal Company Task** is an ordinary Task belonging directly to one immutable
+Workspace and Company. It has no Project, Stage, Client, Contract, source-plan or
+mission-result relation in this slice. It cannot be converted or moved to another
+Company or a Project. NestJS establishes identifiers, scope, creator membership,
+server timestamps and versions; none is accepted from a request body.
+
+Authorization §8 owns independent opt-in **Company Internal Task Manager v1**, code
+`company_internal_task_manager`, containing exactly `internal_task.read` and
+`internal_task.manage`. This minimal initial bundle deliberately combines ordinary
+read/manage; it defines no separate reader-only grant or implicit assignee rights.
+Existing Company assignment administration grants/revokes captured v1 explicitly.
+No bootstrap, migration, repeated grant, old Task Manager, Project/Client role,
+Owner/Director title, creator or responsible identity acquires it automatically.
+
+Every operation requires verified active identity/session/Internal User, active
+same-Workspace Membership, server-validated active Company context and the exact
+live known captured v1 assignment. Unknown/null captures deny. Company selection
+eligibility remains Access-owned and unchanged; this bundle contains no context
+permission. No Client relationship, Project, Document, Activity or result permission
+is a prerequisite or a side effect.
+
+| Operation                                       | Required capability and effect                                                              |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Company list, detail, immutable history         | `internal_task.read`; includes closed records.                                              |
+| Eligible-member selection                       | Same read; only membership identifiers/display labels for eligible members in this Company. |
+| Create, edit, status move, normalized no-op     | Read plus `internal_task.manage`; fresh state/version checks below.                         |
+| Exact committed command confirmation            | Same live read/manage and exact target visibility, before fresh state/version checks.       |
+| Assignment administration                       | Existing `company.assignment.manage`; grants no business read.                              |
+| Foreign/missing target after valid actor scope  | Safe `404`; no target, history, cursor or receipt disclosure.                               |
+| Missing identity or invalid/revoked actor scope | Existing `401`/`403`, without private existence disclosure.                                 |
+
+Access owns one narrow Company-scoped eligible-assignee query and its transaction
+participant. A newly selected member needs active Internal User and same-Workspace
+Membership, effective Company context and captured `internal_task.read` for this
+Company. This explicitly adapts §18's Project eligibility to the Company-only
+variant: **no Project or Client permission is tested**. There is no email/personnel
+directory or exclusion-reason projection. Null/unassigned is valid; an empty list
+does not prevent creation. Later ineligibility preserves historical assignment and
+its captured label, grants no access, removes new selection and allows clear/replace.
+Revalidate a new assignee only when assignment actually changes, not for an unrelated
+edit, reopen or committed replay. A manager need not be creator or assignee.
+
+1. As an authorized user, I list the Company's open internal Tasks, deliberately
+   include a closed state or all states, and open the exact selected Task.
+2. As a manager, I create an unassigned/undated Task or choose an eligible member,
+   date and priority, then reload the same Task without a Project or Client.
+3. As a manager, I correct ordinary fields, block with a reason, resume, complete,
+   reopen to `todo`, or cancel with a reason; none deletes earlier facts.
+4. As a reader, I reopen immutable creation, field and state history with actor/time.
+5. After uncertainty, I confirm the same saved command; after stale conflict, I
+   explicitly reload and review before submitting a fresh intent.
+6. As an administrator, I grant/revoke only this captured bundle through existing
+   administration, without receiving protected Task text.
+7. As a user, I preserve separately valid Project/Task/result/next-action work when
+   this feature's grant changes, and retire stale internal-Task effects on scope loss.
+
+### 36.3 Fields, lifecycle and closed command grammar
+
+Reuse the ordinary five states: `todo`, `in_progress`, `blocked` are open;
+`done`, `cancelled` are closed. Creation is `todo`, version 1. From any open state
+move to a **different** open state, `done` or `cancelled`; from either closed state
+only explicit reopen to `todo` is allowed. Same-state and every other transition
+conflict without receipt/write. Open Tasks may be edited; closed Tasks refuse
+fresh edits, including no-ops. Reopening retains ordinary fields. Completion is
+an attributable manual declaration, not accepted service, fulfillment, certification
+or mission closure. Entering `blocked`/`cancelled` requires respectively a blockage/
+cancellation reason, retiring its current declaration on exit while retaining history.
+
+The fields are `title`, nullable `description`, nullable `assigneeMembershipId`,
+nullable `dueDate`, and `priority` (`normal`, `important`, `critical`). Creation
+requires title; omitted optional values default to null, priority to normal. For
+this new format, title and reasons use §34's scalar/NUL validation and exterior
+ECMAScript trim, with respectively 1–200 and 1–500 Unicode code points after trim.
+Description uses §34's exact nullable 2000-code-point normalization. Interior text,
+line endings and Unicode sequences remain literal. No HTML/Markdown execution or
+composition/case/transliteration normalization is introduced. Existing title/reason
+formats are not silently reinterpreted. Dates are strict real calendar `YYYY-MM-DD`
+strings, never timestamps or timezone-converted instants. No date ordering against
+today or priority-based automation is inferred.
+
+Choose one separately versioned public seam in the Task owner:
+
+| Route                                            | Closed input / result                                                                                                        |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `POST /company-internal-tasks`                   | Required `title`; optional `description`, `assigneeMembershipId`, `dueDate`, `priority`; server-created Task, receipt below. |
+| `GET /company-internal-tasks`                    | Only optional `status` and `beforeTaskId`; bounded page below.                                                               |
+| `GET /company-internal-tasks/eligible-assignees` | Only optional `afterMembershipId`; bounded narrow candidates below.                                                          |
+| `GET /company-internal-tasks/:taskId`            | Only optional `beforeVersion`; current plus bounded history below.                                                           |
+| `POST /company-internal-tasks/:taskId/changes`   | Closed `EDIT` or `MOVE` body below; receipt below.                                                                           |
+
+`EDIT` has exactly `kind: "EDIT"`, integer `expectedVersion` and at least one of
+the five ordinary fields. Omitted fields preserve current values; explicit null
+clears only nullable fields. `MOVE` has exactly `kind: "MOVE"`, `expectedVersion`,
+`status` and, **only** for destination `blocked`/`cancelled`, required `reason`.
+There is no reason for another destination. Unknown/repeated query parameters,
+unknown body fields, invalid native UUID paths, wrong types, unsafe/fractional/
+out-of-range versions or invalid dates/text return `400`. Commands use the existing
+`Idempotency-Key` header with the existing nonblank exterior-trimmed string
+contract; no UUID constraint or new global key grammar is added. Assignment IDs
+and target/cursor paths use the existing native UUID convention.
+Scope, current state, completion attribution and timestamps are never body inputs.
+
+The saved normalized command includes format, actor/Workspace key scope, exact
+Company/target, kind, expected version and every normalized field including the
+omitted-versus-present distinction. Stable object property order is not intent;
+different literal interior text or observed version is. A create replay resolves
+its original server Task, never creates another. Key reuse with different normalized
+intent conflicts across this new family, including a different target/Company.
+Existing unrelated command families and their key namespaces remain unchanged.
+
+### 36.4 Snapshot, receipt, list and immutable history formats
+
+Own closed stored formats `company-internal-task-v1`,
+`company-internal-task-command-v1` and `company-internal-task-history-v1`.
+Their publisher validates the complete object before commit. A Task snapshot has
+exactly `format`, `id`, `workspaceId`, `companyId`, `version`, `title`, `description`,
+`assignee` (null or exactly `membershipId` and captured `displayLabel`), `dueDate`,
+`priority`, `status`, `createdByMembershipId`, `createdAt`, `updatedAt`,
+`completion` (null or exactly `actorMembershipId`/`recordedAt`), and current `reason`
+(null or exactly `kind` (`blockage`/`cancellation`), `text`, `actorMembershipId`
+and `recordedAt`). Completion exists exactly while `done`; reason exists exactly
+while blocked/cancelled. Reopening/exit retains earlier declarations only in history.
+All timestamps use the existing server UTC ISO convention, not supplied local time.
+
+Each material version has exactly one history fact with `format`, `workspaceId`,
+`companyId`, `taskId`, `version`, `kind` (`CREATE`, `EDIT`, `MOVE`),
+`actorMembershipId`, `recordedAt`, `before` (null
+only at creation) and `after` (exact snapshots). Before matches the previous after;
+after matches the resulting version and attribution. Snapshots preserve captured
+labels without looking up today's directory. New edits capture a newly selected
+assignee's current display label; unchanged assignment retains its existing label.
+
+A command receipt has exactly `format`, `task` (the exact resulting snapshot),
+`changed` (boolean), and `history` (the one exact appended fact, or null for no-op).
+Creation/material moves/edits return changed=true; a normalized no-op edit returns
+the observed unchanged snapshot, false/null. Return the immutable exact saved
+response on replay after live authority, even if current Task/state/history changed.
+HTTP status is `201` for create/its replay, `200` for changes/its replay. A later
+fresh current read is distinct from command confirmation.
+
+Detail returns exactly `format: "company-internal-task-detail-v1"`, `task`,
+`history` and `nextBeforeVersion`. Current and the history page share one read-only
+repeatable-read snapshot. History is descending version, fixed 25 with one lookahead;
+only return a next cursor if another fact exists. `beforeVersion` is a canonical
+ASCII positive integer in the signed-32-bit version range and selects strictly
+earlier versions; valid exhausted pages are empty, current remains truthful.
+
+List returns exactly `format: "company-internal-task-page-v1"`, `tasks` and
+`nextBeforeTaskId`. Default `status=open` means the three open states; explicitly
+accept `open`, each of the five exact states, or `all`. Order by immutable
+`createdAt DESC, id DESC`, fixed 25 plus one lookahead and no total. Cursor is an
+actual same-Company Task UUID, resolved within the same read snapshot before applying
+the immutable boundary and chosen status. Missing/foreign cursor is safe404; an
+existing cursor need not still match the selected status. No offset cap or local
+filter may truncate complete discovery. There is no title/description search,
+urgency ranking, implicit overdue interval or default hidden closed-state deletion.
+
+Eligible-member pages return exactly `format: "company-internal-task-assignees-v1"`,
+`members` (each exactly `membershipId`/`displayLabel`) and `nextAfterMembershipId`.
+Access applies the §36.2 live predicate before a fixed 25+one-lookahead selection,
+ordered by membership UUID ascending, with no total/directory detail. The optional
+native UUID cursor must currently identify an eligible same-Company member or
+return safe404; pagination is strictly after its immutable ID. Unknown/repeated
+query parameters are 400. A changed candidate set may require deliberate reload;
+selection never guarantees the later command's independent live eligibility check.
+
+Every consumed stored format has a complete scope/state/scalar/version validator.
+Known malformed facts return explicit unavailable failure; unknown formats return
+unsupported, never “empty”, a coerced current snapshot or a replay assembled from
+today's data. Public App consumers retain safe future additive-field compatibility
+only where they establish all fields they use; receipt/history validation is closed.
+An absent new route (`404`) is unavailable capability, not an empty Company list.
+
+### 36.5 Transaction, native integrity and conservation
+
+Malformed public input is `400` before business lookup; live identity/scope/required
+authority precedes any private target/cursor/receipt disclosure. Under one caller
+transaction, serialize the actor/Workspace key, acquire Access-owned live Company,
+membership and captured-assignment locks, resolve exact target visibility, then
+compare saved command identity. An exact authorized receipt precedes fresh state,
+version, assignee and exhaustion checks. Otherwise lock the current Task, validate
+fresh guards/changed-assignee through Access and calculate the normalized change.
+Access coordinates the native parent locks in its canonical order; feature code
+does not query Access storage or impersonate candidate actors. No Client/Project
+participant or Client operational-use fence exists for this Company-only record.
+
+Every fresh material operation atomically commits current snapshot, one immutable
+history fact, durable exact receipt and required private Accountability event,
+including successful response construction. A no-op open edit still checks the
+observed version/authority, stores only its receipt and changes no current time,
+version, history or event. Replay writes nothing. At signed-32-bit maximum version,
+a material change conflicts without partial facts; an eligible no-op/replay still
+works. Stale versions, invalid transitions and key conflicts are `409` without
+success facts. Storage/response failures roll back the complete unit.
+
+Native PostgreSQL constraints enforce same-Workspace Company/actor/assignee
+references, immutable owner identity, unique actor/Workspace keys, positive versions,
+valid current state, immutable history/receipts/events and consecutive exact
+current/history/receipt/event coupling. A fully coupled forged mismatch must fail,
+not merely a missing child row. Use the existing modules' public transactional
+participants; no second Access or Accountability implementation, cache framework,
+generic workflow engine, new dependency or provider is justified.
+
+Storage is additive and separately qualified. Do not nullable-convert the old
+Project/Client-required Task table or admit new variants into old DTOs/receipts.
+Conserve old Project Tasks, results, copied sources, Model/Mission work, PDFs,
+Client identities/relationships/reversal fences and all existing exact command
+outcomes. Do not put internal Tasks in Project-only My Tasks, team/blocked/unassigned
+queues, Home attention/deadline/counters, grouped planning, Task-result selectors,
+search/export/PDFs or source-based readiness. A later explicitly approved aggregation
+may extend those owners; this slice exposes its complete dedicated Company view.
+
+Activity §7 owns only new restricted `internal_task.created`, `internal_task.updated`
+and `internal_task.status.changed` events, one per material creation/edit/move,
+with server actor/time, exact Company/Task target and exactly `{ version }` metadata.
+All move destinations use the last event; native history owns detailed transitions.
+No title, description, member label, date, reason, key or fingerprint enters metadata
+or diagnostics. Generic Activity/Home/search/count/export receives no event, target,
+existence or page-count side channel; exclusion precedes selection/pagination/count.
+Only the native Task owner exposes private history under current internal-Task read.
+Assignment administration events remain separate, safe bundle-label facts. Reads,
+denied/failed/stale/no-op/replayed commands add no success event. No deletion, purge,
+retention-policy change or historic event rewriting is authorized.
+
+### 36.6 Actual application journey, lifetime and recovery
+
+Add a dedicated **Internal Tasks** destination in the selected Company's existing
+navigation, its complete bounded list/status controls, native creation and detail/
+edit/state/history continuation. Scope is visible without raw-ID entry. Creation
+uses the authorized candidate picker or Unassigned; every ordinary field, current
+blockage/cancellation declaration and completion attribution is readable. Closing a
+Task makes fields read-only and offers explicit reopen, preserving history access.
+Current/history/list and candidate loading have truthful empty, no-eligible-member,
+denied/revoked, missing, unavailable/unsupported and transport-failure states.
+
+Drafts and command attempts belong to their actual feature owner. Pending disables
+duplicate submission; uncertainty preserves exact normalized body/key/observed
+version/target for explicit identical retry, without automatic new key/rebase/write.
+Stale conflict requires explicit reload/review before a fresh intent. A confirmed
+receipt remains confirmed if later current/history/list refresh fails; refresh is
+separate and never resubmits a write. Same-scope navigation/frame/locale changes
+preserve literal inputs, attempt identity and independently valid drafts/focus.
+
+Consume current identity/session, Internal User, Workspace/Membership and active
+Company generation plus exact internal-Task assignment ID/captured version and
+permissions. True consumed retirement invalidates draft/pending/uncertain/recovery
+owners and every late reply/effect permanently, including A→B→A and revoke/regrant
+with identical permission strings. Guard **every await and shared effect**, including
+already-started full-Actor or Company recovery, not merely final component setState.
+Actual App/admin parents must preserve independently valid Project/Task/result/
+next-action/applicability owners across unrelated grant changes; no broad Actor
+object remount or one-feature mutual exclusion may discard their valid work. All
+transitively consumed recovery fields enter the lifetime snapshot. Local cancellation
+does not undo a possibly committed command; later fresh reads remain authoritative.
+
+Use the accepted Prisme direction and existing Classic frame, centralized **ro/en/
+fr/ru** copy, keyboard-complete operation and visible focus at **1440×900 and
+390×844**. Literal multiline/long-unbroken text wraps without overflow or truncating
+accessible history; narrow status/picker/error controls remain operable. Localization
+changes labels only, not stored content/date/command identity. No new visual system,
+manual Clerk setup, external notification or real-user configuration is required.
+
+### 36.7 Public acceptance, upgrade and readiness
+
+The separate runtime child starts with meaningful RED at the public REST/disposable
+PostgreSQL seam: an authorized **Company-only actor with zero Project/Client/old
+Task rights** creates an internal Task while no Project/Client exists. Then GREEN
+proves reload, eligible assignment/date/priority/description correction, blockage/
+resume, complete/reopen/cancel and exact paged immutable history, without creating
+either excluded record. Test these acceptance groups through the highest stable seam:
+
+1. Exact fields/Unicode/NUL/date/reason/state/version and unknown/repeated-input
+   grammar, no-op, empty/closed/all lists, more than 25 tied rows, foreign/missing
+   cursors and more than 25 history facts. Current/history reads share one snapshot.
+2. Missing/revoked/unknown capture, inactive identity/membership/Company, foreign
+   Workspace/Company/target/key/cursor and direct assignee selection. Mere title,
+   creator, assignee or old Task Manager cannot read/manage internal work; the new
+   bundle cannot read/manage old Project Tasks or unrelated capabilities.
+3. Exact normalized create/edit/move replay after current advancement/closure,
+   key changes, stale conflicts, exhaustion/no-op/replay at the real integer limit,
+   no response borrowing current facts, malformed/unsupported formats. Native CHECK
+   rejection is proved first; genuinely unrepresentable publisher data uses the
+   public collaborator/fault seam, never disabled integrity guards.
+4. Deterministically hold both competing orders for same/different keys, edits/
+   state transitions, actor revocation/regrant, Company/member/User suspension and
+   changed-assignee eligibility. Assert fresh-check/replay order and one correct
+   material version; no successful revocation is crossed by an unauthorized commit.
+   Inject failure at current/history/event/receipt/response and prove total rollback.
+5. Native SQL rejects foreign scope, immutable rewrite/delete, missing coupled
+   facts and **fully coupled mismatched** predecessor/current/receipt/event facts.
+   Prove genuine populated immediate-predecessor upgrade, close old producers before
+   migration, repeat migration and restart twice. Compare old captured assignments,
+   full stored single/group/nested receipts, Task/source/result/PDF facts/hashes and
+   Client fences byte-for-byte; new history/replays survive restarts. No old grant
+   expands and no fake Project/Client/backfill is introduced.
+6. Audit all existing consumers through public boundaries: old My Tasks/team/Home/
+   blocked/unassigned/deadlines/count/search/Activity/result/export/PDF behavior and
+   exact old receipt JSON remain unchanged; new private prose never leaks through
+   generic events, short pages, counts or diagnostic payloads.
+7. Actual App/HTTP/admin lifetime tests preserve independently valid native draft,
+   pending, uncertain and confirmed work; hold late 200/403 and already-started
+   selected/Workspace/full-Actor recovery across each true consumed retirement,
+   A→B→A and regrant, including recovery-only Actor changes. Check stale focus,
+   navigation, Actor/session/Company/Activity effects and unrelated-grant controls.
+8. Register the complete actual **App/API/disposable-PostgreSQL** keyboard journey
+   in both frames, all four locales and both widths. Create/reload, assign/edit,
+   block/resume, complete/reopen/cancel, reload exact history, paginate and exercise
+   uncertainty/confirmed-refresh separately. Inspect original screenshots for full
+   literal content/focus/no overflow; mocked fixtures or manual UI seeding alone do
+   not prove delivery. No Dan/Iurie manual testing or external account is needed.
+
+This preparation has no missing first-tenant input. Existing ordinary Task
+declarations decide the bounded lifecycle; no certificate, required-evidence or
+closure rule is inferred. [Mission Obligations §12](release-1-mission-obligations-prd.md#12-open-business-questions-for-one-consolidated-email)
+alone retains `MISSION-CLOSE-01` for the consolidated email. No new question or
+original-file request is required for synthetic internal work.
+
+Ordered independent **Standards then Spec** preparation is complete, with no
+blocking findings, followed by [root's actual delegated bounded approval](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/996#issuecomment-6529503138).
+Canonical contract merge is still required. That merge is not runtime,
+ready-for-agent status, real-user assignment or operational activation. A separate
+fresh child requires all ticketing readiness gates, normal frozen setup, matching
+doctor and complete journey fit. Update the Task glossary consequence in that runtime
+child with its full sensitive verification, not as a delivered-vocabulary claim now.
+If the entire journey does not fit one fresh context, re-scope the whole outcome
+before publication; never drop authority, lifetime, native integrity or real proof.
+
+At runtime readiness, recheck current Task/Access/App/admin owners and obtain finish
+or explicit handoff before overlapping shared source. In particular #972/PR984 and
+#993/PR994 retain their existing source, diagnostics/review/CI and delivery ownership;
+do not restart their gate or silently absorb their unmerged behavior. Documentation
+preparation can proceed independently. The docs-only six required/ten not-required
+gate families prove no internal-Task runtime. Excluded: journal/comments, mentions,
+files/result/evidence links, Project conversion, recurring/dependency automation,
+reminders/escalation, staffing/HR/payroll/finance, new aggregation/metrics, providers,
+mission obligations/closure/certification/legal decisions and whole-MVP acceptance.

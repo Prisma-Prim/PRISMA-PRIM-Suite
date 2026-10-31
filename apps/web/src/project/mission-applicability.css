@@ -1,0 +1,81 @@
+.mission-applicability {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mission-applicability form,
+.applicability-preparation {
+  display: grid;
+  gap: 0.65rem;
+  margin-block: 1rem;
+}
+.mission-applicability textarea {
+  box-sizing: border-box;
+  min-height: 5rem;
+  width: 100%;
+  max-width: 100%;
+  font: inherit;
+  resize: vertical;
+  padding: 0.65rem;
+  border: 1px solid var(--shell-line, #c9c3e7);
+  border-radius: 6px;
+  color: inherit;
+  background: #fff;
+}
+.mission-applicability button {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin: 0.25rem;
+}
+.mission-applicability button:focus-visible,
+.mission-applicability textarea:focus-visible {
+  outline: 3px solid #6354cc;
+  outline-offset: 3px;
+}
+.applicability-literal,
+.applicability-literal dd {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.applicability-literal dd {
+  margin-inline-start: 1rem;
+  margin-block-end: 0.8rem;
+}
+.applicability-fact {
+  min-width: 0;
+  border-inline-start: 3px solid #c9c3e7;
+  padding-inline: 1rem;
+  margin-block: 1rem;
+}
+.applicability-fact h6 {
+  font-size: 0.95rem;
+  margin-block: 0.7rem;
+}
+.prisme-shell .mission-applicability {
+  border: 1px solid #e6eaf1;
+  border-radius: 12px;
+  background: #fff;
+  padding: 1rem;
+  margin-block: 1rem;
+}
+.prisme-shell .mission-applicability button {
+  border: 1px solid #c9c3e7;
+  border-radius: 7px;
+  background: #f4f2ff;
+  color: #392b78;
+  padding: 0.6rem 0.8rem;
+}
+.prisme-shell .mission-applicability button:disabled {
+  opacity: 0.55;
+}
+@media (max-width: 480px) {
+  .prisme-shell .mission-applicability {
+    padding: 0.75rem;
+  }
+  .applicability-fact {
+    padding-inline: 0.6rem;
+  }
+  .applicability-literal dd {
+    margin-inline-start: 0.4rem;
+  }
+}

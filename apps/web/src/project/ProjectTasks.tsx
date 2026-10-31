@@ -292,7 +292,7 @@ export function ProjectTasks(props: Props) {
     actor.workspaceMembershipId,
     actor.active,
     actor.workspacePermissions.includes('client.manage'),
-    projectTaskCompanyAuthority(actor.activeCompany),
+    projectTaskCompanyAuthority(actor),
   ]);
   return <TaskProjects key={authority} {...props} />;
 }
@@ -347,6 +347,7 @@ class ReadFailure extends Error {
   }
 }
 function TaskProject({
+  active,
   actor,
   identity,
   projectId,
@@ -354,7 +355,6 @@ function TaskProject({
   onProjectChanged,
   onActivityRecorded,
   requestedTask,
-  active,
   clientIdentityRevision = 0,
 }: Props & { projectId: string; active: boolean }) {
   const copy = useProjectTaskCopy();
@@ -1277,21 +1277,19 @@ function TaskProject({
         </>
       )}
       {feedback && <p role="status">{copy[feedback]}</p>}
-      {active &&
-        selected &&
-        load.kind !== 'denied' &&
-        detail?.kind !== 'missing' && (
-          <TaskResults
-            actor={actor}
-            identity={identity}
-            taskId={selected}
-            projectId={projectId}
-            observedProjectStatus={projectStatus}
-            observedTaskVersion={
-              detail?.kind === 'ready' ? detail.task.version : undefined
-            }
-          />
-        )}
+      {selected && load.kind !== 'denied' && detail?.kind !== 'missing' && (
+        <TaskResults
+          active={active}
+          actor={actor}
+          identity={identity}
+          taskId={selected}
+          projectId={projectId}
+          observedProjectStatus={projectStatus}
+          observedTaskVersion={
+            detail?.kind === 'ready' ? detail.task.version : undefined
+          }
+        />
+      )}
       {mutation.kind === 'uncertain' && (
         <button type="button" onClick={() => void run(mutation.command)}>
           {copy.retry}

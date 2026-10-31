@@ -7,7 +7,7 @@ import {
 } from '../api/authenticated-api-client';
 import { useInterfaceLocale } from '../localization/interface-locale';
 import { Select } from '../presentation/Select';
-import { companyAuthorityWithoutProjectTemplate } from './project-authority';
+import { taskResultAuthority } from './project-authority';
 import type { ProjectStatus } from './project-lifecycle-response';
 import { useTaskResultCopy } from './task-results.copy';
 import {
@@ -26,6 +26,7 @@ interface Props {
   identity: BrowserIdentity;
   taskId: string;
   projectId: string;
+  active?: boolean;
   observedTaskVersion?: number;
   observedProjectStatus?: ProjectStatus | null;
 }
@@ -72,12 +73,13 @@ export function TaskResults(props: Props) {
     props.actor.workspaceId,
     props.actor.workspaceMembershipId,
     props.actor.active,
-    props.actor.workspacePermissions,
-    companyAuthorityWithoutProjectTemplate(props.actor.activeCompany),
+    props.actor.workspacePermissions.includes('client.manage'),
+    taskResultAuthority(props.actor),
   ]);
   return <TaskResultOwner key={key} {...props} />;
 }
 function TaskResultOwner({
+  active = true,
   actor,
   identity,
   taskId,
@@ -144,10 +146,18 @@ function TaskResultOwner({
     'idle' | 'pending' | 'failed'
   >('idle');
   const alive = useRef(true);
+  const visible = useRef(active);
+  visible.current = active;
   const activeRead = useRef<AbortController | null>(null);
   const activeHistory = useRef<AbortController | null>(null);
   const activeDownload = useRef<AbortController | null>(null);
   const writing = useRef(false);
+  useEffect(() => {
+    if (!active) {
+      activeDownload.current?.abort();
+      setDownloadStatus('idle');
+    }
+  }, [active]);
   const path = `/tasks/${encodeURIComponent(taskId)}/results`;
   const expected = { taskId, projectId };
   useEffect(() => {
@@ -375,18 +385,21 @@ function TaskResultOwner({
     }
   }
   async function download(reference: TaskResultReference): Promise<void> {
+    if (!visible.current) return;
     activeDownload.current?.abort();
     const controller = new AbortController();
     activeDownload.current = controller;
     setDownloadStatus('pending');
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (!alive.current || controller.signal.aborted) return;
+      if (!alive.current || !visible.current || controller.signal.aborted)
+        return;
       const result = await api.download(
         `/documents/${encodeURIComponent(reference.documentId)}/versions/${encodeURIComponent(reference.versionId)}/content/${encodeURIComponent(reference.representationId)}`,
         { companyContextId: companyId, signal: controller.signal },
       );
-      if (!alive.current || controller.signal.aborted) return;
+      if (!alive.current || !visible.current || controller.signal.aborted)
+        return;
       if (result.status === 'unauthorized') {
         deny();
         await identity.rejectSession();
@@ -415,7 +428,7 @@ function TaskResultOwner({
       }
       setDownloadStatus('idle');
     } catch {
-      if (alive.current && !controller.signal.aborted)
+      if (alive.current && visible.current && !controller.signal.aborted)
         setDownloadStatus('failed');
     }
   }

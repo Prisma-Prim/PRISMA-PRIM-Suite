@@ -88,6 +88,8 @@ describe('Corresponding Contract component command ownership', () => {
       };
       let release: ((value: Response) => void) | undefined;
       let signal: AbortSignal | null | undefined;
+      let releaseOffer: ((value: Response) => void) | undefined;
+      let releaseModel: ((value: Response) => void) | undefined;
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
         if (init?.method === 'POST') {
           signal = init.signal;
@@ -97,19 +99,39 @@ describe('Corresponding Contract component command ownership', () => {
         }
         const path = input.toString();
         if (path.endsWith('/model-selection'))
-          return response({ selection: selectedContractModelFixture });
+          return new Promise<Response>((resolve) => {
+            releaseModel = resolve;
+          });
         if (path.includes('/offers/'))
-          return response({ offer: modelContractSourceOfferFixture() });
+          return new Promise<Response>((resolve) => {
+            releaseOffer = resolve;
+          });
         return response({ contract: source, precontract: null });
       });
       const view = render(panel(actor));
-      fireEvent.click(
-        await screen.findByRole('button', {
-          name: 'Copy this Version into a successor draft',
-        }),
-      );
+      const copyButton = await screen.findByRole('button', {
+        name: 'Copy this Version into a successor draft',
+      });
+      await act(async () => {
+        fireEvent.click(copyButton);
+      });
       const form = await screen.findByRole('form', {
         name: 'Prepare a complete successor',
+      });
+      const prepareButton = within(form).getByRole('button', {
+        name: 'Prepare full non-official Contract',
+      });
+      expect(prepareButton).toBeDisabled();
+      if (!releaseOffer || !releaseModel)
+        throw new Error('Expected both Contract source reads to begin.');
+      const settleOffer = releaseOffer,
+        settleModel = releaseModel;
+      await act(async () => {
+        settleOffer(response({ offer: modelContractSourceOfferFixture() }));
+      });
+      expect(prepareButton).toBeDisabled();
+      await act(async () => {
+        settleModel(response({ selection: selectedContractModelFixture }));
       });
       await waitFor(() =>
         expect(

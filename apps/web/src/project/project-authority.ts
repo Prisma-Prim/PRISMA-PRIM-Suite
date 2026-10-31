@@ -6,6 +6,15 @@ export function companyAuthorityWithoutProjectTemplate(
 ):
   | Omit<
       NonNullable<ActorContext['activeCompany']>,
+      | 'projectNextActionPermissions'
+      | 'projectNextActionCoordinatorAssignmentId'
+      | 'projectNextActionCoordinatorPermissionSetVersion'
+      | 'missionApplicabilityProposalPermissions'
+      | 'missionApplicabilityCoordinatorAssignmentId'
+      | 'missionApplicabilityCoordinatorPermissionSetVersion'
+      | 'missionApplicabilityDecisionPermissions'
+      | 'missionApplicabilityApproverAssignmentId'
+      | 'missionApplicabilityApproverPermissionSetVersion'
       | 'missionPlanGrants'
       | 'missionResultReviewPermissions'
       | 'missionResultReviewerAssignmentId'
@@ -23,6 +32,15 @@ export function companyAuthorityWithoutProjectTemplate(
   | undefined {
   if (!company) return;
   const authority = { ...company };
+  delete authority.projectNextActionPermissions;
+  delete authority.projectNextActionCoordinatorAssignmentId;
+  delete authority.projectNextActionCoordinatorPermissionSetVersion;
+  delete authority.missionApplicabilityProposalPermissions;
+  delete authority.missionApplicabilityCoordinatorAssignmentId;
+  delete authority.missionApplicabilityCoordinatorPermissionSetVersion;
+  delete authority.missionApplicabilityDecisionPermissions;
+  delete authority.missionApplicabilityApproverAssignmentId;
+  delete authority.missionApplicabilityApproverPermissionSetVersion;
   delete authority.missionPlanGrants;
   delete authority.missionResultReviewPermissions;
   delete authority.missionResultReviewerAssignmentId;
@@ -39,10 +57,21 @@ export function companyAuthorityWithoutProjectTemplate(
   return authority;
 }
 
+/** Match the Client owner: Workspace management or the exact Company read capture. */
+export function clientReadAuthority(actor: ActorContext) {
+  if (actor.workspacePermissions.includes('client.manage'))
+    return { workspaceClientManage: true };
+  const company = actor.activeCompany;
+  return {
+    clientRead: company?.clientPermissions?.includes('client.read'),
+    clientPermissionAssignmentId: company?.clientPermissionAssignmentId,
+    clientPermissionSetVersion: company?.clientPermissionSetVersion,
+  };
+}
+
 /** Task work consumes Project/Task/original-Client authority, independently of evidence or review grants. */
-export function projectTaskCompanyAuthority(
-  company: ActorContext['activeCompany'],
-) {
+export function projectTaskCompanyAuthority(actor: ActorContext) {
+  const company = actor.activeCompany;
   if (!company) return;
   return {
     id: company.id,
@@ -52,8 +81,32 @@ export function projectTaskCompanyAuthority(
     taskPermissions: company.taskPermissions,
     taskPermissionAssignmentId: company.taskPermissionAssignmentId,
     taskPermissionSetVersion: company.taskPermissionSetVersion,
-    clientPermissions: company.clientPermissions,
-    clientPermissionAssignmentId: company.clientPermissionAssignmentId,
-    clientPermissionSetVersion: company.clientPermissionSetVersion,
+    clientRead: clientReadAuthority(actor),
+  };
+}
+
+/** Native result intent consumes its exact evidence and recorder captures only. */
+export function taskResultAuthority(actor: ActorContext) {
+  const c = actor.activeCompany;
+  return {
+    projectTask: projectTaskCompanyAuthority(actor),
+    documentRead: c?.documentPermissions?.includes('document.read'),
+    documentPermissionAssignmentId: c?.documentPermissionAssignmentId,
+    documentPermissionSetVersion: c?.documentPermissionSetVersion,
+    contentRead: c?.documentPermissions?.includes('document.content.read'),
+    documentContentReaderAssignmentId: c?.documentContentReaderAssignmentId,
+    documentContentReaderPermissionSetVersion:
+      c?.documentContentReaderPermissionSetVersion,
+    missionAccess: c?.documentPermissions?.includes(
+      'document.mission_deliverable.access',
+    ),
+    missionDeliverableAccessAssignmentId:
+      c?.missionDeliverableAccessAssignmentId,
+    missionDeliverableAccessPermissionSetVersion:
+      c?.missionDeliverableAccessPermissionSetVersion,
+    record: c?.taskResultPermissions?.includes('task.result.record'),
+    taskResultRecorderAssignmentId: c?.taskResultRecorderAssignmentId,
+    taskResultRecorderPermissionSetVersion:
+      c?.taskResultRecorderPermissionSetVersion,
   };
 }

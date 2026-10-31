@@ -1,3 +1,4 @@
+import type { KnowledgeCapturedGrant } from './knowledge-captured-grants.js';
 import type { MissionPlanActorProjection } from './mission-plan-captured-grants.js';
 import type {
   CompanyClientPermission,
@@ -53,6 +54,7 @@ export interface ActiveCompanyContext
     OfferModelActorProjection,
     ContractModelActorProjection,
     MissionPlanActorProjection {
+  knowledgeGrants?: KnowledgeCapturedGrant[];
   id: string;
   displayName: string;
   clientPermissions: CompanyClientPermission[];
@@ -75,6 +77,18 @@ export interface ActiveCompanyContext
   taskResultPermissions?: TaskResultPermission[];
   taskResultRecorderAssignmentId?: string;
   taskResultRecorderPermissionSetVersion?: 'v1';
+  projectNextActionPermissions?: Array<'project.next_action.update'>;
+  projectNextActionCoordinatorAssignmentId?: string;
+  projectNextActionCoordinatorPermissionSetVersion?: 'v1';
+  missionApplicabilityProposalPermissions?: Array<'project.mission_applicability.propose'>;
+  missionApplicabilityCoordinatorAssignmentId?: string;
+  missionApplicabilityCoordinatorPermissionSetVersion?: 'v1';
+  missionApplicabilityDecisionPermissions?: Array<
+    | 'project.mission_applicability.decide'
+    | 'project.mission_applicability.restore'
+  >;
+  missionApplicabilityApproverAssignmentId?: string;
+  missionApplicabilityApproverPermissionSetVersion?: 'v1';
   missionResultReviewPermissions?: MissionResultReviewPermission[];
   missionResultReviewerAssignmentId?: string;
   missionResultReviewerPermissionSetVersion?: 'v1';

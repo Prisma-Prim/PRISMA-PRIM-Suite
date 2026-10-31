@@ -45,6 +45,10 @@ export type CompanyContextState =
 export interface OrdinaryActivityLogEvent {
   id: string;
   action:
+    | 'company_knowledge_source_administrator_assignment.granted'
+    | 'company_knowledge_source_administrator_assignment.revoked'
+    | 'company_knowledge_evidence_reader_assignment.granted'
+    | 'company_knowledge_evidence_reader_assignment.revoked'
     | 'workspace_invitation.issued'
     | 'workspace_invitation.revoked'
     | 'workspace_invitation.accepted'
@@ -123,7 +127,13 @@ export interface OrdinaryActivityLogEvent {
     | 'company_mission_deliverable_access_assignment.granted'
     | 'company_mission_deliverable_access_assignment.revoked'
     | 'company_mission_result_reviewer_assignment.granted'
+    | 'company_mission_applicability_coordinator_assignment.granted'
+    | 'company_project_next_action_coordinator_assignment.granted'
+    | 'company_project_next_action_coordinator_assignment.revoked'
+    | 'company_mission_applicability_approver_assignment.granted'
     | 'company_mission_result_reviewer_assignment.revoked'
+    | 'company_mission_applicability_coordinator_assignment.revoked'
+    | 'company_mission_applicability_approver_assignment.revoked'
     | 'company_task_result_recorder_assignment.granted'
     | 'company_task_result_recorder_assignment.revoked'
     | 'company_document_content_reader_assignment.granted'

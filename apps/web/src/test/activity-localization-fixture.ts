@@ -141,6 +141,30 @@ const targets = {
 // Total fixture membership tracks the public canonical union, rather than a
 // private rendering helper. Each input has the public action's exact target.
 export const activityEventsByAction = {
+  'company_knowledge_source_administrator_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_knowledge_source_administrator_assignment.granted',
+    action: 'company_knowledge_source_administrator_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_knowledge_source_administrator_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_knowledge_source_administrator_assignment.revoked',
+    action: 'company_knowledge_source_administrator_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_knowledge_evidence_reader_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_knowledge_evidence_reader_assignment.granted',
+    action: 'company_knowledge_evidence_reader_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_knowledge_evidence_reader_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_knowledge_evidence_reader_assignment.revoked',
+    action: 'company_knowledge_evidence_reader_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
   'workspace_invitation.issued': {
     ...ordinary,
     id: 'event-workspace_invitation.issued',
@@ -591,6 +615,44 @@ export const activityEventsByAction = {
     action: 'company_mission_deliverable_access_assignment.granted',
     target: targets.company_role_assignment,
   },
+  'company_mission_applicability_coordinator_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_mission_applicability_coordinator_assignment.granted',
+    action: 'company_mission_applicability_coordinator_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_project_next_action_coordinator_assignment.granted': {
+    ...ordinary,
+    id: 'event-next-action-coordinator-granted',
+    action: 'company_project_next_action_coordinator_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_project_next_action_coordinator_assignment.revoked': {
+    ...ordinary,
+    id: 'event-next-action-coordinator-revoked',
+    action: 'company_project_next_action_coordinator_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+  'company_mission_applicability_coordinator_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_mission_applicability_coordinator_assignment.revoked',
+    action: 'company_mission_applicability_coordinator_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+
+  'company_mission_applicability_approver_assignment.granted': {
+    ...ordinary,
+    id: 'event-company_mission_applicability_approver_assignment.granted',
+    action: 'company_mission_applicability_approver_assignment.granted',
+    target: targets.company_role_assignment,
+  },
+  'company_mission_applicability_approver_assignment.revoked': {
+    ...ordinary,
+    id: 'event-company_mission_applicability_approver_assignment.revoked',
+    action: 'company_mission_applicability_approver_assignment.revoked',
+    target: targets.company_role_assignment,
+  },
+
   'company_mission_result_reviewer_assignment.granted': {
     ...ordinary,
     id: 'event-company_mission_result_reviewer_assignment.granted',

@@ -1,4 +1,8 @@
 import {
+  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
+} from './company-permissions.js';
+import {
   COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE,
   COMPANY_MISSION_PLAN_USER_BUNDLE,
 } from './company-permissions.js';
@@ -52,6 +56,9 @@ import {
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
@@ -154,6 +161,18 @@ const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
 };
 const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE: BundleDefinition = {
+  value: COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const MISSION_APPLICABILITY_COORDINATOR_BUNDLE: BundleDefinition = {
+  value: COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const MISSION_APPLICABILITY_APPROVER_BUNDLE: BundleDefinition = {
+  value: COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   permissionSetVersion: 'v1',
 };
 const MISSION_RESULT_REVIEWER_BUNDLE: BundleDefinition = {
@@ -283,6 +302,8 @@ const PROJECT_STAGE_ADVANCER_BUNDLE: BundleDefinition = {
   permissionSetVersion: 'v1',
 };
 const ADMINISTRABLE_BUNDLES = [
+  COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+  COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
   COMPANY_CONTRACT_MODEL_EDITOR_BUNDLE,
   COMPANY_CONTRACT_MODEL_APPROVER_BUNDLE,
   COMPANY_OFFER_MODEL_EDITOR_BUNDLE,
@@ -324,6 +345,9 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+  COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
 ] as const;
 
@@ -446,6 +470,75 @@ export class CompanyContextAssignmentService {
         isolationLevel: 'repeatable read',
         accessMode: 'read only',
       },
+    );
+  }
+
+  async grantKnowledgeSourceAdministrator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeKnowledgeSourceAdministrator(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
+    );
+  }
+  async grantKnowledgeEvidenceReader(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  async revokeKnowledgeEvidenceReader(
+    actor: ActorContext,
+    workspaceMembershipId: unknown,
+    companyId: unknown,
+    idempotencyKey: string | undefined,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      {
+        value: COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
+        permissionSetVersion: 'v1',
+      },
+      'revoke',
+      workspaceMembershipId,
+      companyId,
+      idempotencyKey,
     );
   }
 
@@ -1502,6 +1595,84 @@ export class CompanyContextAssignmentService {
       command.idempotencyKey,
     );
   }
+  grantProjectNextActionCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeProjectNextActionCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantMissionApplicabilityCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeMissionApplicabilityCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantMissionApplicabilityApprover(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_APPROVER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeMissionApplicabilityApprover(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_APPROVER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   grantMissionResultReviewer(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -2023,6 +2194,14 @@ function assignmentAction(
 ): CompanyAssignmentAction {
   const granted = operation === 'grant';
   switch (bundle) {
+    case COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE:
+      return granted
+        ? 'company_knowledge_source_administrator_assignment.granted'
+        : 'company_knowledge_source_administrator_assignment.revoked';
+    case COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE:
+      return granted
+        ? 'company_knowledge_evidence_reader_assignment.granted'
+        : 'company_knowledge_evidence_reader_assignment.revoked';
     case COMPANY_IDEAS_READER_BUNDLE:
       return granted
         ? 'company_ideas_reader_assignment.granted'
@@ -2055,6 +2234,18 @@ function assignmentAction(
       return granted
         ? 'company_task_result_recorder_assignment.granted'
         : 'company_task_result_recorder_assignment.revoked';
+    case COMPANY_PROJECT_NEXT_ACTION_COORDINATOR_BUNDLE:
+      return granted
+        ? 'company_project_next_action_coordinator_assignment.granted'
+        : 'company_project_next_action_coordinator_assignment.revoked';
+    case COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE:
+      return granted
+        ? 'company_mission_applicability_coordinator_assignment.granted'
+        : 'company_mission_applicability_coordinator_assignment.revoked';
+    case COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE:
+      return granted
+        ? 'company_mission_applicability_approver_assignment.granted'
+        : 'company_mission_applicability_approver_assignment.revoked';
     case COMPANY_MISSION_RESULT_REVIEWER_BUNDLE:
       return granted
         ? 'company_mission_result_reviewer_assignment.granted'

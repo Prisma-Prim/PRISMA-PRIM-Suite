@@ -1,0 +1,54 @@
+{
+  "schema": "prisma-prim-pilot-cases/v1",
+  "caseSetId": "DEMO-ONE",
+  "caseSetVersion": 1,
+  "dataKind": "synthetic",
+  "scope": {
+    "workspaceRef": "W-DEMO",
+    "companyRef": "C-DEMO"
+  },
+  "protocol": {
+    "protocolId": "P-DEMO",
+    "protocolVersion": 1,
+    "task": "Synthetic source-reading start through reviewed preparation finish; manually authored observations only.",
+    "timingRule": "elapsed_preparation_including_review"
+  },
+  "cases": [
+    {
+      "caseId": "A",
+      "caseVersion": 1,
+      "language": "ro",
+      "sourceSetId": "S-A",
+      "sourceSetVersion": 1,
+      "sources": [
+        {
+          "sourceId": "DOC-A",
+          "sourceVersion": 1,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "locators": ["p1"]
+        }
+      ],
+      "reference": {
+        "referenceId": "R-A",
+        "referenceVersion": 1,
+        "preparedBy": "SYNTHETIC-REF",
+        "preparedAt": "2026-01-01T00:00:00.000Z",
+        "preparationEvidenceRef": "SYNTHETIC-independent-authoring",
+        "fields": [
+          {
+            "fieldId": "employees",
+            "state": "confirmed",
+            "value": "20"
+          }
+        ],
+        "citations": [
+          {
+            "sourceId": "DOC-A",
+            "sourceVersion": 1,
+            "locator": "p1"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { ProjectPdfBundle } from './ProjectPdfBundle';
+import { ProjectNextAction } from './ProjectNextAction';
 import { MissionPlanCurrentWork } from '../mission-plan/MissionPlanCurrentWork';
 import {
   MissionPlanProjectCreator,
@@ -1032,6 +1033,17 @@ export function ProjectWorkspace({
             projectId={selected.project.id}
             onOpenContract={onOpenContract}
           />
+          <ProjectNextAction
+            actor={actor}
+            identity={identity}
+            projectId={selected.project.id}
+            originalClientId={selected.project.clientAccountId}
+            originalClientGeneration={clientIdentityRevision}
+            projectStatus={selected.project.status}
+            onActorRevalidated={onActorRevalidated}
+            onCompanyContextRejected={onCompanyContextRejected}
+            onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+          />
           <ProjectResponsible
             actor={actor}
             identity={identity}
@@ -1133,6 +1145,11 @@ export function ProjectWorkspace({
           {canUseProjectTemplate(actor) &&
             actor.activeCompany?.taskPermissions?.includes('task.read') && (
               <ProjectTemplatePlan
+                originalClientGeneration={clientIdentityRevision}
+                onActorRevalidated={onActorRevalidated}
+                onCompanyContextRejected={onCompanyContextRejected}
+                onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+                onActivityRecorded={onActivityRecorded}
                 key={`${selected.project.id}:${templateAuthority}`}
                 actor={actor}
                 identity={identity}

@@ -624,6 +624,27 @@
       "when": 1793229807663,
       "tag": "0088_operational_risk_journal_corrections",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1793404706660,
+      "tag": "0089_knowledge_cited_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1793432265205,
+      "tag": "0090_mission_applicability",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1793439133226,
+      "tag": "0091_project_next_action",
+      "breakpoints": true
     }
   ]
 }
