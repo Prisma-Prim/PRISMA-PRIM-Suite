@@ -34,6 +34,9 @@ export interface ProductionShellTransport {
 export interface ProductionShellSessionSnapshot {
   readonly shellContext: ProductionShellContext;
   readonly selectCompany: (companyId: string) => Promise<void>;
+  readonly selectCompanyAndContinue: (
+    request: CompanySelectionContinuation,
+  ) => Promise<boolean>;
   readonly refreshActivityLog: () => Promise<void>;
   readonly acceptRevalidatedActor: (actor: ActorContext) => Promise<void>;
   readonly rejectCompanyContext: (companyId: string) => void;
@@ -42,6 +45,13 @@ export interface ProductionShellSessionSnapshot {
   ) => Promise<void>;
   readonly rejectWorkspaceAccess: () => void;
   readonly includeCompany: (company: VisibleCompany) => void;
+}
+
+/** A destination opens only while both its intent and selected Actor are current. */
+export interface CompanySelectionContinuation {
+  readonly companyId: string;
+  readonly isCurrent: () => boolean;
+  readonly onSelected: (actor: ActorContext) => void;
 }
 
 export interface ProductionShellSession {
@@ -88,7 +98,11 @@ export function createProductionShellSession({
     const origin = captureCompanyContextOrigin(context);
     return {
       shellContext: context,
-      selectCompany: (companyId) => selectCompany(context, origin, companyId),
+      selectCompany: async (companyId) => {
+        await selectCompany(context, origin, companyId);
+      },
+      selectCompanyAndContinue: (request) =>
+        selectCompany(context, origin, request.companyId, request),
       refreshActivityLog: () => refreshActivityLog(context, origin),
       acceptRevalidatedActor: (actor) =>
         acceptRevalidatedActor(context, origin, actor),
@@ -197,11 +211,15 @@ export function createProductionShellSession({
   async function revalidateWorkspaceAccess(
     transport: ProductionShellTransport,
     candidate: RequestOperation,
+    isCaptureCurrent?: () => boolean,
   ): Promise<'handled' | 'readable' | 'unreadable'> {
+    if (!isCurrent(candidate) || isCaptureCurrent?.() === false)
+      return 'handled';
     const workspaceActor = await transport.loadActor({
       signal: candidate.controller.signal,
     });
-    if (!isCurrent(candidate)) return 'handled';
+    if (!isCurrent(candidate) || isCaptureCurrent?.() === false)
+      return 'handled';
     if (await rejectUnauthorized(workspaceActor, candidate)) return 'handled';
     if (!isCurrent(candidate)) return 'handled';
     if (workspaceActor.status === 'forbidden') {
@@ -216,18 +234,21 @@ export function createProductionShellSession({
     actor: ActorContext,
     origin: CompanyContextOrigin,
     candidate: RequestOperation,
+    isCaptureCurrent?: () => boolean,
   ): Promise<void> {
+    if (!isCurrent(candidate) || isCaptureCurrent?.() === false) return;
     const result = await transport.loadActivityLog({
       companyId: actor.activeCompany?.id,
       signal: candidate.controller.signal,
     });
-    if (!isCurrent(candidate)) return;
+    if (!isCurrent(candidate) || isCaptureCurrent?.() === false) return;
     if (await rejectUnauthorized(result, candidate)) return;
     if (!isCurrent(candidate)) return;
     if (result.status === 'forbidden') {
       const workspaceAccess = await revalidateWorkspaceAccess(
         transport,
         candidate,
+        isCaptureCurrent,
       );
       if (workspaceAccess === 'handled') return;
       if (!isCurrent(candidate)) return;
@@ -307,7 +328,8 @@ export function createProductionShellSession({
     capturedContext: ProductionShellContext,
     origin: CompanyContextOrigin | undefined,
     companyId: string,
-  ): Promise<void> {
+    continuation?: CompanySelectionContinuation,
+  ): Promise<boolean> {
     if (
       !connected ||
       !origin ||
@@ -315,40 +337,90 @@ export function createProductionShellSession({
       capturedContext.status !== 'active' ||
       capturedContext.companyContext.status !== 'ready'
     )
-      return;
+      return false;
+    if (
+      continuation &&
+      (!continuation.isCurrent() || !hasCurrentActor(capturedContext.actor))
+    )
+      return false;
     const candidate = beginOperation();
     dispatch({ type: 'selection-started', origin, companyId });
 
     try {
       const transport = await createTransport();
-      if (!isCurrent(candidate)) return;
+      if (!isCurrent(candidate)) return false;
       const selectedResult = await transport.loadActor({
         companyId,
         signal: candidate.controller.signal,
       });
-      if (!isCurrent(candidate)) return;
-      if (await rejectUnauthorized(selectedResult, candidate)) return;
-      if (!isCurrent(candidate)) return;
+      if (!isCurrent(candidate)) return false;
+      // An independently replaced capture retires this navigation consumer.
+      // Keep the owner's actual Actor; never replay the old capture for continuity.
+      if (continuation && !hasCurrentActor(capturedContext.actor)) {
+        dispatch({ type: 'selection-failed', origin, companyId });
+        return false;
+      }
+      if (await rejectUnauthorized(selectedResult, candidate)) return false;
+      if (!isCurrent(candidate)) return false;
       if (selectedResult.status === 'forbidden') {
         const workspaceAccess = await revalidateWorkspaceAccess(
           transport,
           candidate,
+          continuation
+            ? () => hasCurrentActor(capturedContext.actor)
+            : undefined,
         );
-        if (workspaceAccess === 'handled') return;
-        if (!isCurrent(candidate)) return;
+        if (workspaceAccess === 'handled') {
+          if (continuation && !hasCurrentActor(capturedContext.actor))
+            dispatch({ type: 'selection-failed', origin, companyId });
+          return false;
+        }
+        if (!isCurrent(candidate)) return false;
         if (workspaceAccess === 'unreadable') {
           dispatch({ type: 'selection-failed', origin, companyId });
-          return;
+          return false;
         }
         dispatch({ type: 'selection-denied', origin, companyId });
-        return;
+        return false;
       }
       if (selectedResult.status !== 'ok') {
         dispatch({ type: 'selection-failed', origin, companyId });
-        return;
+        return false;
       }
 
       const actor = selectedResult.value;
+      if (
+        continuation &&
+        (actor.internalUserId !== capturedContext.actor.internalUserId ||
+          actor.workspaceId !== capturedContext.actor.workspaceId ||
+          actor.workspaceMembershipId !==
+            capturedContext.actor.workspaceMembershipId ||
+          actor.activeCompany?.id !== companyId)
+      ) {
+        dispatch({ type: 'selection-failed', origin, companyId });
+        return false;
+      }
+      // The read-only view can discover a newly visible Company after the
+      // ordinary selector's initial list. Admit its identity only after this
+      // exact current Actor has proved the server-authorized scope; this adds
+      // no permission and never uses a sibling's cached grant projection.
+      if (
+        continuation &&
+        actor.activeCompany &&
+        !capturedContext.companyContext.companies.some(
+          ({ id }) => id === companyId,
+        )
+      ) {
+        dispatch({
+          type: 'company-included',
+          origin,
+          company: {
+            id: actor.activeCompany.id,
+            displayName: actor.activeCompany.displayName,
+          },
+        });
+        dispatch({ type: 'selection-started', origin, companyId });
+      }
       dispatch({
         type: 'selection-confirmed',
         origin,
@@ -360,11 +432,27 @@ export function createProductionShellSession({
         actor,
         originFor(actor, origin.sessionGeneration),
         beginActivityOperation(),
+        continuation ? () => hasCurrentActor(actor) : undefined,
       );
+      if (!continuation) return true;
+      if (
+        !isCurrent(candidate) ||
+        !hasCurrentActor(actor) ||
+        !matchesCurrentOrigin(originFor(actor, origin.sessionGeneration)) ||
+        !continuation.isCurrent()
+      )
+        return false;
+      continuation.onSelected(actor);
+      return true;
     } catch (error: unknown) {
-      if (!isCurrent(candidate) || isAbortError(error)) return;
+      if (!isCurrent(candidate) || isAbortError(error)) return false;
       dispatch({ type: 'selection-failed', origin, companyId });
+      return false;
     }
+  }
+
+  function hasCurrentActor(actor: ActorContext): boolean {
+    return shellContext.status === 'active' && shellContext.actor === actor;
   }
 
   async function refreshActivityLog(

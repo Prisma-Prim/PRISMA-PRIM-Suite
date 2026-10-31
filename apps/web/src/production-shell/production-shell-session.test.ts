@@ -36,6 +36,289 @@ const companies = [
 describe('production shell session', () => {
   beforeEach(() => localStorage.clear());
 
+  it('continues only after exact Company selection and its current Activity recovery complete', async () => {
+    const activity = deferred<ApiResult<{ events: [] }>>();
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          return {
+            status: 'ok',
+            value: companyId ? selectedActor(companyId) : baseActor,
+          };
+        },
+        async loadActivityLog({ companyId }) {
+          return companyId === 'company-b'
+            ? activity.promise
+            : { status: 'ok', value: { events: [] } };
+        },
+      }),
+    });
+    await waitForReady(observed.current);
+    await observed.current().selectCompany('company-a');
+    const onSelected = vi.fn();
+    const continued = observed.current().selectCompanyAndContinue({
+      companyId: 'company-b',
+      isCurrent: () => true,
+      onSelected,
+    });
+    await vi.waitFor(() =>
+      expect(observed.current().shellContext).toMatchObject({
+        status: 'active',
+        actor: { activeCompany: { id: 'company-b' } },
+        activityLog: { status: 'loading' },
+      }),
+    );
+    expect(onSelected).not.toHaveBeenCalled();
+    activity.resolve({ status: 'ok', value: { events: [] } });
+    expect(await continued).toBe(true);
+    expect(onSelected).toHaveBeenCalledExactlyOnceWith(
+      selectedActor('company-b'),
+    );
+    observed.unsubscribe();
+  });
+
+  it('selects a newly discovered Company after proving its current Actor without borrowing a stale selector list', async () => {
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          return {
+            status: 'ok',
+            value: companyId ? selectedActor(companyId) : baseActor,
+          };
+        },
+      }),
+    });
+    await waitForReady(observed.current);
+    await observed.current().selectCompany('company-a');
+    const onSelected = vi.fn();
+    expect(
+      await observed.current().selectCompanyAndContinue({
+        companyId: 'company-new',
+        isCurrent: () => true,
+        onSelected,
+      }),
+    ).toBe(true);
+    expect(onSelected).toHaveBeenCalledExactlyOnceWith(
+      selectedActor('company-new'),
+    );
+    expect(observed.current().shellContext).toMatchObject({
+      status: 'active',
+      actor: { activeCompany: { id: 'company-new' } },
+      companyContext: {
+        status: 'ready',
+        companies: expect.arrayContaining([
+          { id: 'company-new', displayName: 'company-new' },
+        ]),
+      },
+    });
+    observed.unsubscribe();
+  });
+
+  it.each(['selection', 'activity'])(
+    'keeps the normal %s denial retirement and never continues to a destination',
+    async (deniedAt) => {
+      const observed = observeSession({
+        transport: transportWith({
+          async loadActor({ companyId }) {
+            if (companyId === 'company-b' && deniedAt === 'selection')
+              return { status: 'forbidden' };
+            return {
+              status: 'ok',
+              value: companyId ? selectedActor(companyId) : baseActor,
+            };
+          },
+          async loadActivityLog({ companyId }) {
+            return companyId === 'company-b' && deniedAt === 'activity'
+              ? { status: 'forbidden' }
+              : { status: 'ok', value: { events: [] } };
+          },
+        }),
+      });
+      await waitForReady(observed.current);
+      await observed.current().selectCompany('company-a');
+      const onSelected = vi.fn();
+      expect(
+        await observed.current().selectCompanyAndContinue({
+          companyId: 'company-b',
+          isCurrent: () => true,
+          onSelected,
+        }),
+      ).toBe(false);
+      expect(observed.current().shellContext).toMatchObject({
+        status: 'active',
+      });
+      const context = observed.current().shellContext;
+      expect(
+        context.status === 'active' && context.actor.activeCompany,
+      ).toBeUndefined();
+      expect(onSelected).not.toHaveBeenCalled();
+      observed.unsubscribe();
+    },
+  );
+
+  it('retires a closed navigation intent without rolling back its completed Company selection', async () => {
+    const activity = deferred<ApiResult<{ events: [] }>>();
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          return {
+            status: 'ok',
+            value: companyId ? selectedActor(companyId) : baseActor,
+          };
+        },
+        async loadActivityLog({ companyId }) {
+          return companyId === 'company-b'
+            ? activity.promise
+            : { status: 'ok', value: { events: [] } };
+        },
+      }),
+    });
+    await waitForReady(observed.current);
+    await observed.current().selectCompany('company-a');
+    let current = true;
+    const onSelected = vi.fn();
+    const continued = observed.current().selectCompanyAndContinue({
+      companyId: 'company-b',
+      isCurrent: () => current,
+      onSelected,
+    });
+    await vi.waitFor(() =>
+      expect(observed.current().shellContext).toMatchObject({
+        status: 'active',
+        actor: { activeCompany: { id: 'company-b' } },
+      }),
+    );
+    current = false;
+    activity.resolve({ status: 'ok', value: { events: [] } });
+    expect(await continued).toBe(false);
+    expect(onSelected).not.toHaveBeenCalled();
+    expect(observed.current().shellContext).toMatchObject({
+      status: 'active',
+      actor: { activeCompany: { id: 'company-b' } },
+    });
+    observed.unsubscribe();
+  });
+
+  it('does not let a reply from a replaced source capture retire the current session or continue', async () => {
+    const selected = deferred<ApiResult<ActorContext>>();
+    const rejectSession = vi.fn(async () => undefined);
+    const observed = observeSession({
+      rejectSession,
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          return companyId === 'company-b'
+            ? selected.promise
+            : {
+                status: 'ok',
+                value: companyId ? selectedActor(companyId) : baseActor,
+              };
+        },
+      }),
+    });
+    await waitForReady(observed.current);
+    await observed.current().selectCompany('company-a');
+    const onSelected = vi.fn();
+    const continued = observed.current().selectCompanyAndContinue({
+      companyId: 'company-b',
+      isCurrent: () => true,
+      onSelected,
+    });
+    const replacement = selectedActor('company-a');
+    await observed.current().acceptRevalidatedActor(replacement);
+    selected.resolve({ status: 'unauthorized' });
+    expect(await continued).toBe(false);
+    expect(rejectSession).not.toHaveBeenCalled();
+    expect(onSelected).not.toHaveBeenCalled();
+    const context = observed.current().shellContext;
+    expect(context.status === 'active' && context.actor).toBe(replacement);
+    observed.unsubscribe();
+  });
+
+  it('ignores an old Workspace denial after the navigation source capture was independently replaced', async () => {
+    const workspace = deferred<ApiResult<ActorContext>>();
+    let recovering = false;
+    let workspaceProbeStarted = false;
+    const observed = observeSession({
+      transport: transportWith({
+        async loadActor({ companyId }) {
+          if (companyId === 'company-b') {
+            recovering = true;
+            return { status: 'forbidden' };
+          }
+          if (!companyId && recovering) {
+            workspaceProbeStarted = true;
+            return workspace.promise;
+          }
+          return companyId
+            ? { status: 'ok', value: selectedActor(companyId) }
+            : { status: 'ok', value: baseActor };
+        },
+      }),
+    });
+    await waitForReady(observed.current);
+    await observed.current().selectCompany('company-a');
+    const onSelected = vi.fn();
+    const continued = observed.current().selectCompanyAndContinue({
+      companyId: 'company-b',
+      isCurrent: () => true,
+      onSelected,
+    });
+    await vi.waitFor(() => expect(workspaceProbeStarted).toBe(true));
+    const replacement = selectedActor('company-a');
+    await observed.current().acceptRevalidatedActor(replacement);
+    workspace.resolve({ status: 'forbidden' });
+    expect(await continued).toBe(false);
+    const context = observed.current().shellContext;
+    expect(context.status === 'active' && context.actor).toBe(replacement);
+    expect(onSelected).not.toHaveBeenCalled();
+    observed.unsubscribe();
+  });
+
+  it.each([
+    { ...selectedActor('company-b'), workspaceId: 'foreign-workspace' },
+    { ...selectedActor('company-b'), internalUserId: 'foreign-user' },
+    {
+      ...selectedActor('company-b'),
+      workspaceMembershipId: 'foreign-membership',
+    },
+    selectedActor('company-a'),
+  ])(
+    'refuses an Actor that does not belong to the exact requested continuation scope',
+    async (candidate) => {
+      const observed = observeSession({
+        transport: transportWith({
+          async loadActor({ companyId }) {
+            return {
+              status: 'ok',
+              value:
+                companyId === 'company-b'
+                  ? candidate
+                  : companyId
+                    ? selectedActor(companyId)
+                    : baseActor,
+            };
+          },
+        }),
+      });
+      await waitForReady(observed.current);
+      await observed.current().selectCompany('company-a');
+      const onSelected = vi.fn();
+      expect(
+        await observed.current().selectCompanyAndContinue({
+          companyId: 'company-b',
+          isCurrent: () => true,
+          onSelected,
+        }),
+      ).toBe(false);
+      expect(onSelected).not.toHaveBeenCalled();
+      expect(observed.current().shellContext).toMatchObject({
+        status: 'active',
+        actor: { activeCompany: { id: 'company-a' } },
+      });
+      observed.unsubscribe();
+    },
+  );
+
   it('leaves active business state immediately after self-suspension is confirmed', async () => {
     const observed = observeSession({ transport: transportWith() });
     await vi.waitFor(() =>
