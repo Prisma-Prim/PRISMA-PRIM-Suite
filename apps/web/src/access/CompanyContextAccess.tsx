@@ -1,3 +1,5 @@
+import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
+import { useAuthorityLifetime } from './use-authority-lifetime';
 import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
@@ -50,6 +52,8 @@ type AssignmentBundle =
   | 'contract-model-approver'
   | 'offer-model-editor'
   | 'offer-model-approver'
+  | 'mission-applicability-coordinator'
+  | 'mission-applicability-approver'
   | 'mission-result-reviewer'
   | 'task-result-recorder'
   | 'task-manager'
@@ -100,6 +104,10 @@ const ASSIGNMENT_PATHS: Record<AssignmentBundle, string> = {
   'offer-model-approver': '/company-offer-model-approver-assignments',
   'task-result-recorder': '/company-task-result-recorder-assignments',
   'mission-result-reviewer': '/company-mission-result-reviewer-assignments',
+  'mission-applicability-coordinator':
+    '/company-mission-applicability-coordinator-assignments',
+  'mission-applicability-approver':
+    '/company-mission-applicability-approver-assignments',
   'ideas-reader': '/company-ideas-reader-assignments',
   'ideas-recorder': '/company-ideas-recorder-assignments',
   'ideas-reviewer': '/company-ideas-reviewer-assignments',
@@ -213,18 +221,33 @@ export function CompanyContextAccess({
   const canManageAssignments = actor.workspacePermissions.includes(
     'company.assignment.manage',
   );
+  const captureAdministration = useAuthorityLifetime(
+    JSON.stringify([
+      actor.internalUserId,
+      actor.workspaceId,
+      actor.workspaceMembershipId,
+      actor.active,
+      canManageAssignments,
+    ]),
+    identity,
+  );
+  const captureRecovery = useAuthorityLifetime(JSON.stringify(actor), identity);
 
   const reloadAdministration = useCallback(
     async (request: AbortController, showLoading = false): Promise<boolean> => {
+      const administrationLive = captureAdministration(),
+        recoveryLive = captureRecovery();
+      const current = () => administrationLive() && !request.signal.aborted;
+      if (!current()) return false;
       if (showLoading) setAdministration({ status: 'loading' });
       try {
         const api = await createAuthenticatedApiClient(identity);
-        if (request.signal.aborted) return false;
+        if (!current()) return false;
         const result = await api.request<unknown>(
           '/company-context-assignments/administration',
           { signal: request.signal },
         );
-        if (request.signal.aborted) return false;
+        if (!current()) return false;
         const rejection = await handleAuthenticatedAccessRejection({
           result,
           identity,
@@ -235,9 +258,12 @@ export function CompanyContextAccess({
             acceptRevalidatedActor.current(revalidatedActor),
           onWorkspaceAccessRejected: () => rejectWorkspaceAccess.current(),
           signal: request.signal,
+          isCurrent: () => current() && recoveryLive(),
         });
+        if (!current()) return false;
         if (rejection) {
-          if (request.signal.aborted) return false;
+          if (!current()) return false;
+          if (!recoveryLive()) return false;
           if (rejection === 'forbidden') setAdministration({ status: 'error' });
           return false;
         }
@@ -261,14 +287,14 @@ export function CompanyContextAccess({
         );
         return true;
       } catch (error) {
-        if (request.signal.aborted) return false;
+        if (!current()) return false;
         if (error instanceof DOMException && error.name === 'AbortError')
           return false;
         setAdministration({ status: 'error' });
         return false;
       }
     },
-    [identity],
+    [identity, captureAdministration, captureRecovery],
   );
 
   useEffect(() => {
@@ -298,10 +324,14 @@ export function CompanyContextAccess({
   const signingCopy = useReportedSigningCopy();
   const taskResultCopy = useTaskResultCopy();
   const reviewCopy = useMissionReviewCopy();
+  const applicabilityCopy = useMissionApplicabilityCopy();
   if (!canManageAssignments) return null;
 
   async function submit(event: FormEvent, submission: Submission) {
     event.preventDefault();
+    const administrationLive = captureAdministration(),
+      recoveryLive = captureRecovery();
+    if (!administrationLive()) return;
     if (!workspaceMembershipId || !companyId) return;
     setMutation({ status: 'submitting', submission });
     const command =
@@ -320,10 +350,11 @@ export function CompanyContextAccess({
     retryCommand.current = command;
     pendingRequest.current?.abort();
     const request = new AbortController();
+    const current = () => administrationLive() && !request.signal.aborted;
     pendingRequest.current = request;
     try {
       const api = await createAuthenticatedApiClient(identity);
-      if (request.signal.aborted) return;
+      if (!current()) return;
       const assignmentPath = ASSIGNMENT_PATHS[bundle];
       const result = await api.request<unknown>(
         submission === 'grant'
@@ -345,9 +376,9 @@ export function CompanyContextAccess({
               signal: request.signal,
             },
       );
-      if (request.signal.aborted) return;
+      if (!current()) return;
       if (result.status === 'unauthorized') {
-        await identity.rejectSession();
+        if (recoveryLive()) await identity.rejectSession();
         return;
       }
 
@@ -355,6 +386,7 @@ export function CompanyContextAccess({
       let activityRefreshedByRecovery = false;
       if (
         result.status === 'ok' &&
+        recoveryLive() &&
         command.bundle !== 'company-context' &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase() &&
@@ -366,40 +398,49 @@ export function CompanyContextAccess({
           companyContextId: command.companyId,
           signal: request.signal,
         });
-        if (request.signal.aborted) return;
-        if (revalidated.status === 'unauthorized') {
-          await identity.rejectSession();
-          return;
+        if (!current()) return;
+        if (recoveryLive()) {
+          if (revalidated.status === 'unauthorized') {
+            await identity.rejectSession();
+            return;
+          }
+          if (revalidated.status === 'forbidden') {
+            await rejectCompanyContext.current(command.companyId);
+            if (!current()) return;
+            activityRefreshedByRecovery = true;
+          } else if (revalidated.status === 'ok') {
+            await acceptRevalidatedActor.current(revalidated.value);
+            if (!current()) return;
+          } else {
+            actorRevalidationFailed = true;
+          }
         }
-        if (revalidated.status === 'forbidden') {
-          await rejectCompanyContext.current(command.companyId);
-          activityRefreshedByRecovery = true;
-        } else if (revalidated.status === 'ok') {
-          await acceptRevalidatedActor.current(revalidated.value);
-        } else {
-          actorRevalidationFailed = true;
-        }
-      }
-
-      if (result.status === 'ok' && !activityRefreshedByRecovery) {
-        await onActivityRecorded();
-        if (request.signal.aborted) return;
       }
 
       if (
         result.status === 'ok' &&
+        !activityRefreshedByRecovery &&
+        recoveryLive()
+      ) {
+        await onActivityRecorded();
+        if (!current()) return;
+      }
+
+      if (
+        result.status === 'ok' &&
+        recoveryLive() &&
         // Only this bundle carries Client read. Other consumers retire their own captured authority.
         command.bundle === 'director-client' &&
         command.workspaceMembershipId.toLowerCase() ===
           actor.workspaceMembershipId.toLowerCase()
       ) {
         await onClientAuthorityChanged();
-        if (request.signal.aborted) return;
+        if (!current()) return;
       }
 
-      if (request.signal.aborted) return;
+      if (!current()) return;
       const refreshed = await reloadAdministration(request);
-      if (request.signal.aborted) return;
+      if (!current()) return;
       if (result.status === 'ok' && refreshed && !actorRevalidationFailed) {
         retryCommand.current = undefined;
         setMutation({ status: 'ready', submission });
@@ -409,7 +450,7 @@ export function CompanyContextAccess({
         setMutation({ status: 'error' });
       }
     } catch (error) {
-      if (request.signal.aborted) return;
+      if (!current()) return;
       if (error instanceof DOMException && error.name === 'AbortError') return;
       setMutation({ status: 'error' });
     } finally {
@@ -690,6 +731,14 @@ export function CompanyContextAccess({
               },
               { value: 'task-manager', label: copy('taskManagerBundle') },
               {
+                value: 'mission-applicability-coordinator',
+                label: applicabilityCopy('coordinatorBundle'),
+              },
+              {
+                value: 'mission-applicability-approver',
+                label: applicabilityCopy('approverBundle'),
+              },
+              {
                 value: 'mission-result-reviewer',
                 label: reviewCopy('bundle'),
               },
@@ -709,6 +758,8 @@ export function CompanyContextAccess({
                 value === 'operational-risk-reader' ||
                 value === 'operational-risk-recorder' ||
                 value === 'task-manager' ||
+                value === 'mission-applicability-coordinator' ||
+                value === 'mission-applicability-approver' ||
                 value === 'mission-result-reviewer' ||
                 value === 'task-result-recorder' ||
                 value === 'commercial-intake' ||
@@ -764,6 +815,10 @@ export function CompanyContextAccess({
           )}
           {bundle === 'task-manager' && (
             <p>{copy('taskManagerPrerequisites')}</p>
+          )}
+          {(bundle === 'mission-applicability-coordinator' ||
+            bundle === 'mission-applicability-approver') && (
+            <p>{applicabilityCopy('grantPrerequisites')}</p>
           )}
           {bundle === 'mission-result-reviewer' && (
             <p>{reviewCopy('prerequisites')}</p>
@@ -964,6 +1019,9 @@ function bundleLabel(bundle: AssignmentBundle): AssignmentBundleLabel {
     'project-stage-advancer': 'Company Project Stage Advancer',
     'task-manager': 'Company Task Manager',
     'mission-result-reviewer': 'Company Mission Result Reviewer',
+    'mission-applicability-coordinator':
+      'Company Mission Applicability Coordinator',
+    'mission-applicability-approver': 'Company Mission Applicability Approver',
     'task-result-recorder': 'Company Task Result Recorder',
     'document-project-organizer': 'Company Document Project Organizer',
     'document-registrar': 'Company Document Registrar',

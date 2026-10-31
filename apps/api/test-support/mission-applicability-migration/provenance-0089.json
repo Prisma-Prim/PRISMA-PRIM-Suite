@@ -1,0 +1,10 @@
+{
+  "source": "e706662adb82dca6b462b64472f1df872a274756",
+  "tree": "6fc6fa1ed02824ba6785387e246127d358cc1d35",
+  "predecessor": "0089_knowledge_cited_evidence",
+  "nativePostgresVersion": 170011,
+  "producer": "Actual unchanged predecessor application public REST, then app closed before pg_dump --inserts --no-owner --no-privileges. The sole temporary producer file used old-source fixture helpers; no current application/schema executed in the producer. Scanner is an owned TCP fixture, not real ClamAV. All data and rights declarations are synthetic.",
+  "producerSha256": "aa0c2043e8ef584583a60939890b43c03b6b684a1be10cac8f3c3ba796bbd8bc",
+  "backupSha256": "46e87c98fbf9d2d89426996a91bc1ad309ee51611216c1c03a098aacc3f0a729",
+  "contextSha256": "863a2e43a3e49b2c7b69fb5466056d0e79aef200cacd5aa5792ce71ebba43f33"
+}

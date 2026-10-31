@@ -56,6 +56,8 @@ import {
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
   COMPANY_PROJECT_ACCESS_BUNDLE,
   COMPANY_CONTEXT_ACCESS_BUNDLE,
@@ -158,6 +160,14 @@ const DOCUMENT_CONTENT_READER_BUNDLE: BundleDefinition = {
 };
 const TASK_RESULT_RECORDER_BUNDLE: BundleDefinition = {
   value: COMPANY_TASK_RESULT_RECORDER_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const MISSION_APPLICABILITY_COORDINATOR_BUNDLE: BundleDefinition = {
+  value: COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+  permissionSetVersion: 'v1',
+};
+const MISSION_APPLICABILITY_APPROVER_BUNDLE: BundleDefinition = {
+  value: COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   permissionSetVersion: 'v1',
 };
 const MISSION_RESULT_REVIEWER_BUNDLE: BundleDefinition = {
@@ -330,6 +340,8 @@ const ADMINISTRABLE_BUNDLES = [
   COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
   COMPANY_TASK_RESULT_RECORDER_BUNDLE,
   COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
 ] as const;
 
@@ -1577,6 +1589,58 @@ export class CompanyContextAssignmentService {
       command.idempotencyKey,
     );
   }
+  grantMissionApplicabilityCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeMissionApplicabilityCoordinator(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  grantMissionApplicabilityApprover(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_APPROVER_BUNDLE,
+      'grant',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
+  revokeMissionApplicabilityApprover(
+    actor: ActorContext,
+    command: GrantCompanyContextAssignmentCommand,
+  ): Promise<CompanyContextAssignmentRecord> {
+    return this.mutate(
+      actor,
+      MISSION_APPLICABILITY_APPROVER_BUNDLE,
+      'revoke',
+      command.workspaceMembershipId,
+      command.companyId,
+      command.idempotencyKey,
+    );
+  }
   grantMissionResultReviewer(
     actor: ActorContext,
     command: GrantCompanyContextAssignmentCommand,
@@ -2138,6 +2202,14 @@ function assignmentAction(
       return granted
         ? 'company_task_result_recorder_assignment.granted'
         : 'company_task_result_recorder_assignment.revoked';
+    case COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE:
+      return granted
+        ? 'company_mission_applicability_coordinator_assignment.granted'
+        : 'company_mission_applicability_coordinator_assignment.revoked';
+    case COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE:
+      return granted
+        ? 'company_mission_applicability_approver_assignment.granted'
+        : 'company_mission_applicability_approver_assignment.revoked';
     case COMPANY_MISSION_RESULT_REVIEWER_BUNDLE:
       return granted
         ? 'company_mission_result_reviewer_assignment.granted'

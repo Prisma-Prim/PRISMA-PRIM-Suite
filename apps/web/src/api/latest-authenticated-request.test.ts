@@ -250,3 +250,25 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
+
+it.each([false, true])(
+  'preserves legacy401 after self-retirement but fences an explicitly retired full-Actor consumer: captured=%s',
+  async (captured) => {
+    const controller = new AbortController();
+    controller.abort();
+    const rejectSession = vi.fn(async () => undefined),
+      identity = { ...deterministicBrowserIdentity(), rejectSession };
+    await expect(
+      handleAuthenticatedAccessRejection({
+        result: { status: 'unauthorized' },
+        identity,
+        companyContextId: 'company-a',
+        signal: controller.signal,
+        onActorRevalidated: vi.fn(),
+        onCompanyContextRejected: vi.fn(),
+        ...(captured ? { isCurrent: () => false } : {}),
+      }),
+    ).resolves.toBe('unauthorized');
+    expect(rejectSession).toHaveBeenCalledTimes(captured ? 0 : 1);
+  },
+);

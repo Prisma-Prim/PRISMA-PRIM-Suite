@@ -1,3 +1,4 @@
+import { MissionApplicability } from './MissionApplicability';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ActorContext } from '../access-types';
 import type { BrowserIdentity } from '../access-composition';
@@ -336,7 +337,20 @@ export function ProjectTemplatePlan({
   identity,
   projectId,
   onOpenTask,
-}: Props & { projectId: string; onOpenTask?: (taskId: string) => void }) {
+  originalClientGeneration,
+  onActorRevalidated,
+  onCompanyContextRejected,
+  onWorkspaceAccessRejected,
+  onActivityRecorded,
+}: Props & {
+  projectId: string;
+  onOpenTask?: (taskId: string) => void;
+  originalClientGeneration?: number;
+  onActorRevalidated?: (actor: ActorContext) => Promise<void> | void;
+  onCompanyContextRejected?: (companyId: string) => void;
+  onWorkspaceAccessRejected?: () => Promise<void> | void;
+  onActivityRecorded?: () => Promise<void> | void;
+}) {
   const copy = useProjectTemplateCopy();
   const [generation, setGeneration] = useState(0);
   const [load, setLoad] = useState<
@@ -458,6 +472,18 @@ export function ProjectTemplatePlan({
       {load.kind === 'ready' &&
         load.template?.templateKey === pilotTemplateKey && (
           <>
+            <MissionApplicability
+              actor={actor}
+              identity={identity}
+              projectId={projectId}
+              plan={load.template}
+              onOpenTask={onOpenTask}
+              originalClientGeneration={originalClientGeneration}
+              onActorRevalidated={onActorRevalidated}
+              onCompanyContextRejected={onCompanyContextRejected}
+              onWorkspaceAccessRejected={onWorkspaceAccessRejected}
+              onActivityRecorded={onActivityRecorded}
+            />
             <MissionResultReview
               actor={actor}
               identity={identity}

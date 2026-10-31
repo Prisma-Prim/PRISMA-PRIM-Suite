@@ -354,6 +354,19 @@ export const COMPANY_ROLE_BUNDLES = {
     label: 'Company Task Result Recorder',
     versions: { v1: ['task.result.record'] },
   },
+  company_mission_applicability_coordinator: {
+    label: 'Company Mission Applicability Coordinator',
+    versions: { v1: ['project.mission_applicability.propose'] },
+  },
+  company_mission_applicability_approver: {
+    label: 'Company Mission Applicability Approver',
+    versions: {
+      v1: [
+        'project.mission_applicability.decide',
+        'project.mission_applicability.restore',
+      ],
+    },
+  },
   company_mission_result_reviewer: {
     label: 'Company Mission Result Reviewer',
     versions: { v1: ['project.mission_result.review'] },
@@ -1099,6 +1112,15 @@ export const COMPANY_MISSION_PLAN_CONFIGURATION_BUNDLE =
 export const COMPANY_MISSION_PLAN_USER_BUNDLE =
   'company_mission_plan_user' satisfies CompanyRoleBundle;
 
+export const COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE =
+  'company_mission_applicability_coordinator' satisfies CompanyRoleBundle;
+export const COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_mission_applicability_coordinator.label;
+
+export const COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE =
+  'company_mission_applicability_approver' satisfies CompanyRoleBundle;
+export const COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE_LABEL =
+  COMPANY_ROLE_BUNDLES.company_mission_applicability_approver.label;
 export const COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE =
   'company_knowledge_source_administrator' satisfies CompanyRoleBundle;
 export const COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE =

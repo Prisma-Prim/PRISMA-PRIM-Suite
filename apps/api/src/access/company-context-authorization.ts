@@ -1,5 +1,7 @@
 import { captureKnowledgeGrant } from './knowledge-captured-grants.js';
 import {
+  COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+  COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
   COMPANY_KNOWLEDGE_SOURCE_ADMINISTRATOR_BUNDLE,
   COMPANY_KNOWLEDGE_EVIDENCE_READER_BUNDLE,
 } from './company-permissions.js';
@@ -166,6 +168,76 @@ export class CompanyContextAuthorization {
       true,
     );
     return company.id;
+  }
+
+  async requireMissionApplicabilityApprover(actor: ActorContext) {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company?.missionApplicabilityDecisionPermissions?.includes(
+        'project.mission_applicability.decide',
+      ) ||
+      company.missionApplicabilityApproverPermissionSetVersion !== 'v1' ||
+      !company.missionApplicabilityApproverAssignmentId
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, company.id, true);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(
+          companyRoleAssignments.id,
+          company.missionApplicabilityApproverAssignmentId,
+        ),
+        eq(
+          companyRoleAssignments.bundle,
+          COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
+        ),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      true,
+    );
+    return {
+      companyId: company.id,
+      assignmentId: company.missionApplicabilityApproverAssignmentId,
+      permissionSetVersion: 'v1' as const,
+    };
+  }
+
+  async requireMissionApplicabilityCoordinator(actor: ActorContext) {
+    const company = actor.activeCompany;
+    if (
+      !actor.active ||
+      !company?.missionApplicabilityProposalPermissions?.includes(
+        'project.mission_applicability.propose',
+      ) ||
+      company.missionApplicabilityCoordinatorPermissionSetVersion !== 'v1' ||
+      !company.missionApplicabilityCoordinatorAssignmentId
+    )
+      throw new ForbiddenException();
+    await this.requireLiveCompanyContext(actor, company.id, true);
+    await this.requireLiveCapturedAssignment(
+      actor,
+      company.id,
+      and(
+        eq(
+          companyRoleAssignments.id,
+          company.missionApplicabilityCoordinatorAssignmentId,
+        ),
+        eq(
+          companyRoleAssignments.bundle,
+          COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+        ),
+        eq(companyRoleAssignments.permissionSetVersion, 'v1'),
+      ) ?? sql`false`,
+      true,
+    );
+    return {
+      companyId: company.id,
+      assignmentId: company.missionApplicabilityCoordinatorAssignmentId,
+      permissionSetVersion: 'v1' as const,
+    };
   }
 
   async requireMissionResultReviewer(actor: ActorContext) {
@@ -1631,6 +1703,8 @@ export class CompanyContextAuthorization {
         COMPANY_RECEIVED_CONTRACT_ACCESS_BUNDLE,
         COMPANY_TASK_RESULT_RECORDER_BUNDLE,
         COMPANY_MISSION_RESULT_REVIEWER_BUNDLE,
+        COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE,
+        COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE,
         COMPANY_DOCUMENT_CONTENT_UPLOADER_BUNDLE,
       ]),
       isNull(companyRoleAssignments.revokedAt),
@@ -1786,6 +1860,27 @@ export class CompanyContextAuthorization {
         ];
         company.taskResultRecorderAssignmentId = row.assignmentId;
         company.taskResultRecorderPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_MISSION_APPLICABILITY_APPROVER_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.missionApplicabilityDecisionPermissions = [
+          'project.mission_applicability.decide',
+          'project.mission_applicability.restore',
+        ];
+        company.missionApplicabilityApproverAssignmentId = row.assignmentId;
+        company.missionApplicabilityApproverPermissionSetVersion = 'v1';
+      }
+      if (
+        row.bundle === COMPANY_MISSION_APPLICABILITY_COORDINATOR_BUNDLE &&
+        row.permissionSetVersion === 'v1'
+      ) {
+        company.missionApplicabilityProposalPermissions = [
+          'project.mission_applicability.propose',
+        ];
+        company.missionApplicabilityCoordinatorAssignmentId = row.assignmentId;
+        company.missionApplicabilityCoordinatorPermissionSetVersion = 'v1';
       }
       if (
         row.bundle === COMPANY_MISSION_RESULT_REVIEWER_BUNDLE &&

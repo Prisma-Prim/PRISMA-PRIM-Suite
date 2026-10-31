@@ -77,6 +77,15 @@ export interface ActiveCompanyContext
   taskResultPermissions?: TaskResultPermission[];
   taskResultRecorderAssignmentId?: string;
   taskResultRecorderPermissionSetVersion?: 'v1';
+  missionApplicabilityProposalPermissions?: Array<'project.mission_applicability.propose'>;
+  missionApplicabilityCoordinatorAssignmentId?: string;
+  missionApplicabilityCoordinatorPermissionSetVersion?: 'v1';
+  missionApplicabilityDecisionPermissions?: Array<
+    | 'project.mission_applicability.decide'
+    | 'project.mission_applicability.restore'
+  >;
+  missionApplicabilityApproverAssignmentId?: string;
+  missionApplicabilityApproverPermissionSetVersion?: 'v1';
   missionResultReviewPermissions?: MissionResultReviewPermission[];
   missionResultReviewerAssignmentId?: string;
   missionResultReviewerPermissionSetVersion?: 'v1';

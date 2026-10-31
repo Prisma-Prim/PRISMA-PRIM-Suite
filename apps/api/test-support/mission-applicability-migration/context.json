@@ -1,0 +1,1585 @@
+{
+  "source": "212ce26dd92a5dba7ada66b2befd96e1cd383b1c",
+  "predecessor": "0088_operational_risk_journal_corrections",
+  "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+  "membershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+  "clientId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+  "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
+  "resultTaskId": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+  "documentId": "8bf7fc37-42cf-4547-8a0b-858f7d4e4152",
+  "versionId": "1cef65d0-2d9c-445d-aa77-4d0fca2b61bc",
+  "manualId": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
+  "legacyId": "cc4d379f-fc43-4360-b9e1-ef7a94684012",
+  "configuredId": "695ce8fb-a332-4f46-831d-159951ed37ab",
+  "closedId": "036a83ce-d0f5-402c-85ed-f5bc9c5fe8bf",
+  "commands": [
+    {
+      "path": "/tasks/35ee2055-0132-4ad6-9e65-43d9ca843eec/results",
+      "key": "old-result-demo",
+      "body": {
+        "expectedTaskVersion": 2,
+        "expectedResultRevision": 0,
+        "documentId": "8bf7fc37-42cf-4547-8a0b-858f7d4e4152",
+        "versionId": "1cef65d0-2d9c-445d-aa77-4d0fca2b61bc",
+        "declaration": "Old literal delivered result DEMO"
+      },
+      "receipt": {
+        "action": "recorded",
+        "taskId": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+        "resultId": "0770517b-d765-4f5e-bd8b-cb82f89ae69f",
+        "resultRevision": 1
+      },
+      "status": 201
+    },
+    {
+      "path": "/projects/533a9136-6b37-4459-b0cc-17f21857b116/mission-result-reviews",
+      "key": "old-review-demo",
+      "body": {
+        "expectedReviewRevision": 0,
+        "outcome": "NEEDS_WORK",
+        "basis": "Literal review basis DEMO",
+        "items": [
+          {
+            "taskId": "eb601f33-8beb-47c9-a3ac-adb0d4ce35c5",
+            "expectedTaskVersion": 2,
+            "expectedResultRevision": 0,
+            "evidence": {
+              "kind": "EXTERNAL_REPORTED",
+              "reference": "Physical register DEMO"
+            }
+          }
+        ]
+      },
+      "receipt": {
+        "action": "recorded",
+        "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
+        "batchId": "f6e3dda6-43fc-4ed7-b100-566b5cbe860b",
+        "reviewRevision": 1
+      },
+      "status": 201
+    },
+    {
+      "path": "/projects",
+      "key": "old-manual-demo",
+      "body": {
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "title": "Old manual Project DEMO"
+      },
+      "receipt": {
+        "id": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
+        "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "clientDisplayName": "Mission Client DEMO",
+        "title": "Old manual Project DEMO",
+        "status": "preparatory",
+        "createdAt": "2026-10-29T04:32:24.060Z"
+      },
+      "status": 201
+    },
+    {
+      "path": "/projects/from-template",
+      "key": "old-legacy-demo",
+      "body": {
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "title": "Old legacy Project DEMO",
+        "templateKey": "CONSULTING_PREPARATION_ILLUSTRATIVE",
+        "templateVersion": 1
+      },
+      "receipt": {
+        "id": "cc4d379f-fc43-4360-b9e1-ef7a94684012",
+        "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "clientDisplayName": "Mission Client DEMO",
+        "title": "Old legacy Project DEMO",
+        "status": "preparatory",
+        "createdAt": "2026-10-29T04:32:24.072Z"
+      },
+      "status": 201
+    },
+    {
+      "path": "/project-templates/CONSULTING_PREPARATION_ILLUSTRATIVE/versions",
+      "key": "old-configured-version-demo",
+      "body": {
+        "sourceVersion": 1,
+        "expectedHeadVersion": 1,
+        "taskTitles": {
+          "clarify_request": "Old configured clarification DEMO",
+          "confirm_scope": "Confirmer le p\u00e9rim\u00e8tre",
+          "collect_questionnaire": "Recueillir le questionnaire",
+          "prepare_plan": "Pr\u00e9parer le plan"
+        }
+      },
+      "receipt": {
+        "versionId": "653a64bc-e42e-4eac-aea8-fccaec895000",
+        "templateKey": "CONSULTING_PREPARATION_ILLUSTRATIVE",
+        "version": 2,
+        "sourceVersion": 1
+      },
+      "status": 201
+    },
+    {
+      "path": "/projects/from-template",
+      "key": "old-configured-project-demo",
+      "body": {
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "title": "Old configured Project DEMO",
+        "templateKey": "CONSULTING_PREPARATION_ILLUSTRATIVE",
+        "templateVersion": 2
+      },
+      "receipt": {
+        "id": "695ce8fb-a332-4f46-831d-159951ed37ab",
+        "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "clientDisplayName": "Mission Client DEMO",
+        "title": "Old configured Project DEMO",
+        "status": "preparatory",
+        "createdAt": "2026-10-29T04:32:24.143Z"
+      },
+      "status": 201
+    },
+    {
+      "path": "/projects/from-template",
+      "key": "old-closed-demo",
+      "body": {
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "title": "Old closed pilot Project DEMO",
+        "templateKey": "CONSULTING_MISSION_PILOT_ILLUSTRATIVE",
+        "templateVersion": 1
+      },
+      "receipt": {
+        "id": "036a83ce-d0f5-402c-85ed-f5bc9c5fe8bf",
+        "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "clientDisplayName": "Mission Client DEMO",
+        "title": "Old closed pilot Project DEMO",
+        "status": "preparatory",
+        "createdAt": "2026-10-29T04:32:24.181Z"
+      },
+      "status": 201
+    },
+    {
+      "path": "/projects/036a83ce-d0f5-402c-85ed-f5bc9c5fe8bf/lifecycle-transitions",
+      "key": "old-closure-demo",
+      "body": {
+        "action": "cancel",
+        "expectedLifecycleRevision": 0,
+        "reason": "Old ordinary Project cancellation DEMO"
+      },
+      "receipt": {
+        "projectId": "036a83ce-d0f5-402c-85ed-f5bc9c5fe8bf",
+        "action": "cancel",
+        "from": "preparatory",
+        "to": "cancelled",
+        "lifecycleRevision": 1
+      },
+      "status": 200
+    },
+    {
+      "path": "/operational-risks",
+      "key": "old-risk-demo",
+      "body": {
+        "process": "Old process DEMO",
+        "cause": "Old cause DEMO",
+        "effect": "Old effect DEMO",
+        "plannedMeasure": "Old measure DEMO",
+        "existingMeasures": null,
+        "sourceDescription": null,
+        "plannedDate": null
+      },
+      "receipt": {
+        "risk": {
+          "id": "b49c9f34-b5e4-42df-9d34-5a2166a0d823",
+          "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+          "revision": 1,
+          "createdAt": "2026-10-29T04:32:24.543Z",
+          "assessment": "not-assessed",
+          "responsibility": "not-specified",
+          "originalIntake": {
+            "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+            "revision": 1,
+            "actor": {
+              "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+              "displayName": "Mission Owner DEMO"
+            },
+            "recordedAt": "2026-10-29T04:32:24.543Z",
+            "kind": "intake-recorded",
+            "facts": {
+              "process": "Old process DEMO",
+              "cause": "Old cause DEMO",
+              "effect": "Old effect DEMO",
+              "plannedMeasure": "Old measure DEMO",
+              "existingMeasures": null,
+              "sourceDescription": null,
+              "plannedDate": null
+            },
+            "predecessorId": null,
+            "reason": null
+          },
+          "currentIntake": {
+            "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+            "revision": 1,
+            "actor": {
+              "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+              "displayName": "Mission Owner DEMO"
+            },
+            "recordedAt": "2026-10-29T04:32:24.543Z",
+            "kind": "intake-recorded",
+            "facts": {
+              "process": "Old process DEMO",
+              "cause": "Old cause DEMO",
+              "effect": "Old effect DEMO",
+              "plannedMeasure": "Old measure DEMO",
+              "existingMeasures": null,
+              "sourceDescription": null,
+              "plannedDate": null
+            },
+            "predecessorId": null,
+            "reason": null
+          }
+        },
+        "entry": {
+          "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+          "revision": 1,
+          "actor": {
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "recordedAt": "2026-10-29T04:32:24.543Z",
+          "kind": "intake-recorded",
+          "facts": {
+            "process": "Old process DEMO",
+            "cause": "Old cause DEMO",
+            "effect": "Old effect DEMO",
+            "plannedMeasure": "Old measure DEMO",
+            "existingMeasures": null,
+            "sourceDescription": null,
+            "plannedDate": null
+          },
+          "predecessorId": null,
+          "reason": null
+        }
+      },
+      "status": 201
+    },
+    {
+      "path": "/operational-risks/b49c9f34-b5e4-42df-9d34-5a2166a0d823/journal",
+      "key": "old-risk-journal-demo",
+      "body": {
+        "expectedRevision": 1,
+        "kind": "observation",
+        "narrative": "Old original observation DEMO",
+        "occurredOn": "2024-02-29"
+      },
+      "receipt": {
+        "risk": {
+          "id": "b49c9f34-b5e4-42df-9d34-5a2166a0d823",
+          "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+          "revision": 2,
+          "createdAt": "2026-10-29T04:32:24.543Z",
+          "assessment": "not-assessed",
+          "responsibility": "not-specified",
+          "originalIntake": {
+            "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+            "revision": 1,
+            "actor": {
+              "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+              "displayName": "Mission Owner DEMO"
+            },
+            "recordedAt": "2026-10-29T04:32:24.543Z",
+            "kind": "intake-recorded",
+            "facts": {
+              "process": "Old process DEMO",
+              "cause": "Old cause DEMO",
+              "effect": "Old effect DEMO",
+              "plannedMeasure": "Old measure DEMO",
+              "existingMeasures": null,
+              "sourceDescription": null,
+              "plannedDate": null
+            },
+            "predecessorId": null,
+            "reason": null
+          },
+          "currentIntake": {
+            "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+            "revision": 1,
+            "actor": {
+              "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+              "displayName": "Mission Owner DEMO"
+            },
+            "recordedAt": "2026-10-29T04:32:24.543Z",
+            "kind": "intake-recorded",
+            "facts": {
+              "process": "Old process DEMO",
+              "cause": "Old cause DEMO",
+              "effect": "Old effect DEMO",
+              "plannedMeasure": "Old measure DEMO",
+              "existingMeasures": null,
+              "sourceDescription": null,
+              "plannedDate": null
+            },
+            "predecessorId": null,
+            "reason": null
+          }
+        },
+        "entry": {
+          "id": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+          "revision": 2,
+          "actor": {
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "recordedAt": "2026-10-29T04:32:24.561Z",
+          "kind": "observation",
+          "narrative": "Old original observation DEMO",
+          "occurredOn": "2024-02-29"
+        }
+      },
+      "status": 201
+    },
+    {
+      "path": "/operational-risks/b49c9f34-b5e4-42df-9d34-5a2166a0d823/journal/96852f3e-dfbc-4163-a390-4ab0987e8bac/corrections",
+      "key": "old-risk-correction-demo",
+      "body": {
+        "expectedRevision": 2,
+        "predecessorId": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+        "narrative": "Old corrected observation DEMO\n\u0416 / \ud83c\udf0d",
+        "occurredOn": null,
+        "reason": "Old correction reason DEMO"
+      },
+      "receipt": {
+        "risk": {
+          "id": "b49c9f34-b5e4-42df-9d34-5a2166a0d823",
+          "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+          "revision": 3,
+          "createdAt": "2026-10-29T04:32:24.543Z",
+          "assessment": "not-assessed",
+          "responsibility": "not-specified",
+          "originalIntake": {
+            "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+            "revision": 1,
+            "actor": {
+              "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+              "displayName": "Mission Owner DEMO"
+            },
+            "recordedAt": "2026-10-29T04:32:24.543Z",
+            "kind": "intake-recorded",
+            "facts": {
+              "process": "Old process DEMO",
+              "cause": "Old cause DEMO",
+              "effect": "Old effect DEMO",
+              "plannedMeasure": "Old measure DEMO",
+              "existingMeasures": null,
+              "sourceDescription": null,
+              "plannedDate": null
+            },
+            "predecessorId": null,
+            "reason": null
+          },
+          "currentIntake": {
+            "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+            "revision": 1,
+            "actor": {
+              "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+              "displayName": "Mission Owner DEMO"
+            },
+            "recordedAt": "2026-10-29T04:32:24.543Z",
+            "kind": "intake-recorded",
+            "facts": {
+              "process": "Old process DEMO",
+              "cause": "Old cause DEMO",
+              "effect": "Old effect DEMO",
+              "plannedMeasure": "Old measure DEMO",
+              "existingMeasures": null,
+              "sourceDescription": null,
+              "plannedDate": null
+            },
+            "predecessorId": null,
+            "reason": null
+          }
+        },
+        "entry": {
+          "id": "7efa8efa-fe8b-4c73-8b5b-77e3cfe318fc",
+          "revision": 3,
+          "actor": {
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "recordedAt": "2026-10-29T04:32:24.583Z",
+          "kind": "journal-corrected",
+          "originalEntryId": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+          "journalKind": "observation",
+          "predecessorId": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+          "narrative": "Old corrected observation DEMO\n\u0416 / \ud83c\udf0d",
+          "occurredOn": null,
+          "reason": "Old correction reason DEMO"
+        }
+      },
+      "status": 201
+    }
+  ],
+  "reads": {
+    "/access/current-actor": {
+      "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+      "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+      "workspaceId": "00000000-0000-4000-8000-000000000827",
+      "workspaceName": "Mission Documents DEMO",
+      "displayName": "Mission Owner DEMO",
+      "email": "mission-owner@example.test",
+      "active": true,
+      "workspacePermissions": [
+        "member.invite",
+        "company.manage",
+        "company.assignment.manage",
+        "client.manage"
+      ],
+      "activeCompany": {
+        "id": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+        "displayName": "Mission Company DEMO",
+        "clientPermissions": [],
+        "taskPermissions": ["task.read", "task.manage"],
+        "taskPermissionAssignmentId": "fbcf446b-888f-4dac-9159-6192b2316889",
+        "taskPermissionSetVersion": "v1",
+        "documentPermissions": [
+          "document.project.manage",
+          "document.read",
+          "document.register",
+          "document.reference.read",
+          "document.correct",
+          "document.version.manage",
+          "document.version.designate_official",
+          "document.content.read",
+          "document.mission_deliverable.access"
+        ],
+        "documentPermissionSetVersion": "v3",
+        "documentPermissionAssignmentId": "f13f4921-e399-43d2-8cf8-a53214cef3cd",
+        "documentApproverAssignmentId": "5a0651e1-9ee3-4e68-bfd4-9367cc8325aa",
+        "documentApproverPermissionSetVersion": "v1",
+        "projectPermissions": [
+          "project.read",
+          "project.create",
+          "project.update"
+        ],
+        "projectPermissionAssignmentId": "bb8b58b1-beb8-497b-a63a-ec38d36ecfc3",
+        "projectPermissionSetVersion": "v2",
+        "projectApproverPermissions": [
+          "project.lifecycle.transition",
+          "project.close"
+        ],
+        "projectApproverPermissionAssignmentId": "35ef37f1-1570-49ae-9af9-43632c7d2d18",
+        "projectApproverPermissionSetVersion": "v1",
+        "documentContentReaderAssignmentId": "66619c8e-b9ee-440b-a223-09fec26affde",
+        "documentContentReaderPermissionSetVersion": "v1",
+        "projectTemplatePermissions": [
+          "project.template.read",
+          "project.template.instantiate",
+          "project.template.pilot.read",
+          "project.template.pilot.instantiate"
+        ],
+        "projectTemplatePermissionAssignmentId": "986a3fba-7ec2-4f31-80ac-efeaa7c09c9a",
+        "projectTemplatePermissionSetVersion": "v2",
+        "projectTemplateConfigurationPermissions": [
+          "project.template.version.create"
+        ],
+        "projectTemplateConfigurationPermissionAssignmentId": "c5725558-a494-4825-9220-cfe91d855c48",
+        "projectTemplateConfigurationPermissionSetVersion": "v1",
+        "operationalRiskPermissions": ["risk.read", "risk.record"],
+        "operationalRiskReaderAssignmentId": "2df735ea-4d51-410c-bdbc-649c8c62b3c9",
+        "operationalRiskReaderPermissionSetVersion": "v1",
+        "operationalRiskRecorderAssignmentId": "4b9ef450-45b2-4c4a-b5f3-b04dee75f8cc",
+        "operationalRiskRecorderPermissionSetVersion": "v1",
+        "missionDeliverableAccessAssignmentId": "b6af30c6-ac8b-4875-b766-3b6e58df7ef0",
+        "missionDeliverableAccessPermissionSetVersion": "v1",
+        "taskResultPermissions": ["task.result.record"],
+        "taskResultRecorderAssignmentId": "ff328b07-03ac-4a27-916e-80c8c9c68ba1",
+        "taskResultRecorderPermissionSetVersion": "v1",
+        "missionResultReviewPermissions": ["project.mission_result.review"],
+        "missionResultReviewerAssignmentId": "516f3acb-ad91-464e-bce3-013e1abecaef",
+        "missionResultReviewerPermissionSetVersion": "v1"
+      }
+    },
+    "/projects/533a9136-6b37-4459-b0cc-17f21857b116": {
+      "id": "533a9136-6b37-4459-b0cc-17f21857b116",
+      "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+      "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+      "clientDisplayName": "Mission Client DEMO",
+      "title": "Mission review DEMO",
+      "status": "preparatory",
+      "createdAt": "2026-10-29T04:32:23.291Z"
+    },
+    "/projects/533a9136-6b37-4459-b0cc-17f21857b116/template": {
+      "template": {
+        "templateKey": "CONSULTING_MISSION_PILOT_ILLUSTRATIVE",
+        "version": 1,
+        "title": "Plan pilot pentru o misiune de consultan\u021b\u0103 SMI",
+        "illustrative": true,
+        "activities": [
+          {
+            "key": "CT_AN01",
+            "title": "Analiza organiza\u021biei \u0219i audit diagnosticare",
+            "activity": "Analiza sistemului existent \u0219i determinarea gradului de conformare la standardele ISO",
+            "intendedResult": "Plan de implementare (PDCA)",
+            "taskId": "eb601f33-8beb-47c9-a3ac-adb0d4ce35c5"
+          },
+          {
+            "key": "CT_AN02",
+            "title": "Formarea structurii proiectului",
+            "activity": "Stabilirea echipelor de lucru \u0219i a responsabililor",
+            "intendedResult": "Ordine interne, structur\u0103 proiect",
+            "taskId": "b12cf07e-bddc-4c21-9a01-e46431acde76"
+          },
+          {
+            "key": "CT_AN03",
+            "title": "Elaborarea h\u0103r\u021bii proceselor",
+            "activity": "Identificarea proceselor \u0219i stabilirea proprietarilor",
+            "intendedResult": "Harta proceselor aprobat\u0103",
+            "taskId": "24d8402e-9a14-4975-9a85-8979ea29eeae"
+          },
+          {
+            "key": "CT_AN04",
+            "title": "Stabilirea modelului de proces",
+            "activity": "Definirea modelului de documentare \u0219i evaluare a riscurilor",
+            "intendedResult": "Model proces \u0219i metodologie aprobat\u0103",
+            "taskId": "15f39fc1-8916-4fc0-b41c-f6aa9093e89c"
+          },
+          {
+            "key": "CT_AN05",
+            "title": "Formarea echipelor pe procese",
+            "activity": "Stabilirea responsabilit\u0103\u021bilor \u0219i modului de lucru",
+            "intendedResult": "Structur\u0103 echipe \u0219i responsabilit\u0103\u021bi",
+            "taskId": "36617472-1551-49e8-aaca-f7fbe95d2695"
+          },
+          {
+            "key": "CT_AN06",
+            "title": "Instruirea personalului",
+            "activity": "Instruirea \u00een cerin\u021bele standardelor \u0219i documentare",
+            "intendedResult": "Personal instruit \u0219i testat",
+            "taskId": "d03ddf1b-e02e-4ca3-b4ec-c8ab359fb34e"
+          },
+          {
+            "key": "CT_AN07",
+            "title": "Elaborarea documenta\u021biei SMI",
+            "activity": "Elaborarea procedurilor, regulamentelor \u0219i instruc\u021biunilor",
+            "intendedResult": "Documenta\u021bie SMI complet\u0103",
+            "taskId": "35ee2055-0132-4ad6-9e65-43d9ca843eec"
+          },
+          {
+            "key": "CT_AN08",
+            "title": "Aprobarea documenta\u021biei",
+            "activity": "Analiza \u0219i aprobarea documentelor de c\u0103tre management",
+            "intendedResult": "Documente aprobate",
+            "taskId": "ddeaf1c6-ed29-41f3-b180-2faf549e6653"
+          },
+          {
+            "key": "CT_AN09",
+            "title": "Implementarea sistemului",
+            "activity": "Aplicarea documenta\u021biei \u00een activitatea curent\u0103",
+            "intendedResult": "Sistem implementat",
+            "taskId": "755b78fa-0849-42be-86cf-1f2610f27eb8"
+          },
+          {
+            "key": "CT_AN10",
+            "title": "Instruirea auditorilor interni",
+            "activity": "Instruire \u0219i testare auditori",
+            "intendedResult": "Auditori certifica\u021bi",
+            "taskId": "18c70571-c458-4627-863d-b2531da2faed"
+          },
+          {
+            "key": "CT_AN11",
+            "title": "Audit intern",
+            "activity": "Planificare, realizare \u0219i raportare audit",
+            "intendedResult": "Raport audit + NC",
+            "taskId": "777729cf-009f-4664-a391-00abe8de5448"
+          },
+          {
+            "key": "CT_AN12",
+            "title": "Ac\u021biuni corective",
+            "activity": "Eliminarea neconformit\u0103\u021bilor",
+            "intendedResult": "Plan ac\u021biuni implementat",
+            "taskId": "9e809778-8d00-4cd3-a5e9-c3cedde456b1"
+          },
+          {
+            "key": "CT_AN13",
+            "title": "Suport certificare",
+            "activity": "Asisten\u021b\u0103 la audit extern",
+            "intendedResult": "Certificare ob\u021binut\u0103",
+            "taskId": "08493442-3536-4e5d-a848-49f5ff1e5712"
+          }
+        ]
+      }
+    },
+    "/projects/533a9136-6b37-4459-b0cc-17f21857b116/mission-readiness": {
+      "assessment": {
+        "kind": "DIAGNOSTIC_ONLY",
+        "project": {
+          "id": "533a9136-6b37-4459-b0cc-17f21857b116",
+          "status": "preparatory"
+        },
+        "source": {
+          "templateKey": "CONSULTING_MISSION_PILOT_ILLUSTRATIVE",
+          "version": 1,
+          "title": "Plan pilot pentru o misiune de consultan\u021b\u0103 SMI"
+        },
+        "clarification": {
+          "state": "BUSINESS_CLARIFICATION_PENDING",
+          "questionId": "MISSION-CLOSE-01"
+        },
+        "activities": [
+          {
+            "key": "CT_AN01",
+            "title": "Analiza organiza\u021biei \u0219i audit diagnosticare",
+            "activity": "Analiza sistemului existent \u0219i determinarea gradului de conformare la standardele ISO",
+            "intendedResult": "Plan de implementare (PDCA)",
+            "task": {
+              "id": "eb601f33-8beb-47c9-a3ac-adb0d4ce35c5",
+              "title": "Analiza organiza\u021biei \u0219i audit diagnosticare",
+              "status": "done",
+              "version": 2
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "RESULT_NOT_RECORDED"
+          },
+          {
+            "key": "CT_AN02",
+            "title": "Formarea structurii proiectului",
+            "activity": "Stabilirea echipelor de lucru \u0219i a responsabililor",
+            "intendedResult": "Ordine interne, structur\u0103 proiect",
+            "task": {
+              "id": "b12cf07e-bddc-4c21-9a01-e46431acde76",
+              "title": "Formarea structurii proiectului",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN03",
+            "title": "Elaborarea h\u0103r\u021bii proceselor",
+            "activity": "Identificarea proceselor \u0219i stabilirea proprietarilor",
+            "intendedResult": "Harta proceselor aprobat\u0103",
+            "task": {
+              "id": "24d8402e-9a14-4975-9a85-8979ea29eeae",
+              "title": "Elaborarea h\u0103r\u021bii proceselor",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN04",
+            "title": "Stabilirea modelului de proces",
+            "activity": "Definirea modelului de documentare \u0219i evaluare a riscurilor",
+            "intendedResult": "Model proces \u0219i metodologie aprobat\u0103",
+            "task": {
+              "id": "15f39fc1-8916-4fc0-b41c-f6aa9093e89c",
+              "title": "Stabilirea modelului de proces",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN05",
+            "title": "Formarea echipelor pe procese",
+            "activity": "Stabilirea responsabilit\u0103\u021bilor \u0219i modului de lucru",
+            "intendedResult": "Structur\u0103 echipe \u0219i responsabilit\u0103\u021bi",
+            "task": {
+              "id": "36617472-1551-49e8-aaca-f7fbe95d2695",
+              "title": "Formarea echipelor pe procese",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN06",
+            "title": "Instruirea personalului",
+            "activity": "Instruirea \u00een cerin\u021bele standardelor \u0219i documentare",
+            "intendedResult": "Personal instruit \u0219i testat",
+            "task": {
+              "id": "d03ddf1b-e02e-4ca3-b4ec-c8ab359fb34e",
+              "title": "Instruirea personalului",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN07",
+            "title": "Elaborarea documenta\u021biei SMI",
+            "activity": "Elaborarea procedurilor, regulamentelor \u0219i instruc\u021biunilor",
+            "intendedResult": "Documenta\u021bie SMI complet\u0103",
+            "task": {
+              "id": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+              "title": "Elaborarea documenta\u021biei SMI",
+              "status": "todo",
+              "version": 2
+            },
+            "result": {
+              "kind": "available",
+              "current": {
+                "id": "0770517b-d765-4f5e-bd8b-cb82f89ae69f",
+                "revision": 1,
+                "declaration": "Old literal delivered result DEMO",
+                "actor": {
+                  "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+                  "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+                  "displayName": "Mission Owner DEMO"
+                },
+                "occurredAt": "2026-10-29T04:32:23.732Z",
+                "reference": {
+                  "documentId": "8bf7fc37-42cf-4547-8a0b-858f7d4e4152",
+                  "versionId": "1cef65d0-2d9c-445d-aa77-4d0fca2b61bc",
+                  "versionNumber": 1,
+                  "title": "Old frozen output DEMO",
+                  "status": "official",
+                  "representationId": "d6113c92-0052-44a1-bfe7-0d5a5751970a"
+                },
+                "kind": "recorded"
+              }
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN08",
+            "title": "Aprobarea documenta\u021biei",
+            "activity": "Analiza \u0219i aprobarea documentelor de c\u0103tre management",
+            "intendedResult": "Documente aprobate",
+            "task": {
+              "id": "ddeaf1c6-ed29-41f3-b180-2faf549e6653",
+              "title": "Aprobarea documenta\u021biei",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN09",
+            "title": "Implementarea sistemului",
+            "activity": "Aplicarea documenta\u021biei \u00een activitatea curent\u0103",
+            "intendedResult": "Sistem implementat",
+            "task": {
+              "id": "755b78fa-0849-42be-86cf-1f2610f27eb8",
+              "title": "Implementarea sistemului",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN10",
+            "title": "Instruirea auditorilor interni",
+            "activity": "Instruire \u0219i testare auditori",
+            "intendedResult": "Auditori certifica\u021bi",
+            "task": {
+              "id": "18c70571-c458-4627-863d-b2531da2faed",
+              "title": "Instruirea auditorilor interni",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN11",
+            "title": "Audit intern",
+            "activity": "Planificare, realizare \u0219i raportare audit",
+            "intendedResult": "Raport audit + NC",
+            "task": {
+              "id": "777729cf-009f-4664-a391-00abe8de5448",
+              "title": "Audit intern",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN12",
+            "title": "Ac\u021biuni corective",
+            "activity": "Eliminarea neconformit\u0103\u021bilor",
+            "intendedResult": "Plan ac\u021biuni implementat",
+            "task": {
+              "id": "9e809778-8d00-4cd3-a5e9-c3cedde456b1",
+              "title": "Ac\u021biuni corective",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          },
+          {
+            "key": "CT_AN13",
+            "title": "Suport certificare",
+            "activity": "Asisten\u021b\u0103 la audit extern",
+            "intendedResult": "Certificare ob\u021binut\u0103",
+            "task": {
+              "id": "08493442-3536-4e5d-a848-49f5ff1e5712",
+              "title": "Suport certificare",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "state": "WORK_OPEN"
+          }
+        ]
+      }
+    },
+    "/projects/533a9136-6b37-4459-b0cc-17f21857b116/mission-result-reviews": {
+      "review": {
+        "kind": "available",
+        "mutable": true,
+        "project": {
+          "id": "533a9136-6b37-4459-b0cc-17f21857b116",
+          "status": "preparatory"
+        },
+        "source": {
+          "templateKey": "CONSULTING_MISSION_PILOT_ILLUSTRATIVE",
+          "version": 1,
+          "title": "Plan pilot pentru o misiune de consultan\u021b\u0103 SMI"
+        },
+        "revision": 1,
+        "activities": [
+          {
+            "key": "CT_AN01",
+            "title": "Analiza organiza\u021biei \u0219i audit diagnosticare",
+            "activity": "Analiza sistemului existent \u0219i determinarea gradului de conformare la standardele ISO",
+            "intendedResult": "Plan de implementare (PDCA)",
+            "task": {
+              "id": "eb601f33-8beb-47c9-a3ac-adb0d4ce35c5",
+              "title": "Analiza organiza\u021biei \u0219i audit diagnosticare",
+              "status": "done",
+              "version": 2
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": {
+              "id": "95e004ef-9892-4d09-8bef-ccc6b8d5cf43",
+              "batchId": "f6e3dda6-43fc-4ed7-b100-566b5cbe860b",
+              "reviewRevision": 1,
+              "predecessorId": null,
+              "outcome": "NEEDS_WORK",
+              "basis": "Literal review basis DEMO",
+              "actor": {
+                "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+                "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+                "displayName": "Mission Owner DEMO"
+              },
+              "occurredAt": "2026-10-29T04:32:24.045Z",
+              "observedTask": {
+                "id": "eb601f33-8beb-47c9-a3ac-adb0d4ce35c5",
+                "title": "Analiza organiza\u021biei \u0219i audit diagnosticare",
+                "version": 2
+              },
+              "observedResultRevision": 0,
+              "evidence": {
+                "kind": "EXTERNAL_REPORTED",
+                "reference": "Physical register DEMO"
+              },
+              "current": true
+            }
+          },
+          {
+            "key": "CT_AN02",
+            "title": "Formarea structurii proiectului",
+            "activity": "Stabilirea echipelor de lucru \u0219i a responsabililor",
+            "intendedResult": "Ordine interne, structur\u0103 proiect",
+            "task": {
+              "id": "b12cf07e-bddc-4c21-9a01-e46431acde76",
+              "title": "Formarea structurii proiectului",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN03",
+            "title": "Elaborarea h\u0103r\u021bii proceselor",
+            "activity": "Identificarea proceselor \u0219i stabilirea proprietarilor",
+            "intendedResult": "Harta proceselor aprobat\u0103",
+            "task": {
+              "id": "24d8402e-9a14-4975-9a85-8979ea29eeae",
+              "title": "Elaborarea h\u0103r\u021bii proceselor",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN04",
+            "title": "Stabilirea modelului de proces",
+            "activity": "Definirea modelului de documentare \u0219i evaluare a riscurilor",
+            "intendedResult": "Model proces \u0219i metodologie aprobat\u0103",
+            "task": {
+              "id": "15f39fc1-8916-4fc0-b41c-f6aa9093e89c",
+              "title": "Stabilirea modelului de proces",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN05",
+            "title": "Formarea echipelor pe procese",
+            "activity": "Stabilirea responsabilit\u0103\u021bilor \u0219i modului de lucru",
+            "intendedResult": "Structur\u0103 echipe \u0219i responsabilit\u0103\u021bi",
+            "task": {
+              "id": "36617472-1551-49e8-aaca-f7fbe95d2695",
+              "title": "Formarea echipelor pe procese",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN06",
+            "title": "Instruirea personalului",
+            "activity": "Instruirea \u00een cerin\u021bele standardelor \u0219i documentare",
+            "intendedResult": "Personal instruit \u0219i testat",
+            "task": {
+              "id": "d03ddf1b-e02e-4ca3-b4ec-c8ab359fb34e",
+              "title": "Instruirea personalului",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN07",
+            "title": "Elaborarea documenta\u021biei SMI",
+            "activity": "Elaborarea procedurilor, regulamentelor \u0219i instruc\u021biunilor",
+            "intendedResult": "Documenta\u021bie SMI complet\u0103",
+            "task": {
+              "id": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+              "title": "Elaborarea documenta\u021biei SMI",
+              "status": "todo",
+              "version": 2
+            },
+            "result": {
+              "kind": "available",
+              "current": {
+                "id": "0770517b-d765-4f5e-bd8b-cb82f89ae69f",
+                "revision": 1,
+                "declaration": "Old literal delivered result DEMO",
+                "actor": {
+                  "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+                  "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+                  "displayName": "Mission Owner DEMO"
+                },
+                "occurredAt": "2026-10-29T04:32:23.732Z",
+                "reference": {
+                  "documentId": "8bf7fc37-42cf-4547-8a0b-858f7d4e4152",
+                  "versionId": "1cef65d0-2d9c-445d-aa77-4d0fca2b61bc",
+                  "versionNumber": 1,
+                  "title": "Old frozen output DEMO",
+                  "status": "official",
+                  "representationId": "d6113c92-0052-44a1-bfe7-0d5a5751970a"
+                },
+                "kind": "recorded"
+              }
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN08",
+            "title": "Aprobarea documenta\u021biei",
+            "activity": "Analiza \u0219i aprobarea documentelor de c\u0103tre management",
+            "intendedResult": "Documente aprobate",
+            "task": {
+              "id": "ddeaf1c6-ed29-41f3-b180-2faf549e6653",
+              "title": "Aprobarea documenta\u021biei",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN09",
+            "title": "Implementarea sistemului",
+            "activity": "Aplicarea documenta\u021biei \u00een activitatea curent\u0103",
+            "intendedResult": "Sistem implementat",
+            "task": {
+              "id": "755b78fa-0849-42be-86cf-1f2610f27eb8",
+              "title": "Implementarea sistemului",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN10",
+            "title": "Instruirea auditorilor interni",
+            "activity": "Instruire \u0219i testare auditori",
+            "intendedResult": "Auditori certifica\u021bi",
+            "task": {
+              "id": "18c70571-c458-4627-863d-b2531da2faed",
+              "title": "Instruirea auditorilor interni",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN11",
+            "title": "Audit intern",
+            "activity": "Planificare, realizare \u0219i raportare audit",
+            "intendedResult": "Raport audit + NC",
+            "task": {
+              "id": "777729cf-009f-4664-a391-00abe8de5448",
+              "title": "Audit intern",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN12",
+            "title": "Ac\u021biuni corective",
+            "activity": "Eliminarea neconformit\u0103\u021bilor",
+            "intendedResult": "Plan ac\u021biuni implementat",
+            "task": {
+              "id": "9e809778-8d00-4cd3-a5e9-c3cedde456b1",
+              "title": "Ac\u021biuni corective",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          },
+          {
+            "key": "CT_AN13",
+            "title": "Suport certificare",
+            "activity": "Asisten\u021b\u0103 la audit extern",
+            "intendedResult": "Certificare ob\u021binut\u0103",
+            "task": {
+              "id": "08493442-3536-4e5d-a848-49f5ff1e5712",
+              "title": "Suport certificare",
+              "status": "todo",
+              "version": 1
+            },
+            "result": {
+              "kind": "available",
+              "current": null
+            },
+            "latest": null
+          }
+        ]
+      }
+    },
+    "/projects/533a9136-6b37-4459-b0cc-17f21857b116/mission-result-reviews/history": {
+      "history": {
+        "kind": "available",
+        "batches": [
+          {
+            "id": "f6e3dda6-43fc-4ed7-b100-566b5cbe860b",
+            "reviewRevision": 1,
+            "outcome": "NEEDS_WORK",
+            "basis": "Literal review basis DEMO",
+            "items": [
+              {
+                "id": "95e004ef-9892-4d09-8bef-ccc6b8d5cf43",
+                "batchId": "f6e3dda6-43fc-4ed7-b100-566b5cbe860b",
+                "reviewRevision": 1,
+                "predecessorId": null,
+                "outcome": "NEEDS_WORK",
+                "basis": "Literal review basis DEMO",
+                "actor": {
+                  "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+                  "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+                  "displayName": "Mission Owner DEMO"
+                },
+                "occurredAt": "2026-10-29T04:32:24.045Z",
+                "observedTask": {
+                  "id": "eb601f33-8beb-47c9-a3ac-adb0d4ce35c5",
+                  "title": "Analiza organiza\u021biei \u0219i audit diagnosticare",
+                  "version": 2
+                },
+                "observedResultRevision": 0,
+                "evidence": {
+                  "kind": "EXTERNAL_REPORTED",
+                  "reference": "Physical register DEMO"
+                }
+              }
+            ]
+          }
+        ],
+        "hasMore": false,
+        "nextBeforeRevision": null
+      }
+    },
+    "/tasks/35ee2055-0132-4ad6-9e65-43d9ca843eec": {
+      "mutable": true,
+      "task": {
+        "id": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+        "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+        "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
+        "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+        "title": "Elaborarea documenta\u021biei SMI",
+        "description": "Old 0087 Task instructions DEMO\r\n\u0416 / \ud83c\udf0d <literal>",
+        "assignee": null,
+        "dueDate": null,
+        "priority": "normal",
+        "version": 2,
+        "createdAt": "2026-10-29T04:32:23.291Z",
+        "updatedAt": "2026-10-29T04:32:23.555Z",
+        "createdBy": {
+          "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+          "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "displayName": "Mission Owner DEMO"
+        },
+        "status": "todo",
+        "completion": null
+      }
+    },
+    "/tasks/35ee2055-0132-4ad6-9e65-43d9ca843eec/history": {
+      "events": [
+        {
+          "action": "task.created",
+          "metadata": {
+            "version": 1,
+            "initial": {
+              "title": "Elaborarea documenta\u021biei SMI",
+              "assignee": null,
+              "dueDate": null,
+              "priority": "normal",
+              "description": null
+            }
+          },
+          "id": "8423ffc0-7a1d-41eb-b8f0-89fd52054cfc",
+          "occurredAt": "2026-10-29T04:32:23.291Z",
+          "actor": {
+            "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "target": {
+            "type": "task",
+            "taskId": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+            "taskTitle": "Elaborarea documenta\u021biei SMI",
+            "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
+          }
+        },
+        {
+          "action": "task.updated",
+          "metadata": {
+            "version": 2,
+            "changes": {
+              "description": {
+                "before": null,
+                "after": "Old 0087 Task instructions DEMO\r\n\u0416 / \ud83c\udf0d <literal>"
+              }
+            }
+          },
+          "id": "70a778d0-0602-43d7-92ab-b84e07860475",
+          "occurredAt": "2026-10-29T04:32:23.555Z",
+          "actor": {
+            "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "target": {
+            "type": "task",
+            "taskId": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+            "taskTitle": "Elaborarea documenta\u021biei SMI",
+            "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf"
+          }
+        }
+      ]
+    },
+    "/tasks/35ee2055-0132-4ad6-9e65-43d9ca843eec/results": {
+      "taskId": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+      "projectId": "533a9136-6b37-4459-b0cc-17f21857b116",
+      "taskTitle": "Elaborarea documenta\u021biei SMI",
+      "revision": 1,
+      "taskVersion": 2,
+      "mutable": true,
+      "current": {
+        "id": "0770517b-d765-4f5e-bd8b-cb82f89ae69f",
+        "revision": 1,
+        "declaration": "Old literal delivered result DEMO",
+        "actor": {
+          "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+          "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "displayName": "Mission Owner DEMO"
+        },
+        "occurredAt": "2026-10-29T04:32:23.732Z",
+        "reference": {
+          "documentId": "8bf7fc37-42cf-4547-8a0b-858f7d4e4152",
+          "versionId": "1cef65d0-2d9c-445d-aa77-4d0fca2b61bc",
+          "versionNumber": 1,
+          "title": "Old frozen output DEMO",
+          "status": "official",
+          "representationId": "d6113c92-0052-44a1-bfe7-0d5a5751970a"
+        },
+        "kind": "recorded"
+      }
+    },
+    "/tasks/35ee2055-0132-4ad6-9e65-43d9ca843eec/results/history": {
+      "taskId": "35ee2055-0132-4ad6-9e65-43d9ca843eec",
+      "declarations": [
+        {
+          "id": "0770517b-d765-4f5e-bd8b-cb82f89ae69f",
+          "revision": 1,
+          "declaration": "Old literal delivered result DEMO",
+          "actor": {
+            "internalUserId": "a87fdccd-0726-4709-a17b-0ad4b7565859",
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "occurredAt": "2026-10-29T04:32:23.732Z",
+          "reference": {
+            "documentId": "8bf7fc37-42cf-4547-8a0b-858f7d4e4152",
+            "versionId": "1cef65d0-2d9c-445d-aa77-4d0fca2b61bc",
+            "versionNumber": 1,
+            "title": "Old frozen output DEMO",
+            "status": "official",
+            "representationId": "d6113c92-0052-44a1-bfe7-0d5a5751970a"
+          },
+          "kind": "recorded"
+        }
+      ],
+      "hasMore": false,
+      "nextBeforeRevision": null
+    },
+    "/projects/cd2234fe-6a70-4161-939d-6d3dbec0518f": {
+      "id": "cd2234fe-6a70-4161-939d-6d3dbec0518f",
+      "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+      "clientAccountId": "0e2592ea-dcb5-4fa9-924f-e816d9c10b48",
+      "clientDisplayName": "Mission Client DEMO",
+      "title": "Old manual Project DEMO",
+      "status": "preparatory",
+      "createdAt": "2026-10-29T04:32:24.060Z"
+    },
+    "/projects/cc4d379f-fc43-4360-b9e1-ef7a94684012/template": {
+      "template": {
+        "templateKey": "CONSULTING_PREPARATION_ILLUSTRATIVE",
+        "version": 1,
+        "title": "Pr\u00e9paration d\u2019une mission de conseil",
+        "illustrative": true,
+        "stages": [
+          {
+            "key": "scoping",
+            "title": "Cadrage",
+            "tasks": [
+              {
+                "key": "clarify_request",
+                "title": "Clarifier la demande",
+                "required": true,
+                "taskId": "3ad49a6c-6c5b-40e2-8dd4-723fad99f87f"
+              },
+              {
+                "key": "confirm_scope",
+                "title": "Confirmer le p\u00e9rim\u00e8tre",
+                "required": true,
+                "taskId": "2cf01592-4236-448f-99df-972dda8f3eb5"
+              }
+            ]
+          },
+          {
+            "key": "preparation",
+            "title": "Pr\u00e9paration",
+            "tasks": [
+              {
+                "key": "collect_questionnaire",
+                "title": "Recueillir le questionnaire",
+                "required": true,
+                "taskId": "c8bc5104-2dbc-4ea6-98e4-96077585629c"
+              },
+              {
+                "key": "prepare_plan",
+                "title": "Pr\u00e9parer le plan",
+                "required": true,
+                "taskId": "326ffad1-fe91-467c-99dc-8c2cf80342ab"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "/projects/695ce8fb-a332-4f46-831d-159951ed37ab/template": {
+      "template": {
+        "templateKey": "CONSULTING_PREPARATION_ILLUSTRATIVE",
+        "version": 2,
+        "title": "Pr\u00e9paration d\u2019une mission de conseil",
+        "illustrative": true,
+        "stages": [
+          {
+            "key": "scoping",
+            "title": "Cadrage",
+            "tasks": [
+              {
+                "key": "clarify_request",
+                "title": "Old configured clarification DEMO",
+                "required": true,
+                "taskId": "2fad8859-6f66-44de-9178-e46f28baa76d"
+              },
+              {
+                "key": "confirm_scope",
+                "title": "Confirmer le p\u00e9rim\u00e8tre",
+                "required": true,
+                "taskId": "f925eb55-6ba3-4db6-bd8d-5900ea771c27"
+              }
+            ]
+          },
+          {
+            "key": "preparation",
+            "title": "Pr\u00e9paration",
+            "tasks": [
+              {
+                "key": "collect_questionnaire",
+                "title": "Recueillir le questionnaire",
+                "required": true,
+                "taskId": "ea077219-535a-4981-a767-34c712cced3f"
+              },
+              {
+                "key": "prepare_plan",
+                "title": "Pr\u00e9parer le plan",
+                "required": true,
+                "taskId": "1d431cc0-303a-4368-aad4-c026958ebfec"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "/projects/036a83ce-d0f5-402c-85ed-f5bc9c5fe8bf/lifecycle": {
+      "status": "cancelled",
+      "lifecycleRevision": 1,
+      "mutable": false,
+      "start": null,
+      "transitions": [
+        {
+          "lifecycleRevision": 1,
+          "from": "preparatory",
+          "to": "cancelled",
+          "occurredAt": "2026-10-29T04:32:24.527Z",
+          "actor": {
+            "displayName": "Mission Owner DEMO"
+          },
+          "action": "cancel",
+          "reason": "Old ordinary Project cancellation DEMO"
+        }
+      ]
+    },
+    "/operational-risks/b49c9f34-b5e4-42df-9d34-5a2166a0d823": {
+      "id": "b49c9f34-b5e4-42df-9d34-5a2166a0d823",
+      "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+      "revision": 3,
+      "createdAt": "2026-10-29T04:32:24.543Z",
+      "assessment": "not-assessed",
+      "responsibility": "not-specified",
+      "originalIntake": {
+        "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+        "revision": 1,
+        "actor": {
+          "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "displayName": "Mission Owner DEMO"
+        },
+        "recordedAt": "2026-10-29T04:32:24.543Z",
+        "kind": "intake-recorded",
+        "facts": {
+          "process": "Old process DEMO",
+          "cause": "Old cause DEMO",
+          "effect": "Old effect DEMO",
+          "plannedMeasure": "Old measure DEMO",
+          "existingMeasures": null,
+          "sourceDescription": null,
+          "plannedDate": null
+        },
+        "predecessorId": null,
+        "reason": null
+      },
+      "currentIntake": {
+        "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+        "revision": 1,
+        "actor": {
+          "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "displayName": "Mission Owner DEMO"
+        },
+        "recordedAt": "2026-10-29T04:32:24.543Z",
+        "kind": "intake-recorded",
+        "facts": {
+          "process": "Old process DEMO",
+          "cause": "Old cause DEMO",
+          "effect": "Old effect DEMO",
+          "plannedMeasure": "Old measure DEMO",
+          "existingMeasures": null,
+          "sourceDescription": null,
+          "plannedDate": null
+        },
+        "predecessorId": null,
+        "reason": null
+      }
+    },
+    "/operational-risks/b49c9f34-b5e4-42df-9d34-5a2166a0d823/history": {
+      "items": [
+        {
+          "id": "7efa8efa-fe8b-4c73-8b5b-77e3cfe318fc",
+          "revision": 3,
+          "actor": {
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "recordedAt": "2026-10-29T04:32:24.583Z",
+          "kind": "journal-corrected",
+          "originalEntryId": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+          "journalKind": "observation",
+          "predecessorId": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+          "narrative": "Old corrected observation DEMO\n\u0416 / \ud83c\udf0d",
+          "occurredOn": null,
+          "reason": "Old correction reason DEMO"
+        },
+        {
+          "id": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+          "revision": 2,
+          "actor": {
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "recordedAt": "2026-10-29T04:32:24.561Z",
+          "kind": "observation",
+          "narrative": "Old original observation DEMO",
+          "occurredOn": "2024-02-29"
+        },
+        {
+          "id": "6dc02a91-5c20-4849-9de9-907b7abec835",
+          "revision": 1,
+          "actor": {
+            "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+            "displayName": "Mission Owner DEMO"
+          },
+          "recordedAt": "2026-10-29T04:32:24.543Z",
+          "kind": "intake-recorded",
+          "facts": {
+            "process": "Old process DEMO",
+            "cause": "Old cause DEMO",
+            "effect": "Old effect DEMO",
+            "plannedMeasure": "Old measure DEMO",
+            "existingMeasures": null,
+            "sourceDescription": null,
+            "plannedDate": null
+          },
+          "predecessorId": null,
+          "reason": null
+        }
+      ],
+      "next_cursor": null
+    },
+    "/operational-risks/b49c9f34-b5e4-42df-9d34-5a2166a0d823/journal/96852f3e-dfbc-4163-a390-4ab0987e8bac": {
+      "riskId": "b49c9f34-b5e4-42df-9d34-5a2166a0d823",
+      "companyId": "23df4b57-9299-4870-96d3-f957b3a22fcf",
+      "revision": 3,
+      "originalEntry": {
+        "id": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+        "revision": 2,
+        "actor": {
+          "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "displayName": "Mission Owner DEMO"
+        },
+        "recordedAt": "2026-10-29T04:32:24.561Z",
+        "kind": "observation",
+        "narrative": "Old original observation DEMO",
+        "occurredOn": "2024-02-29"
+      },
+      "currentEntry": {
+        "id": "7efa8efa-fe8b-4c73-8b5b-77e3cfe318fc",
+        "revision": 3,
+        "actor": {
+          "workspaceMembershipId": "8d4e5086-1eec-4081-aec5-5179e5e44eb2",
+          "displayName": "Mission Owner DEMO"
+        },
+        "recordedAt": "2026-10-29T04:32:24.583Z",
+        "kind": "journal-corrected",
+        "originalEntryId": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+        "journalKind": "observation",
+        "predecessorId": "96852f3e-dfbc-4163-a390-4ab0987e8bac",
+        "narrative": "Old corrected observation DEMO\n\u0416 / \ud83c\udf0d",
+        "occurredOn": null,
+        "reason": "Old correction reason DEMO"
+      }
+    }
+  }
+}

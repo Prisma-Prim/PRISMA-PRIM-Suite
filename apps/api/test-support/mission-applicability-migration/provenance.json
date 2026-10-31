@@ -1,0 +1,16 @@
+{
+  "source": "212ce26dd92a5dba7ada66b2befd96e1cd383b1c",
+  "predecessor": "0088_operational_risk_journal_corrections",
+  "producerRawLogSha256": "c76a459085981714b40ad6fdda22763da6e2c1e9b55cd32f2e5aa26583407b7f",
+  "producerInputManifestSha256": "51840fed17fb2593c6840baf5c9dd88dffc636e5c1069363bfc5e4f22839ec59",
+  "producerSourceArchiveSha256": "77f3943b56f1bb56ee93d40978c9a84201a3466678059e450690a0a2884e4562",
+  "producerWorkingDiffSha256": "5962c0bf9ad973020575624125a159ee6944b835b7d81e74be7ec4d657d7c2cf",
+  "producerTestSha256": "680963578c6b514173b8f68c0b05587112b1106fdfbc54c11f2b377055633982",
+  "oldFullRowsSha256": "6659d127602a8d89ce52ffdebb2d70a12219345b04a332abed7d66af1baf80c9",
+  "backupSha256": "64d76d291d334df6c5509224014772865fa79daba7e19700b7fc8b7a813c4148",
+  "contextSha256": "56500cd60e362dc6c224b3fccce704d2a8c81ec5cf8f2a17fde89dace0c05760",
+  "format": "Unmodified PostgreSQL 17.11 full native schema/data pg_dump --column-inserts --no-owner --no-privileges, gzip mtime 0. Synthetic public application data only. Restore creates old guards in native backup order; no disabled triggers. Current application starts only after raw upgrade.",
+  "producerContextSha256": "95d976e4ed3b953d1329e892cdf850756bbec668a57f620db340f7931d908d89",
+  "unformattedFixtureContextSha256": "fa870fe8659fdf3b428c0a00bd5addcc14b4f6d1a8b8cad7acf389adc074ca05",
+  "contextTransformation": "Fixture selects these unchanged public keys from the retained original producer context and follows repository Prettier JSON formatting. Only whitespace/Unicode escape representation changed from unformattedFixtureContextSha256; parsed values equal the exact producer projection. Native backup, old full rows, producer source and raw execution evidence are unchanged."
+}

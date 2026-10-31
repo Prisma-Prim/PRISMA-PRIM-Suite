@@ -1,3 +1,4 @@
+import { useMissionApplicabilityCopy } from '../project/mission-applicability.copy';
 import { useMissionPlanCopy } from '../mission-plan/mission-plan.copy';
 import { useReportedSigningCopy } from '../contract/reported-signing.copy';
 import { useReceivedContractCopy } from '../documents/received-contract.copy';
@@ -73,6 +74,7 @@ export function useActivityLogDisplay() {
   const receivedActions = useReceivedContractCopy().activityActionLabels;
   const signing = useReportedSigningCopy();
   const reviewCopy = useMissionReviewCopy();
+  const applicabilityCopy = useMissionApplicabilityCopy();
   const taskResultActions = useTaskResultCopy().activityActionLabels;
   const actionLabels = {
     'company_knowledge_source_administrator_assignment.granted':
@@ -84,6 +86,14 @@ export function useActivityLogDisplay() {
     'company_knowledge_evidence_reader_assignment.revoked':
       knowledgeAssignments('readerRevoked'),
     ...taskResultActions,
+    'company_mission_applicability_coordinator_assignment.granted':
+      applicabilityCopy('coordinatorGranted'),
+    'company_mission_applicability_coordinator_assignment.revoked':
+      applicabilityCopy('coordinatorRevoked'),
+    'company_mission_applicability_approver_assignment.granted':
+      applicabilityCopy('approverGranted'),
+    'company_mission_applicability_approver_assignment.revoked':
+      applicabilityCopy('approverRevoked'),
     'company_mission_result_reviewer_assignment.granted': reviewCopy('granted'),
     'company_mission_result_reviewer_assignment.revoked': reviewCopy('revoked'),
     ...missionActions,
