@@ -122,6 +122,8 @@ require that answer.
 
 The [read-only cited-evidence connection](ai-knowledge-governance-prd.md#19-read-only-cited-evidence-connection-for-codex--bounded-software-contract) owns the bounded source-admission/REST/Codex MCP software contract; production AI promotion remains separately gated.
 
+The [read-only application evidence journey](ai-knowledge-governance-prd.md#20-bounded-read-only-knowledge-evidence-journey-in-the-application), tracked by [#1008](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1008), specifies human inventory, literal search, exact citations and preserved PDFs under existing Reader/native authority. Its bounded contract is **Approved** following [coordinator disposition](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1008#issuecomment-6549261566); canonical merge and a fresh complete readiness assessment precede a separately qualified runtime issue. It changes neither the MCP resource boundary nor production activation or the broader Draft PRD.
+
 The separately selected [offline comparative pilot-evaluation contract](ai-knowledge-governance-prd.md#17-bounded-offline-comparative-pilot-evaluation--957)
 remains within the existing AI/Knowledge owner. Its original [#957](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/957)
 directory-output contract was approved; its unmerged runtime #963 / PR #966 is

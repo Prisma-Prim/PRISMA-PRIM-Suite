@@ -868,6 +868,8 @@ publication; already-authorized bytes released before a later revocation cannot
 be recalled over a network. A client disconnect retires its own pending bridge
 work; one reply cannot be rebound to another request, actor or context.
 
+The [bounded human application journey in section 20](#20-bounded-read-only-knowledge-evidence-journey-in-the-application) defines ordinary-web read adapters over these same service methods. The resource-audience routes and MCP bridge here retain their existing authentication and output contract.
+
 ### 19.4 MCP operator connection and honest proof
 
 The maintained pinned TypeScript MCP SDK exposes exactly three tools:
@@ -910,3 +912,169 @@ SDK with synthetic signed keys and forwarded audience/party constraints. Neither
 is proof of a live Clerk tenant or a configured ChatGPT/Codex account. Independent
 ro/ru/en PDF text and curated literal citations prove mechanical multilingual
 preservation; there is no semantic-answer or representative-pilot score.
+
+## 20. Bounded read-only Knowledge evidence journey in the application
+
+**Status:** Approved — bounded read-only application evidence software contract.
+
+**Disposition:** Following ordered independent Standards then Spec preparation on source `98db70aa8f4d45d384ee8b72d69bed2098428c78`, the coordinator [accepted this bounded contract](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1008#issuecomment-6549261566) on 2026-10-31 under delegated product authority. This records actual contract selection, not runtime delivery, broader PRD promotion, real rights/source/person approval or activation.
+
+**Tracking:** [#1008](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/1008), under [AI/Knowledge #57](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/issues/57). The existing backend/MCP delivery is [PR #1004](https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/1004); this section is a new human-reading contract, not runtime delivery evidence.
+
+**Owner:** Knowledge; Access establishes the actor and captured assignments, Document owns native visibility and preserved bytes. This section owns only the application reading journey and its web read adapters. It does not approve or activate a real source, person or tenant, and does not change the broader PRD's readiness or Release 7 gates.
+
+The existing [Authorization owner](tenant-company-client-authorization-prd.md), [Document owner](governed-documents-prd.md) and [Document Registry](release-1-document-registry-prd.md), [Activity Log owner](activity-log-accountability-prd.md), [UX owner](ux-localization-configuration-prd.md), [ADR 0006](../adr/0006-workspace-tenancy-and-company-scoped-authorization.md) and [ADR 0008](../adr/0008-bounded-document-content-storage.md) retain their authority. Section 19 owns source admission and the existing evidence/MCP service contract; this section adds only the bounded human read path.
+
+### 20.1 Problem, outcome and scope
+
+An Internal User who already has admitted-evidence and native source rights needs to inspect the same evidence in the application: discover eligible Sources, search their literal curated passages, reopen an exact citation, and download the exact preserved PDF supporting it. The journey must retain current versus deliberately historical meaning without treating a fluent answer, official Document designation, declared rights or source title as proof.
+
+The outcome is one read-only Company-scoped application section. Existing §19 supplies the admitted sources, Reader v1, permission boundaries, service methods, literal semantics and attribution. The web adapters, minimal source reference, navigation and retirement behavior below are this section's bounded synthesis. No new business authority is introduced.
+
+1. As an authorized Internal User, I can list eligible current Sources for the active Company without learning hidden titles, IDs or counts.
+2. I can submit an exact literal search and see separate supported passages with their exact Source, Document Version, language and locator.
+3. I can reopen a selected passage through a fresh read, rather than assume a cached result remains currently eligible.
+4. I can download its exact admitted preserved PDF under native content authority and verify byte identity.
+5. From a citation I have already been authorized to inspect, I can deliberately reopen that exact cited Version and see its returned native status without restoring withdrawn admission or substituting current content.
+6. I can understand loading, no eligible results, validation, denial, unavailable evidence, malformed response and stale/retired work, with recovery that preserves the current actor and context.
+
+This journey generates no answer, Analysis or human approval. It never calls a model, sends evidence to a provider or controls Codex. It creates no Document Version, source transition, business command, new grant or generic Activity/Home projection.
+
+### 20.2 Actor and authority
+
+The scope is one active Workspace and selected active Company, resolved by existing Access. Workspace/Company IDs supplied by the client remain selection hints. There is no All Companies or Client Legal Entity operation.
+
+| Action                                            | Required authority                                                                                                                                                                                                            |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Offer Knowledge evidence navigation               | A valid represented Company Knowledge Evidence Reader v1 capture plus represented native Document metadata/content/Client prerequisites in the current actor. The UI proves no live server authority.                         |
+| List/search/reopen evidence                       | The exact existing §19 Reader v1, live captured assignment and native Document/content/original-Client/family visibility, effective admitted source, exact Version and feature-enable checks through existing service owners. |
+| Download an admitted source PDF from this journey | Fresh successful exact-passage preflight through Knowledge, followed by native exact-Representation download under its own current authority; exact tuple and source-hash validation in the client.                           |
+| Admit/revoke/edit Sources or administer grants    | Outside this section; existing backend/MCP-adjacent source administration and Workspace assignment owners remain unchanged.                                                                                                   |
+
+Source Administrator v1 alone supplies no Reader permission. Document/content read, Workspace ownership, a title, authorship, Project/Task role or a successful earlier read cannot replace Reader v1. The Reader grant supplies no native Document/content/family/Client visibility. Real assignments are explicit under their existing owner; this contract assigns no real person.
+
+Native family denial removes that Source before any evidence result is returned. The navigation does not require every family gate because an actor may legitimately read only questionnaire evidence. No new client-side eligibility or source-existence probe may be introduced.
+
+The browser current-actor representation preserves `knowledgeGrants` as an optional opaque feature-owned field. The Knowledge boundary accepts exactly one matching `company_knowledge_evidence_reader` capture with a valid assignment UUID and captured `v1`. Missing, malformed, duplicate or unknown-version Reader captures confer no navigation or dispatch. Unrelated administrator captures never confer read; unknown data is not asserted into authority.
+
+### 20.3 Web read adapters and unchanged MCP boundary
+
+The application uses ordinary verified PRISMA web identity through `ActorContextAdapter` at exactly these adapters:
+
+- `GET /api/knowledge/evidence/sources` delegates to `KnowledgeService.list`;
+- `GET /api/knowledge/evidence/search` delegates to `KnowledgeService.search`;
+- `GET /api/knowledge/evidence/sources/{sourceId}/passages/{locator}` delegates to `KnowledgeService.getPassage`.
+
+These adapters expose the existing service read contract to the trusted human application. They add no independent database query, eligibility calculation, permission fallback or administrator call. The same owning service enforces the server capability switch, live Reader/native grants, Company/membership/source/Version/content checks and successful-read attribution transaction. Invalid and denied requests cannot reach an alternate projection path. Responses and browser requests use private/no-store behavior; no service worker or persistent cache retains evidence.
+
+This is additional authenticated web exposure requiring the section's explicit security-sensitive review/disposition. It is not a token-conversion mechanism. Existing evidence resource routes remain under `KnowledgeActorGuard` with the configured resource-audience Bearer credential. Ordinary web identity does not become a resource-audience credential, and those existing routes gain no ordinary-cookie fallback. The existing MCP bridge calls its existing fixed resource routes, with the same operator-supplied credentials, request/response bounds, closed tool outputs and three tools. It gains no browser session access, new origin, extra tool, remote endpoint or changed remote-MCP authorization acceptance.
+
+No provider, JWT-template, OAuth server, secret or deployment configuration is created here. `KNOWLEDGE_EVIDENCE_ENABLED` remains server-owned and disabled by default. The application cannot enable it or promise actual sources. A deterministic test identity is accepted only in the existing allowed test/demo environment and is never a production fallback.
+
+### 20.4 Reader-safe exact source reference
+
+Extend the existing authorized Source summary by exactly `representationId`, the UUID of the immutable preserved PDF already bound to the admitted Source. Its other fields remain Source ID, Document ID, Document Version ID, source/projection hashes, frozen title, language and native official/superseded status. Search and passage replies include the same extended summary.
+
+This new protected identifier is published only after the existing evidence-eligibility gate. It supplies neither a location/public URL nor native read authority. It reveals no rights reference, owner/provenance administration, effective dates, command receipt, transition history or denied source. It does not authorize reading an inaccessible PDF. Do not obtain it through the source administration endpoint or a broad Document upload-history scan.
+
+The model-facing MCP result retains its current known-field reconstruction and closed schema: it does not forward the new upstream field or administrator extras. The three existing MCP tools and their contract remain unchanged.
+
+The client treats every reply as `unknown` until it validates the consumed schema and request binding. It checks UUIDs, source/projection/passage hash formats, supported language/status, limits, unique item identities, exact current/history Version constraints, bounded cursor and exact Source/locator on passage responses. Passage SHA-256 must equal the full received literal text bytes. Invalid envelopes, foreign identities, wrong status/Version, duplicate results, malformed timestamps or hash mismatch publish no evidence and expose no raw payload.
+
+### 20.5 Current inventory, literal search and exact passage
+
+Current mode is default. On deliberate section entry, list only currently eligible admitted Sources and their exact frozen Version/status; do not label all native Documents admitted. The list is an inventory. Its rows need not open every passage or enumerate locators. The selected search journey supplies exact citation locators without a new API.
+
+Search requires an explicit submission of the unchanged input. Preserve §19's validation, including the 1–200 UTF-16 code-unit bound and nonblank/control/surrogate rules. No trimming, case folding, whitespace/Unicode normalization, translation, fuzzy matching, semantic model, ranking policy or generated answer is added. Use URL encoding only as transport. Passages remain separate even when apparently contradictory; the UI infers no precedence, resolution or expert support.
+
+List/search pages contain at most 20 authorized results and an opaque `nextCursor` or null. The application inventory/search stays current; continue only with the returned cursor in the same query and UI owner. The APIs retain their existing exact-history query contract, but this journey uses history only to reopen the known citation below. Never decode a cursor for business meaning or compute a hidden total. An empty final search page may follow a full previous page. A repeated/malformed cursor or incompatible response becomes a safe reloadable error, not an unbounded continuation loop.
+
+Opening a citation makes a fresh exact passage call with its Source ID, literal locator and selected mode. Validate the returned Source/Document/Version/Representation/hashes against the selected citation before replacing it. Show full literal text as untrusted text, preserve whitespace, and present its human title, localized exact-cited-version label, source language, returned native status, literal locator and retrieval instant; raw Version identity stays internal. The interface may explain that this is curated evidence rather than an answer; it never claims the transcription has been semantically verified against the PDF. Retrieved instructions are text and have no authority to navigate, fetch arbitrary URLs or trigger commands.
+
+Query/mode/known-citation-target changes retire old results, citation selection, PDF intent and continuation. The explicit known-citation history action captures its validated frozen target before this retirement and passes only the target into the new exact-history owner; the old content and authorization do not survive that transfer. New explicit passage opening retires the previous open request. An old failure or success cannot replace a newer result. No source body, query, identifier or citation is persisted in the browser navigation URL, browser storage, analytics or diagnostics. The specified API paths and encoded search query remain transport inputs; they are not browser navigation state or diagnostic payloads.
+
+### 20.6 Exact preserved PDF and historical meaning
+
+The PDF action starts with a fresh Knowledge passage read for the same exact selected Source/locator/mode. Validate its identity/hashes before requesting native content using exactly:
+
+`GET /api/documents/{documentId}/versions/{documentVersionId}/content/{representationId}`.
+
+Use the ordinary authenticated native content client and current Company. The Document owner re-establishes native visibility/content rights and exact Representation binding. The client bounds the actual body to 5 MiB, verifies PDF MIME/signature and SHA-256 equal to the Source's `sourceSha256`, and checks lifetime ownership after token lookup, response acquisition, body read, hashing and before creating or clicking a download URL. A safe fixed filename may be used; no filename or location field is added to the evidence summary. Revoke object URLs on completion/retirement. Malformed/unavailable/hash-mismatched bytes produce no download.
+
+There is no fallback to a mutable latest PDF, different Representation, successor Version, external reference or public/signed URL. `sourceSha256` identifies preserved bytes, `projectionSha256` binds curated projection content and `passageSha256` binds literal passage text; none proves a license or semantic support. Multiple earlier uploads with equal bytes do not make their Representation identities interchangeable.
+
+PDF authorization has two separate linearization points: a successful exact Knowledge passage preflight, followed by the native Document PDF read under its independent current authority. The requests do not share one transaction or authorization snapshot. The native endpoint checks Document authority and does not recheck Knowledge grants/admission; a Knowledge revocation committed after preflight but before native read or byte release is therefore not covered by a last-byte Knowledge check. Do not promise such a check, instantaneous remote recall or changed native Document rights. No new PDF proxy/API is introduced to provide a stronger guarantee. Observed retirement/denial still prevents this journey's later dispatch/publication, and old citations are never presented as newly eligible.
+
+Historical reopening is a deliberate action on an already authorized known citation in the current owner. Label the action with its frozen human title and a localized “Reopen this cited version” label. Retain its validated Source ID, literal locator, Document Version ID and exact source-reference tuple internally; do not expose a raw UUID form, identifiers in the browser navigation URL, generated candidate IDs or a free-standing history entry. The current public summary supplies no numeric Version label, so use the localized “Exact cited version” label and actual returned status rather than invent a version number.
+
+When selected, capture that exact immutable target before retiring the old current results/citation/PDF owner. A fresh history owner calls the existing passage operation with the same Source/locator and `mode=historical&documentVersionId=` set internally to the frozen exact Version. Validate the returned tuple and hashes afresh, then show the exact passage and its native official/superseded status with an explicit historical label; the PDF action keeps the same exact-target preflight and native read sequence. This section adds no history listing/search discovery, native Document cross-screen integration, successor lookup or source administration. If no already authorized citation target is known, there is no historical route to offer.
+
+A known target is a selector, never proof of continuing authority. A generic 404 clears the selected evidence/PDF intent and says only that evidence is unavailable; it does not infer supersession, revocation or another cause and never generates an automatic history fallback. Explicit history may return a currently official Version, so its label records the user's intent rather than fabricating a superseded status. Revoked/expired or currently inaccessible Sources remain excluded. Returning to current retires historical evidence, target and PDF intent and starts a fresh current inventory/search owner; old operations cannot revive either mode.
+
+### 20.7 Required states, navigation and retirement
+
+Use one application `knowledge-evidence` entry offered only under §20.2's represented authority. A fragment chooses an already-authorized section and supplies no grant. In Prisme and legacy Classic, the evidence owner mounts only on deliberate selection, retires on leaving, and reads fresh on return. No hidden background request or retained result owner survives section navigation. Use the existing accepted controls/tokens, supported interface locales and accessibility/focus rules; do not redesign the shell.
+
+| State                                                      | Observable behavior                                                                                                                                                                                                                       |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checking/loading                                           | Label the active scope, show accessible pending status, and prevent duplicate submit/download dispatch.                                                                                                                                   |
+| No active Company or represented authority                 | No evidence requests, source rows/counts or guessed reason. A direct fragment cannot bypass this.                                                                                                                                         |
+| Capability disabled or generic 503/integrity outage        | Generic evidence-unavailable state with deliberate retry; do not claim which condition occurred. No activation button or stale successful evidence as current.                                                                            |
+| Authorized empty current inventory/search                  | Generic no eligible evidence/no matching passage, without hidden-source counts, inaccessible IDs or guessed rights explanations. With no known citation, offer no history route.                                                          |
+| Invalid query or malformed internal Version/locator/cursor | Local query validation where possible; preserve unchanged valid input. Internal reference/schema failures withhold the action. Server 400 remains a safe validation state without rendering raw response text or offering a raw-ID field. |
+| Current 401/403                                            | Retire evidence immediately and invoke the existing scoped session/Company/current-actor recovery; no old result may reject a newer session or publish an older whole Actor.                                                              |
+| Current 404 or eligibility lost between list/open          | Generic evidence no longer available; clear selected citation/PDF intent. It proves neither source existence nor supersession/revocation or another cause, and creates no history fallback.                                               |
+| Malformed/identity/hash-incompatible response              | Withhold the result/download, clear affected stale display and offer explicit fresh retry. Never render unparsed payload.                                                                                                                 |
+| Network failure                                            | Scoped safe retry, preserving the user's valid input while withholding a fresh-success claim.                                                                                                                                             |
+| Superseded historical Version                              | Exact selected Version/status and historical label remain visible; no implicit current replacement.                                                                                                                                       |
+| Retirement                                                 | Old token/transport/parser/hash/recovery/focus/Blob callbacks are inert and cannot dispatch or publish.                                                                                                                                   |
+
+The owner consumes identity/session generation, Workspace/membership/Internal User, Company, Reader assignment identity/version, native Registrar/content-reader captures and represented permissions, existing Client authority generation/read prerequisites and family captures that can affect the global inventory. Do not require every family grant to enter; conservatively refresh the inventory if one changes. A replacement required capture retires work even when permission strings are equal. An unrelated source-administrator assignment alone does not replace the read owner.
+
+Retirement is irreversible for each operation. An A→B→A return creates a fresh owner and never revives requests started under the earlier A. Query/mode/known-citation-target/open/PDF intents also have latest-operation ownership inside that scope. Transfer an explicitly selected exact known target to the new history owner before clearing the old selection; this preserves the user's action without preserving old evidence or authority. Abort transport where possible and test freshness after every await before dispatch, parsing publication, recovery, focus and file release. Shared access recovery outlives the retired child reads only within its own still-current actor/context lifetime; an older complete Actor snapshot cannot overwrite a newer one.
+
+Changing only interface language preserves entered query and literal source bytes; changing only presentation frame preserves business meaning and does not duplicate a read while still visible. A deliberate section departure still retires work. Keyboard focus moves only for a current explicit navigation/open intent, never a late response or hidden panel. All ro/ru/fr/en interface copy remains localization-ready; source language remains ro/ru/en under §19. Desktop and narrow-screen text/long identifiers remain readable without horizontal page overflow.
+
+### 20.8 Attribution, compatibility, acceptance and readiness
+
+Every successful web list/search/passage call appends the same minimal `knowledge_interactions` record through the existing service transaction, including empty successful reads. It stores no query/body, source administration data, credential, generated answer or business decision. Failed reads create no success attribution. Native PDF reads retain the native owner's existing behavior, with the preceding Knowledge preflight attributed as an ordinary passage read. No generic Activity Log/Home event, new interaction viewer or analysis approval framework is added.
+
+No business schema or migration, source/projection change, new permission, existing bundle expansion or real grant is required. The additive authorized summary field and opaque current-actor field preserve existing consumers; the MCP reconstruction/output schema stays unchanged. OpenAPI owns exact adapter/summary schemas when implemented. The actual post-#1006 source and central ownership must be rechecked before runtime work.
+
+Acceptance must exercise public boundaries:
+
+1. Use native governed Document/PDF commands and explicit fictional grants to admit current and superseded Sources, then the real App completes inventory → literal search → fresh exact passage → exact PDF bytes under actual Nest/PostgreSQL service behavior.
+2. Prove case/whitespace/Unicode literal preservation and exact ro/ru/en source passages independently of ro/ru/fr/en interface localization. No generated answer or semantic quality score is asserted.
+3. Load an authorized current citation, designate a successor through native commands, then deliberately reopen that known citation's exact earlier Version through the explicit history action. Preserve its internal target across mode retirement and display the returned native status. Prove that no raw-ID field, browser navigation URL identifier, unknown-citation history route, history-discovery query or native Document cross-screen dependency exists. A generic 404 infers no cause and creates no historical fallback. Revocation, expiry, native family/Client invisibility and lost Reader/native grants cannot be restored by history.
+4. Verify the exact admitted earlier PDF Representation, including two uploads with equal hashes, so no latest selection or checksum-based identity guess can pass as exact binding. Wrong tuple/hash/MIME/oversize content produces no file. Prove the actual two-step Knowledge-preflight/native-Document-read sequence and observed-retirement fencing without asserting a last-byte Knowledge check that neither existing native PDF operation supplies.
+5. Prove Reader absence, admin-only authority, complete native-only rights, Owner/title-only access and malformed/duplicate/unknown Reader captures cause no unauthorized source request/disclosure.
+6. Show that every new web adapter uses the same service gates and read attribution: disabled, malformed, unauthorized, source-ineligible, empty and successful calls have their specified outcomes without query/body leakage.
+7. Prove ordinary web authentication is accepted only through its intended adapter and has not become a valid fallback at existing resource-protected routes; test both identity boundaries with synthetic configured keys/parties/audiences where appropriate. Preserve the native MCP HTTP bridge, three tool schemas and known-field output reconstruction with the additive upstream Representation field.
+8. Verify no hidden title/ID/count in denied/empty responses, bounded continuation including an empty final search page, safe malformed response handling and no admin/rights metadata in reader output.
+9. Cover deferred token lookup, HTTP response, PDF hashing, actor recovery, focus and download under navigation-away, session/Company/member/capture replacement, source loss and A→B→A. No retired callback can publish, dispatch, sign out a newer session or trigger file release.
+10. Inspect real desktop/narrow browser behavior, both frames' navigation visibility, keyboard and focus behavior and each supported interface locale. No test result is a claim of representative real corpus, actual legal review, live identity tenant, configured Codex account or production activation.
+
+Actual source inventory/rights, admission declarations, real-person assignments, required legal/security/production review and validated operator-controlled activation remain with §19 and §§14–16. Synthetic software proof satisfies none of those real-world conditions. This bounded human read path supplies no model provider or AI capability promotion.
+
+Before a runtime ticket is marked ready, the canonical section must be reviewed/disposed and merged, the twelve standard gates must pass on the actual source head, and one exclusive Knowledge evidence owner must hold its feature and narrow central interfaces after #1006 or explicit root coordination. If completion requires changing native permissions, source eligibility, resource authentication architecture or production configuration, stop and re-scope rather than silently extend this contract.
+
+### 20.9 Runtime readiness assessment
+
+The [twelve standard gates](specification-and-ticketing-standard.md#8-ready-for-agent-gates) apply to the future runtime ticket. The ordered preparation and actual bounded product disposition are recorded above. Canonical merge, runtime examples, central ownership and actual-head readiness still require verification in the future ticket.
+
+| Gate                          | Bounded assessment and required closure                                                                                                                                                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Observable outcome         | Sections 20.1/20.5–20.7 define inventory → literal search → fresh exact citation → exact PDF, with deliberate known-citation history.                                                                                                                             |
+| 2. Scope                      | One active Workspace/Company; existing original-Client and family visibility. No legal-entity operation or All Companies view.                                                                                                                                    |
+| 3. Actors and authority       | Existing Reader v1 and independent native grants only. The ordinary-web exposure has the bounded review/disposition recorded above; no real assignment is inferred.                                                                                               |
+| 4. Lifecycle and history      | Section 19 retains immutable Source transitions, expiry and revocation. Sections 20.5–20.7 define exact Version history, current default and irreversible operation retirement.                                                                                   |
+| 5. Source of truth            | Existing Access, Knowledge and Document owners; no model, provider, storage or activation change.                                                                                                                                                                 |
+| 6. Examples                   | Existing fictional public Document/Knowledge seams and the source-language cases in 20.8 support synthetic software qualification. The runtime ticket must name its concrete native/browser fixtures. These are not representative real-corpus or pilot evidence. |
+| 7. Exceptional states         | Section 20.7 specifies loading, empty, invalid, denied, unavailable, malformed, stale and retired behavior without hidden-source inference.                                                                                                                       |
+| 8. Security and attribution   | Same service-owned authorization/attribution, protected exact Representation reference and two distinct PDF read gates. Ordered independent Standards then Spec preparation and actual delegated product disposition have completed for this bounded contract.    |
+| 9. Dependencies and migration | Merge this reviewed/disposed contract and recheck the actual post-#1006 source plus explicit central-interface ownership. No business migration is expected; an actual need to change owning permissions or authentication architecture requires re-scoping.      |
+| 10. Public proof              | Section 20.8 requires native HTTP/PostgreSQL, actual App/browser and unchanged resource-guard/MCP regression seams, rather than private-helper-only assertions.                                                                                                   |
+| 11. Fresh-session fit         | One feature owner may cover the three forwarding adapters, one protected summary field, capture/navigation integration and the complete read-only journey. Reassess against the actual head before assigning the runtime issue.                                   |
+| 12. Blockers closed           | Not yet established by this documentation: canonical merge, runtime examples/current-head fit and central ownership must be verified in the future ticket. Keep that ticket draft until each is closed.                                                           |
+
+Actual sources, rights, admission declarations, people, operational configuration and production reviews remain separate dependencies under section 19. This assessment authorizes none of them and does not promote the broader Draft PRD.
