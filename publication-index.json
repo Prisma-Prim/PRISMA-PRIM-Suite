@@ -1,0 +1,85 @@
+{
+  "schema": "prisma-prim-targeted-evidence-publication/v1",
+  "pr": 998,
+  "run": "targeted-storage-20261031",
+  "ref": "local-evidence/pr-998/c9020836b73e747b5c11e149fa9a04da959fad0a-targeted-storage-20261031",
+  "source": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "base": "e1a8a8034d18a19dc4fca089de3cffb410d76063",
+  "integration_commit": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "integration_tree": "b50d58eb0d5b6b570ebdbda35a5a1ba706ee07c5",
+  "status": "INCOMPLETE_SAFETY_ABORT",
+  "actual_managed_outer_exit": 143,
+  "public_pg_test_exit": 0,
+  "full_run": false,
+  "all16_pass": false,
+  "merge_eligible": false,
+  "complete_originals": "Retained unchanged locally; this selection is targeted qualification, not a passing canonical report.",
+  "limits": {
+    "total_bytes": 20971520,
+    "blob_bytes": 5242880
+  },
+  "retention": "While needed by open PR/review and at least14 days after any later merge; never merge this ref into product.",
+  "files": [
+    {
+      "path": "qualification.json",
+      "bytes": 3628,
+      "sha256": "573d766622147b8b75245447e6ee483d55c3b5211cf5a2f78afdfa575e20677e",
+      "copy_kind": "selected-derived-native-qualification",
+      "selection_reason": "Minimal source-bound facts from native receipts, capacity samples and cleanup receipts; no private process/session/resource-ID dumps.",
+      "original_path": "targeted-current-exit-20261031.json",
+      "original_bytes": 1512,
+      "original_sha256": "67eb3d32e20943674717666b8407303411f01f614172f74e8bbedaf971684726"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 249205,
+      "sha256": "810dbb6cfc0dccbe75d1e242a935a1fa43fc1070439733cf6476a51e4a3b5e98",
+      "copy_kind": "selected-exact-tracked-input-map",
+      "selection_reason": "Exact2017 relative source/configuration/dependency-manifest input hashes for this targeted execution.",
+      "original_path": "targeted-current-inputs-20261031.json",
+      "original_bytes": 249205,
+      "original_sha256": "810dbb6cfc0dccbe75d1e242a935a1fa43fc1070439733cf6476a51e4a3b5e98"
+    },
+    {
+      "path": "doctor.log",
+      "bytes": 749,
+      "sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9",
+      "copy_kind": "selected-exact-original",
+      "selection_reason": "Doctor records tool/DB readiness, omits database URLs and credentials.",
+      "original_path": "doctor-current-20261031.log",
+      "original_bytes": 749,
+      "original_sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9"
+    },
+    {
+      "path": "pg-summary.txt",
+      "bytes": 438,
+      "sha256": "a06b71bca6b6458572b0fcc00471e1871628028ca247960380504613441f7099",
+      "copy_kind": "selected-terminal-summary-ansi-only-sanitization",
+      "selection_reason": "Actual public ten-case PG result, not a full API or complete-gate claim.",
+      "original_path": "targeted-pg-current-20261031.log",
+      "original_bytes": 642,
+      "original_sha256": "35e22982787f996fc0b9aa42ce88f51358afe8193c6254c6b7161d49bf0e9bfd"
+    },
+    {
+      "path": "review-reuse.json",
+      "bytes": 1719,
+      "sha256": "5361f0c267e5c47c025404fbcfed34a08ae4678eef1940ba75e46456a15fd588",
+      "copy_kind": "publication-generated-review-context",
+      "selection_reason": "Original review reuse plus the configured automatic refresh; no new manual request or complete-gate claim."
+    },
+    {
+      "path": "README.md",
+      "bytes": 3555,
+      "sha256": "56c8b554cc72614f5683ba175766982b1fc9674e986e6ce1c3148e6c6c3df671",
+      "copy_kind": "publication-generated-context",
+      "selection_reason": "Explicit incomplete status, scope, prior-evidence separation, safety cancellation, source review, restoration and retention caveats."
+    },
+    {
+      "path": "doctor-contract.json",
+      "bytes": 1253,
+      "sha256": "fa3325ca306c9a4193926d0b96bca9edbfe454dfdeea3d9d53ccb75e9a6fbbd1",
+      "copy_kind": "publication-generated-owning-cli-contract-qualification",
+      "selection_reason": "Distinguishes the actual web-postgres check profile from the separately printed standard readiness timeout policy, using the committed owning CLI source."
+    }
+  ]
+}

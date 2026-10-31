@@ -1,0 +1,21 @@
+{
+  "schema": "prisma-prim-doctor-profile-qualification/v1",
+  "executed_argv": [
+    "node",
+    "scripts/agent-doctor.mjs",
+    "--profile",
+    "web-postgres"
+  ],
+  "execution_family_profile": "web-postgres",
+  "readiness_timeout_policy": "standard",
+  "separate_arguments": {
+    "family_profile": "--profile, parsed at scripts/agent-doctor.mjs458\u2013459; web-postgres requires both Chromium and PostgreSQL through72\u201377",
+    "timeout_policy": "--readiness-profile, independently parsed at461\u2013463; its defaultstandard is the value printed in the text headline at482"
+  },
+  "owning_source": "scripts/agent-doctor.mjs",
+  "owning_source_sha256": "757bc807ca2be53f297f5eec059bcc350612d5f38c8b0d939daea41edf0cb190",
+  "source_commit": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "actual_log_sha256": "78f370b5f75ea983a1e6ba7d29642e4e9f8d9ccbcc033fdf8f30a78310eb29d9",
+  "actual_checks": "PASS Chromium, database variables, distinct safe PostgreSQL targets and PostgreSQL17.11 connectivity. No database URL/credential is published.",
+  "qualification": "The headline Readiness profile: standard identifies the timeout policy, not the base/check-selection profile. No postgres-only invocation or additional doctor execution is claimed."
+}

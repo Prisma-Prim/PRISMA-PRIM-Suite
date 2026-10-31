@@ -1,0 +1,30 @@
+{
+  "schema": "prisma-prim-mechanical-review-reuse/v1",
+  "reviewed_source": "9a4bc00adc0932d23f57c6250ab7b11ae954b028",
+  "prepared_source": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "base": "e1a8a8034d18a19dc4fca089de3cffb410d76063",
+  "prepared_tree": "b50d58eb0d5b6b570ebdbda35a5a1ba706ee07c5",
+  "original_opening_review": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/998#issuecomment-6530319580",
+  "original_review_disposition": "Completed on9a4, zero findings/unresolved findings",
+  "resolution": "One first-import conflict, preserving both main knowledgeSourceEvents and995 activityReadableDocuments. No new behavior or other conflict.",
+  "changed_code_line_sequences_byte_identical": true,
+  "original_and_composed_changed_code_lines_sha256": "7f47747e110472eb6b50acbf12a037f7b659e6ed33f92e8b2dca942d3bfff04b",
+  "helper_and_proof_test_original_blobs_identical": true,
+  "source_merge_parents": [
+    "9a4bc00adc0932d23f57c6250ab7b11ae954b028",
+    "e1a8a8034d18a19dc4fca089de3cffb410d76063"
+  ],
+  "source_push": "Ordinary fast-forward after expected remote9a4 guard, actual remotec902 read back; no force.",
+  "new_manual_review_trigger_sent": false,
+  "new_complete_gate_claimed": false,
+  "current_automatic_summary": {
+    "source": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+    "status": "completed",
+    "completed_at": "2026-10-31T07:33:45.922646Z",
+    "trigger": "New commits",
+    "findings": false,
+    "unresolved_findings": false,
+    "url": "https://github.com/Prisma-Prim/PRISMA-PRIM-Suite/pull/998#issuecomment-6530319580",
+    "qualification": "Configured automation refreshed itself after the mechanical push; no manual review request or ready transition was sent."
+  }
+}

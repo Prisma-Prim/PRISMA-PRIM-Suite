@@ -1,0 +1,8 @@
+Selected terminal lines, with ANSI display codes removed; complete original retained locally.
+Command: pnpm --filter @prisma-prim/api exec vitest run src/documents/activity-document-visibility.rest.test.ts --maxWorkers=1 --testTimeout=15000
+Actual native test exit:0
+
+ Test Files  1 passed (1)
+      Tests  10 passed (10)
+   Start at  07:26:18
+   Duration  14.86s (transform 1.78s, setup 0ms, import 2.94s, tests 11.78s, environment 0ms)

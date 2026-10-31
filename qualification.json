@@ -1,0 +1,76 @@
+{
+  "schema": "prisma-prim-targeted-qualification/v1",
+  "source": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "base_at_composition": "e1a8a8034d18a19dc4fca089de3cffb410d76063",
+  "integration_commit": "c9020836b73e747b5c11e149fa9a04da959fad0a",
+  "integration_tree": "b50d58eb0d5b6b570ebdbda35a5a1ba706ee07c5",
+  "not_current_base_final_proof": true,
+  "prepared_checks": {
+    "normal_frozen_root_and_railway": "PASS",
+    "strict_api_and_web_types": "PASS",
+    "scoped_lint": "PASS",
+    "changed_file_format": "PASS",
+    "postgres_doctor": "PASS PostgreSQL17.11",
+    "public_native_cases_passed": 10,
+    "public_native_test_exit": 0,
+    "public_native_test_argv": [
+      "pnpm",
+      "--filter",
+      "@prisma-prim/api",
+      "exec",
+      "vitest",
+      "run",
+      "src/documents/activity-document-visibility.rest.test.ts",
+      "--maxWorkers=1",
+      "--testTimeout=15000"
+    ],
+    "doctor_argument_profile": "web-postgres",
+    "doctor_readiness_timeout_policy": "standard",
+    "doctor_profile_qualification": "See doctor-contract.json; the headline names the separate readiness timeout policy, not the selected check profile."
+  },
+  "storage_diagnostic": {
+    "status": "INCOMPLETE_SAFETY_ABORT",
+    "actual_managed_outer_exit": 143,
+    "packaging_exit": null,
+    "started_at": "2026-10-31T07:26:09.653476+00:00",
+    "finished_at": "2026-10-31T07:28:03.794064+00:00",
+    "packaging_command": [
+      "bash",
+      "scripts/railway-packaging-smoke.sh"
+    ],
+    "packaging_assertions_and_budgets_unchanged": true,
+    "same_outer_managed_postgres_lifecycle": true,
+    "future_workspace_footprint_reservation_bytes": 805306368,
+    "safety_abort_threshold_bytes": 524288000,
+    "minimum_observed_workspace_free_bytes": 270798848,
+    "threshold_qualification": "Cancellation began when the sampled free space crossed the threshold. Further asynchronous allocation during cancellation reached the observed minimum; no guaranteed500MiB floor is claimed.",
+    "minimum_tmp_free_bytes": 7451922432,
+    "peak_cgroup_working_set_bytes": 9999990784,
+    "cgroup_memory_limit_bytes": 17179869184,
+    "capacity_samples": 569,
+    "result_qualification": "Image builds completed; packaged PDF/migration/startup proof was interrupted and did not pass. This is not a complete verification attempt."
+  },
+  "source_guard": {
+    "passed": true,
+    "tracked_inputs": 2017,
+    "input_map_sha256": "810dbb6cfc0dccbe75d1e242a935a1fa43fc1070439733cf6476a51e4a3b5e98",
+    "mismatches": []
+  },
+  "cleanup": {
+    "owned_managed_postgres_container_volume_network_and_temp_removed": true,
+    "owned_unstarted_stateless_pdf_smoke_orphan_removed": true,
+    "all_eight_temporary_cache_paths_durably_restored_exactly": true,
+    "restored_regular_files": 3563,
+    "no_restored_source_symlinks": true,
+    "protected_old_postgres_state_unchanged": true,
+    "builder_cache_only_resource_inventories_semantically_identical": true,
+    "label_order_only_raw_comparison_caveat": "Original raw cache-recovery receipt is retained; the only volume mismatch was display order of identical label key/value pairs.",
+    "workspace_free_bytes_after_all_cleanup": 13374287872
+  },
+  "full_failed_complete_runs": 2,
+  "third_complete_run_started": false,
+  "all16_pass": false,
+  "merge_eligible": false,
+  "external_storage_prerequisite_restored": false,
+  "future_requirement": "More effective storage; a suggested21GiB starting-free planning target is not a guarantee. Demonstrate unchanged targeted packaging and concurrent-footprint/RAM margins before any fresh current-base complete run without API-result reuse."
+}
